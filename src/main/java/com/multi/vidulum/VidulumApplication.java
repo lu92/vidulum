@@ -21,7 +21,7 @@ public class VidulumApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         mongoTemplate.dropCollection(Sample.class);
-        Sample hello_world = Sample.builder().text("Hello world2").build();
+        Sample hello_world = Sample.builder().text("Hello world").build();
         Sample inserted = mongoTemplate.insert(hello_world);
         System.out.println(inserted);
     }
