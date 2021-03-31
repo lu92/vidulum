@@ -1,4 +1,4 @@
-package com.multi.vidulum.shared.event;
+package com.multi.vidulum.shared.ddd.event;
 
 import java.time.Instant;
 
