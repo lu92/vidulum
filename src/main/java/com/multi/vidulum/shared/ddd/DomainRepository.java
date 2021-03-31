@@ -1,4 +1,4 @@
-package com.multi.vidulum.shared;
+package com.multi.vidulum.shared.ddd;
 
 import java.util.Optional;
 

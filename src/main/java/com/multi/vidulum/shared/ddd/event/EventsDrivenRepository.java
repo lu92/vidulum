@@ -1,7 +1,7 @@
-package com.multi.vidulum.shared.event;
+package com.multi.vidulum.shared.ddd.event;
 
-import com.multi.vidulum.shared.Aggregate;
-import com.multi.vidulum.shared.DomainRepository;
+import com.multi.vidulum.shared.ddd.Aggregate;
+import com.multi.vidulum.shared.ddd.DomainRepository;
 
 import java.util.List;
 
