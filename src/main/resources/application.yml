@@ -2,3 +2,15 @@ mongodb:
   host: localhost
   port: 27017
   database: test1
+
+kafka:
+  bootstrapAddress: localhost:9092
+
+spring:
+  kafka:
+    consumer:
+      group-id: group-id
+      auto-offset-reset: manual
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+

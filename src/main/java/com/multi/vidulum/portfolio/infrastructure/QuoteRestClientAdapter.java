@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.infrastructure;
 
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +10,11 @@ import org.springframework.stereotype.Component;
 public class QuoteRestClientAdapter implements QuoteRestClient {
     @Override
     public AssetPriceMetadata fetch(Ticker ticker) {
+        return null;
+    }
+
+    @Override
+    public AssetBasicInfo fetchBasicInfo(Ticker ticker) {
         return null;
     }
 }

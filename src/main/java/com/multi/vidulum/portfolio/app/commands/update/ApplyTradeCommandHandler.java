@@ -1,17 +1,15 @@
 package com.multi.vidulum.portfolio.app.commands.update;
 
-import com.mongodb.client.result.UpdateResult;
+import com.multi.vidulum.common.Side;
 import com.multi.vidulum.portfolio.app.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
-import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeCommand, Void> {
 
     private final DomainPortfolioRepository repository;
-    MongoTemplate mongoTemplate;
+    private final QuoteRestClient quoteRestClient;
 
     @Override
     public Void handle(ApplyTradeCommand command) {
@@ -28,20 +26,40 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
+        if (isBuying(command)) {
+            processBoughtAsset(portfolio, command);
+        } else {
+            processSoldAsset(portfolio, command);
+        }
+        return null;
+    }
 
-        BuyTrade trade = BuyTrade.builder()
+    private boolean isBuying(ApplyTradeCommand command) {
+        return command.getSide() == Side.BUY;
+    }
+
+    private void processBoughtAsset(Portfolio portfolio, ApplyTradeCommand command) {
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfo(command.getTicker());
+
+        BuyTrade buyTrade = BuyTrade.builder()
+                .portfolioId(command.getPortfolioId())
                 .tradeId(command.getTradeId())
                 .ticker(command.getTicker())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
                 .build();
 
+        portfolio.handleExecutedTrade(buyTrade, assetBasicInfo);
+    }
 
-        Query query = new Query().addCriteria(Criteria.where("id").is(command.getPortfolioId().getId()));
-        Update update = new Update();
-//        update.fi
-        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, PortfolioEntity.class);
-
-        return null;
+    private void processSoldAsset(Portfolio portfolio, ApplyTradeCommand command) {
+        SellTrade sellTrade = SellTrade.builder()
+                .portfolioId(command.getPortfolioId())
+                .tradeId(command.getTradeId())
+                .ticker(command.getTicker())
+                .quantity(command.getQuantity())
+                .price(command.getPrice())
+                .build();
+        portfolio.handleExecutedTrade(sellTrade);
     }
 }
