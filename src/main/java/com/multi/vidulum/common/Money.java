@@ -1,21 +1,18 @@
 package com.multi.vidulum.common;
 
-import lombok.Getter;
-import lombok.ToString;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-@Getter
-@ToString
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Money {
-    private final BigDecimal amount;
-    private final String currency;
-
-    private Money(BigDecimal amount, String currency) {
-        this.amount = amount;
-        this.currency = currency;
-    }
+    private BigDecimal amount;
+    private String currency;
 
     public static Money of(double amount, String currency) {
         return new Money(BigDecimal.valueOf(amount), currency);
