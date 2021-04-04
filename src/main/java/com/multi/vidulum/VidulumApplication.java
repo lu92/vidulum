@@ -74,10 +74,10 @@ public class VidulumApplication implements CommandLineRunner {
     @Autowired
     private KafkaTemplate<String, Greeting> kafkaTemplate;
 
-    @KafkaListener(
-            groupId = "group-id1",
-            topics = "baeldung",
-            containerFactory = "greetingKafkaListenerContainerFactory")
+//    @KafkaListener(
+//            groupId = "group-id1",
+//            topics = "baeldung",
+//            containerFactory = "greetingKafkaListenerContainerFactory")
     public void greetingListener(Greeting greeting) {
         System.out.println(String.format("Received greeting: %s", greeting.getMsg()));
         // process greeting message

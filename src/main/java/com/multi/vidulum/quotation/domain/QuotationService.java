@@ -1,9 +1,9 @@
 package com.multi.vidulum.quotation.domain;
 
 import com.multi.vidulum.common.AssetPriceMetadata;
-import com.multi.vidulum.common.PriceChangedEvent;
 import com.multi.vidulum.common.Ticker;
 import lombok.AllArgsConstructor;
+import org.springframework.kafka.annotation.KafkaListener;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -14,6 +14,10 @@ public class QuotationService {
     private final Clock clock;
     private final ConcurrentHashMap<Ticker, AssetPriceMetadata> cache = new ConcurrentHashMap<>();
 
+    @KafkaListener(
+            groupId = "group_id1",
+            topics =  "quotes",
+            containerFactory = "priceChangingContainerFactory")
     public void onPriceChange(PriceChangedEvent event) {
         AssetPriceMetadata priceMetadata = AssetPriceMetadata.builder()
                 .ticker(event.getTicker())
@@ -22,7 +26,6 @@ public class QuotationService {
                 .dateTime(ZonedDateTime.now(clock))
                 .build();
         cache.put(event.getTicker(), priceMetadata);
-        // emit kafka event
     }
 
     public AssetPriceMetadata fetch(Ticker ticker) {

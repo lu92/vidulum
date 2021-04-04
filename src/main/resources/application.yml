@@ -6,6 +6,12 @@ mongodb:
 kafka:
   bootstrapAddress: localhost:9092
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include=*:
+
 spring:
   kafka:
     consumer:
