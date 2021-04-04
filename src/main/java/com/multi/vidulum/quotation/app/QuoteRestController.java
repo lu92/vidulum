@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.ZonedDateTime;
 
-@AllArgsConstructor
 @RestController
+@AllArgsConstructor
 public class QuoteRestController {
 
     private final QuotationService quotationService;

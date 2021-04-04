@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Ticker {
-    String Id;
+    private String Id;
 
     public static Ticker of(String id) {
         return new Ticker(id);
