@@ -2,10 +2,12 @@ package com.multi.vidulum.portfolio.app.commands.create;
 
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.Command;
-import lombok.Value;
+import lombok.Builder;
+import lombok.Getter;
 
-@Value
+@Getter
+@Builder
 public class CreateEmptyPortfolioCommand implements Command {
-    String name;
-    UserId userId;
+    private final String name;
+    private final UserId userId;
 }

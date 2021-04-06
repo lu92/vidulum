@@ -1,4 +1,4 @@
-package com.multi.vidulum.portfolio.app;
+package com.multi.vidulum.portfolio.domain;
 
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 

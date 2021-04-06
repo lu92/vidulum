@@ -68,50 +68,50 @@ public class VidulumApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
         mongoTemplate.dropCollection(PortfolioEntity.class);
-        UserId userId = UserId.of("Lucjan");
-        Portfolio newPortfolio = portfolioFactory.createEmptyPortfolio("XYZ", userId);
-
-        newPortfolio.depositMoney(Money.of(200, "USD"));
-
-        AssetBasicInfo pslvBasicInfo = new AssetBasicInfo(
-                Ticker.of("PSLV"),
-                "Sprott Silver Trust",
-                List.of("PM", "Silver")
-        );
-
-        newPortfolio.handleExecutedTrade(
-                BuyTrade.builder()
-                        .portfolioId(newPortfolio.getPortfolioId())
-                        .tradeId(TradeId.of("XXX1"))
-                        .ticker(Ticker.of("PSLV"))
-                        .quantity(15)
-                        .price(Money.of(11.50, "USD"))
-                        .build(),
-                pslvBasicInfo);
-
-        newPortfolio.handleExecutedTrade(
-                BuyTrade.builder()
-                        .portfolioId(newPortfolio.getPortfolioId())
-                        .tradeId(TradeId.of("XXX2"))
-                        .ticker(Ticker.of("PSLV"))
-                        .quantity(10)
-                        .price(Money.of(9.50, "USD"))
-                        .build(),
-                pslvBasicInfo);
-
-        newPortfolio.handleExecutedTrade(
-                SellTrade.builder()
-                        .portfolioId(newPortfolio.getPortfolioId())
-                        .tradeId(TradeId.of("XXX3"))
-                        .ticker(Ticker.of("PSLV"))
-                        .quantity(10)
-                        .price(Money.of(9.50, "USD"))
-                        .build()
-        );
-
-
-        Portfolio savedPortfolio = portfolioRepository.save(newPortfolio);
-        System.out.println(savedPortfolio);
+//        UserId userId = UserId.of("Lucjan");
+//        Portfolio newPortfolio = portfolioFactory.createEmptyPortfolio("XYZ", userId);
+//
+//        newPortfolio.depositMoney(Money.of(200, "USD"));
+//
+//        AssetBasicInfo pslvBasicInfo = new AssetBasicInfo(
+//                Ticker.of("PSLV"),
+//                "Sprott Silver Trust",
+//                List.of("PM", "Silver")
+//        );
+//
+//        newPortfolio.handleExecutedTrade(
+//                BuyTrade.builder()
+//                        .portfolioId(newPortfolio.getPortfolioId())
+//                        .tradeId(TradeId.of("XXX1"))
+//                        .ticker(Ticker.of("PSLV"))
+//                        .quantity(15)
+//                        .price(Money.of(11.50, "USD"))
+//                        .build(),
+//                pslvBasicInfo);
+//
+//        newPortfolio.handleExecutedTrade(
+//                BuyTrade.builder()
+//                        .portfolioId(newPortfolio.getPortfolioId())
+//                        .tradeId(TradeId.of("XXX2"))
+//                        .ticker(Ticker.of("PSLV"))
+//                        .quantity(10)
+//                        .price(Money.of(9.50, "USD"))
+//                        .build(),
+//                pslvBasicInfo);
+//
+//        newPortfolio.handleExecutedTrade(
+//                SellTrade.builder()
+//                        .portfolioId(newPortfolio.getPortfolioId())
+//                        .tradeId(TradeId.of("XXX3"))
+//                        .ticker(Ticker.of("PSLV"))
+//                        .quantity(10)
+//                        .price(Money.of(9.50, "USD"))
+//                        .build()
+//        );
+//
+//
+//        Portfolio savedPortfolio = portfolioRepository.save(newPortfolio);
+//        System.out.println(savedPortfolio);
 
     }
 }

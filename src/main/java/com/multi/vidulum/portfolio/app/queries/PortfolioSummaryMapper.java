@@ -1,8 +1,7 @@
 package com.multi.vidulum.portfolio.app.queries;
 
 import com.multi.vidulum.common.AssetPriceMetadata;
-import com.multi.vidulum.portfolio.app.model.AssetSummary;
-import com.multi.vidulum.portfolio.app.model.PortfolioSummary;
+import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -19,10 +18,10 @@ public class PortfolioSummaryMapper {
 
     private final QuoteRestClient quoteRestClient;
 
-    public PortfolioSummary mapAsset(Portfolio portfolio) {
-        List<AssetSummary> assets = portfolio.getAssets()
+    public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio) {
+        List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
                 .stream()
-                .map(this::mapAsset)
+                .map(this::map)
                 .collect(Collectors.toList());
 
 
@@ -33,11 +32,15 @@ public class PortfolioSummaryMapper {
 
         Money profit = currentValue.minus(portfolio.getInvestedBalance());
 
-        double pctProfit = profit.diffPct(portfolio.getInvestedBalance());
 
-        return PortfolioSummary.builder()
-                .portfolioId(portfolio.getPortfolioId())
-                .userId(portfolio.getUserId())
+        double pctProfit = 0;
+        if (!Money.zero("USD").equals(portfolio.getInvestedBalance())) {
+            pctProfit = profit.diffPct(portfolio.getInvestedBalance());
+        }
+
+        return PortfolioDto.PortfolioSummaryJson.builder()
+                .portfolioId(portfolio.getPortfolioId().getId())
+                .userId(portfolio.getUserId().getId())
                 .name(portfolio.getName())
                 .assets(assets)
                 .investedBalance(portfolio.getInvestedBalance())
@@ -47,7 +50,7 @@ public class PortfolioSummaryMapper {
                 .build();
     }
 
-    private AssetSummary mapAsset(Asset asset) {
+    private PortfolioDto.AssetSummaryJson map(Asset asset) {
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(asset.getTicker());
 
         Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity());
@@ -55,8 +58,8 @@ public class PortfolioSummaryMapper {
         Money profit = currentValue.minus(oldValue);
         double pctProfit = currentValue.diffPct(oldValue);
 
-        return AssetSummary.builder()
-                .ticker(asset.getTicker())
+        return PortfolioDto.AssetSummaryJson.builder()
+                .ticker(asset.getTicker().getId())
                 .fullName(asset.getFullName())
                 .avgPurchasePrice(asset.getAvgPurchasePrice())
                 .quantity(asset.getQuantity())

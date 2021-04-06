@@ -1,7 +1,7 @@
 package com.multi.vidulum.portfolio.app.commands.update;
 
 import com.mongodb.client.result.UpdateResult;
-import com.multi.vidulum.portfolio.app.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
