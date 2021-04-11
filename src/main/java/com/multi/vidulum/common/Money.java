@@ -40,7 +40,7 @@ public class Money {
     }
 
     public double diffPct(Money other) {
-        return amount.divide(other.amount, RoundingMode.CEILING).subtract(BigDecimal.ONE).doubleValue();
+        return amount.divide(other.amount, 8, RoundingMode.FLOOR).subtract(BigDecimal.ONE).doubleValue();
     }
 
     public Money plus(Money other) {

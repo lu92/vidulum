@@ -88,6 +88,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .quantity(trade.getQuantity())
                             .tags(assetBasicInfo.getTags())
                             .build();
+
+
+                    Money investment = trade.getPrice().multiply(trade.getQuantity());
+                    investedBalance = investedBalance.plus(investment);
                     assets.add(newAsset);
                 });
     }
