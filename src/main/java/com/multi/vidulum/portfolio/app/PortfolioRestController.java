@@ -1,7 +1,10 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
+import com.multi.vidulum.portfolio.app.commands.update.ApplyTradeCommand;
 import com.multi.vidulum.portfolio.app.queries.GetPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -38,6 +41,20 @@ public class PortfolioRestController {
 
         Portfolio portfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(portfolio);
+    }
+
+    @PostMapping("/portfolio/trading")
+    public void applyTrade(@RequestBody PortfolioDto.TradeExecutedJson tradeExecutedJson) {
+        ApplyTradeCommand command = ApplyTradeCommand.builder()
+                .tradeId(TradeId.of(tradeExecutedJson.getTradeId()))
+                .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
+                .ticker(Ticker.of(tradeExecutedJson.getTicker()))
+                .side(tradeExecutedJson.getSide())
+                .quantity(tradeExecutedJson.getQuantity())
+                .price(tradeExecutedJson.getPrice())
+                .build();
+
+        commandGateway.send(command);
     }
 
 }

@@ -5,4 +5,6 @@ import com.multi.vidulum.common.Ticker;
 
 public interface QuoteRestClient {
     AssetPriceMetadata fetch(Ticker ticker);
+
+    AssetBasicInfo fetchBasicInfoAboutAsset(Ticker ticker);
 }

@@ -6,9 +6,11 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.commands.Command;
-import lombok.Value;
+import lombok.Builder;
+import lombok.Getter;
 
-@Value
+@Getter
+@Builder
 public class ApplyTradeCommand implements Command {
     TradeId tradeId;
     PortfolioId portfolioId;

@@ -68,9 +68,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
 
-        Ticker currencyTicker = Ticker.of(trade.getPrice().getCurrency());
-        findAssetByTicker(currencyTicker)
-                .orElseThrow(() -> new NotSufficientBalance(trade.getValue()));
+//        findAssetByTicker(trade.getTicker())
+//                .orElseThrow(() -> new NotSufficientBalance(trade.getValue()));
 
         findAssetByTicker(trade.getTicker())
                 .ifPresentOrElse(existingAsset -> {

@@ -1,15 +1,7 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.TradeId;
-import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
-import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
-import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;

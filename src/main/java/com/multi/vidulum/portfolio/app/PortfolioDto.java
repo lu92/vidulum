@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Side;
 import lombok.Builder;
 import lombok.Data;
 
@@ -40,5 +41,16 @@ public class PortfolioDto {
         private Money profit;
         private Money currentPrice;
         private Money currentValue;
+    }
+
+    @Data
+    @Builder
+    public static class TradeExecutedJson {
+        private String tradeId;
+        private String portfolioId;
+        private String ticker;
+        private Side side;
+        private double quantity;
+        private Money price;
     }
 }
