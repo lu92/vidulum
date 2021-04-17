@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.infrastructure.portfolio.entities;
 
+import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
@@ -24,6 +25,7 @@ public class PortfolioEntity {
     private String id;
     private String userId;
     private String name;
+    private String broker;
     private List<AssetEntity> assets;
     private Money investedBalance;
 
@@ -45,6 +47,7 @@ public class PortfolioEntity {
                 .id(id)
                 .userId(snapshot.getUserId().getId())
                 .name(snapshot.getName())
+                .broker(snapshot.getBroker().getId())
                 .assets(assetEntities)
                 .investedBalance(snapshot.getInvestedBalance())
                 .build();
@@ -65,6 +68,7 @@ public class PortfolioEntity {
                 PortfolioId.of(id),
                 UserId.of(userId),
                 name,
+                Broker.of(broker),
                 assetSnapshots,
                 investedBalance
         );

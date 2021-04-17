@@ -18,9 +18,16 @@ public class CreateEmptyPortfolioCommandHandler implements CommandHandler<Create
 
     @Override
     public Portfolio handle(CreateEmptyPortfolioCommand command) {
-        Portfolio emptyPortfolio = portfolioFactory.createEmptyPortfolio(command.getName(), command.getUserId());
+        Portfolio emptyPortfolio = createEmptyPortfolio(command);
         Portfolio savedPortfolio = repository.save(emptyPortfolio);
         log.info("New portfolio [{}] for user [{}] has been created!", savedPortfolio.getPortfolioId(), savedPortfolio.getUserId());
         return savedPortfolio;
+    }
+
+    private Portfolio createEmptyPortfolio(CreateEmptyPortfolioCommand command) {
+        return portfolioFactory.createEmptyPortfolio(
+                command.getName(),
+                command.getUserId(),
+                command.getBroker());
     }
 }

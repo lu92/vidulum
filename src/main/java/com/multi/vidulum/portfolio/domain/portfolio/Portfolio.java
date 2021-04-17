@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
+import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
@@ -23,6 +24,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private PortfolioId portfolioId;
     private UserId userId;
     private String name;
+    private Broker broker;
     private List<Asset> assets;
     private Money investedBalance;
 
@@ -41,6 +43,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 portfolioId,
                 userId,
                 name,
+                broker,
                 assetSnapshots,
                 investedBalance
         );
@@ -61,19 +64,15 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .portfolioId(snapshot.getPortfolioId())
                 .userId(snapshot.getUserId())
                 .name(snapshot.getName())
+                .broker(snapshot.getBroker())
                 .assets(assets)
                 .investedBalance(snapshot.getInvestedBalance())
                 .build();
     }
 
     public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
-
-//        findAssetByTicker(trade.getTicker())
-//                .orElseThrow(() -> new NotSufficientBalance(trade.getValue()));
-
-        findAssetByTicker(trade.getTicker())
+        findAssetByTicker(trade.getSymbol().getOrigin())
                 .ifPresentOrElse(existingAsset -> {
-
                     double totalQuantity = existingAsset.getQuantity() + trade.getQuantity();
                     Money totalValue = existingAsset.getValue().plus(trade.getValue());
                     Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
@@ -88,8 +87,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .quantity(trade.getQuantity())
                             .tags(assetBasicInfo.getTags())
                             .build();
-
-
                     Money investment = trade.getPrice().multiply(trade.getQuantity());
                     investedBalance = investedBalance.plus(investment);
                     assets.add(newAsset);
@@ -97,16 +94,24 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     public void handleExecutedTrade(SellTrade trade) {
-        Asset sellingAsset = findAssetByTicker(trade.getTicker())
-                .orElseThrow(() -> new AssetNotFoundException(trade.getTicker()));
+        Asset soldAsset = findAssetByTicker(trade.getSymbol().getOrigin())
+                .orElseThrow(() -> new AssetNotFoundException(trade.getSymbol().getOrigin()));
 
-        double totalQuantity = sellingAsset.getQuantity() - trade.getQuantity();
-        Money totalValue = sellingAsset.getValue().minus(trade.getValue());
-        Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
+        double totalQuantity = soldAsset.getQuantity() - trade.getQuantity();
+        if (isAssetSoldOutFully(soldAsset, trade)) {
+            assets.remove(soldAsset);
+        } else {
+            Money totalValue = soldAsset.getValue().minus(trade.getValue());
+            Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
 
-        sellingAsset.setQuantity(totalQuantity);
-        sellingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+            soldAsset.setQuantity(totalQuantity);
+            soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+        }
         appendMoneyToAssets(trade.getValue());
+    }
+
+    private boolean isAssetSoldOutFully(Asset soldAsset, SellTrade trade) {
+        return soldAsset.getQuantity() == trade.getQuantity();
     }
 
     public void depositMoney(Money deposit) {
@@ -128,7 +133,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void appendMoneyToAssets(Money deposit) {
         Ticker ticker = Ticker.of(deposit.getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
-            existingAsset.setQuantity(existingAsset.getQuantity() + deposit.getAmount().doubleValue());
+            double updatedQuantity = existingAsset.getQuantity() + deposit.getAmount().doubleValue();
+            existingAsset.setQuantity(updatedQuantity);
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)

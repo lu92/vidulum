@@ -42,6 +42,7 @@ public class PortfolioSummaryMapper {
                 .portfolioId(portfolio.getPortfolioId().getId())
                 .userId(portfolio.getUserId().getId())
                 .name(portfolio.getName())
+                .broker(portfolio.getBroker().getId())
                 .assets(assets)
                 .investedBalance(portfolio.getInvestedBalance())
                 .currentValue(currentValue)

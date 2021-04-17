@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio.snapshots;
 
+import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
@@ -15,6 +16,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     PortfolioId portfolioId;
     UserId userId;
     String name;
+    Broker broker;
     List<AssetSnapshot> assets;
     Money investedBalance;
 

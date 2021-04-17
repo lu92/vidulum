@@ -13,6 +13,7 @@ public class PortfolioDto {
     public static class CreateEmptyPortfolioJson {
         private String name;
         private String userId;
+        private String broker;
     }
 
     @Data
@@ -21,6 +22,7 @@ public class PortfolioDto {
         private String portfolioId;
         private String userId;
         private String name;
+        private String broker;
         private List<AssetSummaryJson> assets;
         private Money investedBalance;
         private Money currentValue;
@@ -48,9 +50,16 @@ public class PortfolioDto {
     public static class TradeExecutedJson {
         private String tradeId;
         private String portfolioId;
-        private String ticker;
+        private String symbol;
         private Side side;
         private double quantity;
         private Money price;
+    }
+
+    @Data
+    @Builder
+    public static class DepositMoneyJson {
+        private String portfolioId;
+        private Money money;
     }
 }

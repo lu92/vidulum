@@ -7,6 +7,7 @@ import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
+import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,24 +28,32 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(command.getTicker());
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(command.getSymbol().getOrigin());
 
         if (command.getSide() == Side.BUY) {
             BuyTrade trade = BuyTrade.builder()
                     .portfolioId(command.getPortfolioId())
                     .tradeId(command.getTradeId())
-                    .ticker(command.getTicker())
+                    .symbol(command.getSymbol())
                     .quantity(command.getQuantity())
                     .price(command.getPrice())
                     .build();
 
             portfolio.handleExecutedTrade(trade, assetBasicInfo);
         } else {
-            // handle sell-trade
+            SellTrade sellTrade = SellTrade.builder()
+                    .portfolioId(command.getPortfolioId())
+                    .tradeId(command.getTradeId())
+                    .symbol(command.getSymbol())
+                    .quantity(command.getQuantity())
+                    .price(command.getPrice())
+                    .build();
+
+            portfolio.handleExecutedTrade(sellTrade);
         }
 
         repository.save(portfolio);
-        log.info(String.format("Trade [%s] has been applied to portfolio [%s] sucessfully", command.getTradeId(), command.getPortfolioId()));
+        log.info(String.format("Trade [%s] has been applied to portfolio [%s] successfully", command.getTradeId(), command.getPortfolioId()));
         return null;
     }
 }
