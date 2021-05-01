@@ -28,32 +28,38 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(command.getSymbol().getOrigin());
-
         if (command.getSide() == Side.BUY) {
-            BuyTrade trade = BuyTrade.builder()
-                    .portfolioId(command.getPortfolioId())
-                    .tradeId(command.getTradeId())
-                    .symbol(command.getSymbol())
-                    .quantity(command.getQuantity())
-                    .price(command.getPrice())
-                    .build();
-
-            portfolio.handleExecutedTrade(trade, assetBasicInfo);
+            handleBuyTrade(command, portfolio);
         } else {
-            SellTrade sellTrade = SellTrade.builder()
-                    .portfolioId(command.getPortfolioId())
-                    .tradeId(command.getTradeId())
-                    .symbol(command.getSymbol())
-                    .quantity(command.getQuantity())
-                    .price(command.getPrice())
-                    .build();
-
-            portfolio.handleExecutedTrade(sellTrade);
+            handleSellTrade(command, portfolio);
         }
 
         repository.save(portfolio);
         log.info(String.format("Trade [%s] has been applied to portfolio [%s] successfully", command.getTradeId(), command.getPortfolioId()));
         return null;
+    }
+
+    private void handleSellTrade(ApplyTradeCommand command, Portfolio portfolio) {
+        SellTrade sellTrade = SellTrade.builder()
+                .portfolioId(command.getPortfolioId())
+                .tradeId(command.getTradeId())
+                .symbol(command.getSymbol())
+                .quantity(command.getQuantity())
+                .price(command.getPrice())
+                .build();
+
+        portfolio.handleExecutedTrade(sellTrade);
+    }
+
+    private void handleBuyTrade(ApplyTradeCommand command, Portfolio portfolio) {
+        BuyTrade trade = BuyTrade.builder()
+                .portfolioId(command.getPortfolioId())
+                .tradeId(command.getTradeId())
+                .symbol(command.getSymbol())
+                .quantity(command.getQuantity())
+                .price(command.getPrice())
+                .build();
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), command.getSymbol().getOrigin());
+        portfolio.handleExecutedTrade(trade, assetBasicInfo);
     }
 }

@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.infrastructure;
 
 import com.multi.vidulum.common.AssetPriceMetadata;
+import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
@@ -16,17 +17,12 @@ public class QuoteRestClientAdapter implements QuoteRestClient {
     private final QuotationService quotationService;
 
     @Override
-    public AssetPriceMetadata fetch(Ticker ticker) {
-        return quotationService.fetch(ticker);
+    public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
+        return quotationService.fetch(broker, symbol);
     }
 
     @Override
-    public AssetPriceMetadata fetch(Symbol symbol) {
-        return quotationService.fetch(symbol);
-    }
-
-    @Override
-    public AssetBasicInfo fetchBasicInfoAboutAsset(Ticker ticker) {
-        return quotationService.fetchBasicInfoAboutAsset(ticker);
+    public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
+        return quotationService.fetchBasicInfoAboutAsset(broker, ticker);
     }
 }

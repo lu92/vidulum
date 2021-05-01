@@ -1,9 +1,6 @@
 package com.multi.vidulum.quotation.app;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import lombok.AllArgsConstructor;
@@ -22,14 +19,18 @@ public class QuoteRestController {
     private final QuotationService quotationService;
     private final KafkaTemplate<String, PriceChangedEvent> pricingKafkaTemplate;
 
-    @GetMapping(value = "/quote/{origin}/{destination}")
-    public AssetPriceMetadata fetch(@PathVariable("origin") String origin, @PathVariable("destination") String destination) {
-        return quotationService.fetch(Symbol.of(Ticker.of(origin), Ticker.of(destination)));
+    @GetMapping(value = "/quote/{broker}/{origin}/{destination}")
+    public AssetPriceMetadata fetch(
+            @PathVariable("broker") String broker,
+            @PathVariable("origin") String origin,
+            @PathVariable("destination") String destination) {
+        return quotationService.fetch(Broker.of(broker), Symbol.of(Ticker.of(origin), Ticker.of(destination)));
     }
 
     @GetMapping(value = "/quote/publish")
-    void changePrice(@RequestParam String origin, String destination, double amount, String currency, double pctChange) {
+    void changePrice(@RequestParam String broker,  String origin, String destination, double amount, String currency, double pctChange) {
         PriceChangedEvent priceChangedEvent = PriceChangedEvent.builder()
+                .broker(Broker.of(broker))
                 .symbol(Symbol.of(Ticker.of(origin), Ticker.of(destination)))
                 .currentPrice(Money.of(amount, currency))
                 .pctChange(pctChange)
