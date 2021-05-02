@@ -39,18 +39,6 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
         return null;
     }
 
-    private void handleSellTrade(ApplyTradeCommand command, Portfolio portfolio) {
-        SellTrade sellTrade = SellTrade.builder()
-                .portfolioId(command.getPortfolioId())
-                .tradeId(command.getTradeId())
-                .symbol(command.getSymbol())
-                .quantity(command.getQuantity())
-                .price(command.getPrice())
-                .build();
-
-        portfolio.handleExecutedTrade(sellTrade);
-    }
-
     private void handleBuyTrade(ApplyTradeCommand command, Portfolio portfolio) {
         BuyTrade trade = BuyTrade.builder()
                 .portfolioId(command.getPortfolioId())
@@ -61,5 +49,17 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .build();
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), command.getSymbol().getOrigin());
         portfolio.handleExecutedTrade(trade, assetBasicInfo);
+    }
+
+    private void handleSellTrade(ApplyTradeCommand command, Portfolio portfolio) {
+        SellTrade sellTrade = SellTrade.builder()
+                .portfolioId(command.getPortfolioId())
+                .tradeId(command.getTradeId())
+                .symbol(command.getSymbol())
+                .quantity(command.getQuantity())
+                .price(command.getPrice())
+                .build();
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), command.getSymbol().getDestination());
+        portfolio.handleExecutedTrade2(sellTrade, assetBasicInfo);
     }
 }
