@@ -71,29 +71,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .build();
     }
 
-//    public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
-//        findAssetByTicker(trade.getSymbol().getOrigin())
-//                .ifPresentOrElse(existingAsset -> {
-//                    double totalQuantity = existingAsset.getQuantity() + trade.getQuantity();
-//                    Money totalValue = existingAsset.getValue().plus(trade.getValue());
-//                    Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
-//
-//                    existingAsset.setQuantity(totalQuantity);
-//                    existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
-//                }, () -> {
-//                    Asset newAsset = Asset.builder()
-//                            .ticker(assetBasicInfo.getTicker())
-//                            .fullName(assetBasicInfo.getFullName())
-//                            .avgPurchasePrice(trade.getPrice())
-//                            .quantity(trade.getQuantity())
-//                            .tags(assetBasicInfo.getTags())
-//                            .build();
-//                    Money investment = trade.getPrice().multiply(trade.getQuantity());
-//                    investedBalance = investedBalance.plus(investment);
-//                    assets.add(newAsset);
-//                });
-//    }
-
 
     public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
         AssetPortion soldPortion = trade.clarifySoldPortion();
@@ -101,7 +78,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         swing(soldPortion, purchasedPortion, assetBasicInfo);
     }
 
-    public void handleExecutedTrade2(SellTrade trade, AssetBasicInfo assetBasicInfo) {
+    public void handleExecutedTrade(SellTrade trade, AssetBasicInfo assetBasicInfo) {
         AssetPortion soldPortion = trade.clarifySoldPortion();
         AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
         swing(soldPortion, purchasedPortion, assetBasicInfo);
@@ -151,27 +128,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
         }
-    }
-
-    public void handleExecutedTrade(SellTrade trade) {
-        Asset soldAsset = findAssetByTicker(trade.getSymbol().getOrigin())
-                .orElseThrow(() -> new AssetNotFoundException(trade.getSymbol().getOrigin()));
-
-        double totalQuantity = soldAsset.getQuantity() - trade.getQuantity();
-        if (isAssetSoldOutFully(soldAsset, trade)) {
-            assets.remove(soldAsset);
-        } else {
-            Money totalValue = soldAsset.getValue().minus(trade.getValue());
-            Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
-
-            soldAsset.setQuantity(totalQuantity);
-            soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
-        }
-        appendMoneyToAssets(trade.getValue());
-    }
-
-    private boolean isAssetSoldOutFully(Asset soldAsset, SellTrade trade) {
-        return soldAsset.getQuantity() == trade.getQuantity();
     }
 
     private boolean isAssetSoldOutFully(Asset soldAsset, AssetPortion assetPortion) {

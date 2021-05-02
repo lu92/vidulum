@@ -60,6 +60,6 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .price(command.getPrice())
                 .build();
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), command.getSymbol().getDestination());
-        portfolio.handleExecutedTrade2(sellTrade, assetBasicInfo);
+        portfolio.handleExecutedTrade(sellTrade, assetBasicInfo);
     }
 }
