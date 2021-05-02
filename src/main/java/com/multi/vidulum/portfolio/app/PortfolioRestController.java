@@ -4,6 +4,7 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.app.commands.update.ApplyTradeCommand;
+import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
 import com.multi.vidulum.portfolio.app.queries.GetPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -36,6 +37,15 @@ public class PortfolioRestController {
     @PostMapping("/portfolio/deposit")
     public void depositMoney(@RequestBody PortfolioDto.DepositMoneyJson request) {
         DepositMoneyCommand command = DepositMoneyCommand.builder()
+                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .money(request.getMoney())
+                .build();
+        commandGateway.send(command);
+    }
+
+    @PostMapping("/portfolio/withdraw")
+    public void withdrawMoney(@RequestBody PortfolioDto.WithdrawMoneyJson request) {
+        WithdrawMoneyCommand command = WithdrawMoneyCommand.builder()
                 .portfolioId(PortfolioId.of(request.getPortfolioId()))
                 .money(request.getMoney())
                 .build();

@@ -62,4 +62,11 @@ public class PortfolioDto {
         private String portfolioId;
         private Money money;
     }
+
+    @Data
+    @Builder
+    public static class WithdrawMoneyJson {
+        private String portfolioId;
+        private Money money;
+    }
 }
