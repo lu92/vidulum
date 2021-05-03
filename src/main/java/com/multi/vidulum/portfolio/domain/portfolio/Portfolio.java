@@ -119,7 +119,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
 
         double decreasedQuantity = soldAsset.getQuantity() - soldPortion.getQuantity();
-        if (isAssetSoldOutFully(soldAsset, soldPortion)) {
+        boolean isAssetSoldOutFully = soldAsset.getQuantity() == soldPortion.getQuantity();
+        if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
         } else {
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
@@ -130,27 +131,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    private boolean isAssetSoldOutFully(Asset soldAsset, AssetPortion assetPortion) {
-        return soldAsset.getQuantity() == assetPortion.getQuantity();
-    }
-
     public void depositMoney(Money deposit) {
-        appendMoneyToAssets(deposit);
-        investedBalance = investedBalance.plus(deposit);
-    }
-
-    public void withdrawMoney(Money withdrawal) {
-        withdrawMoneyFromAssets(withdrawal);
-        investedBalance = investedBalance.minus(withdrawal);
-    }
-
-    private Optional<Asset> findAssetByTicker(Ticker ticker) {
-        return assets.stream()
-                .filter(asset -> asset.getTicker().equals(ticker))
-                .findFirst();
-    }
-
-    private void appendMoneyToAssets(Money deposit) {
         Ticker ticker = Ticker.of(deposit.getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
             double updatedQuantity = existingAsset.getQuantity() + deposit.getAmount().doubleValue();
@@ -165,9 +146,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .build();
             assets.add(cash);
         });
+        investedBalance = investedBalance.plus(deposit);
     }
 
-    private void withdrawMoneyFromAssets(Money withdrawal) {
+    public void withdrawMoney(Money withdrawal) {
         Ticker ticker = Ticker.of(withdrawal.getCurrency());
         Asset cash = findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
@@ -177,5 +159,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
 
         cash.setQuantity(cash.getQuantity() - withdrawal.getAmount().doubleValue());
+        investedBalance = investedBalance.minus(withdrawal);
+    }
+
+    private Optional<Asset> findAssetByTicker(Ticker ticker) {
+        return assets.stream()
+                .filter(asset -> asset.getTicker().equals(ticker))
+                .findFirst();
     }
 }
