@@ -34,4 +34,8 @@ public class User implements Aggregate<UserId, UserSnapshot> {
                 .portfolios(snapshot.getPortfolios())
                 .build();
     }
+
+    public void activate() {
+        isActive = true;
+    }
 }

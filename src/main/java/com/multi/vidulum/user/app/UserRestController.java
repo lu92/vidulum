@@ -3,6 +3,7 @@ package com.multi.vidulum.user.app;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.user.app.commands.activate.ActivateUserCommand;
 import com.multi.vidulum.user.app.commands.create.CreateUserCommand;
 import com.multi.vidulum.user.app.queries.GetUserQuery;
 import com.multi.vidulum.user.domain.User;
@@ -44,5 +45,11 @@ public class UserRestController {
                 .email(user.getEmail())
                 .isActive(user.isActive())
                 .build();
+    }
+
+    @PutMapping("/user/{userId}")
+    public void activateUser(@PathVariable("userId") String userId) {
+        ActivateUserCommand command = ActivateUserCommand.builder().userId(UserId.of(userId)).build();
+        commandGateway.send(command);
     }
 }

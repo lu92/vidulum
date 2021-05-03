@@ -75,7 +75,18 @@ class VidulumApplicationTests {
                         .email("lu92@email.com")
                         .build());
 
+        userRestController.activateUser(createdUserJson.getUserId());
+
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson expectedUserSummary = UserDto.UserSummaryJson.builder()
+                .userId(persistedUser.getUserId())
+                .username(persistedUser.getUsername())
+                .email(persistedUser.getEmail())
+                .isActive(true)
+                .build();
+        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
 
         PortfolioDto.PortfolioSummaryJson createdPortfolioJson = portfolioRestController.createEmptyPortfolio(
                 PortfolioDto.CreateEmptyPortfolioJson.builder()
