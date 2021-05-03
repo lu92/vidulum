@@ -120,6 +120,15 @@ class VidulumApplicationTests {
                 .price(Money.of(2800, "USD"))
                 .build());
 
+        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
+                .tradeId("trade4")
+                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .symbol("ETH/USD")
+                .side(BUY)
+                .quantity(0.5)
+                .price(Money.of(3400, "USD"))
+                .build());
+
 
         PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(createdPortfolioJson.getPortfolioId());
 
@@ -139,7 +148,7 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(91100.0)
+                                .quantity(89400)
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()
@@ -152,8 +161,8 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
                                 .fullName("Not found")
-                                .avgPurchasePrice(Money.of(2800.0, "USD"))
-                                .quantity(1)
+                                .avgPurchasePrice(Money.of(3000, "USD"))
+                                .quantity(1.5)
                                 .tags(List.of())
                                 .build()
                 ))
