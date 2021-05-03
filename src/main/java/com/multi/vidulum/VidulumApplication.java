@@ -1,5 +1,6 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -21,6 +22,9 @@ public class VidulumApplication implements CommandLineRunner {
 
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private CommandGateway commandGateway;
 
     @Bean
     public Clock clock() {
@@ -46,10 +50,7 @@ public class VidulumApplication implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
-        mongoTemplate.dropCollection(Sample.class);
-        Sample hello_world = Sample.builder().text("Hello world").build();
-        Sample inserted = mongoTemplate.insert(hello_world);
-        System.out.println(inserted);
+    public void run(String... args) {
+        mongoTemplate.dropCollection(PortfolioEntity.class);
     }
 }

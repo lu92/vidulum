@@ -1,12 +1,12 @@
 package com.multi.vidulum.quotation.domain;
 
 
-import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.common.Symbol;
 
-public class QuoteNotFoundException extends RuntimeException{
+public class QuoteNotFoundException extends RuntimeException {
 
-    public QuoteNotFoundException(Ticker ticker) {
-        super(String.format("Ticker [%s] not found", ticker.getId()));
+    public QuoteNotFoundException(Symbol symbol) {
+        super(String.format("Ticker [%s] not found", symbol.getId()));
     }
 }
 

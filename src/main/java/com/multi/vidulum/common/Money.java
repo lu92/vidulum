@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Objects;
 
 @Data
 @NoArgsConstructor
@@ -40,7 +41,7 @@ public class Money {
     }
 
     public double diffPct(Money other) {
-        return amount.divide(other.amount, RoundingMode.CEILING).subtract(BigDecimal.ONE).doubleValue();
+        return amount.divide(other.amount, 8, RoundingMode.FLOOR).subtract(BigDecimal.ONE).doubleValue();
     }
 
     public Money plus(Money other) {
@@ -53,5 +54,18 @@ public class Money {
 
     public Money divide(Money other) {
         return Money.of(amount.divide(other.getAmount(), RoundingMode.CEILING), currency);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Money money = (Money) o;
+        return amount.compareTo(money.amount) == 0 && Objects.equals(currency, money.currency);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(amount.doubleValue(), currency);
     }
 }
