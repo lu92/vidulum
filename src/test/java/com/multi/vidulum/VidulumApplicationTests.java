@@ -12,6 +12,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
+import com.multi.vidulum.user.app.UserDto;
+import com.multi.vidulum.user.app.UserRestController;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +53,9 @@ class VidulumApplicationTests {
     private QuoteRestController quoteRestController;
 
     @Autowired
+    private UserRestController userRestController;
+
+    @Autowired
     private PortfolioRestController portfolioRestController;
 
     @Autowired
@@ -63,11 +68,20 @@ class VidulumApplicationTests {
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
 
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
         PortfolioDto.PortfolioSummaryJson createdPortfolioJson = portfolioRestController.createEmptyPortfolio(
                 PortfolioDto.CreateEmptyPortfolioJson.builder()
                         .broker("BINANCE")
                         .name("XYZ")
-                        .userId("Lucjan Bik")
+                        .userId(persistedUser.getUserId())
                         .build());
 
         portfolioRestController.depositMoney(
@@ -159,7 +173,7 @@ class VidulumApplicationTests {
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(createdPortfolioJson.getPortfolioId()))
-                .userId(UserId.of("Lucjan Bik"))
+                .userId(UserId.of(persistedUser.getUserId()))
                 .name("XYZ")
                 .broker(Broker.of("BINANCE"))
                 .assets(List.of(
