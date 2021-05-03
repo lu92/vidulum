@@ -61,7 +61,6 @@ public class Money {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Money money = (Money) o;
-//        return Objects.equals(amount.doubleValue(), money.amount.doubleValue()) && Objects.equals(currency, money.currency);
         return amount.compareTo(money.amount) == 0 && Objects.equals(currency, money.currency);
     }
 
