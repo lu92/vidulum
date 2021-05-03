@@ -82,26 +82,26 @@ class VidulumApplicationTests {
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
-                .price(Money.of(61000.0, "USD"))
+                .price(Money.of(60000.0, "USD"))
                 .build());
 
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .tradeId("trade2")
-//                .portfolioId(createdPortfolioJson.getPortfolioId())
-//                .symbol("BTC/USD")
-//                .side(BUY)
-//                .quantity(0.2)
-//                .price(Money.of(65000, "USD"))
-//                .build());
-//
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .tradeId("trade2")
-//                .portfolioId(createdPortfolioJson.getPortfolioId())
-//                .symbol("BTC/USD")
-//                .side(BUY)
-//                .quantity(0.15)
-//                .price(Money.of(55000, "USD"))
-//                .build());
+        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
+                .tradeId("trade2")
+                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .symbol("BTC/USD")
+                .side(BUY)
+                .quantity(0.1)
+                .price(Money.of(30000, "USD"))
+                .build());
+
+        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
+                .tradeId("trade2")
+                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .symbol("BTC/USD")
+                .side(BUY)
+                .quantity(0.1)
+                .price(Money.of(30000, "USD"))
+                .build());
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade3")
@@ -158,14 +158,14 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(90000)
+                                .quantity(84100)
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
                                 .fullName("Not found")
-                                .avgPurchasePrice(Money.of(61000, "USD"))
-                                .quantity(0.1)
+                                .avgPurchasePrice(Money.of(40000, "USD"))
+                                .quantity(0.30000000000000004)
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
