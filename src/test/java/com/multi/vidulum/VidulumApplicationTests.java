@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.multi.vidulum.common.Side.BUY;
+import static com.multi.vidulum.common.Side.SELL;
 
 @SpringBootTest
 @Import(PortfolioAppConfig.class)
@@ -129,6 +130,15 @@ class VidulumApplicationTests {
                 .price(Money.of(3400, "USD"))
                 .build());
 
+        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
+                .tradeId("trade4")
+                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .symbol("ETH/USD")
+                .side(SELL)
+                .quantity(0.2)
+                .price(Money.of(3000, "USD"))
+                .build());
+
 
         PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(createdPortfolioJson.getPortfolioId());
 
@@ -148,7 +158,7 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(89400)
+                                .quantity(90000)
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()
@@ -162,7 +172,7 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("ETH"))
                                 .fullName("Not found")
                                 .avgPurchasePrice(Money.of(3000, "USD"))
-                                .quantity(1.5)
+                                .quantity(1.3)
                                 .tags(List.of())
                                 .build()
                 ))
