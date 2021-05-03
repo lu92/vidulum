@@ -28,7 +28,7 @@ public class QuoteRestController {
     }
 
     @GetMapping(value = "/quote/publish")
-    void changePrice(@RequestParam String broker,  String origin, String destination, double amount, String currency, double pctChange) {
+    public void changePrice(@RequestParam String broker,  String origin, String destination, double amount, String currency, double pctChange) {
         PriceChangedEvent priceChangedEvent = PriceChangedEvent.builder()
                 .broker(Broker.of(broker))
                 .symbol(Symbol.of(Ticker.of(origin), Ticker.of(destination)))

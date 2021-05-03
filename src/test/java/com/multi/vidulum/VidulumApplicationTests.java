@@ -1,18 +1,17 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.Side;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
-import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.app.PortfolioRestController;
+import com.multi.vidulum.quotation.app.QuoteRestController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
@@ -21,8 +20,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @Import(PortfolioAppConfig.class)
-
 @Testcontainers
+@DirtiesContext
+@EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
 //@DataMongoTest(excludeAutoConfiguration = EmbeddedMongoAutoConfiguration.class)
 class VidulumApplicationTests {
 
@@ -35,42 +35,39 @@ class VidulumApplicationTests {
     }
 
     @Autowired
-    private MongoTemplate mongoTemplate;
+    private QuoteRestController quoteRestController;
 
     @Autowired
-    private CommandGateway commandGateway;
-
-
-    @Autowired
-    private PortfolioFactory portfolioFactory;
-
-    @Autowired
-    private DomainPortfolioRepository portfolioRepository;
+    private PortfolioRestController portfolioRestController;
 
     @Test
     void shouldReturnCustomersWithRatingGreater90AsVIP() {
-        UserId userId = UserId.of("Lucjan");
-        Portfolio newPortfolio = portfolioFactory.createEmptyPortfolio("XYZ", userId, Broker.of("BINANCE"));
-        newPortfolio.depositMoney(Money.of(200, "USD"));
 
-        Portfolio savedPortfolio = portfolioRepository.save(newPortfolio);
-        System.out.println(savedPortfolio);
+        quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
+        quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
 
+        PortfolioDto.PortfolioSummaryJson createdPortfolio = portfolioRestController.createEmptyPortfolio(
+                PortfolioDto.CreateEmptyPortfolioJson.builder()
+                        .broker("BINANCE")
+                        .name("XYZ")
+                        .userId("Lucjan Bik")
+                        .build());
 
-//        AssetBasicInfo pslvBasicInfo = new AssetBasicInfo(
-//                Ticker.of("PSLV"),
-//                "Sprott Silver Trust",
-//                List.of("PM", "Silver")
-//        );
-//
-//        newPortfolio.handleExecutedTrade(
-//                BuyTrade.builder()
-//                        .portfolioId(newPortfolio.getPortfolioId())
-//                        .tradeId(TradeId.of("XXX1"))
-//                        .ticker(Ticker.of("PSLV"))
-//                        .quantity(15)
-//                        .price(Money.of(11.50, "USD"))
-//                        .build(),
-//                pslvBasicInfo);
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(createdPortfolio.getPortfolioId())
+                        .money(Money.of(100000.0, "USD"))
+                        .build());
+
+        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
+                .tradeId("tradeID")
+                .portfolioId(createdPortfolio.getPortfolioId())
+                .symbol("BTC/USD")
+                .side(Side.BUY)
+                .quantity(0.5)
+                .price(Money.of(60030.50, "USD"))
+                .build());
+
+        PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(createdPortfolio.getPortfolioId());
     }
 }

@@ -10,6 +10,7 @@ import java.util.List;
 public class PortfolioDto {
 
     @Data
+    @Builder
     public static class CreateEmptyPortfolioJson {
         private String name;
         private String userId;
