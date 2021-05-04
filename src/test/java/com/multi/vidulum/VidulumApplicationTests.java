@@ -88,22 +88,22 @@ class VidulumApplicationTests {
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
 
-        PortfolioDto.PortfolioSummaryJson createdPortfolioJson = portfolioRestController.createEmptyPortfolio(
-                PortfolioDto.CreateEmptyPortfolioJson.builder()
-                        .broker("BINANCE")
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
                         .name("XYZ")
+                        .broker("BINANCE")
                         .userId(persistedUser.getUserId())
                         .build());
 
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(createdPortfolioJson.getPortfolioId())
+                        .portfolioId(registeredPortfolio.getPortfolioId())
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade1")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
@@ -112,7 +112,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade2")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
@@ -121,7 +121,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade2")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
@@ -130,7 +130,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade2")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
                 .side(SELL)
                 .quantity(0.1)
@@ -139,7 +139,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade3")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.75)
@@ -148,7 +148,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade4")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.25)
@@ -157,7 +157,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade4")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.5)
@@ -166,7 +166,7 @@ class VidulumApplicationTests {
 
         portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
                 .tradeId("trade4")
-                .portfolioId(createdPortfolioJson.getPortfolioId())
+                .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
                 .side(SELL)
                 .quantity(0.2)
@@ -174,16 +174,16 @@ class VidulumApplicationTests {
                 .build());
 
 
-        PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(createdPortfolioJson.getPortfolioId());
+        PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
 
-        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(createdPortfolioJson.getPortfolioId()));
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
 
         Portfolio expectedPortfolio = Portfolio.builder()
-                .portfolioId(PortfolioId.of(createdPortfolioJson.getPortfolioId()))
+                .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
                 .userId(UserId.of(persistedUser.getUserId()))
                 .name("XYZ")
                 .broker(Broker.of("BINANCE"))

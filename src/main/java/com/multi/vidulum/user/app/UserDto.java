@@ -21,4 +21,21 @@ public class UserDto {
         private String email;
         private boolean isActive;
     }
+
+    @Data
+    @Builder
+    public static class RegisterPortfolioJson {
+        private String userId;
+        private String name;
+        private String broker;
+    }
+
+    @Data
+    @Builder
+    public static class PortfolioRegistrationSummaryJson {
+        private String userId;
+        private String name;
+        private String broker;
+        private String portfolioId;
+    }
 }
