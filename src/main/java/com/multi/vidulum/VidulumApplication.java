@@ -5,6 +5,7 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
+import com.multi.vidulum.user.infrastructure.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -52,5 +53,6 @@ public class VidulumApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
         mongoTemplate.dropCollection(PortfolioEntity.class);
+        mongoTemplate.dropCollection(UserEntity.class);
     }
 }
