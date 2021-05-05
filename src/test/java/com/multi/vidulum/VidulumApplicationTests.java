@@ -1,9 +1,6 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
@@ -12,9 +9,12 @@ import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
+import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
+import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,13 +32,14 @@ import java.util.Optional;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
+@Slf4j
 @SpringBootTest
 @Import(PortfolioAppConfig.class)
 @Testcontainers
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
-//@DataMongoTest(excludeAutoConfiguration = EmbeddedMongoAutoConfiguration.class)
 class VidulumApplicationTests {
 
     @Container
@@ -62,11 +63,21 @@ class VidulumApplicationTests {
     private DomainPortfolioRepository portfolioRepository;
 
     @Test
-    void shouldReturnCustomersWithRatingGreater90AsVIP() {
+    void shouldReturnCustomersWithRatingGreater90AsVIP() throws InterruptedException {
 
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("BINANCE", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USDUSD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
 
         UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
                 UserDto.CreateUserJson.builder()
@@ -84,6 +95,7 @@ class VidulumApplicationTests {
                 .username(persistedUser.getUsername())
                 .email(persistedUser.getEmail())
                 .isActive(true)
+                .portolioIds(List.of())
                 .build();
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
 

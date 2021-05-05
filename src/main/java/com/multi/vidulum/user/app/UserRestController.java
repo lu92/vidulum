@@ -13,6 +13,8 @@ import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.stream.Collectors;
+
 @RestController
 @AllArgsConstructor
 public class UserRestController {
@@ -30,24 +32,14 @@ public class UserRestController {
 
         User user = commandGateway.send(command);
 
-        return UserDto.UserSummaryJson.builder()
-                .userId(user.getUserId().getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .isActive(user.isActive())
-                .build();
+        return mapUserToSummary(user);
     }
 
     @GetMapping("/user/{userId}")
     public UserDto.UserSummaryJson getUser(@PathVariable("userId") String userId) {
         GetUserQuery query = GetUserQuery.builder().userId(UserId.of(userId)).build();
         User user = queryGateway.send(query);
-        return UserDto.UserSummaryJson.builder()
-                .userId(user.getUserId().getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .isActive(user.isActive())
-                .build();
+        return mapUserToSummary(user);
     }
 
     @PutMapping("/user/{userId}")
@@ -70,6 +62,16 @@ public class UserRestController {
                 .name(request.getName())
                 .broker(request.getBroker())
                 .portfolioId(portfolioId.getId())
+                .build();
+    }
+
+    private UserDto.UserSummaryJson mapUserToSummary(User user) {
+        return UserDto.UserSummaryJson.builder()
+                .userId(user.getUserId().getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .isActive(user.isActive())
+                .portolioIds(user.getPortfolios().stream().map(PortfolioId::getId).collect(Collectors.toList()))
                 .build();
     }
 }

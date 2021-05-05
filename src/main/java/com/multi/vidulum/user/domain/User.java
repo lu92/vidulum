@@ -39,6 +39,10 @@ public class User implements Aggregate<UserId, UserSnapshot> {
         isActive = true;
     }
 
+    public void deactivate() {
+        isActive = false;
+    }
+
     public void registerPortfolio(PortfolioId portfolioId) {
         portfolios.add(portfolioId);
     }

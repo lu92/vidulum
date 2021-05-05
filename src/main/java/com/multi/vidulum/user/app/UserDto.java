@@ -3,6 +3,8 @@ package com.multi.vidulum.user.app;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 public class UserDto {
 
     @Data
@@ -20,6 +22,7 @@ public class UserDto {
         private String username;
         private String email;
         private boolean isActive;
+        private List<String> portolioIds;
     }
 
     @Data

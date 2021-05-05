@@ -7,9 +7,11 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @AllArgsConstructor
 public abstract class BrokerQuotationProvider {
     @Getter
@@ -26,6 +28,7 @@ public abstract class BrokerQuotationProvider {
                 .dateTime(event.getDateTime())
                 .build();
         cache.put(event.getSymbol(), priceMetadata);
+        log.info("[{}] Price of [{}] has been updated to [{}]", getBroker(), event.getSymbol().getId(), event.getCurrentPrice());
     }
 
     AssetPriceMetadata fetch(Symbol symbol) {
