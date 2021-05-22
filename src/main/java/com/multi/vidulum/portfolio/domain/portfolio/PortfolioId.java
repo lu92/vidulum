@@ -1,8 +1,11 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
-import lombok.Value;
+import lombok.*;
 
-@Value
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PortfolioId {
     String id;
 

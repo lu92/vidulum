@@ -49,8 +49,9 @@ public class PortfolioDto {
     @Data
     @Builder
     public static class TradeExecutedJson {
-        private String tradeId;
+        private String originTradeId;
         private String portfolioId;
+        private String userId;
         private String symbol;
         private Side side;
         private double quantity;

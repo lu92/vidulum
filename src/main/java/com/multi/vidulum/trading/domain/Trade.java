@@ -35,4 +35,18 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
             dateTime
         );
     }
+
+    public static Trade from(TradeSnapshot snapshot) {
+        return Trade.builder()
+                .tradeId(snapshot.getTradeId())
+                .userId(snapshot.getUserId())
+                .portfolioId(snapshot.getPortfolioId())
+                .originTradeId(snapshot.getOriginTradeId())
+                .symbol(snapshot.getSymbol())
+                .side(snapshot.getSide())
+                .quantity(snapshot.getQuantity())
+                .price(snapshot.getPrice())
+                .dateTime(snapshot.getDateTime())
+                .build();
+    }
 }

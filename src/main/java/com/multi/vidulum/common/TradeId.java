@@ -1,8 +1,11 @@
 package com.multi.vidulum.common;
 
-import lombok.Value;
+import lombok.*;
 
-@Value
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TradeId {
     String id;
 

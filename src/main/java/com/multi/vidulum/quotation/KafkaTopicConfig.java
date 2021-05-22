@@ -1,6 +1,8 @@
 package com.multi.vidulum.quotation;
 
 
+import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
+import com.multi.vidulum.common.events.TradeStoredEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
@@ -83,6 +85,90 @@ public class KafkaTopicConfig {
         brokerQuotationProviders.forEach(quotationService::registerBroker);
         return quotationService;
     }
+
+    @Bean
+    public NewTopic tradeExecutedTopic() {
+        return new NewTopic("trade_executed", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, TradeAppliedToPortfolioEvent> tradeExecutedKafkaTemplate() {
+        return new KafkaTemplate<>(tradeExecutedProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(TradeAppliedToPortfolioEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, TradeAppliedToPortfolioEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(tradeExecutedConsumerFactory());
+        return factory;
+    }
+
+
+    //    *******
+    @Bean
+    public NewTopic tradeStoredTopic() {
+        return new NewTopic("trade_stored", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, TradeStoredEvent> tradeStoredProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, TradeStoredEvent> tradeStoredKafkaTemplate() {
+        return new KafkaTemplate<>(tradeStoredProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, TradeStoredEvent> tradeStoredConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(TradeStoredEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, TradeStoredEvent> tradeStoredContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, TradeStoredEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(tradeStoredConsumerFactory());
+        return factory;
+    }
+
+//    *******
 
     @Bean
     public BinanceBrokerQuotationProvider binanceBrokerQuotationProvider() {

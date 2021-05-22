@@ -64,13 +64,18 @@ public class PortfolioRestController {
 
     @PostMapping("/portfolio/trading")
     public void applyTrade(@RequestBody PortfolioDto.TradeExecutedJson tradeExecutedJson) {
-        ApplyTradeCommand command = ApplyTradeCommand.builder()
-                .tradeId(TradeId.of(tradeExecutedJson.getTradeId()))
+
+        StoredTrade trade = StoredTrade.builder()
+                .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
                 .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
                 .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
                 .side(tradeExecutedJson.getSide())
                 .quantity(tradeExecutedJson.getQuantity())
                 .price(tradeExecutedJson.getPrice())
+                .build();
+
+        ApplyTradeCommand command = ApplyTradeCommand.builder()
+               .trade(trade)
                 .build();
 
         commandGateway.send(command);

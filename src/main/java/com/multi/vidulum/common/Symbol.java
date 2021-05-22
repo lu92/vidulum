@@ -24,6 +24,6 @@ public class Symbol {
     }
 
     public String getId() {
-        return String.format("%s%s", origin.getId(), destination.getId());
+        return String.format("%s/%s", origin.getId(), destination.getId());
     }
 }

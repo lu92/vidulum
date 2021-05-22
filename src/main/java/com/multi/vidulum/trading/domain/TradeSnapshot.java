@@ -3,11 +3,13 @@ package com.multi.vidulum.trading.domain;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
+import lombok.Builder;
 import lombok.Value;
 
 import java.time.ZonedDateTime;
 
 @Value
+@Builder
 public class TradeSnapshot implements EntitySnapshot<TradeId> {
 
     TradeId tradeId;
