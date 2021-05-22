@@ -25,7 +25,6 @@ public class MongoConfig {
     @Bean
     public MongoClient mongo() {
         ConnectionString connectionString = new ConnectionString(String.format("mongodb://%s:%s/%s", host, port, database));
-//        ConnectionString connectionString = new ConnectionString("mongodb://127.0.0.1:27017");
         MongoClientSettings mongoClientSettings = MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build();
