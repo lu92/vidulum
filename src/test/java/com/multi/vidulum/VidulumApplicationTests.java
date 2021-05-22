@@ -10,6 +10,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
@@ -128,7 +129,7 @@ class VidulumApplicationTests {
                         .build());
 
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -138,7 +139,7 @@ class VidulumApplicationTests {
                 .price(Money.of(60000.0, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -148,7 +149,7 @@ class VidulumApplicationTests {
                 .price(Money.of(30000, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -158,7 +159,7 @@ class VidulumApplicationTests {
                 .price(Money.of(30000, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -168,7 +169,7 @@ class VidulumApplicationTests {
                 .price(Money.of(40000, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -178,7 +179,7 @@ class VidulumApplicationTests {
                 .price(Money.of(2800, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -188,7 +189,7 @@ class VidulumApplicationTests {
                 .price(Money.of(2800, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -198,7 +199,7 @@ class VidulumApplicationTests {
                 .price(Money.of(3400, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())

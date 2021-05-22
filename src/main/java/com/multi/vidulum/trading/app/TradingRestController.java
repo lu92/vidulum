@@ -21,17 +21,7 @@ public class TradingRestController {
     private final CommandGateway commandGateway;
 
     @PostMapping("/trading")
-    public void makeTrade(@RequestBody PortfolioDto.TradeExecutedJson tradeExecutedJson) {
-
-//        StoredTrade trade = StoredTrade.builder()
-//                .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
-//                .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
-//                .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
-//                .side(tradeExecutedJson.getSide())
-//                .quantity(tradeExecutedJson.getQuantity())
-//                .price(tradeExecutedJson.getPrice())
-//                .build();
-
+    public void makeTrade(@RequestBody TradingDto.TradeExecutedJson tradeExecutedJson) {
         MakeTradeCommand command = MakeTradeCommand.builder()
                 .userId(UserId.of(tradeExecutedJson.getUserId()))
                 .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
@@ -42,10 +32,6 @@ public class TradingRestController {
                 .price(tradeExecutedJson.getPrice())
                 .dateTime(ZonedDateTime.now())
                 .build();
-
-//        ApplyTradeCommand command = ApplyTradeCommand.builder()
-//                .trade(trade)
-//                .build();
 
         commandGateway.send(command);
     }
