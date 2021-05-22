@@ -168,68 +168,48 @@ class VidulumApplicationTests {
                 .price(Money.of(40000, "USD"))
                 .build());
 
-//
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .symbol("ETH/USD")
-//                .side(BUY)
-//                .quantity(0.75)
-//                .price(Money.of(2800, "USD"))
-//                .build());
-//
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .symbol("ETH/USD")
-//                .side(BUY)
-//                .quantity(0.25)
-//                .price(Money.of(2800, "USD"))
-//                .build());
-//
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .symbol("ETH/USD")
-//                .side(BUY)
-//                .quantity(0.5)
-//                .price(Money.of(3400, "USD"))
-//                .build());
-//
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .symbol("ETH/USD")
-//                .side(SELL)
-//                .quantity(0.2)
-//                .price(Money.of(3000, "USD"))
-//                .build());
+        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("ETH/USD")
+                .side(BUY)
+                .quantity(0.75)
+                .price(Money.of(2800, "USD"))
+                .build());
+
+        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("ETH/USD")
+                .side(BUY)
+                .quantity(0.25)
+                .price(Money.of(2800, "USD"))
+                .build());
+
+        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("ETH/USD")
+                .side(BUY)
+                .quantity(0.5)
+                .price(Money.of(3400, "USD"))
+                .build());
+
+        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("ETH/USD")
+                .side(SELL)
+                .quantity(0.2)
+                .price(Money.of(3000, "USD"))
+                .build());
 
 
-//   *************
-//        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .symbol("ETH/USD")
-//                .side(SELL)
-//                .quantity(0.2)
-//                .price(Money.of(3000, "USD"))
-//                .build());
-
-//        tradingRestController.makeTrade(PortfolioDto.TradeExecutedJson.builder()
-//                .originTradeId("trade4")
-//                .portfolioId(registeredPortfolio.getPortfolioId())
-//                .userId(persistedUser.getUserId())
-//                .symbol("ETH/USD")
-//                .side(SELL)
-//                .quantity(0.2)
-//                .price(Money.of(3000, "USD"))
-//                .build());
-
-
-//        **************
-
-        Thread.sleep(10000);
+        Thread.sleep(2000);
 
         PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
 
@@ -249,7 +229,7 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(92000.0)
+                                .quantity(88100.0)
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()
@@ -257,6 +237,13 @@ class VidulumApplicationTests {
                                 .fullName("Not found")
                                 .avgPurchasePrice(Money.of(40000, "USD"))
                                 .quantity(0.20000000000000004)
+                                .tags(List.of())
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("ETH"))
+                                .fullName("Not found")
+                                .avgPurchasePrice(Money.of(3000, "USD"))
+                                .quantity(1.3)
                                 .tags(List.of())
                                 .build()
                 ))
