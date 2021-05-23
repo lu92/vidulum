@@ -5,6 +5,7 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
+import com.multi.vidulum.portfolio.app.queries.GetAggregatedPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.GetPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -13,6 +14,8 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @AllArgsConstructor
@@ -60,5 +63,15 @@ public class PortfolioRestController {
 
         Portfolio portfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(portfolio);
+    }
+
+    @GetMapping("/aggregated-portfolio/{userId}")
+    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable("userId") String userId) {
+        GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
+                .userId(UserId.of(userId))
+                .build();
+
+        AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
+        return null;
     }
 }

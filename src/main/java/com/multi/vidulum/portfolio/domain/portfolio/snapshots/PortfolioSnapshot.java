@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio.snapshots;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 import lombok.Value;
@@ -30,7 +27,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
         Ticker ticker;
         String fullName;
         Money avgPurchasePrice;
-        double quantity;
+        Quantity quantity;
         List<String> tags;
     }
 }

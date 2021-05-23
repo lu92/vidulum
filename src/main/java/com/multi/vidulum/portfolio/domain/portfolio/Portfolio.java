@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
@@ -90,16 +87,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     }
 
-    class TradeSummary {
-
-    }
-
     private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
         findAssetByTicker(purchasedPortion.getTicker())
                 .ifPresentOrElse(existingAsset -> {
-                    double totalQuantity = existingAsset.getQuantity() + purchasedPortion.getQuantity();
+                    Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
                     Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
-                    Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity);
+                    Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity.getQty());
 
                     existingAsset.setQuantity(totalQuantity);
                     existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
@@ -119,17 +112,17 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         Asset soldAsset = findAssetByTicker(soldPortion.getTicker())
                 .orElseThrow(() -> new AssetNotFoundException(soldPortion.getTicker()));
 
-        if (soldPortion.getQuantity() > soldAsset.getQuantity()) {
+        if (soldPortion.getQuantity().getQty() > soldAsset.getQuantity().getQty()) {
             throw new NotSufficientBalance(soldPortion.getValue());
         }
 
-        double decreasedQuantity = soldAsset.getQuantity() - soldPortion.getQuantity();
+        Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.getQuantity());
         boolean isAssetSoldOutFully = soldAsset.getQuantity() == soldPortion.getQuantity();
         if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
         } else {
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
-            Money updatedAvgPurchasePrice = totalValue.divide(decreasedQuantity);
+            Money updatedAvgPurchasePrice = totalValue.divide(decreasedQuantity.getQty());
 
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
@@ -139,14 +132,14 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void depositMoney(Money deposit) {
         Ticker ticker = Ticker.of(deposit.getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
-            double updatedQuantity = existingAsset.getQuantity() + deposit.getAmount().doubleValue();
+            Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + deposit.getAmount().doubleValue());
             existingAsset.setQuantity(updatedQuantity);
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
                     .fullName("")
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
-                    .quantity(deposit.getAmount().doubleValue())
+                    .quantity(Quantity.of(deposit.getAmount().doubleValue()))
                     .tags(List.of("currency", deposit.getCurrency()))
                     .build();
             assets.add(cash);
@@ -159,11 +152,11 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         Asset cash = findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
-        if (cash.getQuantity() < withdrawal.getAmount().doubleValue()) {
+        if (cash.getQuantity().getQty() < withdrawal.getAmount().doubleValue()) {
             throw new NotSufficientBalance(withdrawal);
         }
 
-        cash.setQuantity(cash.getQuantity() - withdrawal.getAmount().doubleValue());
+        cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - withdrawal.getAmount().doubleValue()));
         investedBalance = investedBalance.minus(withdrawal);
     }
 

@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.infrastructure.portfolio.entities;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Quantity;
 import lombok.Builder;
 import lombok.Value;
 
@@ -12,6 +13,6 @@ public class AssetEntity {
     String ticker;
     String fullName;
     Money avgPurchasePrice;
-    double quantity;
+    Quantity quantity;
     List<String> tags;
 }

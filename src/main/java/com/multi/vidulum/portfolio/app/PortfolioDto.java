@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Quantity;
 import lombok.Builder;
 import lombok.Data;
 
@@ -36,7 +37,7 @@ public class PortfolioDto {
         private String ticker;
         private String fullName;
         private Money avgPurchasePrice;
-        private double quantity;
+        private Quantity quantity;
         private List<String> tags;
 
         private double pctProfit;
@@ -57,5 +58,16 @@ public class PortfolioDto {
     public static class WithdrawMoneyJson {
         private String portfolioId;
         private Money money;
+    }
+
+    @Data
+    @Builder
+    public static class AggregatedPortfolioSummaryJson {
+        private String userId;
+        private List<PortfolioSummaryJson> portfolios;
+        private Money investedBalance;
+        private Money currentValue;
+        private double pctProfit;
+        private Money profit;
     }
 }

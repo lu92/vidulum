@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.infrastructure.portfolio;
 
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
@@ -7,7 +8,9 @@ import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEn
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 @AllArgsConstructor
@@ -27,5 +30,13 @@ public class DomainPortfolioRepositoryImpl implements DomainPortfolioRepository 
         return Portfolio.from(
                 portfolioMongoRepository.save(PortfolioEntity.fromSnapshot(aggregate.getSnapshot()))
                         .toSnapshot());
+    }
+
+    @Override
+    public List<Portfolio> findByUserId(UserId userId) {
+        return portfolioMongoRepository.findByUserId(userId.getId()).stream()
+                .map(PortfolioEntity::toSnapshot)
+                .map(Portfolio::from)
+                .collect(Collectors.toList());
     }
 }

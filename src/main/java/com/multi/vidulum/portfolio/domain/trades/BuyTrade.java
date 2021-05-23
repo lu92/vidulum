@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.domain.trades;
 
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.TradeId;
-import com.multi.vidulum.common.Valuable;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +11,7 @@ public class BuyTrade implements Trade, Valuable {
     PortfolioId portfolioId;
     TradeId tradeId;
     Symbol symbol;
-    double quantity;
+    Quantity quantity;
     Money price;
 
     @Override
@@ -30,13 +27,13 @@ public class BuyTrade implements Trade, Valuable {
     public AssetPortion clarifySoldPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getDestination())
-                .quantity(price.multiply(quantity).getAmount().doubleValue())
+                .quantity(Quantity.of(price.multiply(quantity.getQty()).getAmount().doubleValue()))
                 .price(Money.one("USD"))
                 .build();
     }
 
     @Override
     public Money getValue() {
-        return price.multiply(quantity);
+        return price.multiply(quantity.getQty());
     }
 }
