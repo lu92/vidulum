@@ -32,6 +32,7 @@ class UserServiceTest {
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
     }
 
     @Autowired
