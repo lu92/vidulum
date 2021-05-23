@@ -10,6 +10,10 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.trading.app.TradingDto;
+import com.multi.vidulum.trading.app.TradingRestController;
+import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +47,12 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 class VidulumApplicationTests {
 
     @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.2");
+    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
     }
 
     @Autowired
@@ -60,7 +65,17 @@ class VidulumApplicationTests {
     private PortfolioRestController portfolioRestController;
 
     @Autowired
+    private TradingRestController tradingRestController;
+
+    @Autowired
     private DomainPortfolioRepository portfolioRepository;
+
+
+    @Autowired
+    private DomainTradeRepository tradeRepository;
+
+    @Autowired
+    private TradeMongoRepository tradeMongoRepository;
 
     @Test
     void shouldReturnCustomersWithRatingGreater90AsVIP() throws InterruptedException {
@@ -69,11 +84,11 @@ class VidulumApplicationTests {
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
                 AssetPriceMetadata priceMetadata = quoteRestController.fetch("BINANCE", "USD", "USD");
                 log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
-                return priceMetadata.getSymbol().getId().equals("USDUSD");
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
             } catch (QuoteNotFoundException e) {
                 return false;
             }
@@ -113,78 +128,89 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade1")
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
                 .price(Money.of(60000.0, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade2")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
                 .price(Money.of(30000, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade2")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(0.1)
                 .price(Money.of(30000, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade2")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(SELL)
                 .quantity(0.1)
                 .price(Money.of(40000, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade3")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.75)
                 .price(Money.of(2800, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade4")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.25)
                 .price(Money.of(2800, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade4")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(0.5)
                 .price(Money.of(3400, "USD"))
                 .build());
 
-        portfolioRestController.applyTrade(PortfolioDto.TradeExecutedJson.builder()
-                .tradeId("trade4")
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(SELL)
                 .quantity(0.2)
                 .price(Money.of(3000, "USD"))
                 .build());
 
+
+        Thread.sleep(2000);
 
         PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
 
@@ -204,7 +230,7 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(88100)
+                                .quantity(88100.0)
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()

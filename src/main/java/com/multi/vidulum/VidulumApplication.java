@@ -5,8 +5,10 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
+import com.multi.vidulum.trading.infrastructure.TradeEntity;
 import com.multi.vidulum.user.infrastructure.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,6 +22,12 @@ import java.util.List;
 @SpringBootApplication
 @EnableMongoRepositories(basePackages = "com.multi.vidulum")
 public class VidulumApplication implements CommandLineRunner {
+
+    @Value( "${spring.data.mongodb.uri}" )
+    private String dbUrl;
+
+    @Value( "${mongodb.port}" )
+    private String dbPort;
 
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -54,5 +62,6 @@ public class VidulumApplication implements CommandLineRunner {
     public void run(String... args) {
         mongoTemplate.dropCollection(PortfolioEntity.class);
         mongoTemplate.dropCollection(UserEntity.class);
+        mongoTemplate.dropCollection(TradeEntity.class);
     }
 }

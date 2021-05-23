@@ -6,11 +6,11 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TradeId {
+public class OriginTradeId {
     String id;
 
-    public static TradeId of(String id) {
-        return new TradeId(id);
+    public static OriginTradeId of(String id) {
+        return new OriginTradeId(id);
     }
 
 }

@@ -87,6 +87,11 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion, AssetBasicInfo purchasedAssetBasicInfo) {
         reduceAsset(soldPortion);
         increaseAsset(purchasedPortion, purchasedAssetBasicInfo);
+
+    }
+
+    class TradeSummary {
+
     }
 
     private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
