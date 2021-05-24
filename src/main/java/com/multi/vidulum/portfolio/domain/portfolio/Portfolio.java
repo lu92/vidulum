@@ -84,7 +84,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion, AssetBasicInfo purchasedAssetBasicInfo) {
         reduceAsset(soldPortion);
         increaseAsset(purchasedPortion, purchasedAssetBasicInfo);
-
     }
 
     private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
@@ -117,7 +116,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
 
         Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.getQuantity());
-        boolean isAssetSoldOutFully = soldAsset.getQuantity() == soldPortion.getQuantity();
+        boolean isAssetSoldOutFully = soldAsset.getQuantity().equals(soldPortion.getQuantity());
         if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
         } else {

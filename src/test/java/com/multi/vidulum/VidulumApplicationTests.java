@@ -278,4 +278,87 @@ class VidulumApplicationTests {
 
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
     }
+
+    @Test
+    void shouldPersistPortfolioForPreciousMetals() throws InterruptedException {
+        quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
+        quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("PM", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
+
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        userRestController.activateUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson expectedUserSummary = UserDto.UserSummaryJson.builder()
+                .userId(persistedUser.getUserId())
+                .username(persistedUser.getUsername())
+                .email(persistedUser.getEmail())
+                .isActive(true)
+                .portolioIds(List.of())
+                .build();
+        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("Precious Metals")
+                        .broker("PM")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .money(Money.of(2 * 1818.0, "USD"))
+                        .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade1")
+                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("XAU/USD")
+                .side(BUY)
+                .quantity(Quantity.of(2, "oz"))
+                .price(Money.of(1818, "USD"))
+                .build());
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> tradeMongoRepository.count() == 1);
+
+        Portfolio expectedPortfolio = Portfolio.builder()
+                .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
+                .userId(UserId.of(persistedUser.getUserId()))
+                .name("Precious Metals")
+                .broker(Broker.of("PM"))
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("XAU"))
+                                .fullName("Not found")
+                                .avgPurchasePrice(Money.of(1818, "USD"))
+                                .quantity(Quantity.of(2, "oz"))
+                                .tags(List.of())
+                                .build()
+                ))
+                .investedBalance(Money.of(3636, "USD"))
+                .build();
+
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
+        System.out.println(optionalPortfolio.get());
+        Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
+    }
 }
