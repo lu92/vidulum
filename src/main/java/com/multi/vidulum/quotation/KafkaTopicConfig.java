@@ -4,6 +4,7 @@ package com.multi.vidulum.quotation;
 import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
 import com.multi.vidulum.common.events.TradeStoredEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
+import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
@@ -173,5 +174,10 @@ public class KafkaTopicConfig {
     @Bean
     public BinanceBrokerQuotationProvider binanceBrokerQuotationProvider() {
         return new BinanceBrokerQuotationProvider();
+    }
+
+    @Bean
+    public PMBrokerQuotationProvider pmBrokerQuotationProvider() {
+        return new PMBrokerQuotationProvider();
     }
 }

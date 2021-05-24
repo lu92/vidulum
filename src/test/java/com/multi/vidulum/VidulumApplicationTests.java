@@ -80,6 +80,7 @@ class VidulumApplicationTests {
     @Test
     void shouldReturnCustomersWithRatingGreater90AsVIP() throws InterruptedException {
 
+        quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
@@ -122,6 +123,30 @@ class VidulumApplicationTests {
                         .userId(persistedUser.getUserId())
                         .build());
 
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("Precious Metals")
+                        .broker("PM")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+//        portfolioRestController.depositMoney(
+//                PortfolioDto.DepositMoneyJson.builder()
+//                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+//                        .money(Money.of(2*1818.0, "USD"))
+//                        .build());
+//
+//        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+//                .originTradeId("pm-trade1")
+//                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+//                .userId(persistedUser.getUserId())
+//                .symbol("XAU/USD")
+//                .side(BUY)
+//                .quantity(Quantity.of(2, "oz"))
+//                .price(Money.of(1818, "USD"))
+//                .build());
+
+
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -135,7 +160,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
-                .quantity(0.1)
+                .quantity(Quantity.of(0.1))
                 .price(Money.of(60000.0, "USD"))
                 .build());
 
@@ -145,7 +170,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
-                .quantity(0.1)
+                .quantity(Quantity.of(0.1))
                 .price(Money.of(30000, "USD"))
                 .build());
 
@@ -155,7 +180,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(BUY)
-                .quantity(0.1)
+                .quantity(Quantity.of(0.1))
                 .price(Money.of(30000, "USD"))
                 .build());
 
@@ -165,7 +190,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .side(SELL)
-                .quantity(0.1)
+                .quantity(Quantity.of(0.1))
                 .price(Money.of(40000, "USD"))
                 .build());
 
@@ -175,7 +200,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
-                .quantity(0.75)
+                .quantity(Quantity.of(0.75))
                 .price(Money.of(2800, "USD"))
                 .build());
 
@@ -185,7 +210,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
-                .quantity(0.25)
+                .quantity(Quantity.of(0.25))
                 .price(Money.of(2800, "USD"))
                 .build());
 
@@ -195,7 +220,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(BUY)
-                .quantity(0.5)
+                .quantity(Quantity.of(0.5))
                 .price(Money.of(3400, "USD"))
                 .build());
 
@@ -205,7 +230,7 @@ class VidulumApplicationTests {
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
                 .side(SELL)
-                .quantity(0.2)
+                .quantity(Quantity.of(0.2))
                 .price(Money.of(3000, "USD"))
                 .build());
 
@@ -230,21 +255,21 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(88100.0)
+                                .quantity(Quantity.of(88100.0))
                                 .tags(List.of("currency", "USD"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
                                 .fullName("Not found")
                                 .avgPurchasePrice(Money.of(40000, "USD"))
-                                .quantity(0.20000000000000004)
+                                .quantity(Quantity.of(0.20000000000000004))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
                                 .fullName("Not found")
                                 .avgPurchasePrice(Money.of(3000, "USD"))
-                                .quantity(1.3)
+                                .quantity(Quantity.of(1.3))
                                 .tags(List.of())
                                 .build()
                 ))
@@ -252,5 +277,88 @@ class VidulumApplicationTests {
                 .build();
 
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+    }
+
+    @Test
+    void shouldPersistPortfolioForPreciousMetals() throws InterruptedException {
+        quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
+        quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("PM", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
+
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        userRestController.activateUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson expectedUserSummary = UserDto.UserSummaryJson.builder()
+                .userId(persistedUser.getUserId())
+                .username(persistedUser.getUsername())
+                .email(persistedUser.getEmail())
+                .isActive(true)
+                .portolioIds(List.of())
+                .build();
+        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("Precious Metals")
+                        .broker("PM")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .money(Money.of(2 * 1818.0, "USD"))
+                        .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade1")
+                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("XAU/USD")
+                .side(BUY)
+                .quantity(Quantity.of(2, "oz"))
+                .price(Money.of(1818, "USD"))
+                .build());
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> tradeMongoRepository.count() == 1);
+
+        Portfolio expectedPortfolio = Portfolio.builder()
+                .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
+                .userId(UserId.of(persistedUser.getUserId()))
+                .name("Precious Metals")
+                .broker(Broker.of("PM"))
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("XAU"))
+                                .fullName("Not found")
+                                .avgPurchasePrice(Money.of(1818, "USD"))
+                                .quantity(Quantity.of(2, "oz"))
+                                .tags(List.of())
+                                .build()
+                ))
+                .investedBalance(Money.of(3636, "USD"))
+                .build();
+
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
+        System.out.println(optionalPortfolio.get());
+        Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
     }
 }

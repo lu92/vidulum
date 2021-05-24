@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.domain.trades;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Ticker;
 import lombok.Builder;
 import lombok.Value;
@@ -9,10 +10,10 @@ import lombok.Value;
 @Builder
 public class AssetPortion {
     Ticker ticker;
-    double quantity;
+    Quantity quantity;
     Money price;
 
     public Money getValue() {
-        return price.multiply(quantity);
+        return price.multiply(quantity.getQty());
     }
 }

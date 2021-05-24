@@ -19,7 +19,7 @@ public class StoredTrade {
     PortfolioId portfolioId;
     Symbol symbol;
     Side side;
-    double quantity;
+    Quantity quantity;
     Money price;
     ZonedDateTime dateTime;
 }
