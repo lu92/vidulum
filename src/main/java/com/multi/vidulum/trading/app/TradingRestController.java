@@ -26,6 +26,7 @@ public class TradingRestController {
                 .userId(UserId.of(tradeExecutedJson.getUserId()))
                 .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
                 .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
+                .name(tradeExecutedJson.getName())
                 .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
                 .side(tradeExecutedJson.getSide())
                 .quantity(tradeExecutedJson.getQuantity())

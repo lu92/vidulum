@@ -10,6 +10,7 @@ import lombok.Value;
 @Builder
 public class AssetPortion {
     Ticker ticker;
+    String name;
     Quantity quantity;
     Money price;
 

@@ -10,6 +10,7 @@ import lombok.Getter;
 public class SellTrade implements Trade, Valuable {
     PortfolioId portfolioId;
     TradeId tradeId;
+    String name;
     Symbol symbol;
     Quantity quantity;
     Money price;
@@ -18,6 +19,7 @@ public class SellTrade implements Trade, Valuable {
     public AssetPortion clarifyPurchasedPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getDestination())
+                .name(name)
                 .quantity(Quantity.of(price.multiply(quantity.getQty()).getAmount().doubleValue()))
                 .price(Money.one("USD"))
                 .build();
@@ -27,6 +29,7 @@ public class SellTrade implements Trade, Valuable {
     public AssetPortion clarifySoldPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getOrigin())
+                .name(name)
                 .quantity(quantity)
                 .price(price)
                 .build();

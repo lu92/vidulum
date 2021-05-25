@@ -17,6 +17,7 @@ public class StoredTrade {
     UserId userId;
     OriginTradeId originTradeId;
     PortfolioId portfolioId;
+    String name;
     Symbol symbol;
     Side side;
     Quantity quantity;

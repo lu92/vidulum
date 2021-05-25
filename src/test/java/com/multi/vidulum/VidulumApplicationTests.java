@@ -10,6 +10,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
@@ -19,6 +20,8 @@ import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
@@ -77,7 +81,227 @@ class VidulumApplicationTests {
     @Autowired
     private TradeMongoRepository tradeMongoRepository;
 
+    @Autowired
+    private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
+
+
+    @After
+    void cleanUp() {
+        log.info("Lets clean the data");
+        tradeMongoRepository.deleteAll();
+    }
+
+
     @Test
+    void shouldBuyBitcoinTest() {
+        quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
+        quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("BINANCE", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
+
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        userRestController.activateUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson expectedUserSummary = UserDto.UserSummaryJson.builder()
+                .userId(persistedUser.getUserId())
+                .username(persistedUser.getUsername())
+                .email(persistedUser.getEmail())
+                .isActive(true)
+                .portolioIds(List.of())
+                .build();
+
+        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("XYZ")
+                        .broker("BINANCE")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
+        tradeAppliedToPortfolioEventListener.clearCallbacks();
+        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
+            log.info("Following trade [{}] applied to portfolio", event);
+            appliedTradesOnPortfolioNumber.incrementAndGet();
+        });
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .money(Money.of(100000.0, "USD"))
+                        .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade1")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .name("")
+                .symbol("BTC/USD")
+                .side(BUY)
+                .quantity(Quantity.of(1))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
+
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
+        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        Portfolio portfolio = optionalPortfolio.get();
+        System.out.println(portfolio);
+
+
+        Portfolio expectedPortfolio = Portfolio.builder()
+                .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
+                .userId(UserId.of(persistedUser.getUserId()))
+                .name("XYZ")
+                .broker(Broker.of("BINANCE"))
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("")
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(40000))
+                                .tags(List.of("currency", "USD"))
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("BTC"))
+                                .fullName("Not found")
+                                .avgPurchasePrice(Money.of(60000, "USD"))
+                                .quantity(Quantity.of(1))
+                                .tags(List.of())
+                                .build()
+                ))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .build();
+
+        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+    }
+
+    @Test
+    void buyAndSellImmediatelyBitcoinTest() {
+        quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
+        quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("BINANCE", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
+
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        userRestController.activateUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson expectedUserSummary = UserDto.UserSummaryJson.builder()
+                .userId(persistedUser.getUserId())
+                .username(persistedUser.getUsername())
+                .email(persistedUser.getEmail())
+                .isActive(true)
+                .portolioIds(List.of())
+                .build();
+        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("XYZ")
+                        .broker("BINANCE")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
+        tradeAppliedToPortfolioEventListener.clearCallbacks();
+        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
+            log.info("Following trade [{}] applied to portfolio", event);
+            appliedTradesOnPortfolioNumber.incrementAndGet();
+        });
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .money(Money.of(100000.0, "USD"))
+                        .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade1")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .name("")
+                .symbol("BTC/USD")
+                .side(BUY)
+                .quantity(Quantity.of(1))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade2")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .name("")
+                .symbol("BTC/USD")
+                .side(SELL)
+                .quantity(Quantity.of(1))
+                .price(Money.of(80000, "USD"))
+                .build());
+
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
+        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        Portfolio portfolio = optionalPortfolio.get();
+        System.out.println(portfolio);
+
+        Portfolio expectedPortfolio = Portfolio.builder()
+                .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
+                .userId(UserId.of(persistedUser.getUserId()))
+                .name("XYZ")
+                .broker(Broker.of("BINANCE"))
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("")
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(120000))
+                                .tags(List.of("currency", "USD"))
+                                .build()
+                ))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .build();
+
+        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+    }
+
+    //    @Test
+    @Ignore
     void shouldReturnCustomersWithRatingGreater90AsVIP() throws InterruptedException {
 
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
@@ -237,8 +461,6 @@ class VidulumApplicationTests {
 
         Thread.sleep(2000);
 
-        PortfolioDto.PortfolioSummaryJson retrievedPortfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
-
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
@@ -279,7 +501,8 @@ class VidulumApplicationTests {
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
     }
 
-    @Test
+        @Test
+//    @Ignore
     void shouldPersistPortfolioForPreciousMetals() throws InterruptedException {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
@@ -321,24 +544,43 @@ class VidulumApplicationTests {
                         .userId(persistedUser.getUserId())
                         .build());
 
+        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
+        tradeAppliedToPortfolioEventListener.clearCallbacks();
+        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
+            log.info("Following trade [{}] applied to portfolio", event);
+            appliedTradesOnPortfolioNumber.incrementAndGet();
+        });
 
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(2 * 1818.0, "USD"))
+//                        .money(Money.of(2 * 1818.0, "USD"))
+                        .money(Money.of(3636 + 1880, "USD"))
                         .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade1")
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("Maple Leaf")
                 .symbol("XAU/USD")
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
                 .price(Money.of(1818, "USD"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> tradeMongoRepository.count() == 1);
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade2")
+                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .name("Krugerrand")
+                .symbol("XAU/USD")
+                .side(BUY)
+                .quantity(Quantity.of(1, "oz"))
+                .price(Money.of(1880, "USD"))
+                .build());
+
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
@@ -348,14 +590,23 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .fullName("Not found")
+                                .fullName("Maple Leaf")
                                 .avgPurchasePrice(Money.of(1818, "USD"))
                                 .quantity(Quantity.of(2, "oz"))
                                 .tags(List.of())
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("XAU"))
+                                .fullName("Krugerrand")
+                                .avgPurchasePrice(Money.of(1880, "USD"))
+                                .quantity(Quantity.of(1, "oz"))
+                                .tags(List.of())
                                 .build()
                 ))
-                .investedBalance(Money.of(3636, "USD"))
+                .investedBalance(Money.of(3636 + 1880, "USD"))
                 .build();
+
+        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
         System.out.println(optionalPortfolio.get());

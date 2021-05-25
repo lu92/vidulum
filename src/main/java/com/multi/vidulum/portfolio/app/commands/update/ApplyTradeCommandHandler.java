@@ -40,6 +40,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
         }
 
         repository.save(portfolio);
+        log.info("After processing: [{}]", portfolio);
 
         emitEvent(trade);
 
@@ -51,6 +52,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
         BuyTrade buyTrade = BuyTrade.builder()
                 .portfolioId(trade.getPortfolioId())
                 .tradeId(trade.getTradeId())
+                .name(trade.getName())
                 .symbol(trade.getSymbol())
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())
@@ -63,6 +65,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
         SellTrade sellTrade = SellTrade.builder()
                 .portfolioId(trade.getPortfolioId())
                 .tradeId(trade.getTradeId())
+                .name(trade.getName())
                 .symbol(trade.getSymbol())
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())

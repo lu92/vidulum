@@ -2,11 +2,12 @@ package com.multi.vidulum.common.events;
 
 import com.multi.vidulum.common.Event;
 import com.multi.vidulum.common.StoredTrade;
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
 
-@Value
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TradeAppliedToPortfolioEvent implements Event<StoredTrade> {
     StoredTrade trade;
 
