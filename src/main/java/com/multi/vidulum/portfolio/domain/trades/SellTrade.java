@@ -19,7 +19,7 @@ public class SellTrade implements Trade, Valuable {
     public AssetPortion clarifyPurchasedPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getDestination())
-                .subName(name)
+                .subName("")
                 .quantity(Quantity.of(price.multiply(quantity.getQty()).getAmount().doubleValue()))
                 .price(Money.one("USD"))
                 .build();

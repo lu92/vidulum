@@ -571,6 +571,17 @@ class VidulumApplicationTests {
                 .price(Money.of(1880, "USD"))
                 .build());
 
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade3")
+                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("XAU/USD")
+                .subName("Maple Leaf")
+                .side(SELL)
+                .quantity(Quantity.of(1, "oz"))
+                .price(Money.of(1880, "USD"))
+                .build());
+
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
                 .userId(UserId.of(persistedUser.getUserId()))
@@ -581,8 +592,8 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("XAU"))
                                 .fullName("Not found")
                                 .subName("Maple Leaf")
-                                .avgPurchasePrice(Money.of(1818, "USD"))
-                                .quantity(Quantity.of(2, "oz"))
+                                .avgPurchasePrice(Money.of(1756, "USD"))
+                                .quantity(Quantity.of(1, "oz"))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
@@ -592,12 +603,20 @@ class VidulumApplicationTests {
                                 .avgPurchasePrice(Money.of(1880, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
                                 .tags(List.of())
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("Not found")
+                                .subName("")
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(1880, "Number"))
+                                .tags(List.of())
                                 .build()
                 ))
                 .investedBalance(Money.of(3636 + 1880, "USD"))
                 .build();
 
-        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
         System.out.println(optionalPortfolio.get());
