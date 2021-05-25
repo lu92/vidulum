@@ -19,7 +19,7 @@ public class BuyTrade implements Trade, Valuable {
     public AssetPortion clarifyPurchasedPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getOrigin())
-                .name(name)
+                .subName(name)
                 .quantity(quantity)
                 .price(price)
                 .build();
@@ -29,7 +29,7 @@ public class BuyTrade implements Trade, Valuable {
     public AssetPortion clarifySoldPortion() {
         return AssetPortion.builder()
                 .ticker(symbol.getDestination())
-                .name("")
+                .subName("")
                 .quantity(Quantity.of(price.multiply(quantity.getQty()).getAmount().doubleValue()))
                 .price(Money.one("USD"))
                 .build();

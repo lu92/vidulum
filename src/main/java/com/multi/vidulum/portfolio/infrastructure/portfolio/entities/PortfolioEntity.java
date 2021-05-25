@@ -37,6 +37,7 @@ public class PortfolioEntity {
                 .map(assetSnapshot -> new AssetEntity(
                         assetSnapshot.getTicker().getId(),
                         assetSnapshot.getFullName(),
+                        assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
                         assetSnapshot.getTags()
@@ -58,6 +59,7 @@ public class PortfolioEntity {
                 .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
                         Ticker.of(assetEntity.getTicker()),
                         assetEntity.getFullName(),
+                        assetEntity.getSubName(),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),
                         assetEntity.getTags()

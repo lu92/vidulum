@@ -32,6 +32,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
                         asset.getFullName(),
+                        asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
                         asset.getTags()))
@@ -52,6 +53,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
                         assetSnapshot.getFullName(),
+                        assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
                         assetSnapshot.getTags()
@@ -88,7 +90,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
-        findAssetByTickerAndName(purchasedPortion.getTicker(), purchasedPortion.getName())
+        findAssetByTickerAndSubName(purchasedPortion.getTicker(), purchasedPortion.getSubName())
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
                     Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
@@ -97,13 +99,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     existingAsset.setQuantity(totalQuantity);
                     existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
                 }, () -> {
-                    String assetName = (purchasedPortion.getName() == null || purchasedPortion.getName().isEmpty()) ? assetBasicInfo.getFullName() : purchasedPortion.getName();
                     Asset newAsset = Asset.builder()
                             .ticker(assetBasicInfo.getTicker())
-                            .fullName(assetName)
+                            .fullName(assetBasicInfo.getFullName())
+                            .subName(purchasedPortion.getSubName())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
-                            .tags(assetBasicInfo.getTags())
                             .tags(assetBasicInfo.getTags())
                             .build();
                     assets.add(newAsset);
@@ -111,7 +112,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     private void reduceAsset(AssetPortion soldPortion) {
-        Asset soldAsset = findAssetByTickerAndName(soldPortion.getTicker(), soldPortion.getName())
+        Asset soldAsset = findAssetByTickerAndSubName(soldPortion.getTicker(), soldPortion.getSubName())
                 .orElseThrow(() -> new AssetNotFoundException(soldPortion.getTicker()));
 
         if (soldPortion.getQuantity().getQty() > soldAsset.getQuantity().getQty()) {
@@ -140,6 +141,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
                     .fullName("")
+                    .subName("")
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
                     .tags(List.of("currency", deposit.getCurrency()))
@@ -168,9 +170,9 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .findFirst();
     }
 
-    private Optional<Asset> findAssetByTickerAndName(Ticker ticker, String name) {
+    private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, String subName) {
         return assets.stream()
-                .filter(asset -> asset.getTicker().equals(ticker) && (asset.getFullName().equalsIgnoreCase(name) || asset.getFullName().equalsIgnoreCase("Not found")))
+                .filter(asset -> asset.getTicker().equals(ticker) && asset.getSubName().equals(subName))
                 .findFirst();
     }
 }

@@ -9,7 +9,6 @@ import lombok.ToString;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.ZonedDateTime;
 import java.util.Optional;
 
 @Builder
@@ -39,7 +38,7 @@ public class TradeEntity {
                 .userId(snapshot.getUserId().getId())
                 .portfolioId(snapshot.getPortfolioId().getId())
                 .originTradeId(snapshot.getOriginTradeId().getId())
-                .name(snapshot.getName())
+                .name(snapshot.getSubName())
                 .symbol(snapshot.getSymbol().getId())
                 .side(snapshot.getSide())
                 .quantity(snapshot.getQuantity())
@@ -54,7 +53,7 @@ public class TradeEntity {
                 .userId(UserId.of(userId))
                 .portfolioId(PortfolioId.of(portfolioId))
                 .originTradeId(OriginTradeId.of(portfolioId))
-                .name(name)
+                .subName(name)
                 .symbol(Symbol.of(symbol))
                 .side(side)
                 .quantity(quantity)
