@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -300,10 +299,8 @@ class VidulumApplicationTests {
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
     }
 
-    //    @Test
-    @Ignore
-    void shouldReturnCustomersWithRatingGreater90AsVIP() throws InterruptedException {
-
+    @Test
+    void shouldExecuteTrades() {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
@@ -339,7 +336,6 @@ class VidulumApplicationTests {
                 .build();
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
                         .name("XYZ")
@@ -347,29 +343,12 @@ class VidulumApplicationTests {
                         .userId(persistedUser.getUserId())
                         .build());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals")
-                        .broker("PM")
-                        .userId(persistedUser.getUserId())
-                        .build());
-
-//        portfolioRestController.depositMoney(
-//                PortfolioDto.DepositMoneyJson.builder()
-//                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                        .money(Money.of(2*1818.0, "USD"))
-//                        .build());
-//
-//        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-//                .originTradeId("pm-trade1")
-//                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                .userId(persistedUser.getUserId())
-//                .symbol("XAU/USD")
-//                .side(BUY)
-//                .quantity(Quantity.of(2, "oz"))
-//                .price(Money.of(1818, "USD"))
-//                .build());
-
+        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
+        tradeAppliedToPortfolioEventListener.clearCallbacks();
+        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
+            log.info("Following trade [{}] applied to portfolio", event);
+            appliedTradesOnPortfolioNumber.incrementAndGet();
+        });
 
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
@@ -382,6 +361,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.1))
@@ -392,6 +372,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.1))
@@ -402,6 +383,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("BTC/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.1))
@@ -412,6 +394,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("BTC/USD")
                 .side(SELL)
                 .quantity(Quantity.of(0.1))
@@ -422,6 +405,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.75))
@@ -432,6 +416,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.25))
@@ -442,6 +427,7 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("ETH/USD")
                 .side(BUY)
                 .quantity(Quantity.of(0.5))
@@ -452,14 +438,14 @@ class VidulumApplicationTests {
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
+                .name("")
                 .symbol("ETH/USD")
                 .side(SELL)
                 .quantity(Quantity.of(0.2))
                 .price(Money.of(3000, "USD"))
                 .build());
 
-
-        Thread.sleep(2000);
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
@@ -501,9 +487,8 @@ class VidulumApplicationTests {
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
     }
 
-        @Test
-//    @Ignore
-    void shouldPersistPortfolioForPreciousMetals() throws InterruptedException {
+    @Test
+    void shouldPersistPortfolioForPreciousMetals() {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
 
