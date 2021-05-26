@@ -20,7 +20,7 @@ import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.junit.After;
+import org.junit.Before;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -84,7 +84,7 @@ class VidulumApplicationTests {
     private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
 
 
-    @After
+    @Before
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
@@ -193,6 +193,8 @@ class VidulumApplicationTests {
                 .build();
 
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
+        Assertions.assertThat(allTrades).hasSize(1);
     }
 
     @Test
@@ -300,6 +302,8 @@ class VidulumApplicationTests {
                 .build();
 
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
+        Assertions.assertThat(allTrades).hasSize(2);
     }
 
     @Test
@@ -491,6 +495,8 @@ class VidulumApplicationTests {
                 .build();
 
         Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
+        Assertions.assertThat(allTrades).hasSize(8);
     }
 
     @Test
@@ -621,5 +627,7 @@ class VidulumApplicationTests {
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
         System.out.println(optionalPortfolio.get());
         Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
+        List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPreciousMetalsPortfolio.getPortfolioId());
+        Assertions.assertThat(allTrades).hasSize(3);
     }
 }
