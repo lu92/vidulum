@@ -21,6 +21,7 @@ public class TradingDto {
         private Side side;
         private Quantity quantity;
         private Money price;
+        private ZonedDateTime originDateTime;
     }
 
     @Data
@@ -35,6 +36,6 @@ public class TradingDto {
         private Side side;
         private Quantity quantity;
         private Money price;
-        private ZonedDateTime dateTime;
+        private ZonedDateTime originDateTime;
     }
 }

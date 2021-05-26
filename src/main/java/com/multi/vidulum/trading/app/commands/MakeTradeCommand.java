@@ -19,5 +19,5 @@ public class MakeTradeCommand implements Command {
     Side side;
     Quantity quantity;
     Money price;
-    ZonedDateTime dateTime;
+    ZonedDateTime originDateTime;
 }
