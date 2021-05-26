@@ -32,6 +32,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
                         asset.getFullName(),
+                        asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
                         asset.getTags()))
@@ -52,6 +53,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
                         assetSnapshot.getFullName(),
+                        assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
                         assetSnapshot.getTags()
@@ -73,6 +75,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         AssetPortion soldPortion = trade.clarifySoldPortion();
         AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
         swing(soldPortion, purchasedPortion, assetBasicInfo);
+        System.out.println(this);
     }
 
     public void handleExecutedTrade(SellTrade trade, AssetBasicInfo assetBasicInfo) {
@@ -87,7 +90,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
-        findAssetByTicker(purchasedPortion.getTicker())
+        findAssetByTickerAndSubName(purchasedPortion.getTicker(), purchasedPortion.getSubName())
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
                     Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
@@ -99,6 +102,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     Asset newAsset = Asset.builder()
                             .ticker(assetBasicInfo.getTicker())
                             .fullName(assetBasicInfo.getFullName())
+                            .subName(purchasedPortion.getSubName())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .tags(assetBasicInfo.getTags())
@@ -108,7 +112,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     private void reduceAsset(AssetPortion soldPortion) {
-        Asset soldAsset = findAssetByTicker(soldPortion.getTicker())
+        Asset soldAsset = findAssetByTickerAndSubName(soldPortion.getTicker(), soldPortion.getSubName())
                 .orElseThrow(() -> new AssetNotFoundException(soldPortion.getTicker()));
 
         if (soldPortion.getQuantity().getQty() > soldAsset.getQuantity().getQty()) {
@@ -137,6 +141,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
                     .fullName("")
+                    .subName(SubName.none())
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
                     .tags(List.of("currency", deposit.getCurrency()))
@@ -162,6 +167,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private Optional<Asset> findAssetByTicker(Ticker ticker) {
         return assets.stream()
                 .filter(asset -> asset.getTicker().equals(ticker))
+                .findFirst();
+    }
+
+    private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, SubName subName) {
+        return assets.stream()
+                .filter(asset -> asset.getTicker().equals(ticker) && asset.getSubName().equals(subName))
                 .findFirst();
     }
 }

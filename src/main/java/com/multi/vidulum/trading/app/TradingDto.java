@@ -15,6 +15,7 @@ public class TradingDto {
         private String portfolioId;
         private String userId;
         private String symbol;
+        private String subName;
         private Side side;
         private Quantity quantity;
         private Money price;

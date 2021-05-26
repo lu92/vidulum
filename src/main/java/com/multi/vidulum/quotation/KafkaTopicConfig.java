@@ -89,7 +89,7 @@ public class KafkaTopicConfig {
 
     @Bean
     public NewTopic tradeExecutedTopic() {
-        return new NewTopic("trade_executed", 1, (short) 1);
+        return new NewTopic("executed_trades", 1, (short) 1);
     }
 
     @Bean

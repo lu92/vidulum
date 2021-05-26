@@ -18,6 +18,7 @@ public class StoredTrade {
     OriginTradeId originTradeId;
     PortfolioId portfolioId;
     Symbol symbol;
+    SubName subName;
     Side side;
     Quantity quantity;
     Money price;
