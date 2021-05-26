@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.infrastructure.portfolio.entities;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 import lombok.Builder;
@@ -37,7 +34,7 @@ public class PortfolioEntity {
                 .map(assetSnapshot -> new AssetEntity(
                         assetSnapshot.getTicker().getId(),
                         assetSnapshot.getFullName(),
-                        assetSnapshot.getSubName(),
+                        assetSnapshot.getSubName().getName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
                         assetSnapshot.getTags()
@@ -59,7 +56,7 @@ public class PortfolioEntity {
                 .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
                         Ticker.of(assetEntity.getTicker()),
                         assetEntity.getFullName(),
-                        assetEntity.getSubName(),
+                        SubName.of(assetEntity.getSubName()),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),
                         assetEntity.getTags()

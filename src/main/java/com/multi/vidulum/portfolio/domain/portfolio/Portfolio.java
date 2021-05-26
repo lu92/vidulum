@@ -141,7 +141,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
                     .fullName("")
-                    .subName("")
+                    .subName(SubName.none())
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
                     .tags(List.of("currency", deposit.getCurrency()))
@@ -170,7 +170,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .findFirst();
     }
 
-    private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, String subName) {
+    private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, SubName subName) {
         return assets.stream()
                 .filter(asset -> asset.getTicker().equals(ticker) && asset.getSubName().equals(subName))
                 .findFirst();

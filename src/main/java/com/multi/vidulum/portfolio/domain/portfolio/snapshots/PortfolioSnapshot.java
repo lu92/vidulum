@@ -26,7 +26,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     public static class AssetSnapshot {
         Ticker ticker;
         String fullName;
-        String subName;
+        SubName subName;
         Money avgPurchasePrice;
         Quantity quantity;
         List<String> tags;
