@@ -6,6 +6,8 @@ import com.multi.vidulum.common.Side;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.ZonedDateTime;
+
 public class TradingDto {
 
     @Data
@@ -19,5 +21,20 @@ public class TradingDto {
         private Side side;
         private Quantity quantity;
         private Money price;
+    }
+
+    @Data
+    @Builder
+    public static class TradeSummaryJson {
+        private String tradeId;
+        private String userId;
+        private String portfolioId;
+        private String originTradeId;
+        private String subName;
+        private String symbol;
+        private Side side;
+        private Quantity quantity;
+        private Money price;
+        private ZonedDateTime dateTime;
     }
 }
