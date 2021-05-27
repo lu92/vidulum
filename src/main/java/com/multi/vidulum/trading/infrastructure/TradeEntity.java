@@ -9,6 +9,9 @@ import lombok.ToString;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.Optional;
 
 @Builder
@@ -27,11 +30,13 @@ public class TradeEntity {
     private Side side;
     private Quantity quantity;
     private Money price;
-//    private ZonedDateTime dateTime;
+    private Date originDateTime;
 
     public static TradeEntity fromSnapshot(TradeSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.getTradeId())
                 .map(TradeId::getId).orElse(null);
+
+        Date date = snapshot.getDateTime() != null ? Date.from(snapshot.getDateTime().toInstant()) : null;
 
         return TradeEntity.builder()
                 .tradeId(id)
@@ -43,11 +48,14 @@ public class TradeEntity {
                 .side(snapshot.getSide())
                 .quantity(snapshot.getQuantity())
                 .price(snapshot.getPrice())
-//                .dateTime(snapshot.getDateTime())
+                .originDateTime(date)
                 .build();
     }
 
     public TradeSnapshot toSnapshot() {
+
+        ZonedDateTime zonedDateTime = originDateTime != null ? ZonedDateTime.ofInstant(originDateTime.toInstant(), ZoneOffset.UTC) : null;
+
         return TradeSnapshot.builder()
                 .tradeId(TradeId.of(tradeId))
                 .userId(UserId.of(userId))
@@ -58,7 +66,7 @@ public class TradeEntity {
                 .side(side)
                 .quantity(quantity)
                 .price(price)
-//                .dateTime(dateTime)
+                .dateTime(zonedDateTime)
                 .build();
     }
 }

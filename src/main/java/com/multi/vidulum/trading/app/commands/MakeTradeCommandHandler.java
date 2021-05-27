@@ -29,8 +29,9 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .side(command.getSide())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
-                .dateTime(command.getDateTime())
+                .dateTime(command.getOriginDateTime())
                 .build();
+
         Trade savedTrade = repository.save(newTrade);
         log.info("Trade [{}] has been stored!", savedTrade);
         StoredTrade storedTrade = mapToTrade(savedTrade);

@@ -33,6 +33,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -563,6 +564,7 @@ class VidulumApplicationTests {
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
                 .price(Money.of(1818, "USD"))
+                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
 
@@ -575,6 +577,7 @@ class VidulumApplicationTests {
                 .side(BUY)
                 .quantity(Quantity.of(1, "oz"))
                 .price(Money.of(1880, "USD"))
+                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
@@ -586,6 +589,7 @@ class VidulumApplicationTests {
                 .side(SELL)
                 .quantity(Quantity.of(1, "oz"))
                 .price(Money.of(1880, "USD"))
+                .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
                 .build());
 
         Portfolio expectedPortfolio = Portfolio.builder()
@@ -629,5 +633,12 @@ class VidulumApplicationTests {
         Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPreciousMetalsPortfolio.getPortfolioId());
         Assertions.assertThat(allTrades).hasSize(3);
+        List<TradingDto.TradeSummaryJson> lastTwoTrades = tradingRestController.getTradesInDateRange(
+                createdUserJson.getUserId(),
+                registeredPreciousMetalsPortfolio.getPortfolioId(),
+                ZonedDateTime.parse("2021-03-01T00:00:00Z"),
+                ZonedDateTime.parse("2021-05-01T00:00:00Z"));
+        System.out.println(lastTwoTrades);
+        Assertions.assertThat(lastTwoTrades).hasSize(2);
     }
 }

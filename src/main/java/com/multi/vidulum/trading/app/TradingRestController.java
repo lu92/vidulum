@@ -9,6 +9,7 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.commands.MakeTradeCommand;
 import com.multi.vidulum.trading.app.queries.GetAllTradesForUserQuery;
+import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
 import com.multi.vidulum.trading.domain.Trade;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +38,7 @@ public class TradingRestController {
                 .side(tradeExecutedJson.getSide())
                 .quantity(tradeExecutedJson.getQuantity())
                 .price(tradeExecutedJson.getPrice())
-                .dateTime(ZonedDateTime.now())
+                .originDateTime(tradeExecutedJson.getOriginDateTime())
                 .build();
 
         commandGateway.send(command);
@@ -48,6 +49,24 @@ public class TradingRestController {
         GetAllTradesForUserQuery query = GetAllTradesForUserQuery.builder()
                 .userId(UserId.of(userId))
                 .portfolioId(PortfolioId.of(portfolioId))
+                .build();
+        List<Trade> trades = queryGateway.send(query);
+        return trades.stream()
+                .map(this::toJson)
+                .collect(toList());
+    }
+
+    @GetMapping("/trading")
+    public List<TradingDto.TradeSummaryJson> getTradesInDateRange(
+            @RequestParam("userId") String userId,
+            @RequestParam("portfolioId") String portfolioId,
+            @RequestParam("from") ZonedDateTime from,
+            @RequestParam("to") ZonedDateTime to) {
+        GetTradesForUserInDateRangeQuery query = GetTradesForUserInDateRangeQuery.builder()
+                .userId(UserId.of(userId))
+                .portfolioId(PortfolioId.of(portfolioId))
+                .from(from)
+                .to(to)
                 .build();
         List<Trade> trades = queryGateway.send(query);
         return trades.stream()
@@ -66,7 +85,7 @@ public class TradingRestController {
                 .side(trade.getSide())
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())
-                .dateTime(trade.getDateTime())
+                .originDateTime(trade.getDateTime())
                 .build();
     }
 }
