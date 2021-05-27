@@ -32,6 +32,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
                         asset.getFullName(),
+                        asset.getSegment(),
                         asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
@@ -53,6 +54,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
                         assetSnapshot.getFullName(),
+                        assetSnapshot.getSegment(),
                         assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
@@ -103,6 +105,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .ticker(assetBasicInfo.getTicker())
                             .fullName(assetBasicInfo.getFullName())
                             .subName(purchasedPortion.getSubName())
+                            .segment(assetBasicInfo.getSegment())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .tags(assetBasicInfo.getTags())

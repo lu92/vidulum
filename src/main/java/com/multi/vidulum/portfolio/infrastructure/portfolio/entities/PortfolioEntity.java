@@ -31,14 +31,19 @@ public class PortfolioEntity {
                 .map(PortfolioId::getId).orElse(null);
 
         List<AssetEntity> assetEntities = snapshot.getAssets().stream()
-                .map(assetSnapshot -> new AssetEntity(
-                        assetSnapshot.getTicker().getId(),
-                        assetSnapshot.getFullName(),
-                        assetSnapshot.getSubName().getName(),
-                        assetSnapshot.getAvgPurchasePrice(),
-                        assetSnapshot.getQuantity(),
-                        assetSnapshot.getTags()
-                ))
+                .map(assetSnapshot -> {
+                    Segment segment = assetSnapshot.getSegment() == null ? Segment.unknown() : assetSnapshot.getSegment();
+
+                    return new AssetEntity(
+                            assetSnapshot.getTicker().getId(),
+                            assetSnapshot.getFullName(),
+                            segment.getName(),
+                            assetSnapshot.getSubName().getName(),
+                            assetSnapshot.getAvgPurchasePrice(),
+                            assetSnapshot.getQuantity(),
+                            assetSnapshot.getTags()
+                    );
+                })
                 .collect(Collectors.toList());
 
         return PortfolioEntity.builder()
@@ -56,6 +61,7 @@ public class PortfolioEntity {
                 .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
                         Ticker.of(assetEntity.getTicker()),
                         assetEntity.getFullName(),
+                        Segment.of(assetEntity.getSegment()),
                         SubName.of(assetEntity.getSubName()),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),

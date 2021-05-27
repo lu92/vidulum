@@ -39,6 +39,13 @@ public class QuotationService {
         return findBrokerOrRaiseException(broker, brokerProvider -> brokerProvider.fetchBasicInfoAboutAsset(ticker));
     }
 
+    public void registerAssetBasicInfo(Broker broker, AssetBasicInfo assetBasicInfo) {
+        findBrokerOrRaiseException(broker, brokerQuotationProvider -> {
+            brokerQuotationProvider.registerBasicInfoAboutAsset(assetBasicInfo);
+            return null;
+        });
+    }
+
     private <R> R findBrokerOrRaiseException(Broker broker, Function<BrokerQuotationProvider, R> callback) {
         if (registeredBrokers.containsKey(broker)) {
             BrokerQuotationProvider brokerQuotationProvider = registeredBrokers.get(broker);
@@ -46,5 +53,11 @@ public class QuotationService {
         } else {
             throw new BrokerNotFoundException(broker);
         }
+    }
+
+    public void clearCaches() {
+        registeredBrokers.values().forEach(brokerQuotationProvider -> {
+            brokerQuotationProvider.clearCaches();
+        });
     }
 }

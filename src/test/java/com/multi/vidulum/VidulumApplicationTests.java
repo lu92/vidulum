@@ -8,6 +8,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
@@ -74,7 +75,6 @@ class VidulumApplicationTests {
     @Autowired
     private DomainPortfolioRepository portfolioRepository;
 
-
     @Autowired
     private DomainTradeRepository tradeRepository;
 
@@ -84,11 +84,11 @@ class VidulumApplicationTests {
     @Autowired
     private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
 
-
     @Before
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
+        quoteRestController.clearCaches();
     }
 
 
@@ -176,6 +176,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(40000))
@@ -184,6 +185,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
                                 .fullName("Not found")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
@@ -293,6 +295,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(120000))
@@ -470,6 +473,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
                                 .fullName("")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(88100.0))
@@ -478,6 +482,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
                                 .fullName("Not found")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(40000, "USD"))
                                 .quantity(Quantity.of(0.20000000000000004))
@@ -486,6 +491,7 @@ class VidulumApplicationTests {
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
                                 .fullName("Not found")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(3000, "USD"))
                                 .quantity(Quantity.of(1.3))
@@ -504,6 +510,12 @@ class VidulumApplicationTests {
     void shouldPersistPortfolioForPreciousMetals() {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("PM", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("XAU")
+                .fullName("Gold")
+                .segment("Precious Metals")
+                .tags(List.of("Gold", "Precious Metals"))
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -600,23 +612,26 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .fullName("Not found")
+                                .fullName("Gold")
+                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Money.of(1756, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
-                                .tags(List.of())
+                                .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .fullName("Not found")
+                                .fullName("Gold")
+                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Krugerrand"))
                                 .avgPurchasePrice(Money.of(1880, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
-                                .tags(List.of())
+                                .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
                                 .fullName("Not found")
+                                .segment(Segment.unknown())
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(1880, "Number"))

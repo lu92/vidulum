@@ -57,4 +57,14 @@ public abstract class BrokerQuotationProvider {
             return AssetBasicInfo.notFound(ticker);
         }
     }
+
+    public void registerBasicInfoAboutAsset(AssetBasicInfo assetBasicInfo) {
+        basicInfo.put(assetBasicInfo.getTicker(), assetBasicInfo);
+        log.info("Basic Info for [{}] updated: [{}]", assetBasicInfo.getTicker(), assetBasicInfo);
+    }
+
+    public void clearCaches() {
+        cache.clear();
+        basicInfo.clear();
+    }
 }

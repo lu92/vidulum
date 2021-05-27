@@ -11,6 +11,7 @@ import java.util.List;
 public class Asset implements Valuable {
     private Ticker ticker;
     private String fullName;
+    private Segment segment;
     private SubName subName;
     private Money avgPurchasePrice;
     private Quantity quantity;
