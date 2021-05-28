@@ -135,7 +135,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    public void depositMoney(Money deposit) {
+    public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
         Ticker ticker = Ticker.of(deposit.getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
             Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + deposit.getAmount().doubleValue());
@@ -143,11 +143,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
-                    .fullName("")
+                    .fullName(cashBasicInfo.getFullName())
                     .subName(SubName.none())
+                    .segment(cashBasicInfo.getSegment())
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
-                    .tags(List.of("currency", deposit.getCurrency()))
+                    .tags(cashBasicInfo.getTags())
                     .build();
             assets.add(cash);
         });
