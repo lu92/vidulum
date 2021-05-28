@@ -4,8 +4,10 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Quantity;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
+import java.util.Map;
 
 public class PortfolioDto {
 
@@ -33,6 +35,7 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @EqualsAndHashCode
     public static class AssetSummaryJson {
         private String ticker;
         private String fullName;
@@ -64,7 +67,7 @@ public class PortfolioDto {
     @Builder
     public static class AggregatedPortfolioSummaryJson {
         private String userId;
-        private List<PortfolioSummaryJson> portfolios;
+        private Map<String, List<AssetSummaryJson>> segmentedAssets;
         private Money investedBalance;
         private Money currentValue;
         private double pctProfit;

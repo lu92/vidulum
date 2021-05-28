@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app.queries;
 
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Segment;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -9,6 +10,7 @@ import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +35,8 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                 .reduce(
                         AggregatedPortfolio.builder()
                                 .userId(query.getUserId())
+                                .segmentedAssets(new HashMap<>())
+                                .investedBalance(Money.zero("USD"))
                                 .build(),
                         (aggregatedPortfolio, portfolio) -> {
 
@@ -41,7 +45,9 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                                     .collect(groupingBy(Asset::getSegment));
 
                             // append assets to aggregated-portfolio by segment
-                            segmentedAssets.forEach(aggregatedPortfolio::addAssets);
+                            segmentedAssets.forEach((segment, assets) -> {
+                                aggregatedPortfolio.addAssets(segment, portfolio.getBroker(), assets);
+                            });
 
                             // increase number of invested money
                             aggregatedPortfolio.appendInvestedMoney(portfolio.getInvestedBalance());

@@ -36,6 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -516,6 +517,12 @@ class VidulumApplicationTests {
                 .segment("Precious Metals")
                 .tags(List.of("Gold", "Precious Metals"))
                 .build());
+        quoteRestController.registerAssetBasicInfo("PM", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -545,6 +552,7 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
+
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
@@ -564,7 +572,7 @@ class VidulumApplicationTests {
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(3636 + 1880, "USD"))
+                        .money(Money.of(2*1800 + 1820, "USD"))
                         .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
@@ -575,7 +583,7 @@ class VidulumApplicationTests {
                 .subName("Maple Leaf")
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
-                .price(Money.of(1818, "USD"))
+                .price(Money.of(1800, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
@@ -588,7 +596,7 @@ class VidulumApplicationTests {
                 .subName("Krugerrand")
                 .side(BUY)
                 .quantity(Quantity.of(1, "oz"))
-                .price(Money.of(1880, "USD"))
+                .price(Money.of(1820, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
@@ -600,7 +608,7 @@ class VidulumApplicationTests {
                 .subName("Maple Leaf")
                 .side(SELL)
                 .quantity(Quantity.of(1, "oz"))
-                .price(Money.of(1880, "USD"))
+                .price(Money.of(1850, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
                 .build());
 
@@ -615,7 +623,7 @@ class VidulumApplicationTests {
                                 .fullName("Gold")
                                 .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
-                                .avgPurchasePrice(Money.of(1756, "USD"))
+                                .avgPurchasePrice(Money.of(1750, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
                                 .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
@@ -624,21 +632,21 @@ class VidulumApplicationTests {
                                 .fullName("Gold")
                                 .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Krugerrand"))
-                                .avgPurchasePrice(Money.of(1880, "USD"))
+                                .avgPurchasePrice(Money.of(1820, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
                                 .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .fullName("Not found")
-                                .segment(Segment.unknown())
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(Quantity.of(1880, "Number"))
+                                .quantity(Quantity.of(1850, "Number"))
                                 .tags(List.of())
                                 .build()
                 ))
-                .investedBalance(Money.of(3636 + 1880, "USD"))
+                .investedBalance(Money.of(2*1800 + 1820, "USD"))
                 .build();
 
         Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
@@ -655,5 +663,55 @@ class VidulumApplicationTests {
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         System.out.println(lastTwoTrades);
         Assertions.assertThat(lastTwoTrades).hasSize(2);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(registeredPreciousMetalsPortfolio.getUserId())
+                .segmentedAssets(Map.of(
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(1850))
+                                        .tags(List.of())
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(1850, "USD"))
+                                        .build()),
+                        "Precious Metals", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("XAU")
+                                        .fullName("Gold")
+                                        .avgPurchasePrice(Money.of(1750,"USD"))
+                                        .quantity(Quantity.of(1, "oz"))
+                                        .tags(List.of("Gold", "Precious Metals"))
+                                        .pctProfit(0.02857142)
+                                        .profit(Money.of(50, "USD"))
+                                        .currentPrice(Money.of(1800, "USD"))
+                                        .currentValue(Money.of(1800, "USD"))
+                                        .build(),
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("XAU")
+                                        .fullName("Gold")
+                                        .avgPurchasePrice(Money.of(1820,"USD"))
+                                        .quantity(Quantity.of(1, "oz"))
+                                        .tags(List.of("Gold", "Precious Metals"))
+                                        .pctProfit(-0.01098902)
+                                        .profit(Money.of(-20, "USD"))
+                                        .currentPrice(Money.of(1800, "USD"))
+                                        .currentValue(Money.of(1800, "USD"))
+                                        .build())))
+                .investedBalance(Money.of(2*1800 + 1820, "USD"))
+                .currentValue(Money.of(2*1800+1850, "USD"))
+                .pctProfit(-0.99446495)
+                .profit(Money.of(30, "USD"))
+                .build();
+
+        System.out.println(aggregatedPortfolioJson);
+        Assertions.assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
     }
 }

@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app.queries;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -8,8 +9,13 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Set;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 @Component
 @AllArgsConstructor
@@ -21,7 +27,7 @@ public class PortfolioSummaryMapper {
         List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
                 .stream()
                 .map(asset -> mapAsset(portfolio.getBroker(), asset))
-                .collect(Collectors.toList());
+                .collect(toList());
 
 
         Money currentValue = assets.stream().reduce(
@@ -48,6 +54,50 @@ public class PortfolioSummaryMapper {
                 .profit(profit)
                 .pctProfit(pctProfit)
                 .build();
+    }
+
+    public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
+        Set<Segment> segments = aggregatedPortfolio.getSegmentedAssets().keySet();
+        Map<String, List<PortfolioDto.AssetSummaryJson>> mappedAssets = segments.stream()
+                .collect(toMap(Segment::getName, segment -> {
+                    Map<Broker, List<Asset>> domainAssets = aggregatedPortfolio.getSegmentedAssets().get(segment);
+                    return domainAssets.entrySet().stream()
+                            .map(entry -> {
+                                Broker broker = entry.getKey();
+                                List<Asset> assets = entry.getValue();
+                                return mapAssets(broker, assets);
+                            })
+                            .flatMap(Collection::stream)
+                            .collect(toList());
+                }));
+
+        Money profit = mappedAssets.values().stream().flatMap(Collection::stream)
+                .map(PortfolioDto.AssetSummaryJson::getProfit)
+                .reduce(Money.zero("USD"), Money::plus);
+
+        Money currentValue = mappedAssets.values().stream().flatMap(Collection::stream)
+                .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
+                .reduce(Money.zero("USD"), Money::plus);
+
+
+        double pctProfit = Money.zero("USD").equals(aggregatedPortfolio.getInvestedBalance()) ?
+                0 :
+                profit.diffPct(aggregatedPortfolio.getInvestedBalance());
+
+
+        return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(aggregatedPortfolio.getUserId().getId())
+                .segmentedAssets(mappedAssets)
+                .investedBalance(aggregatedPortfolio.getInvestedBalance())
+                .currentValue(currentValue)
+                .pctProfit(pctProfit)
+                .profit(profit)
+                .build();
+    }
+
+
+    private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets) {
+        return assets.stream().map(asset -> mapAsset(broker, asset)).collect(toList());
     }
 
     private PortfolioDto.AssetSummaryJson mapAsset(Broker broker, Asset asset) {
