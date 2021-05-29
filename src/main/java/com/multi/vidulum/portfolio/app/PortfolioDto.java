@@ -41,12 +41,12 @@ public class PortfolioDto {
         private String fullName;
         private Money avgPurchasePrice;
         private Quantity quantity;
-        private List<String> tags;
 
         private double pctProfit;
         private Money profit;
         private Money currentPrice;
         private Money currentValue;
+        private List<String> tags;
     }
 
     @Data

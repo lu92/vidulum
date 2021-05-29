@@ -57,10 +57,11 @@ public class PortfolioSummaryMapper {
     }
 
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
-        Set<Segment> segments = aggregatedPortfolio.getSegmentedAssets().keySet();
+        Map<Segment, Map<Broker, List<Asset>>> segmentedAssets = aggregatedPortfolio.fetchSegmentedAssets();
+        Set<Segment> segments = segmentedAssets.keySet();
         Map<String, List<PortfolioDto.AssetSummaryJson>> mappedAssets = segments.stream()
                 .collect(toMap(Segment::getName, segment -> {
-                    Map<Broker, List<Asset>> domainAssets = aggregatedPortfolio.getSegmentedAssets().get(segment);
+                    Map<Broker, List<Asset>> domainAssets = segmentedAssets.get(segment);
                     return domainAssets.entrySet().stream()
                             .map(entry -> {
                                 Broker broker = entry.getKey();
@@ -79,11 +80,9 @@ public class PortfolioSummaryMapper {
                 .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
                 .reduce(Money.zero("USD"), Money::plus);
 
-
         double pctProfit = Money.zero("USD").equals(aggregatedPortfolio.getInvestedBalance()) ?
                 0 :
-                profit.diffPct(aggregatedPortfolio.getInvestedBalance());
-
+                currentValue.diffPct(aggregatedPortfolio.getInvestedBalance());
 
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
