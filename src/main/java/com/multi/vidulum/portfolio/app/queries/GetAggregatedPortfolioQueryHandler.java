@@ -36,7 +36,6 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                         AggregatedPortfolio.builder()
                                 .userId(query.getUserId())
                                 .segmentedAssets(new HashMap<>())
-                                .xxx(new HashMap<>())
                                 .investedBalance(Money.zero("USD"))
                                 .build(),
                         (aggregatedPortfolio, portfolio) -> {
