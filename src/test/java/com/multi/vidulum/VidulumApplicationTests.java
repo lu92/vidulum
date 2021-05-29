@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
@@ -86,6 +87,8 @@ class VidulumApplicationTests {
 
     @Autowired
     private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
+
+    private JsonFormatter jsonFormatter = new JsonFormatter();
 
     @Before
     void cleanUp() {
@@ -135,7 +138,7 @@ class VidulumApplicationTests {
                 .portolioIds(List.of())
                 .build();
 
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
@@ -171,7 +174,7 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
@@ -204,9 +207,9 @@ class VidulumApplicationTests {
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(1);
+        assertThat(allTrades).hasSize(1);
     }
 
     @Test
@@ -248,7 +251,7 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
@@ -297,7 +300,7 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
@@ -320,9 +323,9 @@ class VidulumApplicationTests {
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(2);
+        assertThat(allTrades).hasSize(2);
     }
 
     @Test
@@ -366,7 +369,7 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
@@ -480,10 +483,8 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
-        System.out.println(portfolio);
-
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
@@ -522,9 +523,22 @@ class VidulumApplicationTests {
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(8);
+        assertThat(allTrades).hasSize(8);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of())
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(100000.0, "USD"))
+//                .profit()
+//                .pctProfit()
+                .build();
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+//        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
     }
 
     @Test
@@ -580,7 +594,7 @@ class VidulumApplicationTests {
                 .portolioIds(List.of())
                 .build();
 
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
@@ -753,26 +767,26 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
+        assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
 
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPreciousMetalsPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(4);
+        assertThat(allTrades).hasSize(4);
 
         List<TradingDto.TradeSummaryJson> lastTwoTrades = tradingRestController.getTradesInDateRange(
                 createdUserJson.getUserId(),
                 registeredPreciousMetalsPortfolio.getPortfolioId(),
                 ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
-        Assertions.assertThat(lastTwoTrades).hasSize(3);
+        assertThat(lastTwoTrades).hasSize(3);
 
 
         Optional<Portfolio> optionalPortfolio2 = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio2.get()).isEqualTo(expectedPortfolio2);
+        assertThat(optionalPortfolio2.get()).isEqualTo(expectedPortfolio2);
 
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
 
-        log.info("Aggregated Portfolio: {}", new ObjectMapper().writeValueAsString(aggregatedPortfolioJson));
+        log.info("Aggregated Portfolio: {}", jsonFormatter.formatToJson(aggregatedPortfolioJson));
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(registeredPreciousMetalsPortfolio.getUserId())
@@ -818,6 +832,6 @@ class VidulumApplicationTests {
                 .pctProfit(0.00760719)
                 .build();
 
-        Assertions.assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
     }
 }
