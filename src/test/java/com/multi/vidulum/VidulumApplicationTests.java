@@ -19,7 +19,6 @@ import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,6 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -107,6 +105,12 @@ class VidulumApplicationTests {
                 .fullName("American Dollar")
                 .segment("Cash")
                 .tags(List.of())
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("BTC")
+                .fullName("Bitcoin")
+                .segment("Crypto")
+                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                 .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
@@ -196,12 +200,12 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .fullName("Not found")
-                                .segment(Segment.unknown())
+                                .fullName("Bitcoin")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
-                                .tags(List.of())
+                                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
@@ -210,6 +214,44 @@ class VidulumApplicationTests {
         assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(1);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of(
+                        "Crypto", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("BTC")
+                                        .fullName("Bitcoin")
+                                        .avgPurchasePrice(Money.of(60000.0, "USD"))
+                                        .quantity(Quantity.of(1))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(60000.0, "USD"))
+                                        .currentValue(Money.of(60000.0, "USD"))
+                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                        .build()),
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(40000.0))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(40000.0, "USD"))
+                                        .tags(List.of())
+                                        .build())))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(100000.0, "USD"))
+                .profit(Money.zero("USD"))
+                .pctProfit(0)
+                .build();
+
+        assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
     }
 
     @Test
@@ -620,7 +662,7 @@ class VidulumApplicationTests {
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(2*1800 + 1820, "USD"))
+                        .money(Money.of(2 * 1800 + 1820, "USD"))
                         .build());
 
         portfolioRestController.depositMoney(
@@ -720,7 +762,7 @@ class VidulumApplicationTests {
                                 .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
-                                .quantity(Quantity.of(1850-450, "Number"))
+                                .quantity(Quantity.of(1850 - 450, "Number"))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
@@ -733,7 +775,7 @@ class VidulumApplicationTests {
                                 .tags(List.of("Silver", "Precious Metals"))
                                 .build()
                 ))
-                .investedBalance(Money.of(2*1800 + 1820, "USD"))
+                .investedBalance(Money.of(2 * 1800 + 1820, "USD"))
                 .build();
 
         Portfolio expectedPortfolio2 = Portfolio.builder()
@@ -807,7 +849,7 @@ class VidulumApplicationTests {
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("XAG")
                                         .fullName("Silver")
-                                        .avgPurchasePrice(Money.of(90,"USD"))
+                                        .avgPurchasePrice(Money.of(90, "USD"))
                                         .quantity(Quantity.of(5, "oz"))
                                         .pctProfit(0.05555555)
                                         .profit(Money.of(25, "USD"))
@@ -818,7 +860,7 @@ class VidulumApplicationTests {
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("XAU")
                                         .fullName("Gold")
-                                        .avgPurchasePrice(Money.of(1790,"USD"))
+                                        .avgPurchasePrice(Money.of(1790, "USD"))
                                         .quantity(Quantity.of(3, "oz"))
                                         .pctProfit(0.00558659)
                                         .profit(Money.of(30, "USD"))
