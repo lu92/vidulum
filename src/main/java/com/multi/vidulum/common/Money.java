@@ -68,4 +68,8 @@ public class Money {
     public int hashCode() {
         return Objects.hash(amount.doubleValue(), currency);
     }
+
+    public Money withScale(int scale) {
+        return new Money(new BigDecimal(amount.toString()).setScale(scale, RoundingMode.HALF_UP), currency);
+    }
 }

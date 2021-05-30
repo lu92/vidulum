@@ -32,6 +32,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
                         asset.getFullName(),
+                        asset.getSegment(),
                         asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
@@ -53,6 +54,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
                         assetSnapshot.getFullName(),
+                        assetSnapshot.getSegment(),
                         assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
@@ -103,6 +105,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .ticker(assetBasicInfo.getTicker())
                             .fullName(assetBasicInfo.getFullName())
                             .subName(purchasedPortion.getSubName())
+                            .segment(assetBasicInfo.getSegment())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .tags(assetBasicInfo.getTags())
@@ -132,7 +135,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    public void depositMoney(Money deposit) {
+    public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
         Ticker ticker = Ticker.of(deposit.getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
             Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + deposit.getAmount().doubleValue());
@@ -140,11 +143,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
-                    .fullName("")
+                    .fullName(cashBasicInfo.getFullName())
                     .subName(SubName.none())
+                    .segment(cashBasicInfo.getSegment())
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
-                    .tags(List.of("currency", deposit.getCurrency()))
+                    .tags(cashBasicInfo.getTags())
                     .build();
             assets.add(cash);
         });

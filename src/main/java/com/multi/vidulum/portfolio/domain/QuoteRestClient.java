@@ -9,4 +9,6 @@ public interface QuoteRestClient {
     AssetPriceMetadata fetch(Broker broker, Symbol symbol);
 
     AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker);
+
+    void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo);
 }

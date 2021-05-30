@@ -15,8 +15,6 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @AllArgsConstructor
 public class PortfolioRestController {
@@ -70,8 +68,7 @@ public class PortfolioRestController {
         GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
                 .userId(UserId.of(userId))
                 .build();
-
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
-        return null;
+        return portfolioSummaryMapper.map(aggregatedPortfolio);
     }
 }

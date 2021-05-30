@@ -1,17 +1,17 @@
 package com.multi.vidulum.quotation.app;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.ZonedDateTime;
 
+@Slf4j
 @RestController
 @AllArgsConstructor
 public class QuoteRestController {
@@ -27,8 +27,19 @@ public class QuoteRestController {
         return quotationService.fetch(Broker.of(broker), Symbol.of(Ticker.of(origin), Ticker.of(destination)));
     }
 
+    @PutMapping(value = "/quote/{broker}/")
+    public void registerAssetBasicInfo(@PathVariable("broker") String broker, @RequestBody QuotationDto.AssetBasicInfoJson assetBasicInfoJson) {
+        AssetBasicInfo assetBasicInfo = AssetBasicInfo.builder()
+                .ticker(Ticker.of(assetBasicInfoJson.getTicker()))
+                .fullName(assetBasicInfoJson.getFullName())
+                .segment(Segment.of(assetBasicInfoJson.getSegment()))
+                .tags(assetBasicInfoJson.getTags())
+                .build();
+        quotationService.registerAssetBasicInfo(Broker.of(broker), assetBasicInfo);
+    }
+
     @GetMapping(value = "/quote/publish")
-    public void changePrice(@RequestParam String broker,  String origin, String destination, double amount, String currency, double pctChange) {
+    public void changePrice(@RequestParam String broker, String origin, String destination, double amount, String currency, double pctChange) {
         PriceChangedEvent priceChangedEvent = PriceChangedEvent.builder()
                 .broker(Broker.of(broker))
                 .symbol(Symbol.of(Ticker.of(origin), Ticker.of(destination)))
@@ -37,5 +48,12 @@ public class QuoteRestController {
                 .dateTime(ZonedDateTime.now())
                 .build();
         pricingKafkaTemplate.send("quotes", priceChangedEvent);
+    }
+
+    @GetMapping(value = "/quote/clearCaches")
+    public void clearCaches() {
+        quotationService.clearCaches();
+        log.info("Caches have been cleared");
+
     }
 }

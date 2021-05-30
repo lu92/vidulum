@@ -25,4 +25,9 @@ public class QuoteRestClientAdapter implements QuoteRestClient {
     public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
         return quotationService.fetchBasicInfoAboutAsset(broker, ticker);
     }
+
+    @Override
+    public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
+        quotationService.registerAssetBasicInfo(broker, assetBasicInfo);
+    }
 }

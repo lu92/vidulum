@@ -8,6 +8,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
@@ -18,7 +19,6 @@ import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.jupiter.api.Test;
@@ -32,15 +32,18 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
@@ -74,7 +77,6 @@ class VidulumApplicationTests {
     @Autowired
     private DomainPortfolioRepository portfolioRepository;
 
-
     @Autowired
     private DomainTradeRepository tradeRepository;
 
@@ -84,11 +86,13 @@ class VidulumApplicationTests {
     @Autowired
     private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
 
+    private JsonFormatter jsonFormatter = new JsonFormatter();
 
     @Before
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
+        quoteRestController.clearCaches();
     }
 
 
@@ -96,6 +100,18 @@ class VidulumApplicationTests {
     void shouldBuyBitcoinTest() {
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("BTC")
+                .fullName("Bitcoin")
+                .segment("Crypto")
+                .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -126,7 +142,7 @@ class VidulumApplicationTests {
                 .portolioIds(List.of())
                 .build();
 
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
@@ -162,7 +178,7 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
@@ -175,33 +191,79 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .fullName("")
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(40000))
-                                .tags(List.of("currency", "USD"))
+                                .tags(List.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .fullName("Not found")
+                                .fullName("Bitcoin")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
-                                .tags(List.of())
+                                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(1);
+        assertThat(allTrades).hasSize(1);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of(
+                        "Crypto", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("BTC")
+                                        .fullName("Bitcoin")
+                                        .avgPurchasePrice(Money.of(60000.0, "USD"))
+                                        .quantity(Quantity.of(1))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(60000.0, "USD"))
+                                        .currentValue(Money.of(60000.0, "USD"))
+                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                        .build()),
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(40000.0))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(40000.0, "USD"))
+                                        .tags(List.of())
+                                        .build())))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(100000.0, "USD"))
+                .totalProfit(Money.zero("USD"))
+                .pctProfit(0)
+                .build();
+
+        assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
     }
 
     @Test
     void buyAndSellImmediatelyBitcoinTest() {
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -231,7 +293,7 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
@@ -280,7 +342,7 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
@@ -292,19 +354,47 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .fullName("")
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(120000))
-                                .tags(List.of("currency", "USD"))
+                                .tags(List.of())
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(2);
+        assertThat(allTrades).hasSize(2);
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+
+        log.info("Aggregated portfolio:\n {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregagedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of(
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(120000.0))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(120000.0, "USD"))
+                                        .tags(List.of())
+                                        .build())))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(120000.0, "USD"))
+                .totalProfit(Money.of(20000.0, "USD"))
+                .pctProfit(0.2)
+                .build();
+        assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
+
     }
 
     @Test
@@ -313,6 +403,24 @@ class VidulumApplicationTests {
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "ETH", "USD", 2850, "USD", 1.09);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("BTC")
+                .fullName("Bitcoin")
+                .segment("Crypto")
+                .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("ETH")
+                .fullName("Ethereum")
+                .segment("Crypto")
+                .tags(List.of("Ethereum", "Crypto", "ETH"))
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -342,7 +450,7 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
@@ -456,10 +564,8 @@ class VidulumApplicationTests {
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        Assertions.assertThat(optionalPortfolio.isPresent()).isTrue();
+        assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
-        System.out.println(portfolio);
-
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
@@ -469,41 +575,113 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .fullName("")
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(88100.0))
-                                .tags(List.of("currency", "USD"))
+                                .tags(List.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .fullName("Not found")
+                                .fullName("Bitcoin")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(40000, "USD"))
                                 .quantity(Quantity.of(0.20000000000000004))
-                                .tags(List.of())
+                                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
-                                .fullName("Not found")
+                                .fullName("Ethereum")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(3000, "USD"))
                                 .quantity(Quantity.of(1.3))
-                                .tags(List.of())
+                                .tags(List.of("Ethereum", "Crypto", "ETH"))
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
-        Assertions.assertThat(portfolio).isEqualTo(expectedPortfolio);
+        assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(8);
+        assertThat(allTrades).hasSize(8);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        log.info("Aggregated portfolio:\n{}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of("Cash", List.of(
+                        PortfolioDto.AssetSummaryJson.builder()
+                                .ticker("USD")
+                                .fullName("American Dollar")
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(88100.0))
+                                .pctProfit(0)
+                                .profit(Money.of(0,"USD"))
+                                .currentPrice(Money.of(1, "USD"))
+                                .currentValue(Money.of(88100.0000, "USD"))
+                                .tags(List.of())
+                                .build()),
+                        "Crypto", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("ETH")
+                                        .fullName("Ethereum")
+                                        .avgPurchasePrice(Money.of(3000.0000, "USD"))
+                                        .quantity(Quantity.of(1.3))
+                                        .pctProfit(-0.05)
+                                        .profit(Money.of(-195.0,"USD"))
+                                        .currentPrice(Money.of(2850.0000, "USD"))
+                                        .currentValue(Money.of(3705.0000, "USD"))
+                                        .tags(List.of("Ethereum", "Crypto", "ETH"))
+                                        .build(),
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("BTC")
+                                        .fullName("Bitcoin")
+                                        .avgPurchasePrice(Money.of(40000.0000, "USD"))
+                                        .quantity(Quantity.of(0.20000000000000004))
+                                        .pctProfit(0.5)
+                                        .profit(Money.of(4000.0000,"USD"))
+                                        .currentPrice(Money.of(60000.0000, "USD"))
+                                        .currentValue(Money.of(12000.0000, "USD"))
+                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                        .build())
+                ))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(103805, "USD"))
+                .totalProfit(Money.of(3805.0000, "USD"))
+                .pctProfit(0.03805)
+                .build();
+
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
     }
 
     @Test
-    void shouldPersistPortfolioForPreciousMetals() {
+    void shouldPersistPortfolioForPreciousMetals() throws JsonProcessingException {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
+        quoteRestController.changePrice("PM", "XAG", "USD", 95, "USD", 0);
         quoteRestController.changePrice("PM", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("PM", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("XAU")
+                .fullName("Gold")
+                .segment("Precious Metals")
+                .tags(List.of("Gold", "Precious Metals"))
+                .build());
+        quoteRestController.registerAssetBasicInfo("PM", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("XAG")
+                .fullName("Silver")
+                .segment("Precious Metals")
+                .tags(List.of("Silver", "Precious Metals"))
+                .build());
+        quoteRestController.registerAssetBasicInfo("PM", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -533,11 +711,19 @@ class VidulumApplicationTests {
                 .isActive(true)
                 .portolioIds(List.of())
                 .build();
-        Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
+
+        assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
         UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals")
+                        .name("Precious Metals 1")
+                        .broker("PM")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("Precious Metals 2")
                         .broker("PM")
                         .userId(persistedUser.getUserId())
                         .build());
@@ -552,7 +738,13 @@ class VidulumApplicationTests {
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(3636 + 1880, "USD"))
+                        .money(Money.of(2 * 1800 + 1820, "USD"))
+                        .build());
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
+                        .money(Money.of(1810, "USD"))
                         .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
@@ -563,7 +755,7 @@ class VidulumApplicationTests {
                 .subName("Maple Leaf")
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
-                .price(Money.of(1818, "USD"))
+                .price(Money.of(1800, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
@@ -576,7 +768,7 @@ class VidulumApplicationTests {
                 .subName("Krugerrand")
                 .side(BUY)
                 .quantity(Quantity.of(1, "oz"))
-                .price(Money.of(1880, "USD"))
+                .price(Money.of(1820, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
@@ -588,57 +780,176 @@ class VidulumApplicationTests {
                 .subName("Maple Leaf")
                 .side(SELL)
                 .quantity(Quantity.of(1, "oz"))
-                .price(Money.of(1880, "USD"))
+                .price(Money.of(1850, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
+                .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade4")
+                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("XAG/USD")
+                .subName("Maple Leaf")
+                .side(BUY)
+                .quantity(Quantity.of(5, "oz"))
+                .price(Money.of(90, "USD"))
+                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
+                .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("pm-trade5")
+                .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("XAU/USD")
+                .subName("Maple Leaf")
+                .side(BUY)
+                .quantity(Quantity.of(1, "oz"))
+                .price(Money.of(1800, "USD"))
+                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
                 .userId(UserId.of(persistedUser.getUserId()))
-                .name("Precious Metals")
+                .name("Precious Metals 1")
                 .broker(Broker.of("PM"))
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .fullName("Not found")
+                                .fullName("Gold")
+                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
-                                .avgPurchasePrice(Money.of(1756, "USD"))
+                                .avgPurchasePrice(Money.of(1750, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
+                                .tags(List.of("Gold", "Precious Metals"))
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("XAU"))
+                                .fullName("Gold")
+                                .segment(Segment.of("Precious Metals"))
+                                .subName(SubName.of("Krugerrand"))
+                                .avgPurchasePrice(Money.of(1820, "USD"))
+                                .quantity(Quantity.of(1, "oz"))
+                                .tags(List.of("Gold", "Precious Metals"))
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(1850 - 450, "Number"))
+                                .tags(List.of())
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("XAG"))
+                                .fullName("Silver")
+                                .segment(Segment.of("Precious Metals"))
+                                .subName(SubName.of("Maple Leaf"))
+                                .avgPurchasePrice(Money.of(90, "USD"))
+                                .quantity(Quantity.of(5, "oz"))
+                                .tags(List.of("Silver", "Precious Metals"))
+                                .build()
+                ))
+                .investedBalance(Money.of(2 * 1800 + 1820, "USD"))
+                .build();
+
+        Portfolio expectedPortfolio2 = Portfolio.builder()
+                .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()))
+                .userId(UserId.of(persistedUser.getUserId()))
+                .name("Precious Metals 2")
+                .broker(Broker.of("PM"))
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(10, "Number"))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .fullName("Not found")
-                                .subName(SubName.of("Krugerrand"))
-                                .avgPurchasePrice(Money.of(1880, "USD"))
+                                .fullName("Gold")
+                                .segment(Segment.of("Precious Metals"))
+                                .subName(SubName.of("Maple Leaf"))
+                                .avgPurchasePrice(Money.of(1800, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
-                                .tags(List.of())
-                                .build(),
-                        Asset.builder()
-                                .ticker(Ticker.of("USD"))
-                                .fullName("Not found")
-                                .subName(SubName.none())
-                                .avgPurchasePrice(Money.one("USD"))
-                                .quantity(Quantity.of(1880, "Number"))
-                                .tags(List.of())
+                                .tags(List.of("Gold", "Precious Metals"))
                                 .build()
                 ))
-                .investedBalance(Money.of(3636 + 1880, "USD"))
+                .investedBalance(Money.of(1810, "USD"))
                 .build();
 
-        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
+        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
-        System.out.println(optionalPortfolio.get());
-        Assertions.assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
+        assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
+
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPreciousMetalsPortfolio.getPortfolioId());
-        Assertions.assertThat(allTrades).hasSize(3);
+        assertThat(allTrades).hasSize(4);
+
         List<TradingDto.TradeSummaryJson> lastTwoTrades = tradingRestController.getTradesInDateRange(
                 createdUserJson.getUserId(),
                 registeredPreciousMetalsPortfolio.getPortfolioId(),
                 ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
-        System.out.println(lastTwoTrades);
-        Assertions.assertThat(lastTwoTrades).hasSize(2);
+        assertThat(lastTwoTrades).hasSize(3);
+
+
+        Optional<Portfolio> optionalPortfolio2 = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()));
+        assertThat(optionalPortfolio2.get()).isEqualTo(expectedPortfolio2);
+
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
+
+        log.info("Aggregated Portfolio: {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolioJson));
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(registeredPreciousMetalsPortfolio.getUserId())
+                .segmentedAssets(Map.of(
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(1410))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(1410, "USD"))
+                                        .tags(List.of())
+                                        .build()),
+                        "Precious Metals", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("XAG")
+                                        .fullName("Silver")
+                                        .avgPurchasePrice(Money.of(90, "USD"))
+                                        .quantity(Quantity.of(5, "oz"))
+                                        .pctProfit(0.05555555)
+                                        .profit(Money.of(25, "USD"))
+                                        .currentPrice(Money.of(95, "USD"))
+                                        .currentValue(Money.of(475, "USD"))
+                                        .tags(List.of("Silver", "Precious Metals"))
+                                        .build(),
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("XAU")
+                                        .fullName("Gold")
+                                        .avgPurchasePrice(Money.of(1790, "USD"))
+                                        .quantity(Quantity.of(3, "oz"))
+                                        .pctProfit(0.00558659)
+                                        .profit(Money.of(30, "USD"))
+                                        .currentPrice(Money.of(1800, "USD"))
+                                        .currentValue(Money.of(5400, "USD"))
+                                        .tags(List.of("Gold", "Precious Metals"))
+                                        .build())))
+                .investedBalance(Money.of(7230, "USD"))
+                .currentValue(Money.of(7285, "USD"))
+                .totalProfit(Money.of(55, "USD"))
+                .pctProfit(0.00760719)
+                .build();
+
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
     }
 }

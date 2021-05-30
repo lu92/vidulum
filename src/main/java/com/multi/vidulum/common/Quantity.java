@@ -20,6 +20,14 @@ public class Quantity {
         return new Quantity(qty, unit);
     }
 
+    public static Quantity zero() {
+        return new Quantity(0, "Number");
+    }
+
+    public static Quantity zero(String unit) {
+        return new Quantity(0, unit);
+    }
+
     public Quantity plus(Quantity other) {
         return new Quantity(qty + other.getQty(), unit);
     }

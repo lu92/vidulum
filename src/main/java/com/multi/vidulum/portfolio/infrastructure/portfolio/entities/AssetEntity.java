@@ -12,6 +12,7 @@ import java.util.List;
 public class AssetEntity {
     String ticker;
     String fullName;
+    String segment;
     String subName;
     Money avgPurchasePrice;
     Quantity quantity;
