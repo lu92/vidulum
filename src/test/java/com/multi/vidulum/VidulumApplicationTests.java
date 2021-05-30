@@ -409,6 +409,18 @@ class VidulumApplicationTests {
                 .segment("Cash")
                 .tags(List.of())
                 .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("BTC")
+                .fullName("Bitcoin")
+                .segment("Crypto")
+                .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("ETH")
+                .fullName("Ethereum")
+                .segment("Crypto")
+                .tags(List.of("Ethereum", "Crypto", "ETH"))
+                .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
             try {
@@ -572,21 +584,21 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .fullName("Not found")
-                                .segment(Segment.unknown())
+                                .fullName("Bitcoin")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(40000, "USD"))
                                 .quantity(Quantity.of(0.20000000000000004))
-                                .tags(List.of())
+                                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
-                                .fullName("Not found")
-                                .segment(Segment.unknown())
+                                .fullName("Ethereum")
+                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(3000, "USD"))
                                 .quantity(Quantity.of(1.3))
-                                .tags(List.of())
+                                .tags(List.of("Ethereum", "Crypto", "ETH"))
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
@@ -597,17 +609,54 @@ class VidulumApplicationTests {
         assertThat(allTrades).hasSize(8);
 
 
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        log.info("Aggregated portfolio:\n{}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
+
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.getUserId())
-                .segmentedAssets(Map.of())
+                .segmentedAssets(Map.of("Cash", List.of(
+                        PortfolioDto.AssetSummaryJson.builder()
+                                .ticker("USD")
+                                .fullName("American Dollar")
+                                .avgPurchasePrice(Money.one("USD"))
+                                .quantity(Quantity.of(88100.0))
+                                .pctProfit(0)
+                                .profit(Money.of(0,"USD"))
+                                .currentPrice(Money.of(1, "USD"))
+                                .currentValue(Money.of(88100.0000, "USD"))
+                                .tags(List.of())
+                                .build()),
+                        "Crypto", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("ETH")
+                                        .fullName("Ethereum")
+                                        .avgPurchasePrice(Money.of(3000.0000, "USD"))
+                                        .quantity(Quantity.of(1.3))
+                                        .pctProfit(-0.05)
+                                        .profit(Money.of(-195.0,"USD"))
+                                        .currentPrice(Money.of(2850.0000, "USD"))
+                                        .currentValue(Money.of(3705.0000, "USD"))
+                                        .tags(List.of("Ethereum", "Crypto", "ETH"))
+                                        .build(),
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("BTC")
+                                        .fullName("Bitcoin")
+                                        .avgPurchasePrice(Money.of(40000.0000, "USD"))
+                                        .quantity(Quantity.of(0.20000000000000004))
+                                        .pctProfit(0.5)
+                                        .profit(Money.of(4000.0000,"USD"))
+                                        .currentPrice(Money.of(60000.0000, "USD"))
+                                        .currentValue(Money.of(12000.0000, "USD"))
+                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                        .build())
+                ))
                 .investedBalance(Money.of(100000.0, "USD"))
-                .currentValue(Money.of(100000.0, "USD"))
-//                .profit()
-//                .pctProfit()
+                .currentValue(Money.of(103805, "USD"))
+                .totalProfit(Money.of(3805.0000, "USD"))
+                .pctProfit(0.03805)
                 .build();
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
-//        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
     }
 
     @Test

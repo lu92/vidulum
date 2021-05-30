@@ -85,9 +85,9 @@ public class PortfolioSummaryMapper {
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
                 .segmentedAssets(mappedAssets)
-                .investedBalance(aggregatedPortfolio.getInvestedBalance())
-                .currentValue(currentValue)
-                .totalProfit(profit)
+                .investedBalance(aggregatedPortfolio.getInvestedBalance().withScale(4))
+                .currentValue(currentValue.withScale(4))
+                .totalProfit(profit.withScale(4))
                 .pctProfit(pctProfit)
                 .build();
     }
@@ -108,13 +108,13 @@ public class PortfolioSummaryMapper {
         return PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
                 .fullName(asset.getFullName())
-                .avgPurchasePrice(asset.getAvgPurchasePrice())
+                .avgPurchasePrice(asset.getAvgPurchasePrice().withScale(4))
                 .quantity(asset.getQuantity())
                 .tags(asset.getTags())
                 .pctProfit(pctProfit)
-                .profit(profit)
-                .currentPrice(assetPriceMetadata.getCurrentPrice())
-                .currentValue(currentValue)
+                .profit(profit.withScale(4))
+                .currentPrice(assetPriceMetadata.getCurrentPrice().withScale(4))
+                .currentValue(currentValue.withScale(4))
                 .build();
     }
 }
