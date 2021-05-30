@@ -6,7 +6,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 public class JsonFormatter {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public String formatToJson(Object object) {
+    public String formatToPrettyJson(Object object) {
         try {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(object);
         } catch (JsonProcessingException e) {

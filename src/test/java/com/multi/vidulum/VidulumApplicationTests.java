@@ -247,7 +247,7 @@ class VidulumApplicationTests {
                                         .build())))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(100000.0, "USD"))
-                .profit(Money.zero("USD"))
+                .totalProfit(Money.zero("USD"))
                 .pctProfit(0)
                 .build();
 
@@ -368,6 +368,33 @@ class VidulumApplicationTests {
         assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradingRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(2);
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+
+        log.info("Aggregated portfolio:\n {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregagedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of(
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(120000.0))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(120000.0, "USD"))
+                                        .tags(List.of())
+                                        .build())))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(120000.0, "USD"))
+                .totalProfit(Money.of(20000.0, "USD"))
+                .pctProfit(0.2)
+                .build();
+        assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
+
     }
 
     @Test
@@ -828,7 +855,7 @@ class VidulumApplicationTests {
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
 
-        log.info("Aggregated Portfolio: {}", jsonFormatter.formatToJson(aggregatedPortfolioJson));
+        log.info("Aggregated Portfolio: {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolioJson));
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(registeredPreciousMetalsPortfolio.getUserId())
@@ -870,7 +897,7 @@ class VidulumApplicationTests {
                                         .build())))
                 .investedBalance(Money.of(7230, "USD"))
                 .currentValue(Money.of(7285, "USD"))
-                .profit(Money.of(55, "USD"))
+                .totalProfit(Money.of(55, "USD"))
                 .pctProfit(0.00760719)
                 .build();
 

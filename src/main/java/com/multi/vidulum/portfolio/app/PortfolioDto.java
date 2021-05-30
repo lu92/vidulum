@@ -70,7 +70,7 @@ public class PortfolioDto {
         private Map<String, List<AssetSummaryJson>> segmentedAssets;
         private Money investedBalance;
         private Money currentValue;
+        private Money totalProfit;
         private double pctProfit;
-        private Money profit;
     }
 }

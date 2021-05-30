@@ -72,13 +72,11 @@ public class PortfolioSummaryMapper {
                             .collect(toList());
                 }));
 
-        Money profit = mappedAssets.values().stream().flatMap(Collection::stream)
-                .map(PortfolioDto.AssetSummaryJson::getProfit)
-                .reduce(Money.zero("USD"), Money::plus);
-
         Money currentValue = mappedAssets.values().stream().flatMap(Collection::stream)
                 .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
                 .reduce(Money.zero("USD"), Money::plus);
+
+        Money profit = currentValue.minus(aggregatedPortfolio.getInvestedBalance());
 
         double pctProfit = Money.zero("USD").equals(aggregatedPortfolio.getInvestedBalance()) ?
                 0 :
@@ -89,8 +87,8 @@ public class PortfolioSummaryMapper {
                 .segmentedAssets(mappedAssets)
                 .investedBalance(aggregatedPortfolio.getInvestedBalance())
                 .currentValue(currentValue)
+                .totalProfit(profit)
                 .pctProfit(pctProfit)
-                .profit(profit)
                 .build();
     }
 
