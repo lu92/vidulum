@@ -669,6 +669,59 @@ class VidulumApplicationTests {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
+        tradingRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+                .originOrderId("origin trade-id-2")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .symbol("BTC/USD")
+                .type(OrderType.OCO)
+                .side(SELL)
+                .targetPrice(Money.of(70000, "USD"))
+                .entryPrice(Money.of(60000, "USD"))
+                .stopLoss(Money.of(55000, "USD"))
+                .quantity(Quantity.of(0.5))
+                .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                .build());
+
+        tradingRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+                .originOrderId("origin trade-id-3")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .symbol("ETH/USD")
+                .type(OrderType.OCO)
+                .side(SELL)
+                .targetPrice(Money.of(4000, "USD"))
+                .entryPrice(Money.of(3000, "USD"))
+                .stopLoss(Money.of(2900, "USD"))
+                .quantity(Quantity.of(0.5))
+                .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                .build());
+
+
+        PortfolioDto.OpenedPositionsJson openedPositions = portfolioRestController.getOpenedPositions(registeredPortfolio.getPortfolioId());
+
+        assertThat(openedPositions.getPositionId()).isEqualTo(registeredPortfolio.getPortfolioId());
+        assertThat(openedPositions.getPositions()).containsExactlyInAnyOrder(
+                PortfolioDto.PositionSummaryJson.builder()
+                        .symbol("BTC/USD")
+                        .targetPrice(Money.of(70000, "USD"))
+                        .entryPrice(Money.of(60000, "USD"))
+                        .stopLoss(Money.of(55000, "USD"))
+                        .quantity(Quantity.of(0.5))
+                        .risk(Money.of(2500, "USD"))
+                        .reward(Money.of(5000, "USD"))
+                        .riskRewardRatio(RiskRewardRatio.of(1, 2))
+                        .build(),
+                PortfolioDto.PositionSummaryJson.builder()
+                        .symbol("ETH/USD")
+                        .targetPrice(Money.of(3750, "USD"))
+                        .entryPrice(Money.of(3000, "USD"))
+                        .stopLoss(Money.of(2800, "USD"))
+                        .quantity(Quantity.of(1))
+                        .risk(Money.of(200, "USD"))
+                        .reward(Money.of(750, "USD"))
+                        .riskRewardRatio(RiskRewardRatio.of(1, 3.75))
+                        .build()
+        );
+
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());

@@ -8,7 +8,7 @@ import java.util.List;
 
 @Value
 @Builder
-public class PortfolioStats {
+public class OpenedPositions {
     PortfolioId portfolioId;
     List<Position> positions;
 }

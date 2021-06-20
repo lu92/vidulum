@@ -7,13 +7,19 @@ import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
 import com.multi.vidulum.portfolio.app.queries.GetAggregatedPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.GetPortfolioQuery;
+import com.multi.vidulum.portfolio.app.queries.GetPositionViewOfPortfolioQuery;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 @RestController
 @AllArgsConstructor
@@ -70,5 +76,37 @@ public class PortfolioRestController {
                 .build();
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(aggregatedPortfolio);
+    }
+
+    @GetMapping("/portfolio/opened-positions/{portfolioId}")
+    public PortfolioDto.OpenedPositionsJson getOpenedPositions(@PathVariable("portfolioId") String portfolioId) {
+        GetPositionViewOfPortfolioQuery query = GetPositionViewOfPortfolioQuery.builder()
+                .portfolioId(PortfolioId.of(portfolioId))
+                .build();
+
+        OpenedPositions openedPositions = queryGateway.send(query);
+        return toJson(openedPositions);
+    }
+
+    private PortfolioDto.OpenedPositionsJson toJson(OpenedPositions openedPositions) {
+        List<PortfolioDto.PositionSummaryJson> portfolioSummaries = openedPositions
+                .getPositions()
+                .stream()
+                .map(position -> PortfolioDto.PositionSummaryJson.builder()
+                        .symbol(position.getSymbol().getId())
+                        .targetPrice(position.getTargetPrice())
+                        .entryPrice(position.getEntryPrice())
+                        .stopLoss(position.getStopLoss())
+                        .quantity(position.getQuantity())
+                        .risk(position.calculateRisk())
+                        .reward(position.calculateReward())
+                        .riskRewardRatio(position.calculateRiskRewardRatio())
+                        .build())
+                .collect(toList());
+
+        return PortfolioDto.OpenedPositionsJson.builder()
+                .positionId(openedPositions.getPortfolioId().getId())
+                .positions(portfolioSummaries)
+                .build();
     }
 }

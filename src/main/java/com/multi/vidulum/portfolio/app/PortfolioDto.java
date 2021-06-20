@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Quantity;
+import com.multi.vidulum.common.RiskRewardRatio;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -72,5 +73,25 @@ public class PortfolioDto {
         private Money currentValue;
         private Money totalProfit;
         private double pctProfit;
+    }
+
+    @Data
+    @Builder
+    public static class OpenedPositionsJson {
+        private String positionId;
+        private List<PositionSummaryJson> positions;
+    }
+
+    @Data
+    @Builder
+    public static class PositionSummaryJson {
+        String symbol;
+        Money targetPrice;
+        Money entryPrice;
+        Money stopLoss;
+        Quantity quantity;
+        Money risk;
+        Money reward;
+        RiskRewardRatio riskRewardRatio;
     }
 }
