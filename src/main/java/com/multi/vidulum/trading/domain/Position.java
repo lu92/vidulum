@@ -17,6 +17,16 @@ public class Position {
     Money stopLoss;
     Quantity quantity;
 
+    public static Position zero(Symbol symbol) {
+        return Position.builder()
+                .symbol(symbol)
+                .targetPrice(Money.zero("USD"))
+                .entryPrice(Money.zero("USD"))
+                .stopLoss(Money.zero("USD"))
+                .quantity(Quantity.zero())
+                .build();
+    }
+
     public static Position combine(Position position1, Position position2) {
         if (!position1.getSymbol().equals(position2.getSymbol())) {
             throw new IllegalArgumentException("Cannot combine positions with different symbol!");

@@ -56,11 +56,7 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                     return symbol.getOrigin();
                 }));
 
-//        sellOrders.keySet().stream().map(ticker -> {
-//            return Position.builder().build();
-//        }).collect(Collectors.toList())
-
-        Map<Symbol, Position> positionMap = portfolio.getAssets().stream()
+        return portfolio.getAssets().stream()
                 .filter(asset -> sellOrders.containsKey(asset.getTicker()))
                 .map(asset -> {
 
@@ -68,22 +64,15 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
 
                     Symbol assetSymbol = Symbol.of(asset.getTicker(), Ticker.of("USD"));
 
-                    Position result = relatedSellOrders.stream()
+                    return relatedSellOrders.stream()
                             .filter(orderSummaryJson -> Symbol.of(orderSummaryJson.getSymbol()).getDestination().equals(Ticker.of("USD")))
                             .reduce(
-                                    Position.builder()
-                                            .symbol(assetSymbol)
-                                            .targetPrice(Money.zero("USD"))
-                                            .entryPrice(Money.zero("USD"))
-                                            .stopLoss(Money.zero("USD"))
-                                            .quantity(Quantity.zero())
-                                            .build(),
+                                    Position.zero(assetSymbol),
                                     (consideredPosition, orderSummaryJson) -> {
                                         Money targetPrice = consideredPosition.getTargetValue().plus(orderSummaryJson.getTargetPrice().multiply(orderSummaryJson.getQuantity().getQty()));
                                         Money entryPrice = consideredPosition.getEntryValue().plus(orderSummaryJson.getEntryPrice().multiply(orderSummaryJson.getQuantity().getQty()));
                                         Money stopLoss = consideredPosition.getStopLossValue().plus(orderSummaryJson.getStopLoss().multiply(orderSummaryJson.getQuantity().getQty()));
                                         Quantity quantity = consideredPosition.getQuantity().plus(orderSummaryJson.getQuantity());
-
                                         return Position.builder()
                                                 .symbol(assetSymbol)
                                                 .targetPrice(targetPrice.divide(quantity.getQty()))
@@ -93,11 +82,7 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                                                 .build();
                                     },
                                     Position::combine);
-
-                    return result;
                 })
                 .collect(toMap(Position::getSymbol, Function.identity()));
-
-        return positionMap;
     }
 }
