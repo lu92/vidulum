@@ -12,7 +12,7 @@ import com.multi.vidulum.trading.domain.Position;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -33,21 +33,17 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                 .orElseThrow(() -> new PortfolioNotFoundException(query.getPortfolioId()));
 
         List<TradingDto.OrderSummaryJson> openedOrders = tradingRestClient.getOpenedOrders(query.getPortfolioId());
-
-        if (openedOrders.isEmpty()) {
-            return OpenedPositions.builder()
-                    .portfolioId(query.getPortfolioId())
-                    .broker(portfolio.getBroker())
-                    .positions(List.of())
-                    .build();
-        }
-
-        Map<Symbol, Position> positionMap = buildPositions(portfolio, openedOrders);
+        List<Position> positions = openedOrders.isEmpty() ? List.of() : fetchOnlyOpenedPositions(portfolio, openedOrders);
         return OpenedPositions.builder()
                 .portfolioId(query.getPortfolioId())
                 .broker(portfolio.getBroker())
-                .positions(new ArrayList<>(positionMap.values()))
+                .positions(positions)
                 .build();
+    }
+
+    private List<Position> fetchOnlyOpenedPositions(Portfolio portfolio, List<TradingDto.OrderSummaryJson> openedOrders) {
+        Map<Symbol, Position> positionMap = buildPositions(portfolio, openedOrders);
+        return new LinkedList<>(positionMap.values());
     }
 
     private Map<Symbol, Position> buildPositions(Portfolio portfolio, List<TradingDto.OrderSummaryJson> openedOrders) {
