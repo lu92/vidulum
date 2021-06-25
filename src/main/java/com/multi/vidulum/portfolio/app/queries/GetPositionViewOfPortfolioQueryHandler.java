@@ -41,8 +41,8 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                     .positions(List.of())
                     .build();
         }
-        Map<Symbol, Position> positionMap = buildPositions(portfolio, openedOrders);
 
+        Map<Symbol, Position> positionMap = buildPositions(portfolio, openedOrders);
         return OpenedPositions.builder()
                 .portfolioId(query.getPortfolioId())
                 .broker(portfolio.getBroker())
@@ -61,11 +61,8 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
         return portfolio.getAssets().stream()
                 .filter(asset -> sellOrders.containsKey(asset.getTicker()))
                 .map(asset -> {
-
                     List<TradingDto.OrderSummaryJson> relatedSellOrders = sellOrders.get(asset.getTicker());
-
                     Symbol assetSymbol = Symbol.of(asset.getTicker(), Ticker.of("USD"));
-
                     return relatedSellOrders.stream()
                             .filter(orderSummaryJson -> Symbol.of(orderSummaryJson.getSymbol()).getDestination().equals(Ticker.of("USD")))
                             .reduce(
