@@ -46,7 +46,6 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
         return OpenedPositions.builder()
                 .portfolioId(query.getPortfolioId())
                 .broker(portfolio.getBroker())
-//                .totalPortfolioValue(portfolio.get)
                 .positions(new ArrayList<>(positionMap.values()))
                 .build();
     }

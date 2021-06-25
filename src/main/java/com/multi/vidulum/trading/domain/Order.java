@@ -26,14 +26,6 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     double RiskRewardRatio;
     Status status;
 
-    Money calculateReward() {
-        return null;
-    }
-
-    Money calculateRisk() {
-        return null;
-    }
-
     @Override
     public OrderSnapshot getSnapshot() {
         return new OrderSnapshot(
