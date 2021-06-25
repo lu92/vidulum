@@ -78,7 +78,7 @@ public class PortfolioDto {
     @Data
     @Builder
     public static class OpenedPositionsJson {
-        private String positionId;
+        private String portfolioId;
         private List<PositionSummaryJson> positions;
     }
 

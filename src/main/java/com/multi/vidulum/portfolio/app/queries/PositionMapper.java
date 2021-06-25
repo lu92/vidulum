@@ -43,7 +43,7 @@ public class PositionMapper {
                 .collect(toList());
 
         return PortfolioDto.OpenedPositionsJson.builder()
-                .positionId(openedPositions.getPortfolioId().getId())
+                .portfolioId(openedPositions.getPortfolioId().getId())
                 .positions(portfolioSummaries)
                 .build();
     }

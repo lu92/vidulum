@@ -19,6 +19,7 @@ import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.jupiter.api.Test;
@@ -395,6 +396,11 @@ class VidulumApplicationTests {
                 .build();
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
 
+        PortfolioDto.OpenedPositionsJson openedPositions = portfolioRestController.getOpenedPositions(registeredPortfolio.getPortfolioId());
+        Assertions.assertThat(openedPositions).isEqualTo(PortfolioDto.OpenedPositionsJson.builder()
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .positions(List.of())
+                .build());
     }
 
     @Test
@@ -698,7 +704,7 @@ class VidulumApplicationTests {
 
         PortfolioDto.OpenedPositionsJson openedPositions = portfolioRestController.getOpenedPositions(registeredPortfolio.getPortfolioId());
 
-        assertThat(openedPositions.getPositionId()).isEqualTo(registeredPortfolio.getPortfolioId());
+        assertThat(openedPositions.getPortfolioId()).isEqualTo(registeredPortfolio.getPortfolioId());
         assertThat(openedPositions.getPositions()).containsExactlyInAnyOrder(
                 PortfolioDto.PositionSummaryJson.builder()
                         .symbol("BTC/USD")
