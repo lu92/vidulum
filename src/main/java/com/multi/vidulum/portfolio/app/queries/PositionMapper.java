@@ -26,18 +26,18 @@ public class PositionMapper {
                     AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(openedPositions.getBroker(), position.getSymbol());
                     Money value = assetPriceMetadata.getCurrentPrice().multiply(position.getQuantity().getQty());
                     assetPriceMetadata.getCurrentPrice().minus(position.getEntryPrice());
+                    double pctProfit = assetPriceMetadata.getCurrentPrice().diffPct(position.getEntryPrice());
                     return PortfolioDto.PositionSummaryJson.builder()
                             .symbol(position.getSymbol().getId())
                             .targetPrice(position.getTargetPrice())
                             .entryPrice(position.getEntryPrice())
                             .stopLoss(position.getStopLoss())
                             .quantity(position.getQuantity())
-                            .pctAssetAllocation(0)
                             .risk(position.calculateRisk())
                             .reward(position.calculateReward())
                             .riskRewardRatio(position.calculateRiskRewardRatio())
                             .value(value)
-                            .pctProfit(0)
+                            .pctProfit(pctProfit)
                             .build();
                 })
                 .collect(toList());
