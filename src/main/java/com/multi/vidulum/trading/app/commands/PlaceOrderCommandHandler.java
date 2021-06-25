@@ -22,6 +22,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         Order order = Order.builder()
                 .originOrderId(command.getOriginOrderId())
                 .portfolioId(command.getPortfolioId())
+                .broker(command.getBroker())
                 .symbol(command.getSymbol())
                 .type(command.getType())
                 .side(command.getSide())

@@ -706,9 +706,12 @@ class VidulumApplicationTests {
                         .entryPrice(Money.of(60000, "USD"))
                         .stopLoss(Money.of(55000, "USD"))
                         .quantity(Quantity.of(0.5))
+                        .pctAssetAllocation(0)
                         .risk(Money.of(2500, "USD"))
                         .reward(Money.of(5000, "USD"))
                         .riskRewardRatio(RiskRewardRatio.of(1, 2))
+                        .value(Money.of(0.5 * 60000, "USD"))
+                        .pctProfit(0)
                         .build(),
                 PortfolioDto.PositionSummaryJson.builder()
                         .symbol("ETH/USD")
@@ -716,9 +719,12 @@ class VidulumApplicationTests {
                         .entryPrice(Money.of(3000, "USD"))
                         .stopLoss(Money.of(2800, "USD"))
                         .quantity(Quantity.of(1))
+                        .pctAssetAllocation(0)
                         .risk(Money.of(200, "USD"))
                         .reward(Money.of(750, "USD"))
                         .riskRewardRatio(RiskRewardRatio.of(1, 3.75))
+                        .value(Money.of(2850, "USD"))
+                        .pctProfit(0)
                         .build()
         );
 

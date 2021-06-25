@@ -1,9 +1,6 @@
 package com.multi.vidulum.trading.domain;
 
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.RiskRewardRatio;
-import com.multi.vidulum.common.Symbol;
+import com.multi.vidulum.common.*;
 import lombok.Builder;
 import lombok.Value;
 
@@ -12,6 +9,7 @@ import lombok.Value;
 public class Position {
 
     Symbol symbol;
+    Broker broker;
     Money targetPrice;
     Money entryPrice;
     Money stopLoss;

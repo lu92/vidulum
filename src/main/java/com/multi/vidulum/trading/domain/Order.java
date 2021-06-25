@@ -14,6 +14,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     OrderId orderId;
     OrderId originOrderId;
     PortfolioId portfolioId;
+    Broker broker;
     Symbol symbol;
     OrderType type;
     Side side;

@@ -14,6 +14,7 @@ public class PlaceOrderCommand implements Command {
 
     OrderId originOrderId;
     PortfolioId portfolioId;
+    Broker broker;
     Symbol symbol;
     OrderType type;
     Side side;

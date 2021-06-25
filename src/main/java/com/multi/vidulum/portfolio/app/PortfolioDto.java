@@ -90,8 +90,11 @@ public class PortfolioDto {
         Money entryPrice;
         Money stopLoss;
         Quantity quantity;
+        double pctAssetAllocation;
         Money risk;
         Money reward;
         RiskRewardRatio riskRewardRatio;
+        Money value;
+        double pctProfit;
     }
 }
