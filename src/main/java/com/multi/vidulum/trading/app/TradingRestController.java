@@ -1,15 +1,15 @@
 package com.multi.vidulum.trading.app;
 
-import com.multi.vidulum.common.OriginTradeId;
-import com.multi.vidulum.common.SubName;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.commands.MakeTradeCommand;
+import com.multi.vidulum.trading.app.commands.PlaceOrderCommand;
+import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery;
 import com.multi.vidulum.trading.app.queries.GetAllTradesForUserQuery;
 import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
+import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.Trade;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +74,35 @@ public class TradingRestController {
                 .collect(toList());
     }
 
+    @PostMapping
+    public void placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
+        PlaceOrderCommand command = PlaceOrderCommand.builder()
+                .originOrderId(OrderId.of(placeOrderJson.getOriginOrderId()))
+                .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
+                .symbol(Symbol.of(placeOrderJson.getSymbol()))
+                .type(placeOrderJson.getType())
+                .side(placeOrderJson.getSide())
+                .targetPrice(placeOrderJson.getTargetPrice())
+                .entryPrice(placeOrderJson.getEntryPrice())
+                .stopLoss(placeOrderJson.getStopLoss())
+                .quantity(placeOrderJson.getQuantity())
+                .occurredDateTime(placeOrderJson.getOriginDateTime())
+                .build();
+
+        commandGateway.send(command);
+    }
+
+    @GetMapping("/orders/{portfolioId}")
+    public List<TradingDto.OrderSummaryJson> getAllOpenedOrders(@PathVariable("portfolioId") String portfolioId) {
+        GetAllOpenedOrdersForPortfolioQuery query = GetAllOpenedOrdersForPortfolioQuery.builder()
+                .portfolioId(PortfolioId.of(portfolioId))
+                .build();
+        List<Order> orders = queryGateway.send(query);
+        return orders.stream()
+                .map(this::toJson)
+                .collect(toList());
+    }
+
     private TradingDto.TradeSummaryJson toJson(Trade trade) {
         return TradingDto.TradeSummaryJson.builder()
                 .tradeId(trade.getTradeId().getId())
@@ -86,6 +115,22 @@ public class TradingRestController {
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())
                 .originDateTime(trade.getDateTime())
+                .build();
+    }
+
+    private TradingDto.OrderSummaryJson toJson(Order order) {
+        return TradingDto.OrderSummaryJson.builder()
+                .orderId(order.getOrderId().getId())
+                .originOrderId(order.getOriginOrderId().getId())
+                .portfolioId(order.getPortfolioId().getId())
+                .symbol(order.getSymbol().getId())
+                .type(order.getType())
+                .side(order.getSide())
+                .targetPrice(order.getTargetPrice())
+                .entryPrice(order.getEntryPrice())
+                .stopLoss(order.getStopLoss())
+                .quantity(order.getQuantity())
+                .originDateTime(order.getOccurredDateTime())
                 .build();
     }
 }

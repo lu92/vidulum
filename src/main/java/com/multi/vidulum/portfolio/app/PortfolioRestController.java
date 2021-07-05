@@ -5,13 +5,12 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
-import com.multi.vidulum.portfolio.app.queries.GetAggregatedPortfolioQuery;
-import com.multi.vidulum.portfolio.app.queries.GetPortfolioQuery;
-import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
+import com.multi.vidulum.portfolio.app.queries.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +21,7 @@ public class PortfolioRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
+    private final PositionMapper positionMapper;
 
     @PostMapping("/portfolio")
     public PortfolioDto.PortfolioSummaryJson createEmptyPortfolio(@RequestBody PortfolioDto.CreateEmptyPortfolioJson request) {
@@ -70,5 +70,14 @@ public class PortfolioRestController {
                 .build();
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(aggregatedPortfolio);
+    }
+
+    @GetMapping("/portfolio/opened-positions/{portfolioId}")
+    public PortfolioDto.OpenedPositionsJson getOpenedPositions(@PathVariable("portfolioId") String portfolioId) {
+        GetPositionViewOfPortfolioQuery query = GetPositionViewOfPortfolioQuery.builder()
+                .portfolioId(PortfolioId.of(portfolioId))
+                .build();
+        OpenedPositions openedPositions = queryGateway.send(query);
+        return positionMapper.map(openedPositions);
     }
 }
