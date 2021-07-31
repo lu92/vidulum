@@ -8,7 +8,7 @@ import java.util.List;
 public interface TradeMongoRepository extends MongoRepository<TradeEntity, String> {
     List<TradeEntity> findByUserIdAndPortfolioId(String userId, String portfolioId);
 
-    List<TradeEntity> findByUserIdAndPortfolioIdAndOriginDateTimeBetween(
+    List<TradeEntity> findByUserIdAndOriginDateTimeBetween(
             String userId,
 //            String portfolioId,
             Date from,
