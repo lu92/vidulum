@@ -17,7 +17,6 @@ public class GetTradesForUserInDateRangeQueryHandler implements QueryHandler<Get
     public List<Trade> query(GetTradesForUserInDateRangeQuery query) {
         return repository.findByUserIdAndPortfolioIdInDateRange(
                 query.getUserId(),
-//                query.getPortfolioId(),
                 query.getDateTimeRange().getStart(),
                 query.getDateTimeRange().getEnd());
     }

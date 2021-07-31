@@ -48,7 +48,6 @@ public class DomainTradeRepositoryImpl implements DomainTradeRepository {
     public List<Trade> findByUserIdAndPortfolioIdInDateRange(UserId userId, ZonedDateTime from, ZonedDateTime to) {
         return mongoRepository.findByUserIdAndOriginDateTimeBetween(
                 userId.getId(),
-//                portfolioId.getId(),
                 Date.from(from.toInstant()),
                 Date.from(to.toInstant()))
                 .stream()

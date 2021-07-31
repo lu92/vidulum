@@ -10,7 +10,6 @@ public interface TradeMongoRepository extends MongoRepository<TradeEntity, Strin
 
     List<TradeEntity> findByUserIdAndOriginDateTimeBetween(
             String userId,
-//            String portfolioId,
             Date from,
             Date to);
 }
