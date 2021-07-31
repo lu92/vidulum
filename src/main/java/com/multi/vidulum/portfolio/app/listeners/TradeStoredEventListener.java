@@ -20,7 +20,7 @@ public class TradeStoredEventListener {
             topics = "trade_stored",
             containerFactory = "tradeStoredContainerFactory")
     public void on(TradeStoredEvent event) {
-        log.info("StoredTrade event [{}] has been captured", event);
+        log.info("TradeStoredEvent [{}] has been captured", event);
 
         ApplyTradeCommand command = ApplyTradeCommand.builder()
                 .trade(event.getTrade())

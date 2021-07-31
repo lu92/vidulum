@@ -1,5 +1,7 @@
 package com.multi.vidulum.user.app.commands.create;
 
+import com.multi.vidulum.common.events.UserCreatedEvent;
+import com.multi.vidulum.shared.UserCreatedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
@@ -15,12 +17,18 @@ public class CreateUserCommandHandler implements CommandHandler<CreateUserComman
 
     private final UserFactory userFactory;
     private final DomainUserRepository domainUserRepository;
+    private final UserCreatedEventEmitter userCreatedEventEmitter;
 
     @Override
     public User handle(CreateUserCommand command) {
         User newUser = createNewUser(command);
         User savedUser = domainUserRepository.save(newUser);
         log.info("New User [{}] has been created!",  savedUser.getUserId());
+        userCreatedEventEmitter.emit(
+                UserCreatedEvent.builder()
+                        .userId(savedUser.getUserId())
+                        .build()
+        );
         return savedUser;
     }
 

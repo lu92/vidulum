@@ -1113,6 +1113,8 @@ class VidulumApplicationTests {
 
 
         PnlHistory persistedPnlHistory = pnlRepository.save(aggregate);
+        Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
+
         System.out.println(persistedPnlHistory);
     }
 }
