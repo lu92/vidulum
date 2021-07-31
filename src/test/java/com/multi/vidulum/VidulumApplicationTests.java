@@ -1,6 +1,11 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.pnl.domain.DomainPnlRepository;
+import com.multi.vidulum.pnl.domain.PnlHistory;
+import com.multi.vidulum.pnl.domain.PnlStatement;
+import com.multi.vidulum.pnl.domain.PnlTradeDetails;
+import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
@@ -85,6 +90,12 @@ class VidulumApplicationTests {
     private TradeMongoRepository tradeMongoRepository;
 
     @Autowired
+    private PnlMongoRepository pnlMongoRepository;
+
+    @Autowired
+    private DomainPnlRepository pnlRepository;
+
+    @Autowired
     private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
 
     private JsonFormatter jsonFormatter = new JsonFormatter();
@@ -93,6 +104,7 @@ class VidulumApplicationTests {
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
+        pnlMongoRepository.deleteAll();
         quoteRestController.clearCaches();
     }
 
@@ -971,7 +983,7 @@ class VidulumApplicationTests {
 
         List<TradingDto.TradeSummaryJson> lastTwoTrades = tradingRestController.getTradesInDateRange(
                 createdUserJson.getUserId(),
-                registeredPreciousMetalsPortfolio.getPortfolioId(),
+//                registeredPreciousMetalsPortfolio.getPortfolioId(),
                 ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         assertThat(lastTwoTrades).hasSize(3);
@@ -1030,5 +1042,77 @@ class VidulumApplicationTests {
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
+    }
+
+    @Test
+    public void test() {
+        PnlHistory aggregate = PnlHistory.builder()
+                .pnlId(null)
+                .userId(UserId.of("12345"))
+                .pnlStatements(List.of(
+                        PnlStatement.builder()
+                                .investedBalance(Money.of(100, "USD"))
+                                .currentValue(Money.of(120, "USD"))
+                                .totalProfit(Money.of(20, "USD"))
+                                .pctProfit(20)
+                                .executedTrades(List.of(
+                                        PnlTradeDetails.builder()
+                                                .originTradeId(TradeId.of("T1"))
+                                                .portfolioId(PortfolioId.of("P123"))
+                                                .symbol(Symbol.of("BTC/USD"))
+                                                .subName(SubName.of("crypto"))
+                                                .side(BUY)
+                                                .quantity(Quantity.of(0.5))
+                                                .price(Money.of(30000, "USD"))
+                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+                                                .build(),
+                                        PnlTradeDetails.builder()
+                                                .originTradeId(TradeId.of("T2"))
+                                                .portfolioId(PortfolioId.of("P123"))
+                                                .symbol(Symbol.of("BTC/USD"))
+                                                .subName(SubName.of("crypto"))
+                                                .side(SELL)
+                                                .quantity(Quantity.of(0.4))
+                                                .price(Money.of(35000, "USD"))
+                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
+                                                .build()
+                                ))
+                                .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                                .build(),
+                        PnlStatement.builder()
+                                .investedBalance(Money.of(100, "USD"))
+                                .currentValue(Money.of(130, "USD"))
+                                .totalProfit(Money.of(30, "USD"))
+                                .pctProfit(30)
+                                .executedTrades(List.of(
+                                        PnlTradeDetails.builder()
+                                                .originTradeId(TradeId.of("T3"))
+                                                .portfolioId(PortfolioId.of("P123"))
+                                                .symbol(Symbol.of("ETH/USD"))
+                                                .subName(SubName.of("crypto"))
+                                                .side(BUY)
+                                                .quantity(Quantity.of(0.5))
+                                                .price(Money.of(2000, "USD"))
+                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+                                                .build(),
+                                        PnlTradeDetails.builder()
+                                                .originTradeId(TradeId.of("T4"))
+                                                .portfolioId(PortfolioId.of("P123"))
+                                                .symbol(Symbol.of("ETH/USD"))
+                                                .subName(SubName.of("crypto"))
+                                                .side(SELL)
+                                                .quantity(Quantity.of(0.4))
+                                                .price(Money.of(2100, "USD"))
+                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
+                                                .build()
+                                ))
+                                .dateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+                                .build()
+                ))
+                .build();
+
+
+        PnlHistory persistedPnlHistory = pnlRepository.save(aggregate);
+        System.out.println(persistedPnlHistory);
     }
 }

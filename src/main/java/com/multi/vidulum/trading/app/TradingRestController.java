@@ -59,14 +59,15 @@ public class TradingRestController {
     @GetMapping("/trading")
     public List<TradingDto.TradeSummaryJson> getTradesInDateRange(
             @RequestParam("userId") String userId,
-            @RequestParam("portfolioId") String portfolioId,
+//            @RequestParam("portfolioId") String portfolioId,
             @RequestParam("from") ZonedDateTime from,
             @RequestParam("to") ZonedDateTime to) {
         GetTradesForUserInDateRangeQuery query = GetTradesForUserInDateRangeQuery.builder()
                 .userId(UserId.of(userId))
-                .portfolioId(PortfolioId.of(portfolioId))
-                .from(from)
-                .to(to)
+//                .portfolioId(PortfolioId.of(portfolioId))
+//                .from(from)
+//                .to(to)
+                .dateTimeRange(Range.of(from, to))
                 .build();
         List<Trade> trades = queryGateway.send(query);
         return trades.stream()
