@@ -143,6 +143,11 @@ class VidulumApplicationTests {
                         .email("lu92@email.com")
                         .build());
 
+        Awaitility.await().atMost(5, SECONDS).until(() -> {
+            UserId existingUserId = UserId.of(createdUserJson.getUserId());
+            return pnlRepository.findByUser(existingUserId).isPresent();
+        });
+
         userRestController.activateUser(createdUserJson.getUserId());
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
@@ -294,6 +299,11 @@ class VidulumApplicationTests {
                         .password("secret")
                         .email("lu92@email.com")
                         .build());
+
+        Awaitility.await().atMost(5, SECONDS).until(() -> {
+            UserId existingUserId = UserId.of(createdUserJson.getUserId());
+            return pnlRepository.findByUser(existingUserId).isPresent();
+        });
 
         userRestController.activateUser(createdUserJson.getUserId());
 
@@ -456,6 +466,11 @@ class VidulumApplicationTests {
                         .password("secret")
                         .email("lu92@email.com")
                         .build());
+
+        Awaitility.await().atMost(5, SECONDS).until(() -> {
+            UserId existingUserId = UserId.of(createdUserJson.getUserId());
+            return pnlRepository.findByUser(existingUserId).isPresent();
+        });
 
         userRestController.activateUser(createdUserJson.getUserId());
 
@@ -791,6 +806,11 @@ class VidulumApplicationTests {
                         .email("lu92@email.com")
                         .build());
 
+        Awaitility.await().atMost(5, SECONDS).until(() -> {
+            UserId existingUserId = UserId.of(createdUserJson.getUserId());
+            return pnlRepository.findByUser(existingUserId).isPresent();
+        });
+
         userRestController.activateUser(createdUserJson.getUserId());
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
@@ -983,7 +1003,6 @@ class VidulumApplicationTests {
 
         List<TradingDto.TradeSummaryJson> lastTwoTrades = tradingRestController.getTradesInDateRange(
                 createdUserJson.getUserId(),
-//                registeredPreciousMetalsPortfolio.getPortfolioId(),
                 ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         assertThat(lastTwoTrades).hasSize(3);
