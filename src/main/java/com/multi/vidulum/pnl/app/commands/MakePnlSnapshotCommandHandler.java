@@ -59,7 +59,8 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
     private List<PnlTradeDetails> mapToSnapshots(List<TradingDto.TradeSummaryJson> executedTrades) {
         return executedTrades.stream()
                 .map(tradeSummaryJson -> PnlTradeDetails.builder()
-                        .originTradeId(TradeId.of(tradeSummaryJson.getOriginTradeId()))
+                        .originTradeId(OriginTradeId.of(tradeSummaryJson.getOriginTradeId()))
+                        .tradeId(TradeId.of(tradeSummaryJson.getTradeId()))
                         .portfolioId(PortfolioId.of(tradeSummaryJson.getPortfolioId()))
                         .symbol(Symbol.of(tradeSummaryJson.getSymbol()))
                         .subName(SubName.of(tradeSummaryJson.getSubName()))

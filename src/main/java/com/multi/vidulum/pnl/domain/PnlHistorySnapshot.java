@@ -9,7 +9,6 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 @Value
-//@Builder
 public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
 
     PnlId pnlId;
@@ -33,7 +32,8 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
 
     @Value
     public static class PnlTradeDetailsSnapshot {
-        TradeId originTradeId;
+        OriginTradeId originTradeId;
+        TradeId tradeId;
         PortfolioId portfolioId;
         Symbol symbol;
         SubName subName;

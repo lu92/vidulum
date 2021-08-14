@@ -1,9 +1,6 @@
 package com.multi.vidulum.pnl.infrastructure.entities;
 
-import com.multi.vidulum.common.SubName;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.TradeId;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.domain.PnlHistorySnapshot;
 import com.multi.vidulum.pnl.domain.PnlId;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
@@ -50,6 +47,7 @@ public class PnlHistoryEntity {
 
                                 return new PnlTradeDetailsEntity(
                                         pnlTradeDetailsSnapshot.getOriginTradeId().getId(),
+                                        pnlTradeDetailsSnapshot.getTradeId().getId(),
                                         pnlTradeDetailsSnapshot.getPortfolioId().getId(),
                                         pnlTradeDetailsSnapshot.getSymbol().getId(),
                                         pnlTradeDetailsSnapshot.getSubName().getName(),
@@ -89,7 +87,8 @@ public class PnlHistoryEntity {
                                         ZonedDateTime.ofInstant(pnlTradeDetailsEntity.getOriginDateTime().toInstant(), ZoneOffset.UTC) :
                                         null;
                                 return new PnlHistorySnapshot.PnlTradeDetailsSnapshot(
-                                        TradeId.of(pnlTradeDetailsEntity.getOriginTradeId()),
+                                        OriginTradeId.of(pnlTradeDetailsEntity.getOriginTradeId()),
+                                        TradeId.of(pnlTradeDetailsEntity.getTradeId()),
                                         PortfolioId.of(pnlTradeDetailsEntity.getPortfolioId()),
                                         Symbol.of(pnlTradeDetailsEntity.getSymbol()),
                                         SubName.of(pnlTradeDetailsEntity.getSubName()),

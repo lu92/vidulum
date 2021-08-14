@@ -8,5 +8,5 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 public interface PortfolioRestClient {
     PortfolioId createPortfolio(String name, UserId userId, Broker broker);
 
-    PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId portfolioId);
+    PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId);
 }

@@ -16,6 +16,7 @@ import java.util.Date;
 @ToString
 public class PnlTradeDetailsEntity {
     String originTradeId;
+    String tradeId;
     String portfolioId;
     String symbol;
     String subName;

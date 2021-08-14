@@ -10,7 +10,8 @@ import java.time.ZonedDateTime;
 @Value
 @Builder
 public class PnlTradeDetails {
-    TradeId originTradeId;
+    OriginTradeId originTradeId;
+    TradeId tradeId;
     PortfolioId portfolioId;
     Symbol symbol;
     SubName subName;

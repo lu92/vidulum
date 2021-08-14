@@ -24,6 +24,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                             .stream()
                             .map(pnlTradeDetails -> new PnlHistorySnapshot.PnlTradeDetailsSnapshot(
                                     pnlTradeDetails.getOriginTradeId(),
+                                    pnlTradeDetails.getTradeId(),
                                     pnlTradeDetails.getPortfolioId(),
                                     pnlTradeDetails.getSymbol(),
                                     pnlTradeDetails.getSubName(),
@@ -56,6 +57,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                     List<PnlTradeDetails> executedTrades = pnlStatementSnapshot.getExecutedTrades().stream()
                             .map(pnlTradeDetailsSnapshot -> new PnlTradeDetails(
                                     pnlTradeDetailsSnapshot.getOriginTradeId(),
+                                    pnlTradeDetailsSnapshot.getTradeId(),
                                     pnlTradeDetailsSnapshot.getPortfolioId(),
                                     pnlTradeDetailsSnapshot.getSymbol(),
                                     pnlTradeDetailsSnapshot.getSubName(),

@@ -30,8 +30,10 @@ public class DomainTradeRepositoryImpl implements DomainTradeRepository {
 
     @Override
     public Trade save(Trade aggregate) {
+        TradeEntity rawTradeEntity = TradeEntity.fromSnapshot(aggregate.getSnapshot());
+        TradeEntity savedTradeEntity = mongoRepository.save(rawTradeEntity);
         return Trade.from(
-                mongoRepository.save(TradeEntity.fromSnapshot(aggregate.getSnapshot()))
+                savedTradeEntity
                         .toSnapshot());
     }
 
