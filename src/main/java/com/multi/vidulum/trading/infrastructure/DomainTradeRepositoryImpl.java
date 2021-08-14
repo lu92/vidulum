@@ -30,8 +30,10 @@ public class DomainTradeRepositoryImpl implements DomainTradeRepository {
 
     @Override
     public Trade save(Trade aggregate) {
+        TradeEntity rawTradeEntity = TradeEntity.fromSnapshot(aggregate.getSnapshot());
+        TradeEntity savedTradeEntity = mongoRepository.save(rawTradeEntity);
         return Trade.from(
-                mongoRepository.save(TradeEntity.fromSnapshot(aggregate.getSnapshot()))
+                savedTradeEntity
                         .toSnapshot());
     }
 
@@ -45,10 +47,9 @@ public class DomainTradeRepositoryImpl implements DomainTradeRepository {
     }
 
     @Override
-    public List<Trade> findByUserIdAndPortfolioIdInDateRange(UserId userId, PortfolioId portfolioId, ZonedDateTime from, ZonedDateTime to) {
-        return mongoRepository.findByUserIdAndPortfolioIdAndOriginDateTimeBetween(
+    public List<Trade> findByUserIdAndPortfolioIdInDateRange(UserId userId, ZonedDateTime from, ZonedDateTime to) {
+        return mongoRepository.findByUserIdAndOriginDateTimeBetween(
                 userId.getId(),
-                portfolioId.getId(),
                 Date.from(from.toInstant()),
                 Date.from(to.toInstant()))
                 .stream()

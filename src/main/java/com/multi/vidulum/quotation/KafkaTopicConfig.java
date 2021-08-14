@@ -3,6 +3,7 @@ package com.multi.vidulum.quotation;
 
 import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
 import com.multi.vidulum.common.events.TradeStoredEvent;
+import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
@@ -166,6 +167,47 @@ public class KafkaTopicConfig {
         ConcurrentKafkaListenerContainerFactory<String, TradeStoredEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(tradeStoredConsumerFactory());
+        return factory;
+    }
+
+    //    *******
+    @Bean
+    public NewTopic userCreatedTopic() {
+        return new NewTopic("user_created", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, UserCreatedEvent> userCreatedProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, UserCreatedEvent> userCreatedKafkaTemplate() {
+        return new KafkaTemplate<>(userCreatedProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserCreatedEvent> userCreatedConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(UserCreatedEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserCreatedEvent> userCreatedContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserCreatedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(userCreatedConsumerFactory());
         return factory;
     }
 

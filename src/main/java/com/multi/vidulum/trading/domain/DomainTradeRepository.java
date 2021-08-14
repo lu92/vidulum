@@ -11,5 +11,5 @@ import java.util.List;
 public interface DomainTradeRepository extends DomainRepository<TradeId, Trade> {
     List<Trade> findByUserIdAndPortfolioId(UserId userId, PortfolioId portfolioId);
 
-    List<Trade> findByUserIdAndPortfolioIdInDateRange(UserId userId, PortfolioId portfolioId, ZonedDateTime from, ZonedDateTime to);
+    List<Trade> findByUserIdAndPortfolioIdInDateRange(UserId userId, ZonedDateTime from, ZonedDateTime to);
 }

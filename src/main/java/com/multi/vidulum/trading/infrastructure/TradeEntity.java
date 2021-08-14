@@ -60,7 +60,7 @@ public class TradeEntity {
                 .tradeId(TradeId.of(tradeId))
                 .userId(UserId.of(userId))
                 .portfolioId(PortfolioId.of(portfolioId))
-                .originTradeId(OriginTradeId.of(portfolioId))
+                .originTradeId(OriginTradeId.of(originTradeId))
                 .subName(SubName.of(subName))
                 .symbol(Symbol.of(symbol))
                 .side(side)
