@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ import static java.util.stream.Collectors.toMap;
 public class AggregatedPortfolio {
     private UserId userId;
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
+    private List<PortfolioId> portfolioIds = new LinkedList<>();
     private Money investedBalance;
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
@@ -45,6 +47,13 @@ public class AggregatedPortfolio {
         });
 
         return outcome;
+    }
+
+    public void appendPortfolioId(PortfolioId portfolioId) {
+        if (portfolioIds == null) {
+            portfolioIds = new LinkedList<>();
+        }
+        portfolioIds.add(portfolioId);
     }
 
     class GroupedAssets {

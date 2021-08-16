@@ -2,18 +2,21 @@ package com.multi.vidulum.pnl.infrastructure.entities;
 
 import com.multi.vidulum.common.Money;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
 import lombok.Value;
 
-import java.util.Date;
 import java.util.List;
 
-@Value
 @Builder
-public class PnlStatementEntity {
+@Getter
+@Value
+@ToString
+public class PnlPortfolioStatementEntity {
+    String portfolioId;
     Money investedBalance;
     Money currentValue;
     Money totalProfit;
     double pctProfit;
-    List<PnlPortfolioStatementEntity> portfolioStatements;
-    Date dateTime;
+    List<PnlTradeDetailsEntity> executedTrades;
 }

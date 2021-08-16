@@ -6,9 +6,7 @@ import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommandHandler;
-import com.multi.vidulum.portfolio.app.queries.GetAggregatedPortfolioQuery;
-import com.multi.vidulum.portfolio.app.queries.GetAggregatedPortfolioQueryHandler;
-import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
+import com.multi.vidulum.portfolio.app.queries.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.user.domain.PortfolioRestClient;
@@ -21,6 +19,7 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
 
     private final CreateEmptyPortfolioCommandHandler createEmptyPortfolioCommandHandler;
     private final GetAggregatedPortfolioQueryHandler getAggregatedPortfolioQueryHandler;
+    private final GetPortfolioQueryHandler getPortfolioQueryHandler;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
 
     @Override
@@ -32,6 +31,16 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
                 .build();
         Portfolio portfolio = createEmptyPortfolioCommandHandler.handle(command);
         return portfolio.getPortfolioId();
+    }
+
+    @Override
+    public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId) {
+        GetPortfolioQuery query = GetPortfolioQuery.builder()
+                .portfolioId(portfolioId)
+                .build();
+
+        Portfolio portfolio = getPortfolioQueryHandler.query(query);
+        return portfolioSummaryMapper.map(portfolio);
     }
 
     @Override

@@ -34,8 +34,19 @@ public class PnlDto {
         private Money currentValue;
         private Money totalProfit;
         private double pctProfit;
-        private List<PnlTradeDetailsJson> executedTrades;
+        private List<PnlPortfolioStatementJson> portfolioStatements;
         private ZonedDateTime dateTime;
+    }
+
+    @Data
+    @Builder
+    public static class PnlPortfolioStatementJson {
+        private String portfolioId;
+        private Money investedBalance;
+        private Money currentValue;
+        private Money totalProfit;
+        private double pctProfit;
+        private List<PnlTradeDetailsJson> executedTrades;
     }
 
     @Data

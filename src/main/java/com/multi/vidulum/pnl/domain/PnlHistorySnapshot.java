@@ -3,6 +3,7 @@ package com.multi.vidulum.pnl.domain;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
+import lombok.Builder;
 import lombok.Value;
 
 import java.time.ZonedDateTime;
@@ -26,11 +27,23 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
         Money currentValue;
         Money totalProfit;
         double pctProfit;
-        List<PnlTradeDetailsSnapshot> executedTrades;
+        List<PnlPortfolioStatementSnapshot> portfolioStatements;
         ZonedDateTime dateTime;
     }
 
     @Value
+    @Builder
+    public static class PnlPortfolioStatementSnapshot {
+        PortfolioId portfolioId;
+        Money investedBalance;
+        Money currentValue;
+        Money totalProfit;
+        double pctProfit;
+        List<PnlTradeDetailsSnapshot> executedTrades;
+    }
+
+    @Value
+    @Builder
     public static class PnlTradeDetailsSnapshot {
         OriginTradeId originTradeId;
         TradeId tradeId;
