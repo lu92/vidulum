@@ -66,6 +66,7 @@ public class PnlRestController {
                                         .investedBalance(pnlPortfolioStatement.getInvestedBalance())
                                         .currentValue(pnlPortfolioStatement.getCurrentValue())
                                         .totalProfit(pnlPortfolioStatement.getTotalProfit())
+                                        .pctProfit(pnlPortfolioStatement.getPctProfit())
                                         .executedTrades(executedTrades)
                                         .build();
                             })

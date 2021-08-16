@@ -1110,14 +1110,14 @@ class VidulumApplicationTests {
                                 .investedBalance(Money.of(5420, "USD"))
                                 .currentValue(Money.of(5475, "USD"))
                                 .totalProfit(Money.of(55, "USD"))
-                                .pctProfit(0)
+                                .pctProfit(-0.9898524)
                                 .build(),
                         PnlDto.PnlPortfolioStatementJson.builder()
                                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
                                 .investedBalance(Money.of(1810, "USD"))
                                 .currentValue(Money.of(1810, "USD"))
                                 .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0)
+                                .pctProfit(-1.0)
                                 .build()
                 ));
 

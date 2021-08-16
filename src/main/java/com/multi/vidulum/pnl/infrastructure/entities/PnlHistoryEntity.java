@@ -66,7 +66,7 @@ public class PnlHistoryEntity {
                                         .investedBalance(pnlPortfolioStatementSnapshot.getInvestedBalance())
                                         .currentValue(pnlPortfolioStatementSnapshot.getCurrentValue())
                                         .totalProfit(pnlPortfolioStatementSnapshot.getTotalProfit())
-                                        .pctProfit(pnlStatementSnapshot.getPctProfit())
+                                        .pctProfit(pnlPortfolioStatementSnapshot.getPctProfit())
                                         .executedTrades(executedTrades)
                                         .build();
                             })
