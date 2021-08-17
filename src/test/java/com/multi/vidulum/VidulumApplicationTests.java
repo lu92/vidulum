@@ -1122,60 +1122,75 @@ class VidulumApplicationTests {
                 ));
 
         assertThat(pnlStatementJson.getPortfolioStatements().get(0).getExecutedTrades()).hasSize(4);
-//        assertThat(pnlHistoryJson.getPnlStatements().get(0).getExecutedTrades())
-//                .usingElementComparatorIgnoringFields("tradeId")
-//                .isEqualTo(List.of(
-//                        PnlDto.PnlTradeDetailsJson.builder()
-//                                .originTradeId("pm-trade1")
-//                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                                .symbol("XAU/USD")
-//                                .subName("Maple Leaf")
-//                                .side(BUY)
-//                                .quantity(Quantity.of(2, "oz"))
-//                                .price(Money.of(1800, "USD"))
-//                                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
-//                                .build(),
-//                        PnlDto.PnlTradeDetailsJson.builder()
-//                                .originTradeId("pm-trade2")
-//                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                                .symbol("XAU/USD")
-//                                .subName("Krugerrand")
-//                                .side(BUY)
-//                                .quantity(Quantity.of(1, "oz"))
-//                                .price(Money.of(1820, "USD"))
-//                                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
-//                                .build(),
-//                        PnlDto.PnlTradeDetailsJson.builder()
-//                                .originTradeId("pm-trade3")
-//                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                                .symbol("XAU/USD")
-//                                .subName("Maple Leaf")
-//                                .side(SELL)
-//                                .quantity(Quantity.of(1, "oz"))
-//                                .price(Money.of(1850, "USD"))
-//                                .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
-//                                .build(),
-//                        PnlDto.PnlTradeDetailsJson.builder()
-//                                .originTradeId("pm-trade4")
-//                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-//                                .symbol("XAG/USD")
-//                                .subName("Maple Leaf")
-//                                .side(BUY)
-//                                .quantity(Quantity.of(5, "oz"))
-//                                .price(Money.of(90, "USD"))
-//                                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
-//                                .build(),
-//                        PnlDto.PnlTradeDetailsJson.builder()
-//                                .originTradeId("pm-trade5")
-//                                .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
-//                                .symbol("XAU/USD")
-//                                .subName("Maple Leaf")
-//                                .side(BUY)
-//                                .quantity(Quantity.of(1, "oz"))
-//                                .price(Money.of(1800, "USD"))
-//                                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
-//                                .build()
-//                ));
+
+        // find portfolio-statement for first portfolio
+        PnlDto.PnlPortfolioStatementJson statementOfFirstPortfolio = pnlHistoryJson.getPnlStatements().get(0).getPortfolioStatements().stream()
+                .filter(pnlPortfolioStatementJson -> pnlPortfolioStatementJson.getPortfolioId().equals(registeredPreciousMetalsPortfolio.getPortfolioId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("portfolio-statement is missing"));
+
+        assertThat(statementOfFirstPortfolio.getExecutedTrades())
+                .usingElementComparatorIgnoringFields("tradeId")
+                .isEqualTo(List.of(
+                        PnlDto.PnlTradeDetailsJson.builder()
+                                .originTradeId("pm-trade1")
+                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                                .symbol("XAU/USD")
+                                .subName("Maple Leaf")
+                                .side(BUY)
+                                .quantity(Quantity.of(2, "oz"))
+                                .price(Money.of(1800, "USD"))
+                                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
+                                .build(),
+                        PnlDto.PnlTradeDetailsJson.builder()
+                                .originTradeId("pm-trade2")
+                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                                .symbol("XAU/USD")
+                                .subName("Krugerrand")
+                                .side(BUY)
+                                .quantity(Quantity.of(1, "oz"))
+                                .price(Money.of(1820, "USD"))
+                                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
+                                .build(),
+                        PnlDto.PnlTradeDetailsJson.builder()
+                                .originTradeId("pm-trade3")
+                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                                .symbol("XAU/USD")
+                                .subName("Maple Leaf")
+                                .side(SELL)
+                                .quantity(Quantity.of(1, "oz"))
+                                .price(Money.of(1850, "USD"))
+                                .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
+                                .build(),
+                        PnlDto.PnlTradeDetailsJson.builder()
+                                .originTradeId("pm-trade4")
+                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                                .symbol("XAG/USD")
+                                .subName("Maple Leaf")
+                                .side(BUY)
+                                .quantity(Quantity.of(5, "oz"))
+                                .price(Money.of(90, "USD"))
+                                .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
+                                .build()));
+
+        // find portfolio-statement for second portfolio
+        PnlDto.PnlPortfolioStatementJson statementOfSecondPortfolio = pnlHistoryJson.getPnlStatements().get(0).getPortfolioStatements().stream()
+                .filter(pnlPortfolioStatementJson -> pnlPortfolioStatementJson.getPortfolioId().equals(registeredPreciousMetalsPortfolio2.getPortfolioId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("portfolio-statement is missing"));
+
+
+        assertThat(statementOfSecondPortfolio.getExecutedTrades())
+                .usingElementComparatorIgnoringFields("tradeId")
+                .isEqualTo(List.of(
+                        PnlDto.PnlTradeDetailsJson.builder()
+                                .originTradeId("pm-trade5")
+                                .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
+                                .symbol("XAU/USD")
+                                .subName("Maple Leaf")
+                                .side(BUY)
+                                .quantity(Quantity.of(1, "oz"))
+                                .price(Money.of(1800, "USD"))
+                                .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
+                                .build()));
     }
 
     @Test
@@ -1265,7 +1280,6 @@ class VidulumApplicationTests {
                                 .build()
                 ))
                 .build();
-
 
         PnlHistory persistedPnlHistory = pnlRepository.save(aggregate);
         Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
