@@ -51,6 +51,7 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
 
                             // increase number of invested money
                             aggregatedPortfolio.appendInvestedMoney(portfolio.getInvestedBalance());
+                            aggregatedPortfolio.appendPortfolioId(portfolio.getPortfolioId());
 
                             return aggregatedPortfolio;
                         },

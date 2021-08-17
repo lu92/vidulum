@@ -3,10 +3,7 @@ package com.multi.vidulum;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlDto;
 import com.multi.vidulum.pnl.app.PnlRestController;
-import com.multi.vidulum.pnl.domain.DomainPnlRepository;
-import com.multi.vidulum.pnl.domain.PnlHistory;
-import com.multi.vidulum.pnl.domain.PnlStatement;
-import com.multi.vidulum.pnl.domain.PnlTradeDetails;
+import com.multi.vidulum.pnl.domain.*;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
@@ -268,6 +265,7 @@ class VidulumApplicationTests {
                                         .currentValue(Money.of(40000.0, "USD"))
                                         .tags(List.of())
                                         .build())))
+                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(100000.0, "USD"))
                 .totalProfit(Money.zero("USD"))
@@ -425,6 +423,7 @@ class VidulumApplicationTests {
                                         .currentValue(Money.of(120000.0, "USD"))
                                         .tags(List.of())
                                         .build())))
+                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(120000.0, "USD"))
                 .totalProfit(Money.of(20000.0, "USD"))
@@ -697,6 +696,7 @@ class VidulumApplicationTests {
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                         .build())
                 ))
+                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(103805, "USD"))
                 .totalProfit(Money.of(3805.0000, "USD"))
@@ -1068,6 +1068,7 @@ class VidulumApplicationTests {
                                         .currentValue(Money.of(5400, "USD"))
                                         .tags(List.of("Gold", "Precious Metals"))
                                         .build())))
+                .portfolioIds(List.of(registeredPreciousMetalsPortfolio.getPortfolioId(), registeredPreciousMetalsPortfolio2.getPortfolioId()))
                 .investedBalance(Money.of(7230, "USD"))
                 .currentValue(Money.of(7285, "USD"))
                 .totalProfit(Money.of(55, "USD"))
@@ -1086,20 +1087,48 @@ class VidulumApplicationTests {
         PnlDto.PnlHistoryJson pnlHistoryJson = pnlRestController.getPnlHistory(createdUserJson.getUserId());
         System.out.println(pnlHistoryJson);
 
+        System.out.println(jsonFormatter.formatToPrettyJson(pnlHistoryJson));
         assertThat(pnlHistoryJson.getUserId()).isEqualTo(createdUserJson.getUserId());
         assertThat(pnlHistoryJson.getPnlStatements()).hasSize(1);
         assertThat(pnlHistoryJson.getPnlStatements())
-                .usingElementComparatorIgnoringFields("dateTime", "executedTrades")
+                .usingElementComparatorIgnoringFields("dateTime", "portfolioStatements")
                 .isEqualTo(List.of(
                         PnlDto.PnlStatementJson.builder()
                                 .investedBalance(Money.of(7230, "USD"))
                                 .currentValue(Money.of(7285, "USD"))
                                 .totalProfit(Money.of(55, "USD"))
                                 .pctProfit(0.00760719)
+                                .build()));
+
+        PnlDto.PnlStatementJson pnlStatementJson = pnlHistoryJson.getPnlStatements().get(0);
+        assertThat(pnlStatementJson.getPortfolioStatements()).hasSize(2);
+        assertThat(pnlStatementJson.getPortfolioStatements())
+                .usingElementComparatorIgnoringFields("executedTrades")
+                .isEqualTo(List.of(
+                        PnlDto.PnlPortfolioStatementJson.builder()
+                                .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                                .investedBalance(Money.of(5420, "USD"))
+                                .currentValue(Money.of(5475, "USD"))
+                                .totalProfit(Money.of(55, "USD"))
+                                .pctProfit(-0.9898524)
+                                .build(),
+                        PnlDto.PnlPortfolioStatementJson.builder()
+                                .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
+                                .investedBalance(Money.of(1810, "USD"))
+                                .currentValue(Money.of(1810, "USD"))
+                                .totalProfit(Money.of(0, "USD"))
+                                .pctProfit(-1.0)
                                 .build()
                 ));
-        assertThat(pnlHistoryJson.getPnlStatements().get(0).getExecutedTrades()).hasSize(5);
-        assertThat(pnlHistoryJson.getPnlStatements().get(0).getExecutedTrades())
+
+        assertThat(pnlStatementJson.getPortfolioStatements().get(0).getExecutedTrades()).hasSize(4);
+
+        // find portfolio-statement for first portfolio
+        PnlDto.PnlPortfolioStatementJson statementOfFirstPortfolio = pnlHistoryJson.getPnlStatements().get(0).getPortfolioStatements().stream()
+                .filter(pnlPortfolioStatementJson -> pnlPortfolioStatementJson.getPortfolioId().equals(registeredPreciousMetalsPortfolio.getPortfolioId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("portfolio-statement is missing"));
+
+        assertThat(statementOfFirstPortfolio.getExecutedTrades())
                 .usingElementComparatorIgnoringFields("tradeId")
                 .isEqualTo(List.of(
                         PnlDto.PnlTradeDetailsJson.builder()
@@ -1141,7 +1170,17 @@ class VidulumApplicationTests {
                                 .quantity(Quantity.of(5, "oz"))
                                 .price(Money.of(90, "USD"))
                                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
-                                .build(),
+                                .build()));
+
+        // find portfolio-statement for second portfolio
+        PnlDto.PnlPortfolioStatementJson statementOfSecondPortfolio = pnlHistoryJson.getPnlStatements().get(0).getPortfolioStatements().stream()
+                .filter(pnlPortfolioStatementJson -> pnlPortfolioStatementJson.getPortfolioId().equals(registeredPreciousMetalsPortfolio2.getPortfolioId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("portfolio-statement is missing"));
+
+
+        assertThat(statementOfSecondPortfolio.getExecutedTrades())
+                .usingElementComparatorIgnoringFields("tradeId")
+                .isEqualTo(List.of(
                         PnlDto.PnlTradeDetailsJson.builder()
                                 .originTradeId("pm-trade5")
                                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
@@ -1151,8 +1190,7 @@ class VidulumApplicationTests {
                                 .quantity(Quantity.of(1, "oz"))
                                 .price(Money.of(1800, "USD"))
                                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
-                                .build()
-                ));
+                                .build()));
     }
 
     @Test
@@ -1166,30 +1204,38 @@ class VidulumApplicationTests {
                                 .currentValue(Money.of(120, "USD"))
                                 .totalProfit(Money.of(20, "USD"))
                                 .pctProfit(20)
-                                .executedTrades(List.of(
-                                        PnlTradeDetails.builder()
-                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
-                                                .originTradeId(OriginTradeId.of("T1"))
-                                                .portfolioId(PortfolioId.of("P123"))
-                                                .symbol(Symbol.of("BTC/USD"))
-                                                .subName(SubName.of("crypto"))
-                                                .side(BUY)
-                                                .quantity(Quantity.of(0.5))
-                                                .price(Money.of(30000, "USD"))
-                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
-                                                .build(),
-                                        PnlTradeDetails.builder()
-                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
-                                                .originTradeId(OriginTradeId.of("T2"))
-                                                .portfolioId(PortfolioId.of("P123"))
-                                                .symbol(Symbol.of("BTC/USD"))
-                                                .subName(SubName.of("crypto"))
-                                                .side(SELL)
-                                                .quantity(Quantity.of(0.4))
-                                                .price(Money.of(35000, "USD"))
-                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
-                                                .build()
-                                ))
+                                .pnlPortfolioStatements(List.of(
+                                        PnlPortfolioStatement.builder()
+                                                .portfolioId(PortfolioId.of(UUID.randomUUID().toString()))
+                                                .investedBalance(Money.of(100, "USD"))
+                                                .currentValue(Money.of(120, "USD"))
+                                                .totalProfit(Money.of(20, "USD"))
+                                                .pctProfit(20)
+                                                .executedTrades(List.of(
+                                                        PnlTradeDetails.builder()
+                                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
+                                                                .originTradeId(OriginTradeId.of("T1"))
+                                                                .portfolioId(PortfolioId.of("P123"))
+                                                                .symbol(Symbol.of("BTC/USD"))
+                                                                .subName(SubName.of("crypto"))
+                                                                .side(BUY)
+                                                                .quantity(Quantity.of(0.5))
+                                                                .price(Money.of(30000, "USD"))
+                                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+                                                                .build(),
+                                                        PnlTradeDetails.builder()
+                                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
+                                                                .originTradeId(OriginTradeId.of("T2"))
+                                                                .portfolioId(PortfolioId.of("P123"))
+                                                                .symbol(Symbol.of("BTC/USD"))
+                                                                .subName(SubName.of("crypto"))
+                                                                .side(SELL)
+                                                                .quantity(Quantity.of(0.4))
+                                                                .price(Money.of(35000, "USD"))
+                                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
+                                                                .build()
+                                                ))
+                                                .build()))
                                 .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                                 .build(),
                         PnlStatement.builder()
@@ -1197,35 +1243,43 @@ class VidulumApplicationTests {
                                 .currentValue(Money.of(130, "USD"))
                                 .totalProfit(Money.of(30, "USD"))
                                 .pctProfit(30)
-                                .executedTrades(List.of(
-                                        PnlTradeDetails.builder()
-                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
-                                                .originTradeId(OriginTradeId.of("T3"))
-                                                .portfolioId(PortfolioId.of("P123"))
-                                                .symbol(Symbol.of("ETH/USD"))
-                                                .subName(SubName.of("crypto"))
-                                                .side(BUY)
-                                                .quantity(Quantity.of(0.5))
-                                                .price(Money.of(2000, "USD"))
-                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
-                                                .build(),
-                                        PnlTradeDetails.builder()
-                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
-                                                .originTradeId(OriginTradeId.of("T4"))
-                                                .portfolioId(PortfolioId.of("P123"))
-                                                .symbol(Symbol.of("ETH/USD"))
-                                                .subName(SubName.of("crypto"))
-                                                .side(SELL)
-                                                .quantity(Quantity.of(0.4))
-                                                .price(Money.of(2100, "USD"))
-                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
+                                .pnlPortfolioStatements(List.of(
+                                        PnlPortfolioStatement.builder()
+                                                .portfolioId(PortfolioId.of(UUID.randomUUID().toString()))
+                                                .investedBalance(Money.of(100, "USD"))
+                                                .currentValue(Money.of(130, "USD"))
+                                                .totalProfit(Money.of(30, "USD"))
+                                                .pctProfit(30)
+                                                .executedTrades(List.of(
+                                                        PnlTradeDetails.builder()
+                                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
+                                                                .originTradeId(OriginTradeId.of("T3"))
+                                                                .portfolioId(PortfolioId.of("P123"))
+                                                                .symbol(Symbol.of("ETH/USD"))
+                                                                .subName(SubName.of("crypto"))
+                                                                .side(BUY)
+                                                                .quantity(Quantity.of(0.5))
+                                                                .price(Money.of(2000, "USD"))
+                                                                .originDateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+                                                                .build(),
+                                                        PnlTradeDetails.builder()
+                                                                .tradeId(TradeId.of(UUID.randomUUID().toString()))
+                                                                .originTradeId(OriginTradeId.of("T4"))
+                                                                .portfolioId(PortfolioId.of("P123"))
+                                                                .symbol(Symbol.of("ETH/USD"))
+                                                                .subName(SubName.of("crypto"))
+                                                                .side(SELL)
+                                                                .quantity(Quantity.of(0.4))
+                                                                .price(Money.of(2100, "USD"))
+                                                                .originDateTime(ZonedDateTime.parse("2021-07-01T07:30:00Z"))
+                                                                .build()
+                                                ))
                                                 .build()
                                 ))
                                 .dateTime(ZonedDateTime.parse("2021-07-01T06:30:00Z"))
                                 .build()
                 ))
                 .build();
-
 
         PnlHistory persistedPnlHistory = pnlRepository.save(aggregate);
         Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));

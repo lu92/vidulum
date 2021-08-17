@@ -69,6 +69,7 @@ public class PortfolioDto {
     public static class AggregatedPortfolioSummaryJson {
         private String userId;
         private Map<String, List<AssetSummaryJson>> segmentedAssets;
+        private List<String> portfolioIds;
         private Money investedBalance;
         private Money currentValue;
         private Money totalProfit;

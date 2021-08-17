@@ -39,23 +39,36 @@ public class PnlHistoryEntity {
                             Date.from(pnlStatementSnapshot.getDateTime().toInstant()) :
                             null;
 
-                    List<PnlTradeDetailsEntity> executedTradeEntities = pnlStatementSnapshot.getExecutedTrades().stream()
-                            .map(pnlTradeDetailsSnapshot -> {
-                                Date originDateTime = pnlTradeDetailsSnapshot.getOriginDateTime() != null ?
-                                        Date.from(pnlTradeDetailsSnapshot.getOriginDateTime().toInstant()) :
-                                        null;
+                    List<PnlPortfolioStatementEntity> portfolioStatementEntities = pnlStatementSnapshot.getPortfolioStatements().stream()
+                            .map(pnlPortfolioStatementSnapshot -> {
+                                List<PnlTradeDetailsEntity> executedTrades = pnlPortfolioStatementSnapshot.getExecutedTrades().stream()
+                                        .map(pnlTradeDetailsSnapshot -> {
+                                            Date originDateTime = pnlTradeDetailsSnapshot.getOriginDateTime() != null ?
+                                                    Date.from(pnlTradeDetailsSnapshot.getOriginDateTime().toInstant()) :
+                                                    null;
 
-                                return new PnlTradeDetailsEntity(
-                                        pnlTradeDetailsSnapshot.getOriginTradeId().getId(),
-                                        pnlTradeDetailsSnapshot.getTradeId().getId(),
-                                        pnlTradeDetailsSnapshot.getPortfolioId().getId(),
-                                        pnlTradeDetailsSnapshot.getSymbol().getId(),
-                                        pnlTradeDetailsSnapshot.getSubName().getName(),
-                                        pnlTradeDetailsSnapshot.getSide(),
-                                        pnlTradeDetailsSnapshot.getQuantity(),
-                                        pnlTradeDetailsSnapshot.getPrice(),
-                                        originDateTime
-                                );
+                                            return new PnlTradeDetailsEntity(
+                                                    pnlTradeDetailsSnapshot.getOriginTradeId().getId(),
+                                                    pnlTradeDetailsSnapshot.getTradeId().getId(),
+                                                    pnlTradeDetailsSnapshot.getPortfolioId().getId(),
+                                                    pnlTradeDetailsSnapshot.getSymbol().getId(),
+                                                    pnlTradeDetailsSnapshot.getSubName().getName(),
+                                                    pnlTradeDetailsSnapshot.getSide(),
+                                                    pnlTradeDetailsSnapshot.getQuantity(),
+                                                    pnlTradeDetailsSnapshot.getPrice(),
+                                                    originDateTime
+                                            );
+                                        })
+                                        .collect(toList());
+
+                                return PnlPortfolioStatementEntity.builder()
+                                        .portfolioId(pnlPortfolioStatementSnapshot.getPortfolioId().getId())
+                                        .investedBalance(pnlPortfolioStatementSnapshot.getInvestedBalance())
+                                        .currentValue(pnlPortfolioStatementSnapshot.getCurrentValue())
+                                        .totalProfit(pnlPortfolioStatementSnapshot.getTotalProfit())
+                                        .pctProfit(pnlPortfolioStatementSnapshot.getPctProfit())
+                                        .executedTrades(executedTrades)
+                                        .build();
                             })
                             .collect(toList());
 
@@ -64,7 +77,7 @@ public class PnlHistoryEntity {
                             pnlStatementSnapshot.getCurrentValue(),
                             pnlStatementSnapshot.getTotalProfit(),
                             pnlStatementSnapshot.getPctProfit(),
-                            executedTradeEntities,
+                            portfolioStatementEntities,
                             date
                     );
                 })
@@ -80,32 +93,51 @@ public class PnlHistoryEntity {
     public PnlHistorySnapshot toSnapshot() {
         List<PnlHistorySnapshot.PnlStatementSnapshot> pnlStatementSnapshots = pnlStatements.stream()
                 .map(pnlStatementEntity -> {
-                    ZonedDateTime zonedDateTime = pnlStatementEntity.getDateTime() != null ? ZonedDateTime.ofInstant(pnlStatementEntity.getDateTime().toInstant(), ZoneOffset.UTC) : null;
-                    List<PnlHistorySnapshot.PnlTradeDetailsSnapshot> executedTradeSnapshots = pnlStatementEntity.getExecutedTrades().stream()
-                            .map(pnlTradeDetailsEntity -> {
-                                ZonedDateTime originDateTime = pnlTradeDetailsEntity.getOriginDateTime() != null ?
-                                        ZonedDateTime.ofInstant(pnlTradeDetailsEntity.getOriginDateTime().toInstant(), ZoneOffset.UTC) :
-                                        null;
-                                return new PnlHistorySnapshot.PnlTradeDetailsSnapshot(
-                                        OriginTradeId.of(pnlTradeDetailsEntity.getOriginTradeId()),
-                                        TradeId.of(pnlTradeDetailsEntity.getTradeId()),
-                                        PortfolioId.of(pnlTradeDetailsEntity.getPortfolioId()),
-                                        Symbol.of(pnlTradeDetailsEntity.getSymbol()),
-                                        SubName.of(pnlTradeDetailsEntity.getSubName()),
-                                        pnlTradeDetailsEntity.getSide(),
-                                        pnlTradeDetailsEntity.getQuantity(),
-                                        pnlTradeDetailsEntity.getPrice(),
-                                        originDateTime
-                                );
+
+                    List<PnlHistorySnapshot.PnlPortfolioStatementSnapshot> portfolioStatementSnapshots = pnlStatementEntity.getPortfolioStatements().stream()
+                            .map(pnlPortfolioStatementEntity -> {
+                                List<PnlHistorySnapshot.PnlTradeDetailsSnapshot> executedTrades = pnlPortfolioStatementEntity.getExecutedTrades().stream()
+                                        .map(pnlTradeDetailsEntity -> {
+                                            ZonedDateTime originDateTime = pnlTradeDetailsEntity.getOriginDateTime() != null ?
+                                                    ZonedDateTime.ofInstant(pnlTradeDetailsEntity.getOriginDateTime().toInstant(), ZoneOffset.UTC) :
+                                                    null;
+
+                                            return PnlHistorySnapshot.PnlTradeDetailsSnapshot.builder()
+                                                    .originTradeId(OriginTradeId.of(pnlTradeDetailsEntity.getOriginTradeId()))
+                                                    .tradeId(TradeId.of(pnlTradeDetailsEntity.getTradeId()))
+                                                    .portfolioId(PortfolioId.of(pnlTradeDetailsEntity.getPortfolioId()))
+                                                    .symbol(Symbol.of(pnlTradeDetailsEntity.getSymbol()))
+                                                    .subName(SubName.of(pnlTradeDetailsEntity.getSubName()))
+                                                    .side(pnlTradeDetailsEntity.getSide())
+                                                    .quantity(pnlTradeDetailsEntity.getQuantity())
+                                                    .price(pnlTradeDetailsEntity.getPrice())
+                                                    .originDateTime(originDateTime)
+                                                    .build();
+                                        })
+                                        .collect(toList());
+
+                                return PnlHistorySnapshot.PnlPortfolioStatementSnapshot.builder()
+                                        .portfolioId(PortfolioId.of(pnlPortfolioStatementEntity.getPortfolioId()))
+                                        .investedBalance(pnlPortfolioStatementEntity.getInvestedBalance())
+                                        .currentValue(pnlPortfolioStatementEntity.getCurrentValue())
+                                        .totalProfit(pnlPortfolioStatementEntity.getTotalProfit())
+                                        .pctProfit(pnlPortfolioStatementEntity.getPctProfit())
+                                        .executedTrades(executedTrades)
+                                        .build();
                             })
                             .collect(toList());
+
+
+                    ZonedDateTime zonedDateTime = pnlStatementEntity.getDateTime() != null ?
+                            ZonedDateTime.ofInstant(pnlStatementEntity.getDateTime().toInstant(), ZoneOffset.UTC) :
+                            null;
 
                     return new PnlHistorySnapshot.PnlStatementSnapshot(
                             pnlStatementEntity.getInvestedBalance(),
                             pnlStatementEntity.getCurrentValue(),
                             pnlStatementEntity.getTotalProfit(),
                             pnlStatementEntity.getPctProfit(),
-                            executedTradeSnapshots,
+                            portfolioStatementSnapshots,
                             zonedDateTime
                     );
                 })

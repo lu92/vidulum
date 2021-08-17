@@ -45,19 +45,31 @@ public class PnlRestController {
     private PnlDto.PnlHistoryJson toJson(PnlHistory pnlHistory) {
         List<PnlDto.PnlStatementJson> pnlStatements = pnlHistory.getPnlStatements().stream()
                 .map(pnlStatement -> {
-                    List<PnlDto.PnlTradeDetailsJson> tradeDetails = pnlStatement.getExecutedTrades().stream()
-                            .map(pnlTradeDetails ->
-                                    PnlDto.PnlTradeDetailsJson.builder()
-                                            .tradeId(pnlTradeDetails.getTradeId().getId())
-                                            .originTradeId(pnlTradeDetails.getOriginTradeId().getId())
-                                            .portfolioId(pnlTradeDetails.getPortfolioId().getId())
-                                            .symbol(pnlTradeDetails.getSymbol().getId())
-                                            .subName(pnlTradeDetails.getSubName().getName())
-                                            .side(pnlTradeDetails.getSide())
-                                            .quantity(pnlTradeDetails.getQuantity())
-                                            .price(pnlTradeDetails.getPrice())
-                                            .originDateTime(pnlTradeDetails.getOriginDateTime())
-                                            .build())
+                    List<PnlDto.PnlPortfolioStatementJson> portfolioStatements = pnlStatement.getPnlPortfolioStatements().stream()
+                            .map(pnlPortfolioStatement -> {
+                                List<PnlDto.PnlTradeDetailsJson> executedTrades = pnlPortfolioStatement.getExecutedTrades().stream()
+                                        .map(pnlTradeDetails -> PnlDto.PnlTradeDetailsJson.builder()
+                                                .tradeId(pnlTradeDetails.getTradeId().getId())
+                                                .originTradeId(pnlTradeDetails.getOriginTradeId().getId())
+                                                .portfolioId(pnlTradeDetails.getPortfolioId().getId())
+                                                .symbol(pnlTradeDetails.getSymbol().getId())
+                                                .subName(pnlTradeDetails.getSubName().getName())
+                                                .side(pnlTradeDetails.getSide())
+                                                .quantity(pnlTradeDetails.getQuantity())
+                                                .price(pnlTradeDetails.getPrice())
+                                                .originDateTime(pnlTradeDetails.getOriginDateTime())
+                                                .build())
+                                        .collect(toList());
+
+                                return PnlDto.PnlPortfolioStatementJson.builder()
+                                        .portfolioId(pnlPortfolioStatement.getPortfolioId().getId())
+                                        .investedBalance(pnlPortfolioStatement.getInvestedBalance())
+                                        .currentValue(pnlPortfolioStatement.getCurrentValue())
+                                        .totalProfit(pnlPortfolioStatement.getTotalProfit())
+                                        .pctProfit(pnlPortfolioStatement.getPctProfit())
+                                        .executedTrades(executedTrades)
+                                        .build();
+                            })
                             .collect(toList());
 
                     return PnlDto.PnlStatementJson.builder()
@@ -65,12 +77,11 @@ public class PnlRestController {
                             .currentValue(pnlStatement.getCurrentValue())
                             .totalProfit(pnlStatement.getTotalProfit())
                             .pctProfit(pnlStatement.getPctProfit())
-                            .executedTrades(tradeDetails)
+                            .portfolioStatements(portfolioStatements)
                             .dateTime(pnlStatement.getDateTime())
                             .build();
                 })
                 .collect(toList());
-
 
         return PnlDto.PnlHistoryJson.builder()
                 .pnlId(pnlHistory.getPnlId().getId())

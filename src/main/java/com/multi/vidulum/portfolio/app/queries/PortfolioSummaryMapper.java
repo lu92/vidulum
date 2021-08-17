@@ -6,6 +6,7 @@ import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -76,6 +77,10 @@ public class PortfolioSummaryMapper {
                 .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
                 .reduce(Money.zero("USD"), Money::plus);
 
+        List<String> portfolioIds = aggregatedPortfolio.getPortfolioIds().stream()
+                .map(PortfolioId::getId)
+                .collect(toList());
+
         Money profit = currentValue.minus(aggregatedPortfolio.getInvestedBalance());
 
         double pctProfit = Money.zero("USD").equals(aggregatedPortfolio.getInvestedBalance()) ?
@@ -85,6 +90,7 @@ public class PortfolioSummaryMapper {
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
                 .segmentedAssets(mappedAssets)
+                .portfolioIds(portfolioIds)
                 .investedBalance(aggregatedPortfolio.getInvestedBalance().withScale(4))
                 .currentValue(currentValue.withScale(4))
                 .totalProfit(profit.withScale(4))

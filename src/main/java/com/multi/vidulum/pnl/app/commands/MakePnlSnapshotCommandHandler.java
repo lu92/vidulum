@@ -1,10 +1,7 @@
 package com.multi.vidulum.pnl.app.commands;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.pnl.domain.DomainPnlRepository;
-import com.multi.vidulum.pnl.domain.PnlHistory;
-import com.multi.vidulum.pnl.domain.PnlStatement;
-import com.multi.vidulum.pnl.domain.PnlTradeDetails;
+import com.multi.vidulum.pnl.domain.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
@@ -19,7 +16,9 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -44,14 +43,37 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
 
     private PnlStatement createProfitAndLossStatement(UserId userId, Range<ZonedDateTime> dateTimeRange) {
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestClient.getAggregatedPortfolio(userId);
-        List<TradingDto.TradeSummaryJson> executedTrades = tradingRestClient.getTradesInDateRange(userId, dateTimeRange);
-        List<PnlTradeDetails> executedTradeSnapshots = mapToSnapshots(executedTrades);
+
+        Map<String, List<TradingDto.TradeSummaryJson>> groupedTradesByPortfolio =
+                tradingRestClient.getTradesInDateRange(userId, dateTimeRange).stream()
+                        .collect(groupingBy(TradingDto.TradeSummaryJson::getPortfolioId));
+
+        List<PnlPortfolioStatement> pnlPortfolioStatements = aggregatedPortfolio.getPortfolioIds().stream()
+                .map(portfolioId -> {
+
+                    // get portfolio stats
+                    PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestClient.getPortfolio(PortfolioId.of(portfolioId));
+
+                    // calculate trades from given period of time
+                    List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId, List.of()));
+
+                    return PnlPortfolioStatement.builder()
+                            .portfolioId(PortfolioId.of(portfolioSummaryJson.getPortfolioId()))
+                            .investedBalance(portfolioSummaryJson.getInvestedBalance())
+                            .currentValue(portfolioSummaryJson.getCurrentValue())
+                            .totalProfit(portfolioSummaryJson.getProfit())
+                            .pctProfit(portfolioSummaryJson.getPctProfit())
+                            .executedTrades(tradeDetails)
+                            .build();
+                })
+                .collect(toList());
+
         return PnlStatement.builder()
                 .investedBalance(aggregatedPortfolio.getInvestedBalance())
                 .currentValue(aggregatedPortfolio.getCurrentValue())
                 .totalProfit(aggregatedPortfolio.getTotalProfit())
                 .pctProfit(aggregatedPortfolio.getPctProfit())
-                .executedTrades(executedTradeSnapshots)
+                .pnlPortfolioStatements(pnlPortfolioStatements)
                 .dateTime(ZonedDateTime.now(clock))
                 .build();
     }
