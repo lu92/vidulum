@@ -508,7 +508,7 @@ class VidulumApplicationTests {
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
         tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade [{}] applied to portfolio", event);
+            log.info("Following trade applied to portfolio [{}]", event);
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
@@ -518,9 +518,8 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -531,7 +530,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade2")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -542,7 +541,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade3")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -564,7 +563,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade5")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -575,7 +574,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade6")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -586,7 +585,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade7")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -597,7 +596,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade8")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -607,7 +606,7 @@ class VidulumApplicationTests {
                 .price(Money.of(3000, "USD"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
+        Awaitility.await().atMost(15, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.isPresent()).isTrue();
@@ -777,6 +776,8 @@ class VidulumApplicationTests {
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         log.info("[{}]", allOpenedOrders);
+
+
     }
 
     @Test
