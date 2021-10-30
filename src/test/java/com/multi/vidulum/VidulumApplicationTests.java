@@ -21,6 +21,7 @@ import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
@@ -96,6 +97,9 @@ class VidulumApplicationTests {
     private TradeMongoRepository tradeMongoRepository;
 
     @Autowired
+    private OrderMongoRepository orderMongoRepository;
+
+    @Autowired
     private PnlMongoRepository pnlMongoRepository;
 
     @Autowired
@@ -110,6 +114,7 @@ class VidulumApplicationTests {
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
+        orderMongoRepository.deleteAll();
         pnlMongoRepository.deleteAll();
         quoteRestController.clearCaches();
     }
@@ -290,7 +295,7 @@ class VidulumApplicationTests {
 
         TradingDto.OrderSummaryJson placedOrder = tradingRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin trade-id-1")
+                        .originOrderId("origin trade-id-X")
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
@@ -308,11 +313,12 @@ class VidulumApplicationTests {
                 .usingElementComparatorIgnoringFields("orderId")
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
-                                .originOrderId("origin trade-id-1")
+                                .originOrderId("origin trade-id-X")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
                                 .side(SELL)
+                                .status(Status.OPEN)
                                 .targetPrice(Money.of(70000, "USD"))
                                 .entryPrice(Money.of(60000, "USD"))
                                 .stopLoss(Money.of(55000, "USD"))
@@ -327,11 +333,12 @@ class VidulumApplicationTests {
                 .usingElementComparatorIgnoringFields("orderId")
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
-                                .originOrderId("origin trade-id-1")
+                                .originOrderId("origin trade-id-X")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
                                 .side(SELL)
+                                .status(Status.CANCELLED)
                                 .targetPrice(Money.of(70000, "USD"))
                                 .entryPrice(Money.of(60000, "USD"))
                                 .stopLoss(Money.of(55000, "USD"))

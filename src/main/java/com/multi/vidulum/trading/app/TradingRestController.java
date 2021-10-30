@@ -134,6 +134,7 @@ public class TradingRestController {
                 .symbol(order.getSymbol().getId())
                 .type(order.getType())
                 .side(order.getSide())
+                .status(order.getStatus())
                 .targetPrice(order.getTargetPrice())
                 .entryPrice(order.getEntryPrice())
                 .stopLoss(order.getStopLoss())
