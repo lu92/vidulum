@@ -9,7 +9,7 @@ import lombok.Data;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-public class RiskManagementDto {
+public final class RiskManagementDto {
 
     @Data
     @Builder
@@ -52,5 +52,4 @@ public class RiskManagementDto {
         private boolean isApplicable;
         private ZonedDateTime dateTime;
     }
-
 }

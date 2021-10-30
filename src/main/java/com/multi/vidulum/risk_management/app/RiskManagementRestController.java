@@ -10,14 +10,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @RestController
 @AllArgsConstructor
 public class RiskManagementRestController {
-
     private final QueryGateway queryGateway;
+    private final RiskManagementMapper mapper;
 
     @GetMapping("/risk-management/{portfolioId}")
     public RiskManagementDto.RiskManagementStatementJson getRiskManagementStatement(@PathVariable("portfolioId") String portfolioId) {
@@ -26,51 +23,6 @@ public class RiskManagementRestController {
                 .build();
 
         RiskManagementStatement statement = queryGateway.send(query);
-        return toJson(statement);
-    }
-
-    private RiskManagementDto.RiskManagementStatementJson toJson(RiskManagementStatement statement) {
-        List<RiskManagementDto.AssetRiskManagementStatementJson> assets = statement.getAssetRiskManagementStatements()
-                .stream()
-                .map(assetRiskManagementStatement -> {
-                    List<RiskManagementDto.StopLossJson> stopLosses = assetRiskManagementStatement.getStopLosses().stream()
-                            .map(stopLoss -> RiskManagementDto.StopLossJson.builder()
-                                    .symbol(stopLoss.getSymbol().getId())
-                                    .quantity(stopLoss.getQuantity())
-                                    .price(stopLoss.getPrice())
-                                    .dateTime(stopLoss.getDateTime())
-                                    .isApplicable(stopLoss.isApplicable())
-                                    .build())
-                            .collect(Collectors.toList());
-
-                    return RiskManagementDto.AssetRiskManagementStatementJson.builder()
-                            .ticker(assetRiskManagementStatement.getTicker().getId())
-                            .quantity(assetRiskManagementStatement.getQuantity())
-                            .stopLosses(stopLosses)
-                            .avgPurchasePrice(assetRiskManagementStatement.getAvgPurchasePrice())
-                            .currentPrice(assetRiskManagementStatement.getCurrentPrice())
-                            .currentValue(assetRiskManagementStatement.getCurrentValue())
-                            .safeMoney(assetRiskManagementStatement.getSafeMoney())
-                            .riskMoney(assetRiskManagementStatement.getRiskMoney())
-                            .ragStatus(assetRiskManagementStatement.getRagStatus())
-                            .pctRiskOfPortfolio(assetRiskManagementStatement.getPctRiskOfPortfolio())
-                            .build();
-                })
-                .collect(Collectors.toList());
-
-        return RiskManagementDto.RiskManagementStatementJson.builder()
-                .portfolioId(statement.getPortfolioId().getId())
-                .userId(statement.getUserId().getId())
-                .name(statement.getName())
-                .broker(statement.getBroker().getId())
-                .assetRiskManagementStatements(assets)
-                .investedBalance(statement.getInvestedBalance())
-                .currentValue(statement.getCurrentValue())
-                .pctProfit(statement.getPctProfit())
-                .profit(statement.getProfit())
-                .safe(statement.getSafe())
-                .risk(statement.getRisk())
-                .riskPct(statement.getRiskPct())
-                .build();
+        return mapper.toJson(statement);
     }
 }
