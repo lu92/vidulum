@@ -60,4 +60,8 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .status(snapshot.getStatus())
                 .build();
     }
+
+    public boolean isOpen() {
+        return Status.OPEN.equals(status);
+    }
 }

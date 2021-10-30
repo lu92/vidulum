@@ -4,6 +4,7 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.trading.app.commands.CancelOrderCommand;
 import com.multi.vidulum.trading.app.commands.MakeTradeCommand;
 import com.multi.vidulum.trading.app.commands.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery;
@@ -71,8 +72,8 @@ public class TradingRestController {
                 .collect(toList());
     }
 
-    @PostMapping
-    public void placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
+    @PostMapping("/orders")
+    public TradingDto.OrderSummaryJson placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
                 .originOrderId(OrderId.of(placeOrderJson.getOriginOrderId()))
                 .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
@@ -86,7 +87,17 @@ public class TradingRestController {
                 .occurredDateTime(placeOrderJson.getOriginDateTime())
                 .build();
 
-        commandGateway.send(command);
+        Order placedOrder = commandGateway.send(command);
+        return toJson(placedOrder);
+    }
+
+    @DeleteMapping("/orders/{originOrderId}")
+    public TradingDto.OrderSummaryJson cancelOrder(@PathVariable("originOrderId") String originOrderId) {
+        CancelOrderCommand command = CancelOrderCommand.builder()
+                .originOrderId(OrderId.of(originOrderId))
+                .build();
+        Order canceledOrder = commandGateway.send(command);
+        return toJson(canceledOrder);
     }
 
     @GetMapping("/orders/{portfolioId}")
@@ -123,6 +134,7 @@ public class TradingRestController {
                 .symbol(order.getSymbol().getId())
                 .type(order.getType())
                 .side(order.getSide())
+                .status(order.getStatus())
                 .targetPrice(order.getTargetPrice())
                 .entryPrice(order.getEntryPrice())
                 .stopLoss(order.getStopLoss())

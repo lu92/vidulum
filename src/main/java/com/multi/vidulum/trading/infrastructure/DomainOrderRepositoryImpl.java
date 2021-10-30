@@ -41,4 +41,11 @@ public class DomainOrderRepositoryImpl implements DomainOrderRepository {
                 .map(Order::from)
                 .collect(toList());
     }
+
+    @Override
+    public Optional<Order> findByOriginOrderId(OrderId orderId) {
+        return repository.findByOriginOrderId(orderId.getId())
+                .map(OrderEntity::toSnapshot)
+                .map(Order::from);
+    }
 }

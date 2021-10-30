@@ -47,6 +47,7 @@ public final class RiskManagementDto {
     @Builder
     public static class StopLossJson {
         private String symbol;
+        private String originOrderId;
         private Quantity quantity;
         private Money price;
         private boolean isApplicable;

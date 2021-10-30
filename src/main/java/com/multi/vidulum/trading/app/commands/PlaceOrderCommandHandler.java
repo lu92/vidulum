@@ -1,6 +1,5 @@
 package com.multi.vidulum.trading.app.commands;
 
-import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.Status;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
@@ -12,12 +11,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @AllArgsConstructor
-public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderCommand, OrderId> {
+public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderCommand, Order> {
 
     private final DomainOrderRepository orderRepository;
 
     @Override
-    public OrderId handle(PlaceOrderCommand command) {
+    public Order handle(PlaceOrderCommand command) {
 
         Order order = Order.builder()
                 .originOrderId(command.getOriginOrderId())
@@ -36,6 +35,6 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
 
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been stored!", savedOrder);
-        return savedOrder.getOrderId();
+        return savedOrder;
     }
 }

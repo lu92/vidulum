@@ -17,11 +17,11 @@ import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementDto;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
-import com.multi.vidulum.risk_management.domain.RagStatus;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
@@ -97,6 +97,9 @@ class VidulumApplicationTests {
     private TradeMongoRepository tradeMongoRepository;
 
     @Autowired
+    private OrderMongoRepository orderMongoRepository;
+
+    @Autowired
     private PnlMongoRepository pnlMongoRepository;
 
     @Autowired
@@ -111,6 +114,7 @@ class VidulumApplicationTests {
     void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
+        orderMongoRepository.deleteAll();
         pnlMongoRepository.deleteAll();
         quoteRestController.clearCaches();
     }
@@ -288,6 +292,61 @@ class VidulumApplicationTests {
 
         PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory(createdUserJson.getUserId());
         System.out.println(pnlHistory);
+
+        TradingDto.OrderSummaryJson placedOrder = tradingRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-X")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .symbol("BTC/USD")
+                        .type(OrderType.OCO)
+                        .side(SELL)
+                        .targetPrice(Money.of(70000, "USD"))
+                        .entryPrice(Money.of(60000, "USD"))
+                        .stopLoss(Money.of(55000, "USD"))
+                        .quantity(Quantity.of(0.5))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
+        assertThat(allOpenedOrders)
+                .usingElementComparatorIgnoringFields("orderId")
+                .containsExactly(
+                        TradingDto.OrderSummaryJson.builder()
+                                .originOrderId("origin trade-id-X")
+                                .portfolioId(registeredPortfolio.getPortfolioId())
+                                .symbol("BTC/USD")
+                                .type(OrderType.OCO)
+                                .side(SELL)
+                                .status(Status.OPEN)
+                                .targetPrice(Money.of(70000, "USD"))
+                                .entryPrice(Money.of(60000, "USD"))
+                                .stopLoss(Money.of(55000, "USD"))
+                                .quantity(Quantity.of(0.5))
+                                .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                                .build()
+                );
+
+        TradingDto.OrderSummaryJson canceledOrder = tradingRestController.cancelOrder(placedOrder.getOriginOrderId());
+
+        assertThat(List.of(canceledOrder))
+                .usingElementComparatorIgnoringFields("orderId")
+                .containsExactly(
+                        TradingDto.OrderSummaryJson.builder()
+                                .originOrderId("origin trade-id-X")
+                                .portfolioId(registeredPortfolio.getPortfolioId())
+                                .symbol("BTC/USD")
+                                .type(OrderType.OCO)
+                                .side(SELL)
+                                .status(Status.CANCELLED)
+                                .targetPrice(Money.of(70000, "USD"))
+                                .entryPrice(Money.of(60000, "USD"))
+                                .stopLoss(Money.of(55000, "USD"))
+                                .quantity(Quantity.of(0.5))
+                                .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                                .build()
+                );
+        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
     }
 
     @Test

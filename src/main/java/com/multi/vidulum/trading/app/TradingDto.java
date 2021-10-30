@@ -1,9 +1,6 @@
 package com.multi.vidulum.trading.app;
 
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.OrderType;
-import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Side;
+import com.multi.vidulum.common.*;
 import lombok.Builder;
 import lombok.Data;
 
@@ -64,6 +61,7 @@ public class TradingDto {
         private String symbol;
         private OrderType type;
         private Side side;
+        private Status status;
         private Money targetPrice;
         private Money entryPrice;
         private Money stopLoss;
