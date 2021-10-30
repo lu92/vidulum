@@ -15,6 +15,9 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.risk_management.app.RiskManagementDto;
+import com.multi.vidulum.risk_management.app.RiskManagementRestController;
+import com.multi.vidulum.risk_management.domain.RagStatus;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
@@ -77,6 +80,9 @@ class VidulumApplicationTests {
 
     @Autowired
     private TradingRestController tradingRestController;
+
+    @Autowired
+    private RiskManagementRestController riskManagementRestController;
 
     @Autowired
     private PnlRestController pnlRestController;
@@ -724,7 +730,7 @@ class VidulumApplicationTests {
                 .targetPrice(Money.of(70000, "USD"))
                 .entryPrice(Money.of(60000, "USD"))
                 .stopLoss(Money.of(55000, "USD"))
-                .quantity(Quantity.of(0.5))
+                .quantity(Quantity.of(0.1))
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
@@ -751,11 +757,11 @@ class VidulumApplicationTests {
                         .targetPrice(Money.of(70000, "USD"))
                         .entryPrice(Money.of(60000, "USD"))
                         .stopLoss(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
-                        .risk(Money.of(2500, "USD"))
-                        .reward(Money.of(5000, "USD"))
+                        .quantity(Quantity.of(0.1))
+                        .risk(Money.of(500, "USD"))
+                        .reward(Money.of(1000, "USD"))
                         .riskRewardRatio(RiskRewardRatio.of(1, 2))
-                        .value(Money.of(0.5 * 60000, "USD"))
+                        .value(Money.of(0.1 * 60000, "USD"))
                         .pctProfit(0)
                         .build(),
                 PortfolioDto.PositionSummaryJson.builder()
@@ -777,6 +783,54 @@ class VidulumApplicationTests {
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         log.info("[{}]", allOpenedOrders);
 
+        RiskManagementDto.RiskManagementStatementJson riskManagementStatement = riskManagementRestController.getRiskManagementStatement(registeredPortfolio.getPortfolioId());
+        System.out.println(jsonFormatter.formatToPrettyJson(riskManagementStatement));
+
+        assertThat(riskManagementStatement).isEqualTo(
+                RiskManagementDto.RiskManagementStatementJson.builder()
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .userId(registeredPortfolio.getUserId())
+                        .name(registeredPortfolio.getName())
+                        .broker(registeredPortfolio.getBroker())
+                        .assetRiskManagementStatements(
+                                List.of(
+                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+                                                .ticker("USD")
+                                                .avgPurchasePrice(Money.of(10000, "USD"))
+                                                .quantity(Quantity.of(88100))
+                                                .stopLosses(List.of())
+                                                .ragStatus(RagStatus.GREEN)
+                                                .riskMoney(Money.zero("USD"))
+                                                .pctRiskOfPortfolio(0)
+                                                .build(),
+                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+                                                .ticker("USD")
+                                                .avgPurchasePrice(Money.of(10000, "USD"))
+                                                .quantity(Quantity.of(88100))
+                                                .stopLosses(List.of())
+                                                .ragStatus(RagStatus.GREEN)
+                                                .riskMoney(Money.zero("USD"))
+                                                .pctRiskOfPortfolio(0)
+                                                .build(),
+                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+                                                .ticker("USD")
+                                                .avgPurchasePrice(Money.of(10000, "USD"))
+                                                .quantity(Quantity.of(88100))
+                                                .stopLosses(List.of())
+                                                .ragStatus(RagStatus.GREEN)
+                                                .riskMoney(Money.zero("USD"))
+                                                .pctRiskOfPortfolio(0)
+                                                .build()
+
+                                ))
+                        .investedBalance(portfolio.getInvestedBalance())
+//                        .currentValue(portfolio.get)
+//                        .pctProfit()
+//                        .profit()
+//                        .risk()
+//                        .riskPct()
+                        .build()
+        );
 
     }
 

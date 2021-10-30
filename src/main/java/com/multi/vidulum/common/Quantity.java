@@ -35,4 +35,12 @@ public class Quantity {
     public Quantity minus(Quantity other) {
         return new Quantity(qty - other.qty, unit);
     }
+
+    public Quantity copy() {
+        return new Quantity(qty, unit);
+    }
+
+    public boolean isZero() {
+        return qty == 0;
+    }
 }
