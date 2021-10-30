@@ -15,6 +15,9 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.risk_management.app.RiskManagementDto;
+import com.multi.vidulum.risk_management.app.RiskManagementRestController;
+import com.multi.vidulum.risk_management.domain.RagStatus;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
@@ -77,6 +80,9 @@ class VidulumApplicationTests {
 
     @Autowired
     private TradingRestController tradingRestController;
+
+    @Autowired
+    private RiskManagementRestController riskManagementRestController;
 
     @Autowired
     private PnlRestController pnlRestController;
@@ -508,7 +514,7 @@ class VidulumApplicationTests {
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
         tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade [{}] applied to portfolio", event);
+            log.info("Following trade applied to portfolio [{}]", event);
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
@@ -518,9 +524,8 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -531,7 +536,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade2")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -542,7 +547,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade3")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -564,7 +569,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade5")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -575,7 +580,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade6")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -586,7 +591,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade7")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -597,7 +602,7 @@ class VidulumApplicationTests {
                 .build());
 
         tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
-                .originTradeId("trade4")
+                .originTradeId("trade8")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -607,7 +612,7 @@ class VidulumApplicationTests {
                 .price(Money.of(3000, "USD"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
+        Awaitility.await().atMost(15, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.isPresent()).isTrue();
@@ -725,7 +730,7 @@ class VidulumApplicationTests {
                 .targetPrice(Money.of(70000, "USD"))
                 .entryPrice(Money.of(60000, "USD"))
                 .stopLoss(Money.of(55000, "USD"))
-                .quantity(Quantity.of(0.5))
+                .quantity(Quantity.of(0.1))
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
@@ -752,11 +757,11 @@ class VidulumApplicationTests {
                         .targetPrice(Money.of(70000, "USD"))
                         .entryPrice(Money.of(60000, "USD"))
                         .stopLoss(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
-                        .risk(Money.of(2500, "USD"))
-                        .reward(Money.of(5000, "USD"))
+                        .quantity(Quantity.of(0.1))
+                        .risk(Money.of(500, "USD"))
+                        .reward(Money.of(1000, "USD"))
                         .riskRewardRatio(RiskRewardRatio.of(1, 2))
-                        .value(Money.of(0.5 * 60000, "USD"))
+                        .value(Money.of(0.1 * 60000, "USD"))
                         .pctProfit(0)
                         .build(),
                 PortfolioDto.PositionSummaryJson.builder()
@@ -777,6 +782,151 @@ class VidulumApplicationTests {
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         log.info("[{}]", allOpenedOrders);
+
+        RiskManagementDto.RiskManagementStatementJson riskManagementStatement = riskManagementRestController.getRiskManagementStatement(registeredPortfolio.getPortfolioId());
+        System.out.println(jsonFormatter.formatToPrettyJson(riskManagementStatement));
+
+//        assertThat(riskManagementStatement.getAssetRiskManagementStatements()).containsExactlyInAnyOrder(
+//
+//                RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                        .ticker("USD")
+//                        .quantity(Quantity.of(88100))
+//                        .stopLosses(List.of())
+//                        .avgPurchasePrice(Money.of(1, "USD"))
+//                        .currentValue(Money.of(88100, "USD"))
+//                        .currentPrice(Money.of(1, "USD"))
+//                        .safeMoney(Money.of(88100, "USD"))
+//                        .riskMoney(Money.zero("USD"))
+//                        .ragStatus(RagStatus.GREEN)
+//                        .pctRiskOfPortfolio(0)
+//                        .build(),
+//                RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                        .ticker("BTC")
+//                        .quantity(Quantity.of(0.20000000000000004))
+//                        .stopLosses(List.of(
+//                                RiskManagementDto.StopLossJson.builder()
+//                                        .symbol("BTC/USD")
+//                                        .quantity(Quantity.of(0.1))
+//                                        .price(Money.of(55000, "USD"))
+//                                        .isApplicable(true)
+//                                        .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                        .build()
+//                        ))
+//                        .avgPurchasePrice(Money.of(40000, "USD"))
+//                        .currentValue(Money.of(12000, "USD"))
+//                        .currentPrice(Money.of(60000, "USD"))
+//                        .safeMoney(Money.of(5499.999999999998200000000, "USD"))
+//                        .riskMoney(Money.of(6500.000000000001800000000, "USD"))
+//                        .ragStatus(RagStatus.GREEN)
+//                        .pctRiskOfPortfolio(14.96999999)
+//                        .build(),
+//                RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                        .ticker("ETH")
+//                        .quantity(Quantity.of(1.3))
+//                        .stopLosses(List.of(
+//                                RiskManagementDto.StopLossJson.builder()
+//                                        .symbol("ETH/USD")
+//                                        .quantity(Quantity.of(0.5))
+//                                        .price(Money.of(2700, "USD"))
+//                                        .isApplicable(true)
+//                                        .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                        .build(),
+//                                RiskManagementDto.StopLossJson.builder()
+//                                        .symbol("ETH/USD")
+//                                        .quantity(Quantity.of(0.5))
+//                                        .price(Money.of(2900, "USD"))
+//                                        .isApplicable(false)
+//                                        .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                        .build()
+//                        ))
+//                        .avgPurchasePrice(Money.of(3000, "USD"))
+//                        .currentValue(Money.of(3705, "USD"))
+//                        .currentPrice(Money.of(2850, "USD"))
+//                        .safeMoney(Money.of(1350, "USD"))
+//                        .riskMoney(Money.of(2355,"USD"))
+//                        .ragStatus(RagStatus.GREEN)
+//                        .pctRiskOfPortfolio(43.07855626)
+//                        .build()
+//        );
+//
+//        assertThat(riskManagementStatement).isEqualTo(
+//                RiskManagementDto.RiskManagementStatementJson.builder()
+//                        .portfolioId(registeredPortfolio.getPortfolioId())
+//                        .userId(registeredPortfolio.getUserId())
+//                        .name(registeredPortfolio.getName())
+//                        .broker(registeredPortfolio.getBroker())
+//                        .assetRiskManagementStatements(
+//                                List.of(
+//                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                                                .ticker("USD")
+//                                                .quantity(Quantity.of(88100))
+//                                                .stopLosses(List.of())
+//                                                .avgPurchasePrice(Money.of(1, "USD"))
+//                                                .currentValue(Money.of(88100, "USD"))
+//                                                .currentPrice(Money.of(1, "USD"))
+//                                                .safeMoney(Money.of(88100, "USD"))
+//                                                .riskMoney(Money.zero("USD"))
+//                                                .ragStatus(RagStatus.GREEN)
+//                                                .pctRiskOfPortfolio(0)
+//                                                .build(),
+//                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                                                .ticker("BTC")
+//                                                .quantity(Quantity.of(0.20000000000000004))
+//                                                .stopLosses(List.of(
+//                                                        RiskManagementDto.StopLossJson.builder()
+//                                                                .symbol("BTC/USD")
+//                                                                .quantity(Quantity.of(0.1))
+//                                                                .price(Money.of(55000, "USD"))
+//                                                                .isApplicable(true)
+//                                                                .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                                                .build()
+//                                                ))
+//                                                .avgPurchasePrice(Money.of(40000, "USD"))
+//                                                .currentValue(Money.of(12000, "USD"))
+//                                                .currentPrice(Money.of(60000, "USD"))
+//                                                .safeMoney(Money.of(5499.999999999998200000000, "USD"))
+//                                                .riskMoney(Money.of(6500.000000000001800000000, "USD"))
+//                                                .ragStatus(RagStatus.GREEN)
+//                                                .pctRiskOfPortfolio(14.96999999)
+//                                                .build(),
+//                                        RiskManagementDto.AssetRiskManagementStatementJson.builder()
+//                                                .ticker("ETH")
+//                                                .quantity(Quantity.of(1.3))
+//                                                .stopLosses(List.of(
+//                                                        RiskManagementDto.StopLossJson.builder()
+//                                                                .symbol("ETH/USD")
+//                                                                .quantity(Quantity.of(0.5))
+//                                                                .price(Money.of(2700, "USD"))
+//                                                                .isApplicable(true)
+//                                                                .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                                                .build(),
+//                                                        RiskManagementDto.StopLossJson.builder()
+//                                                                .symbol("ETH/USD")
+//                                                                .quantity(Quantity.of(0.5))
+//                                                                .price(Money.of(2900, "USD"))
+//                                                                .isApplicable(false)
+//                                                                .dateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+//                                                                .build()
+//                                                ))
+//                                                .avgPurchasePrice(Money.of(3000, "USD"))
+//                                                .currentValue(Money.of(3705, "USD"))
+//                                                .currentPrice(Money.of(2850, "USD"))
+//                                                .safeMoney(Money.of(1350, "USD"))
+//                                                .riskMoney(Money.of(2355,"USD"))
+//                                                .ragStatus(RagStatus.GREEN)
+//                                                .pctRiskOfPortfolio(43.07855626)
+//                                                .build()
+//                                ))
+//                        .investedBalance(portfolio.getInvestedBalance())
+//                        .currentValue(Money.of(103805, "USD"))
+//                        .profit(Money.of(3805, "USD"))
+//                        .safe(Money.of(94949.999999999998200000000, "USD"))
+//                        .risk(Money.of(8855.000000000001800000000, "USD"))
+//                        .pctProfit(-0.96195)
+//                        .riskPct(-12.72275551)
+//                        .build()
+//        );
+
     }
 
     @Test

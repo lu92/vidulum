@@ -36,6 +36,11 @@ public class Money {
         return new Money(newAmount, currency);
     }
 
+    public Money multiply(Quantity quantity) {
+        BigDecimal newAmount = amount.multiply(BigDecimal.valueOf(quantity.getQty()));
+        return new Money(newAmount, currency);
+    }
+
     public Money minus(Money other) {
         return new Money(amount.subtract(other.amount), currency);
     }
@@ -71,5 +76,13 @@ public class Money {
 
     public Money withScale(int scale) {
         return new Money(new BigDecimal(amount.toString()).setScale(scale, RoundingMode.HALF_UP), currency);
+    }
+
+    public boolean isPositive() {
+        return isMoreThan(Money.zero(currency));
+    }
+
+    public boolean isMoreThan(Money other) {
+        return this.amount.compareTo(other.amount) > 0;
     }
 }
