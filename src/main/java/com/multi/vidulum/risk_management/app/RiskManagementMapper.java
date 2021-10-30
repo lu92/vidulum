@@ -16,6 +16,7 @@ public class RiskManagementMapper {
                     List<RiskManagementDto.StopLossJson> stopLosses = assetRiskManagementStatement.getStopLosses().stream()
                             .map(stopLoss -> RiskManagementDto.StopLossJson.builder()
                                     .symbol(stopLoss.getSymbol().getId())
+                                    .originOrderId(stopLoss.getOriginOrderId().getId())
                                     .quantity(stopLoss.getQuantity())
                                     .price(stopLoss.getPrice())
                                     .dateTime(stopLoss.getDateTime())

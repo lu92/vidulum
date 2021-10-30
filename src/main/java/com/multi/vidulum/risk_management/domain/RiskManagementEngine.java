@@ -59,6 +59,7 @@ public class RiskManagementEngine {
                 .map(orderSummaryJson ->
                         StopLoss.builder()
                                 .symbol(Symbol.of(orderSummaryJson.getSymbol()))
+                                .originOrderId(OrderId.of(orderSummaryJson.getOriginOrderId()))
                                 .quantity(orderSummaryJson.getQuantity())
                                 .price(orderSummaryJson.getStopLoss())
                                 .dateTime(orderSummaryJson.getOriginDateTime())
