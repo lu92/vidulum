@@ -21,9 +21,10 @@ public class RiskManagementDto {
         private List<AssetRiskManagementStatementJson> assetRiskManagementStatements;
         private Money investedBalance;
         private Money currentValue;
-        private double pctProfit;
         private Money profit;
+        private Money safe;
         private Money risk;
+        private double pctProfit;
         private double riskPct;
     }
 
@@ -34,7 +35,9 @@ public class RiskManagementDto {
         private Quantity quantity;
         private List<StopLossJson> stopLosses;
         private Money avgPurchasePrice;
+        private Money currentValue;
         private Money currentPrice;
+        private Money safeMoney;
         private Money riskMoney;
         private RagStatus ragStatus;
         private double pctRiskOfPortfolio;

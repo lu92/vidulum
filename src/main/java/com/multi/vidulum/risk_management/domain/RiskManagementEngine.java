@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Component
@@ -30,6 +31,12 @@ public class RiskManagementEngine {
         Money totalRiskMoney = assetStatements.stream()
                 .map(AssetRiskManagementStatement::getRiskMoney)
                 .reduce(Money.zero("USD"), Money::plus);
+
+        Money totalSafeMoney = assetStatements.stream()
+                .map(AssetRiskManagementStatement::getSafeMoney)
+                .reduce(Money.zero("USD"), Money::plus);
+
+
         return RiskManagementStatement.builder()
                 .portfolioId(PortfolioId.of(portfolio.getPortfolioId()))
                 .userId(UserId.of(portfolio.getUserId()))
@@ -40,8 +47,9 @@ public class RiskManagementEngine {
                 .currentValue(portfolio.getCurrentValue())
                 .pctProfit(portfolio.getPctProfit())
                 .profit(portfolio.getProfit())
+                .safe(totalSafeMoney)
                 .risk(totalRiskMoney)
-                .riskPct(totalRiskMoney.diffPct(portfolio.getCurrentValue()))
+                .riskPct(portfolio.getCurrentValue().diffPct(totalRiskMoney.multiply(-1)))
                 .build();
     }
 
@@ -62,15 +70,19 @@ public class RiskManagementEngine {
         Broker broker = Broker.of(portfolio.getBroker());
         Map<Ticker, List<StopLoss>> stopLossMap = stopLosses.stream()
                 .collect(Collectors.groupingBy(stopLoss -> stopLoss.getSymbol().getOrigin()));
+
         return portfolio.getAssets().stream()
                 .map(asset -> {
+                    AtomicReference<Quantity> quantityCoveredWithStopLoss = new AtomicReference<>(Quantity.zero());
                     List<StopLoss> relatedStopLosses = stopLossMap.getOrDefault(Ticker.of(asset.getTicker()), List.of());
-                    Money totalRiskMoney = relatedStopLosses.stream()
+                    Money totalAssetRiskMoney = relatedStopLosses.stream()
                             .map(stopLoss -> {
                                 Money usdStopLossPriceLevel = fetchUsdPrice(broker, stopLoss);
                                 Money riskPriceLevel = asset.getCurrentPrice().minus(usdStopLossPriceLevel);
                                 stopLoss.setApplicable(riskPriceLevel.isPositive());
                                 if (riskPriceLevel.isPositive()) {
+                                    Quantity protectedQuantity = quantityCoveredWithStopLoss.get().plus(stopLoss.getQuantity());
+                                    quantityCoveredWithStopLoss.set(protectedQuantity);
                                     return riskPriceLevel.multiply(stopLoss.getQuantity());
                                 } else {
                                     return Money.zero("USD");
@@ -78,19 +90,34 @@ public class RiskManagementEngine {
                             })
                             .reduce(Money.zero("USD"), Money::plus);
 
+                    Quantity notProtectedQuantity = asset.getQuantity().minus(quantityCoveredWithStopLoss.get());
+                    if (notProtectedQuantity.isPositive()) {
+                        totalAssetRiskMoney = totalAssetRiskMoney.plus(asset.getCurrentPrice().multiply(notProtectedQuantity));
+                    }
 
-                    double pctRiskOfPortfolio = Ticker.of("USD").equals(Ticker.of(asset.getTicker())) ? 0 : portfolio.getCurrentValue().diffPct(totalRiskMoney);
-//                    double pctRiskOfPortfolio = Ticker.of("USD").equals(Ticker.of(asset.getTicker())) ? 0 : totalRiskMoney.diffPct(portfolio.getCurrentValue());
-                    return AssetRiskManagementStatement.builder()
-                            .ticker(Ticker.of(asset.getTicker()))
-                            .quantity(asset.getQuantity())
-                            .stopLosses(relatedStopLosses)
-                            .avgPurchasePrice(asset.getAvgPurchasePrice())
-                            .currentPrice(asset.getCurrentPrice())
-                            .riskMoney(totalRiskMoney)
-                            .pctRiskOfPortfolio(pctRiskOfPortfolio)
-                            .ragStatus(RagStatus.GREEN)
-                            .build();
+                    AssetRiskManagementStatement.AssetRiskManagementStatementBuilder assetRiskManagementStatementBuilder =
+                            AssetRiskManagementStatement.builder()
+                                    .ticker(Ticker.of(asset.getTicker()))
+                                    .quantity(asset.getQuantity())
+                                    .stopLosses(relatedStopLosses)
+                                    .avgPurchasePrice(asset.getAvgPurchasePrice())
+                                    .currentValue(asset.getCurrentValue())
+                                    .currentPrice(asset.getCurrentPrice())
+                                    .ragStatus(RagStatus.GREEN);
+
+                    if (Ticker.of("USD").equals(Ticker.of(asset.getTicker()))) {
+                        assetRiskManagementStatementBuilder
+                                .safeMoney(asset.getCurrentValue())
+                                .riskMoney(Money.zero("USD"))
+                                .pctRiskOfPortfolio(0);
+
+                    } else {
+                        assetRiskManagementStatementBuilder
+                                .safeMoney(asset.getCurrentValue().minus(totalAssetRiskMoney))
+                                .riskMoney(totalAssetRiskMoney)
+                                .pctRiskOfPortfolio(portfolio.getCurrentValue().diffPct(totalAssetRiskMoney));
+                    }
+                    return assetRiskManagementStatementBuilder.build();
                 })
                 .collect(Collectors.toList());
     }

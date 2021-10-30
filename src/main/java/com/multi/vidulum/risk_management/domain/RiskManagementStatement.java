@@ -21,6 +21,7 @@ public class RiskManagementStatement {
     private Money currentValue;
     private double pctProfit;
     private Money profit;
+    private Money safe;
     private Money risk;
     private double riskPct;
 }

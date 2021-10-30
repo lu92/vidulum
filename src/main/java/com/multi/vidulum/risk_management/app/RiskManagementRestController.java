@@ -49,6 +49,8 @@ public class RiskManagementRestController {
                             .stopLosses(stopLosses)
                             .avgPurchasePrice(assetRiskManagementStatement.getAvgPurchasePrice())
                             .currentPrice(assetRiskManagementStatement.getCurrentPrice())
+                            .currentValue(assetRiskManagementStatement.getCurrentValue())
+                            .safeMoney(assetRiskManagementStatement.getSafeMoney())
                             .riskMoney(assetRiskManagementStatement.getRiskMoney())
                             .ragStatus(assetRiskManagementStatement.getRagStatus())
                             .pctRiskOfPortfolio(assetRiskManagementStatement.getPctRiskOfPortfolio())
@@ -66,6 +68,7 @@ public class RiskManagementRestController {
                 .currentValue(statement.getCurrentValue())
                 .pctProfit(statement.getPctProfit())
                 .profit(statement.getProfit())
+                .safe(statement.getSafe())
                 .risk(statement.getRisk())
                 .riskPct(statement.getRiskPct())
                 .build();

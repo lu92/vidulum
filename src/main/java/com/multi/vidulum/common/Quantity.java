@@ -43,4 +43,8 @@ public class Quantity {
     public boolean isZero() {
         return qty == 0;
     }
+
+    public boolean isPositive() {
+        return qty > 0;
+    }
 }
