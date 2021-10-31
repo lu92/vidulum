@@ -1,9 +1,11 @@
-package com.multi.vidulum.trading.app.commands;
+package com.multi.vidulum.trading.app.commands.orders.execute;
 
 import com.multi.vidulum.common.Status;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
+import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.Trade;
@@ -14,12 +16,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @AllArgsConstructor
-public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCommand, Void> {
+public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCommand, OrderExecutionSummary> {
     private final DomainOrderRepository orderRepository;
     private final MakeTradeCommandHandler makeTradeCommandHandler;
 
     @Override
-    public Void handle(ExecuteOrderCommand command) {
+    public OrderExecutionSummary handle(ExecuteOrderCommand command) {
         Order order = orderRepository.findByOriginOrderId(command.getOriginOrderId())
                 .orElseThrow(() -> new IllegalArgumentException(String.format("Order [%s] does not exist!", command.getOriginOrderId())));
 
@@ -45,6 +47,15 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
         order.setStatus(Status.EXECUTED);
         orderRepository.save(order);
 
-        return null;
+        log.info("Order [{}] in trade [{}] has been executed successfully - target price has been achieved", order.getOriginOrderId(), executedTrade.getOriginTradeId());
+        return OrderExecutionSummary.builder()
+                .originOrderId(order.getOriginOrderId())
+                .originTradeId(executedTrade.getOriginTradeId())
+                .symbol(order.getSymbol())
+                .type(order.getType())
+                .side(order.getSide())
+                .quantity(order.getQuantity())
+                .profit(order.getTargetPrice().minus(order.getEntryPrice()).multiply(order.getQuantity()))
+                .build();
     }
 }

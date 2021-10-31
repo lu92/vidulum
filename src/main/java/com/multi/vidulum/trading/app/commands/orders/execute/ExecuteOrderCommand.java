@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading.app.commands;
+package com.multi.vidulum.trading.app.commands.orders.execute;
 
 import com.multi.vidulum.common.OriginOrderId;
 import com.multi.vidulum.common.OriginTradeId;

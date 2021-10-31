@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading.app.commands;
+package com.multi.vidulum.trading.app.commands.trades.execute;
 
 import com.multi.vidulum.common.StoredTrade;
 import com.multi.vidulum.common.events.TradeStoredEvent;

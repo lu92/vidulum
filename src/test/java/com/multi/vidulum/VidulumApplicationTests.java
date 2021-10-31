@@ -361,13 +361,24 @@ class VidulumApplicationTests {
                         .build()
         );
 
-        tradingRestController.executeOrder(
+        TradingDto.OrderExecutionSummaryJson orderExecutionSummaryJson = tradingRestController.executeOrder(
                 TradingDto.ExecuteOrderJson.builder()
                         .originTradeId("origin trade-id-Y")
                         .originOrderId("origin order-id-Y")
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
+
+        assertThat(orderExecutionSummaryJson).isEqualTo(
+                TradingDto.OrderExecutionSummaryJson.builder()
+                        .originTradeId("origin trade-id-Y")
+                        .originOrderId("origin order-id-Y")
+                        .symbol("BTC/USD")
+                        .type(OrderType.OCO)
+                        .side(SELL)
+                        .quantity(Quantity.of(0.5))
+                        .profit(Money.of(5000, "USD"))
+                        .build());
 
         assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 

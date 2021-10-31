@@ -4,10 +4,11 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.trading.app.commands.CancelOrderCommand;
-import com.multi.vidulum.trading.app.commands.ExecuteOrderCommand;
-import com.multi.vidulum.trading.app.commands.MakeTradeCommand;
-import com.multi.vidulum.trading.app.commands.PlaceOrderCommand;
+import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
+import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommand;
+import com.multi.vidulum.trading.app.commands.orders.execute.ExecuteOrderCommand;
+import com.multi.vidulum.trading.app.commands.orders.execute.OrderExecutionSummary;
+import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery;
 import com.multi.vidulum.trading.app.queries.GetAllTradesForUserQuery;
 import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
@@ -96,13 +97,14 @@ public class TradingRestController {
     }
 
     @PutMapping
-    public void executeOrder(@RequestParam TradingDto.ExecuteOrderJson executeOrderJson) {
+    public TradingDto.OrderExecutionSummaryJson executeOrder(@RequestParam TradingDto.ExecuteOrderJson executeOrderJson) {
         ExecuteOrderCommand command = ExecuteOrderCommand.builder()
-                .originTradeId(OriginTradeId.of(executeOrderJson.getOriginOrderId()))
+                .originTradeId(OriginTradeId.of(executeOrderJson.getOriginTradeId()))
                 .originOrderId(OriginOrderId.of(executeOrderJson.getOriginOrderId()))
                 .originDateTime(ZonedDateTime.now(clock))
                 .build();
-        commandGateway.send(command);
+        OrderExecutionSummary summary = commandGateway.send(command);
+        return toJson(summary);
     }
 
     @DeleteMapping("/orders/{originOrderId}")
@@ -154,6 +156,18 @@ public class TradingRestController {
                 .stopLoss(order.getStopLoss())
                 .quantity(order.getQuantity())
                 .originDateTime(order.getOccurredDateTime())
+                .build();
+    }
+
+    private TradingDto.OrderExecutionSummaryJson toJson(OrderExecutionSummary summary) {
+        return TradingDto.OrderExecutionSummaryJson.builder()
+                .originOrderId(summary.getOriginOrderId().getId())
+                .originTradeId(summary.getOriginTradeId().getId())
+                .symbol(summary.getSymbol().getId())
+                .type(summary.getType())
+                .side(summary.getSide())
+                .quantity(summary.getQuantity())
+                .profit(summary.getProfit())
                 .build();
     }
 }
