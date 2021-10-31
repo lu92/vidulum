@@ -210,8 +210,6 @@ class VidulumApplicationTests {
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
-        System.out.println(portfolio);
-
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
@@ -347,6 +345,71 @@ class VidulumApplicationTests {
                                 .build()
                 );
         assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+
+        TradingDto.OrderSummaryJson placedOrder2 = tradingRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-Y")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .symbol("BTC/USD")
+                        .type(OrderType.OCO)
+                        .side(SELL)
+                        .targetPrice(Money.of(70000, "USD"))
+                        .entryPrice(Money.of(60000, "USD"))
+                        .stopLoss(Money.of(55000, "USD"))
+                        .quantity(Quantity.of(0.5))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        tradingRestController.executeOrder(
+                TradingDto.ExecuteOrderJson.builder()
+                        .originTradeId("origin trade-id-Y")
+                        .originOrderId("origin order-id-Y")
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+
+        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio2 = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                .userId(createdUserJson.getUserId())
+                .segmentedAssets(Map.of(
+                        "Crypto", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("BTC")
+                                        .fullName("Bitcoin")
+                                        .avgPurchasePrice(Money.of(50000.0, "USD"))
+                                        .quantity(Quantity.of(0.5))
+                                        .pctProfit(0.2)
+                                        .profit(Money.of(5000, "USD"))
+                                        .currentPrice(Money.of(60000.0, "USD"))
+                                        .currentValue(Money.of(30000.0, "USD"))
+                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                        .build()),
+                        "Cash", List.of(
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Money.one("USD"))
+                                        .quantity(Quantity.of(75000.0))
+                                        .pctProfit(0)
+                                        .profit(Money.zero("USD"))
+                                        .currentPrice(Money.of(1, "USD"))
+                                        .currentValue(Money.of(75000.0, "USD"))
+                                        .tags(List.of())
+                                        .build())))
+                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
+                .investedBalance(Money.of(100000.0, "USD"))
+                .currentValue(Money.of(105000.0, "USD"))
+                .totalProfit(Money.of(5000, "USD"))
+                .pctProfit(0.05)
+                .build();
+
+        assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
     }
 
     @Test

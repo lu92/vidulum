@@ -12,7 +12,7 @@ import java.time.ZonedDateTime;
 @Builder
 public class OrderSnapshot implements EntitySnapshot<OrderId> {
     OrderId orderId;
-    OrderId originOrderId;
+    OriginOrderId originOrderId;
     PortfolioId portfolioId;
     Symbol symbol;
     OrderType type;

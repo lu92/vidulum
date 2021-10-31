@@ -5,6 +5,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.commands.CancelOrderCommand;
+import com.multi.vidulum.trading.app.commands.ExecuteOrderCommand;
 import com.multi.vidulum.trading.app.commands.MakeTradeCommand;
 import com.multi.vidulum.trading.app.commands.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery;
@@ -16,6 +17,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -27,6 +29,7 @@ import static java.util.stream.Collectors.toList;
 public class TradingRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final Clock clock;
 
     @PostMapping("/trading")
     public void makeTrade(@RequestBody TradingDto.TradeExecutedJson tradeExecutedJson) {
@@ -34,6 +37,7 @@ public class TradingRestController {
                 .userId(UserId.of(tradeExecutedJson.getUserId()))
                 .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
                 .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
+                .originOrderId(OriginOrderId.notDefined())
                 .subName(SubName.of(tradeExecutedJson.getSubName()))
                 .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
                 .side(tradeExecutedJson.getSide())
@@ -75,7 +79,7 @@ public class TradingRestController {
     @PostMapping("/orders")
     public TradingDto.OrderSummaryJson placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
-                .originOrderId(OrderId.of(placeOrderJson.getOriginOrderId()))
+                .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
                 .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
                 .symbol(Symbol.of(placeOrderJson.getSymbol()))
                 .type(placeOrderJson.getType())
@@ -91,10 +95,20 @@ public class TradingRestController {
         return toJson(placedOrder);
     }
 
+    @PutMapping
+    public void executeOrder(@RequestParam TradingDto.ExecuteOrderJson executeOrderJson) {
+        ExecuteOrderCommand command = ExecuteOrderCommand.builder()
+                .originTradeId(OriginTradeId.of(executeOrderJson.getOriginOrderId()))
+                .originOrderId(OriginOrderId.of(executeOrderJson.getOriginOrderId()))
+                .originDateTime(ZonedDateTime.now(clock))
+                .build();
+        commandGateway.send(command);
+    }
+
     @DeleteMapping("/orders/{originOrderId}")
     public TradingDto.OrderSummaryJson cancelOrder(@PathVariable("originOrderId") String originOrderId) {
         CancelOrderCommand command = CancelOrderCommand.builder()
-                .originOrderId(OrderId.of(originOrderId))
+                .originOrderId(OriginOrderId.of(originOrderId))
                 .build();
         Order canceledOrder = commandGateway.send(command);
         return toJson(canceledOrder);

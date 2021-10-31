@@ -1,5 +1,5 @@
 package com.multi.vidulum.common;
 
 public enum Status {
-    OPEN, CLOSED, CANCELLED
+    OPEN, EXECUTED, CANCELLED
 }

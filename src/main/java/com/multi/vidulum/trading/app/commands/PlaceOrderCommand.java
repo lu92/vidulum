@@ -12,7 +12,7 @@ import java.time.ZonedDateTime;
 @Builder
 public class PlaceOrderCommand implements Command {
 
-    OrderId originOrderId;
+    OriginOrderId originOrderId;
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
