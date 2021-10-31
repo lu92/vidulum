@@ -12,7 +12,7 @@ import java.time.ZonedDateTime;
 @Builder
 public class Order implements Aggregate<OrderId, OrderSnapshot> {
     OrderId orderId;
-    OrderId originOrderId;
+    OriginOrderId originOrderId;
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;

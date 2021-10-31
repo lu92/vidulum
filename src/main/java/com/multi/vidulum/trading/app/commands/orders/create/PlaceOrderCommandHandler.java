@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading.app.commands;
+package com.multi.vidulum.trading.app.commands.orders.create;
 
 import com.multi.vidulum.common.Status;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;

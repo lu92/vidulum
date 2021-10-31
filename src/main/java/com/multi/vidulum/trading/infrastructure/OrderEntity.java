@@ -59,7 +59,7 @@ public class OrderEntity {
         ZonedDateTime zonedDateTime = occurredDateTime != null ? ZonedDateTime.ofInstant(occurredDateTime.toInstant(), ZoneOffset.UTC) : null;
         return OrderSnapshot.builder()
                 .orderId(OrderId.of(orderId))
-                .originOrderId(OrderId.of(originOrderId))
+                .originOrderId(OriginOrderId.of(originOrderId))
                 .portfolioId(PortfolioId.of(portfolioId))
                 .symbol(Symbol.of(symbol))
                 .type(type)

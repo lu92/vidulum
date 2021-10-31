@@ -54,6 +54,26 @@ public class TradingDto {
 
     @Data
     @Builder
+    public static class ExecuteOrderJson {
+        private String originOrderId;
+        private String originTradeId;
+        private ZonedDateTime originDateTime;
+    }
+
+    @Data
+    @Builder
+    public static class OrderExecutionSummaryJson {
+        private String originOrderId;
+        private String originTradeId;
+        private String symbol;
+        private OrderType type;
+        private Side side;
+        private Quantity quantity;
+        private Money profit;
+    }
+
+    @Data
+    @Builder
     public static class OrderSummaryJson {
         private String orderId;
         private String originOrderId;

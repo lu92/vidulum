@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading.app.commands;
+package com.multi.vidulum.trading.app.commands.trades.execute;
 
 import com.multi.vidulum.common.StoredTrade;
 import com.multi.vidulum.common.events.TradeStoredEvent;
@@ -24,6 +24,7 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .userId(command.getUserId())
                 .portfolioId(command.getPortfolioId())
                 .originTradeId(command.getOriginTradeId())
+                .originOrderId(command.getOriginOrderId())
                 .symbol(command.getSymbol())
                 .subName(command.getSubName())
                 .side(command.getSide())

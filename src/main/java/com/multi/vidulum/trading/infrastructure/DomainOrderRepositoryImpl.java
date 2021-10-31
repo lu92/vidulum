@@ -1,6 +1,7 @@
 package com.multi.vidulum.trading.infrastructure;
 
 import com.multi.vidulum.common.OrderId;
+import com.multi.vidulum.common.OriginOrderId;
 import com.multi.vidulum.common.Status;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
@@ -43,8 +44,8 @@ public class DomainOrderRepositoryImpl implements DomainOrderRepository {
     }
 
     @Override
-    public Optional<Order> findByOriginOrderId(OrderId orderId) {
-        return repository.findByOriginOrderId(orderId.getId())
+    public Optional<Order> findByOriginOrderId(OriginOrderId originOrderId) {
+        return repository.findByOriginOrderId(originOrderId.getId())
                 .map(OrderEntity::toSnapshot)
                 .map(Order::from);
     }
