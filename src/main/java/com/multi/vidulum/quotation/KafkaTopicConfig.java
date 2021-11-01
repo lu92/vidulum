@@ -1,6 +1,7 @@
 package com.multi.vidulum.quotation;
 
 
+import com.multi.vidulum.common.events.OrderCreatedEvent;
 import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
 import com.multi.vidulum.common.events.TradeStoredEvent;
 import com.multi.vidulum.common.events.UserCreatedEvent;
@@ -211,6 +212,47 @@ public class KafkaTopicConfig {
         return factory;
     }
 
+//    *******
+
+    @Bean
+    public NewTopic orderCreatedTopic() {
+        return new NewTopic("order_created", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, OrderCreatedEvent> orderCreatedProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, OrderCreatedEvent> orderCreatedKafkaTemplate() {
+        return new KafkaTemplate<>(orderCreatedProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, OrderCreatedEvent> orderCreatedConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(OrderCreatedEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> orderCreatedContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(orderCreatedConsumerFactory());
+        return factory;
+    }
 //    *******
 
     @Bean

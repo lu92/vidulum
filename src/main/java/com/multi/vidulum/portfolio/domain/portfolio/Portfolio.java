@@ -36,6 +36,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
+                        asset.getLocked(),
+                        asset.getFree(),
                         asset.getTags()))
                 .collect(Collectors.toList());
 
@@ -58,6 +60,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
+                        assetSnapshot.getLocked(),
+                        assetSnapshot.getFree(),
                         assetSnapshot.getTags()
                 ))
                 .collect(Collectors.toList());
@@ -108,6 +112,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .segment(assetBasicInfo.getSegment())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
+                            .locked(Quantity.zero())
+                            .free(Quantity.zero())
                             .tags(assetBasicInfo.getTags())
                             .build();
                     assets.add(newAsset);
@@ -178,5 +184,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         return assets.stream()
                 .filter(asset -> asset.getTicker().equals(ticker) && asset.getSubName().equals(subName))
                 .findFirst();
+    }
+
+    public void lockAsset(Ticker ticker, Quantity quantity) {
+        Asset asset = findAssetByTicker(ticker)
+                .orElseThrow(() -> new AssetNotFoundException(ticker));
+
+        asset.lock(quantity);
     }
 }

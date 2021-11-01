@@ -233,6 +233,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
+                                .locked(Quantity.zero())
+                                .free(Quantity.zero())
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()
                 ))
