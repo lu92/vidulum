@@ -42,7 +42,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been stored!", savedOrder);
 
-        OrderCreatedEvent event = buildEvent(order);
+        OrderCreatedEvent event = buildEvent(savedOrder);
         eventEmitter.emit(event);
         log.info("Event [{}] has been emitted", event);
         return savedOrder;

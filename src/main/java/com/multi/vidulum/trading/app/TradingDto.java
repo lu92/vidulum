@@ -42,6 +42,7 @@ public class TradingDto {
     public static class PlaceOrderJson {
         private String originOrderId;
         private String portfolioId;
+        private String broker;
         private String symbol;
         private OrderType type;
         private Side side;

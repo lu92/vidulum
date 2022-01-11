@@ -83,6 +83,7 @@ public class TradingRestController {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
                 .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
                 .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
+                .broker(Broker.of(placeOrderJson.getBroker()))
                 .symbol(Symbol.of(placeOrderJson.getSymbol()))
                 .type(placeOrderJson.getType())
                 .side(placeOrderJson.getSide())

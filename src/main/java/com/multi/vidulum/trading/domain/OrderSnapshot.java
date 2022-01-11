@@ -14,6 +14,7 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     OrderId orderId;
     OriginOrderId originOrderId;
     PortfolioId portfolioId;
+    Broker broker;
     Symbol symbol;
     OrderType type;
     Side side;

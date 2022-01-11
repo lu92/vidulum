@@ -36,6 +36,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 orderId,
                 originOrderId,
                 portfolioId,
+                broker,
                 symbol,
                 type,
                 side,
@@ -51,8 +52,9 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     public static Order from(OrderSnapshot snapshot) {
         return Order.builder()
                 .orderId(snapshot.getOrderId())
-                .portfolioId(snapshot.getPortfolioId())
                 .originOrderId(snapshot.getOriginOrderId())
+                .portfolioId(snapshot.getPortfolioId())
+                .broker(snapshot.getBroker())
                 .symbol(snapshot.getSymbol())
                 .type(snapshot.getType())
                 .side(snapshot.getSide())

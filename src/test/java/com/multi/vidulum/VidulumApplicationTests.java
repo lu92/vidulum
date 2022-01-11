@@ -299,13 +299,14 @@ class VidulumApplicationTests {
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-X")
                         .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
                         .side(SELL)
                         .targetPrice(Money.of(70000, "USD"))
                         .stopPrice(Money.of(60000, "USD"))
                         .limitPrice(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
+                        .quantity(Quantity.of(0.4))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -324,7 +325,7 @@ class VidulumApplicationTests {
                                 .targetPrice(Money.of(70000, "USD"))
                                 .entryPrice(Money.of(60000, "USD"))
                                 .stopLoss(Money.of(55000, "USD"))
-                                .quantity(Quantity.of(0.5))
+                                .quantity(Quantity.of(0.4))
                                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                                 .build()
                 );
@@ -344,7 +345,7 @@ class VidulumApplicationTests {
                                 .targetPrice(Money.of(70000, "USD"))
                                 .entryPrice(Money.of(60000, "USD"))
                                 .stopLoss(Money.of(55000, "USD"))
-                                .quantity(Quantity.of(0.5))
+                                .quantity(Quantity.of(0.4))
                                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                                 .build()
                 );

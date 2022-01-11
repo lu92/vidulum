@@ -23,14 +23,6 @@ public class OrderCreatedEventListener {
     public void on(OrderCreatedEvent event) {
         log.info("OrderCreatedEvent [{}] has been captured", event);
 
-        switch(event.getType()) {
-            case STOP_LIMIT:
-                break;
-
-            case OCO:
-                break;
-        }
-
         if (Side.SELL.equals(event.getSide())) {
             lockAssetQuantity(event);
         } else {

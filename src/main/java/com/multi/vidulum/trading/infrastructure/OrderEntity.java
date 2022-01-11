@@ -24,6 +24,7 @@ public class OrderEntity {
     private String orderId;
     private String originOrderId;
     private String portfolioId;
+    private String broker;
     private String symbol;
     private OrderType type;
     private Side side;
@@ -43,6 +44,7 @@ public class OrderEntity {
                 .orderId(id)
                 .originOrderId(snapshot.getOriginOrderId().getId())
                 .portfolioId(snapshot.getPortfolioId().getId())
+                .broker(snapshot.getBroker().getId())
                 .symbol(snapshot.getSymbol().getId())
                 .type(snapshot.getType())
                 .side(snapshot.getSide())
@@ -61,6 +63,7 @@ public class OrderEntity {
                 .orderId(OrderId.of(orderId))
                 .originOrderId(OriginOrderId.of(originOrderId))
                 .portfolioId(PortfolioId.of(portfolioId))
+                .broker(Broker.of(broker))
                 .symbol(Symbol.of(symbol))
                 .type(type)
                 .side(side)
