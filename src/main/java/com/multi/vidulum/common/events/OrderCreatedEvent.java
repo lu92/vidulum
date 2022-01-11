@@ -22,10 +22,10 @@ public class OrderCreatedEvent {
     OrderType type;
     Side side;
     Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Money stopPrice;
+    Money limitPrice;
     Quantity quantity;
     ZonedDateTime occurredDateTime;
-    double riskRewardRatio;
+    double riskRewardRatio; // only for OCO orders
     Status status;
 }

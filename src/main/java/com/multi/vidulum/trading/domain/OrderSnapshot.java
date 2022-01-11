@@ -18,8 +18,8 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     OrderType type;
     Side side;
     Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Money stopPrice;
+    Money limitPrice;
     Quantity quantity;
     ZonedDateTime occurredDateTime;
     Status status;

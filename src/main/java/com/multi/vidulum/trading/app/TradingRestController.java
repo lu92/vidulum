@@ -87,8 +87,8 @@ public class TradingRestController {
                 .type(placeOrderJson.getType())
                 .side(placeOrderJson.getSide())
                 .targetPrice(placeOrderJson.getTargetPrice())
-                .entryPrice(placeOrderJson.getEntryPrice())
-                .stopLoss(placeOrderJson.getStopLoss())
+                .stopPrice(placeOrderJson.getStopPrice())
+                .limitPrice(placeOrderJson.getLimitPrice())
                 .quantity(placeOrderJson.getQuantity())
                 .occurredDateTime(placeOrderJson.getOriginDateTime())
                 .build();

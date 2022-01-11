@@ -20,6 +20,10 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
 
     @Override
     public Order handle(PlaceOrderCommand command) {
+
+        // validate if quantity is sufficient
+        // validate if all parameters based on OrderType are present
+
         Order order = Order.builder()
                 .originOrderId(command.getOriginOrderId())
                 .portfolioId(command.getPortfolioId())
@@ -28,8 +32,8 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 .type(command.getType())
                 .side(command.getSide())
                 .targetPrice(command.getTargetPrice())
-                .entryPrice(command.getEntryPrice())
-                .stopLoss(command.getStopLoss())
+                .stopPrice(command.getStopPrice())
+                .limitPrice(command.getLimitPrice())
                 .quantity(command.getQuantity())
                 .occurredDateTime(command.getOccurredDateTime())
                 .status(Status.OPEN)
@@ -54,8 +58,8 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 .type(order.getType())
                 .side(order.getSide())
                 .targetPrice(order.getTargetPrice())
-                .entryPrice(order.getEntryPrice())
-                .stopLoss(order.getStopLoss())
+                .stopPrice(order.getStopPrice())
+                .limitPrice(order.getLimitPrice())
                 .quantity(order.getQuantity())
                 .occurredDateTime(order.getOccurredDateTime())
                 .riskRewardRatio(order.getRiskRewardRatio())

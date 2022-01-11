@@ -33,8 +33,8 @@ public final class TradingMapper {
                 .side(order.getSide())
                 .status(order.getStatus())
                 .targetPrice(order.getTargetPrice())
-                .entryPrice(order.getEntryPrice())
-                .stopLoss(order.getStopLoss())
+                .entryPrice(order.getStopPrice())
+                .stopLoss(order.getLimitPrice())
                 .quantity(order.getQuantity())
                 .originDateTime(order.getOccurredDateTime())
                 .build();

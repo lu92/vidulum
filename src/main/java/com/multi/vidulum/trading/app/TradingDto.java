@@ -46,8 +46,8 @@ public class TradingDto {
         private OrderType type;
         private Side side;
         private Money targetPrice;
-        private Money entryPrice;
-        private Money stopLoss;
+        private Money stopPrice;
+        private Money limitPrice;
         private Quantity quantity;
         private ZonedDateTime originDateTime;
     }

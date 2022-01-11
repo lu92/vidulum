@@ -99,11 +99,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         findAssetByTickerAndSubName(purchasedPortion.getTicker(), purchasedPortion.getSubName())
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
+                    Quantity updatedFreeQuantity = existingAsset.getFree().plus(purchasedPortion.getQuantity());
                     Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
                     Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity.getQty());
 
                     existingAsset.setQuantity(totalQuantity);
                     existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+                    existingAsset.setFree(updatedFreeQuantity);
                 }, () -> {
                     Asset newAsset = Asset.builder()
                             .ticker(assetBasicInfo.getTicker())
@@ -113,7 +115,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .locked(Quantity.zero())
-                            .free(Quantity.zero())
+                            .free(purchasedPortion.getQuantity())
                             .tags(assetBasicInfo.getTags())
                             .build();
                     assets.add(newAsset);
@@ -129,6 +131,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
 
         Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.getQuantity());
+        Quantity decreasedFree = soldAsset.getFree().minus(soldPortion.getQuantity());
         boolean isAssetSoldOutFully = soldAsset.getQuantity().equals(soldPortion.getQuantity());
         if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
@@ -138,6 +141,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+            soldAsset.setFree(decreasedFree);
         }
     }
 
@@ -146,6 +150,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
             Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + deposit.getAmount().doubleValue());
             existingAsset.setQuantity(updatedQuantity);
+            existingAsset.setFree(updatedQuantity);
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
@@ -154,6 +159,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .segment(cashBasicInfo.getSegment())
                     .avgPurchasePrice(Money.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
+                    .locked(Quantity.zero())
+                    .free(Quantity.of(deposit.getAmount().doubleValue()))
                     .tags(cashBasicInfo.getTags())
                     .build();
             assets.add(cash);
@@ -166,11 +173,16 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         Asset cash = findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
+        if (cash.getFree().getQty() < withdrawal.getAmount().doubleValue()) {
+            throw new NotSufficientBalance(withdrawal);
+        }
+
         if (cash.getQuantity().getQty() < withdrawal.getAmount().doubleValue()) {
             throw new NotSufficientBalance(withdrawal);
         }
 
         cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - withdrawal.getAmount().doubleValue()));
+        cash.setQuantity(Quantity.of(cash.getFree().getQty() - withdrawal.getAmount().doubleValue()));
         investedBalance = investedBalance.minus(withdrawal);
     }
 

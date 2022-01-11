@@ -16,14 +16,18 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
+//    OrderState state;
+//    OrderParameters parameters;
     OrderType type;
     Side side;
+    OcoGroup ocoGroup;
     Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Money stopPrice;
+    Money limitPrice; // price which appears in onder-book, [null] for market price/market order
     Quantity quantity;
+    Money total; // quantity * limitPrice
     ZonedDateTime occurredDateTime;
-    double RiskRewardRatio;
+    double riskRewardRatio;
     Status status;
 
     @Override
@@ -36,8 +40,8 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 type,
                 side,
                 targetPrice,
-                entryPrice,
-                stopLoss,
+                stopPrice,
+                limitPrice,
                 quantity,
                 occurredDateTime,
                 status
@@ -53,11 +57,23 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .type(snapshot.getType())
                 .side(snapshot.getSide())
                 .targetPrice(snapshot.getTargetPrice())
-                .entryPrice(snapshot.getEntryPrice())
-                .stopLoss(snapshot.getStopLoss())
+                .stopPrice(snapshot.getStopPrice())
+                .limitPrice(snapshot.getLimitPrice())
                 .quantity(snapshot.getQuantity())
                 .occurredDateTime(snapshot.getOccurredDateTime())
                 .status(snapshot.getStatus())
+                .build();
+    }
+
+    public OrderStatement getConfirmation() {
+        return OrderStatement.builder()
+                .orderId(orderId)
+                .symbol(symbol)
+                .type(type)
+                .stopPrice(stopPrice)
+                .limitPrice(limitPrice)
+                .quantity(quantity)
+                .total(limitPrice.multiply(quantity))
                 .build();
     }
 
