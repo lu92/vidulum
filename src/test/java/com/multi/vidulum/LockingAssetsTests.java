@@ -212,8 +212,8 @@ class LockingAssetsTests {
                   .build()
         );
 
-        PortfolioSummaryJson portfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
-        System.out.println(portfolio);
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        System.out.println(aggregatedPortfolio);
 
 
 
