@@ -61,7 +61,7 @@ public class RiskManagementEngine {
                                 .symbol(Symbol.of(orderSummaryJson.getSymbol()))
                                 .originOrderId(OrderId.of(orderSummaryJson.getOriginOrderId()))
                                 .quantity(orderSummaryJson.getQuantity())
-                                .price(orderSummaryJson.getStopLoss())
+                                .price(orderSummaryJson.getLimitPrice())
                                 .dateTime(orderSummaryJson.getOriginDateTime())
                                 .build())
                 .collect(Collectors.toList());

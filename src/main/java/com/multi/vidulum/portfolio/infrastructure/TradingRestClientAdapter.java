@@ -60,8 +60,8 @@ public class TradingRestClientAdapter implements TradingRestClient {
                 .type(order.getType())
                 .side(order.getSide())
                 .targetPrice(order.getTargetPrice())
-                .entryPrice(order.getStopPrice())
-                .stopLoss(order.getLimitPrice())
+                .stopPrice(order.getStopPrice())
+                .limitPrice(order.getLimitPrice())
                 .quantity(order.getQuantity())
                 .originDateTime(order.getOccurredDateTime())
                 .build();

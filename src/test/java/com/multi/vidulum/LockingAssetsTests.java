@@ -1,13 +1,12 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlRestController;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.app.PortfolioDto.PortfolioSummaryJson;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.quotation.app.QuotationDto;
@@ -15,6 +14,7 @@ import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
+import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
@@ -36,9 +36,12 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static com.multi.vidulum.common.Side.BUY;
+import static com.multi.vidulum.common.Side.SELL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -174,5 +177,45 @@ class LockingAssetsTests {
 
         // there is no any pending order
         assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+
+        TradingDto.OrderSummaryJson placedOrderSummary1 = tradingRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-Y")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Money.of(55000, "USD"))
+                        .quantity(Quantity.of(0.5))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
+        assertThat(allOpenedOrders).containsExactlyInAnyOrder(
+          TradingDto.OrderSummaryJson.builder()
+                  .orderId(placedOrderSummary1.getOrderId())
+                  .originOrderId(placedOrderSummary1.getOriginOrderId())
+                  .portfolioId(registeredPortfolio.getPortfolioId())
+                  .symbol("BTC/USD")
+                  .type(OrderType.LIMIT)
+                  .side(BUY)
+                  .status(Status.OPEN)
+                  .targetPrice(null)
+                  .stopPrice(null)
+                  .limitPrice(Money.of(55000, "USD"))
+                  .quantity(Quantity.of(0.5))
+                  .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                  .build()
+        );
+
+        PortfolioSummaryJson portfolio = portfolioRestController.getPortfolio(registeredPortfolio.getPortfolioId());
+        System.out.println(portfolio);
+
+
+
     }
 }
