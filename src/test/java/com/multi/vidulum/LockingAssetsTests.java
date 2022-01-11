@@ -1,6 +1,8 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.*;
+import com.multi.vidulum.common.AssetPriceMetadata;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.pnl.app.PnlRestController;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
@@ -13,7 +15,6 @@ import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
-import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.app.TradingRestController;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
@@ -23,7 +24,6 @@ import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,12 +36,9 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.multi.vidulum.common.Side.SELL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -113,13 +110,6 @@ class LockingAssetsTests {
     }
 
     @Test
-    void empty() {
-
-    }
-
-
-    @Ignore
-//    @Test
     void shouldBuyBitcoinTest() {
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
@@ -182,94 +172,7 @@ class LockingAssetsTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-        TradingDto.OrderSummaryJson placedOrder = tradingRestController.placeOrder(
-                TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-X1")
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .symbol("BTC/USD")
-                        .type(OrderType.OCO)
-                        .side(SELL)
-                        .targetPrice(Money.of(70000, "USD"))
-                        .stopPrice(Money.of(60000, "USD"))
-                        .limitPrice(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
-                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
-                        .build()
-        );
-
-        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
-        assertThat(allOpenedOrders)
-                .usingElementComparatorIgnoringFields("orderId")
-                .containsExactly(
-                        TradingDto.OrderSummaryJson.builder()
-                                .originOrderId("origin order-id-X1")
-                                .portfolioId(registeredPortfolio.getPortfolioId())
-                                .symbol("BTC/USD")
-                                .type(OrderType.OCO)
-                                .side(SELL)
-                                .status(Status.OPEN)
-                                .targetPrice(Money.of(70000, "USD"))
-                                .entryPrice(Money.of(60000, "USD"))
-                                .stopLoss(Money.of(55000, "USD"))
-                                .quantity(Quantity.of(0.5))
-                                .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
-                                .build()
-                );
-
-        TradingDto.OrderSummaryJson placedOrder2 = tradingRestController.placeOrder(
-                TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .symbol("BTC/USD")
-                        .type(OrderType.OCO)
-                        .side(SELL)
-                        .targetPrice(Money.of(70000, "USD"))
-                        .stopPrice(Money.of(60000, "USD"))
-                        .limitPrice(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
-                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
-                        .build()
-        );
-
-
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
-
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
-
-        PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio2 = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                .userId(createdUserJson.getUserId())
-                .segmentedAssets(Map.of(
-                        "Crypto", List.of(
-                                PortfolioDto.AssetSummaryJson.builder()
-                                        .ticker("BTC")
-                                        .fullName("Bitcoin")
-                                        .avgPurchasePrice(Money.of(50000.0, "USD"))
-                                        .quantity(Quantity.of(0.5))
-                                        .pctProfit(0.2)
-                                        .profit(Money.of(5000, "USD"))
-                                        .currentPrice(Money.of(60000.0, "USD"))
-                                        .currentValue(Money.of(30000.0, "USD"))
-                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
-                                        .build()),
-                        "Cash", List.of(
-                                PortfolioDto.AssetSummaryJson.builder()
-                                        .ticker("USD")
-                                        .fullName("American Dollar")
-                                        .avgPurchasePrice(Money.one("USD"))
-                                        .quantity(Quantity.of(75000.0))
-                                        .pctProfit(0)
-                                        .profit(Money.zero("USD"))
-                                        .currentPrice(Money.of(1, "USD"))
-                                        .currentValue(Money.of(75000.0, "USD"))
-                                        .tags(List.of())
-                                        .build())))
-                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
-                .investedBalance(Money.of(100000.0, "USD"))
-                .currentValue(Money.of(105000.0, "USD"))
-                .totalProfit(Money.of(5000, "USD"))
-                .pctProfit(0.05)
-                .build();
-
-        assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
+        // there is no any pending order
+        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
     }
 }
