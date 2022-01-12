@@ -39,7 +39,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -340,18 +339,10 @@ class LockingAssetsTests {
             Asset usdAsset = portfolio.getAssets().stream()
                     .filter(asset -> Ticker.of("USD").equals(asset.getTicker()))
                     .findFirst().orElseThrow(() -> new AssetNotFoundException(Ticker.of("USD")));
-//            log.info(String.format("Asset [USD] INFO [%s]", portfolio));
             return usdAsset.getLocked().isZero() && usdAsset.getFree().equals(Quantity.of(100000.0));
         });
 
-        Optional<Portfolio> portfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
-        System.out.println(portfolio);
-
-
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
-//        System.out.println(aggregatedPortfolio);
-//
-        assertThat(aggregatedPortfolio)
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUserJson.getUserId())
