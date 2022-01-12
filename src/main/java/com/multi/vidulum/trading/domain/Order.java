@@ -16,16 +16,16 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
-//    OrderState state;
+    //    OrderState state;
 //    OrderParameters parameters;
     OrderType type;
     Side side;
-    OcoGroup ocoGroup;
+    OcoGroup ocoGroup; // todo remove
     Money targetPrice;
     Money stopPrice;
     Money limitPrice; // price which appears in onder-book, [null] for market price/market order
     Quantity quantity;
-    Money total; // quantity * limitPrice
+    Money total; // quantity * limitPrice todo remove
     ZonedDateTime occurredDateTime;
     double riskRewardRatio;
     Status status;
@@ -67,19 +67,29 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .build();
     }
 
-    public OrderStatement getConfirmation() {
-        return OrderStatement.builder()
-                .orderId(orderId)
-                .symbol(symbol)
-                .type(type)
-                .stopPrice(stopPrice)
-                .limitPrice(limitPrice)
-                .quantity(quantity)
-                .total(limitPrice.multiply(quantity))
-                .build();
+//    public OrderStatement getConfirmation() {
+//        return OrderStatement.builder()
+//                .orderId(orderId)
+//                .symbol(symbol)
+//                .type(type)
+//                .stopPrice(stopPrice)
+//                .limitPrice(limitPrice)
+//                .quantity(quantity)
+//                .total(limitPrice.multiply(quantity))
+//                .build();
+//    }
+
+    public boolean isPurchaseAttempt() {
+        return Side.BUY.equals(side);
     }
 
     public boolean isOpen() {
         return Status.OPEN.equals(status);
+    }
+
+    public Money getTotal() {
+        // todo check if side is required
+        Money price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
+        return price.multiply(quantity);
     }
 }

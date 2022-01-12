@@ -204,4 +204,11 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
         asset.lock(quantity);
     }
+
+    public void unlockAsset(Ticker ticker, Quantity quantity) {
+        Asset asset = findAssetByTicker(ticker)
+                .orElseThrow(() -> new AssetNotFoundException(ticker));
+
+        asset.unlock(quantity);
+    }
 }

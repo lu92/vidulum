@@ -259,6 +259,8 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Money.of(60000.0, "USD"))
                                         .quantity(Quantity.of(1))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(1))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(60000.0, "USD"))
@@ -271,6 +273,8 @@ class VidulumApplicationTests {
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
                                         .quantity(Quantity.of(40000.0))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(40000.0))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))
@@ -389,6 +393,8 @@ class VidulumApplicationTests {
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
+        Optional<Portfolio> portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
+
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio2 = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -400,6 +406,8 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Money.of(50000.0, "USD"))
                                         .quantity(Quantity.of(0.5))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(0.5))
                                         .pctProfit(0.2)
                                         .profit(Money.of(5000, "USD"))
                                         .currentPrice(Money.of(60000.0, "USD"))
@@ -412,6 +420,8 @@ class VidulumApplicationTests {
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
                                         .quantity(Quantity.of(75000.0))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(75000.0))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))

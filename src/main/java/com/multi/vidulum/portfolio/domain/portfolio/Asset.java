@@ -28,4 +28,9 @@ public class Asset implements Valuable {
         locked = locked.plus(quantity);
         free = free.minus(quantity);
     }
+
+    public void unlock(Quantity quantity) {
+        locked = locked.minus(quantity);
+        free = free.plus(quantity);
+    }
 }

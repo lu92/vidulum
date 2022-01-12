@@ -1,6 +1,9 @@
 package com.multi.vidulum.trading.app.commands.orders.cancel;
 
+import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Status;
+import com.multi.vidulum.common.events.AssetUnlockedEvent;
+import com.multi.vidulum.shared.AssetUnlockedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class CancelOrderCommandHandler implements CommandHandler<CancelOrderCommand, Order> {
 
     private final DomainOrderRepository orderRepository;
+    private final AssetUnlockedEventEmitter eventEmitter;
 
     @Override
     public Order handle(CancelOrderCommand command) {
@@ -27,6 +31,26 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
         order.setStatus(Status.CANCELLED);
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been cancelled!", order.getOriginOrderId());
+        AssetUnlockedEvent event = buildEvent(savedOrder);
+        eventEmitter.emit(event);
+        log.info("Event [{}] has been emitted", event);
         return savedOrder;
+    }
+
+    private AssetUnlockedEvent buildEvent(Order order) {
+        Quantity quantityToUnlocked = Quantity.of(order.getTotal().getAmount().doubleValue());
+        if (order.isPurchaseAttempt()) {
+            return AssetUnlockedEvent.builder()
+                    .portfolioId(order.getPortfolioId())
+                    .ticker(order.getSymbol().getDestination())
+                    .quantity(quantityToUnlocked)
+                    .build();
+        } else {
+            return AssetUnlockedEvent.builder()
+                    .portfolioId(order.getPortfolioId())
+                    .ticker(order.getSymbol().getOrigin())
+                    .quantity(quantityToUnlocked)
+                    .build();
+        }
     }
 }
