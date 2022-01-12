@@ -42,6 +42,8 @@ public class PortfolioDto {
         private String fullName;
         private Money avgPurchasePrice;
         private Quantity quantity;
+        private Quantity locked;
+        private Quantity free;
 
         private double pctProfit;
         private Money profit;

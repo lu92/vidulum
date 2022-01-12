@@ -66,6 +66,8 @@ public class AggregatedPortfolio {
                         // asset-portfolio is already having asset with same ticker so lets update asset's amount
 
                         Quantity quantity = relatedAsset.getQuantity().plus(asset.getQuantity());
+                        Quantity lockedQuantity = relatedAsset.getLocked().plus(asset.getLocked());
+                        Quantity freeQuantity = relatedAsset.getFree().plus(asset.getFree());
                         Money summarizedValue = relatedAsset.getValue().plus(asset.getValue());
                         Money avgPurchasePrice = summarizedValue.divide(quantity.getQty());
 
@@ -77,6 +79,8 @@ public class AggregatedPortfolio {
                                 .subName(relatedAsset.getSubName())
                                 .avgPurchasePrice(avgPurchasePrice)
                                 .quantity(quantity)
+                                .locked(lockedQuantity)
+                                .free(freeQuantity)
                                 .tags(relatedAsset.getTags())
                                 .build();
 
@@ -123,17 +127,23 @@ public class AggregatedPortfolio {
                                                     .subName(SubName.none())
                                                     .avgPurchasePrice(Money.zero("USD"))
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
+                                                    .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))
+                                                    .free(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .tags(firstAsset.getTags())
                                                     .build(),
 
                                             (identityAsset, nextAsset) -> {
 
                                                 Quantity quantity = identityAsset.getQuantity().plus(nextAsset.getQuantity());
+                                                Quantity lockedQuantity = identityAsset.getLocked().plus(nextAsset.getLocked());
+                                                Quantity freeQuantity = identityAsset.getFree().plus(nextAsset.getFree());
                                                 Money summarizedValue = identityAsset.getValue().plus(nextAsset.getValue());
                                                 Money avgPurchasePrice = summarizedValue.divide(quantity.getQty());
 
                                                 identityAsset.setAvgPurchasePrice(avgPurchasePrice);
                                                 identityAsset.setQuantity(quantity);
+                                                identityAsset.setLocked(lockedQuantity);
+                                                identityAsset.setFree(freeQuantity);
                                                 return identityAsset;
                                             });
                         }));

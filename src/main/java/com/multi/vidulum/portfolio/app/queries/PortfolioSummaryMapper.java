@@ -116,6 +116,8 @@ public class PortfolioSummaryMapper {
                 .fullName(asset.getFullName())
                 .avgPurchasePrice(asset.getAvgPurchasePrice().withScale(4))
                 .quantity(asset.getQuantity())
+                .locked(asset.getLocked())
+                .free(asset.getFree())
                 .tags(asset.getTags())
                 .pctProfit(pctProfit)
                 .profit(profit.withScale(4))
