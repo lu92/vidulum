@@ -882,6 +882,8 @@ class VidulumApplicationTests {
                                 .fullName("American Dollar")
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(88100.0))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(88100.0))
                                 .pctProfit(0)
                                 .profit(Money.of(0, "USD"))
                                 .currentPrice(Money.of(1, "USD"))
@@ -894,6 +896,8 @@ class VidulumApplicationTests {
                                         .fullName("Ethereum")
                                         .avgPurchasePrice(Money.of(3000.0000, "USD"))
                                         .quantity(Quantity.of(1.3))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(1.3))
                                         .pctProfit(-0.05)
                                         .profit(Money.of(-195.0, "USD"))
                                         .currentPrice(Money.of(2850.0000, "USD"))
@@ -905,6 +909,8 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Money.of(40000.0000, "USD"))
                                         .quantity(Quantity.of(0.20000000000000004))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(0.20000000000000004))
                                         .pctProfit(0.5)
                                         .profit(Money.of(4000.0000, "USD"))
                                         .currentPrice(Money.of(60000.0000, "USD"))
@@ -918,6 +924,8 @@ class VidulumApplicationTests {
                 .totalProfit(Money.of(3805.0000, "USD"))
                 .pctProfit(0.03805)
                 .build();
+
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
         tradingRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-1")
@@ -989,7 +997,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         log.info("[{}]", allOpenedOrders);
