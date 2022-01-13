@@ -49,7 +49,7 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
             return AssetUnlockedEvent.builder()
                     .portfolioId(order.getPortfolioId())
                     .ticker(order.getSymbol().getOrigin())
-                    .quantity(quantityToUnlocked)
+                    .quantity(order.getQuantity())
                     .build();
         }
     }
