@@ -21,7 +21,7 @@ public class TradeSnapshot implements EntitySnapshot<TradeId> {
     SubName subName;
     Side side;
     Quantity quantity;
-    Money price;
+    Price price;
     ZonedDateTime dateTime;
 
     @Override

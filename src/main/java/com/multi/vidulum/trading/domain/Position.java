@@ -10,17 +10,17 @@ public class Position {
 
     Symbol symbol;
     Broker broker;
-    Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Price targetPrice;
+    Price entryPrice;
+    Price stopLoss;
     Quantity quantity;
 
     public static Position zero(Symbol symbol) {
         return Position.builder()
                 .symbol(symbol)
-                .targetPrice(Money.zero("USD"))
-                .entryPrice(Money.zero("USD"))
-                .stopLoss(Money.zero("USD"))
+                .targetPrice(Price.zero("USD"))
+                .entryPrice(Price.zero("USD"))
+                .stopLoss(Price.zero("USD"))
                 .quantity(Quantity.zero())
                 .build();
     }
@@ -37,30 +37,31 @@ public class Position {
                 .stopLoss(position1.getStopLoss().plus(position2.getStopLoss()).divide(2))
                 .build();
     }
+
     public RiskRewardRatio calculateRiskRewardRatio() {
-        Money risk = entryPrice.minus(stopLoss);
-        Money reward = targetPrice.minus(entryPrice);
-        return RiskRewardRatio.of(risk, reward);
+        Price riskDisparity = entryPrice.minus(stopLoss);
+        Price rewardDisparity = targetPrice.minus(entryPrice);
+        return RiskRewardRatio.of(riskDisparity, rewardDisparity);
     }
 
     public Money getTargetValue() {
-        return quantity.getQty() == 0 ? Money.zero("USD") : targetPrice.multiply(quantity.getQty());
+        return quantity.getQty() == 0 ? Money.zero("USD") : targetPrice.multiply(quantity);
     }
 
     public Money getEntryValue() {
-        return quantity.getQty() == 0 ? Money.zero("USD") : entryPrice.multiply(quantity.getQty());
+        return quantity.getQty() == 0 ? Money.zero("USD") : entryPrice.multiply(quantity);
     }
 
     public Money getStopLossValue() {
-        return quantity.getQty() == 0 ? Money.zero("USD") : stopLoss.multiply(quantity.getQty());
+        return quantity.getQty() == 0 ? Money.zero("USD") : stopLoss.multiply(quantity);
     }
 
     public Money calculateRisk() {
-        return entryPrice.minus(stopLoss).multiply(quantity.getQty());
+        return entryPrice.minus(stopLoss).multiply(quantity);
     }
 
     public Money calculateReward() {
-        return targetPrice.minus(entryPrice).multiply(quantity.getQty());
+        return targetPrice.minus(entryPrice).multiply(quantity);
     }
 
     // position sizing
@@ -70,7 +71,6 @@ public class Position {
     // volatility-based position sizing
 
     // zasady: byc przygotowanym na 10 strat z rzedu -> 10 strat z rzedu pozbawi Ciebie 25% calego kapitalu -> nie wiecej niz 2% per trade
-
 
 
 }

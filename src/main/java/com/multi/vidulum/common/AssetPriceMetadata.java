@@ -9,7 +9,7 @@ import java.time.ZonedDateTime;
 @Builder
 public class AssetPriceMetadata {
     Symbol symbol;
-    Money currentPrice;
+    Price currentPrice;
     double pctChange;
     ZonedDateTime dateTime;
 }

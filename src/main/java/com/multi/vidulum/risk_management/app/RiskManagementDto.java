@@ -1,6 +1,7 @@
 package com.multi.vidulum.risk_management.app;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.risk_management.domain.RagStatus;
 import lombok.Builder;
@@ -34,9 +35,9 @@ public final class RiskManagementDto {
         private String ticker;
         private Quantity quantity;
         private List<StopLossJson> stopLosses;
-        private Money avgPurchasePrice;
+        private Price avgPurchasePrice;
         private Money currentValue;
-        private Money currentPrice;
+        private Price currentPrice;
         private Money safeMoney;
         private Money riskMoney;
         private RagStatus ragStatus;
@@ -49,7 +50,7 @@ public final class RiskManagementDto {
         private String symbol;
         private String originOrderId;
         private Quantity quantity;
-        private Money price;
+        private Price price;
         private boolean isApplicable;
         private ZonedDateTime dateTime;
     }

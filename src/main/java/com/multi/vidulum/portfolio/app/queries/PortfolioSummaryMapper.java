@@ -106,8 +106,8 @@ public class PortfolioSummaryMapper {
     private PortfolioDto.AssetSummaryJson mapAsset(Broker broker, Asset asset) {
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, Symbol.of(asset.getTicker(), Ticker.of("USD")));
 
-        Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity().getQty());
-        Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity().getQty());
+        Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity());
+        Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
         Money profit = currentValue.minus(oldValue);
         double pctProfit = currentValue.diffPct(oldValue);
 

@@ -13,7 +13,7 @@ public class Asset implements Valuable {
     private String fullName;
     private Segment segment;
     private SubName subName;
-    private Money avgPurchasePrice;
+    private Price avgPurchasePrice;
     private Quantity quantity;
     private Quantity locked;
     private Quantity free;
@@ -21,7 +21,7 @@ public class Asset implements Valuable {
 
     @Override
     public Money getValue() {
-        return avgPurchasePrice.multiply(quantity.getQty());
+        return avgPurchasePrice.multiply(quantity);
     }
 
     public void lock(Quantity quantity) {

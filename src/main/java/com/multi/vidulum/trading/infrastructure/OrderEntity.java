@@ -28,9 +28,9 @@ public class OrderEntity {
     private String symbol;
     private OrderType type;
     private Side side;
-    private Money targetPrice;
-    private Money entryPrice;
-    private Money stopLoss;
+    private Price targetPrice;
+    private Price entryPrice;
+    private Price stopLoss;
     private Quantity quantity;
     private Date occurredDateTime;
     private Status status;

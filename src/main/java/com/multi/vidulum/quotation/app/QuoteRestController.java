@@ -43,7 +43,7 @@ public class QuoteRestController {
         PriceChangedEvent priceChangedEvent = PriceChangedEvent.builder()
                 .broker(Broker.of(broker))
                 .symbol(Symbol.of(Ticker.of(origin), Ticker.of(destination)))
-                .currentPrice(Money.of(amount, currency))
+                .currentPrice(Price.of(amount, currency))
                 .pctChange(pctChange)
                 .dateTime(ZonedDateTime.now())
                 .build();

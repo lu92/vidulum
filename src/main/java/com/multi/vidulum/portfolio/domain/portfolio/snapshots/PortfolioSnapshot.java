@@ -28,7 +28,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
         String fullName;
         Segment segment;
         SubName subName;
-        Money avgPurchasePrice;
+        Price avgPurchasePrice;
         Quantity quantity;
         Quantity locked;
         Quantity free;

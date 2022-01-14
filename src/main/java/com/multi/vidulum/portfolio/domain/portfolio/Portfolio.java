@@ -101,7 +101,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
                     Quantity updatedFreeQuantity = existingAsset.getFree().plus(purchasedPortion.getQuantity());
                     Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
-                    Money updatedAvgPurchasePrice = totalValue.divide(totalQuantity.getQty());
+                    Price updatedAvgPurchasePrice = Price.of(totalValue.divide(totalQuantity));
 
                     existingAsset.setQuantity(totalQuantity);
                     existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
@@ -137,7 +137,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             assets.remove(soldAsset);
         } else {
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
-            Money updatedAvgPurchasePrice = totalValue.divide(decreasedQuantity.getQty());
+            Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
@@ -157,7 +157,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .fullName(cashBasicInfo.getFullName())
                     .subName(SubName.none())
                     .segment(cashBasicInfo.getSegment())
-                    .avgPurchasePrice(Money.one(deposit.getCurrency()))
+                    .avgPurchasePrice(Price.one(deposit.getCurrency()))
                     .quantity(Quantity.of(deposit.getAmount().doubleValue()))
                     .locked(Quantity.zero())
                     .free(Quantity.of(deposit.getAmount().doubleValue()))

@@ -1,6 +1,7 @@
 package com.multi.vidulum.pnl.app;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Side;
 import lombok.Builder;
@@ -59,7 +60,7 @@ public class PnlDto {
         private String subName;
         private Side side;
         private Quantity quantity;
-        private Money price;
+        private Price price;
         private ZonedDateTime originDateTime;
     }
 }

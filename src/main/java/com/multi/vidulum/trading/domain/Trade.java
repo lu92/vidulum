@@ -20,7 +20,7 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
     Symbol symbol;
     Side side;
     Quantity quantity;
-    Money price;
+    Price price;
     ZonedDateTime dateTime;
 
     @Override

@@ -24,7 +24,7 @@ public class PositionMapper {
                 .stream()
                 .map(position -> {
                     AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(openedPositions.getBroker(), position.getSymbol());
-                    Money value = assetPriceMetadata.getCurrentPrice().multiply(position.getQuantity().getQty());
+                    Money value = assetPriceMetadata.getCurrentPrice().multiply(position.getQuantity());
                     assetPriceMetadata.getCurrentPrice().minus(position.getEntryPrice());
                     double pctProfit = assetPriceMetadata.getCurrentPrice().diffPct(position.getEntryPrice());
                     return PortfolioDto.PositionSummaryJson.builder()

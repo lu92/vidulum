@@ -22,6 +22,6 @@ public class StoredTrade {
     SubName subName;
     Side side;
     Quantity quantity;
-    Money price;
+    Price price;
     ZonedDateTime dateTime;
 }
