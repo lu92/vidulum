@@ -78,8 +78,8 @@ public class RiskManagementEngine {
                     List<StopLoss> relatedStopLosses = stopLossMap.getOrDefault(Ticker.of(asset.getTicker()), List.of());
                     Money totalAssetRiskMoney = relatedStopLosses.stream()
                             .map(stopLoss -> {
-                                Money usdStopLossPriceLevel = fetchUsdPrice(broker, stopLoss);
-                                Money riskPriceLevel = asset.getCurrentPrice().minus(usdStopLossPriceLevel);
+                                Price usdStopLossPriceLevel = fetchUsdPrice(broker, stopLoss);
+                                Price riskPriceLevel = asset.getCurrentPrice().minus(usdStopLossPriceLevel);
                                 stopLoss.setApplicable(riskPriceLevel.isPositive());
                                 if (riskPriceLevel.isPositive()) {
                                     Quantity protectedQuantity = quantityCoveredWithStopLoss.get().plus(stopLoss.getQuantity());
@@ -123,7 +123,7 @@ public class RiskManagementEngine {
                 .collect(Collectors.toList());
     }
 
-    private Money fetchUsdPrice(Broker broker, StopLoss stopLoss) {
+    private Price fetchUsdPrice(Broker broker, StopLoss stopLoss) {
         boolean isUsdDenominated = stopLoss.getSymbol().getDestination().equals(Ticker.of("USD"));
         if (isUsdDenominated) {
             return stopLoss.getPrice();

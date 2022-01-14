@@ -68,8 +68,7 @@ public class AggregatedPortfolio {
                         Quantity quantity = relatedAsset.getQuantity().plus(asset.getQuantity());
                         Quantity lockedQuantity = relatedAsset.getLocked().plus(asset.getLocked());
                         Quantity freeQuantity = relatedAsset.getFree().plus(asset.getFree());
-                        Money summarizedValue = relatedAsset.getValue().plus(asset.getValue());
-                        Money avgPurchasePrice = summarizedValue.divide(quantity.getQty());
+                        Price avgPurchasePrice = Price.of(relatedAsset.getValue().plus(asset.getValue()).divide(quantity));
 
 
                         Asset updatedAsset = Asset.builder()
@@ -125,7 +124,7 @@ public class AggregatedPortfolio {
                                                     .fullName(firstAsset.getFullName())
                                                     .segment(firstAsset.getSegment())
                                                     .subName(SubName.none())
-                                                    .avgPurchasePrice(Money.zero("USD"))
+                                                    .avgPurchasePrice(Price.zero("USD"))
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .free(Quantity.zero(firstAsset.getQuantity().getUnit()))
@@ -137,8 +136,7 @@ public class AggregatedPortfolio {
                                                 Quantity quantity = identityAsset.getQuantity().plus(nextAsset.getQuantity());
                                                 Quantity lockedQuantity = identityAsset.getLocked().plus(nextAsset.getLocked());
                                                 Quantity freeQuantity = identityAsset.getFree().plus(nextAsset.getFree());
-                                                Money summarizedValue = identityAsset.getValue().plus(nextAsset.getValue());
-                                                Money avgPurchasePrice = summarizedValue.divide(quantity.getQty());
+                                                Price avgPurchasePrice = Price.of(identityAsset.getValue().plus(nextAsset.getValue()).divide(quantity));
 
                                                 identityAsset.setAvgPurchasePrice(avgPurchasePrice);
                                                 identityAsset.setQuantity(quantity);

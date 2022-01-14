@@ -1,7 +1,7 @@
 package com.multi.vidulum.quotation.domain;
 
 import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Symbol;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +17,7 @@ import java.time.ZonedDateTime;
 public class PriceChangedEvent {
     private Broker broker;
     private Symbol symbol;
-    private Money currentPrice;
+    private Price currentPrice;
     private double pctChange;
     private ZonedDateTime dateTime;
 }

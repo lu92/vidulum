@@ -52,7 +52,7 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
         SubName subName;
         Side side;
         Quantity quantity;
-        Money price;
+        Price price;
         ZonedDateTime originDateTime;
     }
 }

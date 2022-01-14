@@ -30,7 +30,7 @@ public class TradeEntity {
     private String symbol;
     private Side side;
     private Quantity quantity;
-    private Money price;
+    private Price price;
     private Date originDateTime;
 
     public static TradeEntity fromSnapshot(TradeSnapshot snapshot) {

@@ -18,8 +18,8 @@ public class PlaceOrderCommand implements Command {
      * [symbol => BTC/USD]
      * [type => STOP_LIMIT]
      * [side => sell]
-     * [stopPrice => Money(200, USD)]
-     * [limitPrice => Money(190, USD)]
+     * [stopPrice => Price(200, USD)]
+     * [limitPrice => Price(190, USD)]
      * [quantity => 0.25]
      * [desc => if the last price rises to or above [200 USD],
      * an order to sell [0.25 BTC] at a price [190 USD] will be placed]
@@ -31,9 +31,9 @@ public class PlaceOrderCommand implements Command {
      * [symbol => BTC/USD]
      * [type => OCO]
      * [side => sell]
-     * [targetPrice => Money(260, USD)]
-     * [stopPrice => Money(200, USD)]
-     * [limitPrice => Money(190, USD)]
+     * [targetPrice => Price(260, USD)]
+     * [stopPrice => Price(200, USD)]
+     * [limitPrice => Price(190, USD)]
      * [quantity => 0.25]
      *
      *
@@ -43,9 +43,9 @@ public class PlaceOrderCommand implements Command {
      * [symbol => BTC/USD]
      * [type => OCO]
      * [side => buy]
-     * [targetPrice => Money(190, USD)]
-     * [stopPrice => Money(250, USD)]
-     * [limitPrice => Money(160, USD)]
+     * [targetPrice => Price(190, USD)]
+     * [stopPrice => Price(250, USD)]
+     * [limitPrice => Price(160, USD)]
      * [quantity => 0.25]
      */
 
@@ -55,9 +55,9 @@ public class PlaceOrderCommand implements Command {
     Symbol symbol;
     OrderType type;
     Side side;
-    Money targetPrice;
-    Money stopPrice; // price when order will be triggered
-    Money limitPrice; // price which will apear in order-book
+    Price targetPrice;
+    Price stopPrice; // price when order will be triggered
+    Price limitPrice; // price which will apear in order-book
     Quantity quantity;
     ZonedDateTime occurredDateTime;
 }

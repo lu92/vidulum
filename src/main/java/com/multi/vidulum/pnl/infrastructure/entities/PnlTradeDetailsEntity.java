@@ -1,6 +1,6 @@
 package com.multi.vidulum.pnl.infrastructure.entities;
 
-import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Side;
 import lombok.Builder;
@@ -22,6 +22,6 @@ public class PnlTradeDetailsEntity {
     String subName;
     Side side;
     Quantity quantity;
-    Money price;
+    Price price;
     Date originDateTime;
 }

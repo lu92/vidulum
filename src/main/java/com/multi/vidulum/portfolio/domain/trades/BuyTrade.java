@@ -13,7 +13,7 @@ public class BuyTrade implements Trade, Valuable {
     SubName subName;
     Symbol symbol;
     Quantity quantity;
-    Money price;
+    Price price;
 
     @Override
     public AssetPortion clarifyPurchasedPortion() {
@@ -31,12 +31,12 @@ public class BuyTrade implements Trade, Valuable {
                 .ticker(symbol.getDestination())
                 .subName(SubName.none())
                 .quantity(Quantity.of(price.multiply(quantity.getQty()).getAmount().doubleValue()))
-                .price(Money.one("USD"))
+                .price(Price.one("USD"))
                 .build();
     }
 
     @Override
     public Money getValue() {
-        return price.multiply(quantity.getQty());
+        return price.multiply(quantity);
     }
 }

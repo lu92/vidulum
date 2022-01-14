@@ -57,6 +57,10 @@ public class Money {
         return Money.of(amount.divide(BigDecimal.valueOf(number), RoundingMode.CEILING), currency);
     }
 
+    public Money divide(Quantity quantity) {
+        return Money.of(amount.divide(BigDecimal.valueOf(quantity.getQty()), RoundingMode.CEILING), currency);
+    }
+
     public Money divide(Money other) {
         return Money.of(amount.divide(other.getAmount(), RoundingMode.CEILING), currency);
     }

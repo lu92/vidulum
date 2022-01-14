@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.RiskRewardRatio;
 import lombok.Builder;
@@ -40,14 +41,14 @@ public class PortfolioDto {
     public static class AssetSummaryJson {
         private String ticker;
         private String fullName;
-        private Money avgPurchasePrice;
+        private Price avgPurchasePrice;
         private Quantity quantity;
         private Quantity locked;
         private Quantity free;
 
         private double pctProfit;
         private Money profit;
-        private Money currentPrice;
+        private Price currentPrice;
         private Money currentValue;
         private List<String> tags;
     }
@@ -105,9 +106,9 @@ public class PortfolioDto {
     @Builder
     public static class PositionSummaryJson {
         String symbol;
-        Money targetPrice;
-        Money entryPrice;
-        Money stopLoss;
+        Price targetPrice;
+        Price entryPrice;
+        Price stopLoss;
         Quantity quantity;
         Money risk;
         Money reward;

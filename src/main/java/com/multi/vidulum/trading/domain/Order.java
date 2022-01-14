@@ -18,9 +18,9 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     Symbol symbol;
     OrderType type;
     Side side;
-    Money targetPrice;
-    Money stopPrice;
-    Money limitPrice; // price which appears in onder-book, [null] for market price/market order
+    Price targetPrice;
+    Price stopPrice;
+    Price limitPrice; // price which appears in onder-book, [null] for market price/market order
     Quantity quantity;
     ZonedDateTime occurredDateTime;
     double riskRewardRatio;
@@ -73,7 +73,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
 
     public Money getTotal() {
         if (isPurchaseAttempt()) {
-            Money price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
+            Price price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
             return price.multiply(quantity);
         } else {
             return Money.one("USD").multiply(quantity);

@@ -18,7 +18,7 @@ public class TradingDto {
         private String subName;
         private Side side;
         private Quantity quantity;
-        private Money price;
+        private Price price;
         private ZonedDateTime originDateTime;
     }
 
@@ -33,7 +33,7 @@ public class TradingDto {
         private String symbol;
         private Side side;
         private Quantity quantity;
-        private Money price;
+        private Price price;
         private ZonedDateTime originDateTime;
     }
 
@@ -46,9 +46,9 @@ public class TradingDto {
         private String symbol;
         private OrderType type;
         private Side side;
-        private Money targetPrice;
-        private Money stopPrice;
-        private Money limitPrice;
+        private Price targetPrice;
+        private Price stopPrice;
+        private Price limitPrice;
         private Quantity quantity;
         private ZonedDateTime originDateTime;
     }
@@ -83,9 +83,9 @@ public class TradingDto {
         private OrderType type;
         private Side side;
         private Status status;
-        private Money targetPrice;
-        private Money stopPrice;
-        private Money limitPrice;
+        private Price targetPrice;
+        private Price stopPrice;
+        private Price limitPrice;
         private Quantity quantity;
         private ZonedDateTime originDateTime;
     }

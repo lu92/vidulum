@@ -15,8 +15,8 @@ public class RiskRewardRatio {
         return new RiskRewardRatio(risk, reward);
     }
 
-    public static RiskRewardRatio of(Money risk, Money reward) {
-        Money rewardRatio = reward.divide(risk);
+    public static RiskRewardRatio of(Price risk, Price reward) {
+        Price rewardRatio = reward.divide(risk);
         return new RiskRewardRatio(1.0, rewardRatio.getAmount().doubleValue());
     }
 }
