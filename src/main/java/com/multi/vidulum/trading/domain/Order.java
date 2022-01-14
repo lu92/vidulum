@@ -18,7 +18,6 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     Symbol symbol;
     OrderType type;
     Side side;
-    OcoGroup ocoGroup; // todo remove
     Money targetPrice;
     Money stopPrice;
     Money limitPrice; // price which appears in onder-book, [null] for market price/market order
@@ -63,18 +62,6 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .status(snapshot.getStatus())
                 .build();
     }
-
-//    public OrderStatement getConfirmation() {
-//        return OrderStatement.builder()
-//                .orderId(orderId)
-//                .symbol(symbol)
-//                .type(type)
-//                .stopPrice(stopPrice)
-//                .limitPrice(limitPrice)
-//                .quantity(quantity)
-//                .total(limitPrice.multiply(quantity))
-//                .build();
-//    }
 
     public boolean isPurchaseAttempt() {
         return Side.BUY.equals(side);
