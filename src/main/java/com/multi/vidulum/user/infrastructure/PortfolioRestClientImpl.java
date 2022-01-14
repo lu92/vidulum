@@ -8,6 +8,8 @@ import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommandHandler;
+import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand;
+import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommandHandler;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler;
 import com.multi.vidulum.portfolio.app.queries.*;
@@ -22,9 +24,9 @@ import org.springframework.stereotype.Component;
 public class PortfolioRestClientImpl implements PortfolioRestClient {
 
     private final CreateEmptyPortfolioCommandHandler createEmptyPortfolioCommandHandler;
-
-    private final GetAggregatedPortfolioQueryHandler getAggregatedPortfolioQueryHandler;
+    private final LockAssetCommandHandler lockAssetCommandHandler;
     private final UnlockAssetCommandHandler unlockAssetCommandHandler;
+    private final GetAggregatedPortfolioQueryHandler getAggregatedPortfolioQueryHandler;
     private final GetPortfolioQueryHandler getPortfolioQueryHandler;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
 
@@ -40,12 +42,22 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
     }
 
     @Override
-    public void unlockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantityToUnlocked) {
+    public void lockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity) {
+        lockAssetCommandHandler.handle(
+                LockAssetCommand.builder()
+                        .portfolioId(portfolioId)
+                        .ticker(ticker)
+                        .quantity(quantity)
+                        .build());
+    }
+
+    @Override
+    public void unlockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity) {
         unlockAssetCommandHandler.handle(
                 UnlockAssetCommand.builder()
                         .portfolioId(portfolioId)
                         .ticker(ticker)
-                        .quantity(quantityToUnlocked)
+                        .quantity(quantity)
                         .build());
     }
 

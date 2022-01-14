@@ -10,7 +10,9 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 public interface PortfolioRestClient {
     PortfolioId createPortfolio(String name, UserId userId, Broker broker);
 
-    void unlockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantityToUnlocked);
+    void lockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity);
+
+    void unlockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity);
 
     PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId);
 

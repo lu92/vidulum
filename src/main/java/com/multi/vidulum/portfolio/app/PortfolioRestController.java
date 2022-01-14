@@ -5,6 +5,7 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
+import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
 import com.multi.vidulum.portfolio.app.queries.*;
@@ -55,7 +56,17 @@ public class PortfolioRestController {
         commandGateway.send(command);
     }
 
-    @PostMapping("/portfolio/unlock")
+    @PostMapping("/portfolio/asset/lock")
+    public void lockAsset(@RequestBody PortfolioDto.LockAssetJson request) {
+        LockAssetCommand command = LockAssetCommand.builder()
+                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .ticker(Ticker.of(request.getTicker()))
+                .quantity(request.getQuantity())
+                .build();
+        commandGateway.send(command);
+    }
+
+    @PostMapping("/portfolio/asset/unlock")
     public void unlockAsset(@RequestBody PortfolioDto.UnlockAssetJson request) {
         UnlockAssetCommand command = UnlockAssetCommand.builder()
                 .portfolioId(PortfolioId.of(request.getPortfolioId()))
