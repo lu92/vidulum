@@ -64,15 +64,15 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                             .reduce(
                                     Position.zero(assetSymbol),
                                     (consideredPosition, orderSummaryJson) -> {
-                                        Money targetPrice = consideredPosition.getTargetValue().plus(orderSummaryJson.getTargetPrice().multiply(orderSummaryJson.getQuantity()));
-                                        Money entryPrice = consideredPosition.getEntryValue().plus(orderSummaryJson.getStopPrice().multiply(orderSummaryJson.getQuantity()));
-                                        Money stopLoss = consideredPosition.getStopLossValue().plus(orderSummaryJson.getLimitPrice().multiply(orderSummaryJson.getQuantity()));
+                                        Money targetValue = consideredPosition.getTargetValue().plus(orderSummaryJson.getTargetPrice().multiply(orderSummaryJson.getQuantity()));
+                                        Money entryValue = consideredPosition.getEntryValue().plus(orderSummaryJson.getStopPrice().multiply(orderSummaryJson.getQuantity()));
+                                        Money stopLossValue = consideredPosition.getStopLossValue().plus(orderSummaryJson.getLimitPrice().multiply(orderSummaryJson.getQuantity()));
                                         Quantity quantity = consideredPosition.getQuantity().plus(orderSummaryJson.getQuantity());
                                         return Position.builder()
                                                 .symbol(assetSymbol)
-                                                .targetPrice(Price.of(targetPrice.divide(quantity)))
-                                                .entryPrice(Price.of(entryPrice.divide(quantity)))
-                                                .stopLoss(Price.of(stopLoss.divide(quantity)))
+                                                .targetPrice(Price.of(targetValue.divide(quantity)))
+                                                .entryPrice(Price.of(entryValue.divide(quantity)))
+                                                .stopLoss(Price.of(stopLossValue.divide(quantity)))
                                                 .quantity(consideredPosition.getQuantity().plus(orderSummaryJson.getQuantity()))
                                                 .build();
                                     },
