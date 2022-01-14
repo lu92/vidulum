@@ -54,20 +54,20 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         }
     }
 
-    private void lockAssetForSale(Order order) {
-        portfolioRestClient.lockAsset(
-                order.getPortfolioId(),
-                order.getSymbol().getOrigin(),
-                order.getQuantity()
-        );
-    }
-
     private void lockBalanceForPurchaseOfAsset(Order order) {
         Quantity quantityToLocked = Quantity.of(order.getTotal().getAmount().doubleValue());
         portfolioRestClient.lockAsset(
                 order.getPortfolioId(),
                 order.getSymbol().getDestination(),
                 quantityToLocked
+        );
+    }
+
+    private void lockAssetForSale(Order order) {
+        portfolioRestClient.lockAsset(
+                order.getPortfolioId(),
+                order.getSymbol().getOrigin(),
+                order.getQuantity()
         );
     }
 }
