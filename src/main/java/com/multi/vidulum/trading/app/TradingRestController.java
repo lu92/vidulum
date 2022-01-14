@@ -30,6 +30,7 @@ import static java.util.stream.Collectors.toList;
 public class TradingRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final TradingMapper mapper;
     private final Clock clock;
 
     @PostMapping("/trading")
@@ -58,7 +59,7 @@ public class TradingRestController {
                 .build();
         List<Trade> trades = queryGateway.send(query);
         return trades.stream()
-                .map(this::toJson)
+                .map(mapper::toJson)
                 .collect(toList());
     }
 
@@ -73,7 +74,7 @@ public class TradingRestController {
                 .build();
         List<Trade> trades = queryGateway.send(query);
         return trades.stream()
-                .map(this::toJson)
+                .map(mapper::toJson)
                 .collect(toList());
     }
 
@@ -82,18 +83,19 @@ public class TradingRestController {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
                 .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
                 .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
+                .broker(Broker.of(placeOrderJson.getBroker()))
                 .symbol(Symbol.of(placeOrderJson.getSymbol()))
                 .type(placeOrderJson.getType())
                 .side(placeOrderJson.getSide())
                 .targetPrice(placeOrderJson.getTargetPrice())
-                .entryPrice(placeOrderJson.getEntryPrice())
-                .stopLoss(placeOrderJson.getStopLoss())
+                .stopPrice(placeOrderJson.getStopPrice())
+                .limitPrice(placeOrderJson.getLimitPrice())
                 .quantity(placeOrderJson.getQuantity())
                 .occurredDateTime(placeOrderJson.getOriginDateTime())
                 .build();
 
         Order placedOrder = commandGateway.send(command);
-        return toJson(placedOrder);
+        return mapper.toJson(placedOrder);
     }
 
     @PutMapping
@@ -104,7 +106,7 @@ public class TradingRestController {
                 .originDateTime(ZonedDateTime.now(clock))
                 .build();
         OrderExecutionSummary summary = commandGateway.send(command);
-        return toJson(summary);
+        return mapper.toJson(summary);
     }
 
     @DeleteMapping("/orders/{originOrderId}")
@@ -113,7 +115,7 @@ public class TradingRestController {
                 .originOrderId(OriginOrderId.of(originOrderId))
                 .build();
         Order canceledOrder = commandGateway.send(command);
-        return toJson(canceledOrder);
+        return mapper.toJson(canceledOrder);
     }
 
     @GetMapping("/orders/{portfolioId}")
@@ -123,51 +125,7 @@ public class TradingRestController {
                 .build();
         List<Order> orders = queryGateway.send(query);
         return orders.stream()
-                .map(this::toJson)
+                .map(mapper::toJson)
                 .collect(toList());
-    }
-
-    private TradingDto.TradeSummaryJson toJson(Trade trade) {
-        return TradingDto.TradeSummaryJson.builder()
-                .tradeId(trade.getTradeId().getId())
-                .userId(trade.getUserId().getId())
-                .portfolioId(trade.getPortfolioId().getId())
-                .originTradeId(trade.getOriginTradeId().getId())
-                .subName(trade.getSubName().getName())
-                .symbol(trade.getSymbol().getId())
-                .side(trade.getSide())
-                .quantity(trade.getQuantity())
-                .price(trade.getPrice())
-                .originDateTime(trade.getDateTime())
-                .build();
-    }
-
-    private TradingDto.OrderSummaryJson toJson(Order order) {
-        return TradingDto.OrderSummaryJson.builder()
-                .orderId(order.getOrderId().getId())
-                .originOrderId(order.getOriginOrderId().getId())
-                .portfolioId(order.getPortfolioId().getId())
-                .symbol(order.getSymbol().getId())
-                .type(order.getType())
-                .side(order.getSide())
-                .status(order.getStatus())
-                .targetPrice(order.getTargetPrice())
-                .entryPrice(order.getEntryPrice())
-                .stopLoss(order.getStopLoss())
-                .quantity(order.getQuantity())
-                .originDateTime(order.getOccurredDateTime())
-                .build();
-    }
-
-    private TradingDto.OrderExecutionSummaryJson toJson(OrderExecutionSummary summary) {
-        return TradingDto.OrderExecutionSummaryJson.builder()
-                .originOrderId(summary.getOriginOrderId().getId())
-                .originTradeId(summary.getOriginTradeId().getId())
-                .symbol(summary.getSymbol().getId())
-                .type(summary.getType())
-                .side(summary.getSide())
-                .quantity(summary.getQuantity())
-                .profit(summary.getProfit())
-                .build();
     }
 }

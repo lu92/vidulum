@@ -55,7 +55,7 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .type(order.getType())
                 .side(order.getSide())
                 .quantity(order.getQuantity())
-                .profit(order.getTargetPrice().minus(order.getEntryPrice()).multiply(order.getQuantity()))
+                .profit(order.getTargetPrice().minus(order.getStopPrice()).multiply(order.getQuantity()))
                 .build();
     }
 }

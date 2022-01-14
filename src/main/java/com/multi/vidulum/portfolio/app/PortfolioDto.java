@@ -42,6 +42,8 @@ public class PortfolioDto {
         private String fullName;
         private Money avgPurchasePrice;
         private Quantity quantity;
+        private Quantity locked;
+        private Quantity free;
 
         private double pctProfit;
         private Money profit;
@@ -62,6 +64,22 @@ public class PortfolioDto {
     public static class WithdrawMoneyJson {
         private String portfolioId;
         private Money money;
+    }
+
+    @Data
+    @Builder
+    public static class LockAssetJson {
+        private String portfolioId;
+        private String ticker;
+        private Quantity quantity;
+    }
+
+    @Data
+    @Builder
+    public static class UnlockAssetJson {
+        private String portfolioId;
+        private String ticker;
+        private Quantity quantity;
     }
 
     @Data

@@ -8,6 +8,7 @@ import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
+import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -224,6 +225,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(40000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(40000))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
@@ -233,6 +236,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1))
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()
                 ))
@@ -255,6 +260,8 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Money.of(60000.0, "USD"))
                                         .quantity(Quantity.of(1))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(1))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(60000.0, "USD"))
@@ -267,6 +274,8 @@ class VidulumApplicationTests {
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
                                         .quantity(Quantity.of(40000.0))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(40000.0))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))
@@ -295,13 +304,14 @@ class VidulumApplicationTests {
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-X")
                         .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
                         .side(SELL)
-                        .targetPrice(Money.of(70000, "USD"))
-                        .entryPrice(Money.of(60000, "USD"))
-                        .stopLoss(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
+                        .targetPrice(Money.of(80000, "USD"))
+                        .stopPrice(Money.of(61000, "USD"))
+                        .limitPrice(Money.of(60000, "USD"))
+                        .quantity(Quantity.of(0.25))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -317,10 +327,10 @@ class VidulumApplicationTests {
                                 .type(OrderType.OCO)
                                 .side(SELL)
                                 .status(Status.OPEN)
-                                .targetPrice(Money.of(70000, "USD"))
-                                .entryPrice(Money.of(60000, "USD"))
-                                .stopLoss(Money.of(55000, "USD"))
-                                .quantity(Quantity.of(0.5))
+                                .targetPrice(Money.of(80000, "USD"))
+                                .stopPrice(Money.of(61000, "USD"))
+                                .limitPrice(Money.of(60000, "USD"))
+                                .quantity(Quantity.of(0.25))
                                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                                 .build()
                 );
@@ -337,14 +347,66 @@ class VidulumApplicationTests {
                                 .type(OrderType.OCO)
                                 .side(SELL)
                                 .status(Status.CANCELLED)
-                                .targetPrice(Money.of(70000, "USD"))
-                                .entryPrice(Money.of(60000, "USD"))
-                                .stopLoss(Money.of(55000, "USD"))
-                                .quantity(Quantity.of(0.5))
+                                .targetPrice(Money.of(80000, "USD"))
+                                .stopPrice(Money.of(61000, "USD"))
+                                .limitPrice(Money.of(60000, "USD"))
+                                .quantity(Quantity.of(0.25))
                                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                                 .build()
                 );
         assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+
+        // await until portfolio unlocks [0.25 BTC]
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            Portfolio portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId())).get();
+
+            Asset btcAsset = portfolio1.getAssets().stream()
+                    .filter(asset -> Ticker.of("BTC").equals(asset.getTicker()))
+                    .findFirst().orElseThrow(() -> new AssetNotFoundException(Ticker.of("BTC")));
+
+            return btcAsset.getLocked().isZero() && btcAsset.getFree().equals(Quantity.of(1));
+        });
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        assertThat(aggregatedPortfolio1)
+                .isEqualTo(
+                        PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                                .userId(createdUserJson.getUserId())
+                                .segmentedAssets(Map.of(
+                                        "Crypto", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("BTC")
+                                                        .fullName("Bitcoin")
+                                                        .avgPurchasePrice(Money.of(60000.0, "USD"))
+                                                        .quantity(Quantity.of(1))
+                                                        .locked(Quantity.zero())
+                                                        .free(Quantity.of(1))
+                                                        .pctProfit(0)
+                                                        .profit(Money.zero("USD"))
+                                                        .currentPrice(Money.of(60000.0, "USD"))
+                                                        .currentValue(Money.of(60000.0, "USD"))
+                                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                                        .build()),
+                                        "Cash", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("USD")
+                                                        .fullName("American Dollar")
+                                                        .avgPurchasePrice(Money.one("USD"))
+                                                        .quantity(Quantity.of(40000.0))
+                                                        .locked(Quantity.zero())
+                                                        .free(Quantity.of(40000.0))
+                                                        .pctProfit(0)
+                                                        .profit(Money.zero("USD"))
+                                                        .currentPrice(Money.of(1, "USD"))
+                                                        .currentValue(Money.of(40000.0, "USD"))
+                                                        .tags(List.of())
+                                                        .build())))
+                                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
+                                .investedBalance(Money.of(100000.0, "USD"))
+                                .currentValue(Money.of(100000.0, "USD"))
+                                .totalProfit(Money.zero("USD"))
+                                .pctProfit(0)
+                                .build());
 
         TradingDto.OrderSummaryJson placedOrder2 = tradingRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -353,10 +415,10 @@ class VidulumApplicationTests {
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
                         .side(SELL)
-                        .targetPrice(Money.of(70000, "USD"))
-                        .entryPrice(Money.of(60000, "USD"))
-                        .stopLoss(Money.of(55000, "USD"))
-                        .quantity(Quantity.of(0.5))
+                        .targetPrice(Money.of(80000, "USD"))
+                        .stopPrice(Money.of(61000, "USD"))
+                        .limitPrice(Money.of(60000, "USD"))
+                        .quantity(Quantity.of(0.25))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -376,13 +438,15 @@ class VidulumApplicationTests {
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
                         .side(SELL)
-                        .quantity(Quantity.of(0.5))
-                        .profit(Money.of(5000, "USD"))
+                        .quantity(Quantity.of(0.25))
+                        .profit(Money.of(4750, "USD"))
                         .build());
 
         assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+
+        Optional<Portfolio> portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
 
@@ -393,12 +457,14 @@ class VidulumApplicationTests {
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("BTC")
                                         .fullName("Bitcoin")
-                                        .avgPurchasePrice(Money.of(50000.0, "USD"))
-                                        .quantity(Quantity.of(0.5))
-                                        .pctProfit(0.2)
-                                        .profit(Money.of(5000, "USD"))
+                                        .avgPurchasePrice(Money.of(53333.3340, "USD"))
+                                        .quantity(Quantity.of(0.75))
+                                        .locked(Quantity.of(0.25))
+                                        .free(Quantity.of(0.5))
+                                        .pctProfit(0.12499998)
+                                        .profit(Money.of(4999.9995, "USD"))
                                         .currentPrice(Money.of(60000.0, "USD"))
-                                        .currentValue(Money.of(30000.0, "USD"))
+                                        .currentValue(Money.of(45000.0, "USD"))
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                         .build()),
                         "Cash", List.of(
@@ -406,11 +472,13 @@ class VidulumApplicationTests {
                                         .ticker("USD")
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
-                                        .quantity(Quantity.of(75000.0))
+                                        .quantity(Quantity.of(60000))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(60000))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))
-                                        .currentValue(Money.of(75000.0, "USD"))
+                                        .currentValue(Money.of(60000, "USD"))
                                         .tags(List.of())
                                         .build())))
                 .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
@@ -533,6 +601,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(120000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(120000))
                                 .tags(List.of())
                                 .build()
                 ))
@@ -556,6 +626,8 @@ class VidulumApplicationTests {
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
                                         .quantity(Quantity.of(120000.0))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(120000.0))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))
@@ -765,6 +837,8 @@ class VidulumApplicationTests {
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(88100.0))
                                 .tags(List.of())
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(88100.0))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
@@ -773,6 +847,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(40000, "USD"))
                                 .quantity(Quantity.of(0.20000000000000004))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(0.20000000000000004))
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build(),
                         Asset.builder()
@@ -782,6 +858,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.of(3000, "USD"))
                                 .quantity(Quantity.of(1.3))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1.3))
                                 .tags(List.of("Ethereum", "Crypto", "ETH"))
                                 .build()
                 ))
@@ -804,6 +882,8 @@ class VidulumApplicationTests {
                                 .fullName("American Dollar")
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(88100.0))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(88100.0))
                                 .pctProfit(0)
                                 .profit(Money.of(0, "USD"))
                                 .currentPrice(Money.of(1, "USD"))
@@ -816,6 +896,8 @@ class VidulumApplicationTests {
                                         .fullName("Ethereum")
                                         .avgPurchasePrice(Money.of(3000.0000, "USD"))
                                         .quantity(Quantity.of(1.3))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(1.3))
                                         .pctProfit(-0.05)
                                         .profit(Money.of(-195.0, "USD"))
                                         .currentPrice(Money.of(2850.0000, "USD"))
@@ -827,6 +909,8 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Money.of(40000.0000, "USD"))
                                         .quantity(Quantity.of(0.20000000000000004))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(0.20000000000000004))
                                         .pctProfit(0.5)
                                         .profit(Money.of(4000.0000, "USD"))
                                         .currentPrice(Money.of(60000.0000, "USD"))
@@ -841,6 +925,8 @@ class VidulumApplicationTests {
                 .pctProfit(0.03805)
                 .build();
 
+        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
+
         tradingRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -848,8 +934,8 @@ class VidulumApplicationTests {
                 .type(OrderType.OCO)
                 .side(SELL)
                 .targetPrice(Money.of(3500, "USD"))
-                .entryPrice(Money.of(3000, "USD"))
-                .stopLoss(Money.of(2700, "USD"))
+                .stopPrice(Money.of(3000, "USD"))
+                .limitPrice(Money.of(2700, "USD"))
                 .quantity(Quantity.of(0.5))
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
@@ -861,8 +947,8 @@ class VidulumApplicationTests {
                 .type(OrderType.OCO)
                 .side(SELL)
                 .targetPrice(Money.of(70000, "USD"))
-                .entryPrice(Money.of(60000, "USD"))
-                .stopLoss(Money.of(55000, "USD"))
+                .stopPrice(Money.of(60000, "USD"))
+                .limitPrice(Money.of(55000, "USD"))
                 .quantity(Quantity.of(0.1))
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
@@ -874,8 +960,8 @@ class VidulumApplicationTests {
                 .type(OrderType.OCO)
                 .side(SELL)
                 .targetPrice(Money.of(4000, "USD"))
-                .entryPrice(Money.of(3000, "USD"))
-                .stopLoss(Money.of(2900, "USD"))
+                .stopPrice(Money.of(3000, "USD"))
+                .limitPrice(Money.of(2900, "USD"))
                 .quantity(Quantity.of(0.5))
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
@@ -911,7 +997,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-        assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         log.info("[{}]", allOpenedOrders);
@@ -1229,6 +1314,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Money.of(1750, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1, "oz"))
                                 .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
                         Asset.builder()
@@ -1238,6 +1325,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.of("Krugerrand"))
                                 .avgPurchasePrice(Money.of(1820, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1, "oz"))
                                 .tags(List.of("Gold", "Precious Metals"))
                                 .build(),
                         Asset.builder()
@@ -1247,6 +1336,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(1850 - 450, "Number"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1400))
                                 .tags(List.of())
                                 .build(),
                         Asset.builder()
@@ -1256,6 +1347,8 @@ class VidulumApplicationTests {
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Money.of(90, "USD"))
                                 .quantity(Quantity.of(5, "oz"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(5, "oz"))
                                 .tags(List.of("Silver", "Precious Metals"))
                                 .build()
                 ))
@@ -1275,7 +1368,11 @@ class VidulumApplicationTests {
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Money.one("USD"))
                                 .quantity(Quantity.of(10, "Number"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(10, "Number"))
                                 .tags(List.of())
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(10))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
@@ -1284,6 +1381,10 @@ class VidulumApplicationTests {
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Money.of(1800, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1, "oz"))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(1, "oz"))
                                 .tags(List.of("Gold", "Precious Metals"))
                                 .build()
                 ))
@@ -1322,6 +1423,8 @@ class VidulumApplicationTests {
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Money.one("USD"))
                                         .quantity(Quantity.of(1410))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(1410))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Money.of(1, "USD"))
@@ -1334,6 +1437,8 @@ class VidulumApplicationTests {
                                         .fullName("Silver")
                                         .avgPurchasePrice(Money.of(90, "USD"))
                                         .quantity(Quantity.of(5, "oz"))
+                                        .locked(Quantity.of(0, "oz"))
+                                        .free(Quantity.of(5, "oz"))
                                         .pctProfit(0.05555555)
                                         .profit(Money.of(25, "USD"))
                                         .currentPrice(Money.of(95, "USD"))
@@ -1345,6 +1450,8 @@ class VidulumApplicationTests {
                                         .fullName("Gold")
                                         .avgPurchasePrice(Money.of(1790, "USD"))
                                         .quantity(Quantity.of(3, "oz"))
+                                        .locked(Quantity.of(0, "oz"))
+                                        .free(Quantity.of(3, "oz"))
                                         .pctProfit(0.00558659)
                                         .profit(Money.of(30, "USD"))
                                         .currentPrice(Money.of(1800, "USD"))

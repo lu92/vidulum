@@ -211,7 +211,7 @@ public class KafkaTopicConfig {
         return factory;
     }
 
-//    *******
+    //    *******
 
     @Bean
     public BinanceBrokerQuotationProvider binanceBrokerQuotationProvider() {

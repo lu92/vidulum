@@ -30,6 +30,8 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
         SubName subName;
         Money avgPurchasePrice;
         Quantity quantity;
+        Quantity locked;
+        Quantity free;
         List<String> tags;
     }
 }

@@ -41,6 +41,8 @@ public class PortfolioEntity {
                             assetSnapshot.getSubName().getName(),
                             assetSnapshot.getAvgPurchasePrice(),
                             assetSnapshot.getQuantity(),
+                            assetSnapshot.getLocked(),
+                            assetSnapshot.getFree(),
                             assetSnapshot.getTags()
                     );
                 })
@@ -65,6 +67,8 @@ public class PortfolioEntity {
                         SubName.of(assetEntity.getSubName()),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),
+                        assetEntity.getLocked(),
+                        assetEntity.getFree(),
                         assetEntity.getTags()
                 ))
                 .collect(Collectors.toList());

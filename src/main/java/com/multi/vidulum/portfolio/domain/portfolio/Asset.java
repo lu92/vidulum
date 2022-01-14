@@ -15,10 +15,22 @@ public class Asset implements Valuable {
     private SubName subName;
     private Money avgPurchasePrice;
     private Quantity quantity;
+    private Quantity locked;
+    private Quantity free;
     private List<String> tags;
 
     @Override
     public Money getValue() {
         return avgPurchasePrice.multiply(quantity.getQty());
+    }
+
+    public void lock(Quantity quantity) {
+        locked = locked.plus(quantity);
+        free = free.minus(quantity);
+    }
+
+    public void unlock(Quantity quantity) {
+        locked = locked.minus(quantity);
+        free = free.plus(quantity);
     }
 }

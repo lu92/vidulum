@@ -16,5 +16,7 @@ public class AssetEntity {
     String subName;
     Money avgPurchasePrice;
     Quantity quantity;
+    Quantity locked;
+    Quantity free;
     List<String> tags;
 }

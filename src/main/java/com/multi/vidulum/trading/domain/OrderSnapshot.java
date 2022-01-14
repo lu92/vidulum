@@ -14,12 +14,13 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     OrderId orderId;
     OriginOrderId originOrderId;
     PortfolioId portfolioId;
+    Broker broker;
     Symbol symbol;
     OrderType type;
     Side side;
     Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Money stopPrice;
+    Money limitPrice;
     Quantity quantity;
     ZonedDateTime occurredDateTime;
     Status status;

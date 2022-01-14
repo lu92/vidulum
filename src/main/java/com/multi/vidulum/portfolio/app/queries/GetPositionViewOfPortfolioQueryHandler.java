@@ -65,8 +65,8 @@ public class GetPositionViewOfPortfolioQueryHandler implements QueryHandler<GetP
                                     Position.zero(assetSymbol),
                                     (consideredPosition, orderSummaryJson) -> {
                                         Money targetPrice = consideredPosition.getTargetValue().plus(orderSummaryJson.getTargetPrice().multiply(orderSummaryJson.getQuantity().getQty()));
-                                        Money entryPrice = consideredPosition.getEntryValue().plus(orderSummaryJson.getEntryPrice().multiply(orderSummaryJson.getQuantity().getQty()));
-                                        Money stopLoss = consideredPosition.getStopLossValue().plus(orderSummaryJson.getStopLoss().multiply(orderSummaryJson.getQuantity().getQty()));
+                                        Money entryPrice = consideredPosition.getEntryValue().plus(orderSummaryJson.getStopPrice().multiply(orderSummaryJson.getQuantity().getQty()));
+                                        Money stopLoss = consideredPosition.getStopLossValue().plus(orderSummaryJson.getLimitPrice().multiply(orderSummaryJson.getQuantity().getQty()));
                                         Quantity quantity = consideredPosition.getQuantity().plus(orderSummaryJson.getQuantity());
                                         return Position.builder()
                                                 .symbol(assetSymbol)

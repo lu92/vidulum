@@ -42,12 +42,13 @@ public class TradingDto {
     public static class PlaceOrderJson {
         private String originOrderId;
         private String portfolioId;
+        private String broker;
         private String symbol;
         private OrderType type;
         private Side side;
         private Money targetPrice;
-        private Money entryPrice;
-        private Money stopLoss;
+        private Money stopPrice;
+        private Money limitPrice;
         private Quantity quantity;
         private ZonedDateTime originDateTime;
     }
@@ -83,8 +84,8 @@ public class TradingDto {
         private Side side;
         private Status status;
         private Money targetPrice;
-        private Money entryPrice;
-        private Money stopLoss;
+        private Money stopPrice;
+        private Money limitPrice;
         private Quantity quantity;
         private ZonedDateTime originDateTime;
     }

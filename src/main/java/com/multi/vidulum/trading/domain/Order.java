@@ -19,11 +19,11 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     OrderType type;
     Side side;
     Money targetPrice;
-    Money entryPrice;
-    Money stopLoss;
+    Money stopPrice;
+    Money limitPrice; // price which appears in onder-book, [null] for market price/market order
     Quantity quantity;
     ZonedDateTime occurredDateTime;
-    double RiskRewardRatio;
+    double riskRewardRatio;
     Status status;
 
     @Override
@@ -32,12 +32,13 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 orderId,
                 originOrderId,
                 portfolioId,
+                broker,
                 symbol,
                 type,
                 side,
                 targetPrice,
-                entryPrice,
-                stopLoss,
+                stopPrice,
+                limitPrice,
                 quantity,
                 occurredDateTime,
                 status
@@ -47,21 +48,35 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     public static Order from(OrderSnapshot snapshot) {
         return Order.builder()
                 .orderId(snapshot.getOrderId())
-                .portfolioId(snapshot.getPortfolioId())
                 .originOrderId(snapshot.getOriginOrderId())
+                .portfolioId(snapshot.getPortfolioId())
+                .broker(snapshot.getBroker())
                 .symbol(snapshot.getSymbol())
                 .type(snapshot.getType())
                 .side(snapshot.getSide())
                 .targetPrice(snapshot.getTargetPrice())
-                .entryPrice(snapshot.getEntryPrice())
-                .stopLoss(snapshot.getStopLoss())
+                .stopPrice(snapshot.getStopPrice())
+                .limitPrice(snapshot.getLimitPrice())
                 .quantity(snapshot.getQuantity())
                 .occurredDateTime(snapshot.getOccurredDateTime())
                 .status(snapshot.getStatus())
                 .build();
     }
 
+    public boolean isPurchaseAttempt() {
+        return Side.BUY.equals(side);
+    }
+
     public boolean isOpen() {
         return Status.OPEN.equals(status);
+    }
+
+    public Money getTotal() {
+        if (isPurchaseAttempt()) {
+            Money price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
+            return price.multiply(quantity);
+        } else {
+            return Money.one("USD").multiply(quantity);
+        }
     }
 }
