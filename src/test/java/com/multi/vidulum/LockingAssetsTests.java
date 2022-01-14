@@ -547,7 +547,204 @@ class LockingAssetsTests {
                                                         .currentValue(Money.of(60000.0000, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                                         .build())
-                                        ))
+                                ))
+                                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
+                                .investedBalance(Money.of(100000.0, "USD"))
+                                .currentValue(Money.of(100000.0, "USD"))
+                                .totalProfit(Money.of(0, "USD"))
+                                .pctProfit(0)
+                                .build());
+    }
+
+    @Test
+    void shouldExecuteTwoPurchaseTradesAndOneSaleTrade() {
+        quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
+        quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("USD")
+                .fullName("American Dollar")
+                .segment("Cash")
+                .tags(List.of())
+                .build());
+        quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("BTC")
+                .fullName("Bitcoin")
+                .segment("Crypto")
+                .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                .build());
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("BINANCE", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
+
+        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username("lu92")
+                        .password("secret")
+                        .email("lu92@email.com")
+                        .build());
+
+        userRestController.activateUser(createdUserJson.getUserId());
+
+        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
+
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
+                UserDto.RegisterPortfolioJson.builder()
+                        .name("XYZ")
+                        .broker("BINANCE")
+                        .userId(persistedUser.getUserId())
+                        .build());
+
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .money(Money.of(100000.0, "USD"))
+                        .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade1")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("BTC/USD")
+                .subName(SubName.none().getName())
+                .side(BUY)
+                .quantity(Quantity.of(0.4))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade2")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("BTC/USD")
+                .subName(SubName.none().getName())
+                .side(BUY)
+                .quantity(Quantity.of(0.6))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+        // await until portfolio will contain [1 BTC]
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            Portfolio portfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId())).get();
+            Optional<Asset> usdAsset = portfolio.getAssets().stream()
+                    .filter(asset -> Ticker.of("BTC").equals(asset.getTicker()))
+                    .findFirst();
+            return usdAsset.map(asset -> asset.getQuantity().equals(Quantity.of(1))).orElse(false);
+        });
+
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+                .isEqualTo(
+                        PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                                .userId(createdUserJson.getUserId())
+                                .segmentedAssets(Map.of(
+                                        "Cash", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("USD")
+                                                        .fullName("American Dollar")
+                                                        .avgPurchasePrice(Money.one("USD"))
+                                                        .quantity(Quantity.of(40000.0))
+                                                        .locked(Quantity.of(0))
+                                                        .free(Quantity.of(40000.0))
+                                                        .pctProfit(0)
+                                                        .profit(Money.of(0, "USD"))
+                                                        .currentPrice(Money.of(1, "USD"))
+                                                        .currentValue(Money.of(40000.0, "USD"))
+                                                        .tags(List.of())
+                                                        .build()),
+                                        "Crypto", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("BTC")
+                                                        .fullName("Bitcoin")
+                                                        .avgPurchasePrice(Money.of(60000.0, "USD"))
+                                                        .quantity(Quantity.of(1))
+                                                        .locked(Quantity.zero())
+                                                        .free(Quantity.of(1))
+                                                        .pctProfit(0)
+                                                        .profit(Money.of(0, "USD"))
+                                                        .currentPrice(Money.of(60000.0000, "USD"))
+                                                        .currentValue(Money.of(60000.0000, "USD"))
+                                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                                        .build())
+                                ))
+                                .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
+                                .investedBalance(Money.of(100000.0, "USD"))
+                                .currentValue(Money.of(100000.0, "USD"))
+                                .totalProfit(Money.of(0, "USD"))
+                                .pctProfit(0)
+                                .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade3")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("BTC/USD")
+                .subName(SubName.none().getName())
+                .side(SELL)
+                .quantity(Quantity.of(0.3))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+                .originTradeId("trade4")
+                .portfolioId(registeredPortfolio.getPortfolioId())
+                .userId(persistedUser.getUserId())
+                .symbol("BTC/USD")
+                .subName(SubName.none().getName())
+                .side(SELL)
+                .quantity(Quantity.of(0.1))
+                .price(Money.of(60000.0, "USD"))
+                .build());
+
+        // await until portfolio will contain [0.5 BTC]
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            Portfolio portfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId())).get();
+            Optional<Asset> btcAsset = portfolio.getAssets().stream()
+                    .filter(asset -> Ticker.of("BTC").equals(asset.getTicker()))
+                    .findFirst();
+            return btcAsset.map(asset -> asset.getQuantity().equals(Quantity.of(0.6))).orElse(false);
+        });
+
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+                .isEqualTo(
+                        PortfolioDto.AggregatedPortfolioSummaryJson.builder()
+                                .userId(createdUserJson.getUserId())
+                                .segmentedAssets(Map.of(
+                                        "Cash", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("USD")
+                                                        .fullName("American Dollar")
+                                                        .avgPurchasePrice(Money.one("USD"))
+                                                        .quantity(Quantity.of(40000.0 + 18000.0 + 6000.0))
+                                                        .locked(Quantity.of(0))
+                                                        .free(Quantity.of(40000.0 + 18000.0 + 6000.0))
+                                                        .pctProfit(0)
+                                                        .profit(Money.of(0, "USD"))
+                                                        .currentPrice(Money.of(1, "USD"))
+                                                        .currentValue(Money.of(40000.0 + 18000.0 + 6000.0, "USD"))
+                                                        .tags(List.of())
+                                                        .build()),
+                                        "Crypto", List.of(
+                                                PortfolioDto.AssetSummaryJson.builder()
+                                                        .ticker("BTC")
+                                                        .fullName("Bitcoin")
+                                                        .avgPurchasePrice(Money.of(60000.0, "USD"))
+                                                        .quantity(Quantity.of(0.6))
+                                                        .locked(Quantity.zero())
+                                                        .free(Quantity.of(0.6))
+                                                        .pctProfit(0)
+                                                        .profit(Money.of(0, "USD"))
+                                                        .currentPrice(Money.of(60000.0000, "USD"))
+                                                        .currentValue(Money.of(36000.0000, "USD"))
+                                                        .tags(List.of("Bitcoin", "Crypto", "BTC"))
+                                                        .build())
+                                ))
                                 .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
