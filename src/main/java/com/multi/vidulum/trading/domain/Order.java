@@ -16,8 +16,6 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
-    //    OrderState state;
-//    OrderParameters parameters;
     OrderType type;
     Side side;
     OcoGroup ocoGroup; // todo remove
@@ -25,7 +23,6 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     Money stopPrice;
     Money limitPrice; // price which appears in onder-book, [null] for market price/market order
     Quantity quantity;
-    Money total; // quantity * limitPrice todo remove
     ZonedDateTime occurredDateTime;
     double riskRewardRatio;
     Status status;
@@ -88,8 +85,11 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     }
 
     public Money getTotal() {
-        // todo check if side is required
-        Money price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
-        return price.multiply(quantity);
+        if (isPurchaseAttempt()) {
+            Money price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
+            return price.multiply(quantity);
+        } else {
+            return Money.one("USD").multiply(quantity);
+        }
     }
 }

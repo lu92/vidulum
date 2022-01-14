@@ -2,6 +2,7 @@ package com.multi.vidulum.trading.app.commands.orders.cancel;
 
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Status;
+import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.events.AssetUnlockedEvent;
 import com.multi.vidulum.shared.AssetUnlockedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -38,19 +39,12 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
     }
 
     private AssetUnlockedEvent buildEvent(Order order) {
+        Ticker ticker = order.isPurchaseAttempt() ? order.getSymbol().getDestination() : order.getSymbol().getOrigin();
         Quantity quantityToUnlocked = Quantity.of(order.getTotal().getAmount().doubleValue());
-        if (order.isPurchaseAttempt()) {
-            return AssetUnlockedEvent.builder()
-                    .portfolioId(order.getPortfolioId())
-                    .ticker(order.getSymbol().getDestination())
-                    .quantity(quantityToUnlocked)
-                    .build();
-        } else {
-            return AssetUnlockedEvent.builder()
-                    .portfolioId(order.getPortfolioId())
-                    .ticker(order.getSymbol().getOrigin())
-                    .quantity(order.getQuantity())
-                    .build();
-        }
+        return AssetUnlockedEvent.builder()
+                .portfolioId(order.getPortfolioId())
+                .ticker(ticker)
+                .quantity(quantityToUnlocked)
+                .build();
     }
 }
