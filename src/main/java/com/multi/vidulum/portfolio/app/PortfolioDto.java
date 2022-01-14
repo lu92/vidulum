@@ -68,6 +68,14 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    public static class UnlockAssetJson {
+        private String portfolioId;
+        private String ticker;
+        private Quantity quantity;
+    }
+
+    @Data
+    @Builder
     public static class AggregatedPortfolioSummaryJson {
         private String userId;
         private Map<String, List<AssetSummaryJson>> segmentedAssets;
