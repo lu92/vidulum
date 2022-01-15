@@ -32,9 +32,6 @@ public class VidulumApplication implements CommandLineRunner {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    @Autowired
-    private CommandGateway commandGateway;
-
     @Bean
     public Clock clock() {
         return Clock.systemUTC();

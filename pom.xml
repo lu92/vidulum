@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.4.4</version>
+		<version>2.6.2</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.multi</groupId>
@@ -14,7 +14,7 @@
 	<name>vidulum</name>
 	<description>multi portfolio app</description>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
 		<testcontainers.version>1.15.0</testcontainers.version>
 	</properties>
 	<dependencies>

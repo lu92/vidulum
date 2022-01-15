@@ -3,12 +3,14 @@ package com.multi.vidulum.shared.cqrs;
 
 import com.multi.vidulum.shared.cqrs.commands.Command;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 public class CommandGateway {
 
     private final Map<Class<?>, CommandHandler<? extends Command, ?>> commandHandlers = new ConcurrentHashMap<>();
@@ -20,6 +22,7 @@ public class CommandGateway {
         Class<?> commandType = handleMethod.getParameterTypes()[0];
 
         commandHandlers.put(commandType, commandHandler);
+        log.info(String.format("Command handler [%s] registered!", commandHandler.getClass().getName()));
     }
 
     private Method extractHandlerMethod(CommandHandler<? extends Command, ?> commandHandler) {
