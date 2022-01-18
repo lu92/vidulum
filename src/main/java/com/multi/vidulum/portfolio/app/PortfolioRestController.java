@@ -29,6 +29,7 @@ public class PortfolioRestController {
     @PostMapping("/portfolio")
     public PortfolioDto.PortfolioSummaryJson createEmptyPortfolio(@RequestBody PortfolioDto.CreateEmptyPortfolioJson request) {
         CreateEmptyPortfolioCommand command = CreateEmptyPortfolioCommand.builder()
+                .portfolioId(PortfolioId.generate())
                 .name(request.getName())
                 .userId(UserId.of(request.getUserId()))
                 .broker(Broker.of(request.getBroker()))

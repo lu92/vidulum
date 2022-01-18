@@ -1,6 +1,10 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.app.PortfolioEvents.AssetLockedEvent;
+import com.multi.vidulum.portfolio.app.PortfolioEvents.AssetUnlockedEvent;
+import com.multi.vidulum.portfolio.app.PortfolioEvents.MoneyDepositedEvent;
+import com.multi.vidulum.portfolio.app.PortfolioEvents.MoneyWithdrawEvent;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
@@ -9,10 +13,14 @@ import com.multi.vidulum.portfolio.domain.trades.AssetPortion;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
 import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.ddd.Aggregate;
+import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Instant;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -25,6 +33,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private Broker broker;
     private List<Asset> assets;
     private Money investedBalance;
+    private List<DomainEvent> uncommittedEvents;
 
     @Override
     public PortfolioSnapshot getSnapshot() {
@@ -145,45 +154,57 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
-        Ticker ticker = Ticker.of(deposit.getCurrency());
+    public void apply(MoneyDepositedEvent event) {
+        Ticker ticker = Ticker.of(event.deposit().getCurrency());
         findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
-            Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + deposit.getAmount().doubleValue());
+            Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
             existingAsset.setQuantity(updatedQuantity);
             existingAsset.setFree(updatedQuantity);
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
-                    .fullName(cashBasicInfo.getFullName())
+                    .fullName(event.assetBasicInfo().getFullName())
                     .subName(SubName.none())
-                    .segment(cashBasicInfo.getSegment())
-                    .avgPurchasePrice(Price.one(deposit.getCurrency()))
-                    .quantity(Quantity.of(deposit.getAmount().doubleValue()))
+                    .segment(event.assetBasicInfo().getSegment())
+                    .avgPurchasePrice(Price.one(event.deposit().getCurrency()))
+                    .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                     .locked(Quantity.zero())
-                    .free(Quantity.of(deposit.getAmount().doubleValue()))
-                    .tags(cashBasicInfo.getTags())
+                    .free(Quantity.of(event.deposit().getAmount().doubleValue()))
+                    .tags(event.assetBasicInfo().getTags())
                     .build();
             assets.add(cash);
         });
-        investedBalance = investedBalance.plus(deposit);
+        investedBalance = investedBalance.plus(event.deposit());
+    }
+
+    public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
+        MoneyDepositedEvent event = new MoneyDepositedEvent(cashBasicInfo, deposit, Instant.now());
+        apply(event);
+        add(event);
     }
 
     public void withdrawMoney(Money withdrawal) {
-        Ticker ticker = Ticker.of(withdrawal.getCurrency());
+        MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal, Instant.now());
+        apply(event);
+        add(event);
+    }
+
+    public void apply(MoneyWithdrawEvent event) {
+        Ticker ticker = Ticker.of(event.withdrawal().getCurrency());
         Asset cash = findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
-        if (cash.getFree().getQty() < withdrawal.getAmount().doubleValue()) {
-            throw new NotSufficientBalance(withdrawal);
+        if (cash.getFree().getQty() < event.withdrawal().getAmount().doubleValue()) {
+            throw new NotSufficientBalance(event.withdrawal());
         }
 
-        if (cash.getQuantity().getQty() < withdrawal.getAmount().doubleValue()) {
-            throw new NotSufficientBalance(withdrawal);
+        if (cash.getQuantity().getQty() < event.withdrawal().getAmount().doubleValue()) {
+            throw new NotSufficientBalance(event.withdrawal());
         }
 
-        cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - withdrawal.getAmount().doubleValue()));
-        cash.setQuantity(Quantity.of(cash.getFree().getQty() - withdrawal.getAmount().doubleValue()));
-        investedBalance = investedBalance.minus(withdrawal);
+        cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue()));
+        cash.setQuantity(Quantity.of(cash.getFree().getQty() - event.withdrawal().getAmount().doubleValue()));
+        investedBalance = investedBalance.minus(event.withdrawal());
     }
 
     private Optional<Asset> findAssetByTicker(Ticker ticker) {
@@ -199,16 +220,43 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     public void lockAsset(Ticker ticker, Quantity quantity) {
-        Asset asset = findAssetByTicker(ticker)
+        findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
+        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, quantity, Instant.now());
+        apply(event);
+        add(event);
+    }
 
-        asset.lock(quantity);
+    public void apply(AssetLockedEvent event) {
+        Asset asset = findAssetByTicker(event.ticker())
+                .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+        asset.lock(event.quantity());
     }
 
     public void unlockAsset(Ticker ticker, Quantity quantity) {
-        Asset asset = findAssetByTicker(ticker)
+        findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
-        asset.unlock(quantity);
+        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, quantity, Instant.now());
+        apply(event);
+        add(event);
+    }
+
+    public void apply(AssetUnlockedEvent event) {
+        Asset asset = findAssetByTicker(event.ticker())
+                .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+        asset.unlock(event.quantity());
+    }
+
+    public List<DomainEvent> getUncommittedEvents() {
+        if (Objects.isNull(uncommittedEvents)) {
+            uncommittedEvents = new LinkedList<>();
+        }
+        return uncommittedEvents;
+    }
+
+    private void add(DomainEvent event) {
+        // store event temporary
+        getUncommittedEvents().add(event);
     }
 }

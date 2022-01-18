@@ -25,7 +25,8 @@ public class CreateEmptyPortfolioCommandHandler implements CommandHandler<Create
     }
 
     private Portfolio createEmptyPortfolio(CreateEmptyPortfolioCommand command) {
-        return portfolioFactory.createEmptyPortfolio(
+        return portfolioFactory.empty(
+                command.getPortfolioId(),
                 command.getName(),
                 command.getUserId(),
                 command.getBroker());

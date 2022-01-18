@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class PortfolioEntity {
     @Id
     private String id;
+    private String portfolioId;
     private String userId;
     private String name;
     private String broker;
@@ -50,6 +51,7 @@ public class PortfolioEntity {
 
         return PortfolioEntity.builder()
                 .id(id)
+                .portfolioId(snapshot.getPortfolioId().getId())
                 .userId(snapshot.getUserId().getId())
                 .name(snapshot.getName())
                 .broker(snapshot.getBroker().getId())
@@ -74,7 +76,7 @@ public class PortfolioEntity {
                 .collect(Collectors.toList());
 
         return new PortfolioSnapshot(
-                PortfolioId.of(id),
+                PortfolioId.of(portfolioId),
                 UserId.of(userId),
                 name,
                 Broker.of(broker),
