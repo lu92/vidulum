@@ -220,8 +220,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         investedBalance = investedBalance.plus(event.deposit());
     }
 
-    public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
-        MoneyDepositedEvent event = new MoneyDepositedEvent(cashBasicInfo, deposit);
+    public void depositMoney(Money deposit) {
+        MoneyDepositedEvent event = new MoneyDepositedEvent(portfolioId, deposit);
         apply(event);
         add(event);
     }

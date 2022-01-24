@@ -16,14 +16,7 @@ public final class PortfolioEvents {
     }
 
     public record MoneyDepositedEvent(
-            AssetBasicInfo assetBasicInfo,
-            Money deposit) implements DomainEvent {
-    }
-
-    public record MoneyDepositedEvent2(
             PortfolioId portfolioId,
-            Ticker ticker,
-            Segment segment,
             Money deposit) implements DomainEvent {
     }
 

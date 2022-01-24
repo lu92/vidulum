@@ -63,14 +63,7 @@ class PortfolioTest {
                 BROKER
         );
 
-        portfolio.depositMoney(
-                Money.of(10000, "USD"),
-                AssetBasicInfo.builder()
-                        .ticker(Ticker.of("USD"))
-                        .fullName("American Dollar")
-                        .segment(Segment.of("Cash"))
-                        .tags(List.of("cash"))
-                        .build());
+        portfolio.depositMoney(Money.of(10000, "USD"));
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
         assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
@@ -102,12 +95,7 @@ class PortfolioTest {
                                 Broker.of("Broker")
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
-                                AssetBasicInfo.builder()
-                                        .ticker(Ticker.of("USD"))
-                                        .fullName("American Dollar")
-                                        .segment(Segment.of("Cash"))
-                                        .tags(List.of("cash"))
-                                        .build(),
+                                portfolio.getPortfolioId(),
                                 Money.of(10000, "USD"))
                 );
 
