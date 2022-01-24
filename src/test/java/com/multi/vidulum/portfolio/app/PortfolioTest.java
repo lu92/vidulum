@@ -3,7 +3,6 @@ package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.FixedClockConfig;
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.portfolio.*;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.extern.slf4j.Slf4j;
