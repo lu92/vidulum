@@ -4,10 +4,7 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.FixedClockConfig;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.portfolio.domain.portfolio.*;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -37,6 +34,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
 class PortfolioTest {
 
+    private static final PortfolioId PORTFOLIO_ID = PortfolioId.generate();
+    private static final UserId USER_ID = UserId.of("User");
+    private static final Broker BROKER = Broker.of("Broker");
+    private static final String PORTFOLIO_NAME = "XYZ";
+
     @Container
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
 
@@ -55,10 +57,10 @@ class PortfolioTest {
     @Test
     public void shouldOpenEmptyPortfolioTest() {
         Portfolio portfolio = portfolioFactory.empty(
-                PortfolioId.generate(),
-                "XYZ",
-                UserId.of("User"),
-                Broker.of("Broker")
+                PORTFOLIO_ID,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER
         );
 
         portfolio.depositMoney(
@@ -66,11 +68,31 @@ class PortfolioTest {
                 AssetBasicInfo.builder()
                         .ticker(Ticker.of("USD"))
                         .fullName("American Dollar")
-                        .segment(Segment.of("cash"))
+                        .segment(Segment.of("Cash"))
                         .tags(List.of("cash"))
                         .build());
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .fullName("American Dollar")
+                                .segment(Segment.of("Cash"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.one("USD"))
+                                .quantity(Quantity.of(10000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(10000))
+                                .tags(List.of("cash"))
+                                .build()
+                ))
+                .investedBalance(Money.of(10000.0, "USD"))
+                .build());
 
 
         List<DomainEvent> domainEvents = portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId());
@@ -87,11 +109,12 @@ class PortfolioTest {
                                 AssetBasicInfo.builder()
                                         .ticker(Ticker.of("USD"))
                                         .fullName("American Dollar")
-                                        .segment(Segment.of("cash"))
+                                        .segment(Segment.of("Cash"))
                                         .tags(List.of("cash"))
                                         .build(),
                                 Money.of(10000, "USD"))
                 );
     }
+
 
 }
