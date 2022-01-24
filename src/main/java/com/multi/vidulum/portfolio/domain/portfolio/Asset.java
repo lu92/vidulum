@@ -6,22 +6,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Asset implements Valuable {
     private Ticker ticker;
-    private String fullName;
     private Segment segment;
     private SubName subName;
     private Price avgPurchasePrice;
     private Quantity quantity;
     private Quantity locked;
     private Quantity free;
-    private List<String> tags;
 
     @Override
     public Money getValue() {

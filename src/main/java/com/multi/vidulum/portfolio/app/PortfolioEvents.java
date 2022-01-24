@@ -5,6 +5,8 @@ import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
+import java.util.List;
+
 public final class PortfolioEvents {
 
     public record PortfolioOpenedEvent(
@@ -15,6 +17,13 @@ public final class PortfolioEvents {
 
     public record MoneyDepositedEvent(
             AssetBasicInfo assetBasicInfo,
+            Money deposit) implements DomainEvent {
+    }
+
+    public record MoneyDepositedEvent2(
+            PortfolioId portfolioId,
+            Ticker ticker,
+            Segment segment,
             Money deposit) implements DomainEvent {
     }
 

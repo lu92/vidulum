@@ -81,14 +81,12 @@ class PortfolioTest {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .fullName("American Dollar")
                                 .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(10000))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(10000))
-                                .tags(List.of("cash"))
                                 .build()
                 ))
                 .investedBalance(Money.of(10000.0, "USD"))
@@ -97,7 +95,6 @@ class PortfolioTest {
 
         List<DomainEvent> domainEvents = portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId());
 
-        System.out.println(domainEvents);
         assertThat(domainEvents)
                 .containsExactlyInAnyOrder(
                         new PortfolioEvents.PortfolioOpenedEvent(
@@ -114,6 +111,8 @@ class PortfolioTest {
                                         .build(),
                                 Money.of(10000, "USD"))
                 );
+
+//        portfolio.handleExecutedTrade();
     }
 
 

@@ -38,6 +38,17 @@ public class QuoteRestController {
         quotationService.registerAssetBasicInfo(Broker.of(broker), assetBasicInfo);
     }
 
+//    @GetMapping(value = "/{broker}/{ticker}/basic-info")
+//    public QuotationDto.AssetBasicInfoJson getBasicInfo(@PathVariable("broker") String broker, @PathVariable("ticker") String ticker) {
+//        AssetBasicInfo assetBasicInfo = quotationService.fetchBasicInfoAboutAsset(Broker.of(broker), Ticker.of(ticker));
+//        return QuotationDto.AssetBasicInfoJson.builder()
+//                .ticker(assetBasicInfo.getTicker().getId())
+//                .fullName(assetBasicInfo.getFullName())
+//                .segment(assetBasicInfo.getSegment().getName())
+//                .tags(assetBasicInfo.getTags())
+//                .build();
+//    }
+
     @GetMapping(value = "/quote/publish")
     public void changePrice(@RequestParam String broker, String origin, String destination, double amount, String currency, double pctChange) {
         PriceChangedEvent priceChangedEvent = PriceChangedEvent.builder()

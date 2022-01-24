@@ -37,14 +37,12 @@ public class PortfolioEntity {
 
                     return new AssetEntity(
                             assetSnapshot.getTicker().getId(),
-                            assetSnapshot.getFullName(),
                             segment.getName(),
                             assetSnapshot.getSubName().getName(),
                             assetSnapshot.getAvgPurchasePrice(),
                             assetSnapshot.getQuantity(),
                             assetSnapshot.getLocked(),
-                            assetSnapshot.getFree(),
-                            assetSnapshot.getTags()
+                            assetSnapshot.getFree()
                     );
                 })
                 .collect(Collectors.toList());
@@ -64,14 +62,12 @@ public class PortfolioEntity {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
                 .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
                         Ticker.of(assetEntity.getTicker()),
-                        assetEntity.getFullName(),
                         Segment.of(assetEntity.getSegment()),
                         SubName.of(assetEntity.getSubName()),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),
                         assetEntity.getLocked(),
-                        assetEntity.getFree(),
-                        assetEntity.getTags()
+                        assetEntity.getFree()
                 ))
                 .collect(Collectors.toList());
 

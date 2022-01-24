@@ -43,14 +43,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
-                        asset.getFullName(),
                         asset.getSegment(),
                         asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
                         asset.getLocked(),
-                        asset.getFree(),
-                        asset.getTags()))
+                        asset.getFree()))
                 .collect(Collectors.toList());
 
         return new PortfolioSnapshot(
@@ -67,14 +65,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         List<Asset> assets = snapshot.getAssets().stream()
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
-                        assetSnapshot.getFullName(),
                         assetSnapshot.getSegment(),
                         assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
                         assetSnapshot.getLocked(),
-                        assetSnapshot.getFree(),
-                        assetSnapshot.getTags()
+                        assetSnapshot.getFree()
                 ))
                 .collect(Collectors.toList());
 
@@ -175,15 +171,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     existingAsset.setFree(updatedFreeQuantity);
                 }, () -> {
                     Asset newAsset = Asset.builder()
-                            .ticker(assetBasicInfo.getTicker())
-                            .fullName(assetBasicInfo.getFullName())
+                            .ticker(purchasedPortion.getTicker())
                             .subName(purchasedPortion.getSubName())
                             .segment(assetBasicInfo.getSegment())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .locked(Quantity.zero())
                             .free(purchasedPortion.getQuantity())
-                            .tags(assetBasicInfo.getTags())
                             .build();
                     assets.add(newAsset);
                 });
@@ -221,14 +215,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }, () -> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
-                    .fullName(event.assetBasicInfo().getFullName())
                     .subName(SubName.none())
                     .segment(event.assetBasicInfo().getSegment())
                     .avgPurchasePrice(Price.one(event.deposit().getCurrency()))
                     .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                     .locked(Quantity.zero())
                     .free(Quantity.of(event.deposit().getAmount().doubleValue()))
-                    .tags(event.assetBasicInfo().getTags())
                     .build();
             assets.add(cash);
         });
