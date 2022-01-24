@@ -17,10 +17,7 @@ import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -43,7 +40,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
                 .map(asset -> new PortfolioSnapshot.AssetSnapshot(
                         asset.getTicker(),
-                        asset.getSegment(),
                         asset.getSubName(),
                         asset.getAvgPurchasePrice(),
                         asset.getQuantity(),
@@ -65,7 +61,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         List<Asset> assets = snapshot.getAssets().stream()
                 .map(assetSnapshot -> new Asset(
                         assetSnapshot.getTicker(),
-                        assetSnapshot.getSegment(),
                         assetSnapshot.getSubName(),
                         assetSnapshot.getAvgPurchasePrice(),
                         assetSnapshot.getQuantity(),
@@ -85,10 +80,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
 
-    public void handleExecutedTrade(ExecutedTradeEvent trade, AssetBasicInfo assetBasicInfo) {
+    public void handleExecutedTrade(ExecutedTradeEvent trade) {
         AssetPortion purchasedPortion = calculatePurchasedPortionOfAsset(trade);
         AssetPortion soldPortion = calculateSoldPortionOfAsset(trade);
-        swing(soldPortion, purchasedPortion, assetBasicInfo);
+        swing(soldPortion, purchasedPortion);
     }
 
     private AssetPortion calculateSoldPortionOfAsset(ExecutedTradeEvent trade) {
@@ -141,24 +136,24 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
+    public void handleExecutedTrade(BuyTrade trade) {
         AssetPortion soldPortion = trade.clarifySoldPortion();
         AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
-        swing(soldPortion, purchasedPortion, assetBasicInfo);
+        swing(soldPortion, purchasedPortion);
     }
 
-    public void handleExecutedTrade(SellTrade trade, AssetBasicInfo assetBasicInfo) {
+    public void handleExecutedTrade(SellTrade trade) {
         AssetPortion soldPortion = trade.clarifySoldPortion();
         AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
-        swing(soldPortion, purchasedPortion, assetBasicInfo);
+        swing(soldPortion, purchasedPortion);
     }
 
-    private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion, AssetBasicInfo purchasedAssetBasicInfo) {
+    private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion) {
         reduceAsset(soldPortion);
-        increaseAsset(purchasedPortion, purchasedAssetBasicInfo);
+        increaseAsset(purchasedPortion);
     }
 
-    private void increaseAsset(AssetPortion purchasedPortion, AssetBasicInfo assetBasicInfo) {
+    private void increaseAsset(AssetPortion purchasedPortion) {
         findAssetByTickerAndSubName(purchasedPortion.getTicker(), purchasedPortion.getSubName())
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.getQuantity());
@@ -173,7 +168,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     Asset newAsset = Asset.builder()
                             .ticker(purchasedPortion.getTicker())
                             .subName(purchasedPortion.getSubName())
-                            .segment(assetBasicInfo.getSegment())
                             .avgPurchasePrice(purchasedPortion.getPrice())
                             .quantity(purchasedPortion.getQuantity())
                             .locked(Quantity.zero())
@@ -216,7 +210,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             Asset cash = Asset.builder()
                     .ticker(ticker)
                     .subName(SubName.none())
-                    .segment(event.assetBasicInfo().getSegment())
                     .avgPurchasePrice(Price.one(event.deposit().getCurrency()))
                     .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                     .locked(Quantity.zero())

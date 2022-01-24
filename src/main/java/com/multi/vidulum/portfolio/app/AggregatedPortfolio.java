@@ -73,7 +73,6 @@ public class AggregatedPortfolio {
 
                         Asset updatedAsset = Asset.builder()
                                 .ticker(relatedAsset.getTicker())
-                                .segment(relatedAsset.getSegment())
                                 .subName(relatedAsset.getSubName())
                                 .avgPurchasePrice(avgPurchasePrice)
                                 .quantity(quantity)
@@ -119,7 +118,6 @@ public class AggregatedPortfolio {
                                     .reduce(
                                             Asset.builder()
                                                     .ticker(firstAsset.getTicker())
-                                                    .segment(firstAsset.getSegment())
                                                     .subName(SubName.none())
                                                     .avgPurchasePrice(Price.zero("USD"))
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))

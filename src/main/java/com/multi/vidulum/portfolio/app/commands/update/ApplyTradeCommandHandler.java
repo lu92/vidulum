@@ -3,9 +3,7 @@ package com.multi.vidulum.portfolio.app.commands.update;
 import com.multi.vidulum.common.Side;
 import com.multi.vidulum.common.StoredTrade;
 import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
@@ -23,7 +21,6 @@ import org.springframework.stereotype.Component;
 public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeCommand, Void> {
 
     private final DomainPortfolioRepository repository;
-    private final QuoteRestClient quoteRestClient;
     private final TradeAppliedToPortfolioEventEmitter eventEmitter;
 
     @Override
@@ -66,8 +63,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
     }
 
     private void handleTrade(Portfolio portfolio, ExecutedTradeEvent trade) {
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), trade.getSymbol().getOrigin());
-        portfolio.handleExecutedTrade(trade, assetBasicInfo);
+        portfolio.handleExecutedTrade(trade);
     }
 
     private void handleBuyTrade(StoredTrade trade, Portfolio portfolio) {
@@ -79,8 +75,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())
                 .build();
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), trade.getSymbol().getOrigin());
-        portfolio.handleExecutedTrade(buyTrade, assetBasicInfo);
+        portfolio.handleExecutedTrade(buyTrade);
     }
 
     private void handleSellTrade(StoredTrade trade, Portfolio portfolio) {
@@ -92,8 +87,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .quantity(trade.getQuantity())
                 .price(trade.getPrice())
                 .build();
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), trade.getSymbol().getDestination());
-        portfolio.handleExecutedTrade(sellTrade, assetBasicInfo);
+        portfolio.handleExecutedTrade(sellTrade);
     }
 
     private void emitEvent(StoredTrade trade) {

@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Asset implements Valuable {
     private Ticker ticker;
-    private Segment segment;
     private SubName subName;
     private Price avgPurchasePrice;
     private Quantity quantity;

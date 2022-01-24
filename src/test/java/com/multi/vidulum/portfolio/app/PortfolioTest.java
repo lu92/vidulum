@@ -81,7 +81,6 @@ class PortfolioTest {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(10000))

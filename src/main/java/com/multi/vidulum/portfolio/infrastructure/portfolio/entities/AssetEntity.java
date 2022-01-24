@@ -9,7 +9,6 @@ import lombok.Value;
 @Builder
 public class AssetEntity {
     String ticker;
-    String segment;
     String subName;
     Price avgPurchasePrice;
     Quantity quantity;

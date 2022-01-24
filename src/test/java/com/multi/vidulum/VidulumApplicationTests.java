@@ -220,7 +220,6 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(40000))
@@ -229,7 +228,6 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.of(60000, "USD"))
                                 .quantity(Quantity.of(1))
@@ -592,7 +590,6 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(120000))
@@ -825,36 +822,27 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-//                                .fullName("American Dollar")
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(88100.0))
-//                                .tags(List.of())
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(88100.0))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-//                                .fullName("Bitcoin")
-                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.of(40000, "USD"))
                                 .quantity(Quantity.of(0.20000000000000004))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(0.20000000000000004))
-//                                .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
-//                                .fullName("Ethereum")
-                                .segment(Segment.of("Crypto"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.of(3000, "USD"))
                                 .quantity(Quantity.of(1.3))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(1.3))
-//                                .tags(List.of("Ethereum", "Crypto", "ETH"))
                                 .build()
                 ))
                 .investedBalance(Money.of(100000.0, "USD"))
@@ -1303,7 +1291,6 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Price.of(1750, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
@@ -1312,7 +1299,6 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Krugerrand"))
                                 .avgPurchasePrice(Price.of(1820, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
@@ -1321,7 +1307,6 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(1850 - 450, "Number"))
@@ -1330,7 +1315,6 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAG"))
-                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Price.of(90, "USD"))
                                 .quantity(Quantity.of(5, "oz"))
@@ -1349,7 +1333,6 @@ class VidulumApplicationTests {
                 .assets(List.of(
                         Asset.builder()
                                 .ticker(Ticker.of("USD"))
-                                .segment(Segment.of("Cash"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
                                 .quantity(Quantity.of(10, "Number"))
@@ -1360,7 +1343,6 @@ class VidulumApplicationTests {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("XAU"))
-                                .segment(Segment.of("Precious Metals"))
                                 .subName(SubName.of("Maple Leaf"))
                                 .avgPurchasePrice(Price.of(1800, "USD"))
                                 .quantity(Quantity.of(1, "oz"))
