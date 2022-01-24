@@ -54,7 +54,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest
+@SpringBootTest(classes = FixedClockConfig.class)
 @Import(PortfolioAppConfig.class)
 @Testcontainers
 @DirtiesContext
@@ -877,19 +877,19 @@ class VidulumApplicationTests {
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.getUserId())
                 .segmentedAssets(Map.of("Cash", List.of(
-                        PortfolioDto.AssetSummaryJson.builder()
-                                .ticker("USD")
-                                .fullName("American Dollar")
-                                .avgPurchasePrice(Price.one("USD"))
-                                .quantity(Quantity.of(88100.0))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(88100.0))
-                                .pctProfit(0)
-                                .profit(Money.of(0, "USD"))
-                                .currentPrice(Price.of(1, "USD"))
-                                .currentValue(Money.of(88100.0000, "USD"))
-                                .tags(List.of())
-                                .build()),
+                                PortfolioDto.AssetSummaryJson.builder()
+                                        .ticker("USD")
+                                        .fullName("American Dollar")
+                                        .avgPurchasePrice(Price.one("USD"))
+                                        .quantity(Quantity.of(88100.0))
+                                        .locked(Quantity.zero())
+                                        .free(Quantity.of(88100.0))
+                                        .pctProfit(0)
+                                        .profit(Money.of(0, "USD"))
+                                        .currentPrice(Price.of(1, "USD"))
+                                        .currentValue(Money.of(88100.0000, "USD"))
+                                        .tags(List.of())
+                                        .build()),
                         "Crypto", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("ETH")
@@ -1391,7 +1391,7 @@ class VidulumApplicationTests {
                 .investedBalance(Money.of(1810, "USD"))
                 .build();
 
-        Awaitility.await().atMost(100, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
+        Awaitility.await().atMost(5, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);

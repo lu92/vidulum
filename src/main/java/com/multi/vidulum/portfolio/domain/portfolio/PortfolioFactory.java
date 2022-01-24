@@ -5,11 +5,12 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.PortfolioEvents;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
+import lombok.AllArgsConstructor;
 
-import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+@AllArgsConstructor
 public class PortfolioFactory {
 
     public Portfolio empty(PortfolioId portfolioId, String name, UserId userId, Broker broker) {
@@ -18,8 +19,7 @@ public class PortfolioFactory {
                 new PortfolioEvents.PortfolioOpenedEvent(
                         portfolioId,
                         name,
-                        broker,
-                        Instant.now()
+                        broker
                 )
         );
         return Portfolio.builder()

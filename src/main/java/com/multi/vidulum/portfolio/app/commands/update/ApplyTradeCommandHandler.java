@@ -9,6 +9,7 @@ import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
+import com.multi.vidulum.portfolio.domain.trades.ExecutedTradeEvent;
 import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -33,19 +34,40 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .findById(trade.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(trade.getPortfolioId()));
 
+        ExecutedTradeEvent executedTrade = ExecutedTradeEvent.builder()
+                .portfolioId(trade.getPortfolioId())
+                .tradeId(trade.getTradeId())
+                .symbol(trade.getSymbol())
+                .subName(trade.getSubName())
+                .side(trade.getSide())
+                .quantity(trade.getQuantity())
+                .price(trade.getPrice())
+                .build();
+
         if (trade.getSide() == Side.BUY) {
-            handleBuyTrade(trade, portfolio);
+//            handleBuyTrade(trade, portfolio);
+            handleTrade(portfolio, executedTrade);
         } else {
             handleSellTrade(trade, portfolio);
+//            handleTrade(portfolio, executedTrade);
         }
+
+
+//        handleTrade(portfolio, executedTrade);
+
 
         repository.save(portfolio);
         log.info("After processing: [{}]", portfolio);
 
         emitEvent(trade);
 
-        log.info(String.format("Trade [%s] has been applied to portfolio [%s] successfully", trade.getTradeId(), trade.getPortfolioId()));
+        log.info(String.format("Trade [origin: %s generated: %s] has been applied to portfolio [%s] successfully", trade.getOriginOrderId(), trade.getTradeId(), trade.getPortfolioId()));
         return null;
+    }
+
+    private void handleTrade(Portfolio portfolio, ExecutedTradeEvent trade) {
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), trade.getSymbol().getOrigin());
+        portfolio.handleExecutedTrade(trade, assetBasicInfo);
     }
 
     private void handleBuyTrade(StoredTrade trade, Portfolio portfolio) {

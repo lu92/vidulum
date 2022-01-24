@@ -11,12 +11,15 @@ import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 import com.multi.vidulum.portfolio.domain.trades.AssetPortion;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
+import com.multi.vidulum.portfolio.domain.trades.ExecutedTradeEvent;
 import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
@@ -86,11 +89,66 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
 
+    public void handleExecutedTrade(ExecutedTradeEvent trade, AssetBasicInfo assetBasicInfo) {
+        AssetPortion purchasedPortion = calculatePurchasedPortionOfAsset(trade);
+        AssetPortion soldPortion = calculateSoldPortionOfAsset(trade);
+        swing(soldPortion, purchasedPortion, assetBasicInfo);
+    }
+
+    private AssetPortion calculateSoldPortionOfAsset(ExecutedTradeEvent trade) {
+        if (Side.BUY.equals(trade.getSide())) {
+            return AssetPortion.builder()
+                    .ticker(trade.getSymbol().getDestination())
+                    .subName(SubName.none())
+                    .quantity(Quantity.of(trade.getPrice().multiply(trade.getQuantity().getQty()).getAmount().doubleValue()))
+                    .price(Price.one("USD"))
+                    .build();
+        } else {
+//            return AssetPortion.builder()
+//                    .ticker(trade.getSymbol().getOrigin())
+//                    .subName(trade.getSubName())
+//                    .quantity(trade.getQuantity())
+//                    .price(trade.getPrice())
+//                    .build();
+
+            return AssetPortion.builder()
+                    .ticker(trade.getSymbol().getOrigin())
+                    .subName(trade.getSubName())
+                    .quantity(trade.getQuantity())
+                    .price(trade.getPrice())
+                    .build();
+        }
+    }
+
+    private AssetPortion calculatePurchasedPortionOfAsset(ExecutedTradeEvent trade) {
+        if (Side.BUY.equals(trade.getSide())) {
+            return AssetPortion.builder()
+                    .ticker(trade.getSymbol().getOrigin())
+                    .subName(trade.getSubName())
+                    .quantity(trade.getQuantity())
+                    .price(trade.getPrice())
+                    .build();
+        } else {
+//            return AssetPortion.builder()
+//                    .ticker(trade.getSymbol().getDestination())
+//                    .subName(SubName.none())
+//                    .quantity(Quantity.of(trade.getPrice().multiply(trade.getQuantity().getQty()).getAmount().doubleValue()))
+//                    .price(Price.one("USD"))
+//                    .build();
+
+            return AssetPortion.builder()
+                    .ticker(trade.getSymbol().getDestination())
+                    .subName(SubName.none())
+                    .quantity(Quantity.of(trade.getPrice().multiply(trade.getQuantity().getQty()).getAmount().doubleValue()))
+                    .price(Price.one("USD"))
+                    .build();
+        }
+    }
+
     public void handleExecutedTrade(BuyTrade trade, AssetBasicInfo assetBasicInfo) {
         AssetPortion soldPortion = trade.clarifySoldPortion();
         AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
         swing(soldPortion, purchasedPortion, assetBasicInfo);
-        System.out.println(this);
     }
 
     public void handleExecutedTrade(SellTrade trade, AssetBasicInfo assetBasicInfo) {
@@ -178,13 +236,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     }
 
     public void depositMoney(Money deposit, AssetBasicInfo cashBasicInfo) {
-        MoneyDepositedEvent event = new MoneyDepositedEvent(cashBasicInfo, deposit, Instant.now());
+        MoneyDepositedEvent event = new MoneyDepositedEvent(cashBasicInfo, deposit);
         apply(event);
         add(event);
     }
 
     public void withdrawMoney(Money withdrawal) {
-        MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal, Instant.now());
+        MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal);
         apply(event);
         add(event);
     }
@@ -222,7 +280,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void lockAsset(Ticker ticker, Quantity quantity) {
         findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
-        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, quantity, Instant.now());
+        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, quantity);
         apply(event);
         add(event);
     }
@@ -237,7 +295,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
-        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, quantity, Instant.now());
+        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, quantity);
         apply(event);
         add(event);
     }

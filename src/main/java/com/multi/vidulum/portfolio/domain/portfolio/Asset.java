@@ -1,13 +1,17 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Asset implements Valuable {
     private Ticker ticker;
     private String fullName;
