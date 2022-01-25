@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class ExecutedTradeEvent {
+public class ExecutedTrade {
     PortfolioId portfolioId;
     TradeId tradeId;
     Symbol symbol;

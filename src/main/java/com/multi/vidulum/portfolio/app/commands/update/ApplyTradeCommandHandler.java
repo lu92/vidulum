@@ -7,7 +7,7 @@ import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
-import com.multi.vidulum.portfolio.domain.trades.ExecutedTradeEvent;
+import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
 import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -31,7 +31,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .findById(trade.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(trade.getPortfolioId()));
 
-        ExecutedTradeEvent executedTrade = ExecutedTradeEvent.builder()
+        ExecutedTrade executedTrade = ExecutedTrade.builder()
                 .portfolioId(trade.getPortfolioId())
                 .tradeId(trade.getTradeId())
                 .symbol(trade.getSymbol())
@@ -62,7 +62,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
         return null;
     }
 
-    private void handleTrade(Portfolio portfolio, ExecutedTradeEvent trade) {
+    private void handleTrade(Portfolio portfolio, ExecutedTrade trade) {
         portfolio.handleExecutedTrade(trade);
     }
 

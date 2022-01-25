@@ -1,11 +1,8 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
-
-import java.util.List;
 
 public final class PortfolioEvents {
 
@@ -38,9 +35,10 @@ public final class PortfolioEvents {
     }
 
     public record TradeProcessedEvent(
-            TradeId tradeId,
             PortfolioId portfolioId,
+            TradeId tradeId,
             Symbol symbol,
+            SubName subName,
             Side side,
             Quantity quantity,
             Price price) implements DomainEvent {
