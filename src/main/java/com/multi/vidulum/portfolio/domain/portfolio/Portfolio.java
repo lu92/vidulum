@@ -10,9 +10,7 @@ import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 import com.multi.vidulum.portfolio.domain.trades.AssetPortion;
-import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
-import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
@@ -109,13 +107,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .price(Price.one("USD"))
                     .build();
         } else {
-//            return AssetPortion.builder()
-//                    .ticker(trade.getSymbol().getOrigin())
-//                    .subName(trade.getSubName())
-//                    .quantity(trade.getQuantity())
-//                    .price(trade.getPrice())
-//                    .build();
-
             return AssetPortion.builder()
                     .ticker(event.symbol().getOrigin())
                     .subName(event.subName())
@@ -134,13 +125,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .price(trade.price())
                     .build();
         } else {
-//            return AssetPortion.builder()
-//                    .ticker(trade.getSymbol().getDestination())
-//                    .subName(SubName.none())
-//                    .quantity(Quantity.of(trade.getPrice().multiply(trade.getQuantity().getQty()).getAmount().doubleValue()))
-//                    .price(Price.one("USD"))
-//                    .build();
-
             return AssetPortion.builder()
                     .ticker(trade.symbol().getDestination())
                     .subName(SubName.none())
@@ -148,18 +132,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     .price(Price.one("USD"))
                     .build();
         }
-    }
-
-    public void handleExecutedTrade(BuyTrade trade) {
-        AssetPortion soldPortion = trade.clarifySoldPortion();
-        AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
-        swing(soldPortion, purchasedPortion);
-    }
-
-    public void handleExecutedTrade(SellTrade trade) {
-        AssetPortion soldPortion = trade.clarifySoldPortion();
-        AssetPortion purchasedPortion = trade.clarifyPurchasedPortion();
-        swing(soldPortion, purchasedPortion);
     }
 
     private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion) {
