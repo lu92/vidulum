@@ -84,10 +84,7 @@ class PortfolioTest {
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 
-
-        List<DomainEvent> domainEvents = portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId());
-
-        assertThat(domainEvents)
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
                 .containsExactlyInAnyOrder(
                         new PortfolioEvents.PortfolioOpenedEvent(
                                 portfolio.getPortfolioId(),
@@ -123,6 +120,33 @@ class PortfolioTest {
                         .build());
 
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
+
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.one("USD"))
+                                .quantity(Quantity.of(6000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(6000))
+                                .build(),
+                        Asset.builder()
+                                .ticker(Ticker.of("BTC"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.of(40000.0, "USD"))
+                                .quantity(Quantity.of(0.1))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(0.1))
+                                .build()
+                ))
+                .investedBalance(Money.of(10000.0, "USD"))
+                .build());
+
 
         List<DomainEvent> domainEvents = portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId());
 
