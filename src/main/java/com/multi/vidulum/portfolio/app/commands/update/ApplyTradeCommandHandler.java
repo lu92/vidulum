@@ -1,14 +1,11 @@
 package com.multi.vidulum.portfolio.app.commands.update;
 
-import com.multi.vidulum.common.Side;
 import com.multi.vidulum.common.StoredTrade;
 import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
 import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
-import com.multi.vidulum.portfolio.domain.trades.BuyTrade;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
-import com.multi.vidulum.portfolio.domain.trades.SellTrade;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -27,6 +24,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
     public Void handle(ApplyTradeCommand command) {
         StoredTrade trade = command.getTrade();
         log.info("Processing [ApplyTradeCommand]: [{}]", trade);
+
         Portfolio portfolio = repository
                 .findById(trade.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(trade.getPortfolioId()));
@@ -41,17 +39,7 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
                 .price(trade.getPrice())
                 .build();
 
-        if (trade.getSide() == Side.BUY) {
-//            handleBuyTrade(trade, portfolio);
-            handleTrade(portfolio, executedTrade);
-        } else {
-            handleSellTrade(trade, portfolio);
-//            handleTrade(portfolio, executedTrade);
-        }
-
-
-//        handleTrade(portfolio, executedTrade);
-
+        portfolio.handleExecutedTrade(executedTrade);
 
         repository.save(portfolio);
         log.info("After processing: [{}]", portfolio);
@@ -60,34 +48,6 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
 
         log.info(String.format("Trade [origin: %s generated: %s] has been applied to portfolio [%s] successfully", trade.getOriginOrderId(), trade.getTradeId(), trade.getPortfolioId()));
         return null;
-    }
-
-    private void handleTrade(Portfolio portfolio, ExecutedTrade trade) {
-        portfolio.handleExecutedTrade(trade);
-    }
-
-    private void handleBuyTrade(StoredTrade trade, Portfolio portfolio) {
-        BuyTrade buyTrade = BuyTrade.builder()
-                .portfolioId(trade.getPortfolioId())
-                .tradeId(trade.getTradeId())
-                .subName(trade.getSubName())
-                .symbol(trade.getSymbol())
-                .quantity(trade.getQuantity())
-                .price(trade.getPrice())
-                .build();
-        portfolio.handleExecutedTrade(buyTrade);
-    }
-
-    private void handleSellTrade(StoredTrade trade, Portfolio portfolio) {
-        SellTrade sellTrade = SellTrade.builder()
-                .portfolioId(trade.getPortfolioId())
-                .tradeId(trade.getTradeId())
-                .subName(trade.getSubName())
-                .symbol(trade.getSymbol())
-                .quantity(trade.getQuantity())
-                .price(trade.getPrice())
-                .build();
-        portfolio.handleExecutedTrade(sellTrade);
     }
 
     private void emitEvent(StoredTrade trade) {
