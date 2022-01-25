@@ -5,7 +5,6 @@ import com.multi.vidulum.FixedClockConfig;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.*;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
-import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -98,7 +97,7 @@ class PortfolioTest {
     }
 
     @Test
-    public void shouldHandleTradesTest() {
+    public void shouldBuyBitcoin() {
         PortfolioId portfolioId = PortfolioId.generate();
         Portfolio portfolio = portfolioFactory.empty(
                 portfolioId,
@@ -147,10 +146,7 @@ class PortfolioTest {
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 
-
-        List<DomainEvent> domainEvents = portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId());
-
-        assertThat(domainEvents)
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
                 .containsExactlyInAnyOrder(
                         new PortfolioEvents.PortfolioOpenedEvent(
                                 portfolio.getPortfolioId(),
@@ -172,5 +168,86 @@ class PortfolioTest {
                 );
     }
 
+    @Test
+    public void shouldBuyAndSellTest() {
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER
+        );
 
+        portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.handleExecutedTrade(
+                ExecutedTrade.builder()
+                        .portfolioId(portfolio.getPortfolioId())
+                        .tradeId(TradeId.of("trade-1"))
+                        .symbol(Symbol.of("BTC/USD"))
+                        .subName(SubName.none())
+                        .side(Side.BUY)
+                        .quantity(Quantity.of(0.1))
+                        .price(Price.of(40000.0, "USD"))
+                        .build());
+        portfolio.handleExecutedTrade(
+                ExecutedTrade.builder()
+                        .portfolioId(portfolio.getPortfolioId())
+                        .tradeId(TradeId.of("trade-2"))
+                        .symbol(Symbol.of("BTC/USD"))
+                        .subName(SubName.none())
+                        .side(Side.SELL)
+                        .quantity(Quantity.of(0.1))
+                        .price(Price.of(40000.0, "USD"))
+                        .build());
+
+        Portfolio savedPortfolio = portfolioRepository.save(portfolio);
+
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.one("USD"))
+                                .quantity(Quantity.of(10000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(10000))
+                                .build()
+                ))
+                .investedBalance(Money.of(10000.0, "USD"))
+                .build());
+
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
+                .containsExactlyInAnyOrder(
+                        new PortfolioEvents.PortfolioOpenedEvent(
+                                portfolio.getPortfolioId(),
+                                "XYZ",
+                                Broker.of("Broker")
+                        ),
+                        new PortfolioEvents.MoneyDepositedEvent(
+                                portfolio.getPortfolioId(),
+                                Money.of(10000, "USD")),
+                        new PortfolioEvents.TradeProcessedEvent(
+                                portfolio.getPortfolioId(),
+                                TradeId.of("trade-1"),
+                                Symbol.of("BTC/USD"),
+                                SubName.none(),
+                                Side.BUY,
+                                Quantity.of(0.1),
+                                Price.of(40000.0, "USD")
+                        ),
+                        new PortfolioEvents.TradeProcessedEvent(
+                                portfolio.getPortfolioId(),
+                                TradeId.of("trade-2"),
+                                Symbol.of("BTC/USD"),
+                                SubName.none(),
+                                Side.SELL,
+                                Quantity.of(0.1),
+                                Price.of(40000.0, "USD")
+                        )
+                );
+    }
 }
