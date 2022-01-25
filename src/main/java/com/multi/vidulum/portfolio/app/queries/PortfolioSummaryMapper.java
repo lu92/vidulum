@@ -3,6 +3,7 @@ package com.multi.vidulum.portfolio.app.queries;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -105,7 +106,7 @@ public class PortfolioSummaryMapper {
 
     private PortfolioDto.AssetSummaryJson mapAsset(Broker broker, Asset asset) {
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, Symbol.of(asset.getTicker(), Ticker.of("USD")));
-
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
         Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity());
         Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
         Money profit = currentValue.minus(oldValue);
@@ -113,12 +114,12 @@ public class PortfolioSummaryMapper {
 
         return PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
-                .fullName(asset.getFullName())
+                .fullName(assetBasicInfo.getFullName())
                 .avgPurchasePrice(asset.getAvgPurchasePrice().withScale(4))
                 .quantity(asset.getQuantity())
                 .locked(asset.getLocked())
                 .free(asset.getFree())
-                .tags(asset.getTags())
+                .tags(assetBasicInfo.getTags())
                 .pctProfit(pctProfit)
                 .profit(profit.withScale(4))
                 .currentPrice(assetPriceMetadata.getCurrentPrice().withScale(4))

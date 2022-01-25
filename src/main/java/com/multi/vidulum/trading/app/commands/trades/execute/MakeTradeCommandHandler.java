@@ -47,6 +47,7 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
     private StoredTrade mapToTrade(Trade savedTrade) {
         return StoredTrade.builder()
                 .tradeId(savedTrade.getTradeId())
+                .originTradeId(savedTrade.getOriginTradeId())
                 .userId(savedTrade.getUserId())
                 .originTradeId(savedTrade.getOriginTradeId())
                 .portfolioId(savedTrade.getPortfolioId())

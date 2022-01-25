@@ -25,13 +25,10 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     @Value
     public static class AssetSnapshot {
         Ticker ticker;
-        String fullName;
-        Segment segment;
         SubName subName;
         Price avgPurchasePrice;
         Quantity quantity;
         Quantity locked;
         Quantity free;
-        List<String> tags;
     }
 }

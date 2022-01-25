@@ -73,14 +73,11 @@ public class AggregatedPortfolio {
 
                         Asset updatedAsset = Asset.builder()
                                 .ticker(relatedAsset.getTicker())
-                                .fullName(relatedAsset.getFullName())
-                                .segment(relatedAsset.getSegment())
                                 .subName(relatedAsset.getSubName())
                                 .avgPurchasePrice(avgPurchasePrice)
                                 .quantity(quantity)
                                 .locked(lockedQuantity)
                                 .free(freeQuantity)
-                                .tags(relatedAsset.getTags())
                                 .build();
 
                         List<Asset> assets = portfolio.get(broker);
@@ -121,14 +118,11 @@ public class AggregatedPortfolio {
                                     .reduce(
                                             Asset.builder()
                                                     .ticker(firstAsset.getTicker())
-                                                    .fullName(firstAsset.getFullName())
-                                                    .segment(firstAsset.getSegment())
                                                     .subName(SubName.none())
                                                     .avgPurchasePrice(Price.zero("USD"))
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .free(Quantity.zero(firstAsset.getQuantity().getUnit()))
-                                                    .tags(firstAsset.getTags())
                                                     .build(),
 
                                             (identityAsset, nextAsset) -> {

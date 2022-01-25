@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class PortfolioEntity {
     @Id
     private String id;
+    private String portfolioId;
     private String userId;
     private String name;
     private String broker;
@@ -32,24 +33,20 @@ public class PortfolioEntity {
 
         List<AssetEntity> assetEntities = snapshot.getAssets().stream()
                 .map(assetSnapshot -> {
-                    Segment segment = assetSnapshot.getSegment() == null ? Segment.unknown() : assetSnapshot.getSegment();
-
                     return new AssetEntity(
                             assetSnapshot.getTicker().getId(),
-                            assetSnapshot.getFullName(),
-                            segment.getName(),
                             assetSnapshot.getSubName().getName(),
                             assetSnapshot.getAvgPurchasePrice(),
                             assetSnapshot.getQuantity(),
                             assetSnapshot.getLocked(),
-                            assetSnapshot.getFree(),
-                            assetSnapshot.getTags()
+                            assetSnapshot.getFree()
                     );
                 })
                 .collect(Collectors.toList());
 
         return PortfolioEntity.builder()
                 .id(id)
+                .portfolioId(snapshot.getPortfolioId().getId())
                 .userId(snapshot.getUserId().getId())
                 .name(snapshot.getName())
                 .broker(snapshot.getBroker().getId())
@@ -62,19 +59,16 @@ public class PortfolioEntity {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
                 .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
                         Ticker.of(assetEntity.getTicker()),
-                        assetEntity.getFullName(),
-                        Segment.of(assetEntity.getSegment()),
                         SubName.of(assetEntity.getSubName()),
                         assetEntity.getAvgPurchasePrice(),
                         assetEntity.getQuantity(),
                         assetEntity.getLocked(),
-                        assetEntity.getFree(),
-                        assetEntity.getTags()
+                        assetEntity.getFree()
                 ))
                 .collect(Collectors.toList());
 
         return new PortfolioSnapshot(
-                PortfolioId.of(id),
+                PortfolioId.of(portfolioId),
                 UserId.of(userId),
                 name,
                 Broker.of(broker),

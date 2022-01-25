@@ -13,6 +13,8 @@ management:
         include=*:
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   kafka:
     consumer:
       group-id: group-id

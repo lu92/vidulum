@@ -33,6 +33,7 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
     @Override
     public PortfolioId createPortfolio(String name, UserId userId, Broker broker) {
         CreateEmptyPortfolioCommand command = CreateEmptyPortfolioCommand.builder()
+                .portfolioId(PortfolioId.generate())
                 .name(name)
                 .userId(userId)
                 .broker(broker)
