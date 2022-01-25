@@ -246,8 +246,7 @@ class PortfolioTest {
                                 SubName.none(),
                                 Side.SELL,
                                 Quantity.of(0.1),
-                                Price.of(40000.0, "USD")
-                        )
+                                Price.of(40000.0, "USD"))
                 );
     }
 }
