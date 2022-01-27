@@ -82,7 +82,7 @@ public class TradingDto {
         private String symbol;
         private OrderType type;
         private Side side;
-        private Status status;
+        private OrderStatus status;
         private Price targetPrice;
         private Price stopPrice;
         private Price limitPrice;

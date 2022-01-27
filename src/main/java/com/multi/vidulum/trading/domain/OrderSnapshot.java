@@ -23,7 +23,7 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     Price limitPrice;
     Quantity quantity;
     ZonedDateTime occurredDateTime;
-    Status status;
+    OrderStatus status;
 
     @Override
     public OrderId id() {

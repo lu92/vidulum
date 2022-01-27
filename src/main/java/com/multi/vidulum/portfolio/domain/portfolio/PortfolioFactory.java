@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.PortfolioStatus;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.PortfolioEvents;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
@@ -29,6 +30,7 @@ public class PortfolioFactory {
                 .broker(broker)
                 .assets(new LinkedList<>())
                 .investedBalance(Money.zero("USD"))
+                .status(PortfolioStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();
     }

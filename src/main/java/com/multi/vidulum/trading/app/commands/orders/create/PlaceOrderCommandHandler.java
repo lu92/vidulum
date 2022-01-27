@@ -1,7 +1,7 @@
 package com.multi.vidulum.trading.app.commands.orders.create;
 
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Status;
+import com.multi.vidulum.common.OrderStatus;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
@@ -36,7 +36,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 .limitPrice(command.getLimitPrice())
                 .quantity(command.getQuantity())
                 .occurredDateTime(command.getOccurredDateTime())
-                .status(Status.OPEN)
+                .status(OrderStatus.OPEN)
                 .build();
 
         lockAssetInPortfolio(order);

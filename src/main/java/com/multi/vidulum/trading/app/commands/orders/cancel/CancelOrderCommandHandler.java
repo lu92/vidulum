@@ -1,7 +1,7 @@
 package com.multi.vidulum.trading.app.commands.orders.cancel;
 
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Status;
+import com.multi.vidulum.common.OrderStatus;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
@@ -30,7 +30,7 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
 
         unlockParticularAssetInPortfolio(order);
 
-        order.setStatus(Status.CANCELLED);
+        order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been cancelled!", order.getOriginOrderId());
         return savedOrder;

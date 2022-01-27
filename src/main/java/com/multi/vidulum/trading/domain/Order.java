@@ -24,7 +24,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     Quantity quantity;
     ZonedDateTime occurredDateTime;
     double riskRewardRatio;
-    Status status;
+    OrderStatus status;
 
     @Override
     public OrderSnapshot getSnapshot() {
@@ -68,7 +68,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     }
 
     public boolean isOpen() {
-        return Status.OPEN.equals(status);
+        return OrderStatus.OPEN.equals(status);
     }
 
     public Money getTotal() {

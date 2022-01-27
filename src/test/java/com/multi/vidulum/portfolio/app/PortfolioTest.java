@@ -80,6 +80,7 @@ class PortfolioTest {
                                 .free(Quantity.of(10000))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 
@@ -143,6 +144,7 @@ class PortfolioTest {
                                 .free(Quantity.of(0.1))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 
@@ -217,6 +219,7 @@ class PortfolioTest {
                                 .free(Quantity.of(10000))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 
@@ -302,6 +305,7 @@ class PortfolioTest {
                                 .free(Quantity.of(0.085))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
                 .build());
 

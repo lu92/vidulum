@@ -15,6 +15,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     String name;
     Broker broker;
     List<AssetSnapshot> assets;
+    PortfolioStatus status;
     Money investedBalance;
 
     @Override
