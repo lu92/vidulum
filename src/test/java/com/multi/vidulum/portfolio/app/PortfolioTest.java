@@ -385,4 +385,53 @@ class PortfolioTest {
                                 USER_ID)
                 );
     }
+
+    @Test
+    public void shouldWithdrawAllMoneyTest() {
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER
+        );
+
+        portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.withdrawMoney(Money.of(10000, "USD"));
+        Portfolio savedPortfolio = portfolioRepository.save(portfolio);
+
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("USD"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.one("USD"))
+                                .quantity(Quantity.of(0))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(0))
+                                .build()
+                ))
+                .status(PortfolioStatus.OPEN)
+                .investedBalance(Money.zero("USD"))
+                .build());
+
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
+                .containsExactlyInAnyOrder(
+                        new PortfolioEvents.PortfolioOpenedEvent(
+                                portfolio.getPortfolioId(),
+                                "XYZ",
+                                Broker.of("Broker")
+                        ),
+                        new PortfolioEvents.MoneyDepositedEvent(
+                                portfolio.getPortfolioId(),
+                                Money.of(10000, "USD")),
+                        new PortfolioEvents.MoneyWithdrawEvent(
+                                portfolio.getPortfolioId(),
+                                Money.of(10000, "USD"))
+                );
+    }
 }

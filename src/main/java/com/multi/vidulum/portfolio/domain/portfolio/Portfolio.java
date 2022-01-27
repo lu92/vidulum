@@ -241,7 +241,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             }
 
             cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue()));
-            cash.setQuantity(Quantity.of(cash.getFree().getQty() - event.withdrawal().getAmount().doubleValue()));
+            cash.setFree(Quantity.of(cash.getFree().getQty() - event.withdrawal().getAmount().doubleValue()));
             investedBalance = investedBalance.minus(event.withdrawal());
         });
     }
