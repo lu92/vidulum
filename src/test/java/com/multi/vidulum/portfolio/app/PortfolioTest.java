@@ -350,4 +350,39 @@ class PortfolioTest {
                         )
                 );
     }
+
+    @Test
+    public void shouldClosePortfolio() {
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER
+        );
+        portfolio.close();
+        Portfolio savedPortfolio = portfolioRepository.save(portfolio);
+
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of())
+                .status(PortfolioStatus.CLOSED)
+                .investedBalance(Money.of(0, "USD"))
+                .build());
+
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
+                .containsExactlyInAnyOrder(
+                        new PortfolioEvents.PortfolioOpenedEvent(
+                                portfolio.getPortfolioId(),
+                                "XYZ",
+                                Broker.of("Broker")
+                        ),
+                        new PortfolioEvents.PortfolioClosedEvent(
+                                portfolio.getPortfolioId(),
+                                USER_ID)
+                );
+    }
 }

@@ -2,10 +2,7 @@ package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioEvents;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.AssetLockedEvent;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.AssetUnlockedEvent;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.MoneyDepositedEvent;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.MoneyWithdrawEvent;
+import com.multi.vidulum.portfolio.app.PortfolioEvents.*;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
@@ -295,6 +292,16 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         });
     }
 
+    public void close() {
+        PortfolioClosedEvent event = new PortfolioClosedEvent(portfolioId, userId);
+        apply(event);
+        add(event);
+    }
+
+    public void apply(PortfolioClosedEvent event) {
+        status = PortfolioStatus.CLOSED;
+    }
+
     public List<DomainEvent> getUncommittedEvents() {
         if (Objects.isNull(uncommittedEvents)) {
             uncommittedEvents = new LinkedList<>();
@@ -305,10 +312,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void add(DomainEvent event) {
         // store event temporary
         getUncommittedEvents().add(event);
-    }
-
-    public void close() {
-        status = PortfolioStatus.CLOSED;
     }
 
     public boolean isOpened() {
