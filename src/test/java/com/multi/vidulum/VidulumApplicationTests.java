@@ -235,6 +235,7 @@ class VidulumApplicationTests {
                                 .free(Quantity.of(1))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
@@ -320,7 +321,7 @@ class VidulumApplicationTests {
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
                                 .side(SELL)
-                                .status(Status.OPEN)
+                                .status(OrderStatus.OPEN)
                                 .targetPrice(Price.of(80000, "USD"))
                                 .stopPrice(Price.of(61000, "USD"))
                                 .limitPrice(Price.of(60000, "USD"))
@@ -340,7 +341,7 @@ class VidulumApplicationTests {
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
                                 .side(SELL)
-                                .status(Status.CANCELLED)
+                                .status(OrderStatus.CANCELLED)
                                 .targetPrice(Price.of(80000, "USD"))
                                 .stopPrice(Price.of(61000, "USD"))
                                 .limitPrice(Price.of(60000, "USD"))
@@ -597,6 +598,7 @@ class VidulumApplicationTests {
                                 .free(Quantity.of(120000))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
@@ -845,6 +847,7 @@ class VidulumApplicationTests {
                                 .free(Quantity.of(1.3))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
                 .build();
 
@@ -1322,6 +1325,7 @@ class VidulumApplicationTests {
                                 .free(Quantity.of(5, "oz"))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(2 * 1800 + 1820, "USD"))
                 .build();
 
@@ -1352,6 +1356,7 @@ class VidulumApplicationTests {
                                 .free(Quantity.of(1, "oz"))
                                 .build()
                 ))
+                .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(1810, "USD"))
                 .build();
 

@@ -33,7 +33,7 @@ public class OrderEntity {
     private Price stopLoss;
     private Quantity quantity;
     private Date occurredDateTime;
-    private Status status;
+    private OrderStatus status;
 
 
     public static OrderEntity fromSnapshot(OrderSnapshot snapshot) {

@@ -51,6 +51,7 @@ public class PortfolioSummaryMapper {
                 .name(portfolio.getName())
                 .broker(portfolio.getBroker().getId())
                 .assets(assets)
+                .status(portfolio.getStatus())
                 .investedBalance(portfolio.getInvestedBalance())
                 .currentValue(currentValue)
                 .profit(profit)

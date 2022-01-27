@@ -1,6 +1,6 @@
 package com.multi.vidulum.trading.app.commands.orders.execute;
 
-import com.multi.vidulum.common.Status;
+import com.multi.vidulum.common.OrderStatus;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -44,7 +44,7 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
 
         Trade executedTrade = makeTradeCommandHandler.handle(makeTradeCommand);
 
-        order.setStatus(Status.EXECUTED);
+        order.setStatus(OrderStatus.EXECUTED);
         orderRepository.save(order);
 
         log.info("Order [{}] in trade [{}] has been executed successfully - target price has been achieved", order.getOriginOrderId(), executedTrade.getOriginTradeId());

@@ -25,6 +25,7 @@ public class PortfolioEntity {
     private String name;
     private String broker;
     private List<AssetEntity> assets;
+    private PortfolioStatus status;
     private Money investedBalance;
 
     public static PortfolioEntity fromSnapshot(PortfolioSnapshot snapshot) {
@@ -32,16 +33,15 @@ public class PortfolioEntity {
                 .map(PortfolioId::getId).orElse(null);
 
         List<AssetEntity> assetEntities = snapshot.getAssets().stream()
-                .map(assetSnapshot -> {
-                    return new AssetEntity(
-                            assetSnapshot.getTicker().getId(),
-                            assetSnapshot.getSubName().getName(),
-                            assetSnapshot.getAvgPurchasePrice(),
-                            assetSnapshot.getQuantity(),
-                            assetSnapshot.getLocked(),
-                            assetSnapshot.getFree()
-                    );
-                })
+                .map(assetSnapshot ->
+                        new AssetEntity(
+                                assetSnapshot.getTicker().getId(),
+                                assetSnapshot.getSubName().getName(),
+                                assetSnapshot.getAvgPurchasePrice(),
+                                assetSnapshot.getQuantity(),
+                                assetSnapshot.getLocked(),
+                                assetSnapshot.getFree()
+                        ))
                 .collect(Collectors.toList());
 
         return PortfolioEntity.builder()
@@ -51,6 +51,7 @@ public class PortfolioEntity {
                 .name(snapshot.getName())
                 .broker(snapshot.getBroker().getId())
                 .assets(assetEntities)
+                .status(snapshot.getStatus())
                 .investedBalance(snapshot.getInvestedBalance())
                 .build();
     }
@@ -73,6 +74,7 @@ public class PortfolioEntity {
                 name,
                 Broker.of(broker),
                 assetSnapshots,
+                status,
                 investedBalance
         );
     }

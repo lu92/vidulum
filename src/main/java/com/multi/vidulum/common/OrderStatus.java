@@ -1,5 +1,5 @@
 package com.multi.vidulum.common;
 
-public enum Status {
+public enum OrderStatus {
     OPEN, EXECUTED, CANCELLED
 }

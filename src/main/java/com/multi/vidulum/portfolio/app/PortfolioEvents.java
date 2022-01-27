@@ -12,6 +12,11 @@ public final class PortfolioEvents {
             Broker broker) implements DomainEvent {
     }
 
+    public record PortfolioClosedEvent(
+            PortfolioId portfolioId,
+            UserId userId) implements DomainEvent {
+    }
+
     public record MoneyDepositedEvent(
             PortfolioId portfolioId,
             Money deposit) implements DomainEvent {
