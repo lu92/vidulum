@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Price;
-import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.RiskRewardRatio;
+import com.multi.vidulum.common.*;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,6 +26,7 @@ public class PortfolioDto {
         private String name;
         private String broker;
         private List<AssetSummaryJson> assets;
+        private PortfolioStatus status;
         private Money investedBalance;
         private Money currentValue;
         private double pctProfit;
