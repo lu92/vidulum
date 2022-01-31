@@ -13,8 +13,10 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.trading.app.OrderRestController;
+import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.app.TradingRestController;
+import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
@@ -46,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest
-@Import(PortfolioAppConfig.class)
+@Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
@@ -71,7 +73,10 @@ class LockingAssetsTests {
     private PortfolioRestController portfolioRestController;
 
     @Autowired
-    private TradingRestController tradingRestController;
+    private TradeRestController tradeRestController;
+
+    @Autowired
+    private OrderRestController orderRestController;
 
     @Autowired
     private DomainPortfolioRepository portfolioRepository;
@@ -148,9 +153,9 @@ class LockingAssetsTests {
                         .build());
 
         // there is no any pending order
-        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+        assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = tradingRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -166,7 +171,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
+        List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders).containsExactlyInAnyOrder(
                 TradingDto.OrderSummaryJson.builder()
                         .orderId(placedOrderSummary1.getOrderId())
@@ -271,9 +276,9 @@ class LockingAssetsTests {
                         .build());
 
         // there is no any pending order
-        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+        assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = tradingRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -289,7 +294,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
+        List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders).containsExactlyInAnyOrder(
                 TradingDto.OrderSummaryJson.builder()
                         .orderId(placedOrderSummary1.getOrderId())
@@ -307,7 +312,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        TradingDto.OrderSummaryJson cancelOrder = tradingRestController.cancelOrder(placedOrderSummary1.getOriginOrderId());
+        TradingDto.OrderSummaryJson cancelOrder = orderRestController.cancelOrder(placedOrderSummary1.getOriginOrderId());
         assertThat(cancelOrder).isEqualTo(
                 TradingDto.OrderSummaryJson.builder()
                         .orderId(placedOrderSummary1.getOrderId())
@@ -325,7 +330,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        assertThat(tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
+        assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
         // await until portfolio unlocks [27500 USD]
         Awaitility.await().atMost(10, SECONDS).until(() -> {
@@ -413,7 +418,7 @@ class LockingAssetsTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -434,7 +439,7 @@ class LockingAssetsTests {
             return usdAsset.map(asset -> asset.getQuantity().equals(Quantity.of(1))).orElse(false);
         });
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = tradingRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -450,7 +455,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        TradingDto.OrderSummaryJson placedOrderSummary2 = tradingRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -466,7 +471,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        List<TradingDto.OrderSummaryJson> allOpenedOrders = tradingRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
+        List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders).containsExactlyInAnyOrder(
                 TradingDto.OrderSummaryJson.builder()
                         .orderId(placedOrderSummary1.getOrderId())
@@ -607,7 +612,7 @@ class LockingAssetsTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
-        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -619,7 +624,7 @@ class LockingAssetsTests {
                 .build());
 
 
-        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -680,7 +685,7 @@ class LockingAssetsTests {
                                 .pctProfit(0)
                                 .build());
 
-        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
@@ -691,7 +696,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        tradingRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())

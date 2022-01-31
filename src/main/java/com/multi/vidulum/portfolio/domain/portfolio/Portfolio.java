@@ -1,11 +1,10 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.app.PortfolioEvents;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.*;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents.*;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
 import com.multi.vidulum.shared.ddd.Aggregate;

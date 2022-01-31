@@ -49,6 +49,7 @@ public class PlaceOrderCommand implements Command {
      * [quantity => 0.25]
      */
 
+    OrderId orderId;
     OriginOrderId originOrderId;
     PortfolioId portfolioId;
     Broker broker;

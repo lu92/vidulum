@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -15,4 +17,9 @@ public class OrderId {
     public static OrderId of(String id) {
         return new OrderId(id);
     }
+
+    public static OrderId generate() {
+        return OrderId.of(UUID.randomUUID().toString());
+    }
+
 }

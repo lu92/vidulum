@@ -4,6 +4,8 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.trading.app.TradingDto;
+import com.multi.vidulum.trading.app.TradingMapper;
 import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.execute.ExecuteOrderCommand;
@@ -27,60 +29,16 @@ import static java.util.stream.Collectors.toList;
 @Slf4j
 @RestController
 @AllArgsConstructor
-public class TradingRestController {
+public class OrderRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final TradingMapper mapper;
     private final Clock clock;
 
-    @PostMapping("/trading")
-    public void makeTrade(@RequestBody TradingDto.TradeExecutedJson tradeExecutedJson) {
-        MakeTradeCommand command = MakeTradeCommand.builder()
-                .userId(UserId.of(tradeExecutedJson.getUserId()))
-                .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
-                .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
-                .originOrderId(OriginOrderId.notDefined())
-                .subName(SubName.of(tradeExecutedJson.getSubName()))
-                .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
-                .side(tradeExecutedJson.getSide())
-                .quantity(tradeExecutedJson.getQuantity())
-                .price(tradeExecutedJson.getPrice())
-                .originDateTime(tradeExecutedJson.getOriginDateTime())
-                .build();
-
-        commandGateway.send(command);
-    }
-
-    @GetMapping("/trading/{userId}/{portfolioId}")
-    public List<TradingDto.TradeSummaryJson> getAllTrades(@PathVariable("userId") String userId, @PathVariable("portfolioId") String portfolioId) {
-        GetAllTradesForUserQuery query = GetAllTradesForUserQuery.builder()
-                .userId(UserId.of(userId))
-                .portfolioId(PortfolioId.of(portfolioId))
-                .build();
-        List<Trade> trades = queryGateway.send(query);
-        return trades.stream()
-                .map(mapper::toJson)
-                .collect(toList());
-    }
-
-    @GetMapping("/trading")
-    public List<TradingDto.TradeSummaryJson> getTradesInDateRange(
-            @RequestParam("userId") String userId,
-            @RequestParam("from") ZonedDateTime from,
-            @RequestParam("to") ZonedDateTime to) {
-        GetTradesForUserInDateRangeQuery query = GetTradesForUserInDateRangeQuery.builder()
-                .userId(UserId.of(userId))
-                .dateTimeRange(Range.of(from, to))
-                .build();
-        List<Trade> trades = queryGateway.send(query);
-        return trades.stream()
-                .map(mapper::toJson)
-                .collect(toList());
-    }
-
     @PostMapping("/orders")
     public TradingDto.OrderSummaryJson placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
+                .orderId(OrderId.generate())
                 .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
                 .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
                 .broker(Broker.of(placeOrderJson.getBroker()))
@@ -98,7 +56,7 @@ public class TradingRestController {
         return mapper.toJson(placedOrder);
     }
 
-    @PutMapping
+    @PutMapping("/orders")
     public TradingDto.OrderExecutionSummaryJson executeOrder(@RequestParam TradingDto.ExecuteOrderJson executeOrderJson) {
         ExecuteOrderCommand command = ExecuteOrderCommand.builder()
                 .originTradeId(OriginTradeId.of(executeOrderJson.getOriginTradeId()))
