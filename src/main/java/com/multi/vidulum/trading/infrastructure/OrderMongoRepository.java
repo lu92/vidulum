@@ -10,4 +10,6 @@ public interface OrderMongoRepository extends MongoRepository<OrderEntity, Strin
     List<OrderEntity> findByPortfolioIdAndStatus(String portfolioId, OrderStatus status);
 
     Optional<OrderEntity> findByOriginOrderId(String orderId);
+
+    Optional<OrderEntity> findByOrderId(String orderId);
 }

@@ -31,7 +31,7 @@ public class DomainOrderRepositoryImpl implements DomainOrderRepository {
 
     @Override
     public Optional<Order> findById(OrderId orderId) {
-        return repository.findById(orderId.getId())
+        return repository.findByOrderId(orderId.getId())
                 .map(OrderEntity::toSnapshot)
                 .map(Order::from);
     }

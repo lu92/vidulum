@@ -312,7 +312,7 @@ class LockingAssetsTests {
                         .build()
         );
 
-        TradingDto.OrderSummaryJson cancelOrder = orderRestController.cancelOrder(placedOrderSummary1.getOriginOrderId());
+        TradingDto.OrderSummaryJson cancelOrder = orderRestController.cancelOrder(placedOrderSummary1.getOrderId());
         assertThat(cancelOrder).isEqualTo(
                 TradingDto.OrderSummaryJson.builder()
                         .orderId(placedOrderSummary1.getOrderId())

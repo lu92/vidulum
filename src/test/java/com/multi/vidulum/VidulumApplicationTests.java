@@ -318,9 +318,9 @@ class VidulumApplicationTests {
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders)
-                .usingElementComparatorIgnoringFields("orderId")
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
+                                .orderId(placedOrder.getOrderId())
                                 .originOrderId("origin trade-id-X")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")
@@ -335,12 +335,12 @@ class VidulumApplicationTests {
                                 .build()
                 );
 
-        TradingDto.OrderSummaryJson canceledOrder = orderRestController.cancelOrder(placedOrder.getOriginOrderId());
+        TradingDto.OrderSummaryJson canceledOrder = orderRestController.cancelOrder(placedOrder.getOrderId());
 
         assertThat(List.of(canceledOrder))
-                .usingElementComparatorIgnoringFields("orderId")
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
+                                .orderId(placedOrder.getOrderId())
                                 .originOrderId("origin trade-id-X")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")

@@ -43,7 +43,6 @@ public class OrderFactory {
                         quantity,
                         occurredDateTime
                 )
-
         );
 
         return Order.builder()

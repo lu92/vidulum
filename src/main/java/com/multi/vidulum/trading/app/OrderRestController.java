@@ -4,18 +4,12 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.app.TradingMapper;
 import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.execute.ExecuteOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.execute.OrderExecutionSummary;
-import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery;
-import com.multi.vidulum.trading.app.queries.GetAllTradesForUserQuery;
-import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
 import com.multi.vidulum.trading.domain.Order;
-import com.multi.vidulum.trading.domain.Trade;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -67,10 +61,10 @@ public class OrderRestController {
         return mapper.toJson(summary);
     }
 
-    @DeleteMapping("/orders/{originOrderId}")
-    public TradingDto.OrderSummaryJson cancelOrder(@PathVariable("originOrderId") String originOrderId) {
+    @DeleteMapping("/orders/{orderId}")
+    public TradingDto.OrderSummaryJson cancelOrder(@PathVariable("orderId") String orderId) {
         CancelOrderCommand command = CancelOrderCommand.builder()
-                .originOrderId(OriginOrderId.of(originOrderId))
+                .orderId(OrderId.of(orderId))
                 .build();
         Order canceledOrder = commandGateway.send(command);
         return mapper.toJson(canceledOrder);

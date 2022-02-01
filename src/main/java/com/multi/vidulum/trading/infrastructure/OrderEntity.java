@@ -21,6 +21,7 @@ import java.util.Optional;
 public class OrderEntity {
 
     @Id
+    private String id;
     private String orderId;
     private String originOrderId;
     private String portfolioId;
@@ -41,7 +42,8 @@ public class OrderEntity {
                 .map(OrderId::getId).orElse(null);
         Date date = snapshot.getOccurredDateTime() != null ? Date.from(snapshot.getOccurredDateTime().toInstant()) : null;
         return OrderEntity.builder()
-                .orderId(id)
+                .id(id)
+                .orderId(snapshot.getOrderId().getId())
                 .originOrderId(snapshot.getOriginOrderId().getId())
                 .portfolioId(snapshot.getPortfolioId().getId())
                 .broker(snapshot.getBroker().getId())
