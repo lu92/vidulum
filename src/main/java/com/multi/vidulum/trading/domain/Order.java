@@ -20,14 +20,9 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
-    OrderType type;
-    Side side;
-    Price targetPrice;
-    Price stopPrice;
-    Price limitPrice; // price which appears in onder-book, [null] for market price/market order
-    Quantity quantity;
+    OrderState state;
+    OrderParameters parameters;
     ZonedDateTime occurredDateTime;
-    OrderStatus status;
     private List<DomainEvent> uncommittedEvents;
 
     @Override
@@ -38,14 +33,9 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 portfolioId,
                 broker,
                 symbol,
-                type,
-                side,
-                targetPrice,
-                stopPrice,
-                limitPrice,
-                quantity,
-                occurredDateTime,
-                status
+                state,
+                parameters,
+                occurredDateTime
         );
     }
 
@@ -56,32 +46,55 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .portfolioId(snapshot.getPortfolioId())
                 .broker(snapshot.getBroker())
                 .symbol(snapshot.getSymbol())
-                .type(snapshot.getType())
-                .side(snapshot.getSide())
-                .targetPrice(snapshot.getTargetPrice())
-                .stopPrice(snapshot.getStopPrice())
-                .limitPrice(snapshot.getLimitPrice())
-                .quantity(snapshot.getQuantity())
+                .state(snapshot.getState())
+                .parameters(snapshot.getParameters())
                 .occurredDateTime(snapshot.getOccurredDateTime())
-                .status(snapshot.getStatus())
                 .build();
     }
 
     public boolean isPurchaseAttempt() {
-        return Side.BUY.equals(side);
+        return Side.BUY.equals(parameters.side());
     }
 
     public boolean isOpen() {
-        return OrderStatus.OPEN.equals(status);
+        return OrderStatus.OPEN.equals(state.status());
     }
 
+    public OrderStatus fetchStatus() {
+        return state.status();
+    }
+
+    public void markAsCancelled() {
+        state = new OrderState(
+                OrderStatus.CANCELLED,
+                state.fills()
+        );
+    }
+
+    public void markAsExecuted() {
+        state = new OrderState(
+                OrderStatus.EXECUTED,
+                state.fills()
+        );
+    }
     public Money getTotal() {
         if (isPurchaseAttempt()) {
-            Price price = OrderType.OCO.equals(type) ? targetPrice : limitPrice;
-            return price.multiply(quantity);
+            Price price = OrderType.OCO.equals(parameters.type()) ? parameters.targetPrice() : parameters.limitPrice();
+            return price.multiply(parameters.quantity());
         } else {
-            return Money.one("USD").multiply(quantity);
+            return Money.one("USD").multiply(parameters.quantity());
         }
+    }
+
+    public void addExecution(OrderExecution execution) {
+        state.fills().add(execution);
+    }
+
+    private boolean isFilled() {
+        Quantity alreadyFilled = state.fills().stream()
+                .map(OrderExecution::quantity)
+                .reduce(Quantity.zero(), Quantity::plus);
+        return alreadyFilled.equals(parameters.quantity());
     }
 
     public List<DomainEvent> getUncommittedEvents() {
@@ -94,5 +107,26 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     private void add(DomainEvent event) {
         // store event temporary
         getUncommittedEvents().add(event);
+    }
+
+    public record OrderState(
+            OrderStatus status,
+            List<OrderExecution> fills) {
+    }
+
+    public record OrderExecution(
+            TradeId tradeId,
+            Quantity quantity,
+            Price price,
+            ZonedDateTime dateTime) {
+    }
+
+    public record OrderParameters(
+            OrderType type,
+            Side side,
+            Price targetPrice,
+            Price stopPrice,
+            Price limitPrice, // price which appears in order-book, [null] for market price/market order
+            Quantity quantity) {
     }
 }

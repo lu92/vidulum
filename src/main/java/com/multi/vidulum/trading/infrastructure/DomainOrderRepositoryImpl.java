@@ -69,7 +69,7 @@ public class DomainOrderRepositoryImpl implements DomainOrderRepository {
 
     @Override
     public List<Order> findOpenedOrdersForPortfolio(PortfolioId portfolioId) {
-        return repository.findByPortfolioIdAndStatus(portfolioId.getId(), OrderStatus.OPEN)
+        return repository.findByPortfolioIdAndState_Status(portfolioId.getId(), OrderStatus.OPEN)
                 .stream()
                 .map(OrderEntity::toSnapshot)
                 .map(Order::from)

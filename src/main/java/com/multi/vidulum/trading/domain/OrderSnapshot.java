@@ -1,6 +1,9 @@
 package com.multi.vidulum.trading.domain;
 
-import com.multi.vidulum.common.*;
+import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.common.OrderId;
+import com.multi.vidulum.common.OriginOrderId;
+import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 import lombok.Builder;
@@ -16,14 +19,9 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     PortfolioId portfolioId;
     Broker broker;
     Symbol symbol;
-    OrderType type;
-    Side side;
-    Price targetPrice;
-    Price stopPrice;
-    Price limitPrice;
-    Quantity quantity;
+    Order.OrderState state;
+    Order.OrderParameters parameters;
     ZonedDateTime occurredDateTime;
-    OrderStatus status;
 
     @Override
     public OrderId id() {

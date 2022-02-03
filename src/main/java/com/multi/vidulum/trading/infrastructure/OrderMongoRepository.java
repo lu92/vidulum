@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderMongoRepository extends MongoRepository<OrderEntity, String> {
-    List<OrderEntity> findByPortfolioIdAndStatus(String portfolioId, OrderStatus status);
+    List<OrderEntity> findByPortfolioIdAndState_Status(String portfolioId, OrderStatus status);
 
     Optional<OrderEntity> findByOriginOrderId(String orderId);
 

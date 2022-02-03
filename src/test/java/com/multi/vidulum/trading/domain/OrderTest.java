@@ -21,6 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,14 +80,19 @@ class OrderTest {
                         .portfolioId(portfolioId)
                         .broker(BROKER)
                         .symbol(Symbol.of("BTC/USD"))
-                        .type(OrderType.LIMIT)
-                        .side(Side.BUY)
-                        .targetPrice(null)
-                        .stopPrice(null)
-                        .limitPrice(Price.of(30000.0, "USD"))
-                        .quantity(Quantity.of(0.2))
+                        .state(
+                                new Order.OrderState(
+                                        OrderStatus.OPEN,
+                                        List.of()))
+                        .parameters(
+                                new Order.OrderParameters(
+                                        OrderType.LIMIT,
+                                        Side.BUY,
+                                        null,
+                                        null,
+                                        Price.of(30000.0, "USD"),
+                                        Quantity.of(0.2)))
                         .occurredDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
-                        .status(OrderStatus.OPEN)
                         .build()
         );
 

@@ -1,6 +1,5 @@
 package com.multi.vidulum.trading.app.commands.orders.execute;
 
-import com.multi.vidulum.common.OrderStatus;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -36,15 +35,15 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .originOrderId(command.getOriginOrderId())
                 .symbol(order.getSymbol())
                 .subName(SubName.none())
-                .side(order.getSide())
-                .quantity(order.getQuantity())
-                .price(order.getTargetPrice())
+                .side(order.getParameters().side())
+                .quantity(order.getParameters().quantity())
+                .price(order.getParameters().targetPrice())
                 .originDateTime(command.getOriginDateTime())
                 .build();
 
         Trade executedTrade = makeTradeCommandHandler.handle(makeTradeCommand);
 
-        order.setStatus(OrderStatus.EXECUTED);
+        order.markAsExecuted();
         orderRepository.save(order);
 
         log.info("Order [{}] in trade [{}] has been executed successfully - target price has been achieved", order.getOriginOrderId(), executedTrade.getOriginTradeId());
@@ -52,10 +51,10 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .originOrderId(order.getOriginOrderId())
                 .originTradeId(executedTrade.getOriginTradeId())
                 .symbol(order.getSymbol())
-                .type(order.getType())
-                .side(order.getSide())
-                .quantity(order.getQuantity())
-                .profit(order.getTargetPrice().minus(order.getStopPrice()).multiply(order.getQuantity()))
+                .type(order.getParameters().type())
+                .side(order.getParameters().side())
+                .quantity(order.getParameters().quantity())
+                .profit(order.getParameters().targetPrice().minus(order.getParameters().stopPrice()).multiply(order.getParameters().quantity()))
                 .build();
     }
 }

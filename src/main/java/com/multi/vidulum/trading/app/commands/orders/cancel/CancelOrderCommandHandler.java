@@ -30,7 +30,7 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
 
         unlockParticularAssetInPortfolio(order);
 
-        order.setStatus(OrderStatus.CANCELLED);
+        order.markAsCancelled();
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been cancelled!", order.getOrderId());
         return savedOrder;

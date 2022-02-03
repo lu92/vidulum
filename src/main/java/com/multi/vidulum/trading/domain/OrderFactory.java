@@ -51,14 +51,19 @@ public class OrderFactory {
                 .portfolioId(portfolioId)
                 .broker(broker)
                 .symbol(symbol)
-                .type(type)
-                .side(side)
-                .targetPrice(targetPrice)
-                .stopPrice(stopPrice)
-                .limitPrice(limitPrice)
-                .quantity(quantity)
+                .state(
+                        new Order.OrderState(
+                                OrderStatus.OPEN,
+                                new LinkedList<>()))
+                .parameters(
+                        new Order.OrderParameters(
+                                type,
+                                side,
+                                targetPrice,
+                                stopPrice,
+                                limitPrice,
+                                quantity))
                 .occurredDateTime(occurredDateTime)
-                .status(OrderStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();
     }

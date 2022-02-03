@@ -2,6 +2,7 @@ package com.multi.vidulum.trading.infrastructure;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.OrderSnapshot;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 @Builder
@@ -27,20 +29,39 @@ public class OrderEntity {
     private String portfolioId;
     private String broker;
     private String symbol;
-    private OrderType type;
-    private Side side;
-    private Price targetPrice;
-    private Price entryPrice;
-    private Price stopLoss;
-    private Quantity quantity;
+    private OrderStateEntity state;
+    private OrderParametersEntity parameters;
     private Date occurredDateTime;
-    private OrderStatus status;
 
 
     public static OrderEntity fromSnapshot(OrderSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.getOrderId())
                 .map(OrderId::getId).orElse(null);
         Date date = snapshot.getOccurredDateTime() != null ? Date.from(snapshot.getOccurredDateTime().toInstant()) : null;
+
+        List<OrderExecutionEntity> executionEntities = snapshot.getState().fills().stream()
+                .map(execution -> new OrderExecutionEntity(
+                        execution.tradeId().getId(),
+                        execution.quantity(),
+                        execution.price(),
+                        execution.dateTime()
+                ))
+                .toList();
+
+        OrderStateEntity stateEntity = new OrderStateEntity(
+                snapshot.getState().status(),
+                executionEntities
+        );
+
+        OrderParametersEntity parametersEntity = new OrderParametersEntity(
+                snapshot.getParameters().type(),
+                snapshot.getParameters().side(),
+                snapshot.getParameters().targetPrice(),
+                snapshot.getParameters().stopPrice(),
+                snapshot.getParameters().limitPrice(),
+                snapshot.getParameters().quantity()
+        );
+
         return OrderEntity.builder()
                 .id(id)
                 .orderId(snapshot.getOrderId().getId())
@@ -48,33 +69,68 @@ public class OrderEntity {
                 .portfolioId(snapshot.getPortfolioId().getId())
                 .broker(snapshot.getBroker().getId())
                 .symbol(snapshot.getSymbol().getId())
-                .type(snapshot.getType())
-                .side(snapshot.getSide())
-                .targetPrice(snapshot.getTargetPrice())
-                .entryPrice(snapshot.getStopPrice())
-                .stopLoss(snapshot.getLimitPrice())
-                .quantity(snapshot.getQuantity())
+                .state(stateEntity)
+                .parameters(parametersEntity)
                 .occurredDateTime(date)
-                .status(snapshot.getStatus())
                 .build();
     }
 
     public OrderSnapshot toSnapshot() {
         ZonedDateTime zonedDateTime = occurredDateTime != null ? ZonedDateTime.ofInstant(occurredDateTime.toInstant(), ZoneOffset.UTC) : null;
+
+
+        Order.OrderParameters orderParameters = new Order.OrderParameters(
+                parameters.type(),
+                parameters.side(),
+                parameters.targetPrice(),
+                parameters.stopPrice(),
+                parameters.limitPrice(),
+                parameters.quantity()
+        );
+
+        List<Order.OrderExecution> orderExecutions = state.fills().stream()
+                .map(orderExecutionEntity ->
+                        new Order.OrderExecution(
+                                TradeId.of(orderExecutionEntity.tradeId()),
+                                orderExecutionEntity.quantity(),
+                                orderExecutionEntity.price(),
+                                orderExecutionEntity.dateTime()
+                        )).toList();
+
+        Order.OrderState orderState = new Order.OrderState(
+                state.status(),
+                orderExecutions
+        );
         return OrderSnapshot.builder()
                 .orderId(OrderId.of(orderId))
                 .originOrderId(OriginOrderId.of(originOrderId))
                 .portfolioId(PortfolioId.of(portfolioId))
                 .broker(Broker.of(broker))
                 .symbol(Symbol.of(symbol))
-                .type(type)
-                .side(side)
-                .targetPrice(targetPrice)
-                .stopPrice(entryPrice)
-                .limitPrice(stopLoss)
-                .quantity(quantity)
+                .state(orderState)
+                .parameters(orderParameters)
                 .occurredDateTime(zonedDateTime)
-                .status(status)
                 .build();
+    }
+
+    record OrderStateEntity(
+            OrderStatus status,
+            List<OrderExecutionEntity> fills) {
+    }
+
+    record OrderExecutionEntity(
+            String tradeId,
+            Quantity quantity,
+            Price price,
+            ZonedDateTime dateTime) {
+    }
+
+    public record OrderParametersEntity(
+            OrderType type,
+            Side side,
+            Price targetPrice,
+            Price stopPrice,
+            Price limitPrice,
+            Quantity quantity) {
     }
 }

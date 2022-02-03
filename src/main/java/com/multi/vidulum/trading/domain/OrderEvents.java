@@ -23,13 +23,15 @@ public final class OrderEvents {
             ZonedDateTime occurredDateTime) implements DomainEvent {
     }
 
-    public record OrderCancelledEvent(
-            OrderId orderId
-    ) implements DomainEvent {
+    public record ExecutionFilledEvent(
+            OrderId orderId,
+            TradeId tradeId,
+            Quantity quantity,
+            Price price,
+            ZonedDateTime dateTime) implements DomainEvent {
     }
 
-    public record OrderExecutedEvent(
-            OrderId orderId
-    ) implements DomainEvent {
+    public record OrderCancelledEvent(
+            OrderId orderId) implements DomainEvent {
     }
 }
