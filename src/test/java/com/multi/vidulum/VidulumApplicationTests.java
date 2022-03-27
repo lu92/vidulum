@@ -1313,8 +1313,24 @@ class VidulumApplicationTests {
                         .money(Money.of(1810, "USD"))
                         .build());
 
+        TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-1")
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .broker(registeredPreciousMetalsPortfolio.getBroker())
+                        .symbol("XAU/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(1800, "USD"))
+                        .quantity(Quantity.of(2, "oz"))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade1")
+                .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("XAU/USD")
@@ -1325,9 +1341,26 @@ class VidulumApplicationTests {
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
+
+        TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-2")
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .broker(registeredPreciousMetalsPortfolio.getBroker())
+                        .symbol("XAU/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(1820, "USD"))
+                        .quantity(Quantity.of(2, "oz"))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade2")
+                .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("XAU/USD")
@@ -1337,9 +1370,26 @@ class VidulumApplicationTests {
                 .price(Price.of(1820, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+
+        TradingDto.OrderSummaryJson placedBuyOrder3 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-3")
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .broker(registeredPreciousMetalsPortfolio.getBroker())
+                        .symbol("XAU/USD")
+                        .type(OrderType.LIMIT)
+                        .side(SELL)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(1850, "USD"))
+                        .quantity(Quantity.of(1, "oz"))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade3")
+                .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("XAU/USD")
@@ -1349,9 +1399,26 @@ class VidulumApplicationTests {
                 .price(Price.of(1850, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
                 .build());
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
+
+        TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-4")
+                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
+                        .broker(registeredPreciousMetalsPortfolio.getBroker())
+                        .symbol("XAG/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(90, "USD"))
+                        .quantity(Quantity.of(5, "oz"))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade4")
+                .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("XAG/USD")
@@ -1361,9 +1428,25 @@ class VidulumApplicationTests {
                 .price(Price.of(90, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 4);
 
+        TradingDto.OrderSummaryJson placedBuyOrder5 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-5")
+                        .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
+                        .broker(registeredPreciousMetalsPortfolio2.getBroker())
+                        .symbol("XAU/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(1800, "USD"))
+                        .quantity(Quantity.of(1, "oz"))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade5")
+                .orderId(placedBuyOrder5.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("XAU/USD")
@@ -1373,6 +1456,7 @@ class VidulumApplicationTests {
                 .price(Price.of(1800, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()))
@@ -1447,8 +1531,6 @@ class VidulumApplicationTests {
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(1810, "USD"))
                 .build();
-
-        Awaitility.await().atMost(5, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
