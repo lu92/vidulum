@@ -108,6 +108,7 @@ class PortfolioTest {
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.lockAsset(Ticker.of("USD"), Quantity.of(4000));
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
@@ -158,6 +159,11 @@ class PortfolioTest {
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
                                 Money.of(10000, "USD")),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("USD"),
+                                Quantity.of(4000)
+                        ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
                                 TradeId.of("trade-1"),
@@ -181,6 +187,7 @@ class PortfolioTest {
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.lockAsset(Ticker.of("USD"), Quantity.of(4000));
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
@@ -191,6 +198,7 @@ class PortfolioTest {
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
                         .build());
+        portfolio.lockAsset(Ticker.of("BTC"), Quantity.of(0.1));
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
@@ -233,6 +241,11 @@ class PortfolioTest {
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
                                 Money.of(10000, "USD")),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("USD"),
+                                Quantity.of(4000)
+                        ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
                                 TradeId.of("trade-1"),
@@ -241,6 +254,11 @@ class PortfolioTest {
                                 Side.BUY,
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "USD")
+                        ),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("BTC"),
+                                Quantity.of(0.1)
                         ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
@@ -264,6 +282,7 @@ class PortfolioTest {
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.lockAsset(Ticker.of("USD"), Quantity.of(4000));
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
@@ -319,6 +338,11 @@ class PortfolioTest {
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
                                 Money.of(10000, "USD")),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("USD"),
+                                Quantity.of(4000)
+                        ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
                                 TradeId.of("trade-1"),
