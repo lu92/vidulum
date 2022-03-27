@@ -607,8 +607,25 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
+        TradingDto.OrderSummaryJson placedBuyOrder = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-A")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(60000.0, "USD"))
+                        .quantity(Quantity.of(1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
+
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
+                .orderId(placedBuyOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -618,8 +635,26 @@ class VidulumApplicationTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
+
+        TradingDto.OrderSummaryJson placedSellOrder = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-B")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(SELL)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(80000.0, "USD"))
+                        .quantity(Quantity.of(1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
+                .orderId(placedSellOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -628,7 +663,6 @@ class VidulumApplicationTests {
                 .quantity(Quantity.of(1))
                 .price(Price.of(80000, "USD"))
                 .build());
-
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
