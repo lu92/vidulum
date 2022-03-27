@@ -16,6 +16,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.stream.Collectors.toList;
+
 @Builder
 @Getter
 @ToString
@@ -40,12 +42,14 @@ public class OrderEntity {
         Date date = snapshot.getOccurredDateTime() != null ? Date.from(snapshot.getOccurredDateTime().toInstant()) : null;
 
         List<OrderExecutionEntity> executionEntities = snapshot.getState().fills().stream()
-                .map(execution -> new OrderExecutionEntity(
-                        execution.tradeId().getId(),
-                        execution.quantity(),
-                        execution.price(),
-                        execution.dateTime()
-                ))
+                .map(execution -> {
+                    Date executionDate = execution.dateTime() != null ? Date.from(execution.dateTime().toInstant()) : null;
+                    return new OrderExecutionEntity(
+                            execution.tradeId().getId(),
+                            execution.quantity(),
+                            execution.price(),
+                            executionDate);
+                })
                 .toList();
 
         OrderStateEntity stateEntity = new OrderStateEntity(
@@ -89,13 +93,16 @@ public class OrderEntity {
         );
 
         List<Order.OrderExecution> orderExecutions = state.fills().stream()
-                .map(orderExecutionEntity ->
-                        new Order.OrderExecution(
-                                TradeId.of(orderExecutionEntity.tradeId()),
-                                orderExecutionEntity.quantity(),
-                                orderExecutionEntity.price(),
-                                orderExecutionEntity.dateTime()
-                        )).toList();
+                .map(orderExecutionEntity -> {
+                    ZonedDateTime executionDateTime = orderExecutionEntity.dateTime() != null ?
+                            ZonedDateTime.ofInstant(orderExecutionEntity.dateTime().toInstant(), ZoneOffset.UTC) :
+                            null;
+                    return new Order.OrderExecution(
+                            TradeId.of(orderExecutionEntity.tradeId()),
+                            orderExecutionEntity.quantity(),
+                            orderExecutionEntity.price(),
+                            executionDateTime);
+                }).collect(toList());
 
         Order.OrderState orderState = new Order.OrderState(
                 state.status(),
@@ -122,7 +129,7 @@ public class OrderEntity {
             String tradeId,
             Quantity quantity,
             Price price,
-            ZonedDateTime dateTime) {
+            Date dateTime) {
     }
 
     public record OrderParametersEntity(

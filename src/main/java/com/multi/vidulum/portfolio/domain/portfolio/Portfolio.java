@@ -176,18 +176,21 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             throw new NotSufficientBalance(soldPortion.getValue());
         }
 
-        Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
-        Quantity decreasedFree = soldAsset.getFree().minus(soldPortion.quantity());
         boolean isAssetSoldOutFully = soldAsset.getQuantity().equals(soldPortion.quantity());
         if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
         } else {
+            Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
+            Quantity decreasedFree = soldAsset.getFree().minus(soldPortion.quantity());
+
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
             Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
+            Quantity updatedLockedQuantity = soldAsset.getLocked().minus(soldPortion.quantity());
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
-            soldAsset.setFree(decreasedFree);
+            soldAsset.setLocked(updatedLockedQuantity);
+//            soldAsset.setFree(decreasedFree);
         }
     }
 

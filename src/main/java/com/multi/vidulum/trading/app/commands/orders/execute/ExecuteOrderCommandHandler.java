@@ -32,10 +32,8 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .userId(UserId.of(""))
                 .portfolioId(order.getPortfolioId())
                 .originTradeId(command.getOriginTradeId())
-                .originOrderId(command.getOriginOrderId())
-                .symbol(order.getSymbol())
+                .orderId(order.getOrderId())
                 .subName(SubName.none())
-                .side(order.getParameters().side())
                 .quantity(order.getParameters().quantity())
                 .price(order.getParameters().targetPrice())
                 .originDateTime(command.getOriginDateTime())
@@ -43,8 +41,8 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
 
         Trade executedTrade = makeTradeCommandHandler.handle(makeTradeCommand);
 
-        order.markAsExecuted();
-        orderRepository.save(order);
+//        order.markAsExecuted();
+//        orderRepository.save(order);
 
         log.info("Order [{}] in trade [{}] has been executed successfully - target price has been achieved", order.getOriginOrderId(), executedTrade.getOriginTradeId());
         return OrderExecutionSummary.builder()

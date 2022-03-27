@@ -4,6 +4,7 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
+import com.multi.vidulum.trading.OrderIsNotOpenException;
 import lombok.Builder;
 import lombok.Data;
 
@@ -59,6 +60,9 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     public boolean isOpen() {
         return OrderStatus.OPEN.equals(state.status());
     }
+    public boolean isExecuted() {
+        return OrderStatus.EXECUTED.equals(state.status());
+    }
 
     public OrderStatus fetchStatus() {
         return state.status();
@@ -87,7 +91,15 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     }
 
     public void addExecution(OrderExecution execution) {
+        if (!isOpen()) {
+            throw new OrderIsNotOpenException(orderId);
+        }
+
         state.fills().add(execution);
+
+        if (isFilled()) {
+            markAsExecuted();
+        }
     }
 
     private boolean isFilled() {

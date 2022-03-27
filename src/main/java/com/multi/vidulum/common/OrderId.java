@@ -22,4 +22,7 @@ public class OrderId {
         return OrderId.of(UUID.randomUUID().toString());
     }
 
+    public static OrderId notDefined() {
+        return new OrderId("NOT_DEFINED");
+    }
 }

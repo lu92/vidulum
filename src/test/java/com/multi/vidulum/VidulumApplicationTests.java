@@ -20,10 +20,13 @@ import com.multi.vidulum.risk_management.app.RiskManagementDto;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
 import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.OrderRestController;
+import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.app.TradeRestController;
+import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.domain.Order;
+import com.multi.vidulum.trading.domain.OrderNotFoundException;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
@@ -98,6 +101,9 @@ class VidulumApplicationTests {
 
     @Autowired
     private DomainTradeRepository tradeRepository;
+
+    @Autowired
+    private DomainOrderRepository orderRepository;
 
     @Autowired
     private TradeMongoRepository tradeMongoRepository;
@@ -199,9 +205,25 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
+        TradingDto.OrderSummaryJson placedOrder = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin trade-id-A")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(60000.0, "USD"))
+                        .quantity(Quantity.of(1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build());
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
+                .orderId(placedOrder.getOrderId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .subName("")
@@ -212,6 +234,16 @@ class VidulumApplicationTests {
                 .build());
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            OrderId orderId = OrderId.of(placedOrder.getOrderId());
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+            return order.getState().fills().stream()
+                    .anyMatch(execution -> {
+                        return execution.quantity().equals(Quantity.of(1)) && execution.price().equals(Price.of(60000.0, "USD"));
+                    });
+        });
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.isPresent()).isTrue();
@@ -300,9 +332,9 @@ class VidulumApplicationTests {
         PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory(createdUserJson.getUserId());
         System.out.println(pnlHistory);
 
-        TradingDto.OrderSummaryJson placedOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin trade-id-X")
+                        .originOrderId("origin trade-id-B")
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
@@ -320,8 +352,8 @@ class VidulumApplicationTests {
         assertThat(allOpenedOrders)
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
-                                .orderId(placedOrder.getOrderId())
-                                .originOrderId("origin trade-id-X")
+                                .orderId(placedOrder2.getOrderId())
+                                .originOrderId("origin trade-id-B")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
@@ -335,13 +367,13 @@ class VidulumApplicationTests {
                                 .build()
                 );
 
-        TradingDto.OrderSummaryJson canceledOrder = orderRestController.cancelOrder(placedOrder.getOrderId());
+        TradingDto.OrderSummaryJson canceledOrder = orderRestController.cancelOrder(placedOrder2.getOrderId());
 
         assertThat(List.of(canceledOrder))
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
-                                .orderId(placedOrder.getOrderId())
-                                .originOrderId("origin trade-id-X")
+                                .orderId(placedOrder2.getOrderId())
+                                .originOrderId("origin trade-id-B")
                                 .portfolioId(registeredPortfolio.getPortfolioId())
                                 .symbol("BTC/USD")
                                 .type(OrderType.OCO)
@@ -408,7 +440,7 @@ class VidulumApplicationTests {
                                 .pctProfit(0)
                                 .build());
 
-        TradingDto.OrderSummaryJson placedOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder3 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -426,7 +458,7 @@ class VidulumApplicationTests {
         TradingDto.OrderExecutionSummaryJson orderExecutionSummaryJson = orderRestController.executeOrder(
                 TradingDto.ExecuteOrderJson.builder()
                         .originTradeId("origin trade-id-Y")
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(placedOrder3.getOriginOrderId())
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -442,9 +474,24 @@ class VidulumApplicationTests {
                         .profit(Money.of(4750, "USD"))
                         .build());
 
+        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            OrderId orderId = OrderId.of(placedOrder3.getOrderId());
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+            return !order.isOpen();
+        });
+
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            OrderId orderId = OrderId.of(placedOrder3.getOrderId());
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new OrderNotFoundException(orderId));
+            return order.isExecuted();
+        });
 
         Optional<Portfolio> portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
 
@@ -459,8 +506,10 @@ class VidulumApplicationTests {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Price.of(53333.3340, "USD"))
                                         .quantity(Quantity.of(0.75))
-                                        .locked(Quantity.of(0.25))
-                                        .free(Quantity.of(0.5))
+//                                        .locked(Quantity.of(0.25))
+                                        .locked(Quantity.zero())
+//                                        .free(Quantity.of(0.5))
+                                        .free(Quantity.of(0.75))
                                         .pctProfit(0.12499998)
                                         .profit(Money.of(4999.9995, "USD"))
                                         .currentPrice(Price.of(60000.0, "USD"))
