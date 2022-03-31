@@ -28,6 +28,9 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
             throw new IllegalArgumentException(String.format("Order [%s] is not open!", order.getOriginOrderId()));
         }
 
+//        Price price = order.getParameters().targetPrice() == null ?
+//                order.getParameters().limitPrice() : order.getParameters().targetPrice();
+
         MakeTradeCommand makeTradeCommand = MakeTradeCommand.builder()
                 .userId(UserId.of(""))
                 .portfolioId(order.getPortfolioId())
@@ -35,6 +38,7 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .orderId(order.getOrderId())
                 .subName(SubName.none())
                 .quantity(order.getParameters().quantity())
+//                .price(price)
                 .price(order.getParameters().targetPrice())
                 .originDateTime(command.getOriginDateTime())
                 .build();
@@ -52,6 +56,7 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .type(order.getParameters().type())
                 .side(order.getParameters().side())
                 .quantity(order.getParameters().quantity())
+//                .profit(Money.of(100, "USD"))
                 .profit(order.getParameters().targetPrice().minus(order.getParameters().stopPrice()).multiply(order.getParameters().quantity()))
                 .build();
     }
