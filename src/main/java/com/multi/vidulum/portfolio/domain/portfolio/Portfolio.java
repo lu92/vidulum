@@ -181,8 +181,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             assets.remove(soldAsset);
         } else {
             Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
-            Quantity decreasedFree = soldAsset.getFree().minus(soldPortion.quantity());
-
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
             Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
@@ -190,7 +188,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
             soldAsset.setLocked(updatedLockedQuantity);
-//            soldAsset.setFree(decreasedFree);
         }
     }
 

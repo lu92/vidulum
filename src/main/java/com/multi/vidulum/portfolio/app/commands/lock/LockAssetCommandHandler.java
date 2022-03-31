@@ -24,10 +24,10 @@ public class LockAssetCommandHandler implements CommandHandler<LockAssetCommand,
         portfolio.lockAsset(command.getTicker(), command.getQuantity());
 
         Portfolio savedPortfolio = repository.save(portfolio);
-        log.info(String.format("[%s] Asset [%s] amount [%s] has been locked successfully",
-                command.getPortfolioId(),
+        log.info(String.format("Asset [%s] amount [%s] has been locked successfully in [%s]",
                 command.getTicker(),
-                command.getQuantity()));
+                command.getQuantity(),
+                command.getPortfolioId()));
 
         return savedPortfolio;
     }
