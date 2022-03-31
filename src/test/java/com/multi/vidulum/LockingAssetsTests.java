@@ -6,7 +6,6 @@ import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
-import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -448,7 +447,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -653,7 +652,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
 
         TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -684,7 +683,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
 
         assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
@@ -756,7 +755,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.7));
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.7));
 
         TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -787,7 +786,7 @@ class LockingAssetsTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.6));
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.6));
 
         assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
@@ -831,15 +830,14 @@ class LockingAssetsTests {
                                 .build());
     }
 
-    private void awaitUntilPortfolioWillCointainExpectedAmountOfAsset(
+    private void awaitUntilPortfolioWillContainExpectedAmountOfAsset(
             PortfolioId portfolioId,
             Ticker assetTicker,
             Quantity expectedQuantity) {
         Awaitility.await().atMost(10, SECONDS).until(() -> {
-            Portfolio portfolio = portfolioRepository.findById(portfolioId)
-                    .orElseThrow(() -> new PortfolioNotFoundException(portfolioId));
-            return portfolio.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(asset.getTicker()))
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            return portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
                     .findFirst()
                     .map(asset -> asset.getQuantity().equals(expectedQuantity))
                     .orElse(false);
@@ -851,10 +849,9 @@ class LockingAssetsTests {
             Ticker assetTicker,
             Quantity expectedQuantity) {
         Awaitility.await().atMost(10, SECONDS).until(() -> {
-            Portfolio portfolio = portfolioRepository.findById(portfolioId)
-                    .orElseThrow(() -> new PortfolioNotFoundException(portfolioId));
-            return portfolio.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(asset.getTicker()))
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            return portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
                     .findFirst()
                     .map(asset -> asset.getLocked().equals(expectedQuantity))
                     .orElse(false);
