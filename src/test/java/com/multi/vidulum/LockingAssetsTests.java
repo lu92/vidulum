@@ -14,7 +14,6 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
-import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.OrderRestController;
 import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.app.TradingAppConfig;
@@ -41,7 +40,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
@@ -64,9 +62,6 @@ class LockingAssetsTests {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
     }
-
-    @Autowired
-    private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
 
     @Autowired
     private QuoteRestController quoteRestController;
@@ -622,13 +617,6 @@ class LockingAssetsTests {
                         .userId(persistedUser.getUserId())
                         .build());
 
-        tradeAppliedToPortfolioEventListener.clearCallbacks();
-        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
-        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade [{}] applied to portfolio", event);
-            appliedTradesOnPortfolioNumber.incrementAndGet();
-        });
-
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
         portfolioRestController.depositMoney(
                 PortfolioDto.DepositMoneyJson.builder()
@@ -667,8 +655,6 @@ class LockingAssetsTests {
 
         awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
-
         TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-2")
@@ -699,7 +685,6 @@ class LockingAssetsTests {
                 .build());
 
         awaitUntilPortfolioWillCointainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
         assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
