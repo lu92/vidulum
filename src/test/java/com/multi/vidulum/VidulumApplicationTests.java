@@ -829,7 +829,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(6000));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(100000.0),
@@ -848,7 +847,6 @@ class VidulumApplicationTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.1));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.1),
@@ -871,7 +869,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(3000));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(94000),
@@ -890,7 +887,6 @@ class VidulumApplicationTests {
                 .price(Price.of(30000, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.2));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.2),
@@ -913,7 +909,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(6000));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(91000),
@@ -932,7 +927,6 @@ class VidulumApplicationTests {
                 .price(Price.of(30000, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.4),
@@ -955,7 +949,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.1));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.4),
@@ -974,7 +967,6 @@ class VidulumApplicationTests {
                 .price(Price.of(40000, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.2));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.25),
@@ -997,7 +989,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(0.75 * 2800));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(91000),
@@ -1016,7 +1007,6 @@ class VidulumApplicationTests {
                 .price(Price.of(2800, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.75));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("ETH"),
                 Quantity.of(0.75),
@@ -1081,12 +1071,12 @@ class VidulumApplicationTests {
                         .build()
         );
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(1700));
+//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(1700));
         awaitUntilAssetMetadataIsEqualTo(
-                registeredPortfolioId, Ticker.of("ETH"),
-                Quantity.of(8900),
-                Quantity.of(700),
-                Quantity.of(88200));
+                registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(88200),
+                Quantity.of(1700),
+                Quantity.of(86500));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade7")
@@ -1100,7 +1090,12 @@ class VidulumApplicationTests {
                 .price(Price.of(3400, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.5));
+//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.5));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("ETH"),
+                Quantity.of(1.5),
+                Quantity.of(0),
+                Quantity.of(1.5));
 
         TradingDto.OrderSummaryJson placedOrderSummary8 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1118,7 +1113,12 @@ class VidulumApplicationTests {
                         .build()
         );
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.2));
+//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.2));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("ETH"),
+                Quantity.of(1.5),
+                Quantity.of(0.2),
+                Quantity.of(1.3));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade8")
@@ -1132,7 +1132,13 @@ class VidulumApplicationTests {
                 .price(Price.of(3000, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.3));
+//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.3));
+
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("ETH"),
+                Quantity.of(1.3),
+                Quantity.of(0),
+                Quantity.of(1.3));
 
         Awaitility.await().atMost(15, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
