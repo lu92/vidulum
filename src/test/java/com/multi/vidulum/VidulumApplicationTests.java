@@ -34,7 +34,6 @@ import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -799,6 +798,8 @@ class VidulumApplicationTests {
                         .userId(persistedUser.getUserId())
                         .build());
 
+        PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
+
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
         tradeAppliedToPortfolioEventListener.registerCallback(event -> {
@@ -812,8 +813,27 @@ class VidulumApplicationTests {
                         .money(Money.of(100000.0, "USD"))
                         .build());
 
+        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-1")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(60000, "USD"))
+                        .quantity(Quantity.of(0.1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(6000));
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
+                .orderId(placedOrderSummary1.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -823,8 +843,29 @@ class VidulumApplicationTests {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.1));
+
+        TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-2")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(30000, "USD"))
+                        .quantity(Quantity.of(0.1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(3000));
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
+                .orderId(placedOrderSummary2.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
@@ -833,31 +874,96 @@ class VidulumApplicationTests {
                 .quantity(Quantity.of(0.1))
                 .price(Price.of(30000, "USD"))
                 .build());
+
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.2));
+
+        TradingDto.OrderSummaryJson placedOrderSummary3 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-3")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(30000, "USD"))
+                        .quantity(Quantity.of(0.2))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(6000));
+
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
+                .orderId(placedOrderSummary3.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
-                .quantity(Quantity.of(0.1))
+                .quantity(Quantity.of(0.2))
                 .price(Price.of(30000, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
+//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.30000000000000004));
+
+        TradingDto.OrderSummaryJson placedOrderSummary4 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-4")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("BTC/USD")
+                        .type(OrderType.LIMIT)
+                        .side(SELL)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(30000, "USD"))
+                        .quantity(Quantity.of(0.1))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.1));
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
+                .orderId(placedOrderSummary4.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
-                .quantity(Quantity.of(0.1))
+                .quantity(Quantity.of(0.2))
                 .price(Price.of(40000, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.2));
+
+        TradingDto.OrderSummaryJson placedOrderSummary5 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-5")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("ETH/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(2800, "USD"))
+                        .quantity(Quantity.of(0.75))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(0.75 * 2800));
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade5")
+                .orderId(placedOrderSummary5.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -867,8 +973,30 @@ class VidulumApplicationTests {
                 .price(Price.of(2800, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.75));
+
+        TradingDto.OrderSummaryJson placedOrderSummary6 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-6")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("ETH/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(2800, "USD"))
+                        .quantity(Quantity.of(0.25))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(0.25 * 2800));
+
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade6")
+                .orderId(placedOrderSummary6.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -878,8 +1006,30 @@ class VidulumApplicationTests {
                 .price(Price.of(2800, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1));
+
+        TradingDto.OrderSummaryJson placedOrderSummary7 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-7")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("ETH/USD")
+                        .type(OrderType.LIMIT)
+                        .side(BUY)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(3400, "USD"))
+                        .quantity(Quantity.of(0.5))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(1700));
+
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade7")
+                .orderId(placedOrderSummary7.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -889,8 +1039,29 @@ class VidulumApplicationTests {
                 .price(Price.of(3400, "USD"))
                 .build());
 
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.5));
+
+        TradingDto.OrderSummaryJson placedOrderSummary8 = orderRestController.placeOrder(
+                TradingDto.PlaceOrderJson.builder()
+                        .originOrderId("origin order-id-8")
+                        .portfolioId(registeredPortfolio.getPortfolioId())
+                        .broker(registeredPortfolio.getBroker())
+                        .symbol("ETH/USD")
+                        .type(OrderType.LIMIT)
+                        .side(SELL)
+                        .targetPrice(null)
+                        .stopPrice(null)
+                        .limitPrice(Price.of(3000, "USD"))
+                        .quantity(Quantity.of(0.2))
+                        .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
+        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.2));
+
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade8")
+                .orderId(placedOrderSummary8.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .userId(persistedUser.getUserId())
                 .symbol("ETH/USD")
@@ -899,6 +1070,8 @@ class VidulumApplicationTests {
                 .quantity(Quantity.of(0.2))
                 .price(Price.of(3000, "USD"))
                 .build());
+
+        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.3));
 
         Awaitility.await().atMost(15, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
@@ -916,9 +1089,9 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
-                                .quantity(Quantity.of(88100.0))
+                                .quantity(Quantity.of(89100))
                                 .locked(Quantity.zero())
-                                .free(Quantity.of(88100.0))
+                                .free(Quantity.of(89100.0))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
@@ -1816,5 +1989,52 @@ class VidulumApplicationTests {
         Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
 
         System.out.println(persistedPnlHistory);
+    }
+
+    private void awaitUntilPortfolioWillLockExpectedAmountOfAsset(
+            PortfolioId portfolioId,
+            Ticker assetTicker,
+            Quantity expectedLockQuantity) {
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            return portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
+                    .findFirst()
+                    .map(asset -> asset.getLocked().equals(expectedLockQuantity))
+                    .orElse(false);
+        });
+    }
+
+    private void awaitUntilAssetMetadataIsEqualTo(
+            PortfolioId portfolioId,
+            Ticker assetTicker,
+            Quantity expectedQuantity,
+            Quantity expectedLocked,
+            Quantity expectedFree) {
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            return portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
+                    .findFirst()
+                    .map(asset ->
+                            asset.getQuantity().equals(expectedQuantity) &&
+                                    asset.getLocked().equals(expectedLocked) &&
+                                    asset.getFree().equals(expectedFree))
+                    .orElse(false);
+        });
+    }
+
+    private void awaitUntilPortfolioWillContainExpectedAmountOfAsset(
+            PortfolioId portfolioId,
+            Ticker assetTicker,
+            Quantity expectedQuantity) {
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            return portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
+                    .findFirst()
+                    .map(asset -> asset.getQuantity().equals(expectedQuantity))
+                    .orElse(false);
+        });
     }
 }

@@ -434,6 +434,7 @@ class LockingAssetsTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
         awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000));
+//        awaitUntilAssetLockAttributesAreEqualTo(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000), Quantity.of(4));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
@@ -847,13 +848,13 @@ class LockingAssetsTests {
     private void awaitUntilPortfolioWillLockExpectedAmountOfAsset(
             PortfolioId portfolioId,
             Ticker assetTicker,
-            Quantity expectedQuantity) {
+            Quantity expectedLockQuantity) {
         Awaitility.await().atMost(10, SECONDS).until(() -> {
             PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
             return portfolioSummaryJson.getAssets().stream()
                     .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
                     .findFirst()
-                    .map(asset -> asset.getLocked().equals(expectedQuantity))
+                    .map(asset -> asset.getLocked().equals(expectedLockQuantity))
                     .orElse(false);
         });
     }

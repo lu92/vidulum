@@ -11,6 +11,7 @@ import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Data
+@Slf4j
 @Builder
 public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private PortfolioId portfolioId;
@@ -142,6 +144,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion) {
         reduceAsset(soldPortion);
         increaseAsset(purchasedPortion);
+        log.info("[{}] amount of reduced asset [{}]", portfolioId, soldPortion);
+        log.info("[{}] amount of increased asset [{}]", portfolioId, purchasedPortion);
     }
 
     private void increaseAsset(AssetPortion purchasedPortion) {
