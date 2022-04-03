@@ -643,8 +643,6 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
-
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(1),
@@ -725,8 +723,6 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.7));
-
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("BTC"),
                 Quantity.of(0.7),
@@ -766,7 +762,11 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.6));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(0.6),
+                Quantity.of(0),
+                Quantity.of(0.6));
 
         assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
@@ -808,19 +808,5 @@ class LockingAssetsTests extends IntegrationTest {
                                 .totalProfit(Money.of(0, "USD"))
                                 .pctProfit(0)
                                 .build());
-    }
-
-    private void awaitUntilPortfolioWillContainExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getQuantity().equals(expectedQuantity))
-                    .orElse(false);
-        });
     }
 }
