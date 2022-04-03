@@ -360,7 +360,7 @@ class LockingAssetsTests extends IntegrationTest {
                         .quantity(Quantity.of(1))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000));
+
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(100000),
@@ -586,7 +586,11 @@ class LockingAssetsTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(24000));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(100000),
+                Quantity.of(24000),
+                Quantity.of(76000));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
@@ -600,7 +604,11 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.4));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(0.4),
+                Quantity.of(0),
+                Quantity.of(0.4));
 
         TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -617,7 +625,11 @@ class LockingAssetsTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(36000));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(76000),
+                Quantity.of(36000),
+                Quantity.of(40000));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
@@ -631,7 +643,13 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
+//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
+
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1),
+                Quantity.of(0),
+                Quantity.of(1));
 
         assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
                 .isEqualTo(
@@ -689,7 +707,11 @@ class LockingAssetsTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.3));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1),
+                Quantity.of(0.3),
+                Quantity.of(0.7));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
@@ -703,7 +725,13 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.7));
+//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.7));
+
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(0.7),
+                Quantity.of(0),
+                Quantity.of(0.7));
 
         TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -720,7 +748,11 @@ class LockingAssetsTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(0.1));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(0.7),
+                Quantity.of(0.1),
+                Quantity.of(0.6));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
@@ -788,20 +820,6 @@ class LockingAssetsTests extends IntegrationTest {
                     .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
                     .findFirst()
                     .map(asset -> asset.getQuantity().equals(expectedQuantity))
-                    .orElse(false);
-        });
-    }
-
-    private void awaitUntilPortfolioWillLockExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedLockQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getLocked().equals(expectedLockQuantity))
                     .orElse(false);
         });
     }
