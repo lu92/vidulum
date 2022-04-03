@@ -2,49 +2,26 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlDto;
-import com.multi.vidulum.pnl.app.PnlRestController;
-import com.multi.vidulum.pnl.domain.*;
-import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
+import com.multi.vidulum.pnl.domain.PnlHistory;
+import com.multi.vidulum.pnl.domain.PnlPortfolioStatement;
+import com.multi.vidulum.pnl.domain.PnlStatement;
+import com.multi.vidulum.pnl.domain.PnlTradeDetails;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
-import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
-import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementDto;
-import com.multi.vidulum.risk_management.app.RiskManagementRestController;
-import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
-import com.multi.vidulum.trading.app.OrderRestController;
-import com.multi.vidulum.trading.app.TradeRestController;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.domain.DomainOrderRepository;
-import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.domain.IntegrationTest;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.OrderNotFoundException;
-import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
-import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
-import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -59,78 +36,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(classes = FixedClockConfig.class)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
-@Testcontainers
-@DirtiesContext
-@EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
-class VidulumApplicationTests {
-
-    @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-    }
-
-    @Autowired
-    private QuoteRestController quoteRestController;
-
-    @Autowired
-    private UserRestController userRestController;
-
-    @Autowired
-    private PortfolioRestController portfolioRestController;
-
-    @Autowired
-    private TradeRestController tradeRestController;
-
-    @Autowired
-    private OrderRestController orderRestController;
-
-    @Autowired
-    private RiskManagementRestController riskManagementRestController;
-
-    @Autowired
-    private PnlRestController pnlRestController;
-
-    @Autowired
-    private DomainPortfolioRepository portfolioRepository;
-
-    @Autowired
-    private DomainTradeRepository tradeRepository;
-
-    @Autowired
-    private DomainOrderRepository orderRepository;
-
-    @Autowired
-    private TradeMongoRepository tradeMongoRepository;
-
-    @Autowired
-    private OrderMongoRepository orderMongoRepository;
-
-    @Autowired
-    private PnlMongoRepository pnlMongoRepository;
-
-    @Autowired
-    private DomainPnlRepository pnlRepository;
-
-    @Autowired
-    private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
-
-    private JsonFormatter jsonFormatter = new JsonFormatter();
-
-    @Before
-    void cleanUp() {
-        log.info("Lets clean the data");
-        tradeMongoRepository.deleteAll();
-        orderMongoRepository.deleteAll();
-        pnlMongoRepository.deleteAll();
-        quoteRestController.clearCaches();
-    }
-
+class VidulumApplicationTests extends IntegrationTest {
 
     @Test
     void shouldBuyBitcoinTest() {
@@ -2049,53 +1955,5 @@ class VidulumApplicationTests {
         Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
 
         System.out.println(persistedPnlHistory);
-    }
-
-    private void awaitUntilPortfolioWillLockExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedLockQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getLocked().equals(expectedLockQuantity))
-                    .orElse(false);
-        });
-    }
-
-    private void awaitUntilAssetMetadataIsEqualTo(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedQuantity,
-            Quantity expectedLocked,
-            Quantity expectedFree) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            log.info(jsonFormatter.formatToPrettyJson(portfolioSummaryJson));
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset ->
-                            asset.getQuantity().equals(expectedQuantity) &&
-                                    asset.getLocked().equals(expectedLocked) &&
-                                    asset.getFree().equals(expectedFree))
-                    .orElse(false);
-        });
-    }
-
-    private void awaitUntilPortfolioWillContainExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getQuantity().equals(expectedQuantity))
-                    .orElse(false);
-        });
     }
 }

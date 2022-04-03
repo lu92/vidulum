@@ -1,40 +1,19 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
-import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
-import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
-import com.multi.vidulum.trading.app.OrderRestController;
-import com.multi.vidulum.trading.app.TradeRestController;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
-import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
+import com.multi.vidulum.trading.domain.IntegrationTest;
 import com.multi.vidulum.user.app.UserDto;
-import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -46,59 +25,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
-@Testcontainers
-@DirtiesContext
-@EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
-class LockingAssetsTests {
-
-    @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-    }
-
-    @Autowired
-    private QuoteRestController quoteRestController;
-
-    @Autowired
-    private UserRestController userRestController;
-
-    @Autowired
-    private PortfolioRestController portfolioRestController;
-
-    @Autowired
-    private TradeRestController tradeRestController;
-
-    @Autowired
-    private OrderRestController orderRestController;
-
-    @Autowired
-    private DomainPortfolioRepository portfolioRepository;
-
-    @Autowired
-    private TradeMongoRepository tradeMongoRepository;
-
-    @Autowired
-    private OrderMongoRepository orderMongoRepository;
-
-    @Autowired
-    private PnlMongoRepository pnlMongoRepository;
-
-    private JsonFormatter jsonFormatter = new JsonFormatter();
-
-    @Before
-    void cleanUp() {
-        log.info("Lets clean the data");
-        tradeMongoRepository.deleteAll();
-        orderMongoRepository.deleteAll();
-        pnlMongoRepository.deleteAll();
-        quoteRestController.clearCaches();
-    }
+class LockingAssetsTests extends IntegrationTest {
 
     @Test
     void shouldLockCash() {
