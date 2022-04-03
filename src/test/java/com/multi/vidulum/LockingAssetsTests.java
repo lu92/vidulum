@@ -360,8 +360,12 @@ class LockingAssetsTests extends IntegrationTest {
                         .quantity(Quantity.of(1))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
-        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000));
-//        awaitUntilAssetLockAttributesAreEqualTo(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000), Quantity.of(4));
+//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(60000));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(100000),
+                Quantity.of(60000),
+                Quantity.of(40000));
 
         tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
@@ -375,7 +379,11 @@ class LockingAssetsTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("BTC"), Quantity.of(1));
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1),
+                Quantity.of(0),
+                Quantity.of(1));
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -393,6 +401,12 @@ class LockingAssetsTests extends IntegrationTest {
                         .build()
         );
 
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(40000),
+                Quantity.of(25000),
+                Quantity.of(15000));
+
         TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
@@ -408,6 +422,12 @@ class LockingAssetsTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
+
+        awaitUntilAssetMetadataIsEqualTo(
+                registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1),
+                Quantity.of(0.5),
+                Quantity.of(0.5));
 
         List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders).containsExactlyInAnyOrder(
