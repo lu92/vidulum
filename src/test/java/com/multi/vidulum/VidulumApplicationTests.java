@@ -1029,7 +1029,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(0.25 * 2800));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(88900),
@@ -1048,7 +1047,6 @@ class VidulumApplicationTests {
                 .price(Price.of(2800, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("ETH"),
                 Quantity.of(1),
@@ -1071,7 +1069,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("USD"), Quantity.of(1700));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("USD"),
                 Quantity.of(88200),
@@ -1090,7 +1087,6 @@ class VidulumApplicationTests {
                 .price(Price.of(3400, "USD"))
                 .build());
 
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.5));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("ETH"),
                 Quantity.of(1.5),
@@ -1113,7 +1109,6 @@ class VidulumApplicationTests {
                         .build()
         );
 
-//        awaitUntilPortfolioWillLockExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(0.2));
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("ETH"),
                 Quantity.of(1.5),
@@ -1131,8 +1126,6 @@ class VidulumApplicationTests {
                 .quantity(Quantity.of(0.2))
                 .price(Price.of(3000, "USD"))
                 .build());
-
-//        awaitUntilPortfolioWillContainExpectedAmountOfAsset(registeredPortfolioId, Ticker.of("ETH"), Quantity.of(1.3));
 
         awaitUntilAssetMetadataIsEqualTo(
                 registeredPortfolioId, Ticker.of("ETH"),
@@ -1156,17 +1149,17 @@ class VidulumApplicationTests {
                                 .ticker(Ticker.of("USD"))
                                 .subName(SubName.none())
                                 .avgPurchasePrice(Price.one("USD"))
-                                .quantity(Quantity.of(89100))
+                                .quantity(Quantity.of(87100))
                                 .locked(Quantity.zero())
-                                .free(Quantity.of(89100.0))
+                                .free(Quantity.of(87100.0))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
                                 .subName(SubName.none())
-                                .avgPurchasePrice(Price.of(40000, "USD"))
-                                .quantity(Quantity.of(0.20000000000000004))
+                                .avgPurchasePrice(Price.of(36000, "USD"))
+                                .quantity(Quantity.of(0.25))
                                 .locked(Quantity.zero())
-                                .free(Quantity.of(0.20000000000000004))
+                                .free(Quantity.of(0.25))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
@@ -1196,48 +1189,48 @@ class VidulumApplicationTests {
                                         .ticker("USD")
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Price.one("USD"))
-                                        .quantity(Quantity.of(88100.0))
+                                        .quantity(Quantity.of(87100))
                                         .locked(Quantity.zero())
-                                        .free(Quantity.of(88100.0))
+                                        .free(Quantity.of(87100))
                                         .pctProfit(0)
                                         .profit(Money.of(0, "USD"))
                                         .currentPrice(Price.of(1, "USD"))
-                                        .currentValue(Money.of(88100.0000, "USD"))
+                                        .currentValue(Money.of(87100.0, "USD"))
                                         .tags(List.of())
                                         .build()),
                         "Crypto", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("ETH")
                                         .fullName("Ethereum")
-                                        .avgPurchasePrice(Price.of(3000.0000, "USD"))
+                                        .avgPurchasePrice(Price.of(3000.0, "USD"))
                                         .quantity(Quantity.of(1.3))
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(1.3))
                                         .pctProfit(-0.05)
-                                        .profit(Money.of(-195.0, "USD"))
-                                        .currentPrice(Price.of(2850.0000, "USD"))
-                                        .currentValue(Money.of(3705.0000, "USD"))
+                                        .profit(Money.of(-195.0000, "USD"))
+                                        .currentPrice(Price.of(2850.0, "USD"))
+                                        .currentValue(Money.of(3705.0, "USD"))
                                         .tags(List.of("Ethereum", "Crypto", "ETH"))
                                         .build(),
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("BTC")
                                         .fullName("Bitcoin")
-                                        .avgPurchasePrice(Price.of(40000.0000, "USD"))
-                                        .quantity(Quantity.of(0.20000000000000004))
+                                        .avgPurchasePrice(Price.of(3600.0, "USD"))
+                                        .quantity(Quantity.of(0.25))
                                         .locked(Quantity.zero())
-                                        .free(Quantity.of(0.20000000000000004))
-                                        .pctProfit(0.5)
-                                        .profit(Money.of(4000.0000, "USD"))
-                                        .currentPrice(Price.of(60000.0000, "USD"))
-                                        .currentValue(Money.of(12000.0000, "USD"))
+                                        .free(Quantity.of(0.25))
+                                        .pctProfit(0.66666666)
+                                        .profit(Money.of(6000.0, "USD"))
+                                        .currentPrice(Price.of(60000.0, "USD"))
+                                        .currentValue(Money.of(15000.0, "USD"))
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                         .build())
                 ))
                 .portfolioIds(List.of(registeredPortfolio.getPortfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
-                .currentValue(Money.of(103805, "USD"))
-                .totalProfit(Money.of(3805.0000, "USD"))
-                .pctProfit(0.03805)
+                .currentValue(Money.of(105805, "USD"))
+                .totalProfit(Money.of(5805.0, "USD"))
+                .pctProfit(0.05805)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
