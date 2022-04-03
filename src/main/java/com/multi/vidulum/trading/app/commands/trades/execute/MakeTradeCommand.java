@@ -20,10 +20,8 @@ public class MakeTradeCommand implements Command {
      * Filled with {@code PlaceOrderCommand.originOrderId} when particular order has been executed on exchange.
      * Filled with {@code OrderId.notDefined()} in case of making direct trade on exchange.
      */
-    OriginOrderId originOrderId;
-    Symbol symbol;
+    OrderId orderId;
     SubName subName;
-    Side side;
     Quantity quantity;
     Price price;
     ZonedDateTime originDateTime;

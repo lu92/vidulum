@@ -1,7 +1,6 @@
-package com.multi.vidulum.portfolio.app;
+package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
 public final class PortfolioEvents {

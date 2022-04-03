@@ -1,10 +1,10 @@
 package com.multi.vidulum.trading.app.commands.orders.create;
 
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.OrderStatus;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
+import com.multi.vidulum.trading.domain.OrderFactory;
 import com.multi.vidulum.user.domain.PortfolioRestClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderCommand, Order> {
 
     private final DomainOrderRepository orderRepository;
+    private final OrderFactory orderFactory;
     private final PortfolioRestClient portfolioRestClient;
 
     @Override
@@ -24,20 +25,20 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         // validate if quantity is sufficient
         // validate if all parameters based on OrderType are present
 
-        Order order = Order.builder()
-                .originOrderId(command.getOriginOrderId())
-                .portfolioId(command.getPortfolioId())
-                .broker(command.getBroker())
-                .symbol(command.getSymbol())
-                .type(command.getType())
-                .side(command.getSide())
-                .targetPrice(command.getTargetPrice())
-                .stopPrice(command.getStopPrice())
-                .limitPrice(command.getLimitPrice())
-                .quantity(command.getQuantity())
-                .occurredDateTime(command.getOccurredDateTime())
-                .status(OrderStatus.OPEN)
-                .build();
+        Order order = orderFactory.empty(
+                command.getOrderId(),
+                command.getOriginOrderId(),
+                command.getPortfolioId(),
+                command.getBroker(),
+                command.getSymbol(),
+                command.getType(),
+                command.getSide(),
+                command.getTargetPrice(),
+                command.getStopPrice(),
+                command.getLimitPrice(),
+                command.getQuantity(),
+                command.getOccurredDateTime()
+        );
 
         lockAssetInPortfolio(order);
 
@@ -67,7 +68,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         portfolioRestClient.lockAsset(
                 order.getPortfolioId(),
                 order.getSymbol().getOrigin(),
-                order.getQuantity()
+                order.getParameters().quantity()
         );
     }
 }

@@ -57,12 +57,12 @@ public class TradingRestClientAdapter implements TradingRestClient {
                 .originOrderId(order.getOriginOrderId().getId())
                 .portfolioId(order.getPortfolioId().getId())
                 .symbol(order.getSymbol().getId())
-                .type(order.getType())
-                .side(order.getSide())
-                .targetPrice(order.getTargetPrice())
-                .stopPrice(order.getStopPrice())
-                .limitPrice(order.getLimitPrice())
-                .quantity(order.getQuantity())
+                .type(order.getParameters().type())
+                .side(order.getParameters().side())
+                .targetPrice(order.getParameters().targetPrice())
+                .stopPrice(order.getParameters().stopPrice())
+                .limitPrice(order.getParameters().limitPrice())
+                .quantity(order.getParameters().quantity())
                 .originDateTime(order.getOccurredDateTime())
                 .build();
     }

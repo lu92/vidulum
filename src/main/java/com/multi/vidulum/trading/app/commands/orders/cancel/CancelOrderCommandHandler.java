@@ -21,18 +21,18 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
 
     @Override
     public Order handle(CancelOrderCommand command) {
-        Order order = orderRepository.findByOriginOrderId(command.getOriginOrderId())
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Order [%s] does not exist!", command.getOriginOrderId())));
+        Order order = orderRepository.findById(command.getOrderId())
+                .orElseThrow(() -> new IllegalArgumentException(String.format("Order [%s] does not exist!", command.getOrderId())));
 
         if (!order.isOpen()) {
-            throw new IllegalArgumentException(String.format("Order [%s] is not open!", order.getOriginOrderId()));
+            throw new IllegalArgumentException(String.format("Order [%s] is not open!", order.getOrderId()));
         }
 
         unlockParticularAssetInPortfolio(order);
 
-        order.setStatus(OrderStatus.CANCELLED);
+        order.markAsCancelled();
         Order savedOrder = orderRepository.save(order);
-        log.info("Order [{}] has been cancelled!", order.getOriginOrderId());
+        log.info("Order [{}] has been cancelled!", order.getOrderId());
         return savedOrder;
     }
 

@@ -1,17 +1,17 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.app.PortfolioEvents;
-import com.multi.vidulum.portfolio.app.PortfolioEvents.*;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents.*;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Data
+@Slf4j
 @Builder
 public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private PortfolioId portfolioId;
@@ -143,6 +144,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion) {
         reduceAsset(soldPortion);
         increaseAsset(purchasedPortion);
+        log.info("[{}] amount of reduced asset [{}]", portfolioId, soldPortion);
+        log.info("[{}] amount of increased asset [{}]", portfolioId, purchasedPortion);
     }
 
     private void increaseAsset(AssetPortion purchasedPortion) {
@@ -177,18 +180,18 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             throw new NotSufficientBalance(soldPortion.getValue());
         }
 
-        Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
-        Quantity decreasedFree = soldAsset.getFree().minus(soldPortion.quantity());
         boolean isAssetSoldOutFully = soldAsset.getQuantity().equals(soldPortion.quantity());
         if (isAssetSoldOutFully) {
             assets.remove(soldAsset);
         } else {
+            Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
             Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
             Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
+            Quantity updatedLockedQuantity = soldAsset.getLocked().minus(soldPortion.quantity());
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
-            soldAsset.setFree(decreasedFree);
+            soldAsset.setLocked(updatedLockedQuantity);
         }
     }
 

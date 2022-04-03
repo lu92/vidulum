@@ -41,8 +41,8 @@ public class ApplyTradeCommandHandler implements CommandHandler<ApplyTradeComman
 
         portfolio.handleExecutedTrade(executedTrade);
 
-        repository.save(portfolio);
-        log.info("After processing: [{}]", portfolio);
+        Portfolio savedPortfolio = repository.save(portfolio);
+        log.info("After processing of trade: [{}]", savedPortfolio);
 
         emitEvent(trade);
 

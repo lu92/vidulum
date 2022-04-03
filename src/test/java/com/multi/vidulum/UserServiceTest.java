@@ -1,6 +1,7 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
+import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserNotActiveException;
 import com.multi.vidulum.user.app.UserRestController;
@@ -20,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.List;
 
 @SpringBootTest
-@Import(PortfolioAppConfig.class)
+@Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})

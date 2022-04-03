@@ -35,8 +35,6 @@ public class DomainPortfolioRepositoryImpl implements DomainPortfolioRepository 
 
     @Override
     public Portfolio save(Portfolio aggregate) {
-//        eventStore.putIfAbsent(aggregate.getPortfolioId(), aggregate.getUncommittedEvents());
-
         List<StoredDomainEvent> uncommittedEvents = aggregate.getUncommittedEvents().stream()
                 .map(event -> new StoredDomainEvent() {
                     @Override
