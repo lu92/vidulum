@@ -97,7 +97,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-A")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -224,7 +224,7 @@ class VidulumApplicationTests extends IntegrationTest {
         PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory(createdUserJson.getUserId());
         System.out.println(pnlHistory);
 
-        TradingDto.OrderSummaryJson placedOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-B")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -332,7 +332,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .pctProfit(0)
                                 .build());
 
-        TradingDto.OrderSummaryJson placedOrder3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -484,7 +484,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-A")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -514,7 +514,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
-        TradingDto.OrderSummaryJson placedSellOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedSellOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-B")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -676,7 +676,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-1")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -716,7 +716,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.1));
 
-        TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-2")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -756,7 +756,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.2));
 
-        TradingDto.OrderSummaryJson placedOrderSummary3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-3")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -796,7 +796,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.4));
 
-        TradingDto.OrderSummaryJson placedOrderSummary4 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-4")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -836,7 +836,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.25));
 
-        TradingDto.OrderSummaryJson placedOrderSummary5 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-5")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -876,7 +876,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.75));
 
-        TradingDto.OrderSummaryJson placedOrderSummary6 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary6 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-6")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -916,7 +916,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        TradingDto.OrderSummaryJson placedOrderSummary7 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary7 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-7")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -956,7 +956,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1.5));
 
-        TradingDto.OrderSummaryJson placedOrderSummary8 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary8 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-8")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1098,7 +1098,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
@@ -1111,7 +1111,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-2")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
@@ -1124,7 +1124,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-3")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
@@ -1388,7 +1388,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         depositMoney(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()), Money.of(1810, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-1")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1418,7 +1418,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
-        TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-2")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1447,7 +1447,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
-        TradingDto.OrderSummaryJson placedBuyOrder3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-3")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1476,7 +1476,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
 
-        TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-4")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1505,7 +1505,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 4);
 
-        TradingDto.OrderSummaryJson placedBuyOrder5 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-5")
                         .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())

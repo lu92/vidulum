@@ -20,6 +20,7 @@ import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
 import com.multi.vidulum.trading.app.OrderRestController;
 import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.app.TradingAppConfig;
+import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
@@ -139,6 +140,10 @@ public abstract class IntegrationTest {
                         .portfolioId(portfolioId.getId())
                         .money(money)
                         .build());
+    }
+
+    protected TradingDto.OrderSummaryJson placeOrder(TradingDto.PlaceOrderJson placeOrderJson) {
+        return orderRestController.placeOrder(placeOrderJson);
     }
 
     protected void awaitUntilAssetMetadataIsEqualTo(

@@ -67,7 +67,7 @@ class LockingAssetsTests extends IntegrationTest {
         // there is no any pending order
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -176,7 +176,7 @@ class LockingAssetsTests extends IntegrationTest {
         // there is no any pending order
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -304,7 +304,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin-order-id-1")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -343,7 +343,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -365,7 +365,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(25000),
                 Quantity.of(15000));
 
-        TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -516,7 +516,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin-order-id-1")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -555,7 +555,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.4));
 
-        TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-2")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -635,7 +635,7 @@ class LockingAssetsTests extends IntegrationTest {
                                 .pctProfit(0)
                                 .build());
 
-        TradingDto.OrderSummaryJson placedBuyOrder3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-3")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -674,7 +674,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.7));
 
-        TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-4")
                         .portfolioId(registeredPortfolio.getPortfolioId())
