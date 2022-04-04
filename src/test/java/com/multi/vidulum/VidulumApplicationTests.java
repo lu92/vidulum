@@ -86,12 +86,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
@@ -478,13 +473,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
@@ -674,12 +663,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -1389,19 +1373,9 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals 1")
-                        .broker("PM")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = registerPortfolio("Precious Metals 1", "PM", persistedUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals 2")
-                        .broker("PM")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = registerPortfolio("Precious Metals 2", "PM", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();

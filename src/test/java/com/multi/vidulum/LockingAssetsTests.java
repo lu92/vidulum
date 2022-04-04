@@ -60,12 +60,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -174,12 +169,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -308,12 +298,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -525,12 +510,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
