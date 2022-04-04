@@ -65,12 +65,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -463,12 +458,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -664,12 +654,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -1383,12 +1368,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());

@@ -54,12 +54,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         userRestController.activateUser(createdUserJson.getUserId());
 
@@ -173,12 +168,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         userRestController.activateUser(createdUserJson.getUserId());
 
@@ -312,12 +302,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         userRestController.activateUser(createdUserJson.getUserId());
 
@@ -534,12 +519,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         userRestController.activateUser(createdUserJson.getUserId());
 

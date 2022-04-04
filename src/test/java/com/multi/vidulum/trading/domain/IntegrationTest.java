@@ -22,6 +22,7 @@ import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
+import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
@@ -100,6 +101,9 @@ public abstract class IntegrationTest {
     @Autowired
     protected PortfolioFactory portfolioFactory;
 
+    @Autowired
+    protected OrderFactory orderFactory;
+
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 
     @Before
@@ -109,6 +113,23 @@ public abstract class IntegrationTest {
         orderMongoRepository.deleteAll();
         pnlMongoRepository.deleteAll();
         quoteRestController.clearCaches();
+    }
+
+    protected UserDto.UserSummaryJson createUser(String username, String password, String email) {
+        return userRestController.createUser(
+                UserDto.CreateUserJson.builder()
+                        .username(username)
+                        .password(password)
+                        .email(email)
+                        .build());
+    }
+
+    protected void depositMoney(PortfolioId portfolioId, Money money) {
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(portfolioId.getId())
+                        .money(money)
+                        .build());
     }
 
     protected void awaitUntilAssetMetadataIsEqualTo(
@@ -129,13 +150,5 @@ public abstract class IntegrationTest {
                                     asset.getFree().equals(expectedFree))
                     .orElse(false);
         });
-    }
-
-    protected void depositMoney(PortfolioId portfolioId, Money money) {
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(portfolioId.getId())
-                        .money(money)
-                        .build());
     }
 }
