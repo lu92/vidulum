@@ -56,7 +56,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUser.getUserId());
+        activateUser(createdUser.getUserId());
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
@@ -163,7 +163,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUser.getUserId());
+        activateUser(createdUser.getUserId());
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
@@ -290,7 +290,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUser.getUserId());
+        activateUser(createdUser.getUserId());
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
@@ -500,7 +500,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUser.getUserId());
+        activateUser(createdUser.getUserId());
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 

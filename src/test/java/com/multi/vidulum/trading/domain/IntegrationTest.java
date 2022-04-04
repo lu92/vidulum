@@ -125,6 +125,10 @@ public abstract class IntegrationTest {
                         .build());
     }
 
+    protected void activateUser(String userId) {
+        userRestController.activateUser(userId);
+    }
+
     protected UserDto.PortfolioRegistrationSummaryJson registerPortfolio(String name, String broker, String userId) {
         return userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
