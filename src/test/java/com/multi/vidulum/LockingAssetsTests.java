@@ -54,13 +54,11 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUserJson.getUserId());
+        userRestController.activateUser(createdUser.getUserId());
 
-        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -110,10 +108,10 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(27500.0)) && usdAsset.getFree().equals(Quantity.of(72500));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                                .userId(createdUserJson.getUserId())
+                                .userId(createdUser.getUserId())
                                 .segmentedAssets(Map.of("Cash", List.of(
                                         PortfolioDto.AssetSummaryJson.builder()
                                                 .ticker("USD")
@@ -163,13 +161,11 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUserJson.getUserId());
+        userRestController.activateUser(createdUser.getUserId());
 
-        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -239,10 +235,10 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().isZero() && usdAsset.getFree().equals(Quantity.of(100000.0));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                                .userId(createdUserJson.getUserId())
+                                .userId(createdUser.getUserId())
                                 .segmentedAssets(Map.of("Cash", List.of(
                                         PortfolioDto.AssetSummaryJson.builder()
                                                 .ticker("USD")
@@ -292,13 +288,11 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUserJson.getUserId());
+        userRestController.activateUser(createdUser.getUserId());
 
-        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -329,7 +323,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .orderId(placedBuyOrder1.getOrderId())
-                .userId(persistedUser.getUserId())
+                .userId(createdUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -434,11 +428,11 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(25000)) && btcAsset.getLocked().equals(Quantity.of(0.5));
         });
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUser.getUserId());
         assertThat(aggregatedPortfolio)
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                                .userId(createdUserJson.getUserId())
+                                .userId(createdUser.getUserId())
                                 .segmentedAssets(Map.of(
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
@@ -504,13 +498,11 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
 
-        userRestController.activateUser(createdUserJson.getUserId());
+        userRestController.activateUser(createdUser.getUserId());
 
-        UserDto.UserSummaryJson persistedUser = userRestController.getUser(createdUserJson.getUserId());
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -541,7 +533,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
-                .userId(persistedUser.getUserId())
+                .userId(createdUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -580,7 +572,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .originTradeId("trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
-                .userId(persistedUser.getUserId())
+                .userId(createdUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -594,10 +586,10 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                                .userId(createdUserJson.getUserId())
+                                .userId(createdUser.getUserId())
                                 .segmentedAssets(Map.of(
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
@@ -660,7 +652,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .originTradeId("trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
-                .userId(persistedUser.getUserId())
+                .userId(createdUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -699,7 +691,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .originTradeId("trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
-                .userId(persistedUser.getUserId())
+                .userId(createdUser.getUserId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -713,10 +705,10 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.6));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                                .userId(createdUserJson.getUserId())
+                                .userId(createdUser.getUserId())
                                 .segmentedAssets(Map.of(
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
