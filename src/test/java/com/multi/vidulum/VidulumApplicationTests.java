@@ -112,7 +112,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .orderId(placedOrder.getOrderId())
@@ -500,7 +500,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .build());
 
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -529,7 +529,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedSellOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -698,7 +698,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(6000),
                 Quantity.of(94000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .orderId(placedOrderSummary1.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -738,7 +738,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(3000),
                 Quantity.of(91000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedOrderSummary2.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -778,7 +778,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(6000),
                 Quantity.of(85000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
                 .orderId(placedOrderSummary3.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -818,7 +818,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0.15),
                 Quantity.of(0.25));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .orderId(placedOrderSummary4.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -858,7 +858,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(2100),
                 Quantity.of(88900));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade5")
                 .orderId(placedOrderSummary5.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -898,7 +898,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(700),
                 Quantity.of(88200));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade6")
                 .orderId(placedOrderSummary6.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -938,7 +938,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(1700),
                 Quantity.of(86500));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade7")
                 .orderId(placedOrderSummary7.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -978,7 +978,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(0.2),
                 Quantity.of(1.3));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade8")
                 .orderId(placedOrderSummary8.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1403,7 +1403,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1433,7 +1433,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1462,7 +1462,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1491,7 +1491,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1519,7 +1519,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .quantity(Quantity.of(1, "oz"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade5")
                 .orderId(placedBuyOrder5.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())

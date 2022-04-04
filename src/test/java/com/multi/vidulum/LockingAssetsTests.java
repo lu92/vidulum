@@ -325,7 +325,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(60000),
                 Quantity.of(40000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .orderId(placedBuyOrder1.getOrderId())
@@ -537,7 +537,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(24000),
                 Quantity.of(76000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -576,7 +576,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(36000),
                 Quantity.of(40000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -656,7 +656,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0.3),
                 Quantity.of(0.7));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -695,7 +695,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0.1),
                 Quantity.of(0.6));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())

@@ -146,6 +146,10 @@ public abstract class IntegrationTest {
         return orderRestController.placeOrder(placeOrderJson);
     }
 
+    protected void makeTrade(TradingDto.TradeExecutedJson tradeExecutedJson) {
+        tradeRestController.makeTrade(tradeExecutedJson);
+    }
+
     protected void awaitUntilAssetMetadataIsEqualTo(
             PortfolioId portfolioId,
             Ticker assetTicker,
