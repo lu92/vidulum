@@ -105,11 +105,7 @@ class VidulumApplicationTests extends IntegrationTest {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedOrder = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -507,11 +503,7 @@ class VidulumApplicationTests extends IntegrationTest {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -713,11 +705,7 @@ class VidulumApplicationTests extends IntegrationTest {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1442,17 +1430,9 @@ class VidulumApplicationTests extends IntegrationTest {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(2 * 1800 + 1820, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()), Money.of(2 * 1800 + 1820, "USD"));
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
-                        .money(Money.of(1810, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()), Money.of(1810, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()

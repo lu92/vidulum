@@ -2,6 +2,7 @@ package com.multi.vidulum.trading.domain;
 
 
 import com.multi.vidulum.JsonFormatter;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.pnl.app.PnlRestController;
@@ -11,6 +12,7 @@ import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
@@ -95,10 +97,13 @@ public abstract class IntegrationTest {
     @Autowired
     protected PnlMongoRepository pnlMongoRepository;
 
+    @Autowired
+    protected PortfolioFactory portfolioFactory;
+
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 
     @Before
-    protected void cleanUp() {
+    public void cleanUp() {
         log.info("Lets clean the data");
         tradeMongoRepository.deleteAll();
         orderMongoRepository.deleteAll();
@@ -124,5 +129,13 @@ public abstract class IntegrationTest {
                                     asset.getFree().equals(expectedFree))
                     .orElse(false);
         });
+    }
+
+    protected void depositMoney(PortfolioId portfolioId, Money money) {
+        portfolioRestController.depositMoney(
+                PortfolioDto.DepositMoneyJson.builder()
+                        .portfolioId(portfolioId.getId())
+                        .money(money)
+                        .build());
     }
 }

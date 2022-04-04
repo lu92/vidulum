@@ -72,11 +72,7 @@ class LockingAssetsTests extends IntegrationTest {
                         .userId(persistedUser.getUserId())
                         .build());
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
         // there is no any pending order
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
@@ -195,11 +191,7 @@ class LockingAssetsTests extends IntegrationTest {
                         .userId(persistedUser.getUserId())
                         .build());
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
         // there is no any pending order
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
@@ -340,11 +332,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -565,11 +553,8 @@ class LockingAssetsTests extends IntegrationTest {
                         .build());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+
+        depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
                 TradingDto.PlaceOrderJson.builder()
