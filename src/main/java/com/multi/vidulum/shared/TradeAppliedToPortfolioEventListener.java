@@ -19,7 +19,7 @@ public class TradeAppliedToPortfolioEventListener {
     private Set<Consumer<TradeAppliedToPortfolioEvent>> callbacks = new HashSet<>();
 
     @KafkaListener(
-            groupId = "group_id1",
+            groupId = "group_id5",
             topics = "executed_trades",
             containerFactory = "tradeExecutedContainerFactory")
     public void on(TradeAppliedToPortfolioEvent event) {
