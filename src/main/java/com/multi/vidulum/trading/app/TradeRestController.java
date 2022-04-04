@@ -4,7 +4,6 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.queries.GetAllTradesForUserQuery;
 import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
@@ -36,8 +35,6 @@ public class TradeRestController {
                 .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
                 .orderId(OrderId.of(tradeExecutedJson.getOrderId()))
                 .subName(SubName.of(tradeExecutedJson.getSubName()))
-//                .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
-//                .side(tradeExecutedJson.getSide())
                 .quantity(tradeExecutedJson.getQuantity())
                 .price(tradeExecutedJson.getPrice())
                 .originDateTime(tradeExecutedJson.getOriginDateTime())

@@ -40,17 +40,6 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .build();
         Trade savedTrade = repository.save(newTrade);
 
-//        order.addExecution(
-//                new Order.OrderExecution(
-//                        savedTrade.getTradeId(),
-//                        command.getQuantity(),
-//                        command.getPrice(),
-//                        command.getOriginDateTime()
-//                )
-//        );
-//
-//        Order savedOrder = orderRepository.save(order);
-
         tradeCapturedEventEmitter.emit(
                 TradeCapturedEvent.builder()
                         .orderId(order.getOrderId())
