@@ -15,7 +15,7 @@ public class UserCreatedEventListener {
     private final CommandGateway commandGateway;
 
     @KafkaListener(
-            groupId = "group_id1",
+            groupId = "group_id2",
             topics = "user_created",
             containerFactory = "userCreatedContainerFactory")
     public void on(UserCreatedEvent event) {

@@ -16,7 +16,7 @@ public class TradeCapturedEventListener {
     private final CommandGateway commandGateway;
 
     @KafkaListener(
-            groupId = "group_id1",
+            groupId = "group_id4",
             topics = "trade_captured",
             containerFactory = "tradeCapturedContainerFactory")
     public void on(TradeCapturedEvent event) {
