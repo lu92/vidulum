@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading;
+package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.common.OrderId;
 

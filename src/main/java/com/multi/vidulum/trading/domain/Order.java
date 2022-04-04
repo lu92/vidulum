@@ -4,7 +4,6 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
-import com.multi.vidulum.trading.OrderIsNotOpenException;
 import lombok.Builder;
 import lombok.Data;
 
