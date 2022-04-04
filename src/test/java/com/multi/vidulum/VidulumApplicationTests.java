@@ -2,49 +2,26 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlDto;
-import com.multi.vidulum.pnl.app.PnlRestController;
-import com.multi.vidulum.pnl.domain.*;
-import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
+import com.multi.vidulum.pnl.domain.PnlHistory;
+import com.multi.vidulum.pnl.domain.PnlPortfolioStatement;
+import com.multi.vidulum.pnl.domain.PnlStatement;
+import com.multi.vidulum.pnl.domain.PnlTradeDetails;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
-import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
-import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementDto;
-import com.multi.vidulum.risk_management.app.RiskManagementRestController;
-import com.multi.vidulum.shared.TradeAppliedToPortfolioEventListener;
-import com.multi.vidulum.trading.app.OrderRestController;
-import com.multi.vidulum.trading.app.TradeRestController;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
-import com.multi.vidulum.trading.domain.DomainOrderRepository;
-import com.multi.vidulum.trading.domain.DomainTradeRepository;
+import com.multi.vidulum.trading.domain.IntegrationTest;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.OrderNotFoundException;
-import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
-import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
-import com.multi.vidulum.user.app.UserRestController;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -59,78 +36,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(classes = FixedClockConfig.class)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
-@Testcontainers
-@DirtiesContext
-@EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
-class VidulumApplicationTests {
-
-    @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-    }
-
-    @Autowired
-    private QuoteRestController quoteRestController;
-
-    @Autowired
-    private UserRestController userRestController;
-
-    @Autowired
-    private PortfolioRestController portfolioRestController;
-
-    @Autowired
-    private TradeRestController tradeRestController;
-
-    @Autowired
-    private OrderRestController orderRestController;
-
-    @Autowired
-    private RiskManagementRestController riskManagementRestController;
-
-    @Autowired
-    private PnlRestController pnlRestController;
-
-    @Autowired
-    private DomainPortfolioRepository portfolioRepository;
-
-    @Autowired
-    private DomainTradeRepository tradeRepository;
-
-    @Autowired
-    private DomainOrderRepository orderRepository;
-
-    @Autowired
-    private TradeMongoRepository tradeMongoRepository;
-
-    @Autowired
-    private OrderMongoRepository orderMongoRepository;
-
-    @Autowired
-    private PnlMongoRepository pnlMongoRepository;
-
-    @Autowired
-    private DomainPnlRepository pnlRepository;
-
-    @Autowired
-    private TradeAppliedToPortfolioEventListener tradeAppliedToPortfolioEventListener;
-
-    private JsonFormatter jsonFormatter = new JsonFormatter();
-
-    @Before
-    void cleanUp() {
-        log.info("Lets clean the data");
-        tradeMongoRepository.deleteAll();
-        orderMongoRepository.deleteAll();
-        pnlMongoRepository.deleteAll();
-        quoteRestController.clearCaches();
-    }
-
+class VidulumApplicationTests extends IntegrationTest {
 
     @Test
     void shouldBuyBitcoinTest() {
@@ -159,12 +65,7 @@ class VidulumApplicationTests {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -185,12 +86,7 @@ class VidulumApplicationTests {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
@@ -199,13 +95,9 @@ class VidulumApplicationTests {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-A")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -220,7 +112,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .orderId(placedOrder.getOrderId())
@@ -332,7 +224,7 @@ class VidulumApplicationTests {
         PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory(createdUserJson.getUserId());
         System.out.println(pnlHistory);
 
-        TradingDto.OrderSummaryJson placedOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-B")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -440,7 +332,7 @@ class VidulumApplicationTests {
                                 .pctProfit(0)
                                 .build());
 
-        TradingDto.OrderSummaryJson placedOrder3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-Y")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -561,12 +453,7 @@ class VidulumApplicationTests {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -586,13 +473,7 @@ class VidulumApplicationTests {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
@@ -601,13 +482,9 @@ class VidulumApplicationTests {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-A")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -623,7 +500,7 @@ class VidulumApplicationTests {
                         .build());
 
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -637,7 +514,7 @@ class VidulumApplicationTests {
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
-        TradingDto.OrderSummaryJson placedSellOrder = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedSellOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-B")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -652,7 +529,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedSellOrder.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -766,12 +643,7 @@ class VidulumApplicationTests {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -791,12 +663,7 @@ class VidulumApplicationTests {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("XYZ")
-                        .broker("BINANCE")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -807,13 +674,9 @@ class VidulumApplicationTests {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPortfolio.getPortfolioId())
-                        .money(Money.of(100000.0, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
-        TradingDto.OrderSummaryJson placedOrderSummary1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-1")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -835,7 +698,7 @@ class VidulumApplicationTests {
                 Quantity.of(6000),
                 Quantity.of(94000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .orderId(placedOrderSummary1.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -853,7 +716,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(0.1));
 
-        TradingDto.OrderSummaryJson placedOrderSummary2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-2")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -875,7 +738,7 @@ class VidulumApplicationTests {
                 Quantity.of(3000),
                 Quantity.of(91000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedOrderSummary2.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -893,7 +756,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(0.2));
 
-        TradingDto.OrderSummaryJson placedOrderSummary3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-3")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -915,7 +778,7 @@ class VidulumApplicationTests {
                 Quantity.of(6000),
                 Quantity.of(85000));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade3")
                 .orderId(placedOrderSummary3.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -933,7 +796,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(0.4));
 
-        TradingDto.OrderSummaryJson placedOrderSummary4 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-4")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -955,7 +818,7 @@ class VidulumApplicationTests {
                 Quantity.of(0.15),
                 Quantity.of(0.25));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade4")
                 .orderId(placedOrderSummary4.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -973,7 +836,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(0.25));
 
-        TradingDto.OrderSummaryJson placedOrderSummary5 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-5")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -995,7 +858,7 @@ class VidulumApplicationTests {
                 Quantity.of(2100),
                 Quantity.of(88900));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade5")
                 .orderId(placedOrderSummary5.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1013,7 +876,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(0.75));
 
-        TradingDto.OrderSummaryJson placedOrderSummary6 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary6 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-6")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1035,7 +898,7 @@ class VidulumApplicationTests {
                 Quantity.of(700),
                 Quantity.of(88200));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade6")
                 .orderId(placedOrderSummary6.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1053,7 +916,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        TradingDto.OrderSummaryJson placedOrderSummary7 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary7 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-7")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1075,7 +938,7 @@ class VidulumApplicationTests {
                 Quantity.of(1700),
                 Quantity.of(86500));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade7")
                 .orderId(placedOrderSummary7.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1093,7 +956,7 @@ class VidulumApplicationTests {
                 Quantity.of(0),
                 Quantity.of(1.5));
 
-        TradingDto.OrderSummaryJson placedOrderSummary8 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedOrderSummary8 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin order-id-8")
                         .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1115,7 +978,7 @@ class VidulumApplicationTests {
                 Quantity.of(0.2),
                 Quantity.of(1.3));
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade8")
                 .orderId(placedOrderSummary8.getOrderId())
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -1235,7 +1098,7 @@ class VidulumApplicationTests {
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
@@ -1248,7 +1111,7 @@ class VidulumApplicationTests {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-2")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("BTC/USD")
@@ -1261,7 +1124,7 @@ class VidulumApplicationTests {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
-        orderRestController.placeOrder(TradingDto.PlaceOrderJson.builder()
+        placeOrder(TradingDto.PlaceOrderJson.builder()
                 .originOrderId("origin trade-id-3")
                 .portfolioId(registeredPortfolio.getPortfolioId())
                 .symbol("ETH/USD")
@@ -1489,12 +1352,7 @@ class VidulumApplicationTests {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username("lu92")
-                        .password("secret")
-                        .email("lu92@email.com")
-                        .build());
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -1515,19 +1373,9 @@ class VidulumApplicationTests {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals 1")
-                        .broker("PM")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = registerPortfolio("Precious Metals 1", "PM", persistedUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = userRestController.registerPortfolio(
-                UserDto.RegisterPortfolioJson.builder()
-                        .name("Precious Metals 2")
-                        .broker("PM")
-                        .userId(persistedUser.getUserId())
-                        .build());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = registerPortfolio("Precious Metals 2", "PM", persistedUser.getUserId());
 
         AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
         tradeAppliedToPortfolioEventListener.clearCallbacks();
@@ -1536,19 +1384,11 @@ class VidulumApplicationTests {
             appliedTradesOnPortfolioNumber.incrementAndGet();
         });
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                        .money(Money.of(2 * 1800 + 1820, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId()), Money.of(2 * 1800 + 1820, "USD"));
 
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
-                        .money(Money.of(1810, "USD"))
-                        .build());
+        depositMoney(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()), Money.of(1810, "USD"));
 
-        TradingDto.OrderSummaryJson placedBuyOrder1 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-1")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1563,7 +1403,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1578,7 +1418,7 @@ class VidulumApplicationTests {
 
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
 
-        TradingDto.OrderSummaryJson placedBuyOrder2 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-2")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1593,7 +1433,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1607,7 +1447,7 @@ class VidulumApplicationTests {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
 
-        TradingDto.OrderSummaryJson placedBuyOrder3 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-3")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1622,7 +1462,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1636,7 +1476,7 @@ class VidulumApplicationTests {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
 
-        TradingDto.OrderSummaryJson placedBuyOrder4 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-4")
                         .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1651,7 +1491,7 @@ class VidulumApplicationTests {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
@@ -1665,7 +1505,7 @@ class VidulumApplicationTests {
                 .build());
         Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 4);
 
-        TradingDto.OrderSummaryJson placedBuyOrder5 = orderRestController.placeOrder(
+        TradingDto.OrderSummaryJson placedBuyOrder5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
                         .originOrderId("origin trade-id-5")
                         .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
@@ -1679,7 +1519,7 @@ class VidulumApplicationTests {
                         .quantity(Quantity.of(1, "oz"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
-        tradeRestController.makeTrade(TradingDto.TradeExecutedJson.builder()
+        makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade5")
                 .orderId(placedBuyOrder5.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
@@ -2049,53 +1889,5 @@ class VidulumApplicationTests {
         Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
 
         System.out.println(persistedPnlHistory);
-    }
-
-    private void awaitUntilPortfolioWillLockExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedLockQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getLocked().equals(expectedLockQuantity))
-                    .orElse(false);
-        });
-    }
-
-    private void awaitUntilAssetMetadataIsEqualTo(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedQuantity,
-            Quantity expectedLocked,
-            Quantity expectedFree) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            log.info(jsonFormatter.formatToPrettyJson(portfolioSummaryJson));
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset ->
-                            asset.getQuantity().equals(expectedQuantity) &&
-                                    asset.getLocked().equals(expectedLocked) &&
-                                    asset.getFree().equals(expectedFree))
-                    .orElse(false);
-        });
-    }
-
-    private void awaitUntilPortfolioWillContainExpectedAmountOfAsset(
-            PortfolioId portfolioId,
-            Ticker assetTicker,
-            Quantity expectedQuantity) {
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
-            return portfolioSummaryJson.getAssets().stream()
-                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
-                    .findFirst()
-                    .map(asset -> asset.getQuantity().equals(expectedQuantity))
-                    .orElse(false);
-        });
     }
 }
