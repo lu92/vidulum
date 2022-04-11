@@ -55,6 +55,8 @@ public class OrderRestController {
         ExecuteOrderCommand command = ExecuteOrderCommand.builder()
                 .originTradeId(OriginTradeId.of(executeOrderJson.getOriginTradeId()))
                 .originOrderId(OriginOrderId.of(executeOrderJson.getOriginOrderId()))
+                .quantity(executeOrderJson.getQuantity())
+                .price(executeOrderJson.getPrice())
                 .originDateTime(ZonedDateTime.now(clock))
                 .build();
         OrderExecutionSummary summary = commandGateway.send(command);

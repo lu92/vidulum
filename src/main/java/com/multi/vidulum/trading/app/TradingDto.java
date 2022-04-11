@@ -59,6 +59,8 @@ public class TradingDto {
     public static class ExecuteOrderJson {
         private String originOrderId;
         private String originTradeId;
+        private Quantity quantity;
+        private Price price;
         private ZonedDateTime originDateTime;
     }
 

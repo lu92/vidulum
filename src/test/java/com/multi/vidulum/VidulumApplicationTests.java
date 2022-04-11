@@ -351,6 +351,8 @@ class VidulumApplicationTests extends IntegrationTest {
                 TradingDto.ExecuteOrderJson.builder()
                         .originTradeId("origin trade-id-Y")
                         .originOrderId(placedOrder3.getOriginOrderId())
+                        .quantity(Quantity.of(0.25))
+                        .price(Price.of(80000, "USD"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -608,7 +610,6 @@ class VidulumApplicationTests extends IntegrationTest {
     }
 
     @Test
-//    @Ignore
     void shouldExecuteTrades() {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
