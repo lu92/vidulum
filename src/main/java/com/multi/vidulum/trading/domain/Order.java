@@ -5,6 +5,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import com.multi.vidulum.trading.domain.OrderEvents.ExecutionFilledEvent;
+import com.multi.vidulum.trading.domain.OrderEvents.OrderCancelledEvent;
 import lombok.Builder;
 import lombok.Data;
 
@@ -70,6 +71,12 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     }
 
     public void markAsCancelled() {
+        OrderCancelledEvent event = new OrderCancelledEvent(orderId);
+        apply(event);
+        add(event);
+    }
+
+    public void apply(OrderCancelledEvent event) {
         state = new OrderState(
                 OrderStatus.CANCELLED,
                 state.fills()
