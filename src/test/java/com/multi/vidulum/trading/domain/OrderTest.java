@@ -16,7 +16,7 @@ class OrderTest extends IntegrationTest {
     private static final Broker BROKER = Broker.of("Broker");
 
     @Test
-    public void shouldCreateOrder() {
+    public void shouldCreateAndCancelOrder() {
         OrderId orderId = OrderId.generate();
         PortfolioId portfolioId = PortfolioId.generate();
         Order order = orderFactory.empty(
@@ -58,6 +58,32 @@ class OrderTest extends IntegrationTest {
                         .build()
         );
 
+        savedOrder.markAsCancelled();
+        Order cancelledOrder = orderRepository.save(savedOrder);
+
+        assertThat(cancelledOrder).isEqualTo(
+                Order.builder()
+                        .orderId(orderId)
+                        .originOrderId(OriginOrderId.notDefined())
+                        .portfolioId(portfolioId)
+                        .broker(BROKER)
+                        .symbol(Symbol.of("BTC/USD"))
+                        .state(
+                                new Order.OrderState(
+                                        OrderStatus.CANCELLED,
+                                        List.of()))
+                        .parameters(
+                                new Order.OrderParameters(
+                                        OrderType.LIMIT,
+                                        Side.BUY,
+                                        null,
+                                        null,
+                                        Price.of(30000.0, "USD"),
+                                        Quantity.of(0.2)))
+                        .occurredDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
+                        .build()
+        );
+
         assertThat(orderRepository.findDomainEvents(savedOrder.getOrderId()))
                 .containsExactlyInAnyOrder(
                         new OrderEvents.OrderCreatedEvent(
@@ -73,9 +99,12 @@ class OrderTest extends IntegrationTest {
                                 Price.of(30000.0, "USD"),
                                 Quantity.of(0.2),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                        ),
+                        new OrderEvents.OrderCancelledEvent(
+                                orderId
                         )
                 );
 
-        assertThat(savedOrder.getUncommittedEvents()).isEmpty();
+        assertThat(cancelledOrder.getUncommittedEvents()).isEmpty();
     }
 }
