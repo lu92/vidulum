@@ -2,12 +2,14 @@ package com.multi.vidulum.trading.app.commands.orders.execute;
 
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.Trade;
+import com.multi.vidulum.user.domain.PortfolioRestClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCommand, OrderExecutionSummary> {
     private final DomainOrderRepository orderRepository;
     private final MakeTradeCommandHandler makeTradeCommandHandler;
+    private final PortfolioRestClient portfolioRestClient;
 
     @Override
     public OrderExecutionSummary handle(ExecuteOrderCommand command) {
@@ -28,25 +31,20 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
             throw new IllegalArgumentException(String.format("Order [%s] is not open!", order.getOriginOrderId()));
         }
 
-//        Price price = order.getParameters().targetPrice() == null ?
-//                order.getParameters().limitPrice() : order.getParameters().targetPrice();
+        PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(order.getPortfolioId());
 
         MakeTradeCommand makeTradeCommand = MakeTradeCommand.builder()
-                .userId(UserId.of(""))
+                .userId(UserId.of(portfolio.getUserId()))
                 .portfolioId(order.getPortfolioId())
                 .originTradeId(command.getOriginTradeId())
                 .orderId(order.getOrderId())
                 .subName(SubName.none())
-                .quantity(order.getParameters().quantity())
-//                .price(price)
-                .price(order.getParameters().targetPrice())
+                .quantity(command.getQuantity())
+                .price(command.getPrice())
                 .originDateTime(command.getOriginDateTime())
                 .build();
 
         Trade executedTrade = makeTradeCommandHandler.handle(makeTradeCommand);
-
-//        order.markAsExecuted();
-//        orderRepository.save(order);
 
         log.info("Order [{}] in trade [{}] has been executed successfully - target price has been achieved", order.getOriginOrderId(), executedTrade.getOriginTradeId());
         return OrderExecutionSummary.builder()

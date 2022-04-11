@@ -351,6 +351,8 @@ class VidulumApplicationTests extends IntegrationTest {
                 TradingDto.ExecuteOrderJson.builder()
                         .originTradeId("origin trade-id-Y")
                         .originOrderId(placedOrder3.getOriginOrderId())
+                        .quantity(Quantity.of(0.25))
+                        .price(Price.of(80000, "USD"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
