@@ -610,7 +610,6 @@ class VidulumApplicationTests extends IntegrationTest {
     }
 
     @Test
-//    @Ignore
     void shouldExecuteTrades() {
         quoteRestController.changePrice("PM", "XAU", "USD", 1800, "USD", 0);
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
