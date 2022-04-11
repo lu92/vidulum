@@ -4,6 +4,7 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
+import com.multi.vidulum.trading.domain.OrderEvents.ExecutionFilledEvent;
 import lombok.Builder;
 import lombok.Data;
 
@@ -59,6 +60,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     public boolean isOpen() {
         return OrderStatus.OPEN.equals(state.status());
     }
+
     public boolean isExecuted() {
         return OrderStatus.EXECUTED.equals(state.status());
     }
@@ -74,12 +76,13 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
         );
     }
 
-    public void markAsExecuted() {
+    private void markAsExecuted() {
         state = new OrderState(
                 OrderStatus.EXECUTED,
                 state.fills()
         );
     }
+
     public Money getTotal() {
         if (isPurchaseAttempt()) {
             Price price = OrderType.OCO.equals(parameters.type()) ? parameters.targetPrice() : parameters.limitPrice();
@@ -90,11 +93,28 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     }
 
     public void addExecution(OrderExecution execution) {
+        ExecutionFilledEvent event = new ExecutionFilledEvent(
+                orderId,
+                execution.tradeId(),
+                execution.quantity(),
+                execution.price(),
+                execution.dateTime());
+        apply(event);
+        add(event);
+    }
+
+    public void apply(ExecutionFilledEvent event) {
         if (!isOpen()) {
-            throw new OrderIsNotOpenException(orderId);
+            throw new OrderIsNotOpenException(event.orderId());
         }
 
-        state.fills().add(execution);
+        OrderExecution orderExecution = new OrderExecution(
+                event.tradeId(),
+                event.quantity(),
+                event.price(),
+                event.dateTime());
+
+        state.fills().add(orderExecution);
 
         if (isFilled()) {
             markAsExecuted();
