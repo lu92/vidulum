@@ -88,14 +88,8 @@ class VidulumApplicationTests extends IntegrationTest {
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
-        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
-        tradeAppliedToPortfolioEventListener.clearCallbacks();
-        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade [{}] applied to portfolio", event);
-            appliedTradesOnPortfolioNumber.incrementAndGet();
-        });
-
-        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
+        PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
+        depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -112,6 +106,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(100000.0), Quantity.of(60000.0), Quantity.of(40000.0));
+
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.getPortfolioId())
@@ -125,24 +122,15 @@ class VidulumApplicationTests extends IntegrationTest {
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            OrderId orderId = OrderId.of(placedOrder.getOrderId());
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new OrderNotFoundException(orderId));
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(0), Quantity.of(1));
 
-            return order.getState().fills().stream()
-                    .anyMatch(execution -> {
-                        return execution.quantity().equals(Quantity.of(1)) && execution.price().equals(Price.of(60000.0, "USD"));
-                    });
-        });
-
-        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(registeredPortfolioId);
         assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
 
         Portfolio expectedPortfolio = Portfolio.builder()
-                .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
+                .portfolioId(registeredPortfolioId)
                 .userId(UserId.of(persistedUser.getUserId()))
                 .name("XYZ")
                 .broker(Broker.of("BINANCE"))
@@ -171,7 +159,6 @@ class VidulumApplicationTests extends IntegrationTest {
         assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(1);
-
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
 
@@ -240,6 +227,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .build()
         );
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(0.25), Quantity.of(0.75));
+
         List<TradingDto.OrderSummaryJson> allOpenedOrders = orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId());
         assertThat(allOpenedOrders)
                 .containsExactly(
@@ -261,6 +251,9 @@ class VidulumApplicationTests extends IntegrationTest {
 
         TradingDto.OrderSummaryJson canceledOrder = orderRestController.cancelOrder(placedOrder2.getOrderId());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(0), Quantity.of(1));
+
         assertThat(List.of(canceledOrder))
                 .containsExactly(
                         TradingDto.OrderSummaryJson.builder()
@@ -279,17 +272,6 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .build()
                 );
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
-
-        // await until portfolio unlocks [0.25 BTC]
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            Portfolio portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId())).get();
-
-            Asset btcAsset = portfolio1.getAssets().stream()
-                    .filter(asset -> Ticker.of("BTC").equals(asset.getTicker()))
-                    .findFirst().orElseThrow(() -> new AssetNotFoundException(Ticker.of("BTC")));
-
-            return btcAsset.getLocked().isZero() && btcAsset.getFree().equals(Quantity.of(1));
-        });
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
         assertThat(aggregatedPortfolio1)
@@ -347,6 +329,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .build()
         );
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(0.25), Quantity.of(0.75));
+
         TradingDto.OrderExecutionSummaryJson orderExecutionSummaryJson = orderRestController.executeOrder(
                 TradingDto.ExecuteOrderJson.builder()
                         .originTradeId("origin trade-id-Y")
@@ -356,6 +341,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(0.75), Quantity.of(0), Quantity.of(0.75));
 
         assertThat(orderExecutionSummaryJson).isEqualTo(
                 TradingDto.OrderExecutionSummaryJson.builder()
@@ -368,26 +356,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .profit(Money.of(4750, "USD"))
                         .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            OrderId orderId = OrderId.of(placedOrder3.getOrderId());
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-            return !order.isOpen();
-        });
-
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
-
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
-        Awaitility.await().atMost(10, SECONDS).until(() -> {
-            OrderId orderId = OrderId.of(placedOrder3.getOrderId());
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new OrderNotFoundException(orderId));
-            return order.isExecuted();
-        });
-
-        Optional<Portfolio> portfolio1 = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
 
