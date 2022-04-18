@@ -7,7 +7,6 @@ import com.multi.vidulum.pnl.domain.PnlPortfolioStatement;
 import com.multi.vidulum.pnl.domain.PnlStatement;
 import com.multi.vidulum.pnl.domain.PnlTradeDetails;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
@@ -16,8 +15,6 @@ import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.risk_management.app.RiskManagementDto;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.domain.IntegrationTest;
-import com.multi.vidulum.trading.domain.Order;
-import com.multi.vidulum.trading.domain.OrderNotFoundException;
 import com.multi.vidulum.user.app.UserDto;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
@@ -446,14 +443,8 @@ class VidulumApplicationTests extends IntegrationTest {
 
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
 
-        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
-        tradeAppliedToPortfolioEventListener.clearCallbacks();
-        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade [{}] applied to portfolio", event);
-            appliedTradesOnPortfolioNumber.incrementAndGet();
-        });
-
-        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
+        PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
+        depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -470,6 +461,8 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(100000), Quantity.of(60000), Quantity.of(40000));
 
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade1")
@@ -483,7 +476,8 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 1);
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(0), Quantity.of(1));
 
         TradingDto.OrderSummaryJson placedSellOrder = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -500,6 +494,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("BTC"),
+                Quantity.of(1), Quantity.of(1), Quantity.of(0));
+
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("trade2")
                 .orderId(placedSellOrder.getOrderId())
@@ -512,15 +509,16 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(80000, "USD"))
                 .build());
 
-        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(120000), Quantity.of(0), Quantity.of(120000));
 
-        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
+        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(registeredPortfolioId);
         assertThat(optionalPortfolio.isPresent()).isTrue();
         Portfolio portfolio = optionalPortfolio.get();
         System.out.println(portfolio);
 
         Portfolio expectedPortfolio = Portfolio.builder()
-                .portfolioId(PortfolioId.of(registeredPortfolio.getPortfolioId()))
+                .portfolioId(registeredPortfolioId)
                 .userId(UserId.of(persistedUser.getUserId()))
                 .name("XYZ")
                 .broker(Broker.of("BINANCE"))
