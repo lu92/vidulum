@@ -635,14 +635,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
-        AtomicLong appliedTradesOnPortfolioNumber = new AtomicLong();
-        tradeAppliedToPortfolioEventListener.clearCallbacks();
-        tradeAppliedToPortfolioEventListener.registerCallback(event -> {
-            log.info("Following trade applied to portfolio [{}]", event);
-            appliedTradesOnPortfolioNumber.incrementAndGet();
-        });
-
-        depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
+        depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -963,8 +956,6 @@ class VidulumApplicationTests extends IntegrationTest {
                 Quantity.of(1.3),
                 Quantity.of(0),
                 Quantity.of(1.3));
-
-        Awaitility.await().atMost(15, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 8);
 
         Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(PortfolioId.of(registeredPortfolio.getPortfolioId()));
         assertThat(optionalPortfolio.isPresent()).isTrue();
