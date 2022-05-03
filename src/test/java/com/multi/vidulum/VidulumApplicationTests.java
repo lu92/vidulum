@@ -1652,7 +1652,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .symbol("XAU/USD")
                                 .subName("Krugerrand")
                                 .side(BUY)
-                                .quantity(Quantity.of(1, "oz"))
+                                .quantity(Quantity.of(2, "oz"))
                                 .price(Price.of(1820, "USD"))
                                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                                 .build(),
@@ -1693,7 +1693,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .subName("Maple Leaf")
                                 .side(BUY)
                                 .quantity(Quantity.of(1, "oz"))
-                                .price(Price.of(1800, "USD"))
+                                .price(Price.of(2000, "USD"))
                                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                                 .build()));
     }
