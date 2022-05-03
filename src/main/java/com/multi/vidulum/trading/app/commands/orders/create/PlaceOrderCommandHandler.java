@@ -30,6 +30,11 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
 
         // validate if all parameters based on OrderType are present
 
+        if (!isAssetBalanceSufficient(command)) {
+            Money money = Money.of(command.getQuantity().getQty(), command.getSide().equals(Side.BUY) ? command.getSymbol().getDestination().getId() : command.getSymbol().getOrigin().getId());
+            throw new NotSufficientBalance(command.getSide(), money);
+        }
+
         Order order = orderFactory.empty(
                 command.getOrderId(),
                 command.getOriginOrderId(),
@@ -44,11 +49,6 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 command.getQuantity(),
                 command.getOccurredDateTime()
         );
-
-        if (!isAssetBalanceSufficient(command)) {
-            Money money = Money.of(order.getParameters().quantity().getQty(), order.getParameters().side().equals(Side.BUY) ? order.getSymbol().getDestination().getId() : order.getSymbol().getOrigin().getId());
-            throw new NotSufficientBalance(order.getParameters().side(), money);
-        }
 
         lockAssetInPortfolio(order);
 
