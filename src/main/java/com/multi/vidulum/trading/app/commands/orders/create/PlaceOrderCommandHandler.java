@@ -45,7 +45,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 command.getOccurredDateTime()
         );
 
-        if (!isAssetBalanceSufficient(command, order)) {
+        if (!isAssetBalanceSufficient(command)) {
             Money money = Money.of(order.getParameters().quantity().getQty(), order.getParameters().side().equals(Side.BUY) ? order.getSymbol().getDestination().getId() : order.getSymbol().getOrigin().getId());
             throw new NotSufficientBalance(order.getParameters().side(), money);
         }
@@ -57,7 +57,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         return savedOrder;
     }
 
-    private boolean isAssetBalanceSufficient(PlaceOrderCommand command, Order order) {
+    private boolean isAssetBalanceSufficient(PlaceOrderCommand command) {
         PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(command.getPortfolioId());
         Ticker expectedAssetToLock = command.getSide() == Side.BUY ? command.getSymbol().getDestination() : command.getSymbol().getOrigin();
         PortfolioDto.AssetSummaryJson expectedAsset = portfolio.getAssets().stream()
@@ -65,16 +65,16 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
                 .findFirst()
                 .orElseThrow(() -> new AssetNotFoundException(expectedAssetToLock));
 
-        Quantity requiredAmountToLock = requiredAssetQuantityToLock(order);
+        Quantity requiredAmountToLock = requiredAssetQuantityToLock(command);
         Quantity freeQtyAfterRequiredLock = expectedAsset.getFree().minus(requiredAmountToLock);
         return freeQtyAfterRequiredLock.isZero() || freeQtyAfterRequiredLock.isPositive();
     }
 
-    private Quantity requiredAssetQuantityToLock(Order order) {
-        if (order.getParameters().quantity().getUnit().equals("Number")) {
-            return order.getParameters().quantity();
+    private Quantity requiredAssetQuantityToLock(PlaceOrderCommand command) {
+        if (command.getQuantity().getUnit().equals("Number")) {
+            return command.getQuantity();
         } else {
-            return Quantity.of(order.getParameters().limitPrice().multiply(order.getParameters().quantity()).getAmount().doubleValue());
+            return Quantity.of(command.getLimitPrice().multiply(command.getQuantity()).getAmount().doubleValue());
         }
     }
 
