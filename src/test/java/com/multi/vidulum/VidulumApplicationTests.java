@@ -1492,13 +1492,13 @@ class VidulumApplicationTests extends IntegrationTest {
                         .side(BUY)
                         .targetPrice(null)
                         .stopPrice(null)
-                        .limitPrice(Price.of(1800, "USD"))
+                        .limitPrice(Price.of(2000, "USD"))
                         .quantity(Quantity.of(1, "oz"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("USD"),
-                Quantity.of(10000), Quantity.of(1800), Quantity.of(8200));
+                Quantity.of(10000), Quantity.of(2000), Quantity.of(8000));
 
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade5")
@@ -1509,89 +1509,12 @@ class VidulumApplicationTests extends IntegrationTest {
                 .subName("Maple Leaf")
                 .side(BUY)
                 .quantity(Quantity.of(1, "oz"))
-                .price(Price.of(1800, "USD"))
+                .price(Price.of(2000, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("XAU"),
                 Quantity.of(1, "oz"), Quantity.of(0), Quantity.of(1, "oz")); // TODO: change locked's unit to 'oz'
-
-        Portfolio expectedPortfolio = Portfolio.builder()
-                .portfolioId(registeredPortfolioId)
-                .userId(UserId.of(persistedUser.getUserId()))
-                .name("Precious Metals 1")
-                .broker(Broker.of("PM"))
-                .assets(List.of(
-                        Asset.builder()
-                                .ticker(Ticker.of("XAU"))
-                                .subName(SubName.of("Maple Leaf"))
-                                .avgPurchasePrice(Price.of(1750, "USD"))
-                                .quantity(Quantity.of(1, "oz"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(1, "oz"))
-                                .build(),
-                        Asset.builder()
-                                .ticker(Ticker.of("XAU"))
-                                .subName(SubName.of("Krugerrand"))
-                                .avgPurchasePrice(Price.of(1820, "USD"))
-                                .quantity(Quantity.of(1, "oz"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(1, "oz"))
-                                .build(),
-                        Asset.builder()
-                                .ticker(Ticker.of("USD"))
-                                .subName(SubName.none())
-                                .avgPurchasePrice(Price.one("USD"))
-                                .quantity(Quantity.of(1850 - 450, "Number"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(1400))
-                                .build(),
-                        Asset.builder()
-                                .ticker(Ticker.of("XAG"))
-                                .subName(SubName.of("Maple Leaf"))
-                                .avgPurchasePrice(Price.of(90, "USD"))
-                                .quantity(Quantity.of(5, "oz"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(5, "oz"))
-                                .build()
-                ))
-                .status(PortfolioStatus.OPEN)
-                .investedBalance(Money.of(2 * 1800 + 1820, "USD"))
-                .build();
-
-        Portfolio expectedPortfolio2 = Portfolio.builder()
-                .portfolioId(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()))
-                .userId(UserId.of(persistedUser.getUserId()))
-                .name("Precious Metals 2")
-                .broker(Broker.of("PM"))
-                .assets(List.of(
-                        Asset.builder()
-                                .ticker(Ticker.of("USD"))
-                                .subName(SubName.none())
-                                .avgPurchasePrice(Price.one("USD"))
-                                .quantity(Quantity.of(10, "Number"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(10, "Number"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(10))
-                                .build(),
-                        Asset.builder()
-                                .ticker(Ticker.of("XAU"))
-                                .subName(SubName.of("Maple Leaf"))
-                                .avgPurchasePrice(Price.of(1800, "USD"))
-                                .quantity(Quantity.of(1, "oz"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(1, "oz"))
-                                .locked(Quantity.zero())
-                                .free(Quantity.of(1, "oz"))
-                                .build()
-                ))
-                .status(PortfolioStatus.OPEN)
-                .investedBalance(Money.of(1810, "USD"))
-                .build();
-
-        Optional<Portfolio> optionalPortfolio = portfolioRepository.findById(registeredPortfolioId);
-        assertThat(optionalPortfolio.get()).isEqualTo(expectedPortfolio);
 
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.getUserId(), registeredPreciousMetalsPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(4);
@@ -1601,11 +1524,6 @@ class VidulumApplicationTests extends IntegrationTest {
                 ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         assertThat(lastTwoTrades).hasSize(3);
-
-
-        Optional<Portfolio> optionalPortfolio2 = portfolioRepository.findById(PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId()));
-        assertThat(optionalPortfolio2.get()).isEqualTo(expectedPortfolio2);
-
 
         PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
 
@@ -1619,13 +1537,13 @@ class VidulumApplicationTests extends IntegrationTest {
                                         .ticker("USD")
                                         .fullName("American Dollar")
                                         .avgPurchasePrice(Price.one("USD"))
-                                        .quantity(Quantity.of(1410))
+                                        .quantity(Quantity.of(12160))
                                         .locked(Quantity.zero())
-                                        .free(Quantity.of(1410))
+                                        .free(Quantity.of(12160))
                                         .pctProfit(0)
                                         .profit(Money.zero("USD"))
                                         .currentPrice(Price.of(1, "USD"))
-                                        .currentValue(Money.of(1410, "USD"))
+                                        .currentValue(Money.of(12160, "USD"))
                                         .tags(List.of())
                                         .build()),
                         "Precious Metals", List.of(
@@ -1645,21 +1563,21 @@ class VidulumApplicationTests extends IntegrationTest {
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("XAU")
                                         .fullName("Gold")
-                                        .avgPurchasePrice(Price.of(1790, "USD"))
-                                        .quantity(Quantity.of(3, "oz"))
+                                        .avgPurchasePrice(Price.of(1847.5003, "USD"))
+                                        .quantity(Quantity.of(4, "oz"))
                                         .locked(Quantity.of(0, "oz"))
-                                        .free(Quantity.of(3, "oz"))
-                                        .pctProfit(0.00558659)
-                                        .profit(Money.of(30, "USD"))
+                                        .free(Quantity.of(4, "oz"))
+                                        .pctProfit(-0.02571056)
+                                        .profit(Money.of(-190.0010, "USD"))
                                         .currentPrice(Price.of(1800, "USD"))
-                                        .currentValue(Money.of(5400, "USD"))
+                                        .currentValue(Money.of(7200, "USD"))
                                         .tags(List.of("Gold", "Precious Metals"))
                                         .build())))
                 .portfolioIds(List.of(registeredPreciousMetalsPortfolio.getPortfolioId(), registeredPreciousMetalsPortfolio2.getPortfolioId()))
-                .investedBalance(Money.of(7230, "USD"))
-                .currentValue(Money.of(7285, "USD"))
-                .totalProfit(Money.of(55, "USD"))
-                .pctProfit(0.00760719)
+                .investedBalance(Money.of(20000, "USD"))
+                .currentValue(Money.of(19835, "USD"))
+                .totalProfit(Money.of(-165, "USD"))
+                .pctProfit(-0.00825)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
