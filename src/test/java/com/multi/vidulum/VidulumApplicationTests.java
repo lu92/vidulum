@@ -1599,10 +1599,10 @@ class VidulumApplicationTests extends IntegrationTest {
                 .usingElementComparatorIgnoringFields("dateTime", "portfolioStatements")
                 .isEqualTo(List.of(
                         PnlDto.PnlStatementJson.builder()
-                                .investedBalance(Money.of(7230, "USD"))
-                                .currentValue(Money.of(7285, "USD"))
-                                .totalProfit(Money.of(55, "USD"))
-                                .pctProfit(0.00760719)
+                                .investedBalance(Money.of(20000, "USD"))
+                                .currentValue(Money.of(19835, "USD"))
+                                .totalProfit(Money.of(-165, "USD"))
+                                .pctProfit(-0.00825)
                                 .build()));
 
         PnlDto.PnlStatementJson pnlStatementJson = pnlHistoryJson.getPnlStatements().get(0);
@@ -1612,17 +1612,17 @@ class VidulumApplicationTests extends IntegrationTest {
                 .isEqualTo(List.of(
                         PnlDto.PnlPortfolioStatementJson.builder()
                                 .portfolioId(registeredPreciousMetalsPortfolio.getPortfolioId())
-                                .investedBalance(Money.of(5420, "USD"))
-                                .currentValue(Money.of(5475, "USD"))
-                                .totalProfit(Money.of(55, "USD"))
-                                .pctProfit(-0.9898524)
+                                .investedBalance(Money.of(10000, "USD"))
+                                .currentValue(Money.of(10035, "USD"))
+                                .totalProfit(Money.of(35, "USD"))
+                                .pctProfit(-0.9965)
                                 .build(),
                         PnlDto.PnlPortfolioStatementJson.builder()
                                 .portfolioId(registeredPreciousMetalsPortfolio2.getPortfolioId())
-                                .investedBalance(Money.of(1810, "USD"))
-                                .currentValue(Money.of(1810, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(-1.0)
+                                .investedBalance(Money.of(10000, "USD"))
+                                .currentValue(Money.of(9800, "USD"))
+                                .totalProfit(Money.of(-200, "USD"))
+                                .pctProfit(-1.02)
                                 .build()
                 ));
 
