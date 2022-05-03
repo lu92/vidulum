@@ -1463,6 +1463,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(4610), Quantity.of(450), Quantity.of(4160));
+
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade4")
                 .orderId(placedBuyOrder4.getOrderId())
@@ -1475,7 +1478,9 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(90, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
-//        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 4);
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAG"),
+                Quantity.of(5, "oz"), Quantity.of(0), Quantity.of(5, "oz")); // TODO: change locked's unit to 'oz'
 
         TradingDto.OrderSummaryJson placedBuyOrder5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1491,6 +1496,10 @@ class VidulumApplicationTests extends IntegrationTest {
                         .quantity(Quantity.of(1, "oz"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("USD"),
+                Quantity.of(10000), Quantity.of(1800), Quantity.of(8200));
+
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade5")
                 .orderId(placedBuyOrder5.getOrderId())
@@ -1503,6 +1512,9 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(1800, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("XAU"),
+                Quantity.of(1, "oz"), Quantity.of(0), Quantity.of(1, "oz")); // TODO: change locked's unit to 'oz'
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(registeredPortfolioId)
