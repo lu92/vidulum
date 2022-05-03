@@ -1339,9 +1339,9 @@ class VidulumApplicationTests extends IntegrationTest {
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId());
         PortfolioId registeredPortfolioId2 = PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId());
 
-        depositMoney(registeredPortfolioId, Money.of(2 * 1800 + 2 * 1820, "USD"));
+        depositMoney(registeredPortfolioId, Money.of(10000, "USD"));
 
-        depositMoney(registeredPortfolioId2, Money.of(1810, "USD"));
+        depositMoney(registeredPortfolioId2, Money.of(10000, "USD"));
 
         TradingDto.OrderSummaryJson placedBuyOrder1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1359,7 +1359,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
-                Quantity.of(5420), Quantity.of(3600), Quantity.of(1820));
+                Quantity.of(10000), Quantity.of(3600), Quantity.of(6400));
 
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade1")
@@ -1393,7 +1393,7 @@ class VidulumApplicationTests extends IntegrationTest {
                         .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
-                Quantity.of(1820), Quantity.of(3640), Quantity.of(-1820));
+                Quantity.of(6400), Quantity.of(3640), Quantity.of(2760));
 
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade2")
@@ -1403,15 +1403,13 @@ class VidulumApplicationTests extends IntegrationTest {
                 .symbol("XAU/USD")
                 .subName("Krugerrand")
                 .side(BUY)
-                .quantity(Quantity.of(1, "oz"))
+                .quantity(Quantity.of(2, "oz"))
                 .price(Price.of(1820, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
-                Quantity.of(2, "oz"), Quantity.of(0), Quantity.of(2, "oz")); // TODO: change locked's unit to 'oz'
-
-//        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 2);
+                Quantity.of(4, "oz"), Quantity.of(0), Quantity.of(4, "oz")); // TODO: change locked's unit to 'oz'
 
         TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1428,6 +1426,9 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
+                Quantity.of(4, "oz"), Quantity.of(1), Quantity.of(3, "oz")); // TODO: change locked's unit to 'oz'
+
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade3")
                 .orderId(placedBuyOrder3.getOrderId())
@@ -1440,7 +1441,12 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(1850, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
                 .build());
-//        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 3);
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
+                Quantity.of(4610), Quantity.of(0), Quantity.of(4610));
+
+        awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
+                Quantity.of(3, "oz"), Quantity.of(0), Quantity.of(3, "oz")); // TODO: change locked's unit to 'oz'
 
         TradingDto.OrderSummaryJson placedBuyOrder4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1497,7 +1503,6 @@ class VidulumApplicationTests extends IntegrationTest {
                 .price(Price.of(1800, "USD"))
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
-//        Awaitility.await().atMost(10, SECONDS).until(() -> appliedTradesOnPortfolioNumber.longValue() == 5);
 
         Portfolio expectedPortfolio = Portfolio.builder()
                 .portfolioId(registeredPortfolioId)

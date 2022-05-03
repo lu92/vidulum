@@ -71,6 +71,10 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
     }
 
     private Quantity requiredAssetQuantityToLock(PlaceOrderCommand command) {
+        if (command.getSide().equals(Side.SELL)) {
+            return command.getQuantity();
+        }
+
         if (command.getQuantity().getUnit().equals("Number")) {
             return command.getQuantity();
         } else {
