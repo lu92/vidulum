@@ -1,8 +1,6 @@
 package com.multi.vidulum.trading.app.commands.trades.execute;
 
-import com.multi.vidulum.common.StoredTrade;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
-import com.multi.vidulum.common.events.TradeStoredEvent;
 import com.multi.vidulum.shared.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.TradeStoredEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -40,6 +38,7 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .build();
         Trade savedTrade = repository.save(newTrade);
 
+        // adds execution to order e.g. FillOrderCommand
         tradeCapturedEventEmitter.emit(
                 TradeCapturedEvent.builder()
                         .orderId(order.getOrderId())
@@ -51,28 +50,6 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
         );
 
         log.info("Trade [{}] has been stored!", savedTrade);
-        StoredTrade storedTrade = mapToTrade(savedTrade);
-        TradeStoredEvent event = TradeStoredEvent.builder()
-                .trade(storedTrade)
-                .build();
-        eventEmitter.emit(event);
-        log.info("Event [{}] has been emitted", event);
         return savedTrade;
-    }
-
-    private StoredTrade mapToTrade(Trade savedTrade) {
-        return StoredTrade.builder()
-                .tradeId(savedTrade.getTradeId())
-                .originTradeId(savedTrade.getOriginTradeId())
-                .userId(savedTrade.getUserId())
-                .originTradeId(savedTrade.getOriginTradeId())
-                .portfolioId(savedTrade.getPortfolioId())
-                .symbol(savedTrade.getSymbol())
-                .subName(savedTrade.getSubName())
-                .side(savedTrade.getSide())
-                .quantity(savedTrade.getQuantity())
-                .price(savedTrade.getPrice())
-                .dateTime(savedTrade.getDateTime())
-                .build();
     }
 }

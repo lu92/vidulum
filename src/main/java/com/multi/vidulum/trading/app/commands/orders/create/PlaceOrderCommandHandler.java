@@ -1,6 +1,12 @@
 package com.multi.vidulum.trading.app.commands.orders.create;
 
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Quantity;
+import com.multi.vidulum.common.Side;
+import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
+import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
@@ -22,8 +28,12 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
     @Override
     public Order handle(PlaceOrderCommand command) {
 
-        // validate if quantity is sufficient
         // validate if all parameters based on OrderType are present
+
+        if (!isAssetBalanceSufficient(command)) {
+            Money money = Money.of(command.getQuantity().getQty(), command.getSide().equals(Side.BUY) ? command.getSymbol().getDestination().getId() : command.getSymbol().getOrigin().getId());
+            throw new NotSufficientBalance(command.getSide(), money);
+        }
 
         Order order = orderFactory.empty(
                 command.getOrderId(),
@@ -45,6 +55,31 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}] has been stored!", savedOrder);
         return savedOrder;
+    }
+
+    private boolean isAssetBalanceSufficient(PlaceOrderCommand command) {
+        PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(command.getPortfolioId());
+        Ticker expectedAssetToLock = command.getSide() == Side.BUY ? command.getSymbol().getDestination() : command.getSymbol().getOrigin();
+        PortfolioDto.AssetSummaryJson expectedAsset = portfolio.getAssets().stream()
+                .filter(assetSummaryJson -> expectedAssetToLock.equals(Ticker.of(assetSummaryJson.getTicker())))
+                .findFirst()
+                .orElseThrow(() -> new AssetNotFoundException(expectedAssetToLock));
+
+        Quantity requiredAmountToLock = requiredAssetQuantityToLock(command);
+        Quantity freeQtyAfterRequiredLock = expectedAsset.getFree().minus(requiredAmountToLock);
+        return freeQtyAfterRequiredLock.isZero() || freeQtyAfterRequiredLock.isPositive();
+    }
+
+    private Quantity requiredAssetQuantityToLock(PlaceOrderCommand command) {
+        if (command.getSide().equals(Side.SELL)) {
+            return command.getQuantity();
+        }
+
+        if (command.getQuantity().getUnit().equals("Number")) {
+            return command.getQuantity();
+        } else {
+            return Quantity.of(command.getLimitPrice().multiply(command.getQuantity()).getAmount().doubleValue());
+        }
     }
 
     private void lockAssetInPortfolio(Order order) {
