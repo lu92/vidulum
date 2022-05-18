@@ -2,7 +2,6 @@ package com.multi.vidulum.trading.app.commands.orders.fill;
 
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
 import com.multi.vidulum.shared.OrderFilledEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
@@ -33,28 +32,6 @@ public class FillOrderCommandHandler implements CommandHandler<FillOrderCommand,
                         command.dateTime()
                 )
         );
-
-//        emit event to portfolio
-
-//        ExecutedTrade.builder()
-////                .portfolioId(order.getPortfolioId())
-//                .tradeId(command.tradeId())
-//                .symbol(order.getSymbol())
-//                .subName(SubName.none())
-//                .side(order.getParameters().side())
-//                .quantity(command.quantity())
-//                .price(command.price())
-//                .build();
-
-//        ExecutedTrade executedTrade = ExecutedTrade.builder()
-//                .portfolioId(trade.getPortfolioId())
-//                .tradeId(trade.getTradeId())
-//                .symbol(trade.getSymbol())
-//                .subName(trade.getSubName())
-//                .side(trade.getSide())
-//                .quantity(trade.getQuantity())
-//                .price(trade.getPrice())
-//                .build();
 
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}]: execution of trade [{}] has been applied successfully!", savedOrder.getOrderId(), command.tradeId());
