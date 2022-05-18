@@ -2,7 +2,6 @@ package com.multi.vidulum.trading.app.commands.trades.execute;
 
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.shared.TradeCapturedEventEmitter;
-import com.multi.vidulum.shared.TradeStoredEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.*;
 import lombok.AllArgsConstructor;
@@ -16,7 +15,6 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
 
     private final DomainTradeRepository repository;
     private final DomainOrderRepository orderRepository;
-    private final TradeStoredEventEmitter eventEmitter;
     private final TradeCapturedEventEmitter tradeCapturedEventEmitter;
 
     @Override
