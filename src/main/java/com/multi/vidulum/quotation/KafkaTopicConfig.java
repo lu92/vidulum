@@ -2,7 +2,6 @@ package com.multi.vidulum.quotation;
 
 
 import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.common.events.TradeAppliedToPortfolioEvent;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
@@ -87,46 +86,6 @@ public class KafkaTopicConfig {
         QuotationService quotationService = new QuotationService();
         brokerQuotationProviders.forEach(quotationService::registerBroker);
         return quotationService;
-    }
-
-    @Bean
-    public NewTopic tradeExecutedTopic() {
-        return new NewTopic("executed_trades", 1, (short) 1);
-    }
-
-    @Bean
-    public ProducerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedProducerFactory() {
-        Map<String, Object> configProps = Map.of(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configProps);
-    }
-
-    @Bean
-    public KafkaTemplate<String, TradeAppliedToPortfolioEvent> tradeExecutedKafkaTemplate() {
-        return new KafkaTemplate<>(tradeExecutedProducerFactory());
-    }
-
-    @Bean
-    public ConsumerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedConsumerFactory() {
-        Map<String, Object> configProps = Map.of(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
-                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-
-        return new DefaultKafkaConsumerFactory<>(
-                configProps,
-                new StringDeserializer(),
-                new JsonDeserializer<>(TradeAppliedToPortfolioEvent.class));
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, TradeAppliedToPortfolioEvent> tradeExecutedContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, TradeAppliedToPortfolioEvent> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(tradeExecutedConsumerFactory());
-        return factory;
     }
 
     //    *******
