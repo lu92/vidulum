@@ -158,7 +158,7 @@ public abstract class IntegrationTest {
             Quantity expectedLocked,
             Quantity expectedFree) {
         Awaitility.await().atMost(10, SECONDS).until(() -> {
-            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId());
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId(), "USD");
             log.info(jsonFormatter.formatToPrettyJson(portfolioSummaryJson));
             return portfolioSummaryJson.getAssets().stream()
                     .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
