@@ -26,6 +26,7 @@ public class PortfolioSummaryMapper {
     private final QuoteRestClient quoteRestClient;
 
     public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
+        Broker broker = portfolio.getBroker();
         List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
                 .stream()
                 .map(asset -> mapAsset(portfolio.getBroker(), asset))
@@ -33,16 +34,20 @@ public class PortfolioSummaryMapper {
 
 
         Money currentValue = assets.stream().reduce(
-                Money.zero("USD"),
-                (accumulatedValue, assetSummary) -> accumulatedValue.plus(assetSummary.getCurrentValue()),
+                Money.zero(denominationCurrency.getId()),
+                (accumulatedValue, assetSummary) -> {
+                    Money denominatedCurrentValue = denominateInCurrency(assetSummary.getCurrentValue(), broker, denominationCurrency);
+                    return accumulatedValue.plus(denominatedCurrentValue);
+                },
                 Money::plus);
 
-        Money profit = currentValue.minus(portfolio.getInvestedBalance());
+        Money denominatedInvestedBalance = denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
+        Money profit = currentValue.minus(denominatedInvestedBalance);
 
 
         double pctProfit = 0;
-        if (!Money.zero("USD").equals(portfolio.getInvestedBalance())) {
-            pctProfit = profit.diffPct(portfolio.getInvestedBalance());
+        if (!Money.zero(denominationCurrency.getId()).equals(denominatedInvestedBalance)) {
+            pctProfit = profit.diffPct(denominatedInvestedBalance);
         }
 
         return PortfolioDto.PortfolioSummaryJson.builder()
@@ -52,11 +57,17 @@ public class PortfolioSummaryMapper {
                 .broker(portfolio.getBroker().getId())
                 .assets(assets)
                 .status(portfolio.getStatus())
-                .investedBalance(portfolio.getInvestedBalance())
+                .investedBalance(denominatedInvestedBalance)
                 .currentValue(currentValue)
                 .profit(profit)
                 .pctProfit(pctProfit)
                 .build();
+    }
+
+    private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
+        Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
+        Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
+        return money.multiply(currencyPrice.getAmount().doubleValue());
     }
 
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
