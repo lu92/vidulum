@@ -220,9 +220,6 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         .build();
                 assets.add(cash);
             });
-            if (Objects.isNull(investedBalance)) {
-                investedBalance = Money.zero(ticker.getId());
-            }
             investedBalance = investedBalance.plus(event.deposit());
         });
     }
