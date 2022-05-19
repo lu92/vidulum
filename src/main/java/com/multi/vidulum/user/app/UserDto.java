@@ -31,6 +31,7 @@ public class UserDto {
         private String userId;
         private String name;
         private String broker;
+        private String allowedDepositCurrency;
     }
 
     @Data

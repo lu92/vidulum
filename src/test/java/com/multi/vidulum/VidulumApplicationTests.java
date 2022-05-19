@@ -82,7 +82,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
         depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
@@ -150,6 +150,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
@@ -440,7 +441,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
         depositMoney(registeredPortfolioId, Money.of(100000.0, "USD"));
@@ -533,6 +534,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
@@ -630,7 +632,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", persistedUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -993,6 +995,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(100000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
@@ -1331,9 +1334,9 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = registerPortfolio("Precious Metals 1", "PM", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio = registerPortfolio("Precious Metals 1", "PM", persistedUser.getUserId(), "USD");
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = registerPortfolio("Precious Metals 2", "PM", persistedUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPreciousMetalsPortfolio2 = registerPortfolio("Precious Metals 2", "PM", persistedUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPreciousMetalsPortfolio.getPortfolioId());
         PortfolioId registeredPortfolioId2 = PortfolioId.of(registeredPreciousMetalsPortfolio2.getPortfolioId());

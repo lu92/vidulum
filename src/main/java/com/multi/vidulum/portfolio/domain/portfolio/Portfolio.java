@@ -30,6 +30,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private List<Asset> assets;
     private Money investedBalance;
     private PortfolioStatus status;
+    private Currency allowedDepositCurrency;
     private List<DomainEvent> uncommittedEvents;
 
     @Override
@@ -51,7 +52,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 broker,
                 assetSnapshots,
                 status,
-                investedBalance
+                investedBalance,
+                allowedDepositCurrency
         );
     }
 
@@ -75,6 +77,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .assets(assets)
                 .status(snapshot.getStatus())
                 .investedBalance(snapshot.getInvestedBalance())
+                .allowedDepositCurrency(snapshot.getAllowedDepositCurrency())
                 .build();
     }
 
@@ -115,7 +118,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     event.symbol().getDestination(),
                     SubName.none(),
                     Quantity.of(event.price().multiply(event.quantity()).getAmount().doubleValue()),
-                    Price.one("USD"));
+                    Price.one(event.symbol().getDestination().getId()));
         } else {
             return new AssetPortion(
                     event.symbol().getOrigin(),
@@ -137,7 +140,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     trade.symbol().getDestination(),
                     SubName.none(),
                     Quantity.of(trade.price().multiply(trade.quantity()).getAmount().doubleValue()),
-                    Price.one("USD"));
+                    Price.one(trade.symbol().getDestination().getId()));
         }
     }
 
@@ -198,6 +201,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void apply(MoneyDepositedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
             Ticker ticker = Ticker.of(event.deposit().getCurrency());
+            Currency depositCurrency = Currency.of(ticker.getId());
+            if (!depositCurrency.equals(allowedDepositCurrency)) {
+                throw new IllegalArgumentException(String.format("Cannot accept deposit with currency: [%s]", depositCurrency));
+            }
             findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
                 Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
                 existingAsset.setQuantity(updatedQuantity);
@@ -213,6 +220,9 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         .build();
                 assets.add(cash);
             });
+            if (Objects.isNull(investedBalance)) {
+                investedBalance = Money.zero(ticker.getId());
+            }
             investedBalance = investedBalance.plus(event.deposit());
         });
     }

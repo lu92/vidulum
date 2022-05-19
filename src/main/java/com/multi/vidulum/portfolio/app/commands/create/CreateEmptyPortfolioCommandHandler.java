@@ -29,6 +29,7 @@ public class CreateEmptyPortfolioCommandHandler implements CommandHandler<Create
                 command.getPortfolioId(),
                 command.getName(),
                 command.getUserId(),
-                command.getBroker());
+                command.getBroker(),
+                command.getAllowedDepositCurrency());
     }
 }

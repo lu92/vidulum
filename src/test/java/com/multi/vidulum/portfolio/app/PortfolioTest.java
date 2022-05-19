@@ -20,6 +20,8 @@ class PortfolioTest extends IntegrationTest {
 
     private static final UserId USER_ID = UserId.of("User");
     private static final Broker BROKER = Broker.of("Broker");
+    private static final Currency USD = Currency.of("USD");
+    private static final Currency EUR = Currency.of("EUR");
     private static final String PORTFOLIO_NAME = "XYZ";
 
     @Test
@@ -29,7 +31,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
@@ -52,6 +55,7 @@ class PortfolioTest extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -74,7 +78,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
@@ -117,6 +122,7 @@ class PortfolioTest extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -153,7 +159,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
@@ -199,6 +206,7 @@ class PortfolioTest extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -248,7 +256,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
@@ -296,6 +305,7 @@ class PortfolioTest extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000.0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -352,7 +362,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
         portfolio.close();
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
@@ -365,6 +376,7 @@ class PortfolioTest extends IntegrationTest {
                 .assets(List.of())
                 .status(PortfolioStatus.CLOSED)
                 .investedBalance(Money.of(0, "USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -387,7 +399,8 @@ class PortfolioTest extends IntegrationTest {
                 portfolioId,
                 PORTFOLIO_NAME,
                 USER_ID,
-                BROKER
+                BROKER,
+                USD
         );
 
         portfolio.depositMoney(Money.of(10000, "USD"));
@@ -411,6 +424,7 @@ class PortfolioTest extends IntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.zero("USD"))
+                .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
         assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
@@ -426,6 +440,104 @@ class PortfolioTest extends IntegrationTest {
                         new PortfolioEvents.MoneyWithdrawEvent(
                                 portfolio.getPortfolioId(),
                                 Money.of(10000, "USD"))
+                );
+    }
+
+    @Test
+    public void shouldBuyAndSellWithOtherCurrencyTest() {
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER,
+                EUR
+        );
+
+        portfolio.depositMoney(Money.of(10000, "EUR"));
+        Portfolio persistedPortfolio = portfolioRepository.save(portfolio);
+        persistedPortfolio.lockAsset(Ticker.of("EUR"), Quantity.of(4000));
+        persistedPortfolio.handleExecutedTrade(
+                ExecutedTrade.builder()
+                        .portfolioId(portfolio.getPortfolioId())
+                        .tradeId(TradeId.of("trade-1"))
+                        .symbol(Symbol.of("BTC/EUR"))
+                        .subName(SubName.none())
+                        .side(Side.BUY)
+                        .quantity(Quantity.of(0.1))
+                        .price(Price.of(40000.0, "EUR"))
+                        .build());
+        persistedPortfolio.lockAsset(Ticker.of("BTC"), Quantity.of(0.1));
+        persistedPortfolio.handleExecutedTrade(
+                ExecutedTrade.builder()
+                        .portfolioId(portfolio.getPortfolioId())
+                        .tradeId(TradeId.of("trade-2"))
+                        .symbol(Symbol.of("BTC/EUR"))
+                        .subName(SubName.none())
+                        .side(Side.SELL)
+                        .quantity(Quantity.of(0.1))
+                        .price(Price.of(40000.0, "EUR"))
+                        .build());
+
+        Portfolio savedPortfolio = portfolioRepository.save(persistedPortfolio);
+
+        assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
+                .portfolioId(portfolio.getPortfolioId())
+                .userId(USER_ID)
+                .name(PORTFOLIO_NAME)
+                .broker(BROKER)
+                .assets(List.of(
+                        Asset.builder()
+                                .ticker(Ticker.of("EUR"))
+                                .subName(SubName.none())
+                                .avgPurchasePrice(Price.one("EUR"))
+                                .quantity(Quantity.of(10000))
+                                .locked(Quantity.zero())
+                                .free(Quantity.of(10000))
+                                .build()
+                ))
+                .status(PortfolioStatus.OPEN)
+                .investedBalance(Money.of(10000.0, "EUR"))
+                .allowedDepositCurrency(Currency.of("EUR"))
+                .build());
+
+        assertThat(portfolioRepository.findDomainEvents(savedPortfolio.getPortfolioId()))
+                .containsExactlyInAnyOrder(
+                        new PortfolioEvents.PortfolioOpenedEvent(
+                                portfolio.getPortfolioId(),
+                                "XYZ",
+                                Broker.of("Broker")
+                        ),
+                        new PortfolioEvents.MoneyDepositedEvent(
+                                portfolio.getPortfolioId(),
+                                Money.of(10000, "EUR")),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("EUR"),
+                                Quantity.of(4000)
+                        ),
+                        new PortfolioEvents.TradeProcessedEvent(
+                                portfolio.getPortfolioId(),
+                                TradeId.of("trade-1"),
+                                Symbol.of("BTC/EUR"),
+                                SubName.none(),
+                                Side.BUY,
+                                Quantity.of(0.1),
+                                Price.of(40000.0, "EUR")
+                        ),
+                        new PortfolioEvents.AssetLockedEvent(
+                                portfolio.getPortfolioId(),
+                                Ticker.of("BTC"),
+                                Quantity.of(0.1)
+                        ),
+                        new PortfolioEvents.TradeProcessedEvent(
+                                portfolio.getPortfolioId(),
+                                TradeId.of("trade-2"),
+                                Symbol.of("BTC/EUR"),
+                                SubName.none(),
+                                Side.SELL,
+                                Quantity.of(0.1),
+                                Price.of(40000.0, "EUR"))
                 );
     }
 }

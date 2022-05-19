@@ -1,9 +1,6 @@
 package com.multi.vidulum.user.infrastructure;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
@@ -31,12 +28,13 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
     private final PortfolioSummaryMapper portfolioSummaryMapper;
 
     @Override
-    public PortfolioId createPortfolio(String name, UserId userId, Broker broker) {
+    public PortfolioId createPortfolio(String name, UserId userId, Broker broker, Currency allowedDepositCurrency) {
         CreateEmptyPortfolioCommand command = CreateEmptyPortfolioCommand.builder()
                 .portfolioId(PortfolioId.generate())
                 .name(name)
                 .userId(userId)
                 .broker(broker)
+                .allowedDepositCurrency(allowedDepositCurrency)
                 .build();
         Portfolio portfolio = createEmptyPortfolioCommandHandler.handle(command);
         return portfolio.getPortfolioId();
