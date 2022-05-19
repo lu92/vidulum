@@ -1,6 +1,7 @@
 package com.multi.vidulum.user.app;
 
 import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -54,6 +55,7 @@ public class UserRestController {
                 .userId(UserId.of(request.getUserId()))
                 .name(request.getName())
                 .broker(Broker.of(request.getBroker()))
+                .currency(Currency.of(request.getAllowedDepositCurrency()))
                 .build();
 
         PortfolioId portfolioId = commandGateway.send(command);

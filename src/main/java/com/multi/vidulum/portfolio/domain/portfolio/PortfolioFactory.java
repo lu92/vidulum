@@ -1,9 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
-import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.PortfolioStatus;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
 import java.util.LinkedList;
@@ -11,7 +8,7 @@ import java.util.List;
 
 public class PortfolioFactory {
 
-    public Portfolio empty(PortfolioId portfolioId, String name, UserId userId, Broker broker) {
+    public Portfolio empty(PortfolioId portfolioId, String name, UserId userId, Broker broker, Currency allowedDepositCurrency) {
         List<DomainEvent> uncommittedEvents = new LinkedList<>();
         uncommittedEvents.add(
                 new PortfolioEvents.PortfolioOpenedEvent(
@@ -26,7 +23,8 @@ public class PortfolioFactory {
                 .name(name)
                 .broker(broker)
                 .assets(new LinkedList<>())
-                .investedBalance(Money.zero("USD"))
+                .allowedDepositCurrency(allowedDepositCurrency)
+                .investedBalance(Money.zero(allowedDepositCurrency.getId()))
                 .status(PortfolioStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();

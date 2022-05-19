@@ -125,12 +125,13 @@ public abstract class IntegrationTest {
         userRestController.activateUser(userId);
     }
 
-    protected UserDto.PortfolioRegistrationSummaryJson registerPortfolio(String name, String broker, String userId) {
+    protected UserDto.PortfolioRegistrationSummaryJson registerPortfolio(String name, String broker, String userId, String currency) {
         return userRestController.registerPortfolio(
                 UserDto.RegisterPortfolioJson.builder()
                         .name(name)
                         .broker(broker)
                         .userId(userId)
+                        .allowedDepositCurrency(currency)
                         .build());
     }
 

@@ -27,6 +27,8 @@ public class PortfolioEntity {
     private List<AssetEntity> assets;
     private PortfolioStatus status;
     private Money investedBalance;
+    private String allowedDepositCurrency;
+
 
     public static PortfolioEntity fromSnapshot(PortfolioSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.getPortfolioId())
@@ -53,6 +55,7 @@ public class PortfolioEntity {
                 .assets(assetEntities)
                 .status(snapshot.getStatus())
                 .investedBalance(snapshot.getInvestedBalance())
+                .allowedDepositCurrency(snapshot.getAllowedDepositCurrency().getId())
                 .build();
     }
 
@@ -75,7 +78,8 @@ public class PortfolioEntity {
                 Broker.of(broker),
                 assetSnapshots,
                 status,
-                investedBalance
+                investedBalance,
+                Currency.of(allowedDepositCurrency)
         );
     }
 }

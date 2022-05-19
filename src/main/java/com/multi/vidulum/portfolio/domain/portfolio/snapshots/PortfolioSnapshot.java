@@ -17,6 +17,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     List<AssetSnapshot> assets;
     PortfolioStatus status;
     Money investedBalance;
+    Currency allowedDepositCurrency;
 
     @Override
     public PortfolioId id() {

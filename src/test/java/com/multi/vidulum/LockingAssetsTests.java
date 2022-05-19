@@ -58,7 +58,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         activateUser(createdUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId(), "USD");
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -165,7 +165,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         activateUser(createdUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId(), "USD");
 
         depositMoney(PortfolioId.of(registeredPortfolio.getPortfolioId()), Money.of(100000.0, "USD"));
 
@@ -292,7 +292,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         activateUser(createdUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 
@@ -502,7 +502,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         activateUser(createdUser.getUserId());
 
-        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId());
+        UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "BINANCE", createdUser.getUserId(), "USD");
 
         PortfolioId registeredPortfolioId = PortfolioId.of(registeredPortfolio.getPortfolioId());
 

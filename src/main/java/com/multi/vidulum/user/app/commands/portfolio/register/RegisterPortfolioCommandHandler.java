@@ -31,7 +31,8 @@ public class RegisterPortfolioCommandHandler implements CommandHandler<RegisterP
         PortfolioId portfolioId = portfolioRestClient.createPortfolio(
                 command.getName(),
                 command.getUserId(),
-                command.getBroker()
+                command.getBroker(),
+                command.getCurrency()
         );
 
         user.registerPortfolio(portfolioId);
