@@ -25,7 +25,7 @@ public class PortfolioSummaryMapper {
 
     private final QuoteRestClient quoteRestClient;
 
-    public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio) {
+    public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
         List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
                 .stream()
                 .map(asset -> mapAsset(portfolio.getBroker(), asset))

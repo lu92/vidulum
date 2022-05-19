@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
@@ -36,7 +37,7 @@ public class PortfolioRestController {
                 .build();
 
         Portfolio portfolio = commandGateway.send(command);
-        return portfolioSummaryMapper.map(portfolio);
+        return portfolioSummaryMapper.map(portfolio, portfolio.getAllowedDepositCurrency());
     }
 
     @PostMapping("/portfolio/deposit")
@@ -84,7 +85,7 @@ public class PortfolioRestController {
                 .build();
 
         Portfolio portfolio = queryGateway.send(query);
-        return portfolioSummaryMapper.map(portfolio);
+        return portfolioSummaryMapper.map(portfolio, Currency.of("USD"));
     }
 
     @GetMapping("/aggregated-portfolio/{userId}")
