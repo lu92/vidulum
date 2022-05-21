@@ -27,18 +27,15 @@ public class PortfolioSummaryMapper {
 
     public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
         Broker broker = portfolio.getBroker();
-        List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
+        List<PortfolioDto.AssetSummaryJson> denominatedAssets = portfolio.getAssets()
                 .stream()
-                .map(asset -> mapAsset(portfolio.getBroker(), asset))
+                .map(asset -> mapAssetWithDenomination(portfolio.getBroker(), asset, denominationCurrency))
                 .collect(toList());
 
 
-        Money currentValue = assets.stream().reduce(
+        Money currentValue = denominatedAssets.stream().reduce(
                 Money.zero(denominationCurrency.getId()),
-                (accumulatedValue, assetSummary) -> {
-                    Money denominatedCurrentValue = denominateInCurrency(assetSummary.getCurrentValue(), broker, denominationCurrency);
-                    return accumulatedValue.plus(denominatedCurrentValue);
-                },
+                (accumulatedValue, assetSummary) -> accumulatedValue.plus(assetSummary.getCurrentValue()),
                 Money::plus);
 
         Money denominatedInvestedBalance = denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
@@ -55,7 +52,7 @@ public class PortfolioSummaryMapper {
                 .userId(portfolio.getUserId().getId())
                 .name(portfolio.getName())
                 .broker(portfolio.getBroker().getId())
-                .assets(assets)
+                .assets(denominatedAssets)
                 .status(portfolio.getStatus())
                 .investedBalance(denominatedInvestedBalance)
                 .currentValue(currentValue)
@@ -113,13 +110,14 @@ public class PortfolioSummaryMapper {
 
 
     private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets) {
-        return assets.stream().map(asset -> mapAsset(broker, asset)).collect(toList());
+        return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, Currency.of("USD"))).collect(toList());
     }
 
-    private PortfolioDto.AssetSummaryJson mapAsset(Broker broker, Asset asset) {
-        AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, Symbol.of(asset.getTicker(), Ticker.of("USD")));
+    private PortfolioDto.AssetSummaryJson mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
+        Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
+        AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
-        Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity());
+        Money oldValue = denominateInCurrency(asset.getAvgPurchasePrice().multiply(asset.getQuantity()), broker, denominatedCurrency);
         Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
         Money profit = currentValue.minus(oldValue);
         double pctProfit = currentValue.diffPct(oldValue);

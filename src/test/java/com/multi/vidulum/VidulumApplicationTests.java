@@ -37,7 +37,11 @@ class VidulumApplicationTests extends IntegrationTest {
     @Test
     void shouldBuyBitcoinTest() {
         quoteRestController.changePrice("BINANCE", "BTC", "USD", 60000, "USD", 4.2);
+        quoteRestController.changePrice("BINANCE", "BTC", "EUR", 50000, "EUR", 3.2);
         quoteRestController.changePrice("BINANCE", "USD", "USD", 1, "USD", 0);
+        quoteRestController.changePrice("BINANCE", "EUR", "EUR", 1, "EUR", 0);
+        quoteRestController.changePrice("BINANCE", "USD", "EUR", 0.95, "USD", 0);
+        quoteRestController.changePrice("BINANCE", "EUR", "USD", 1.05, "USD", 0);
         quoteRestController.registerAssetBasicInfo("BINANCE", QuotationDto.AssetBasicInfoJson.builder()
                 .ticker("USD")
                 .fullName("American Dollar")
@@ -366,9 +370,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                         .fullName("Bitcoin")
                                         .avgPurchasePrice(Price.of(53333.3340, "USD"))
                                         .quantity(Quantity.of(0.75))
-//                                        .locked(Quantity.of(0.25))
                                         .locked(Quantity.zero())
-//                                        .free(Quantity.of(0.5))
                                         .free(Quantity.of(0.75))
                                         .pctProfit(0.12499998)
                                         .profit(Money.of(4999.9995, "USD"))
@@ -398,6 +400,10 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
 
         assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
+
+        PortfolioDto.PortfolioSummaryJson portfolioDenominatedInUSD = portfolioRestController.getPortfolio(registeredPortfolioId.getId(), "USD");
+        PortfolioDto.PortfolioSummaryJson portfolioDenominatedInEuro = portfolioRestController.getPortfolio(registeredPortfolioId.getId(), "EUR");
+        System.out.println(portfolioDenominatedInEuro);
     }
 
     @Test
