@@ -46,7 +46,7 @@ public class Money {
     }
 
     public double diffPct(Money other) {
-        return amount.divide(other.amount, 8, RoundingMode.FLOOR).subtract(BigDecimal.ONE).doubleValue();
+        return amount.compareTo(other.amount) == 0 || amount.compareTo(BigDecimal.ZERO) == 0? 0 : amount.divide(other.amount, 8, RoundingMode.FLOOR).subtract(BigDecimal.ONE).doubleValue();
     }
 
     public Money plus(Money other) {

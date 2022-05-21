@@ -11,6 +11,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -25,24 +26,26 @@ public class PortfolioSummaryMapper {
 
     private final QuoteRestClient quoteRestClient;
 
-    public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio) {
-        List<PortfolioDto.AssetSummaryJson> assets = portfolio.getAssets()
+    public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
+        Broker broker = portfolio.getBroker();
+        List<PortfolioDto.AssetSummaryJson> denominatedAssets = portfolio.getAssets()
                 .stream()
-                .map(asset -> mapAsset(portfolio.getBroker(), asset))
+                .map(asset -> mapAssetWithDenomination(portfolio.getBroker(), asset, denominationCurrency))
                 .collect(toList());
 
 
-        Money currentValue = assets.stream().reduce(
-                Money.zero("USD"),
+        Money currentValue = denominatedAssets.stream().reduce(
+                Money.zero(denominationCurrency.getId()),
                 (accumulatedValue, assetSummary) -> accumulatedValue.plus(assetSummary.getCurrentValue()),
                 Money::plus);
 
-        Money profit = currentValue.minus(portfolio.getInvestedBalance());
+        Money denominatedInvestedBalance = denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
+        Money profit = currentValue.minus(denominatedInvestedBalance);
 
 
         double pctProfit = 0;
-        if (!Money.zero("USD").equals(portfolio.getInvestedBalance())) {
-            pctProfit = profit.diffPct(portfolio.getInvestedBalance());
+        if (!Money.zero(denominationCurrency.getId()).equals(denominatedInvestedBalance)) {
+            pctProfit = profit.diffPct(denominatedInvestedBalance);
         }
 
         return PortfolioDto.PortfolioSummaryJson.builder()
@@ -50,13 +53,20 @@ public class PortfolioSummaryMapper {
                 .userId(portfolio.getUserId().getId())
                 .name(portfolio.getName())
                 .broker(portfolio.getBroker().getId())
-                .assets(assets)
+                .assets(denominatedAssets)
                 .status(portfolio.getStatus())
-                .investedBalance(portfolio.getInvestedBalance())
+                .investedBalance(denominatedInvestedBalance)
                 .currentValue(currentValue)
                 .profit(profit)
                 .pctProfit(pctProfit)
                 .build();
+    }
+
+    private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
+        Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
+        Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
+        BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
+        return Money.of(updatedAmount, currency.getId());
     }
 
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
@@ -102,13 +112,14 @@ public class PortfolioSummaryMapper {
 
 
     private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets) {
-        return assets.stream().map(asset -> mapAsset(broker, asset)).collect(toList());
+        return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, Currency.of("USD"))).collect(toList());
     }
 
-    private PortfolioDto.AssetSummaryJson mapAsset(Broker broker, Asset asset) {
-        AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, Symbol.of(asset.getTicker(), Ticker.of("USD")));
+    private PortfolioDto.AssetSummaryJson mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
+        Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
+        AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
-        Money oldValue = asset.getAvgPurchasePrice().multiply(asset.getQuantity());
+        Money oldValue = denominateInCurrency(asset.getAvgPurchasePrice().multiply(asset.getQuantity()), broker, denominatedCurrency);
         Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
         Money profit = currentValue.minus(oldValue);
         double pctProfit = currentValue.diffPct(oldValue);

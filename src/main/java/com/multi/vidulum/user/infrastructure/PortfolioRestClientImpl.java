@@ -67,7 +67,7 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
                 .build();
 
         Portfolio portfolio = getPortfolioQueryHandler.query(query);
-        return portfolioSummaryMapper.map(portfolio);
+        return portfolioSummaryMapper.map(portfolio, Currency.of("USD"));
     }
 
     @Override
