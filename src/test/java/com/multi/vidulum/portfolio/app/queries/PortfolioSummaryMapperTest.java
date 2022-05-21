@@ -175,5 +175,4 @@ class PortfolioSummaryMapperTest {
                 .profit(Money.zero("EUR"))
                 .build());
     }
-
 }
