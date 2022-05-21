@@ -11,6 +11,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,8 @@ public class PortfolioSummaryMapper {
     private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
         Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
         Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
-        return money.multiply(currencyPrice.getAmount().doubleValue());
+        BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
+        return Money.of(updatedAmount, currency.getId());
     }
 
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
