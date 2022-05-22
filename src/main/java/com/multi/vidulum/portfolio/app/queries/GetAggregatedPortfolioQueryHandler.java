@@ -1,6 +1,5 @@
 package com.multi.vidulum.portfolio.app.queries;
 
-import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Segment;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
@@ -41,7 +40,6 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                         AggregatedPortfolio.builder()
                                 .userId(query.getUserId())
                                 .segmentedAssets(new HashMap<>())
-                                .investedBalance(Money.zero("USD")) // todo remove
                                 .build(),
                         (aggregatedPortfolio, portfolio) -> {
 
@@ -61,7 +59,6 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                             });
 
                             // increase number of invested money
-                            aggregatedPortfolio.appendInvestedMoney(portfolio.getInvestedBalance());
                             aggregatedPortfolio.appendPortfolioId(portfolio.getPortfolioId()); // todo remove
                             aggregatedPortfolio.appendPortfolioInvestedBalance(
                                     new AggregatedPortfolio.PortfolioInvestedBalance(

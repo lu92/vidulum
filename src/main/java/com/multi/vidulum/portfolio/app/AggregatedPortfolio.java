@@ -1,10 +1,13 @@
 package com.multi.vidulum.portfolio.app;
 
-import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -20,7 +23,6 @@ public class AggregatedPortfolio {
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
     private List<PortfolioId> portfolioIds = new LinkedList<>();
     private List<PortfolioInvestedBalance> portfolioInvestedBalances;
-    private Money investedBalance; // todo remove
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
@@ -108,10 +110,6 @@ public class AggregatedPortfolio {
         }
     }
 
-    public void appendInvestedMoney(Money money) {
-        investedBalance = investedBalance.plus(money);
-    }
-
     private Map<Ticker, Asset> mergeAssetsWithSameTicker(List<Asset> assets) {
         Map<Ticker, List<Asset>> groupedAssetsPerTicker = assets.stream().collect(Collectors.groupingBy(Asset::getTicker));
         return groupedAssetsPerTicker.entrySet().stream()
@@ -148,8 +146,8 @@ public class AggregatedPortfolio {
     }
 
     public record PortfolioInvestedBalance(PortfolioId portfolioId,
-                                    Currency originCurrency,
-                                    Money investedMoney,
-                                    Broker broker) {
+                                           Currency originCurrency,
+                                           Money investedMoney,
+                                           Broker broker) {
     }
 }
