@@ -62,13 +62,6 @@ public class PortfolioSummaryMapper {
                 .build();
     }
 
-    private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
-        Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
-        Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
-        BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
-        return Money.of(updatedAmount, currency.getId());
-    }
-
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio, Currency denominationCurrency) {
         Map<Segment, Map<Broker, List<Asset>>> segmentedAssets = aggregatedPortfolio.fetchSegmentedAssets();
         Set<Segment> segments = segmentedAssets.keySet();
@@ -115,6 +108,12 @@ public class PortfolioSummaryMapper {
                 .build();
     }
 
+    private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
+        Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
+        Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
+        BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
+        return Money.of(updatedAmount, currency.getId());
+    }
 
     private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets, Currency denominationCurrency) {
         return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency)).collect(toList());
