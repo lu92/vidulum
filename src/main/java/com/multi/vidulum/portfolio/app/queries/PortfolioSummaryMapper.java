@@ -33,7 +33,6 @@ public class PortfolioSummaryMapper {
                 .map(asset -> mapAssetWithDenomination(portfolio.getBroker(), asset, denominationCurrency))
                 .collect(toList());
 
-
         Money currentValue = denominatedAssets.stream().reduce(
                 Money.zero(denominationCurrency.getId()),
                 (accumulatedValue, assetSummary) -> accumulatedValue.plus(assetSummary.getCurrentValue()),
@@ -41,7 +40,6 @@ public class PortfolioSummaryMapper {
 
         Money denominatedInvestedBalance = denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
         Money profit = currentValue.minus(denominatedInvestedBalance);
-
 
         double pctProfit = 0;
         if (!Money.zero(denominationCurrency.getId()).equals(denominatedInvestedBalance)) {
@@ -95,7 +93,6 @@ public class PortfolioSummaryMapper {
         double pctProfit = Money.zero(denominationCurrency.getId()).equals(investedBalanceInDenominatedCurrency) ?
                 0 :
                 currentValue.diffPct(investedBalanceInDenominatedCurrency);
-
 
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())

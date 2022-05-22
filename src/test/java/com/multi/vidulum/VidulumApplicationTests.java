@@ -161,7 +161,7 @@ class VidulumApplicationTests extends IntegrationTest {
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(1);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId(), "USD");
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.getUserId())
@@ -274,7 +274,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 );
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId(), "USD");
         assertThat(aggregatedPortfolio1)
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -359,7 +359,7 @@ class VidulumApplicationTests extends IntegrationTest {
 
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.getPortfolioId())).isEmpty();
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId(), "USD");
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio2 = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.getUserId())
@@ -547,7 +547,7 @@ class VidulumApplicationTests extends IntegrationTest {
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.getUserId(), registeredPortfolio.getPortfolioId());
         assertThat(allTrades).hasSize(2);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId(), "USD");
 
         log.info("Aggregated portfolio:\n {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
 
@@ -1009,7 +1009,7 @@ class VidulumApplicationTests extends IntegrationTest {
         assertThat(allTrades).hasSize(8);
 
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.getUserId(), "USD");
         log.info("Aggregated portfolio:\n{}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -1533,7 +1533,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         assertThat(lastTwoTrades).hasSize(3);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(registeredPreciousMetalsPortfolio.getUserId(), "USD");
 
         log.info("Aggregated Portfolio: {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolioJson));
 

@@ -108,7 +108,7 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(27500.0)) && usdAsset.getFree().equals(Quantity.of(72500));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.getUserId())
@@ -235,7 +235,7 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().isZero() && usdAsset.getFree().equals(Quantity.of(100000.0));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.getUserId())
@@ -428,7 +428,7 @@ class LockingAssetsTests extends IntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(25000)) && btcAsset.getLocked().equals(Quantity.of(0.5));
         });
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUser.getUserId());
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD");
         assertThat(aggregatedPortfolio)
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -586,7 +586,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.getUserId())
@@ -705,7 +705,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.6));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId()))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.getUserId())
