@@ -1,12 +1,10 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,7 +19,8 @@ public class AggregatedPortfolio {
     private UserId userId;
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
     private List<PortfolioId> portfolioIds = new LinkedList<>();
-    private Money investedBalance;
+    private List<PortfolioInvestedBalance> portfolioInvestedBalances;
+    private Money investedBalance; // todo remove
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
@@ -56,7 +55,14 @@ public class AggregatedPortfolio {
         portfolioIds.add(portfolioId);
     }
 
-    class GroupedAssets {
+    public void appendPortfolioInvestedBalance(PortfolioInvestedBalance investedBalance) {
+        if (portfolioInvestedBalances == null) {
+            portfolioInvestedBalances = new LinkedList<>();
+        }
+        portfolioInvestedBalances.add(investedBalance);
+    }
+
+    static class GroupedAssets {
         private final Map<Broker, List<Asset>> portfolio = new HashMap<>();
 
         void appendAsset(Broker broker, Asset asset) {
@@ -139,5 +145,11 @@ public class AggregatedPortfolio {
                                                 return identityAsset;
                                             });
                         }));
+    }
+
+    public record PortfolioInvestedBalance(PortfolioId portfolioId,
+                                    Currency originCurrency,
+                                    Money investedMoney,
+                                    Broker broker) {
     }
 }

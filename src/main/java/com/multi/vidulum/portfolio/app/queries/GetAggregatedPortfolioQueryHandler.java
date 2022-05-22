@@ -41,7 +41,7 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                         AggregatedPortfolio.builder()
                                 .userId(query.getUserId())
                                 .segmentedAssets(new HashMap<>())
-                                .investedBalance(Money.zero("USD"))
+                                .investedBalance(Money.zero("USD")) // todo remove
                                 .build(),
                         (aggregatedPortfolio, portfolio) -> {
 
@@ -62,8 +62,14 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
 
                             // increase number of invested money
                             aggregatedPortfolio.appendInvestedMoney(portfolio.getInvestedBalance());
-                            aggregatedPortfolio.appendPortfolioId(portfolio.getPortfolioId());
-
+                            aggregatedPortfolio.appendPortfolioId(portfolio.getPortfolioId()); // todo remove
+                            aggregatedPortfolio.appendPortfolioInvestedBalance(
+                                    new AggregatedPortfolio.PortfolioInvestedBalance(
+                                            portfolio.getPortfolioId(),
+                                            portfolio.getAllowedDepositCurrency(),
+                                            portfolio.getInvestedBalance(),
+                                            portfolio.getBroker())
+                            );
                             return aggregatedPortfolio;
                         },
                         (firstAggregatedPortfolio, secondAggregatedPortfolio) -> {

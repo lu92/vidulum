@@ -94,7 +94,7 @@ public class PortfolioRestController {
                 .userId(UserId.of(userId))
                 .build();
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
-        return portfolioSummaryMapper.map(aggregatedPortfolio);
+        return portfolioSummaryMapper.map(aggregatedPortfolio, Currency.of("USD"));
     }
 
     @GetMapping("/portfolio/opened-positions/{portfolioId}")

@@ -69,7 +69,7 @@ public class PortfolioSummaryMapper {
         return Money.of(updatedAmount, currency.getId());
     }
 
-    public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio) {
+    public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio, Currency denominationCurrency) {
         Map<Segment, Map<Broker, List<Asset>>> segmentedAssets = aggregatedPortfolio.fetchSegmentedAssets();
         Set<Segment> segments = segmentedAssets.keySet();
         Map<String, List<PortfolioDto.AssetSummaryJson>> mappedAssets = segments.stream()
@@ -79,7 +79,7 @@ public class PortfolioSummaryMapper {
                             .map(entry -> {
                                 Broker broker = entry.getKey();
                                 List<Asset> assets = entry.getValue();
-                                return mapAssets(broker, assets);
+                                return mapAssets(broker, assets, denominationCurrency);
                             })
                             .flatMap(Collection::stream)
                             .collect(toList());
@@ -87,7 +87,7 @@ public class PortfolioSummaryMapper {
 
         Money currentValue = mappedAssets.values().stream().flatMap(Collection::stream)
                 .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
-                .reduce(Money.zero("USD"), Money::plus);
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
 
         List<String> portfolioIds = aggregatedPortfolio.getPortfolioIds().stream()
                 .map(PortfolioId::getId)
@@ -99,11 +99,15 @@ public class PortfolioSummaryMapper {
                 0 :
                 currentValue.diffPct(aggregatedPortfolio.getInvestedBalance());
 
+        Money investedBalanceInDenominatedCurrency = aggregatedPortfolio.getPortfolioInvestedBalances().stream()
+                .map(investedBalance -> denominateInCurrency(investedBalance.investedMoney(), investedBalance.broker(), denominationCurrency))
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
                 .segmentedAssets(mappedAssets)
                 .portfolioIds(portfolioIds)
-                .investedBalance(aggregatedPortfolio.getInvestedBalance().withScale(4))
+                .investedBalance(investedBalanceInDenominatedCurrency.withScale(4))
                 .currentValue(currentValue.withScale(4))
                 .totalProfit(profit.withScale(4))
                 .pctProfit(pctProfit)
@@ -111,8 +115,8 @@ public class PortfolioSummaryMapper {
     }
 
 
-    private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets) {
-        return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, Currency.of("USD"))).collect(toList());
+    private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets, Currency denominationCurrency) {
+        return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency)).collect(toList());
     }
 
     private PortfolioDto.AssetSummaryJson mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {

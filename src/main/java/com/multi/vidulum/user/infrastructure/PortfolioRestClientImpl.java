@@ -76,6 +76,6 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
                 .userId(userId)
                 .build();
         AggregatedPortfolio aggregatedPortfolio = getAggregatedPortfolioQueryHandler.query(query);
-        return portfolioSummaryMapper.map(aggregatedPortfolio);
+        return portfolioSummaryMapper.map(aggregatedPortfolio, Currency.of("USD"));
     }
 }
