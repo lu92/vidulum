@@ -1,12 +1,10 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,7 +19,7 @@ public class AggregatedPortfolio {
     private UserId userId;
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
     private List<PortfolioId> portfolioIds = new LinkedList<>();
-    private Money investedBalance;
+    private List<PortfolioInvestedBalance> portfolioInvestedBalances;
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
@@ -56,10 +54,19 @@ public class AggregatedPortfolio {
         portfolioIds.add(portfolioId);
     }
 
-    class GroupedAssets {
-        private final Map<Broker, List<Asset>> portfolio = new HashMap<>();
+    public void appendPortfolioInvestedBalance(PortfolioInvestedBalance investedBalance) {
+        if (portfolioInvestedBalances == null) {
+            portfolioInvestedBalances = new LinkedList<>();
+        }
+        portfolioInvestedBalances.add(investedBalance);
+    }
 
-        void appendAsset(Broker broker, Asset asset) {
+    @Value
+    @Builder
+    public static class GroupedAssets {
+        Map<Broker, List<Asset>> portfolio = new HashMap<>();
+
+        public void appendAsset(Broker broker, Asset asset) {
             findRelatedAsset(broker, asset.getTicker())
                     .ifPresentOrElse(relatedAsset -> {
 
@@ -102,10 +109,6 @@ public class AggregatedPortfolio {
         }
     }
 
-    public void appendInvestedMoney(Money money) {
-        investedBalance = investedBalance.plus(money);
-    }
-
     private Map<Ticker, Asset> mergeAssetsWithSameTicker(List<Asset> assets) {
         Map<Ticker, List<Asset>> groupedAssetsPerTicker = assets.stream().collect(Collectors.groupingBy(Asset::getTicker));
         return groupedAssetsPerTicker.entrySet().stream()
@@ -139,5 +142,11 @@ public class AggregatedPortfolio {
                                                 return identityAsset;
                                             });
                         }));
+    }
+
+    public record PortfolioInvestedBalance(PortfolioId portfolioId,
+                                           Currency originCurrency,
+                                           Money investedMoney,
+                                           Broker broker) {
     }
 }

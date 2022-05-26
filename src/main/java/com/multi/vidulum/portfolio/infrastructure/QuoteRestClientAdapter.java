@@ -8,8 +8,10 @@ import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class QuoteRestClientAdapter implements QuoteRestClient {
@@ -18,11 +20,13 @@ public class QuoteRestClientAdapter implements QuoteRestClient {
 
     @Override
     public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
+        log.info("[{}] Getting price metadata of [{}]", broker, symbol);
         return quotationService.fetch(broker, symbol);
     }
 
     @Override
     public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
+        log.info("[{}] Getting info about asset [{}]", broker, ticker);
         return quotationService.fetchBasicInfoAboutAsset(broker, ticker);
     }
 

@@ -88,13 +88,13 @@ public class PortfolioRestController {
         return portfolioSummaryMapper.map(portfolio, Currency.of(currency));
     }
 
-    @GetMapping("/aggregated-portfolio/{userId}")
-    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable("userId") String userId) {
+    @GetMapping("/aggregated-portfolio/{userId}/{currency}")
+    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable("userId") String userId, @PathVariable String currency) {
         GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
                 .userId(UserId.of(userId))
                 .build();
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
-        return portfolioSummaryMapper.map(aggregatedPortfolio);
+        return portfolioSummaryMapper.map(aggregatedPortfolio, Currency.of(currency));
     }
 
     @GetMapping("/portfolio/opened-positions/{portfolioId}")
