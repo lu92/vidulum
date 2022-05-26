@@ -9,6 +9,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ import java.util.Set;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class PortfolioSummaryMapper {
@@ -107,6 +109,7 @@ public class PortfolioSummaryMapper {
 
     private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
         Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
+        log.info("Getting price metadata of [{}]", currencySymbol);
         Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
         BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
         return Money.of(updatedAmount, currency.getId());
@@ -118,12 +121,14 @@ public class PortfolioSummaryMapper {
 
     private PortfolioDto.AssetSummaryJson mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
         Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
+        log.info("Getting price metadata of [{}]", symbol);
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
         Money oldValue = denominateInCurrency(asset.getAvgPurchasePrice().multiply(asset.getQuantity()), broker, denominatedCurrency);
         Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
         Money profit = currentValue.minus(oldValue);
         double pctProfit = currentValue.diffPct(oldValue);
+        log.info("Getting info about asset [{}]", asset.getTicker());
+        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
 
         return PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())

@@ -4,10 +4,7 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -64,10 +61,12 @@ public class AggregatedPortfolio {
         portfolioInvestedBalances.add(investedBalance);
     }
 
-    static class GroupedAssets {
-        private final Map<Broker, List<Asset>> portfolio = new HashMap<>();
+    @Value
+    @Builder
+    public static class GroupedAssets {
+        Map<Broker, List<Asset>> portfolio = new HashMap<>();
 
-        void appendAsset(Broker broker, Asset asset) {
+        public void appendAsset(Broker broker, Asset asset) {
             findRelatedAsset(broker, asset.getTicker())
                     .ifPresentOrElse(relatedAsset -> {
 
