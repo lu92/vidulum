@@ -41,5 +41,6 @@ public class UserDto {
         private String name;
         private String broker;
         private String portfolioId;
+        private String allowedDepositCurrency;
     }
 }

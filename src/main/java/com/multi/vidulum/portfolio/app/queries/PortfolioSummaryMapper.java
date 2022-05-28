@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -130,6 +131,13 @@ public class PortfolioSummaryMapper {
         log.info("Getting info about asset [{}]", asset.getTicker());
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
 
+        Set<PortfolioDto.AssetLockJson> activeLocks = asset.getActiveLocks().stream()
+                .map(lock -> PortfolioDto.AssetLockJson.builder()
+                        .orderId(lock.orderId().getId())
+                        .quantity(lock.locked())
+                        .build())
+                .collect(Collectors.toSet());
+
         return PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
                 .fullName(assetBasicInfo.getFullName())
@@ -137,6 +145,7 @@ public class PortfolioSummaryMapper {
                 .quantity(asset.getQuantity())
                 .locked(asset.getLocked())
                 .free(asset.getFree())
+                .activeLocks(activeLocks)
                 .tags(assetBasicInfo.getTags())
                 .pctProfit(pctProfit)
                 .profit(profit.withScale(4))

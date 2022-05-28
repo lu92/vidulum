@@ -64,6 +64,7 @@ public class UserRestController {
                 .name(request.getName())
                 .broker(request.getBroker())
                 .portfolioId(portfolioId.getId())
+                .allowedDepositCurrency(request.getAllowedDepositCurrency())
                 .build();
     }
 
