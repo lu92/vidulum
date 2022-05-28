@@ -608,4 +608,24 @@ class PortfolioTest extends IntegrationTest {
                 .isInstanceOf(CannotUnlockAssetException.class)
                 .hasMessage("Cannot unlock [Ticker(Id=USD)] - unable to find [OrderId(id=Unknown order-id)]");
     }
+
+    @Test
+    public void cannotUnlockAssetCauseOfInsufficientBalance() {
+        // Given
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER,
+                USD
+        );
+        portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
+
+        // When and Then
+        assertThatThrownBy(() -> portfolio.unlockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(5000), DATE_TIME))
+                .isInstanceOf(CannotUnlockAssetException.class)
+                .hasMessage("Cannot unlock [Ticker(Id=USD)] for [OrderId(id=order-id-1)] - insufficient balance [Quantity(qty=5000.0, unit=Number)]");
+    }
 }
