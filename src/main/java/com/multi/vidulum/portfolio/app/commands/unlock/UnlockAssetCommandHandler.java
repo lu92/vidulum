@@ -8,12 +8,16 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
+
 @Slf4j
 @Component
 @AllArgsConstructor
 public class UnlockAssetCommandHandler implements CommandHandler<UnlockAssetCommand, Portfolio> {
 
     private final DomainPortfolioRepository repository;
+    private final Clock clock;
 
     @Override
     public Portfolio handle(UnlockAssetCommand command) {
@@ -21,14 +25,18 @@ public class UnlockAssetCommandHandler implements CommandHandler<UnlockAssetComm
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.unlockAsset(command.getTicker(), command.getQuantity());
+        log.info("Attempt to unlock [{}] in [{}] - [{}] amount [{}]",
+                command.getTicker().getId(),
+                command.getPortfolioId(),
+                command.getOrderId(),
+                command.getQuantity());
+        portfolio.unlockAsset(command.getTicker(),command.orderId, command.getQuantity(), ZonedDateTime.now(clock));
 
         Portfolio savedPortfolio = repository.save(portfolio);
-        log.info(String.format("[%s] Asset [%s] amount [%s] has been unlocked successfully",
+        log.info("[{}] Asset [{}] amount [{}] has been unlocked successfully",
                 command.getPortfolioId(),
                 command.getTicker(),
-                command.getQuantity()));
-
+                command.getQuantity());
         return savedPortfolio;
     }
 }

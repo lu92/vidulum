@@ -28,6 +28,7 @@ public class ProcessTradeCommandHandler implements CommandHandler<ProcessTradeCo
         ExecutedTrade executedTrade = ExecutedTrade.builder()
                 .portfolioId(command.getPortfolioId())
                 .tradeId(command.getTradeId())
+                .orderId(command.getOrderId())
                 .symbol(command.getSymbol())
                 .subName(command.getSubName())
                 .side(command.getSide())

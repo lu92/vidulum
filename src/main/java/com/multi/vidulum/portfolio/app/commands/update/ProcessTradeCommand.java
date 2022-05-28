@@ -11,6 +11,7 @@ import lombok.Getter;
 public class ProcessTradeCommand implements Command {
     PortfolioId portfolioId;
     TradeId tradeId;
+    OrderId orderId;
     Symbol symbol;
     SubName subName;
     Side side;

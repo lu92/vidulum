@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,7 +48,7 @@ class PortfolioSummaryMapperTest {
                 USD);
 
         PORTFOLIO.depositMoney(Money.of(10000, "USD"));
-        PORTFOLIO.lockAsset(Ticker.of("USD"), Quantity.of(4000));
+        PORTFOLIO.lockAsset(Ticker.of("USD"), OrderId.of("order-id"), Quantity.of(4000), ZonedDateTime.parse("2021-06-01T06:30:00Z"));
         PORTFOLIO.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(PORTFOLIO.getPortfolioId())

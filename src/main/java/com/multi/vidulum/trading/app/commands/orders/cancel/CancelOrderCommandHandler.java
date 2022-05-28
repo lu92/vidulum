@@ -42,6 +42,7 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
         portfolioRestClient.unlockAsset(
                 order.getPortfolioId(),
                 ticker,
+                order.getOrderId(),
                 quantityToUnlocked);
     }
 }

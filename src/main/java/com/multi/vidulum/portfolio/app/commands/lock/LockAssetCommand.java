@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app.commands.lock;
 
+import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
@@ -11,6 +12,7 @@ import lombok.Getter;
 @Builder
 public class LockAssetCommand implements Command {
     PortfolioId portfolioId;
+    OrderId orderId;
     Ticker ticker;
     Quantity quantity;
 }
