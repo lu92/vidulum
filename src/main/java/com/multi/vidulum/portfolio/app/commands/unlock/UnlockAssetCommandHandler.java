@@ -25,14 +25,18 @@ public class UnlockAssetCommandHandler implements CommandHandler<UnlockAssetComm
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
+        log.info("Attempt to unlock [{}] in [{}] - [{}] amount [{}]",
+                command.getTicker().getId(),
+                command.getPortfolioId(),
+                command.getOrderId(),
+                command.getQuantity());
         portfolio.unlockAsset(command.getTicker(),command.orderId, command.getQuantity(), ZonedDateTime.now(clock));
 
         Portfolio savedPortfolio = repository.save(portfolio);
-        log.info(String.format("[%s] Asset [%s] amount [%s] has been unlocked successfully",
+        log.info("[{}] Asset [{}] amount [{}] has been unlocked successfully",
                 command.getPortfolioId(),
                 command.getTicker(),
-                command.getQuantity()));
-
+                command.getQuantity());
         return savedPortfolio;
     }
 }

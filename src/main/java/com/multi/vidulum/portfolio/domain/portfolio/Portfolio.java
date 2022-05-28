@@ -39,8 +39,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     List<PortfolioSnapshot.AssetLockSnapshot> activeLocks = asset.getActiveLocks().stream()
                             .map(assetLock -> new PortfolioSnapshot.AssetLockSnapshot(
                                     assetLock.orderId(),
-                                    assetLock.locked()
-                            ))
+                                    assetLock.locked()))
                             .collect(Collectors.toList());
 
                     return new PortfolioSnapshot.AssetSnapshot(

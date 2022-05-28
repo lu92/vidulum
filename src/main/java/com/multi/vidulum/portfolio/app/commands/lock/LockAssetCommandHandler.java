@@ -25,14 +25,18 @@ public class LockAssetCommandHandler implements CommandHandler<LockAssetCommand,
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
+        log.info("Attempt to lock [{}] in [{}] - [{}] amount [{}]",
+                command.getTicker().getId(),
+                command.getPortfolioId(),
+                command.getOrderId(),
+                command.getQuantity());
         portfolio.lockAsset(command.getTicker(),command.getOrderId(), command.getQuantity(), ZonedDateTime.now(clock));
 
         Portfolio savedPortfolio = repository.save(portfolio);
-        log.info(String.format("Asset [%s] amount [%s] has been locked successfully in [%s]",
+        log.info("[{}] Asset [{}] amount [{}] has been locked successfully",
+                command.getPortfolioId(),
                 command.getTicker(),
-                command.getQuantity(),
-                command.getPortfolioId()));
-
+                command.getQuantity());
         return savedPortfolio;
     }
 }
