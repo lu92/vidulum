@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.app;
 
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.CannotUnlockAssetException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Slf4j
 class PortfolioTest extends IntegrationTest {
@@ -585,5 +587,25 @@ class PortfolioTest extends IntegrationTest {
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "EUR"))
                 );
+    }
+
+    @Test
+    public void cannotUnlockAssetForOrderWhichIsNotPresent() {
+        // Given
+        PortfolioId portfolioId = PortfolioId.generate();
+        Portfolio portfolio = portfolioFactory.empty(
+                portfolioId,
+                PORTFOLIO_NAME,
+                USER_ID,
+                BROKER,
+                USD
+        );
+        portfolio.depositMoney(Money.of(10000, "USD"));
+        portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
+
+        // When and Then
+        assertThatThrownBy(() -> portfolio.unlockAsset(Ticker.of("USD"), OrderId.of("Unknown order-id"), Quantity.of(1), DATE_TIME))
+                .isInstanceOf(CannotUnlockAssetException.class)
+                .hasMessage("Cannot unlock [Ticker(Id=USD)] - unable to find [OrderId(id=Unknown order-id)]");
     }
 }

@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.CannotUnlockAssetException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,7 +37,13 @@ public class Asset implements Valuable {
     public void unlock(OrderId orderId, Quantity quantity) {
         locked = locked.minus(quantity);
         free = free.plus(quantity);
-        AssetLock assetLock = fetchLock(orderId).orElseThrow(() -> new IllegalArgumentException(""));
+        AssetLock assetLock = fetchLock(orderId)
+                .orElseThrow(() -> CannotUnlockAssetException.incorrectOrder(ticker, orderId));
+
+        if (assetLock.locked().minus(quantity).isNegative()) {
+            throw CannotUnlockAssetException.insufficientQuantity(ticker, orderId, quantity);
+        }
+
         AssetLock updatedLock = new AssetLock(orderId, assetLock.locked().minus(quantity));
         activeLocks.remove(assetLock);
         if (updatedLock.locked().isPositive()) {
