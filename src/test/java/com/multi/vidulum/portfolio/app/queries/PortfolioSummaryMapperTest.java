@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +53,7 @@ class PortfolioSummaryMapperTest {
         PORTFOLIO.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(PORTFOLIO.getPortfolioId())
+                        .orderId(OrderId.of("order-id"))
                         .tradeId(TradeId.of("trade-1"))
                         .symbol(Symbol.of("BTC/USD"))
                         .subName(SubName.none())
@@ -69,6 +71,7 @@ class PortfolioSummaryMapperTest {
                 .quantity(Quantity.of(0.2))
                 .locked(Quantity.of(0))
                 .free(Quantity.of(0.2))
+                .activeLocks(Set.of())
                 .build());
         cryptoGroupedAssets.appendAsset(BROKER, Asset.builder()
                 .ticker(Ticker.of("ETH"))
@@ -76,6 +79,8 @@ class PortfolioSummaryMapperTest {
                 .quantity(Quantity.of(2))
                 .locked(Quantity.of(1))
                 .free(Quantity.of(1))
+                .activeLocks(Set.of())
+
                 .build());
 
         AggregatedPortfolio.GroupedAssets cashGroupedAssets = AggregatedPortfolio.GroupedAssets.builder().build();
@@ -85,6 +90,7 @@ class PortfolioSummaryMapperTest {
                 .quantity(Quantity.of(5000))
                 .locked(Quantity.of(1000))
                 .free(Quantity.of(4000))
+                .activeLocks(Set.of(new Asset.AssetLock(OrderId.of("order-id"), Quantity.of(1000))))
                 .build());
 
         AggregatedPortfolio.PortfolioInvestedBalance portfolioInvestedBalance1 = new AggregatedPortfolio.PortfolioInvestedBalance(
@@ -146,6 +152,7 @@ class PortfolioSummaryMapperTest {
                                 .quantity(Quantity.of(6000))
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(6000))
+                                .activeLocks(Set.of())
                                 .pctProfit(0)
                                 .profit(Money.zero("USD"))
                                 .currentPrice(Price.of(1, "USD"))
@@ -159,6 +166,7 @@ class PortfolioSummaryMapperTest {
                                 .quantity(Quantity.of(0.1))
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(0.1))
+                                .activeLocks(Set.of())
                                 .pctProfit(0)
                                 .profit(Money.of(0, "USD"))
                                 .currentPrice(Price.of(40000, "USD"))
@@ -207,6 +215,7 @@ class PortfolioSummaryMapperTest {
                                 .quantity(Quantity.of(6000))
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(6000))
+                                .activeLocks(Set.of())
                                 .pctProfit(0)
                                 .profit(Money.zero("EUR"))
                                 .currentPrice(Price.of(0.95, "EUR"))
@@ -220,6 +229,7 @@ class PortfolioSummaryMapperTest {
                                 .quantity(Quantity.of(0.1))
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(0.1))
+                                .activeLocks(Set.of())
                                 .pctProfit(0)
                                 .profit(Money.of(0, "EUR"))
                                 .currentPrice(Price.of(38000, "EUR"))
@@ -279,6 +289,7 @@ class PortfolioSummaryMapperTest {
                                                         .quantity(Quantity.of(0.2))
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(0.2))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(-0.0952381)
                                                         .profit(Money.of(-800, "USD"))
                                                         .currentPrice(Price.of(38000, "USD"))
@@ -292,6 +303,7 @@ class PortfolioSummaryMapperTest {
                                                         .quantity(Quantity.of(2.0))
                                                         .locked(Quantity.of(1))
                                                         .free(Quantity.of(1))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(-0.04761905)
                                                         .profit(Money.of(-200, "USD"))
                                                         .currentPrice(Price.of(2000, "USD"))
@@ -306,6 +318,10 @@ class PortfolioSummaryMapperTest {
                                                         .quantity(Quantity.of(5000))
                                                         .locked(Quantity.of(1000))
                                                         .free(Quantity.of(4000))
+                                                        .activeLocks(Set.of(PortfolioDto.AssetLockJson.builder()
+                                                                .orderId("order-id")
+                                                                .quantity(Quantity.of(1000))
+                                                                .build()))
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(1.0500, "USD"))
