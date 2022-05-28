@@ -26,8 +26,9 @@ class PortfolioTest extends IntegrationTest {
     private static final Currency EUR = Currency.of("EUR");
     private static final String PORTFOLIO_NAME = "XYZ";
     private static final ZonedDateTime DATE_TIME = ZonedDateTime.parse("2021-06-01T06:30:00Z");
-    private static final OrderId ORDER_ID = OrderId.of("order-id");
+    private static final OrderId ORDER_ID = OrderId.of("order-id-1");
     private static final OrderId ORDER_ID_2 = OrderId.of("order-id-2");
+    private static final OrderId ORDER_ID_3 = OrderId.of("order-id-3");
 
     @Test
     public void shouldOpenEmptyPortfolioTest() {
@@ -188,12 +189,12 @@ class PortfolioTest extends IntegrationTest {
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
                         .build());
-        portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID, Quantity.of(0.1), DATE_TIME);
+        portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.1), DATE_TIME);
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
                         .tradeId(TradeId.of("trade-2"))
-                        .orderId(ORDER_ID)
+                        .orderId(ORDER_ID_2)
                         .symbol(Symbol.of("BTC/USD"))
                         .subName(SubName.none())
                         .side(Side.SELL)
@@ -254,14 +255,14 @@ class PortfolioTest extends IntegrationTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Quantity.of(0.1),
                                 DATE_TIME
                         ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
                                 TradeId.of("trade-2"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Symbol.of("BTC/USD"),
                                 SubName.none(),
                                 Side.SELL,
@@ -295,10 +296,10 @@ class PortfolioTest extends IntegrationTest {
                         .price(Price.of(40000.0, "USD"))
                         .build());
 
-        portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID, Quantity.of(0.03), DATE_TIME);
-        portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(2000), DATE_TIME);
-        portfolio.unlockAsset(Ticker.of("BTC"), ORDER_ID, Quantity.of(0.015), DATE_TIME);
-        portfolio.unlockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(700), DATE_TIME);
+        portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.03), DATE_TIME);
+        portfolio.lockAsset(Ticker.of("USD"), ORDER_ID_3, Quantity.of(2000), DATE_TIME);
+        portfolio.unlockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.015), DATE_TIME);
+        portfolio.unlockAsset(Ticker.of("USD"), ORDER_ID_3, Quantity.of(700), DATE_TIME);
 
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
@@ -315,7 +316,7 @@ class PortfolioTest extends IntegrationTest {
                                 .quantity(Quantity.of(6000))
                                 .locked(Quantity.of(1300))
                                 .free(Quantity.of(4700))
-                                .activeLocks(Set.of(new Asset.AssetLock(ORDER_ID, Quantity.of(1300))))
+                                .activeLocks(Set.of(new Asset.AssetLock(ORDER_ID_3, Quantity.of(1300))))
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
@@ -324,7 +325,7 @@ class PortfolioTest extends IntegrationTest {
                                 .quantity(Quantity.of(0.1))
                                 .locked(Quantity.of(0.015))
                                 .free(Quantity.of(0.085))
-                                .activeLocks(Set.of(new Asset.AssetLock(ORDER_ID, Quantity.of(0.015))))
+                                .activeLocks(Set.of(new Asset.AssetLock(ORDER_ID_2, Quantity.of(0.015))))
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
@@ -362,28 +363,28 @@ class PortfolioTest extends IntegrationTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Quantity.of(0.03),
                                 DATE_TIME
                         ),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
-                                ORDER_ID,
+                                ORDER_ID_3,
                                 Quantity.of(2000),
                                 DATE_TIME
                         ),
                         new PortfolioEvents.AssetUnlockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
-                                ORDER_ID,
+                                ORDER_ID_3,
                                 Quantity.of(700),
                                 DATE_TIME
                         ),
                         new PortfolioEvents.AssetUnlockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Quantity.of(0.015),
                                 DATE_TIME
                         )
@@ -504,12 +505,12 @@ class PortfolioTest extends IntegrationTest {
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "EUR"))
                         .build());
-        persistedPortfolio.lockAsset(Ticker.of("BTC"), ORDER_ID, Quantity.of(0.1), DATE_TIME);
+        persistedPortfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.1), DATE_TIME);
         persistedPortfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
                         .portfolioId(portfolio.getPortfolioId())
                         .tradeId(TradeId.of("trade-2"))
-                        .orderId(ORDER_ID)
+                        .orderId(ORDER_ID_2)
                         .symbol(Symbol.of("BTC/EUR"))
                         .subName(SubName.none())
                         .side(Side.SELL)
@@ -570,14 +571,14 @@ class PortfolioTest extends IntegrationTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Quantity.of(0.1),
                                 DATE_TIME
                         ),
                         new PortfolioEvents.TradeProcessedEvent(
                                 portfolio.getPortfolioId(),
                                 TradeId.of("trade-2"),
-                                ORDER_ID,
+                                ORDER_ID_2,
                                 Symbol.of("BTC/EUR"),
                                 SubName.none(),
                                 Side.SELL,
