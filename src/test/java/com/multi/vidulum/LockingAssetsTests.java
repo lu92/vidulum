@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
@@ -120,6 +121,11 @@ class LockingAssetsTests extends IntegrationTest {
                                                 .quantity(Quantity.of(100000.0))
                                                 .locked(Quantity.of(27500.0))
                                                 .free(Quantity.of(72500))
+                                                .activeLocks(Set.of(
+                                                        PortfolioDto.AssetLockJson.builder()
+                                                                .orderId(placedOrderSummary1.getOrderId())
+                                                                .quantity(Quantity.of(27500.0))
+                                                                .build()))
                                                 .pctProfit(0)
                                                 .profit(Money.of(0, "USD"))
                                                 .currentPrice(Price.of(1, "USD"))
@@ -247,6 +253,7 @@ class LockingAssetsTests extends IntegrationTest {
                                                 .quantity(Quantity.of(100000.0))
                                                 .locked(Quantity.zero())
                                                 .free(Quantity.of(100000.0))
+                                                .activeLocks(Set.of())
                                                 .pctProfit(0)
                                                 .profit(Money.of(0, "USD"))
                                                 .currentPrice(Price.of(1, "USD"))
@@ -442,6 +449,11 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(40000.0))
                                                         .locked(Quantity.of(25000.0000))
                                                         .free(Quantity.of(15000))
+                                                        .activeLocks(Set.of(
+                                                                PortfolioDto.AssetLockJson.builder()
+                                                                        .orderId(placedOrderSummary1.getOrderId())
+                                                                        .quantity(Quantity.of(25000.0000))
+                                                                        .build()))
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(1, "USD"))
@@ -456,6 +468,11 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(1))
                                                         .locked(Quantity.of(0.5))
                                                         .free(Quantity.of(0.5))
+                                                        .activeLocks(Set.of(
+                                                                PortfolioDto.AssetLockJson.builder()
+                                                                        .orderId(placedOrderSummary2.getOrderId())
+                                                                        .quantity(Quantity.of(0.5))
+                                                                        .build()))
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(60000.0000, "USD"))
@@ -599,6 +616,7 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(40000.0))
                                                         .locked(Quantity.of(0))
                                                         .free(Quantity.of(40000.0))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(1, "USD"))
@@ -613,6 +631,7 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(1))
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(1))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(60000.0000, "USD"))
@@ -638,7 +657,7 @@ class LockingAssetsTests extends IntegrationTest {
                         .targetPrice(null)
                         .stopPrice(null)
                         .limitPrice(Price.of(60000, "USD"))
-                        .quantity(Quantity.of(0.3, "oz"))
+                        .quantity(Quantity.of(0.3))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
@@ -677,7 +696,7 @@ class LockingAssetsTests extends IntegrationTest {
                         .targetPrice(null)
                         .stopPrice(null)
                         .limitPrice(Price.of(60000, "USD"))
-                        .quantity(Quantity.of(0.1, "oz"))
+                        .quantity(Quantity.of(0.1))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build());
 
@@ -705,7 +724,7 @@ class LockingAssetsTests extends IntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.6));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD"))
+        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.getUserId(), "USD")) //
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.getUserId())
@@ -718,6 +737,7 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(40000.0 + 18000.0 + 6000.0))
                                                         .locked(Quantity.of(0))
                                                         .free(Quantity.of(40000.0 + 18000.0 + 6000.0))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(1, "USD"))
@@ -732,6 +752,7 @@ class LockingAssetsTests extends IntegrationTest {
                                                         .quantity(Quantity.of(0.6))
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(0.6))
+                                                        .activeLocks(Set.of())
                                                         .pctProfit(0)
                                                         .profit(Money.of(0, "USD"))
                                                         .currentPrice(Price.of(60000.0000, "USD"))

@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PortfolioDto {
 
@@ -43,12 +44,20 @@ public class PortfolioDto {
         private Quantity quantity;
         private Quantity locked;
         private Quantity free;
+        private Set<AssetLockJson> activeLocks;
 
         private double pctProfit;
         private Money profit;
         private Price currentPrice;
         private Money currentValue;
         private List<String> tags;
+    }
+
+    @Data
+    @Builder
+    public static class AssetLockJson {
+        private String orderId;
+        private Quantity quantity;
     }
 
     @Data

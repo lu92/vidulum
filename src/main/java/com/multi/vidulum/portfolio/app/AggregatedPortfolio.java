@@ -85,6 +85,7 @@ public class AggregatedPortfolio {
                                 .quantity(quantity)
                                 .locked(lockedQuantity)
                                 .free(freeQuantity)
+                                .activeLocks(relatedAsset.getActiveLocks())
                                 .build();
 
                         List<Asset> assets = portfolio.get(broker);
@@ -126,6 +127,7 @@ public class AggregatedPortfolio {
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .free(Quantity.zero(firstAsset.getQuantity().getUnit()))
+                                                    .activeLocks(new HashSet<>())
                                                     .build(),
 
                                             (identityAsset, nextAsset) -> {
@@ -139,6 +141,7 @@ public class AggregatedPortfolio {
                                                 identityAsset.setQuantity(quantity);
                                                 identityAsset.setLocked(lockedQuantity);
                                                 identityAsset.setFree(freeQuantity);
+                                                identityAsset.getActiveLocks().addAll(nextAsset.getActiveLocks());
                                                 return identityAsset;
                                             });
                         }));
