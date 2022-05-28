@@ -10,6 +10,7 @@ import lombok.Getter;
 public class ExecutedTrade {
     PortfolioId portfolioId;
     TradeId tradeId;
+    OrderId orderId;
     Symbol symbol;
     SubName subName;
     Side side;

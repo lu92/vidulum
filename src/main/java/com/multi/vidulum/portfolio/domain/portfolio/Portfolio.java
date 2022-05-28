@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
@@ -13,10 +14,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.ZonedDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Data
@@ -36,13 +35,23 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     @Override
     public PortfolioSnapshot getSnapshot() {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
-                .map(asset -> new PortfolioSnapshot.AssetSnapshot(
-                        asset.getTicker(),
-                        asset.getSubName(),
-                        asset.getAvgPurchasePrice(),
-                        asset.getQuantity(),
-                        asset.getLocked(),
-                        asset.getFree()))
+                .map(asset -> {
+                    List<PortfolioSnapshot.AssetLockSnapshot> activeLocks = asset.getActiveLocks().stream()
+                            .map(assetLock -> new PortfolioSnapshot.AssetLockSnapshot(
+                                    assetLock.orderId(),
+                                    assetLock.locked()
+                            ))
+                            .collect(Collectors.toList());
+
+                    return new PortfolioSnapshot.AssetSnapshot(
+                            asset.getTicker(),
+                            asset.getSubName(),
+                            asset.getAvgPurchasePrice(),
+                            asset.getQuantity(),
+                            asset.getLocked(),
+                            asset.getFree(),
+                            activeLocks);
+                })
                 .collect(Collectors.toList());
 
         return new PortfolioSnapshot(
@@ -59,14 +68,23 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     public static Portfolio from(PortfolioSnapshot snapshot) {
         List<Asset> assets = snapshot.getAssets().stream()
-                .map(assetSnapshot -> new Asset(
-                        assetSnapshot.getTicker(),
-                        assetSnapshot.getSubName(),
-                        assetSnapshot.getAvgPurchasePrice(),
-                        assetSnapshot.getQuantity(),
-                        assetSnapshot.getLocked(),
-                        assetSnapshot.getFree()
-                ))
+                .map(assetSnapshot -> {
+                    Set<Asset.AssetLock> activeLocks = assetSnapshot.getActiveLocks().stream()
+                            .map(lockSnapshot -> new Asset.AssetLock(
+                                    lockSnapshot.orderId(),
+                                    lockSnapshot.locked()
+                            ))
+                            .collect(Collectors.toSet());
+                    return new Asset(
+                            assetSnapshot.getTicker(),
+                            assetSnapshot.getSubName(),
+                            assetSnapshot.getAvgPurchasePrice(),
+                            assetSnapshot.getQuantity(),
+                            assetSnapshot.getLocked(),
+                            assetSnapshot.getFree(),
+                            activeLocks
+                    );
+                })
                 .collect(Collectors.toList());
 
         return Portfolio.builder()
@@ -86,6 +104,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         PortfolioEvents.TradeProcessedEvent event = new PortfolioEvents.TradeProcessedEvent(
                 trade.getPortfolioId(),
                 trade.getTradeId(),
+                trade.getOrderId(),
                 trade.getSymbol(),
                 trade.getSubName(),
                 trade.getSide(),
@@ -100,7 +119,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         tryWhenPortfolioIsOpen(() -> {
             AssetPortion purchasedPortion = calculatePurchasedPortionOfAsset(event);
             AssetPortion soldPortion = calculateSoldPortionOfAsset(event);
-            swing(soldPortion, purchasedPortion);
+            swing(event.orderId(), soldPortion, purchasedPortion);
         });
     }
 
@@ -144,8 +163,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    private void swing(AssetPortion soldPortion, AssetPortion purchasedPortion) {
-        reduceAsset(soldPortion);
+    private void swing(OrderId orderId, AssetPortion soldPortion, AssetPortion purchasedPortion) {
+        reduceAsset(orderId, soldPortion);
         increaseAsset(purchasedPortion);
         log.info("[{}] amount of reduced asset [{}]", portfolioId, soldPortion);
         log.info("[{}] amount of increased asset [{}]", portfolioId, purchasedPortion);
@@ -170,12 +189,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .quantity(purchasedPortion.quantity())
                             .locked(Quantity.zero())
                             .free(purchasedPortion.quantity())
+                            .activeLocks(new HashSet<>())
                             .build();
                     assets.add(newAsset);
                 });
     }
 
-    private void reduceAsset(AssetPortion soldPortion) {
+    private void reduceAsset(OrderId orderId, AssetPortion soldPortion) {
         Asset soldAsset = findAssetByTickerAndSubName(soldPortion.ticker(), soldPortion.subName())
                 .orElseThrow(() -> new AssetNotFoundException(soldPortion.ticker()));
 
@@ -195,6 +215,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             soldAsset.setQuantity(decreasedQuantity);
             soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
             soldAsset.setLocked(updatedLockedQuantity);
+            soldAsset.getActiveLocks().remove(new Asset.AssetLock(orderId, soldPortion.quantity()));
         }
     }
 
@@ -217,6 +238,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                         .locked(Quantity.zero())
                         .free(Quantity.of(event.deposit().getAmount().doubleValue()))
+                        .activeLocks(new HashSet<>())
                         .build();
                 assets.add(cash);
             });
@@ -268,10 +290,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .findFirst();
     }
 
-    public void lockAsset(Ticker ticker, Quantity quantity) {
+    public void lockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
         findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
-        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, quantity);
+        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
@@ -280,15 +302,15 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         tryWhenPortfolioIsOpen(() -> {
             Asset asset = findAssetByTicker(event.ticker())
                     .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
-            asset.lock(event.quantity());
+            asset.lock(event.orderId(), event.quantity());
         });
     }
 
-    public void unlockAsset(Ticker ticker, Quantity quantity) {
+    public void unlockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
         findAssetByTicker(ticker)
                 .orElseThrow(() -> new AssetNotFoundException(ticker));
 
-        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, quantity);
+        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
@@ -298,7 +320,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
             Asset asset = findAssetByTicker(event.ticker())
                     .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
-            asset.unlock(event.quantity());
+            asset.unlock(event.orderId(), event.quantity());
         });
     }
 

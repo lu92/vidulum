@@ -5,6 +5,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 import lombok.Value;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Value
@@ -32,5 +33,11 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
         Quantity quantity;
         Quantity locked;
         Quantity free;
+        List<AssetLockSnapshot> activeLocks;
+    }
+
+    public record AssetLockSnapshot(
+            OrderId orderId,
+            Quantity locked) {
     }
 }

@@ -36,14 +36,24 @@ public class PortfolioEntity {
 
         List<AssetEntity> assetEntities = snapshot.getAssets().stream()
                 .map(assetSnapshot ->
-                        new AssetEntity(
-                                assetSnapshot.getTicker().getId(),
-                                assetSnapshot.getSubName().getName(),
-                                assetSnapshot.getAvgPurchasePrice(),
-                                assetSnapshot.getQuantity(),
-                                assetSnapshot.getLocked(),
-                                assetSnapshot.getFree()
-                        ))
+                {
+                    List<AssetLockEntity> activeLocks = assetSnapshot.getActiveLocks().stream()
+                            .map(lockSnapshot -> new AssetLockEntity(
+                                    lockSnapshot.orderId(),
+                                    lockSnapshot.locked()
+                            ))
+                            .toList();
+
+                    return new AssetEntity(
+                            assetSnapshot.getTicker().getId(),
+                            assetSnapshot.getSubName().getName(),
+                            assetSnapshot.getAvgPurchasePrice(),
+                            assetSnapshot.getQuantity(),
+                            assetSnapshot.getLocked(),
+                            assetSnapshot.getFree(),
+                            activeLocks
+                    );
+                })
                 .collect(Collectors.toList());
 
         return PortfolioEntity.builder()
@@ -61,14 +71,23 @@ public class PortfolioEntity {
 
     public PortfolioSnapshot toSnapshot() {
         List<PortfolioSnapshot.AssetSnapshot> assetSnapshots = assets.stream()
-                .map(assetEntity -> new PortfolioSnapshot.AssetSnapshot(
-                        Ticker.of(assetEntity.getTicker()),
-                        SubName.of(assetEntity.getSubName()),
-                        assetEntity.getAvgPurchasePrice(),
-                        assetEntity.getQuantity(),
-                        assetEntity.getLocked(),
-                        assetEntity.getFree()
-                ))
+                .map(assetEntity -> {
+                    List<PortfolioSnapshot.AssetLockSnapshot> activeLocks = assetEntity.activeLocks.stream()
+                            .map(assetLockEntity -> new PortfolioSnapshot.AssetLockSnapshot(
+                                    assetLockEntity.orderId(),
+                                    assetLockEntity.locked()
+                            ))
+                            .collect(Collectors.toList());
+                    return new PortfolioSnapshot.AssetSnapshot(
+                            Ticker.of(assetEntity.ticker()),
+                            SubName.of(assetEntity.subName()),
+                            assetEntity.avgPurchasePrice(),
+                            assetEntity.quantity(),
+                            assetEntity.locked(),
+                            assetEntity.free(),
+                            activeLocks
+                    );
+                })
                 .collect(Collectors.toList());
 
         return new PortfolioSnapshot(
@@ -81,5 +100,21 @@ public class PortfolioEntity {
                 investedBalance,
                 Currency.of(allowedDepositCurrency)
         );
+    }
+
+    public record AssetEntity(
+            String ticker,
+            String subName,
+            Price avgPurchasePrice,
+            Quantity quantity,
+            Quantity locked,
+            Quantity free,
+            List<AssetLockEntity> activeLocks
+    ) {
+    }
+
+    public record AssetLockEntity(
+            OrderId orderId,
+            Quantity locked) {
     }
 }

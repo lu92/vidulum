@@ -8,12 +8,16 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
+
 @Slf4j
 @Component
 @AllArgsConstructor
 public class LockAssetCommandHandler implements CommandHandler<LockAssetCommand, Portfolio> {
 
     private final DomainPortfolioRepository repository;
+    private final Clock clock;
 
     @Override
     public Portfolio handle(LockAssetCommand command) {
@@ -21,7 +25,7 @@ public class LockAssetCommandHandler implements CommandHandler<LockAssetCommand,
                 .findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.lockAsset(command.getTicker(), command.getQuantity());
+        portfolio.lockAsset(command.getTicker(),command.getOrderId(), command.getQuantity(), ZonedDateTime.now(clock));
 
         Portfolio savedPortfolio = repository.save(portfolio);
         log.info(String.format("Asset [%s] amount [%s] has been locked successfully in [%s]",
