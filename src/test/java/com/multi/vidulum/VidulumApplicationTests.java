@@ -1,5 +1,6 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlDto;
 import com.multi.vidulum.pnl.domain.PnlHistory;
@@ -21,10 +22,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static com.multi.vidulum.common.Side.BUY;
 import static com.multi.vidulum.common.Side.SELL;
@@ -142,6 +140,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(40000))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(40000))
+                                .activeLocks(Set.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
@@ -150,6 +149,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(1))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(1))
+                                .activeLocks(Set.of())
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
@@ -536,6 +536,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(120000))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(120000))
+                                .activeLocks(Set.of())
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
@@ -981,6 +982,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(87100))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(87100.0))
+                                .activeLocks(Set.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
@@ -989,6 +991,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(0.25))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(0.25))
+                                .activeLocks(Set.of())
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
@@ -997,6 +1000,7 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .quantity(Quantity.of(1.3))
                                 .locked(Quantity.zero())
                                 .free(Quantity.of(1.3))
+                                .activeLocks(Set.of())
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)

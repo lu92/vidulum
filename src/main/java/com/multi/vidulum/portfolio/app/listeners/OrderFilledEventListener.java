@@ -25,6 +25,7 @@ public class OrderFilledEventListener {
         ProcessTradeCommand command = ProcessTradeCommand.builder()
                 .portfolioId(event.getPortfolioId())
                 .tradeId(event.getTradeId())
+                .orderId(event.getOrderId())
                 .symbol(event.getSymbol())
                 .subName(event.getSubName())
                 .side(event.getSide())

@@ -41,21 +41,23 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
     }
 
     @Override
-    public void lockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity) {
+    public void lockAsset(PortfolioId portfolioId, Ticker ticker, OrderId orderId, Quantity quantity) {
         lockAssetCommandHandler.handle(
                 LockAssetCommand.builder()
                         .portfolioId(portfolioId)
                         .ticker(ticker)
+                        .orderId(orderId)
                         .quantity(quantity)
                         .build());
     }
 
     @Override
-    public void unlockAsset(PortfolioId portfolioId, Ticker ticker, Quantity quantity) {
+    public void unlockAsset(PortfolioId portfolioId, Ticker ticker, OrderId orderId, Quantity quantity) {
         unlockAssetCommandHandler.handle(
                 UnlockAssetCommand.builder()
                         .portfolioId(portfolioId)
                         .ticker(ticker)
+                        .orderId(orderId)
                         .quantity(quantity)
                         .build());
     }

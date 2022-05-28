@@ -95,6 +95,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         portfolioRestClient.lockAsset(
                 order.getPortfolioId(),
                 order.getSymbol().getDestination(),
+                order.getOrderId(),
                 quantityToLocked
         );
     }
@@ -103,6 +104,7 @@ public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderComman
         portfolioRestClient.lockAsset(
                 order.getPortfolioId(),
                 order.getSymbol().getOrigin(),
+                order.getOrderId(),
                 order.getParameters().quantity()
         );
     }
