@@ -2,9 +2,7 @@ package com.multi.vidulum.trading.domain;
 
 
 import com.multi.vidulum.JsonFormatter;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlRestController;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
@@ -24,6 +22,8 @@ import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
 import com.multi.vidulum.trading.infrastructure.TradeMongoRepository;
 import com.multi.vidulum.user.app.UserDto;
 import com.multi.vidulum.user.app.UserRestController;
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.Before;
@@ -38,6 +38,11 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.ZonedDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import static com.multi.vidulum.common.Side.BUY;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Slf4j
@@ -151,6 +156,75 @@ public abstract class IntegrationTest {
         tradeRestController.makeTrade(tradeExecutedJson);
     }
 
+    protected void makeDirectTrade(PortfolioId portfolioId, String originCurrency, DirectTrade directTrade) {
+
+        // get portfolio's data
+        PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestController.getPortfolio(portfolioId.getId(), originCurrency);
+
+        // prepare request for order
+        TradingDto.PlaceOrderJson placeOrderJson = TradingDto.PlaceOrderJson.builder()
+                .originOrderId(UUID.randomUUID().toString())
+                .portfolioId(portfolio.getPortfolioId())
+                .broker(portfolio.getBroker())
+                .symbol(directTrade.getSymbol())
+                .type(OrderType.LIMIT)
+                .side(directTrade.getSide())
+                .targetPrice(null)
+                .stopPrice(null)
+                .limitPrice(directTrade.getPrice())
+                .quantity(directTrade.getQuantity())
+                .originDateTime(directTrade.getOriginDateTime())
+                .build();
+
+        // execute order
+        TradingDto.OrderSummaryJson orderSummaryJson = orderRestController.placeOrder(placeOrderJson);
+
+
+        Ticker assetTicker = directTrade.getSide() == BUY ? Symbol.of(directTrade.getSymbol()).getOrigin() : Symbol.of(directTrade.getSymbol()).getDestination();
+
+        Quantity quantityOfAsset = portfolio.getAssets().stream()
+                .filter(assetSummaryJson -> Ticker.of(assetSummaryJson.getTicker()).equals(assetTicker))
+                .findFirst()
+                .map(PortfolioDto.AssetSummaryJson::getQuantity)
+                .orElse(Quantity.zero());
+
+        Quantity assetQuantityOfTrade =
+                directTrade.getSide() == BUY ?
+                        directTrade.getQuantity() :
+                        Quantity.of(directTrade.getPrice().multiply(directTrade.getQuantity()).getAmount().doubleValue());
+
+        Quantity expectedQuantity = quantityOfAsset.plus(assetQuantityOfTrade);
+
+        makeTrade(
+                TradingDto.TradeExecutedJson.builder()
+                        .originTradeId(UUID.randomUUID().toString())
+                        .orderId(orderSummaryJson.getOrderId())
+                        .portfolioId(portfolioId.getId())
+                        .userId(portfolio.getUserId())
+                        .symbol(directTrade.getSymbol())
+                        .subName("")
+                        .side(directTrade.getSide())
+                        .quantity(directTrade.getQuantity())
+                        .price(directTrade.getPrice())
+                        .originDateTime(directTrade.getOriginDateTime())
+                        .build());
+
+        Awaitility.await().atMost(10, SECONDS).until(() -> {
+
+            PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestController.getPortfolio(portfolioId.getId(), originCurrency);
+            log.info(jsonFormatter.formatToPrettyJson(portfolioSummaryJson));
+
+            Optional<PortfolioDto.AssetSummaryJson> assetSummary = portfolioSummaryJson.getAssets().stream()
+                    .filter(asset -> assetTicker.equals(Ticker.of(asset.getTicker())))
+                    .findFirst();
+
+            return assetSummary
+                    .map(PortfolioDto.AssetSummaryJson::getQuantity)
+                    .map(quantity -> quantity.equals(expectedQuantity))
+                    .orElse(false);
+        });
+    }
+
     protected void awaitUntilAssetMetadataIsEqualTo(
             PortfolioId portfolioId,
             Ticker assetTicker,
@@ -169,5 +243,20 @@ public abstract class IntegrationTest {
                                     asset.getFree().equals(expectedFree))
                     .orElse(false);
         });
+    }
+
+    @Value
+    @Builder
+    public static class DirectTrade {
+        String originOrderId;
+        String portfolioId;
+        String broker;
+        String symbol;
+        Side side;
+        Quantity quantity;
+        Price price;
+        Money exchangeCurrencyFee;
+        Money transactionFee;
+        ZonedDateTime originDateTime;
     }
 }
