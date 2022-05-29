@@ -336,6 +336,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(1))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -556,6 +557,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.4))
                 .price(Price.of(60000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -595,6 +597,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.6))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -677,6 +680,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(0.3))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -716,6 +720,7 @@ class LockingAssetsTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(0.1))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(

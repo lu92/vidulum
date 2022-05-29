@@ -37,6 +37,9 @@ public class TradeRestController {
                 .subName(SubName.of(tradeExecutedJson.getSubName()))
                 .quantity(tradeExecutedJson.getQuantity())
                 .price(tradeExecutedJson.getPrice())
+                .fee(new MakeTradeCommand.Fee(
+                        tradeExecutedJson.getFee().getExchangeCurrencyFee(),
+                        tradeExecutedJson.getFee().getTransactionFee()))
                 .originDateTime(tradeExecutedJson.getOriginDateTime())
                 .build();
 

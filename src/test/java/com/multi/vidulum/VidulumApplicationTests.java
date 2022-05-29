@@ -117,6 +117,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(1))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                 .build());
 
@@ -343,6 +344,8 @@ class VidulumApplicationTests extends IntegrationTest {
                         .originOrderId(placedOrder3.getOriginOrderId())
                         .quantity(Quantity.of(0.25))
                         .price(Price.of(80000, "USD"))
+                        .exchangeCurrencyFee(Money.zero("USD"))
+                        .transactionFee(Money.zero("USD"))
                         .originDateTime(ZonedDateTime.parse("2021-06-01T06:30:00Z"))
                         .build()
         );
@@ -485,6 +488,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .subName(SubName.none().getName())
                 .side(BUY)
                 .quantity(Quantity.of(1))
+                .fee(ZERO_FEE)
                 .price(Price.of(60000.0, "USD"))
                 .build());
 
@@ -519,6 +523,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(1))
                 .price(Price.of(80000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("USD"),
@@ -684,6 +689,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.1))
                 .price(Price.of(60000.0, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -724,6 +730,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.1))
                 .price(Price.of(30000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -764,6 +771,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.2))
                 .price(Price.of(30000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -804,6 +812,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(0.15))
                 .price(Price.of(40000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -844,6 +853,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.75))
                 .price(Price.of(2800, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -884,6 +894,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.25))
                 .price(Price.of(2800, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -924,6 +935,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(0.5))
                 .price(Price.of(3400, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -964,6 +976,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(0.2))
                 .price(Price.of(3000, "USD"))
+                .fee(ZERO_FEE)
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(
@@ -1393,6 +1406,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
                 .price(Price.of(1800, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 
@@ -1427,6 +1441,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(2, "oz"))
                 .price(Price.of(1820, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
@@ -1461,6 +1476,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(SELL)
                 .quantity(Quantity.of(1, "oz"))
                 .price(Price.of(1850, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-04-01T16:24:11Z"))
                 .build());
 
@@ -1498,6 +1514,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(5, "oz"))
                 .price(Price.of(90, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-03-02T12:14:11Z"))
                 .build());
 
@@ -1532,6 +1549,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .side(BUY)
                 .quantity(Quantity.of(1, "oz"))
                 .price(Price.of(2000, "USD"))
+                .fee(ZERO_FEE)
                 .originDateTime(ZonedDateTime.parse("2021-02-01T06:24:11Z"))
                 .build());
 

@@ -41,6 +41,9 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
                 .subName(SubName.none())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
+                .fee(new MakeTradeCommand.Fee(
+                        command.getExchangeCurrencyFee(),
+                        command.getTransactionFee()))
                 .originDateTime(command.getOriginDateTime())
                 .build();
 

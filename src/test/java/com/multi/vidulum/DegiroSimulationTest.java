@@ -1,11 +1,16 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.*;
+import com.multi.vidulum.common.AssetPriceMetadata;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Price;
+import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
-import com.multi.vidulum.trading.app.TradingDto;
+import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import com.multi.vidulum.user.app.UserDto;
+import lombok.extern.slf4j.Slf4j;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
@@ -13,7 +18,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.multi.vidulum.common.Side.BUY;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
+@Slf4j
 public class DegiroSimulationTest extends IntegrationTest {
 
     @Test
@@ -37,6 +44,16 @@ public class DegiroSimulationTest extends IntegrationTest {
                 .segment("stock")
                 .tags(List.of("VUSA"))
                 .build());
+
+        Awaitility.await().atMost(30, SECONDS).until(() -> {
+            try {
+                AssetPriceMetadata priceMetadata = quoteRestController.fetch("DEGIRO", "USD", "USD");
+                log.info("[{}] Loaded price - [{}]", priceMetadata.getSymbol().getId(), priceMetadata.getCurrentPrice());
+                return priceMetadata.getSymbol().getId().equals("USD/USD");
+            } catch (QuoteNotFoundException e) {
+                return false;
+            }
+        });
 
         UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
         userRestController.activateUser(createdUserJson.getUserId());
@@ -63,7 +80,6 @@ public class DegiroSimulationTest extends IntegrationTest {
                         .originDateTime(ZonedDateTime.parse("2022-05-20T15:39:41Z"))
                         .build()
         );
-
 
         System.out.println("END");
     }

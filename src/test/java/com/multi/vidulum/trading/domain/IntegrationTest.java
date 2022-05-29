@@ -117,6 +117,11 @@ public abstract class IntegrationTest {
         quoteRestController.clearCaches();
     }
 
+    protected static final TradingDto.Fee ZERO_FEE = TradingDto.Fee.builder()
+            .exchangeCurrencyFee(Money.zero("USD"))
+            .transactionFee(Money.zero("USD"))
+            .build();
+
     protected UserDto.UserSummaryJson createUser(String username, String password, String email) {
         return userRestController.createUser(
                 UserDto.CreateUserJson.builder()
@@ -206,6 +211,10 @@ public abstract class IntegrationTest {
                         .side(directTrade.getSide())
                         .quantity(directTrade.getQuantity())
                         .price(directTrade.getPrice())
+                        .fee(TradingDto.Fee.builder()
+                                .exchangeCurrencyFee(directTrade.getExchangeCurrencyFee())
+                                .transactionFee(directTrade.getTransactionFee())
+                                .build())
                         .originDateTime(directTrade.getOriginDateTime())
                         .build());
 

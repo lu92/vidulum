@@ -20,7 +20,15 @@ public class TradingDto {
         private Side side;
         private Quantity quantity;
         private Price price;
+        private Fee fee;
         private ZonedDateTime originDateTime;
+    }
+
+    @Data
+    @Builder
+    public static class Fee {
+        private Money exchangeCurrencyFee;
+        private Money transactionFee;
     }
 
     @Data
@@ -61,6 +69,8 @@ public class TradingDto {
         private String originTradeId;
         private Quantity quantity;
         private Price price;
+        private Money exchangeCurrencyFee;
+        private Money transactionFee;
         private ZonedDateTime originDateTime;
     }
 

@@ -32,6 +32,11 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .side(order.getParameters().side())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
+                .fee(new Trade.Fee(
+                                command.getFee().exchangeCurrencyFee(),
+                                command.getFee().transactionFee(),
+                                command.getFee().exchangeCurrencyFee().plus(command.getFee().transactionFee())
+                        ))
                 .dateTime(command.getOriginDateTime())
                 .build();
         Trade savedTrade = repository.save(newTrade);
