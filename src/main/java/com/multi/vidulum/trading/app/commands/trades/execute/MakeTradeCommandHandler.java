@@ -1,5 +1,6 @@
 package com.multi.vidulum.trading.app.commands.trades.execute;
 
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.shared.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -23,6 +24,12 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
         Order order = orderRepository.findById(command.getOrderId())
                 .orElseThrow(() -> new OrderNotFoundException(command.getOrderId()));
 
+        Trade.Fee fee = new Trade.Fee(
+                command.getFee().exchangeCurrencyFee(),
+                command.getFee().transactionFee(),
+                command.getFee().exchangeCurrencyFee().plus(command.getFee().transactionFee())
+        );
+        Money value = command.getPrice().multiply(command.getQuantity());
         Trade newTrade = Trade.builder()
                 .userId(command.getUserId())
                 .portfolioId(command.getPortfolioId())
@@ -32,6 +39,10 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .side(order.getParameters().side())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
+                .fee(fee)
+                .localValue(value)
+                .value(value)
+                .totalValue(value.plus(fee.totalFee()))
                 .dateTime(command.getOriginDateTime())
                 .build();
         Trade savedTrade = repository.save(newTrade);

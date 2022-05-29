@@ -5,6 +5,7 @@ import com.multi.vidulum.common.events.OrderFilledEvent;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
+import com.multi.vidulum.quotation.app.DegiroBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
@@ -223,5 +224,10 @@ public class KafkaTopicConfig {
     @Bean
     public PMBrokerQuotationProvider pmBrokerQuotationProvider() {
         return new PMBrokerQuotationProvider();
+    }
+
+    @Bean
+    public DegiroBrokerQuotationProvider degiroBrokerQuotationProvider() {
+        return new DegiroBrokerQuotationProvider();
     }
 }

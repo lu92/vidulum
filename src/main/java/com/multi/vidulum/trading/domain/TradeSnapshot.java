@@ -21,10 +21,20 @@ public class TradeSnapshot implements EntitySnapshot<TradeId> {
     Side side;
     Quantity quantity;
     Price price;
+    FeeSnapshot fee;
+    Money localValue; // value expressed in local currency [reference to price's currency]
+    Money value; // value expressed in original currency of portfolio
+    Money totalValue; // value + totalFee
     ZonedDateTime dateTime;
 
     @Override
     public TradeId id() {
         return tradeId;
+    }
+
+    public record FeeSnapshot(
+            Money exchangeCurrencyFee,
+            Money transactionFee,
+            Money totalFee) {
     }
 }

@@ -24,5 +24,12 @@ public class MakeTradeCommand implements Command {
     SubName subName;
     Quantity quantity;
     Price price;
+    Fee fee;
     ZonedDateTime originDateTime;
+
+    public record Fee(
+            Money exchangeCurrencyFee,
+            Money transactionFee) {
+    }
+
 }

@@ -57,6 +57,8 @@ public class OrderRestController {
                 .originOrderId(OriginOrderId.of(executeOrderJson.getOriginOrderId()))
                 .quantity(executeOrderJson.getQuantity())
                 .price(executeOrderJson.getPrice())
+                .exchangeCurrencyFee(executeOrderJson.getExchangeCurrencyFee())
+                .transactionFee(executeOrderJson.getTransactionFee())
                 .originDateTime(ZonedDateTime.now(clock))
                 .build();
         OrderExecutionSummary summary = commandGateway.send(command);
