@@ -21,9 +21,9 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
     Quantity quantity;
     Price price;
     Fee fee;
-//    Money localValue; // value expressed in local currency
-//    Money value; // value expressed in original currency of portfolio
-//    Money totalValue; // value + totalFee
+    Money localValue; // value expressed in local currency [reference to price's currency]
+    Money value; // value expressed in original currency of portfolio
+    Money totalValue; // value + totalFee
     ZonedDateTime dateTime;
 
     @Override
@@ -43,6 +43,9 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
                         fee.exchangeCurrencyFee(),
                         fee.transactionFee(),
                         fee.totalFee()),
+                localValue,
+                value,
+                totalValue,
                 dateTime
         );
     }
@@ -62,6 +65,9 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
                         snapshot.getFee().exchangeCurrencyFee(),
                         snapshot.getFee().transactionFee(),
                         snapshot.getFee().totalFee()))
+                .localValue(snapshot.getLocalValue())
+                .value(snapshot.getValue())
+                .totalValue(snapshot.getTotalValue())
                 .dateTime(snapshot.getDateTime())
                 .build();
     }

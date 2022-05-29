@@ -31,6 +31,9 @@ public class TradeEntity {
     private Quantity quantity;
     private Price price;
     private FeeEntity fee;
+    private Money localValue; // value expressed in local currency [reference to price's currency]
+    private Money value; // value expressed in original currency of portfolio
+    private Money totalValue; // value + totalFee
     private Date originDateTime;
 
     public static TradeEntity fromSnapshot(TradeSnapshot snapshot) {
@@ -53,6 +56,9 @@ public class TradeEntity {
                         snapshot.getFee().exchangeCurrencyFee(),
                         snapshot.getFee().transactionFee(),
                         snapshot.getFee().totalFee()))
+                .localValue(snapshot.getLocalValue())
+                .value(snapshot.getValue())
+                .totalValue(snapshot.getTotalValue())
                 .originDateTime(date)
                 .build();
     }
@@ -75,6 +81,9 @@ public class TradeEntity {
                         fee.exchangeCurrencyFee,
                         fee.transactionFee,
                         fee.totalFee))
+                .localValue(localValue)
+                .value(value)
+                .totalValue(totalValue)
                 .dateTime(zonedDateTime)
                 .build();
     }
