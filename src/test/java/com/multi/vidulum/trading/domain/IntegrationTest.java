@@ -215,6 +215,7 @@ public abstract class IntegrationTest {
                                 .exchangeCurrencyFee(directTrade.getExchangeCurrencyFee())
                                 .transactionFee(directTrade.getTransactionFee())
                                 .build())
+                        .exchangeCurrencyRate(directTrade.getExchangeCurrencyRate())
                         .originDateTime(directTrade.getOriginDateTime())
                         .build());
 
@@ -265,6 +266,7 @@ public abstract class IntegrationTest {
         Quantity quantity;
         Price price;
         Money exchangeCurrencyFee;
+        ExchangeRate exchangeCurrencyRate;
         Money transactionFee;
         ZonedDateTime originDateTime;
     }
