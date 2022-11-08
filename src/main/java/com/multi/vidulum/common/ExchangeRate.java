@@ -5,6 +5,10 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * kurs wymiany
+ */
+
 @Data
 @NoArgsConstructor
 public class ExchangeRate {
