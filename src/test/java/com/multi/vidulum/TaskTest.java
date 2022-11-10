@@ -1,8 +1,11 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.task.TaskDto;
+import com.multi.vidulum.task.domain.TaskStatus;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TaskTest extends IntegrationTest {
 
@@ -16,6 +19,14 @@ public class TaskTest extends IntegrationTest {
                         .description("task-1 description")
                         .build()
         );
-        System.out.println(taskSummaryJson);
+        assertThat(taskSummaryJson).isEqualToIgnoringGivenFields(
+                TaskDto.TaskSummaryJson.builder()
+                        .userId("lu92")
+                        .name("task-1")
+                        .description("task-1 description")
+                        .status(TaskStatus.OPEN)
+                        .build(),
+                "taskId", "created"
+        );
     }
 }
