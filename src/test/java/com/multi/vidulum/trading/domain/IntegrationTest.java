@@ -14,6 +14,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
+import com.multi.vidulum.task.TaskRestController;
 import com.multi.vidulum.trading.app.OrderRestController;
 import com.multi.vidulum.trading.app.TradeRestController;
 import com.multi.vidulum.trading.app.TradingAppConfig;
@@ -75,6 +76,9 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected OrderRestController orderRestController;
+
+    @Autowired
+    protected TaskRestController taskRestController;
 
     @Autowired
     protected DomainPortfolioRepository portfolioRepository;
