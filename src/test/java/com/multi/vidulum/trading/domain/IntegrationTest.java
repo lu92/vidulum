@@ -3,6 +3,7 @@ package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.pnl.app.PnlRestController;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
@@ -47,7 +48,7 @@ import static com.multi.vidulum.common.Side.BUY;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Slf4j
-@SpringBootTest
+@SpringBootTest(classes = FixedClockConfig.class)
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
 @DirtiesContext
