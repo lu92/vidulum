@@ -21,7 +21,6 @@ import java.util.List;
 @Document("task")
 public class TaskEntity {
     @Id
-    private String id;
     private String taskId;
     private String userId;
     private String name;

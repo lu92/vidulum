@@ -52,6 +52,17 @@ public class TaskTest extends IntegrationTest {
                         .status(TaskStatus.CLOSED)
                         .created(_01_01_2022)
                         .build());
-        System.out.println(taskClosureSummary);
+
+        assertThat(taskRestController.getTask(taskCreationSummary.getTaskId())).isEqualTo(
+                TaskDto.TaskSummaryJson.builder()
+                        .taskId(taskCreationSummary.getTaskId())
+                        .userId("lu92")
+                        .name("task-1")
+                        .description("task-1 description")
+                        .comments(List.of(TaskDto.CommentJson.builder().message("some comment").created(_01_01_2022).build()))
+                        .status(TaskStatus.CLOSED)
+                        .created(_01_01_2022)
+                        .build()
+        );
     }
 }
