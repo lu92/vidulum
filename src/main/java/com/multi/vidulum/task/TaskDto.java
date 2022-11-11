@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 public final class TaskDto {
 
@@ -24,8 +25,23 @@ public final class TaskDto {
         private String userId;
         private String name;
         private String description;
+        private List<CommentJson> comments;
         private TaskStatus status;
         private ZonedDateTime created;
         private ZonedDateTime dueDate; // optional
+    }
+
+    @Data
+    @Builder
+    public static class CommentJson {
+        private String message;
+        private ZonedDateTime created;
+    }
+
+    @Data
+    @Builder
+    public static class CloseTaskJson {
+        private String taskId;
+        private String comment;
     }
 }

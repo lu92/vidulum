@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedList;
+
 @Slf4j
 @Component
 @AllArgsConstructor
@@ -21,6 +23,7 @@ public class CreateTaskCommandHandler implements CommandHandler<CreateTaskComman
                 .userId(command.getUserId())
                 .name(command.getName())
                 .description(command.getDescription())
+                .comments(new LinkedList<>())
                 .created(command.getCreated())
                 .dueDate(command.getDueDate())
                 .status(TaskStatus.OPEN)
