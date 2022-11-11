@@ -6,11 +6,15 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.task.app.TaskMapper;
 import com.multi.vidulum.task.app.commands.close.CloseTaskCommand;
 import com.multi.vidulum.task.app.commands.create.CreateTaskCommand;
+import com.multi.vidulum.task.app.queries.GetTaskByStatusQuery;
 import com.multi.vidulum.task.app.queries.GetTaskQuery;
 import com.multi.vidulum.task.domain.Comment;
 import com.multi.vidulum.task.domain.Task;
 import com.multi.vidulum.task.domain.TaskId;
+import com.multi.vidulum.task.domain.TaskStatus;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
@@ -59,5 +63,17 @@ public class TaskRestController {
         );
 
         return taskMapper.toJson(task);
+    }
+
+    @GetMapping("/task")
+    public Page<TaskDto.TaskSummaryJson> findByStatus(
+            @RequestParam("status") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<Task> tasks = queryGateway.send(
+                new GetTaskByStatusQuery(
+                        PageRequest.of(page, size), TaskStatus.valueOf(status))
+        );
+        return tasks.map(taskMapper::toJson);
     }
 }

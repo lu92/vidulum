@@ -3,7 +3,10 @@ package com.multi.vidulum.task.infrastructure;
 import com.multi.vidulum.task.domain.DomainTaskRepository;
 import com.multi.vidulum.task.domain.Task;
 import com.multi.vidulum.task.domain.TaskId;
+import com.multi.vidulum.task.domain.TaskStatus;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -28,5 +31,12 @@ public class DomainTaskImplRepository implements DomainTaskRepository {
         return Task.from(
                 savedTradeEntity
                         .toSnapshot());
+    }
+
+    @Override
+    public Page<Task> findByStatus(TaskStatus status, Pageable pageable) {
+        return repository.findByStatus(status, pageable)
+                .map(TaskEntity::toSnapshot)
+                .map(Task::from);
     }
 }
