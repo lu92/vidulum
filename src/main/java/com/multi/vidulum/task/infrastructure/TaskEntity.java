@@ -14,7 +14,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 @Builder
 @Getter
@@ -22,7 +21,6 @@ import java.util.Optional;
 @Document("task")
 public class TaskEntity {
     @Id
-    private String id;
     private String taskId;
     private String userId;
     private String name;
@@ -33,8 +31,6 @@ public class TaskEntity {
     private TaskStatus status;
 
     public static TaskEntity fromSnapshot(TaskSnapshot snapshot) {
-        String id = Optional.ofNullable(snapshot.getTaskId())
-                .map(TaskId::getId).orElse(null);
         Date dueDate = snapshot.getDueDate() != null ? Date.from(snapshot.getDueDate().toInstant()) : null;
         List<CommentEntity> commentEntities = snapshot.getComments().stream()
                 .map(commentSnapshot -> new CommentEntity(
@@ -42,7 +38,6 @@ public class TaskEntity {
                         Date.from(commentSnapshot.created().toInstant())))
                 .toList();
         return TaskEntity.builder()
-                .id(id)
                 .taskId(snapshot.getTaskId().getId())
                 .userId(snapshot.getUserId().getId())
                 .name(snapshot.getName())
