@@ -17,7 +17,7 @@ import static java.util.Objects.isNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-public class Learning {
+public class EitherDDDModeling {
 
     @Test
     void shouldSavePerson() {
