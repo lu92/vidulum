@@ -40,6 +40,7 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
                 .fee(fee)
+                .exchangeCurrencyRate(command.getExchangeCurrencyRate())
                 .localValue(value)
                 .value(value)
                 .totalValue(value.plus(fee.totalFee()))

@@ -21,6 +21,7 @@ public class TradingDto {
         private Quantity quantity;
         private Price price;
         private Fee fee;
+        private ExchangeRate exchangeCurrencyRate;
         private ZonedDateTime originDateTime;
     }
 

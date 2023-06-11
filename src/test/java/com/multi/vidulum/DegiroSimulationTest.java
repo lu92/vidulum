@@ -1,9 +1,6 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Price;
-import com.multi.vidulum.common.Quantity;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
@@ -30,6 +27,8 @@ public class DegiroSimulationTest extends IntegrationTest {
         quoteRestController.changePrice("DEGIRO", "EUR", "EUR", 1, "EUR", 0);
         quoteRestController.changePrice("DEGIRO", "USD", "EUR", 0.95, "EUR", 0);
         quoteRestController.changePrice("DEGIRO", "VUSA", "EUR", 70.778, "EUR", 0);
+        quoteRestController.changePrice("DEGIRO", "VUSA", "USD", 70.778 * 1.05, "USD", 0);
+        quoteRestController.changePrice("DEGIRO", "GDX", "USD", 35.31, "EUR", 0);
         quoteRestController.changePrice("DEGIRO", "EUR", "USD", 1.05, "USD", 0);
 
         quoteRestController.registerAssetBasicInfo("DEGIRO", QuotationDto.AssetBasicInfoJson.builder()
@@ -43,6 +42,12 @@ public class DegiroSimulationTest extends IntegrationTest {
                 .fullName("Vanguard S&P 500 UCITS ETF USD")
                 .segment("stock")
                 .tags(List.of("VUSA"))
+                .build());
+        quoteRestController.registerAssetBasicInfo("DEGIRO", QuotationDto.AssetBasicInfoJson.builder()
+                .ticker("GDX")
+                .fullName("VanEck Vectors Gold Miners UCITS ETF A USD")
+                .segment("stock")
+                .tags(List.of("GDX"))
                 .build());
 
         Awaitility.await().atMost(30, SECONDS).until(() -> {
@@ -64,6 +69,24 @@ public class DegiroSimulationTest extends IntegrationTest {
         depositMoney(registeredPortfolioId, Money.of(4302, "EUR"));
         depositMoney(registeredPortfolioId, Money.of(7598.45, "EUR"));
 
+//        makeDirectTrade(
+//                PortfolioId.of(registeredPortfolio.getPortfolioId()),
+//                registeredPortfolio.getAllowedDepositCurrency(),
+//                DirectTrade.builder()
+//                        .originOrderId(UUID.randomUUID().toString())
+//                        .portfolioId(registeredPortfolio.getPortfolioId())
+//                        .broker(registeredPortfolio.getBroker())
+//                        .symbol("VUSA/EUR")
+//                        .side(BUY)
+//                        .quantity(Quantity.of(10))
+//                        .price(Price.of(70.778, "EUR"))
+//                        .exchangeCurrencyFee(Money.of(0, "EUR"))
+//                        .exchangeCurrencyRate(ExchangeRate.equivalent("EUR"))
+//                        .transactionFee(Money.of(3.90, "EUR"))
+//                        .originDateTime(ZonedDateTime.parse("2022-05-20T15:39:41Z"))
+//                        .build()
+//        );
+
         makeDirectTrade(
                 PortfolioId.of(registeredPortfolio.getPortfolioId()),
                 registeredPortfolio.getAllowedDepositCurrency(),
@@ -71,12 +94,13 @@ public class DegiroSimulationTest extends IntegrationTest {
                         .originOrderId(UUID.randomUUID().toString())
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
-                        .symbol("VUSA/EUR")
+                        .symbol("GDX/USD")
                         .side(BUY)
-                        .quantity(Quantity.of(10))
-                        .price(Price.of(70.778, "EUR"))
-                        .exchangeCurrencyFee(Money.of(0, "EUR"))
-                        .transactionFee(Money.of(3.90, "EUR"))
+                        .quantity(Quantity.of(4))
+                        .price(Price.of(35.31, "USD"))
+                        .exchangeCurrencyFee(Money.of(0.33, "EUR"))
+                        .exchangeCurrencyRate(new ExchangeRate("EUR/USD", 1.065))
+                        .transactionFee(Money.of(0, "EUR"))
                         .originDateTime(ZonedDateTime.parse("2022-05-20T15:39:41Z"))
                         .build()
         );
