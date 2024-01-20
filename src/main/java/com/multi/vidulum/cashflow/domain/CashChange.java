@@ -28,7 +28,6 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
     private ZonedDateTime endDate;
     private List<CashChangeEvent> uncommittedEvents;
 
-
     @Override
     public CashChangeSnapshot getSnapshot() {
         return new CashChangeSnapshot(
@@ -45,7 +44,6 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
         );
     }
 
-
     public static CashChange from(CashChangeSnapshot snapshot) {
         return CashChange.builder()
                 .cashChangeId(snapshot.cashChangeId())
@@ -61,58 +59,10 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
                 .build();
     }
 
-    public void edit(
-            Name name,
-            Description description,
-            Money money,
-            ZonedDateTime dueDate) {
-        CashChangeEvent.CashChangeEditedEvent event = new CashChangeEvent.CashChangeEditedEvent(cashChangeId, name, description, money, dueDate);
-        apply(event);
-        add(event);
-    }
-
-    private void apply(CashChangeEvent.CashChangeEditedEvent event) {
-        whenIsPending(() -> {
-            name = event.name();
-            description = event.description();
-            money = event.money();
-            dueDate = event.dueDate();
-
-        });
-    }
-
-
-    private void add(CashChangeEvent event) {
-        // store event temporary
-        getUncommittedEvents().add(event);
-    }
-
     public List<CashChangeEvent> getUncommittedEvents() {
         if (Objects.isNull(uncommittedEvents)) {
             uncommittedEvents = new LinkedList<>();
         }
         return uncommittedEvents;
-    }
-
-    void confirm() {
-        throw new UnsupportedOperationException("Not implemented yet!");
-    }
-
-    void archive() {
-        throw new UnsupportedOperationException("Not implemented yet!");
-    }
-
-    void reject() {
-        throw new UnsupportedOperationException("Not implemented yet!");
-    }
-
-    private void whenIsPending(Runnable action) {
-        if (isOpened()) {
-            action.run();
-        } else throw new CashChangeIsNotOpenedException(type, cashChangeId);
-    }
-
-    boolean isOpened() {
-        return CashChangeStatus.PENDING.equals(status);
     }
 }

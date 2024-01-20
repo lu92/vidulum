@@ -11,8 +11,4 @@ public sealed interface CashChangeEvent extends DomainEvent {
     record CashChangeCreatedEvent(CashChangeId id, UserId userId, Name name, Description description, Money money,
                                   Type type, ZonedDateTime created, ZonedDateTime dueDate) implements CashChangeEvent {
     }
-
-    record CashChangeEditedEvent(CashChangeId id, Name name, Description description, Money money,
-                                 ZonedDateTime dueDate) implements CashChangeEvent {
-    }
 }
