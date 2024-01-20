@@ -18,7 +18,7 @@ import java.time.ZonedDateTime;
 public class CreateCashChangeCommandHandler implements CommandHandler<CreateCashChangeCommand, CashChange> {
 
     private final DomainCashChangeRepository domainCashChangeRepository;
-    private CashChangeFactory cashChangeFactory;
+    private final CashChangeFactory cashChangeFactory;
     private final Clock clock;
 
     @Override

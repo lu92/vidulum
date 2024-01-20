@@ -75,7 +75,5 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 null
                         )
                 );
-        System.out.println(savedCashChange);
-
     }
 }
