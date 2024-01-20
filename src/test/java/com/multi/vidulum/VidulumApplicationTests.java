@@ -1236,7 +1236,7 @@ class VidulumApplicationTests extends IntegrationTest {
 //                RiskManagementDto.RiskManagementStatementJson.builder()
 //                        .portfolioId(registeredPortfolio.getPortfolioId())
 //                        .userId(registeredPortfolio.getUserId())
-//                        .name(registeredPortfolio.getName())
+//                        .description(registeredPortfolio.getName())
 //                        .broker(registeredPortfolio.getBroker())
 //                        .assetRiskManagementStatements(
 //                                List.of(
