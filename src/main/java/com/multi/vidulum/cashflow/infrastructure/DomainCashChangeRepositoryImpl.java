@@ -27,7 +27,7 @@ public class DomainCashChangeRepositoryImpl implements DomainCashChangeRepositor
 
     @Override
     public Optional<CashChange> findById(CashChangeId id) {
-        return cashChangeMongoRepository.findByCashChangeId(id.getId())
+        return cashChangeMongoRepository.findByCashChangeId(id.id())
                 .map(CashChangeEntity::toSnapshot)
                 .map(CashChange::from);
     }
@@ -38,7 +38,7 @@ public class DomainCashChangeRepositoryImpl implements DomainCashChangeRepositor
                 .map(cashChangeEvent -> new StoredDomainEvent() {
                     @Override
                     public String index() {
-                        return aggregate.getSnapshot().cashChangeId().getId();
+                        return aggregate.getSnapshot().cashChangeId().id();
                     }
 
                     @Override

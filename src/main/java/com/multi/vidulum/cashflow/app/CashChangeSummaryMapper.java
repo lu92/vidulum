@@ -8,7 +8,7 @@ public class CashChangeSummaryMapper {
 
     CashChangeDto.CashChangeSummaryJson map(CashChangeSnapshot snapshot) {
         return CashChangeDto.CashChangeSummaryJson.builder()
-                .cashChangeId(snapshot.cashChangeId().getId())
+                .cashChangeId(snapshot.cashChangeId().id())
                 .userId(snapshot.userId().getId())
                 .name(snapshot.name().name())
                 .type(snapshot.type())

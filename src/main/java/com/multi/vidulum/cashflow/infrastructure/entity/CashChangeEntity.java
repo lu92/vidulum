@@ -35,7 +35,7 @@ public class CashChangeEntity {
 
     public static CashChangeEntity fromSnapshot(CashChangeSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.cashChangeId())
-                .map(CashChangeId::getId).orElse(null);
+                .map(CashChangeId::id).orElse(null);
 
         Date createdDate = snapshot.created() != null ? Date.from(snapshot.created().toInstant()) : null;
         Date dueDate = snapshot.dueDate() != null ? Date.from(snapshot.dueDate().toInstant()) : null;
@@ -63,7 +63,7 @@ public class CashChangeEntity {
         ZonedDateTime endDateTime = endDate != null ? ZonedDateTime.ofInstant(endDate.toInstant(), ZoneOffset.UTC) : null;
 
         return new CashChangeSnapshot(
-                CashChangeId.of(cashChangeId),
+                new CashChangeId(cashChangeId),
                 UserId.of(userId),
                 new Name(name),
                 new Description(description),
