@@ -29,7 +29,7 @@ public class CashChangeFactory {
                 name,
                 description,
                 money,
-                Type.INFLOW,
+                type,
                 created,
                 dueDate
         ));

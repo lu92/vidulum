@@ -12,6 +12,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
+import static com.multi.vidulum.cashflow.domain.CashChangeStatus.CONFIRMED;
+
 @Builder
 @AllArgsConstructor
 public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
@@ -57,6 +59,34 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
                 .dueDate(snapshot.dueDate())
                 .endDate(snapshot.endDate())
                 .build();
+    }
+
+    public void confirm(ZonedDateTime endDate) {
+        CashChangeEvent.CashChangeConfirmedEvent event = new CashChangeEvent.CashChangeConfirmedEvent(cashChangeId, endDate);
+        apply(event);
+        add(event);
+    }
+
+    private void apply(CashChangeEvent.CashChangeConfirmedEvent event) {
+        whenIsPending(() -> {
+            status = CONFIRMED;
+            endDate = event.endDate();
+        });
+    }
+
+    private void whenIsPending(Runnable action) {
+        if (isPending()) {
+            action.run();
+        } else throw new CashChangeIsNotOpenedException(type, cashChangeId);
+    }
+
+    boolean isPending() {
+        return CashChangeStatus.PENDING.equals(status);
+    }
+
+    private void add(CashChangeEvent event) {
+        // store event temporary
+        getUncommittedEvents().add(event);
     }
 
     public List<CashChangeEvent> getUncommittedEvents() {
