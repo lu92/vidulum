@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.domain;
 
-class CashChangeIsNotOpenedException extends RuntimeException {
+public class CashChangeIsNotOpenedException extends RuntimeException {
 
     private CashChangeId id;
     private Type type;

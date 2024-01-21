@@ -23,6 +23,12 @@ public final class CashChangeDto {
 
     @Data
     @Builder
+    public static class ConfirmCashChangeJson {
+        private String cashChangeId;
+    }
+
+    @Data
+    @Builder
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String userId;
