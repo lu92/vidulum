@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.trading.domain.IntegrationTest;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -163,6 +164,92 @@ class CashChangeAggregateTest extends IntegrationTest {
 
         // when and then
         assertThatThrownBy(() -> cashChange.confirm(ZonedDateTime.parse("2021-07-01T06:30:00Z")))
+                .isInstanceOf(CashChangeIsNotOpenedException.class);
+    }
+
+    @Test
+    void shouldEditCashChangeTest() {
+        // given
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChange cashChange = cashChangeFactory.empty(
+                cashChangeId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("desc"),
+                Money.of(100, "USD"),
+                Type.INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        );
+
+        // when
+        cashChange.edit(
+                new Name("name edited"),
+                new Description("description edited"),
+                Money.of(500, "USD"),
+                ZonedDateTime.parse("2021-08-01T00:00:00Z"));
+        CashChange editedCashChange = domainCashChangeRepository.save(cashChange);
+
+        // then
+        assertThat(editedCashChange.getSnapshot()).isEqualTo(new CashChangeSnapshot(
+                        cashChangeId,
+                        UserId.of("user"),
+                        new Name("name edited"),
+                        new Description("description edited"),
+                        Money.of(500, "USD"),
+                        Type.INFLOW,
+                        CashChangeStatus.PENDING,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        ZonedDateTime.parse("2021-08-01T00:00:00Z"),
+                        null
+                )
+        );
+
+        assertThat(domainCashChangeRepository.findDomainEvents(cashChangeId))
+                .containsExactly(
+                        new CashChangeEvent.CashChangeCreatedEvent(
+                                cashChangeId,
+                                UserId.of("user"),
+                                new Name("name"),
+                                new Description("desc"),
+                                Money.of(100, "USD"),
+                                Type.INFLOW,
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ),
+                        new CashChangeEvent.CashChangeEditedEvent(
+                                cashChangeId,
+                                new Name("name edited"),
+                                new Description("description edited"),
+                                Money.of(500, "USD"),
+                                ZonedDateTime.parse("2021-08-01T00:00:00Z")
+                        )
+                );
+    }
+
+    @Test
+    void modificationOnConfirmedCashChange_exceptionIsExpected() {
+        // given
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChange cashChange = cashChangeFactory.empty(
+                cashChangeId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("desc"),
+                Money.of(100, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        );
+
+        cashChange.confirm(ZonedDateTime.parse("2021-07-10T06:30:00Z"));
+
+        // when
+        assertThatThrownBy(() -> cashChange.edit(
+                        new Name("name edited"),
+                        new Description("description edited"),
+                        Money.of(500, "USD"),
+                        ZonedDateTime.parse("2021-08-01T00:00:00Z")))
                 .isInstanceOf(CashChangeIsNotOpenedException.class);
     }
 }

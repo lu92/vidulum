@@ -2,9 +2,10 @@ package com.multi.vidulum.cashflow;
 
 import com.multi.vidulum.cashflow.app.CashChangeDto;
 import com.multi.vidulum.cashflow.app.CashChangeRestController;
-import com.multi.vidulum.cashflow.domain.CashChangeId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.ZonedDateTime;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.CONFIRMED;
+import static com.multi.vidulum.cashflow.domain.CashChangeStatus.PENDING;
+import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CashChangeControllerTest extends IntegrationTest {
@@ -22,7 +25,7 @@ public class CashChangeControllerTest extends IntegrationTest {
     @Test
     void shouldCreateCashChange() {
 
-        CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.createEmptyCashChange(
+        CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.create(
                 CashChangeDto.CreateEmptyCashChangeJson.builder()
                         .userId("userId")
                         .name("name")
@@ -38,7 +41,7 @@ public class CashChangeControllerTest extends IntegrationTest {
 
     @Test
     void shouldConfirmCashChange() {
-        CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.createEmptyCashChange(
+        CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.create(
                 CashChangeDto.CreateEmptyCashChangeJson.builder()
                         .userId("userId")
                         .name("name")
@@ -49,7 +52,7 @@ public class CashChangeControllerTest extends IntegrationTest {
                         .build()
         );
 
-        cashChangeRestController.confirmCashChange(
+        cashChangeRestController.confirm(
                 CashChangeDto.ConfirmCashChangeJson.builder()
                         .cashChangeId(summary.getCashChangeId())
                         .build());
@@ -59,5 +62,47 @@ public class CashChangeControllerTest extends IntegrationTest {
                 .get()
                 .matches(cashChange -> CONFIRMED.equals(cashChange.getSnapshot().status()));
 
+    }
+
+    @Test
+    void shouldEditCashChange() {
+        CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.create(
+                CashChangeDto.CreateEmptyCashChangeJson.builder()
+                        .userId("userId")
+                        .name("name")
+                        .description("description")
+                        .money(Money.of(100, "USD"))
+                        .type(Type.INFLOW)
+                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .build()
+        );
+
+        cashChangeRestController.edit(
+                CashChangeDto.EditCashChangeJson.builder()
+                        .cashChangeId(summary.getCashChangeId())
+                        .name("name edited")
+                        .description("description edited")
+                        .money(Money.of(200, "USD"))
+                        .dueDate(ZonedDateTime.parse("2024-02-10T00:00:00Z"))
+                        .build()
+        );
+
+        assertThat(domainCashChangeRepository.findById(new CashChangeId(summary.getCashChangeId())))
+                .isPresent()
+                .map(CashChange::getSnapshot)
+                .get()
+                .isEqualTo(new CashChangeSnapshot(
+                                new CashChangeId(summary.getCashChangeId()),
+                                UserId.of("userId"),
+                                new Name("name edited"),
+                                new Description("description edited"),
+                                Money.of(200, "USD"),
+                                INFLOW,
+                                PENDING,
+                                ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                                ZonedDateTime.parse("2024-02-10T00:00:00Z"),
+                                null
+                        )
+                );
     }
 }
