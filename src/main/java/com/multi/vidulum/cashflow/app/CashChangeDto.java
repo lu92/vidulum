@@ -29,6 +29,16 @@ public final class CashChangeDto {
 
     @Data
     @Builder
+    public static class EditCashChangeJson {
+        private String cashChangeId;
+        private String name;
+        private String description;
+        private Money money;
+        private ZonedDateTime dueDate;
+    }
+
+    @Data
+    @Builder
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String userId;

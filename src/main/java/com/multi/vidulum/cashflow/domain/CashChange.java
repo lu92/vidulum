@@ -74,6 +74,26 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
         });
     }
 
+    public void edit(
+            Name name,
+            Description description,
+            Money money,
+            ZonedDateTime dueDate) {
+        CashChangeEvent.CashChangeEditedEvent event = new CashChangeEvent.CashChangeEditedEvent(cashChangeId, name, description, money, dueDate);
+        apply(event);
+        add(event);
+    }
+
+    private void apply(CashChangeEvent.CashChangeEditedEvent event) {
+        whenIsPending(() -> {
+            name = event.name();
+            description = event.description();
+            money = event.money();
+            dueDate = event.dueDate();
+
+        });
+    }
+
     private void whenIsPending(Runnable action) {
         if (isPending()) {
             action.run();

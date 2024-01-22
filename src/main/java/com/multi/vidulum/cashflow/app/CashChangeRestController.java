@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.create.CreateCashChangeCommand;
+import com.multi.vidulum.cashflow.app.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.CashChange;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Description;
@@ -25,7 +26,7 @@ public class CashChangeRestController {
     private final Clock clock;
 
     @PostMapping
-    public CashChangeDto.CashChangeSummaryJson createEmptyCashChange(@RequestBody CashChangeDto.CreateEmptyCashChangeJson request) {
+    public CashChangeDto.CashChangeSummaryJson create(@RequestBody CashChangeDto.CreateEmptyCashChangeJson request) {
         CashChange cashChange = commandGateway.send(
                 new CreateCashChangeCommand(
                         UserId.of(request.getUserId()),
@@ -40,11 +41,24 @@ public class CashChangeRestController {
     }
 
     @PostMapping("/confirm")
-    public void confirmCashChange(@RequestBody CashChangeDto.ConfirmCashChangeJson request) {
+    public void confirm(@RequestBody CashChangeDto.ConfirmCashChangeJson request) {
         commandGateway.send(
                 new ConfirmCashChangeCommand(
                         new CashChangeId(request.getCashChangeId()),
                         ZonedDateTime.now(clock)));
+    }
+
+    @PostMapping("/edit")
+    public void edit(@RequestBody CashChangeDto.EditCashChangeJson request) {
+        commandGateway.send(
+                new EditCashChangeCommand(
+                        new CashChangeId(request.getCashChangeId()),
+                        new Name(request.getName()),
+                        new Description(request.getDescription()),
+                        request.getMoney(),
+                        request.getDueDate()
+                )
+        );
     }
 
 }
