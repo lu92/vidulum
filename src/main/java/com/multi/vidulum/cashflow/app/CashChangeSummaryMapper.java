@@ -11,6 +11,7 @@ public class CashChangeSummaryMapper {
                 .cashChangeId(snapshot.cashChangeId().id())
                 .userId(snapshot.userId().getId())
                 .name(snapshot.name().name())
+                .description(snapshot.description().description())
                 .type(snapshot.type())
                 .status(snapshot.status())
                 .created(snapshot.created())

@@ -23,8 +23,9 @@ public class CashChangeControllerTest extends IntegrationTest {
     private CashChangeRestController cashChangeRestController;
 
     @Test
-    void shouldCreateCashChange() {
+    void shouldCreateAndGetCashChange() {
 
+        // when
         CashChangeDto.CashChangeSummaryJson summary = cashChangeRestController.create(
                 CashChangeDto.CreateEmptyCashChangeJson.builder()
                         .userId("userId")
@@ -35,8 +36,22 @@ public class CashChangeControllerTest extends IntegrationTest {
                         .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
                         .build()
         );
+        CashChangeDto.CashChangeSummaryJson cashChangeSummaryJson = cashChangeRestController.getCashChange(summary.getCashChangeId());
 
+        // then
         assertThat(summary).isNotNull();
+        assertThat(cashChangeSummaryJson).isEqualTo(
+                CashChangeDto.CashChangeSummaryJson.builder()
+                        .cashChangeId(summary.getCashChangeId())
+                        .userId("userId")
+                        .name("name")
+                        .description("description")
+                        .type(INFLOW)
+                        .status(PENDING)
+                        .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .build()
+        );
     }
 
     @Test
@@ -57,11 +72,8 @@ public class CashChangeControllerTest extends IntegrationTest {
                         .cashChangeId(summary.getCashChangeId())
                         .build());
 
-        assertThat(domainCashChangeRepository.findById(new CashChangeId(summary.getCashChangeId())))
-                .isPresent()
-                .get()
-                .matches(cashChange -> CONFIRMED.equals(cashChange.getSnapshot().status()));
-
+        assertThat(cashChangeRestController.getCashChange(summary.getCashChangeId()))
+                .matches(cashChangeSummaryJson -> CONFIRMED.equals(cashChangeSummaryJson.getStatus()));
     }
 
     @Test

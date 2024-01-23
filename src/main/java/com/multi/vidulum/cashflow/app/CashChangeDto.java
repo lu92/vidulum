@@ -43,6 +43,7 @@ public final class CashChangeDto {
         private String cashChangeId;
         private String userId;
         private String name;
+        private String description;
         private Type type;
         private CashChangeStatus status;
         private ZonedDateTime created;
