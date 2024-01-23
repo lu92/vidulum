@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.edit;
+package com.multi.vidulum.cashflow.app.commands.edit;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Description;

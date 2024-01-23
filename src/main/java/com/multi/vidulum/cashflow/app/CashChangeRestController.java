@@ -1,18 +1,19 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.cashflow.app.confirm.ConfirmCashChangeCommand;
-import com.multi.vidulum.cashflow.app.create.CreateCashChangeCommand;
-import com.multi.vidulum.cashflow.app.edit.EditCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.create.CreateCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
+import com.multi.vidulum.cashflow.app.queries.GetCashChangeQuery;
 import com.multi.vidulum.cashflow.domain.CashChange;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
+import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -22,6 +23,7 @@ import java.time.ZonedDateTime;
 public class CashChangeRestController {
 
     private final CommandGateway commandGateway;
+    private final QueryGateway queryGateway;
     private final CashChangeSummaryMapper mapper;
     private final Clock clock;
 
@@ -59,6 +61,15 @@ public class CashChangeRestController {
                         request.getDueDate()
                 )
         );
+    }
+
+    @GetMapping("/{cash-change-id}")
+    public CashChangeDto.CashChangeSummaryJson getCashChange(@PathVariable("cash-change-id") String cashChangeId) {
+        CashChangeSnapshot cashChangeSnapshot = queryGateway.send(
+                new GetCashChangeQuery(new CashChangeId(cashChangeId))
+        );
+
+        return mapper.map(cashChangeSnapshot);
     }
 
 }

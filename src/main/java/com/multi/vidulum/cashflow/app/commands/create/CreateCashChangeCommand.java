@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.create;
+package com.multi.vidulum.cashflow.app.commands.create;
 
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;

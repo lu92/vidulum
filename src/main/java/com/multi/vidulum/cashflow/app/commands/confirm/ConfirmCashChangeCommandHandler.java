@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.confirm;
+package com.multi.vidulum.cashflow.app.commands.confirm;
 
 import com.multi.vidulum.cashflow.domain.CashChange;
 import com.multi.vidulum.cashflow.domain.CashChangeDoesNotExistsException;
