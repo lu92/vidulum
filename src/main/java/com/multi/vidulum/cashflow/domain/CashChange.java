@@ -13,8 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.multi.vidulum.cashflow.domain.CashChangeStatus.CONFIRMED;
-import static com.multi.vidulum.cashflow.domain.CashChangeStatus.REJECTED;
+import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
 
 @Builder
 @AllArgsConstructor
@@ -102,7 +101,7 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
     }
 
     private void apply(CashChangeEvent.CashChangeRejectedEvent event) {
-        status = REJECTED;
+        whenIsPending(() -> status = REJECTED);
     }
 
     private void whenIsPending(Runnable action) {
@@ -111,8 +110,8 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
         } else throw new CashChangeIsNotOpenedException(type, cashChangeId);
     }
 
-    boolean isPending() {
-        return CashChangeStatus.PENDING.equals(status);
+    private boolean isPending() {
+        return PENDING.equals(status);
     }
 
     private void add(CashChangeEvent event) {

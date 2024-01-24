@@ -305,4 +305,26 @@ class CashChangeAggregateTest extends IntegrationTest {
                         )
                 );
     }
+
+    @Test
+    void rejectionOnAlreadyRejectedCashChange_exceptionExpected() {
+        // given
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChange cashChange = cashChangeFactory.empty(
+                cashChangeId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                Money.of(100, "USD"),
+                Type.INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        );
+
+        // when
+        cashChange.reject(new Reason("some reason"));
+        assertThatThrownBy(() -> cashChange.reject(new Reason("some reason")))
+                .isInstanceOf(CashChangeIsNotOpenedException.class);
+
+    }
 }
