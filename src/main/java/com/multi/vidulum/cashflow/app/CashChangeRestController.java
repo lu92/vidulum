@@ -3,12 +3,14 @@ package com.multi.vidulum.cashflow.app;
 import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashChangeQuery;
 import com.multi.vidulum.cashflow.domain.CashChange;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
+import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
@@ -59,6 +61,16 @@ public class CashChangeRestController {
                         new Description(request.getDescription()),
                         request.getMoney(),
                         request.getDueDate()
+                )
+        );
+    }
+
+    @PostMapping("/reject")
+    public void reject(@RequestBody CashChangeDto.RejectCashChangeJson request) {
+        commandGateway.send(
+                new RejectCashChangeCommand(
+                        new CashChangeId(request.getCashChangeId()),
+                        new Reason(request.getReason())
                 )
         );
     }
