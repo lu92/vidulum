@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
@@ -12,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.multi.vidulum.cashflow.domain.CashChangeStatus.CONFIRMED;
+import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
 
 @Builder
 @AllArgsConstructor
@@ -90,8 +91,17 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
             description = event.description();
             money = event.money();
             dueDate = event.dueDate();
-
         });
+    }
+
+    public void reject(Reason reason) {
+        CashChangeEvent.CashChangeRejectedEvent event = new CashChangeEvent.CashChangeRejectedEvent(cashChangeId, reason);
+        apply(event);
+        add(event);
+    }
+
+    private void apply(CashChangeEvent.CashChangeRejectedEvent event) {
+        whenIsPending(() -> status = REJECTED);
     }
 
     private void whenIsPending(Runnable action) {
@@ -100,8 +110,8 @@ public class CashChange implements Aggregate<CashChangeId, CashChangeSnapshot> {
         } else throw new CashChangeIsNotOpenedException(type, cashChangeId);
     }
 
-    boolean isPending() {
-        return CashChangeStatus.PENDING.equals(status);
+    private boolean isPending() {
+        return PENDING.equals(status);
     }
 
     private void add(CashChangeEvent event) {

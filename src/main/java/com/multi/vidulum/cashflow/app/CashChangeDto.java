@@ -39,6 +39,13 @@ public final class CashChangeDto {
 
     @Data
     @Builder
+    public static class RejectCashChangeJson {
+        private String cashChangeId;
+        private String reason;
+    }
+
+    @Data
+    @Builder
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String userId;

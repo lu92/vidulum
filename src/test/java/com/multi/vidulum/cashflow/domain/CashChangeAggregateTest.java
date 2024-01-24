@@ -2,9 +2,9 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.trading.domain.IntegrationTest;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -246,10 +246,85 @@ class CashChangeAggregateTest extends IntegrationTest {
 
         // when
         assertThatThrownBy(() -> cashChange.edit(
-                        new Name("name edited"),
-                        new Description("description edited"),
-                        Money.of(500, "USD"),
-                        ZonedDateTime.parse("2021-08-01T00:00:00Z")))
+                new Name("name edited"),
+                new Description("description edited"),
+                Money.of(500, "USD"),
+                ZonedDateTime.parse("2021-08-01T00:00:00Z")))
                 .isInstanceOf(CashChangeIsNotOpenedException.class);
+    }
+
+    @Test
+    void shouldRejectCashChangeTest() {
+        // given
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChange cashChange = cashChangeFactory.empty(
+                cashChangeId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                Money.of(100, "USD"),
+                Type.INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        );
+
+        // when
+        cashChange.reject(new Reason("some reason"));
+        CashChange rejectedCashChange = domainCashChangeRepository.save(cashChange);
+
+        // then
+        assertThat(rejectedCashChange.getSnapshot()).isEqualTo(new CashChangeSnapshot(
+                        cashChangeId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        Money.of(100, "USD"),
+                        Type.INFLOW,
+                        CashChangeStatus.REJECTED,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                        null
+                )
+        );
+
+        assertThat(domainCashChangeRepository.findDomainEvents(cashChangeId))
+                .containsExactly(
+                        new CashChangeEvent.CashChangeCreatedEvent(
+                                cashChangeId,
+                                UserId.of("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                Money.of(100, "USD"),
+                                Type.INFLOW,
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ),
+                        new CashChangeEvent.CashChangeRejectedEvent(
+                                cashChangeId,
+                                new Reason("some reason")
+                        )
+                );
+    }
+
+    @Test
+    void rejectionOnAlreadyRejectedCashChange_exceptionExpected() {
+        // given
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChange cashChange = cashChangeFactory.empty(
+                cashChangeId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                Money.of(100, "USD"),
+                Type.INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        );
+
+        // when
+        cashChange.reject(new Reason("some reason"));
+        assertThatThrownBy(() -> cashChange.reject(new Reason("some reason")))
+                .isInstanceOf(CashChangeIsNotOpenedException.class);
+
     }
 }
