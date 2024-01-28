@@ -6,9 +6,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class CashFlowConfig {
-
-    @Bean
-    public CashChangeFactory cashChangeFactory() {
-        return new CashChangeFactory();
-    }
 }

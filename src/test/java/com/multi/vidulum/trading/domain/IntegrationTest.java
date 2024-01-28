@@ -3,7 +3,7 @@ package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.cashflow.domain.CashChangeFactory;
-import com.multi.vidulum.cashflow.domain.DomainCashChangeRepository;
+import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.pnl.app.PnlRestController;
@@ -103,7 +103,7 @@ public abstract class IntegrationTest {
     protected DomainPnlRepository pnlRepository;
 
     @Autowired
-    protected DomainCashChangeRepository domainCashChangeRepository;
+    protected DomainCashFlowRepository domainCashFlowRepository;
 
     @Autowired
     protected RiskManagementRestController riskManagementRestController;
@@ -119,9 +119,6 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected OrderFactory orderFactory;
-
-    @Autowired
-    protected CashChangeFactory cashChangeFactory;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 

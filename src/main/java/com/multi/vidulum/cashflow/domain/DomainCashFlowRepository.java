@@ -5,7 +5,7 @@ import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
 import java.util.List;
 
-public interface DomainCashChangeRepository extends DomainRepository<CashChangeId, CashChange> {
-    List<DomainEvent> findDomainEvents(CashChangeId cashChangeId);
+public interface DomainCashFlowRepository extends DomainRepository<CashFlowId, CashFlow> {
+    List<DomainEvent> findDomainEvents(CashFlowId cashFlowId);
 
 }

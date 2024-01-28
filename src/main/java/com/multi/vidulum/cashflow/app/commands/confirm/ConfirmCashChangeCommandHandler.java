@@ -1,8 +1,8 @@
 package com.multi.vidulum.cashflow.app.commands.confirm;
 
-import com.multi.vidulum.cashflow.domain.CashChange;
-import com.multi.vidulum.cashflow.domain.CashChangeDoesNotExistsException;
-import com.multi.vidulum.cashflow.domain.DomainCashChangeRepository;
+import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,15 +13,18 @@ import org.springframework.stereotype.Component;
 @AllArgsConstructor
 public class ConfirmCashChangeCommandHandler implements CommandHandler<ConfirmCashChangeCommand, Void> {
 
-    private final DomainCashChangeRepository domainCashChangeRepository;
+    private final DomainCashFlowRepository domainCashFlowRepository;
 
     @Override
     public Void handle(ConfirmCashChangeCommand command) {
-        CashChange cashChange = domainCashChangeRepository.findById(command.cashChangeId())
-                .orElseThrow(() -> new CashChangeDoesNotExistsException(command.cashChangeId()));
+        CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
+                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        cashChange.confirm(command.endDate());
-        domainCashChangeRepository.save(cashChange);
+        cashFlow.confirm(
+                command.cashChangeId(),
+                command.endDate());
+
+        domainCashFlowRepository.save(cashFlow);
         log.info("Cash change [{}] has been confirmed!", command.cashChangeId().id());
         return null;
     }

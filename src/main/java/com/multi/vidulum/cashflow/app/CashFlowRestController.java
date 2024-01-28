@@ -1,15 +1,16 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
-import com.multi.vidulum.cashflow.app.commands.create.CreateCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
-import com.multi.vidulum.cashflow.app.queries.GetCashChangeQuery;
-import com.multi.vidulum.cashflow.domain.CashChange;
+import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
-import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
+import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -21,19 +22,34 @@ import java.time.Clock;
 import java.time.ZonedDateTime;
 
 @AllArgsConstructor
-@RestController("/cash-change")
-public class CashChangeRestController {
+@RestController("/cash-flow")
+public class CashFlowRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
-    private final CashChangeSummaryMapper mapper;
+    private final CashFlowSummaryMapper mapper;
     private final Clock clock;
 
     @PostMapping
-    public CashChangeDto.CashChangeSummaryJson create(@RequestBody CashChangeDto.CreateEmptyCashChangeJson request) {
-        CashChange cashChange = commandGateway.send(
-                new CreateCashChangeCommand(
-                        UserId.of(request.getUserId()),
+    public String createCashFlow(@RequestBody CashFlowDto.CreateCashFlowJson request) {
+        CashFlowSnapshot snapshot = commandGateway.send(
+                new CreateCashFlowCommand(
+                        new UserId(request.getUserId()),
+                        new Name(request.getName()),
+                        new Description(request.getDescription()),
+                        request.getBalance()
+                )
+        );
+
+        return snapshot.cashFlowId().id();
+    }
+
+    @PostMapping("/cash-change")
+    public String appendCashChange(@RequestBody CashFlowDto.AppendCashChangeJson request) {
+        CashChangeId cashChangeId = commandGateway.send(
+                new AppendCashChangeCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CashChangeId(CashChangeId.generate().id()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
@@ -41,21 +57,23 @@ public class CashChangeRestController {
                         request.getDueDate()
                 )
         );
-        return mapper.map(cashChange.getSnapshot());
+        return cashChangeId.id();
     }
 
     @PostMapping("/confirm")
-    public void confirm(@RequestBody CashChangeDto.ConfirmCashChangeJson request) {
+    public void confirm(@RequestBody CashFlowDto.ConfirmCashChangeJson request) {
         commandGateway.send(
                 new ConfirmCashChangeCommand(
+                        new CashFlowId(request.getCashFlowId()),
                         new CashChangeId(request.getCashChangeId()),
                         ZonedDateTime.now(clock)));
     }
 
     @PostMapping("/edit")
-    public void edit(@RequestBody CashChangeDto.EditCashChangeJson request) {
+    public void edit(@RequestBody CashFlowDto.EditCashChangeJson request) {
         commandGateway.send(
                 new EditCashChangeCommand(
+                        new CashFlowId(request.getCashFlowId()),
                         new CashChangeId(request.getCashChangeId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
@@ -66,22 +84,23 @@ public class CashChangeRestController {
     }
 
     @PostMapping("/reject")
-    public void reject(@RequestBody CashChangeDto.RejectCashChangeJson request) {
+    public void reject(@RequestBody CashFlowDto.RejectCashChangeJson request) {
         commandGateway.send(
                 new RejectCashChangeCommand(
+                        new CashFlowId(request.getCashFlowId()),
                         new CashChangeId(request.getCashChangeId()),
                         new Reason(request.getReason())
                 )
         );
     }
 
-    @GetMapping("/{cash-change-id}")
-    public CashChangeDto.CashChangeSummaryJson getCashChange(@PathVariable("cash-change-id") String cashChangeId) {
-        CashChangeSnapshot cashChangeSnapshot = queryGateway.send(
-                new GetCashChangeQuery(new CashChangeId(cashChangeId))
+    @GetMapping("/{cashFlowId}")
+    public CashFlowDto.CashFlowSummaryJson getCashFlow(@PathVariable("cashFlowId") String cashFlowId) {
+        CashFlowSnapshot snapshot = queryGateway.send(
+                new GetCashFlowQuery(new CashFlowId(cashFlowId))
         );
 
-        return mapper.map(cashChangeSnapshot);
+        return mapper.mapCashChange(snapshot);
     }
 
 }

@@ -22,8 +22,8 @@ public class CashChangeFactory {
             ZonedDateTime dueDate) {
 
 
-        List<CashChangeEvent> uncommittedEvents = new LinkedList<>();
-        uncommittedEvents.add(new CashChangeEvent.CashChangeCreatedEvent(
+        List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
+        uncommittedEvents.add(new CashFlowEvent.CashChangeAppendedEvent(
                 cashChangeId,
                 userId,
                 name,
@@ -35,7 +35,7 @@ public class CashChangeFactory {
         ));
         return CashChange.builder()
                 .cashChangeId(cashChangeId)
-                .userId(userId)
+//                .userId(userId)
                 .name(name)
                 .description(description)
                 .money(money)
@@ -43,7 +43,7 @@ public class CashChangeFactory {
                 .status(CashChangeStatus.PENDING)
                 .created(created)
                 .dueDate(dueDate)
-                .uncommittedEvents(uncommittedEvents)
+//                .uncommittedEvents(uncommittedEvents)
                 .build();
     }
 }
