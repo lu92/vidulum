@@ -18,12 +18,9 @@ import java.util.Optional;
 @Builder
 @Getter
 @ToString
-@Document("cash-change")
 public class CashChangeEntity {
 
-    @Id
     private String cashChangeId;
-    private String userId;
     private String name;
     private String description;
     private Money money;
@@ -44,7 +41,6 @@ public class CashChangeEntity {
 
         return CashChangeEntity.builder()
                 .cashChangeId(id)
-                .userId(snapshot.userId().getId())
                 .name(snapshot.name().name())
                 .description(snapshot.description().description())
                 .money(snapshot.money())
@@ -64,7 +60,6 @@ public class CashChangeEntity {
 
         return new CashChangeSnapshot(
                 new CashChangeId(cashChangeId),
-                UserId.of(userId),
                 new Name(name),
                 new Description(description),
                 money,
