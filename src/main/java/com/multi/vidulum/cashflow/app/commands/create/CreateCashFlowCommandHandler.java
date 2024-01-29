@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.app.commands.create;
 
 import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
@@ -36,6 +37,19 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
                 ZonedDateTime.now(clock),
                 null,
                 new LinkedList<>()
+        );
+
+        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+
+        cashFlow.getUncommittedEvents().add(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        snapshot.cashFlowId(),
+                        snapshot.userId(),
+                        snapshot.name(),
+                        snapshot.description(),
+                        snapshot.balance(),
+                        snapshot.created()
+                )
         );
 
         CashFlow savedCashFlow = domainCashFlowRepository.save(cashFlow);
