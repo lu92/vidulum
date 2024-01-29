@@ -106,6 +106,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                           ZonedDateTime created,
                           ZonedDateTime dueDate) {
         CashFlowEvent.CashChangeAppendedEvent event = new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
                 cashChangeId,
                 userId,
                 name,
@@ -135,7 +136,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public void confirm(CashChangeId cashChangeId, ZonedDateTime endDate) {
-        CashFlowEvent.CashChangeConfirmedEvent event = new CashFlowEvent.CashChangeConfirmedEvent(cashChangeId, endDate);
+        CashFlowEvent.CashChangeConfirmedEvent event = new CashFlowEvent.CashChangeConfirmedEvent(cashFlowId, cashChangeId, endDate);
         apply(event);
         add(event);
     }
@@ -153,7 +154,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
             Description description,
             Money money,
             ZonedDateTime dueDate) {
-        CashFlowEvent.CashChangeEditedEvent event = new CashFlowEvent.CashChangeEditedEvent(cashChangeId, name, description, money, dueDate);
+        CashFlowEvent.CashChangeEditedEvent event = new CashFlowEvent.CashChangeEditedEvent(cashFlowId, cashChangeId, name, description, money, dueDate);
         apply(event);
         add(event);
     }
@@ -168,7 +169,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public void reject(CashChangeId cashChangeId, Reason reason) {
-        CashFlowEvent.CashChangeRejectedEvent event = new CashFlowEvent.CashChangeRejectedEvent(cashChangeId, reason);
+        CashFlowEvent.CashChangeRejectedEvent event = new CashFlowEvent.CashChangeRejectedEvent(cashFlowId, cashChangeId, reason);
         apply(event);
         add(event);
     }

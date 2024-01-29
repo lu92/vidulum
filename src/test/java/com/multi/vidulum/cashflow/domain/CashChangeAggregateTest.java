@@ -87,6 +87,7 @@ class CashChangeAggregateTest extends IntegrationTest {
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
                         cashChangeId,
                         UserId.of("user"),
                         new Name("cash change name"),
@@ -164,6 +165,7 @@ class CashChangeAggregateTest extends IntegrationTest {
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
                         cashChangeId,
                         UserId.of("user"),
                         new Name("cash change name"),
@@ -174,6 +176,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ),
                 new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
                         cashChangeId,
                         ZonedDateTime.parse("2021-07-10T06:30:00Z")
                 )
@@ -276,6 +279,7 @@ class CashChangeAggregateTest extends IntegrationTest {
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
                 .containsExactly(
                         new CashFlowEvent.CashChangeAppendedEvent(
+                                cashFlowId,
                                 cashChangeId,
                                 UserId.of("user"),
                                 new Name("cash change name"),
@@ -286,6 +290,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeEditedEvent(
+                                cashFlowId,
                                 cashChangeId,
                                 new Name("name edited"),
                                 new Description("description edited"),
