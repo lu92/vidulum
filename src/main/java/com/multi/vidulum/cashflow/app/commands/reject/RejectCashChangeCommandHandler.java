@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.reject;
 
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,13 @@ public class RejectCashChangeCommandHandler implements CommandHandler<RejectCash
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        cashFlow.reject(command.cashChangeId(), command.reason());
+        cashFlow.apply(
+                new CashFlowEvent.CashChangeRejectedEvent(
+                        command.cashFlowId(),
+                        command.cashChangeId(),
+                        command.reason()
+                )
+        );
 
         domainCashFlowRepository.save(cashFlow);
 

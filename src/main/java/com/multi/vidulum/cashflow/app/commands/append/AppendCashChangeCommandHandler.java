@@ -22,14 +22,17 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        cashFlow.appendCashChange(
-                command.cashChangeId(),
-                command.name(),
-                command.description(),
-                command.money(),
-                command.type(),
-                ZonedDateTime.now(clock),
-                command.dueDate()
+        cashFlow.apply(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        command.cashFlowId(),
+                        command.cashChangeId(),
+                        command.name(),
+                        command.description(),
+                        command.money(),
+                        command.type(),
+                        ZonedDateTime.now(clock),
+                        command.dueDate()
+                )
         );
 
         domainCashFlowRepository.save(cashFlow);
