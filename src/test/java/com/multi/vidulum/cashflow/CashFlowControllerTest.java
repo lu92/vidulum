@@ -138,7 +138,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .balance(Money.of(100,"USD"))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,

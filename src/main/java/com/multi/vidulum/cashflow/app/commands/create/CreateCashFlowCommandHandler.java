@@ -25,30 +25,15 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
 
     @Override
     public CashFlowSnapshot handle(CreateCashFlowCommand command) {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashFlow cashFlow = new CashFlow(
-                cashFlowId,
-                command.userId(),
-                command.name(),
-                command.description(),
-                command.balance(),
-                CashFlow.CashFlowStatus.OPEN,
-                new HashMap<>(),
-                ZonedDateTime.now(clock),
-                null,
-                new LinkedList<>()
-        );
-
-        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
-
-        cashFlow.getUncommittedEvents().add(
+        CashFlow cashFlow  = new CashFlow();
+        cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
-                        snapshot.cashFlowId(),
-                        snapshot.userId(),
-                        snapshot.name(),
-                        snapshot.description(),
-                        snapshot.balance(),
-                        snapshot.created()
+                        CashFlowId.generate(),
+                        command.userId(),
+                        command.name(),
+                        command.description(),
+                        command.balance(),
+                        ZonedDateTime.now(clock)
                 )
         );
 

@@ -19,7 +19,7 @@ public sealed interface CashFlowEvent extends DomainEvent
                                 Money balance, ZonedDateTime created) implements CashFlowEvent {
     }
 
-    record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, UserId userId, Name name, Description description, Money money,
+    record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description, Money money,
                                    Type type, ZonedDateTime created, ZonedDateTime dueDate) implements CashFlowEvent {
     }
 

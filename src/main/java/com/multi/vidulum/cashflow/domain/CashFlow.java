@@ -3,11 +3,11 @@ package com.multi.vidulum.cashflow.domain;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -16,8 +16,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.REJECTED;
+import static java.util.Objects.isNull;
 
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private CashFlowId cashFlowId;
@@ -29,7 +31,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private Map<CashChangeId, CashChange> cashChanges;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
-
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
 
@@ -52,7 +53,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                                 Function.identity()
                         ));
 
-
         return new CashFlowSnapshot(
                 cashFlowId,
                 userId,
@@ -67,7 +67,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public static CashFlow from(CashFlowSnapshot snapshot) {
-
         Map<CashChangeId, CashChange> cashChanges = snapshot.cashChanges().values().stream()
                 .map(cashChangeSnapshot -> CashChange.builder()
                         .cashChangeId(cashChangeSnapshot.cashChangeId())
@@ -98,29 +97,21 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .build();
     }
 
-    public void appendCashChange(CashChangeId cashChangeId,
-                          Name name,
-                          Description description,
-                          Money money,
-                          Type type,
-                          ZonedDateTime created,
-                          ZonedDateTime dueDate) {
-        CashFlowEvent.CashChangeAppendedEvent event = new CashFlowEvent.CashChangeAppendedEvent(
-                cashFlowId,
-                cashChangeId,
-                userId,
-                name,
-                description,
-                money,
-                type,
-                created,
-                dueDate
-        );
-        apply(event);
-        add(event);
+    public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
+        this.cashFlowId = event.cashFlowId();
+        this.userId = event.userId();
+        this.name = event.name();
+        this.description = event.description();
+        this.balance = event.balance();
+        this.status = CashFlowStatus.OPEN;
+        this.cashChanges = new HashMap<>();
+        this.created = event.created();
+        this.lastModification = null;
+        this.uncommittedEvents = new LinkedList<>();
+        this.uncommittedEvents.add(event);
     }
 
-    private void apply(CashFlowEvent.CashChangeAppendedEvent event) {
+    public void apply(CashFlowEvent.CashChangeAppendedEvent event) {
         CashChange cashChange = new CashChange(
                 event.cashChangeId(),
                 event.name(),
@@ -133,51 +124,39 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 null
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
-    }
-
-    public void confirm(CashChangeId cashChangeId, ZonedDateTime endDate) {
-        CashFlowEvent.CashChangeConfirmedEvent event = new CashFlowEvent.CashChangeConfirmedEvent(cashFlowId, cashChangeId, endDate);
-        apply(event);
         add(event);
     }
 
-    private void apply(CashFlowEvent.CashChangeConfirmedEvent event) {
-        performOn(event.cashChangeId(), cashChange -> {
-            cashChange.setStatus(CashChangeStatus.CONFIRMED);
-            cashChange.setEndDate(event.endDate());
-        });
-    }
-
-    public void edit(
-            CashChangeId cashChangeId,
-            Name name,
-            Description description,
-            Money money,
-            ZonedDateTime dueDate) {
-        CashFlowEvent.CashChangeEditedEvent event = new CashFlowEvent.CashChangeEditedEvent(cashFlowId, cashChangeId, name, description, money, dueDate);
-        apply(event);
+    public void apply(CashFlowEvent.CashChangeConfirmedEvent event) {
+        performOn(event.cashChangeId(), cashChange ->
+                cashChange.onlyWhenIsPending(() -> {
+                    cashChange.setStatus(CashChangeStatus.CONFIRMED);
+                    cashChange.setEndDate(event.endDate());
+                    if (Type.INFLOW.equals(cashChange.getType())) {
+                        balance = balance.plus(cashChange.getMoney());
+                    } else {
+                        balance = balance.minus(cashChange.getMoney());
+                    }
+                }));
         add(event);
     }
 
-    private void apply(CashFlowEvent.CashChangeEditedEvent event) {
-        performOn(event.cashChangeId(), cashChange -> {
-            cashChange.setName(event.name());
-            cashChange.setDescription(event.description());
-            cashChange.setMoney(event.money());
-            cashChange.setDueDate(event.dueDate());
-        });
-    }
-
-    public void reject(CashChangeId cashChangeId, Reason reason) {
-        CashFlowEvent.CashChangeRejectedEvent event = new CashFlowEvent.CashChangeRejectedEvent(cashFlowId, cashChangeId, reason);
-        apply(event);
+    public void apply(CashFlowEvent.CashChangeEditedEvent event) {
+        performOn(event.cashChangeId(), cashChange ->
+                cashChange.onlyWhenIsPending(() -> {
+                    cashChange.setName(event.name());
+                    cashChange.setDescription(event.description());
+                    cashChange.setMoney(event.money());
+                    cashChange.setDueDate(event.dueDate());
+                }));
         add(event);
     }
 
-    private void apply(CashFlowEvent.CashChangeRejectedEvent event) {
+    public void apply(CashFlowEvent.CashChangeRejectedEvent event) {
         performOn(event.cashChangeId(), cashChange -> {
             cashChange.onlyWhenIsPending(() -> cashChange.setStatus(REJECTED));
         });
+        add(event);
     }
 
     private Optional<CashChange> fetchCashChange(CashChangeId cashChangeId) {
@@ -191,14 +170,13 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         cashChanges.replace(cashChangeId, cashChange);
     }
 
-
     private void add(CashFlowEvent event) {
         // store event temporary
         getUncommittedEvents().add(event);
     }
 
     public List<CashFlowEvent> getUncommittedEvents() {
-        if (Objects.isNull(uncommittedEvents)) {
+        if (isNull(uncommittedEvents)) {
             uncommittedEvents = new LinkedList<>();
         }
         return uncommittedEvents;

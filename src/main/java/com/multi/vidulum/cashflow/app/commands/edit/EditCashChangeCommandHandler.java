@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.edit;
 
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -21,12 +22,15 @@ public class EditCashChangeCommandHandler implements CommandHandler<EditCashChan
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        cashFlow.edit(
-                command.cashChangeId(),
-                command.name(),
-                command.description(),
-                command.money(),
-                command.dueDate()
+        cashFlow.apply(
+                new CashFlowEvent.CashChangeEditedEvent(
+                        command.cashFlowId(),
+                        command.cashChangeId(),
+                        command.name(),
+                        command.description(),
+                        command.money(),
+                        command.dueDate()
+                )
         );
 
         domainCashFlowRepository.save(cashFlow);
