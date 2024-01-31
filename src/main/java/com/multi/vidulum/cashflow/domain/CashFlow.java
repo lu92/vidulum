@@ -3,7 +3,6 @@ package com.multi.vidulum.cashflow.domain;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
@@ -17,6 +16,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.REJECTED;
+import static java.util.Objects.isNull;
 
 @Builder
 @NoArgsConstructor
@@ -31,7 +31,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private Map<CashChangeId, CashChange> cashChanges;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
-
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
 
@@ -173,7 +172,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public List<CashFlowEvent> getUncommittedEvents() {
-        if (Objects.isNull(uncommittedEvents)) {
+        if (isNull(uncommittedEvents)) {
             uncommittedEvents = new LinkedList<>();
         }
         return uncommittedEvents;
