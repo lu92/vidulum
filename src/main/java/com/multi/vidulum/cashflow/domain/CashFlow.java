@@ -132,7 +132,11 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 cashChange.onlyWhenIsPending(() -> {
                     cashChange.setStatus(CashChangeStatus.CONFIRMED);
                     cashChange.setEndDate(event.endDate());
-                    balance = balance.plus(cashChange.getMoney());
+                    if (Type.INFLOW.equals(cashChange.getType())) {
+                        balance = balance.plus(cashChange.getMoney());
+                    } else {
+                        balance = balance.minus(cashChange.getMoney());
+                    }
                 }));
         add(event);
     }
