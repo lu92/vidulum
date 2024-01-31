@@ -7,7 +7,7 @@ import java.util.Collection;
 @Component
 public class CashFlowAggregateProjector {
 
-    CashFlow process(Collection<CashFlowEvent> events) {
+    public CashFlow process(Collection<CashFlowEvent> events) {
         CashFlow cashFlow = new CashFlow();
         events.forEach(processingEvent -> {
             switch (processingEvent) {
