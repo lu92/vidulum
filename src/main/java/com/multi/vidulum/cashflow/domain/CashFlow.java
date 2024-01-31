@@ -53,7 +53,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                                 Function.identity()
                         ));
 
-
         return new CashFlowSnapshot(
                 cashFlowId,
                 userId,
@@ -68,7 +67,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public static CashFlow from(CashFlowSnapshot snapshot) {
-
         Map<CashChangeId, CashChange> cashChanges = snapshot.cashChanges().values().stream()
                 .map(cashChangeSnapshot -> CashChange.builder()
                         .cashChangeId(cashChangeSnapshot.cashChangeId())
@@ -130,21 +128,23 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public void apply(CashFlowEvent.CashChangeConfirmedEvent event) {
-        performOn(event.cashChangeId(), cashChange -> {
-            cashChange.setStatus(CashChangeStatus.CONFIRMED);
-            cashChange.setEndDate(event.endDate());
-            balance = balance.plus(cashChange.getMoney());
-        });
+        performOn(event.cashChangeId(), cashChange ->
+                cashChange.onlyWhenIsPending(() -> {
+                    cashChange.setStatus(CashChangeStatus.CONFIRMED);
+                    cashChange.setEndDate(event.endDate());
+                    balance = balance.plus(cashChange.getMoney());
+                }));
         add(event);
     }
 
     public void apply(CashFlowEvent.CashChangeEditedEvent event) {
-        performOn(event.cashChangeId(), cashChange -> {
-            cashChange.setName(event.name());
-            cashChange.setDescription(event.description());
-            cashChange.setMoney(event.money());
-            cashChange.setDueDate(event.dueDate());
-        });
+        performOn(event.cashChangeId(), cashChange ->
+                cashChange.onlyWhenIsPending(() -> {
+                    cashChange.setName(event.name());
+                    cashChange.setDescription(event.description());
+                    cashChange.setMoney(event.money());
+                    cashChange.setDueDate(event.dueDate());
+                }));
         add(event);
     }
 
@@ -165,7 +165,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         operation.accept(cashChange);
         cashChanges.replace(cashChangeId, cashChange);
     }
-
 
     private void add(CashFlowEvent event) {
         // store event temporary
