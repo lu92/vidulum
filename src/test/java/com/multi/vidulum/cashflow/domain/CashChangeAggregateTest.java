@@ -171,7 +171,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new UserId("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.zero("USD"),
+                                Money.of(100,"USD"),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         cashChangeId,

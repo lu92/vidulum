@@ -133,6 +133,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         performOn(event.cashChangeId(), cashChange -> {
             cashChange.setStatus(CashChangeStatus.CONFIRMED);
             cashChange.setEndDate(event.endDate());
+            balance = balance.plus(cashChange.getMoney());
         });
         add(event);
     }
