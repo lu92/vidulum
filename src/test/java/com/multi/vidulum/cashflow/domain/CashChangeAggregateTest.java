@@ -114,12 +114,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                 .stream()
                 .map(domainEvent -> (CashFlowEvent) domainEvent)
                 .collect(Collectors.toList());
-        ;
+
         CashFlow reprocessedCashFlow = cashFlowAggregateProjector.process(domainEvents);
         assertThat(reprocessedCashFlow.getSnapshot())
                 .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
-
-        System.out.println(reprocessedCashFlow);
     }
 
     @Test

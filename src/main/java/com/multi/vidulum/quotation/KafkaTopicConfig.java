@@ -1,6 +1,7 @@
 package com.multi.vidulum.quotation;
 
 
+import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.common.events.OrderFilledEvent;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.common.events.UserCreatedEvent;
@@ -213,6 +214,49 @@ public class KafkaTopicConfig {
         factory.setConsumerFactory(orderFilledConsumerFactory());
         return factory;
     }
+
+    //    *******
+
+    @Bean
+    public NewTopic cashChangedTopic() {
+        return new NewTopic("cash_flow", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, CashFlowUnifiedEvent> cashFlowProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, CashFlowUnifiedEvent> cashFlowUnifiedEventKafkaTemplate() {
+        return new KafkaTemplate<>(cashFlowProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, CashFlowUnifiedEvent> cashFlowUnifiedEventConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(CashFlowUnifiedEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, CashFlowUnifiedEvent> cashFlowUnifiedEventContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, CashFlowUnifiedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(cashFlowUnifiedEventConsumerFactory());
+        return factory;
+    }
+
 
     //    *******
 
