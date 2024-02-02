@@ -81,12 +81,4 @@ public class Money {
     public Money withScale(int scale) {
         return new Money(new BigDecimal(amount.toString()).setScale(scale, RoundingMode.HALF_UP), currency);
     }
-
-    public boolean isPositive() {
-        return isMoreThan(Money.zero(currency));
-    }
-
-    public boolean isMoreThan(Money other) {
-        return this.amount.compareTo(other.amount) > 0;
-    }
 }

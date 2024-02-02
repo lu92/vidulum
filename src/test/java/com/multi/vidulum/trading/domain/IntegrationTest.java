@@ -3,6 +3,7 @@ package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.pnl.app.PnlRestController;
@@ -118,6 +119,9 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected OrderFactory orderFactory;
+
+    @Autowired
+    protected CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 

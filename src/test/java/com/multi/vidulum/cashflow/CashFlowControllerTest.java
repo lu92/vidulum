@@ -3,12 +3,16 @@ package com.multi.vidulum.cashflow;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.trading.domain.IntegrationTest;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
@@ -46,6 +50,14 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .lastModification(null)
                         .build()
         );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName()))
+                        .orElse(false));
     }
 
     @Test
@@ -99,6 +111,17 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .lastModification(null)
                         .build()
         );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()
+                                        ))).orElse(false));
     }
 
     @Test
@@ -138,7 +161,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.of(100,"USD"))
+                        .balance(Money.of(100, "USD"))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,
@@ -153,12 +176,23 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
                                         .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                         .build()
-
                         ))
                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .lastModification(null)
                         .build()
         );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeConfirmedEvent.class.getSimpleName()
+                                        ))).orElse(false));
     }
 
     @Test
@@ -223,6 +257,18 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .lastModification(null)
                         .build()
         );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeEditedEvent.class.getSimpleName()
+                                        ))).orElse(false));
     }
 
     @Test
@@ -284,5 +330,18 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .lastModification(null)
                         .build()
         );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeRejectedEvent.class.getSimpleName()
+                                        ))).orElse(false));
+
     }
 }

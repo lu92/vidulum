@@ -1,10 +1,9 @@
 package com.multi.vidulum.cashflow.app.commands.create;
 
-import com.multi.vidulum.cashflow.domain.CashFlow;
-import com.multi.vidulum.cashflow.domain.CashFlowEvent;
-import com.multi.vidulum.cashflow.domain.CashFlowId;
-import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.JsonContent;
+import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +13,7 @@ import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -21,24 +21,31 @@ import java.util.LinkedList;
 public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFlowCommand, CashFlowSnapshot> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
+    private final CashFlowEventEmitter cashFlowEventEmitter;
+
     private final Clock clock;
 
     @Override
     public CashFlowSnapshot handle(CreateCashFlowCommand command) {
         CashFlow cashFlow  = new CashFlow();
-        cashFlow.apply(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        CashFlowId.generate(),
-                        command.userId(),
-                        command.name(),
-                        command.description(),
-                        command.balance(),
-                        ZonedDateTime.now(clock)
-                )
+        CashFlowEvent.CashFlowCreatedEvent event = new CashFlowEvent.CashFlowCreatedEvent(
+                CashFlowId.generate(),
+                command.userId(),
+                command.name(),
+                command.description(),
+                command.balance(),
+                ZonedDateTime.now(clock)
         );
+        cashFlow.apply(event);
 
         CashFlow savedCashFlow = domainCashFlowRepository.save(cashFlow);
         log.info("Cash flow [{}] has been created!", savedCashFlow.getSnapshot());
+        cashFlowEventEmitter.emit(
+                CashFlowUnifiedEvent.builder()
+                        .metadata(Map.of("event", CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName()))
+                        .content(JsonContent.asJson(event))
+                        .build()
+        );
         return savedCashFlow.getSnapshot();
     }
 }
