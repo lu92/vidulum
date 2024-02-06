@@ -5,9 +5,9 @@ import com.multi.vidulum.common.Money;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Data
 @Builder
@@ -17,8 +17,18 @@ public class CashCategory {
     private Map<PaymentStatus, List<TransactionDetails>> transactions;
     private Money totalValue;
 
-    public boolean hasInfoAbout(CashChangeId cashChangeId) {
-        return transactions.values().stream().flatMap(Collection::stream)
-                .anyMatch(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()));
+    Transaction findTransaction(CashChangeId cashChangeId) {
+        return transactions.entrySet().stream()
+                .map(paymentTransactions -> paymentTransactions.getValue().stream()
+                        .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
+                        .findFirst()
+                        .map(transactionDetails -> Map.entry(paymentTransactions.getKey(), transactionDetails)))
+                .filter(Optional::isPresent)
+                .findFirst()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(paymentStatusTransactionDetailsEntry -> new Transaction(paymentStatusTransactionDetailsEntry.getValue(), paymentStatusTransactionDetailsEntry.getKey()))
+                .orElseThrow(() -> new IllegalStateException(
+                        String.format("Cannot find transaction for CashChange [%s]", cashChangeId)));
     }
 }

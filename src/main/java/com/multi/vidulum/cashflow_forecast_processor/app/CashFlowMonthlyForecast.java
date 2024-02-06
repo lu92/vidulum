@@ -7,23 +7,16 @@ import lombok.Data;
 
 import java.time.YearMonth;
 import java.util.List;
-import java.util.stream.Stream;
 
 @Data
 @Builder
 public class CashFlowMonthlyForecast {
-    YearMonth period;
-    CashFlowStats cashFlowStats;
-    List<CashCategory> categorizedInFlows;
-    List<CashCategory> categorizedOutFlows;
-
-    public boolean hasInfoAbout(CashChangeId cashChangeId) {
-        return Stream.concat(categorizedInFlows.stream(), categorizedOutFlows.stream())
-                .anyMatch(cashCategory -> cashCategory.hasInfoAbout(cashChangeId));
-    }
+    private YearMonth period;
+    private CashFlowStats cashFlowStats;
+    private List<CashCategory> categorizedInFlows;
+    private List<CashCategory> categorizedOutFlows;
 
     record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type) {
-
     }
 
     ;

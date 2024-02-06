@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
+
 @Slf4j
 @Component
 @AllArgsConstructor
@@ -58,8 +60,8 @@ public class CashFlowForecastProcessor {
                                                 .category(new Category("unknown"))
                                                 .subCategories(List.of())
                                                 .transactions(Map.of(
-                                                        PaymentStatus.PAID, new LinkedList<>(),
-                                                        PaymentStatus.EXPECTED, new LinkedList<>(),
+                                                        PAID, new LinkedList<>(),
+                                                        EXPECTED, new LinkedList<>(),
                                                         PaymentStatus.FORECAST, new LinkedList<>()
                                                 ))
                                                 .totalValue(Money.zero(event.balance().getCurrency()))
@@ -70,8 +72,8 @@ public class CashFlowForecastProcessor {
                                                 .category(new Category("unknown"))
                                                 .subCategories(List.of())
                                                 .transactions(Map.of(
-                                                        PaymentStatus.PAID, new LinkedList<>(),
-                                                        PaymentStatus.EXPECTED, new LinkedList<>(),
+                                                        PAID, new LinkedList<>(),
+                                                        EXPECTED, new LinkedList<>(),
                                                         PaymentStatus.FORECAST, new LinkedList<>()
                                                 ))
                                                 .totalValue(Money.zero(event.balance().getCurrency()))
@@ -115,7 +117,7 @@ public class CashFlowForecastProcessor {
                                 )
                         );
                     }
-                    unknownCashCategory.getTransactions().get(PaymentStatus.EXPECTED)
+                    unknownCashCategory.getTransactions().get(EXPECTED)
                             .add(
                                     new TransactionDetails(
                                             event.cashChangeId(),
@@ -166,12 +168,12 @@ public class CashFlowForecastProcessor {
 
                         cashFlowMonthlyForecast.getCategorizedInFlows()
                                 .get(0)
-                                .getTransactions().get(PaymentStatus.EXPECTED)
+                                .getTransactions().get(EXPECTED)
                                 .remove(transactionDetails);
 
                         cashFlowMonthlyForecast.getCategorizedInFlows()
                                 .get(0)
-                                .getTransactions().get(PaymentStatus.PAID)
+                                .getTransactions().get(PAID)
                                 .add(new TransactionDetails(
                                         transactionDetails.getCashChangeId(),
                                         transactionDetails.getName(),
@@ -192,12 +194,12 @@ public class CashFlowForecastProcessor {
 
                         cashFlowMonthlyForecast.getCategorizedInFlows()
                                 .get(0)
-                                .getTransactions().get(PaymentStatus.EXPECTED)
+                                .getTransactions().get(EXPECTED)
                                 .remove(transactionDetails);
 
                         cashFlowMonthlyForecast.getCategorizedInFlows()
                                 .get(0)
-                                .getTransactions().get(PaymentStatus.PAID)
+                                .getTransactions().get(PAID)
                                 .add(new TransactionDetails(
                                         transactionDetails.getCashChangeId(),
                                         transactionDetails.getName(),
@@ -207,7 +209,42 @@ public class CashFlowForecastProcessor {
                                         event.endDate()
                                 ));
                     }
+                    return cashFlowMonthlyForecast;
+                });
+                return statement;
+            }
 
+            case CashFlowEvent.CashChangeRejectedEvent event -> {
+                CashFlowMonthlyForecast.CashChangeLocation cashChangeLocation = statement.locate(event.cashChangeId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Cannot find CashChange with id[%s]", event.cashChangeId())));
+
+                statement.getForecasts().compute(cashChangeLocation.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
+
+                    if (Type.INFLOW.equals(cashChangeLocation.type())) {
+                        Transaction transaction = cashFlowMonthlyForecast.getCategorizedInFlows()
+                                .get(0)
+                                .findTransaction(event.cashChangeId());
+
+                        cashFlowMonthlyForecast.getCategorizedInFlows()
+                                .get(0)
+                                .getTransactions().get(transaction.paymentStatus())
+                                .remove(transaction.transactionDetails());
+
+                        CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
+
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setInflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()): inflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                                        )
+                                );
+
+                    } else {
+
+                    }
 
                     return cashFlowMonthlyForecast;
                 });
