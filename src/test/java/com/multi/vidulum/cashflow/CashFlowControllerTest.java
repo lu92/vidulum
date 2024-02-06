@@ -125,7 +125,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldConfirmCashChange() {
+    void shouldConfirmCashChange() throws InterruptedException {
         // when
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
@@ -193,6 +193,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName(),
                                                 CashFlowEvent.CashChangeConfirmedEvent.class.getSimpleName()
                                         ))).orElse(false));
+        Thread.sleep(3000);
     }
 
     @Test
