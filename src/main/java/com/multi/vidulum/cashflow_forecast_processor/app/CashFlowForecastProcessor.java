@@ -243,7 +243,25 @@ public class CashFlowForecastProcessor {
                                 );
 
                     } else {
+                        Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
+                                .get(0)
+                                .findTransaction(event.cashChangeId());
 
+                        cashFlowMonthlyForecast.getCategorizedOutFlows()
+                                .get(0)
+                                .getTransactions().get(transaction.paymentStatus())
+                                .remove(transaction.transactionDetails());
+
+                        CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setOutflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().minus(transaction.transactionDetails().getMoney()): outflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
+                                        )
+                                );
                     }
 
                     return cashFlowMonthlyForecast;
