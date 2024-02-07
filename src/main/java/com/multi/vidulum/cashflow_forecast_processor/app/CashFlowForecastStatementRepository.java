@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashFlowId;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Optional;
@@ -11,6 +12,7 @@ public interface CashFlowForecastStatementRepository {
 
     void save(CashFlowForecastStatement statement);
 
+    @Component
     public static class InMemory implements CashFlowForecastStatementRepository {
         private Map<CashFlowId, CashFlowForecastStatement> memory = new ConcurrentHashMap<>();
 

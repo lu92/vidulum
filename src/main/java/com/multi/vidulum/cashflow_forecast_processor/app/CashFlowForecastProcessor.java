@@ -11,7 +11,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
 import java.time.YearMonth;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -30,8 +29,7 @@ import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 public class CashFlowForecastProcessor {
 
     private final CashFlowForecastMongoRepository repository;
-    private final CashFlowForecastStatementRepository statementRepository = new CashFlowForecastStatementRepository.InMemory();
-    private final Clock clock;
+    private final CashFlowForecastStatementRepository statementRepository;
 
     void process(CashFlowEvent cashFlowEvent) {
         oldProcessing(cashFlowEvent);
@@ -280,17 +278,6 @@ public class CashFlowForecastProcessor {
                                 .get(0)
                                 .findTransaction(event.cashChangeId());
 
-                        CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
-                        cashFlowMonthlyForecast.getCashFlowStats()
-                                .setInflowStats(
-                                        new CashSummary(
-                                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-                                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-                                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
-                                        )
-                                );
-
-
                         TransactionDetails editedTransactionDetails = new TransactionDetails(
                                 event.cashChangeId(),
                                 event.name(),
@@ -310,6 +297,15 @@ public class CashFlowForecastProcessor {
                                 .getTransactions()
                                 .get(transaction.paymentStatus()).add(editedTransactionDetails);
 
+                        CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setInflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : inflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : inflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : inflowStats.gapToForecast()
+                                        )
+                                );
                     } else {
                         Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
                                 .get(0)
