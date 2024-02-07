@@ -50,7 +50,7 @@ public class CashFlowForecastProcessor {
         switch (cashFlowEvent) {
             case CashFlowEvent.CashFlowCreatedEvent event -> {
                 YearMonth current = YearMonth.from(event.created());
-                Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = IntStream.rangeClosed(0, 12)
+                Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = IntStream.rangeClosed(0, 11)
                         .mapToObj(current::plusMonths)
                         .map(yearMonth -> new CashFlowMonthlyForecast(
                                 yearMonth,
@@ -237,7 +237,7 @@ public class CashFlowForecastProcessor {
                                 .setInflowStats(
                                         new CashSummary(
                                                 PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-                                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()): inflowStats.expected(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
                                                 FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
                                         )
                                 );
@@ -258,10 +258,92 @@ public class CashFlowForecastProcessor {
                                 .setOutflowStats(
                                         new CashSummary(
                                                 PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
-                                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().minus(transaction.transactionDetails().getMoney()): outflowStats.expected(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().minus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
                                                 FORECAST.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
                                         )
                                 );
+                    }
+
+                    return cashFlowMonthlyForecast;
+                });
+                return statement;
+            }
+
+            case CashFlowEvent.CashChangeEditedEvent event -> {
+                CashFlowMonthlyForecast.CashChangeLocation cashChangeLocation = statement.locate(event.cashChangeId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Cannot find CashChange with id[%s]", event.cashChangeId())));
+                statement.getForecasts().compute(cashChangeLocation.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
+
+                    if (Type.INFLOW.equals(cashChangeLocation.type())) {
+                        Transaction transaction = cashFlowMonthlyForecast.getCategorizedInFlows()
+                                .get(0)
+                                .findTransaction(event.cashChangeId());
+
+                        CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setInflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                                        )
+                                );
+
+
+                        TransactionDetails editedTransactionDetails = new TransactionDetails(
+                                event.cashChangeId(),
+                                event.name(),
+                                event.money(),
+                                transaction.transactionDetails().getCreated(),
+                                event.dueDate(),
+                                transaction.transactionDetails().getEndDate()
+                        );
+
+                        cashFlowMonthlyForecast.getCategorizedInFlows()
+                                .get(0)
+                                .getTransactions()
+                                .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+
+                        cashFlowMonthlyForecast.getCategorizedInFlows()
+                                .get(0)
+                                .getTransactions()
+                                .get(transaction.paymentStatus()).add(editedTransactionDetails);
+
+                    } else {
+                        Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
+                                .get(0)
+                                .findTransaction(event.cashChangeId());
+
+                        CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setOutflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().minus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
+                                        )
+                                );
+
+
+                        TransactionDetails editedTransactionDetails = new TransactionDetails(
+                                event.cashChangeId(),
+                                event.name(),
+                                event.money(),
+                                transaction.transactionDetails().getCreated(),
+                                event.dueDate(),
+                                transaction.transactionDetails().getEndDate()
+                        );
+
+                        cashFlowMonthlyForecast.getCategorizedOutFlows()
+                                .get(0)
+                                .getTransactions()
+                                .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+
+                        cashFlowMonthlyForecast.getCategorizedOutFlows()
+                                .get(0)
+                                .getTransactions()
+                                .get(transaction.paymentStatus()).add(editedTransactionDetails);
                     }
 
                     return cashFlowMonthlyForecast;
