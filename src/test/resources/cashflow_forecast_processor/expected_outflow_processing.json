@@ -1,0 +1,938 @@
+{
+  "cashFlowId" : {
+    "id" : "cdbab021-1b86-4183-ac27-a5b0278db714"
+  },
+  "forecasts" : {
+    "2021-06" : {
+      "period" : "2021-06",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 111.0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0.0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ {
+            "cashChangeId" : {
+              "id" : "4330311e-4a4e-4c59-bc6d-7595c2763c1f"
+            },
+            "name" : {
+              "name" : "cash change name"
+            },
+            "money" : {
+              "amount" : 111.0,
+              "currency" : "USD"
+            },
+            "created" : "2021-06-01T06:30:00Z",
+            "dueDate" : "2021-07-01T06:30:00Z",
+            "endDate" : "2021-07-15T16:30:00Z"
+          } ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-07" : {
+      "period" : "2021-07",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 130.0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0.0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ {
+            "cashChangeId" : {
+              "id" : "dc67cb1f-31e2-4adf-9767-220b76e7a92e"
+            },
+            "name" : {
+              "name" : "cash change name 2 edited"
+            },
+            "money" : {
+              "amount" : 130.0,
+              "currency" : "USD"
+            },
+            "created" : "2021-07-01T06:30:00Z",
+            "dueDate" : "2021-08-12T00:00:00Z",
+            "endDate" : "2021-08-10T16:30:00Z"
+          } ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-08" : {
+      "period" : "2021-08",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-09" : {
+      "period" : "2021-09",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-10" : {
+      "period" : "2021-10",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-11" : {
+      "period" : "2021-11",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2021-12" : {
+      "period" : "2021-12",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2022-01" : {
+      "period" : "2022-01",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2022-02" : {
+      "period" : "2022-02",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2022-03" : {
+      "period" : "2022-03",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2022-04" : {
+      "period" : "2022-04",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    },
+    "2022-05" : {
+      "period" : "2022-05",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0.0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "transactions" : {
+          "FORECAST" : [ ],
+          "EXPECTED" : [ ],
+          "PAID" : [ ]
+        },
+        "totalValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ]
+    }
+  },
+  "lastMessageChecksum" : {
+    "checksum" : "806da4e47221df2880ff7d487586f81b"
+  }
+}

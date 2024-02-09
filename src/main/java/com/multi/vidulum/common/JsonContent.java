@@ -17,8 +17,13 @@ public record JsonContent(String content) {
     }
 
     @SneakyThrows
-    public static JsonContent asJson(Object object) {
+    public static JsonContent asPrettyJson(Object object) {
         return new JsonContent(OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(object));
+    }
+
+    @SneakyThrows
+    public static JsonContent asJson(Object object) {
+        return new JsonContent(OBJECT_MAPPER.writeValueAsString(object));
     }
 
     public <T> T to(Class<T> clazz) {

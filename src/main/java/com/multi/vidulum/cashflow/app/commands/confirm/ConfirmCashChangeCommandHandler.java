@@ -35,7 +35,7 @@ public class ConfirmCashChangeCommandHandler implements CommandHandler<ConfirmCa
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashChangeConfirmedEvent.class.getSimpleName()))
-                        .content(JsonContent.asJson(event))
+                        .content(JsonContent.asPrettyJson(event))
                         .build()
         );
 

@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 @Slf4j
@@ -43,7 +41,7 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName()))
-                        .content(JsonContent.asJson(event))
+                        .content(JsonContent.asPrettyJson(event))
                         .build()
         );
         return savedCashFlow.getSnapshot();

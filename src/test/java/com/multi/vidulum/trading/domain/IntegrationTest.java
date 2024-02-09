@@ -2,7 +2,9 @@ package com.multi.vidulum.trading.domain;
 
 
 import com.multi.vidulum.JsonFormatter;
+import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
@@ -122,6 +124,12 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
+
+    @Autowired
+    protected CashFlowForecastStatementRepository statementRepository;
+
+    @Autowired
+    protected CashFlowEventEmitter cashFlowEventEmitter;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 
