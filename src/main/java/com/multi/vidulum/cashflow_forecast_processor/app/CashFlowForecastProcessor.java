@@ -357,7 +357,7 @@ public class CashFlowForecastProcessor {
     }
 
     private Checksum fetchChecksum(CashFlowEvent event) {
-            String jsonizedEvent = JsonContent.asJson(event).content();
+        String jsonizedEvent = JsonContent.asJson(event).content();
         return new Checksum(DigestUtils.md5DigestAsHex(jsonizedEvent.getBytes(StandardCharsets.UTF_8)));
     }
 
@@ -379,8 +379,7 @@ public class CashFlowForecastProcessor {
                             .events(events)
                             .build();
                 });
-        CashFlowForecastEntity savedCashFlowForecast = repository.save(cashFlowForecastEntity);
-        log.info("saved [{}]", savedCashFlowForecast);
+        repository.save(cashFlowForecastEntity);
     }
 
 }

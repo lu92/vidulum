@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashFlowId;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -13,6 +14,7 @@ public interface CashFlowForecastStatementRepository {
     void save(CashFlowForecastStatement statement);
 
     @Component
+    @Slf4j
     public static class InMemory implements CashFlowForecastStatementRepository {
         private Map<CashFlowId, CashFlowForecastStatement> memory = new ConcurrentHashMap<>();
 
@@ -23,9 +25,8 @@ public interface CashFlowForecastStatementRepository {
 
         @Override
         public void save(CashFlowForecastStatement statement) {
-            System.out.println("saving Hello world");
-            System.out.println(statement);
             memory.put(statement.getCashFlowId(), statement);
+            log.info("CashFlowForecastStatement checksum[{}] saved in DB", statement.getLastMessageChecksum().checksum());
         }
     }
 }

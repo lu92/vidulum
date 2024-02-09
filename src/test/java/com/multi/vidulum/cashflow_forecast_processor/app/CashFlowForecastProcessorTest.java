@@ -9,7 +9,6 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -21,12 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 class CashFlowForecastProcessorTest extends IntegrationTest {
-
-    @Autowired
-    private CashFlowForecastStatementRepository statementRepository;
-
-    @Autowired
-    private CashFlowEventEmitter cashFlowEventEmitter;
 
     @Test
     public void test() throws InterruptedException {
@@ -111,13 +104,16 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
     }
 
     private Checksum emit(CashFlowEvent cashFlowEvent) {
-        String checksum = DigestUtils.md5DigestAsHex(JsonContent.asJson(cashFlowEvent).content().getBytes(StandardCharsets.UTF_8));
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", cashFlowEvent.getClass().getSimpleName()))
                         .content(JsonContent.asPrettyJson(cashFlowEvent))
                         .build());
-        return new Checksum(checksum);
+        return new Checksum(
+                DigestUtils.md5DigestAsHex(
+                        JsonContent.asJson(cashFlowEvent)
+                                .content()
+                                .getBytes(StandardCharsets.UTF_8)));
     }
 
 }
