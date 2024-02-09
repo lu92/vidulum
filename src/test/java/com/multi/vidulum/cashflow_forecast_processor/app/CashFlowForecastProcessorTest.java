@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.ContentReader;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
@@ -89,14 +90,16 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-08-10T16:30:00Z")
                 ));
 
-        Thread.sleep(15000);
-        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(cashFlowId).get();
-        JsonContent jsonContent = JsonContent.asJson(statement);
-        String content = jsonContent.content();
+        Thread.sleep(1000);
+
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
                 .get()
-                .isEqualTo(null);
+                .usingRecursiveComparison()
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class)
+                .isEqualTo(
+                        ContentReader.load("cashflow_forecast_processor/x.json")
+                                .to(CashFlowForecastStatement.class));
 
     }
 
