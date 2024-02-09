@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.ContentReader;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
@@ -9,12 +10,15 @@ import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 class CashFlowForecastProcessorTest extends IntegrationTest {
 
@@ -83,32 +87,37 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 )
         );
 
-        emit(
+        Checksum lastEventChecksum = emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         ZonedDateTime.parse("2021-08-10T16:30:00Z")
                 ));
 
-        Thread.sleep(1000);
+        await()
+                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
+                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
+                        .orElse(false));
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/x.json")
                                 .to(CashFlowForecastStatement.class));
 
     }
 
-    private void emit(CashFlowEvent cashFlowEvent) {
+    private Checksum emit(CashFlowEvent cashFlowEvent) {
+        String checksum = DigestUtils.md5DigestAsHex(JsonContent.asJson(cashFlowEvent).content().getBytes(StandardCharsets.UTF_8));
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", cashFlowEvent.getClass().getSimpleName()))
-                        .content(JsonContent.asJson(cashFlowEvent))
+                        .content(JsonContent.asPrettyJson(cashFlowEvent))
                         .build());
+        return new Checksum(checksum);
     }
 
 }

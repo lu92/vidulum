@@ -5,12 +5,15 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
+import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -39,6 +42,8 @@ public class CashFlowForecastProcessor {
 
 
         statement = process(cashFlowEvent, statement);
+        Checksum lastMessageChecksum = fetchChecksum(cashFlowEvent);
+        statement.setLastMessageChecksum(lastMessageChecksum);
 
         statementRepository.save(statement);
 
@@ -351,10 +356,15 @@ public class CashFlowForecastProcessor {
         }
     }
 
+    private Checksum fetchChecksum(CashFlowEvent event) {
+            String jsonizedEvent = JsonContent.asJson(event).content();
+        return new Checksum(DigestUtils.md5DigestAsHex(jsonizedEvent.getBytes(StandardCharsets.UTF_8)));
+    }
+
     private void oldProcessing(CashFlowEvent cashFlowEvent) {
         CashFlowForecastEntity.Processing processing = new CashFlowForecastEntity.Processing(
                 cashFlowEvent.getClass().getSimpleName(),
-                JsonContent.asJson(cashFlowEvent).content());
+                JsonContent.asPrettyJson(cashFlowEvent).content());
 
         CashFlowForecastEntity cashFlowForecastEntity = repository.findByCashFlowId(cashFlowEvent.cashFlowId().id())
                 .map(entity -> {

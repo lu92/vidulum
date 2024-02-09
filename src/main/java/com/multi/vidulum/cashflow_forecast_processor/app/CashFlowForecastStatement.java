@@ -3,6 +3,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ import java.util.Optional;
 public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
     private Map<YearMonth, CashFlowMonthlyForecast> forecasts; // next 12 months
+    private Checksum lastMessageChecksum;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
         return forecasts.values().stream()

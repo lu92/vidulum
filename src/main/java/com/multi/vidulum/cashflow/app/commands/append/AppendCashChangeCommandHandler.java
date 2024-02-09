@@ -43,7 +43,7 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()))
-                        .content(JsonContent.asJson(event))
+                        .content(JsonContent.asPrettyJson(event))
                         .build()
         );
 

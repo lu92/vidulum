@@ -40,7 +40,7 @@ public class EditCashChangeCommandHandler implements CommandHandler<EditCashChan
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashChangeEditedEvent.class.getSimpleName()))
-                        .content(JsonContent.asJson(event))
+                        .content(JsonContent.asPrettyJson(event))
                         .build()
         );
         log.info("Cash change [{}] has been edited!", command.cashChangeId());

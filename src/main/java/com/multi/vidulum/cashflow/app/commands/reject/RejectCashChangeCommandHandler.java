@@ -35,7 +35,7 @@ public class RejectCashChangeCommandHandler implements CommandHandler<RejectCash
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashChangeRejectedEvent.class.getSimpleName()))
-                        .content(JsonContent.asJson(event))
+                        .content(JsonContent.asPrettyJson(event))
                         .build()
         );
 
