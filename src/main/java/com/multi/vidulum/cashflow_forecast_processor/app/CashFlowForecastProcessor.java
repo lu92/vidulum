@@ -195,12 +195,12 @@ public class CashFlowForecastProcessor {
                                 )
                         );
 
-                        cashFlowMonthlyForecast.getCategorizedInFlows()
+                        cashFlowMonthlyForecast.getCategorizedOutFlows()
                                 .get(0)
                                 .getTransactions().get(EXPECTED)
                                 .remove(transactionDetails);
 
-                        cashFlowMonthlyForecast.getCategorizedInFlows()
+                        cashFlowMonthlyForecast.getCategorizedOutFlows()
                                 .get(0)
                                 .getTransactions().get(PAID)
                                 .add(new TransactionDetails(
@@ -316,17 +316,6 @@ public class CashFlowForecastProcessor {
                                 .get(0)
                                 .findTransaction(event.cashChangeId());
 
-                        CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
-                        cashFlowMonthlyForecast.getCashFlowStats()
-                                .setOutflowStats(
-                                        new CashSummary(
-                                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
-                                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().minus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
-                                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.actual().minus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
-                                        )
-                                );
-
-
                         TransactionDetails editedTransactionDetails = new TransactionDetails(
                                 event.cashChangeId(),
                                 event.name(),
@@ -345,6 +334,16 @@ public class CashFlowForecastProcessor {
                                 .get(0)
                                 .getTransactions()
                                 .get(transaction.paymentStatus()).add(editedTransactionDetails);
+
+                        CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+                        cashFlowMonthlyForecast.getCashFlowStats()
+                                .setOutflowStats(
+                                        new CashSummary(
+                                                PAID.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : outflowStats.actual(),
+                                                EXPECTED.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : outflowStats.expected(),
+                                                FORECAST.equals(transaction.paymentStatus()) ? editedTransactionDetails.getMoney() : outflowStats.gapToForecast()
+                                        )
+                                );
                     }
 
                     return cashFlowMonthlyForecast;
