@@ -9,9 +9,6 @@ import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
-import java.util.stream.Stream;
-
 import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementFrom.from;
 import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementTo.to;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
@@ -34,15 +31,15 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
         statement.getForecasts().compute(cashChangeLocation.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
 
-            TransactionDetails transactionDetails = Stream.concat(
-                            cashFlowMonthlyForecast.getCategorizedInFlows().stream(),
-                            cashFlowMonthlyForecast.getCategorizedOutFlows().stream())
-                    .map(cashCategory -> cashCategory.getGroupedTransactions().values())
-                    .flatMap(Collection::stream)
-                    .flatMap(Collection::stream)
-                    .filter(transaction -> event.cashChangeId().equals(transaction.getCashChangeId()))
-                    .findFirst()
-                    .orElseThrow(() -> new CashChangeDoesNotExistsException(event.cashChangeId()));
+            TransactionDetails transactionDetails =
+                    cashFlowMonthlyForecast.getCategorizedInFlows().get(0)
+                            .getGroupedTransactions().fetchTransaction(event.cashChangeId())
+                            .or(() ->
+                                    cashFlowMonthlyForecast.getCategorizedOutFlows().get(0)
+                                            .getGroupedTransactions().fetchTransaction(event.cashChangeId()))
+                            .map(Transaction::transactionDetails)
+                            .orElseThrow(() -> new CashChangeDoesNotExistsException(event.cashChangeId()));
+
 
             TransactionDetails newTransaction = new TransactionDetails(
                     transactionDetails.getCashChangeId(),
@@ -52,6 +49,8 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                     transactionDetails.getDueDate(),
                     event.endDate()
             );
+
+
             if (Type.INFLOW.equals(cashChangeLocation.type())) {
                 CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats().setInflowStats(

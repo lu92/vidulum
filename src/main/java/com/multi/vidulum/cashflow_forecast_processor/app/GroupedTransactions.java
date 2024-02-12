@@ -21,7 +21,7 @@ public class GroupedTransactions {
         );
     }
 
-    public Transaction findTransaction(CashChangeId cashChangeId) {
+    public Optional<Transaction> fetchTransaction(CashChangeId cashChangeId) {
         return transactions.entrySet().stream()
                 .map(paymentTransactions -> paymentTransactions.getValue().stream()
                         .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
@@ -31,9 +31,12 @@ public class GroupedTransactions {
                 .findFirst()
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .map(paymentStatusTransactionDetailsEntry -> new Transaction(paymentStatusTransactionDetailsEntry.getValue(), paymentStatusTransactionDetailsEntry.getKey()))
-                .orElseThrow(() -> new IllegalStateException(
-                        String.format("Cannot find transaction for CashChange [%s]", cashChangeId)));
+                .map(paymentStatusTransactionDetailsEntry -> new Transaction(paymentStatusTransactionDetailsEntry.getValue(), paymentStatusTransactionDetailsEntry.getKey()));
+    }
+
+    public Transaction findTransaction(CashChangeId cashChangeId) {
+        return fetchTransaction(cashChangeId).orElseThrow(() -> new IllegalStateException(
+                String.format("Cannot find transaction for CashChange [%s]", cashChangeId)));
     }
 
     public void replace(ReplacementFrom from, ReplacementTo to) {
