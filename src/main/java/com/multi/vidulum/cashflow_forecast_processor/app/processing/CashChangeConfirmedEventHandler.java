@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 import java.util.stream.Stream;
 
+import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementFrom.from;
+import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementTo.to;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.PAID;
 
@@ -62,18 +64,9 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getGroupedTransactions().get(EXPECTED)
-                        .remove(transactionDetails);
+                        .getGroupedTransactions()
+                        .replace(from(EXPECTED, transactionDetails), to(PAID, newTransaction));
 
-                cashFlowMonthlyForecast.getCategorizedInFlows()
-                        .get(0)
-                        .getGroupedTransactions().get(PAID)
-                        .add(newTransaction);
-
-//                cashFlowMonthlyForecast.getCategorizedInFlows()
-//                        .get(0)
-//                        .getTransactions()
-//                        .replace(from(EXPECTED, transactionDetails), to(PAID, newTransaction));
             } else {
                 CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
@@ -86,13 +79,9 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getGroupedTransactions().get(EXPECTED)
-                        .remove(transactionDetails);
+                        .getGroupedTransactions()
+                        .replace(from(EXPECTED, transactionDetails), to(PAID, newTransaction));
 
-                cashFlowMonthlyForecast.getCategorizedOutFlows()
-                        .get(0)
-                        .getGroupedTransactions().get(PAID)
-                        .add(newTransaction);
             }
             return cashFlowMonthlyForecast;
         });

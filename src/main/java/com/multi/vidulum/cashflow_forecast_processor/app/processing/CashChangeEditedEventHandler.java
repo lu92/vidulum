@@ -44,15 +44,22 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         transaction.transactionDetails().getEndDate()
                 );
 
-                cashFlowMonthlyForecast.getCategorizedInFlows()
-                        .get(0)
-                        .getGroupedTransactions()
-                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+//                cashFlowMonthlyForecast.getCategorizedInFlows()
+//                        .get(0)
+//                        .getGroupedTransactions()
+//                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+//
+//                cashFlowMonthlyForecast.getCategorizedInFlows()
+//                        .get(0)
+//                        .getGroupedTransactions()
+//                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
                         .getGroupedTransactions()
-                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
+                        .replace(
+                                from(transaction.paymentStatus(), transaction.transactionDetails()),
+                                to(transaction.paymentStatus(), editedTransactionDetails));
 
                 CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats()
@@ -78,22 +85,22 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         transaction.transactionDetails().getEndDate()
                 );
 
-                cashFlowMonthlyForecast.getCategorizedOutFlows()
-                        .get(0)
-                        .getGroupedTransactions()
-                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
-
-                cashFlowMonthlyForecast.getCategorizedOutFlows()
-                        .get(0)
-                        .getGroupedTransactions()
-                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
-
 //                cashFlowMonthlyForecast.getCategorizedOutFlows()
 //                        .get(0)
 //                        .getGroupedTransactions()
-//                        .replace(
-//                                from(transaction.paymentStatus(), transaction.transactionDetails()),
-//                                to(transaction.paymentStatus(), editedTransactionDetails));
+//                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+//
+//                cashFlowMonthlyForecast.getCategorizedOutFlows()
+//                        .get(0)
+//                        .getGroupedTransactions()
+//                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
+
+                cashFlowMonthlyForecast.getCategorizedOutFlows()
+                        .get(0)
+                        .getGroupedTransactions()
+                        .replace(
+                                from(transaction.paymentStatus(), transaction.transactionDetails()),
+                                to(transaction.paymentStatus(), editedTransactionDetails));
 
 
                 CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
