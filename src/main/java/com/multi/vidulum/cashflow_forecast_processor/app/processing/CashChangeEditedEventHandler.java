@@ -44,16 +44,6 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         transaction.transactionDetails().getEndDate()
                 );
 
-//                cashFlowMonthlyForecast.getCategorizedInFlows()
-//                        .get(0)
-//                        .getGroupedTransactions()
-//                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
-//
-//                cashFlowMonthlyForecast.getCategorizedInFlows()
-//                        .get(0)
-//                        .getGroupedTransactions()
-//                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
-
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
                         .getGroupedTransactions()
@@ -84,16 +74,6 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         event.dueDate(),
                         transaction.transactionDetails().getEndDate()
                 );
-
-//                cashFlowMonthlyForecast.getCategorizedOutFlows()
-//                        .get(0)
-//                        .getGroupedTransactions()
-//                        .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
-//
-//                cashFlowMonthlyForecast.getCategorizedOutFlows()
-//                        .get(0)
-//                        .getGroupedTransactions()
-//                        .get(transaction.paymentStatus()).add(editedTransactionDetails);
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
