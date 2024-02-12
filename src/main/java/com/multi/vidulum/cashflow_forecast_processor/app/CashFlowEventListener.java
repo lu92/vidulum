@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow_forecast_processor.app.processing.CashFlowForecastProcessor;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

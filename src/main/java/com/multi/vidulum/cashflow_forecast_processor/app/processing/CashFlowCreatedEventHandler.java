@@ -1,0 +1,72 @@
+package com.multi.vidulum.cashflow_forecast_processor.app.processing;
+
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow_forecast_processor.app.*;
+import com.multi.vidulum.common.Money;
+import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.time.YearMonth;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
+
+@Component
+@AllArgsConstructor
+public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlowEvent.CashFlowCreatedEvent> {
+
+    @Autowired
+    private final CashFlowForecastStatementRepository statementRepository;
+
+    @Override
+    public void handle(CashFlowEvent.CashFlowCreatedEvent event) {
+        YearMonth current = YearMonth.from(event.created());
+        Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = IntStream.rangeClosed(0, 11)
+                .mapToObj(current::plusMonths)
+                .map(yearMonth -> new CashFlowMonthlyForecast(
+                        yearMonth,
+                        CashFlowStats.justBalance(event.balance()),
+                        List.of(
+                                CashCategory.builder()
+                                        .category(new Category("unknown"))
+                                        .subCategories(List.of())
+                                        .transactions(Map.of(
+                                                PAID, new LinkedList<>(),
+                                                EXPECTED, new LinkedList<>(),
+                                                FORECAST, new LinkedList<>()
+                                        ))
+                                        .totalValue(Money.zero(event.balance().getCurrency()))
+                                        .build()
+                        ),
+                        List.of(
+                                CashCategory.builder()
+                                        .category(new Category("unknown"))
+                                        .subCategories(List.of())
+                                        .transactions(Map.of(
+                                                PAID, new LinkedList<>(),
+                                                EXPECTED, new LinkedList<>(),
+                                                FORECAST, new LinkedList<>()
+                                        ))
+                                        .totalValue(Money.zero(event.balance().getCurrency()))
+                                        .build()
+                        )
+                )).collect(Collectors.toMap(
+                        CashFlowMonthlyForecast::getPeriod,
+                        Function.identity()
+                ));
+
+        statementRepository.save(
+                new CashFlowForecastStatement(
+                        event.cashFlowId(),
+                        monthlyForecasts,
+                        getChecksum(event)
+                ));
+    }
+
+}

@@ -17,7 +17,7 @@ public class CashCategory {
     private Map<PaymentStatus, List<TransactionDetails>> transactions;
     private Money totalValue;
 
-    Transaction findTransaction(CashChangeId cashChangeId) {
+    public Transaction findTransaction(CashChangeId cashChangeId) {
         return transactions.entrySet().stream()
                 .map(paymentTransactions -> paymentTransactions.getValue().stream()
                         .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
