@@ -32,20 +32,24 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
         statement.getForecasts().compute(cashChangeLocation.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
 
-            // dowiedziec sie czy event jest dla inflow czy outflow
-            // zwiekszyc albo zmniejszyc actual money
-            // przesunac transaction details do paid sekcji
-
             TransactionDetails transactionDetails = Stream.concat(
                             cashFlowMonthlyForecast.getCategorizedInFlows().stream(),
                             cashFlowMonthlyForecast.getCategorizedOutFlows().stream())
-                    .map(cashCategory -> cashCategory.getTransactions().values())
+                    .map(cashCategory -> cashCategory.getGroupedTransactions().values())
                     .flatMap(Collection::stream)
                     .flatMap(Collection::stream)
                     .filter(transaction -> event.cashChangeId().equals(transaction.getCashChangeId()))
                     .findFirst()
                     .orElseThrow(() -> new CashChangeDoesNotExistsException(event.cashChangeId()));
 
+            TransactionDetails newTransaction = new TransactionDetails(
+                    transactionDetails.getCashChangeId(),
+                    transactionDetails.getName(),
+                    transactionDetails.getMoney(),
+                    transactionDetails.getCreated(),
+                    transactionDetails.getDueDate(),
+                    event.endDate()
+            );
             if (Type.INFLOW.equals(cashChangeLocation.type())) {
                 CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats().setInflowStats(
@@ -58,20 +62,18 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getTransactions().get(EXPECTED)
+                        .getGroupedTransactions().get(EXPECTED)
                         .remove(transactionDetails);
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getTransactions().get(PAID)
-                        .add(new TransactionDetails(
-                                transactionDetails.getCashChangeId(),
-                                transactionDetails.getName(),
-                                transactionDetails.getMoney(),
-                                transactionDetails.getCreated(),
-                                transactionDetails.getDueDate(),
-                                event.endDate()
-                        ));
+                        .getGroupedTransactions().get(PAID)
+                        .add(newTransaction);
+
+//                cashFlowMonthlyForecast.getCategorizedInFlows()
+//                        .get(0)
+//                        .getTransactions()
+//                        .replace(from(EXPECTED, transactionDetails), to(PAID, newTransaction));
             } else {
                 CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
@@ -84,20 +86,13 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getTransactions().get(EXPECTED)
+                        .getGroupedTransactions().get(EXPECTED)
                         .remove(transactionDetails);
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getTransactions().get(PAID)
-                        .add(new TransactionDetails(
-                                transactionDetails.getCashChangeId(),
-                                transactionDetails.getName(),
-                                transactionDetails.getMoney(),
-                                transactionDetails.getCreated(),
-                                transactionDetails.getDueDate(),
-                                event.endDate()
-                        ));
+                        .getGroupedTransactions().get(PAID)
+                        .add(newTransaction);
             }
             return cashFlowMonthlyForecast;
         });

@@ -51,7 +51,7 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                         )
                 );
             }
-            unknownCashCategory.getTransactions().get(EXPECTED)
+            unknownCashCategory.getGroupedTransactions().get(EXPECTED)
                     .add(
                             new TransactionDetails(
                                     event.cashChangeId(),

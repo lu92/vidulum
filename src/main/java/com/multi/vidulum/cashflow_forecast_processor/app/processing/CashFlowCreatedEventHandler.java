@@ -8,14 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
 @Component
 @AllArgsConstructor
@@ -36,11 +33,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                 CashCategory.builder()
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
-                                        .transactions(Map.of(
-                                                PAID, new LinkedList<>(),
-                                                EXPECTED, new LinkedList<>(),
-                                                FORECAST, new LinkedList<>()
-                                        ))
+                                        .groupedTransactions(new GroupedTransactions())
                                         .totalValue(Money.zero(event.balance().getCurrency()))
                                         .build()
                         ),
@@ -48,11 +41,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                 CashCategory.builder()
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
-                                        .transactions(Map.of(
-                                                PAID, new LinkedList<>(),
-                                                EXPECTED, new LinkedList<>(),
-                                                FORECAST, new LinkedList<>()
-                                        ))
+                                        .groupedTransactions(new GroupedTransactions())
                                         .totalValue(Money.zero(event.balance().getCurrency()))
                                         .build()
                         )

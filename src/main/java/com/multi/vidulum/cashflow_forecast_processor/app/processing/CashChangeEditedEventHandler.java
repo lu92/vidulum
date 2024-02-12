@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.FORECAST;
+import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementFrom.from;
+import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementTo.to;
 
 @Component
 @AllArgsConstructor
@@ -30,6 +32,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
             if (Type.INFLOW.equals(cashChangeLocation.type())) {
                 Transaction transaction = cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
+                        .getGroupedTransactions()
                         .findTransaction(event.cashChangeId());
 
                 TransactionDetails editedTransactionDetails = new TransactionDetails(
@@ -43,12 +46,12 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getTransactions()
+                        .getGroupedTransactions()
                         .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getTransactions()
+                        .getGroupedTransactions()
                         .get(transaction.paymentStatus()).add(editedTransactionDetails);
 
                 CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
@@ -63,6 +66,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
             } else {
                 Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
+                        .getGroupedTransactions()
                         .findTransaction(event.cashChangeId());
 
                 TransactionDetails editedTransactionDetails = new TransactionDetails(
@@ -76,13 +80,21 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getTransactions()
+                        .getGroupedTransactions()
                         .get(transaction.paymentStatus()).remove(transaction.transactionDetails());
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getTransactions()
+                        .getGroupedTransactions()
                         .get(transaction.paymentStatus()).add(editedTransactionDetails);
+
+//                cashFlowMonthlyForecast.getCategorizedOutFlows()
+//                        .get(0)
+//                        .getGroupedTransactions()
+//                        .replace(
+//                                from(transaction.paymentStatus(), transaction.transactionDetails()),
+//                                to(transaction.paymentStatus(), editedTransactionDetails));
+
 
                 CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
                 cashFlowMonthlyForecast.getCashFlowStats()

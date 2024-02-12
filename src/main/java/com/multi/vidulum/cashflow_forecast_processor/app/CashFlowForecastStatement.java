@@ -27,8 +27,8 @@ public class CashFlowForecastStatement {
         return forecasts.values().stream()
                 .map(cashFlowMonthlyForecast -> {
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedInFlows().stream()
-                            .map(CashCategory::getTransactions)
-                            .map(Map::values)
+                            .map(CashCategory::getGroupedTransactions)
+                            .map(GroupedTransactions::values)
                             .flatMap(Collection::stream)
                             .flatMap(Collection::stream)
                             .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
@@ -39,8 +39,8 @@ public class CashFlowForecastStatement {
                                     Type.INFLOW));
 
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedOutFlows().stream()
-                            .map(CashCategory::getTransactions)
-                            .map(Map::values)
+                            .map(CashCategory::getGroupedTransactions)
+                            .map(GroupedTransactions::values)
                             .flatMap(Collection::stream)
                             .flatMap(Collection::stream)
                             .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))

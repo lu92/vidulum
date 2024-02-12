@@ -93,6 +93,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
                         .orElse(false));
 
+        String content = JsonContent.asPrettyJson(statementRepository.findByCashFlowId(cashFlowId).get()).content();
+
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
                 .get()
@@ -174,6 +176,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .until(() -> statementRepository.findByCashFlowId(cashFlowId)
                         .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
                         .orElse(false));
+
+        String content = JsonContent.asPrettyJson(statementRepository.findByCashFlowId(cashFlowId).get()).content();
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()

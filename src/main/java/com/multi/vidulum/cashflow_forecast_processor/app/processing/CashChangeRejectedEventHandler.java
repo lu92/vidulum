@@ -31,11 +31,12 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
             if (Type.INFLOW.equals(cashChangeLocation.type())) {
                 Transaction transaction = cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
+                        .getGroupedTransactions()
                         .findTransaction(event.cashChangeId());
 
                 cashFlowMonthlyForecast.getCategorizedInFlows()
                         .get(0)
-                        .getTransactions().get(transaction.paymentStatus())
+                        .getGroupedTransactions().get(transaction.paymentStatus())
                         .remove(transaction.transactionDetails());
 
                 CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
@@ -52,11 +53,12 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
             } else {
                 Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
+                        .getGroupedTransactions()
                         .findTransaction(event.cashChangeId());
 
                 cashFlowMonthlyForecast.getCategorizedOutFlows()
                         .get(0)
-                        .getTransactions().get(transaction.paymentStatus())
+                        .getGroupedTransactions().get(transaction.paymentStatus())
                         .remove(transaction.transactionDetails());
 
                 CashSummary outflowStats = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
