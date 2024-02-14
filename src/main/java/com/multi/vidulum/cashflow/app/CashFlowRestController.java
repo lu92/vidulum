@@ -37,7 +37,7 @@ public class CashFlowRestController {
                         new UserId(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
-                        request.getBalance()
+                        request.getBankAccount()
                 )
         );
 

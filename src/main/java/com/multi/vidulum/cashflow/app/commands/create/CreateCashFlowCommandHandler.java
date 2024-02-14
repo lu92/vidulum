@@ -31,7 +31,7 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
                 command.userId(),
                 command.name(),
                 command.description(),
-                command.balance(),
+                command.bankAccount(),
                 ZonedDateTime.now(clock)
         );
         cashFlow.apply(event);

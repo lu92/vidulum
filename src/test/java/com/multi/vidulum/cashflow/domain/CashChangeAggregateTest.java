@@ -40,7 +40,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.zero("USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"))
         );
 
@@ -71,7 +74,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new UserId("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.zero("USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         cashChangeId,
@@ -96,7 +102,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         new UserId("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.of(0, "USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
@@ -133,7 +142,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.zero("USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
@@ -192,7 +204,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new UserId("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.of(40,"USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         firstCashChangeId,
@@ -231,7 +246,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.zero("USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
                 new CashFlowEvent.CashChangeAppendedEvent(
@@ -303,7 +321,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.zero("USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
@@ -344,7 +365,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new UserId("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.zero("USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         cashChangeId,
@@ -371,7 +395,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 UserId.of("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.zero("USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeAppendedEvent(
@@ -435,7 +462,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.zero("USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -475,7 +505,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new UserId("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.zero("USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         cashChangeId,
@@ -503,7 +536,10 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 UserId.of("user"),
                                 new Name("name"),
                                 new Description("description"),
-                                Money.of(0, "USD"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeAppendedEvent(

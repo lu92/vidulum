@@ -18,7 +18,7 @@ public sealed interface CashFlowEvent extends DomainEvent
     CashFlowId cashFlowId();
 
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
-                                Money balance, ZonedDateTime created) implements CashFlowEvent {
+                                BankAccount bankAccount, ZonedDateTime created) implements CashFlowEvent {
     }
 
     record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,

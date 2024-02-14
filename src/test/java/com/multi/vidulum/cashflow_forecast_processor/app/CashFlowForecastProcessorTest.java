@@ -34,7 +34,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.of(0, "USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -116,7 +119,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         UserId.of("user"),
                         new Name("name"),
                         new Description("description"),
-                        Money.of(0, "USD"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );

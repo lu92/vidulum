@@ -25,7 +25,7 @@ public class CashFlowSummaryMapper {
                 .userId(cashFlowSnapshot.userId().getId())
                 .name(cashFlowSnapshot.name().name())
                 .description(cashFlowSnapshot.description().description())
-                .balance(cashFlowSnapshot.balance())
+                .bankAccount(cashFlowSnapshot.bankAccount())
                 .status(cashFlowSnapshot.status())
                 .cashChanges(cashChanges)
                 .created(cashFlowSnapshot.created())

@@ -31,7 +31,7 @@ public class CashFlowEntity {
     private String userId;
     private String name;
     private String description;
-    private Money balance;
+    private BankAccount bankAccount;
     private CashFlow.CashFlowStatus status;
     private List<CashChangeEntity> cashChanges;
     private Date created;
@@ -52,7 +52,7 @@ public class CashFlowEntity {
                 .userId(snapshot.userId().getId())
                 .name(snapshot.name().name())
                 .description(snapshot.description().description())
-                .balance(snapshot.balance())
+                .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChangeEntities)
                 .created(createdDate)
@@ -77,7 +77,7 @@ public class CashFlowEntity {
                 UserId.of(userId),
                 new Name(name),
                 new Description(description),
-                balance,
+                bankAccount,
                 status,
                 cashChangeSnapshotMap,
                 createdDateTime,

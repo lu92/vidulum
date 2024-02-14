@@ -13,7 +13,7 @@ public record CashFlowSnapshot(
         UserId userId,
         Name name,
         Description description,
-        Money balance,
+        BankAccount bankAccount,
         CashFlow.CashFlowStatus status,
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
 
