@@ -26,7 +26,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private UserId userId;
     private Name name;
     private Description description;
-    private Money balance;
+    private BankAccount bankAccount;
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
     private ZonedDateTime created;
@@ -58,7 +58,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 userId,
                 name,
                 description,
-                balance,
+                bankAccount,
                 status,
                 cashChangeSnapshotMap,
                 created,
@@ -89,7 +89,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .userId(snapshot.userId())
                 .name(snapshot.name())
                 .description(snapshot.description())
-                .balance(snapshot.balance())
+                .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChanges)
                 .created(snapshot.created())
@@ -102,7 +102,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.userId = event.userId();
         this.name = event.name();
         this.description = event.description();
-        this.balance = event.balance();
+        this.bankAccount = event.bankAccount();
         this.status = CashFlowStatus.OPEN;
         this.cashChanges = new HashMap<>();
         this.created = event.created();
@@ -133,9 +133,9 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     cashChange.setStatus(CashChangeStatus.CONFIRMED);
                     cashChange.setEndDate(event.endDate());
                     if (Type.INFLOW.equals(cashChange.getType())) {
-                        balance = balance.plus(cashChange.getMoney());
+                        bankAccount = bankAccount.withUpdatedBalance(bankAccount.balance().plus(cashChange.getMoney()));
                     } else {
-                        balance = balance.minus(cashChange.getMoney());
+                        bankAccount = bankAccount.withUpdatedBalance(bankAccount.balance().minus(cashChange.getMoney()));
                     }
                 }));
         add(event);

@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
+import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -18,7 +19,7 @@ public final class CashFlowDto {
         private String userId;
         private String name;
         private String description;
-        private Money balance;
+        private BankAccount bankAccount;
     }
 
     @Data
@@ -65,7 +66,7 @@ public final class CashFlowDto {
         private String userId;
         private String name;
         private String description;
-        private Money balance;
+        private BankAccount bankAccount;
         private CashFlow.CashFlowStatus status;
         private Map<String, CashChangeSummaryJson> cashChanges;
         private ZonedDateTime created;

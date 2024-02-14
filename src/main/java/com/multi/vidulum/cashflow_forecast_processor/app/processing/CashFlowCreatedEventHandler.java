@@ -28,13 +28,13 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                 .mapToObj(current::plusMonths)
                 .map(yearMonth -> new CashFlowMonthlyForecast(
                         yearMonth,
-                        CashFlowStats.justBalance(event.balance()),
+                        CashFlowStats.justBalance(event.bankAccount().balance()),
                         List.of(
                                 CashCategory.builder()
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(event.balance().getCurrency()))
+                                        .totalValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
                         ),
                         List.of(
@@ -42,7 +42,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(event.balance().getCurrency()))
+                                        .totalValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
                         )
                 )).collect(Collectors.toMap(

@@ -2,8 +2,7 @@ package com.multi.vidulum.cashflow;
 
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
-import com.multi.vidulum.cashflow.domain.CashFlow;
-import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.trading.domain.IntegrationTest;
@@ -32,7 +31,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .build()
         );
 
@@ -43,7 +45,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of())
                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
@@ -68,7 +73,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .build()
         );
 
@@ -90,7 +98,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,
@@ -132,7 +143,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .build()
         );
 
@@ -161,7 +175,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.of(100, "USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(100, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,
@@ -204,7 +221,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .build()
         );
 
@@ -237,7 +257,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,
@@ -280,7 +303,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .build()
         );
 
@@ -310,7 +336,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .balance(Money.zero("USD"))
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
                                 cashChangeId,
