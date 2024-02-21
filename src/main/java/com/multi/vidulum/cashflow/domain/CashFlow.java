@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Consumer;
@@ -29,6 +30,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private BankAccount bankAccount;
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
+    private YearMonth activePeriod;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
@@ -61,6 +63,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 bankAccount,
                 status,
                 cashChangeSnapshotMap,
+                activePeriod,
                 created,
                 lastModification
         );
@@ -92,6 +95,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChanges)
+                .activePeriod(snapshot.activePeriod())
                 .created(snapshot.created())
                 .lastModification(snapshot.lastModification())
                 .build();
@@ -105,6 +109,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.bankAccount = event.bankAccount();
         this.status = CashFlowStatus.OPEN;
         this.cashChanges = new HashMap<>();
+        this.activePeriod = YearMonth.from(event.created());
         this.created = event.created();
         this.lastModification = null;
         this.uncommittedEvents = new LinkedList<>();
@@ -156,6 +161,16 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         performOn(event.cashChangeId(), cashChange -> {
             cashChange.onlyWhenIsPending(() -> cashChange.setStatus(REJECTED));
         });
+        add(event);
+    }
+
+    public void apply(CashFlowEvent.MonthAttestedEvent event) {
+        if (!activePeriod.plusMonths(1).equals(event.period())) {
+            throw new IllegalArgumentException("invalid period!");
+        }
+
+        activePeriod = event.period();
+        bankAccount = bankAccount.withUpdatedBalance(event.currentMoney());
         add(event);
     }
 

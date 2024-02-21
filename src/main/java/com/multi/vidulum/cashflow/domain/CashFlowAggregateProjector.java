@@ -12,6 +12,7 @@ public class CashFlowAggregateProjector {
         events.forEach(processingEvent -> {
             switch (processingEvent) {
                 case CashFlowEvent.CashFlowCreatedEvent event -> cashFlow.apply(event);
+                case CashFlowEvent.MonthAttestedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.CashChangeAppendedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.CashChangeConfirmedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.CashChangeEditedEvent event -> cashFlow.apply(event);

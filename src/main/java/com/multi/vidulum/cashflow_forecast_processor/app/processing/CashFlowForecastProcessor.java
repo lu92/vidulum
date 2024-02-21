@@ -17,6 +17,7 @@ public class CashFlowForecastProcessor {
 
     private final CashFlowForecastMongoRepository repository;
     private final CashFlowCreatedEventHandler cashFlowCreatedEventHandler;
+    private final MonthAttestedEventHandler monthAttestedEventHandler;
     private final CashChangeAppendedEventHandler cashChangeAppendedEventHandler;
     private final CashChangeConfirmedEventHandler cashChangeConfirmedEventHandler;
     private final CashChangeEditedEventHandler cashChangeEditedEventHandler;
@@ -30,6 +31,7 @@ public class CashFlowForecastProcessor {
     private void processEvent(CashFlowEvent cashFlowEvent) {
         switch (cashFlowEvent) {
             case CashFlowEvent.CashFlowCreatedEvent event -> cashFlowCreatedEventHandler.handle(event);
+            case CashFlowEvent.MonthAttestedEvent event -> monthAttestedEventHandler.handle(event);
             case CashFlowEvent.CashChangeAppendedEvent event -> cashChangeAppendedEventHandler.handle(event);
             case CashFlowEvent.CashChangeConfirmedEvent event -> cashChangeConfirmedEventHandler.handle(event);
             case CashFlowEvent.CashChangeRejectedEvent event -> cashChangeRejectedEventHandler.handle(event);

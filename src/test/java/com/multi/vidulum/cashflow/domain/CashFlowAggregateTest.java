@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Clock;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class CashChangeAggregateTest extends IntegrationTest {
+class CashFlowAggregateTest extends IntegrationTest {
 
     @Autowired
     private Clock clock;
@@ -92,6 +93,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 null
                                         )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         ));
@@ -207,7 +209,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                 new BankAccount(
                                         new BankName("bank"),
                                         new AccountNumber("account number"),
-                                        Money.of(0, "USD")),
+                                        Money.of(40, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
                                         firstCashChangeId,
@@ -235,6 +237,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z")
                                         )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -383,6 +386,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-08-01T00:00:00Z"),
                                                 null
                                         )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -523,6 +527,7 @@ class CashChangeAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 null
                                         )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -581,4 +586,86 @@ class CashChangeAggregateTest extends IntegrationTest {
 //                .isInstanceOf(CashChangeIsNotOpenedException.class);
 //
 //    }
+
+    @Test
+    void shouldAttestMonth() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.apply(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ));
+
+        cashFlow.apply(
+                new CashFlowEvent.MonthAttestedEvent(
+                        cashFlowId,
+                        YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                        Money.of(500, "USD"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                )
+        );
+
+        // when
+        domainCashFlowRepository.save(cashFlow);
+
+        // then
+        assertThat(domainCashFlowRepository.findById(cashFlowId)).isPresent()
+                .map(CashFlow::getSnapshot)
+                .get()
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new AccountNumber("account number"),
+                                        Money.of(500, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(),
+                                YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null
+                        )
+                );
+
+        assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new AccountNumber("account number"),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ),
+                new CashFlowEvent.MonthAttestedEvent(
+                        cashFlowId,
+                        YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                        Money.of(500, "USD"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                )
+        );
+
+        List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
+                .stream()
+                .map(domainEvent -> (CashFlowEvent) domainEvent)
+                .collect(Collectors.toList());
+
+        assertThat(cashFlowAggregateProjector.process(domainEvents).getSnapshot())
+                .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
+
+    }
 }

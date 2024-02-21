@@ -1,10 +1,10 @@
 package com.multi.vidulum.cashflow.domain.snapshots;
 
 import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
@@ -16,7 +16,7 @@ public record CashFlowSnapshot(
         BankAccount bankAccount,
         CashFlow.CashFlowStatus status,
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
-
+        YearMonth activePeriod,
         ZonedDateTime created,
         ZonedDateTime lastModification) implements EntitySnapshot<CashFlowId> {
 
