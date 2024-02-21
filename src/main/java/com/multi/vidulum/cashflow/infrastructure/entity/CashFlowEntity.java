@@ -3,7 +3,6 @@ package com.multi.vidulum.cashflow.infrastructure.entity;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
-import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +10,7 @@ import lombok.ToString;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -34,6 +34,7 @@ public class CashFlowEntity {
     private BankAccount bankAccount;
     private CashFlow.CashFlowStatus status;
     private List<CashChangeEntity> cashChanges;
+    private String activePeriod;
     private Date created;
     private Date lastModification;
 
@@ -55,6 +56,7 @@ public class CashFlowEntity {
                 .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChangeEntities)
+                .activePeriod(snapshot.activePeriod().toString())
                 .created(createdDate)
                 .lastModification(lastModification)
                 .build();
@@ -80,6 +82,7 @@ public class CashFlowEntity {
                 bankAccount,
                 status,
                 cashChangeSnapshotMap,
+                YearMonth.parse(activePeriod),
                 createdDateTime,
                 lastModificationDateTime
         );
