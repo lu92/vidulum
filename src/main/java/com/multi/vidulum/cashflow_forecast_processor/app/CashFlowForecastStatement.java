@@ -101,6 +101,18 @@ public class CashFlowForecastStatement {
                     .getGroupedTransactions()
                     .addTransaction(transaction);
 
+            CashFlowStats cashFlowStatsReadyToDecrease = forecasts.get(fromPeriod).getCashFlowStats();
+            CashSummary inflowStatsToDecrease = cashFlowStatsReadyToDecrease.getInflowStats();
+
+            cashFlowStatsReadyToDecrease
+                    .setInflowStats(
+                            new CashSummary(
+                                    PAID.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.actual(),
+                                    EXPECTED.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.expected(),
+                                    FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
+                            )
+                    );
+
             CashFlowStats cashFlowStatsReadyToIncrease = forecasts.get(toPeriod).getCashFlowStats();
             CashSummary inflowStats = cashFlowStatsReadyToIncrease.getInflowStats();
 
