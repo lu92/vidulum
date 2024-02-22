@@ -272,6 +272,15 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
         Optional<CashFlowForecastStatement> byCashFlowId = statementRepository.findByCashFlowId(cashFlowId);
         System.out.println();
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .usingRecursiveComparison()
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
+                .isEqualTo(
+                        ContentReader.load("cashflow_forecast_processor/attestation_processing.json")
+                                .to(CashFlowForecastStatement.class));
     }
 
     private Checksum emit(CashFlowEvent cashFlowEvent) {
@@ -286,5 +295,4 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .content()
                                 .getBytes(StandardCharsets.UTF_8)));
     }
-
 }
