@@ -10,9 +10,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.YearMonth;
-import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 
 @Data
 @NoArgsConstructor
@@ -28,32 +30,76 @@ public class CashFlowForecastStatement {
                 .map(cashFlowMonthlyForecast -> {
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedInFlows().stream()
                             .map(CashCategory::getGroupedTransactions)
-                            .map(GroupedTransactions::values)
-                            .flatMap(Collection::stream)
-                            .flatMap(Collection::stream)
-                            .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
-                            .findFirst()
-                            .map(transactionDetails -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                    transactionDetails.getCashChangeId(),
-                                    cashFlowMonthlyForecast.getPeriod(),
-                                    Type.INFLOW));
+                            .map(GroupedTransactions::getTransactions)
+                            .flatMap(paymentStatusListMap -> paymentStatusListMap.entrySet().stream())
+                            .map(entries -> {
+                                PaymentStatus paymentStatus = entries.getKey();
+                                List<TransactionDetails> transactionDetails = entries.getValue();
+
+                                return transactionDetails.stream()
+                                        .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
+                                        .findFirst()
+                                        .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                transactionDetail.getCashChangeId(),
+                                                cashFlowMonthlyForecast.getPeriod(),
+                                                INFLOW,
+                                                paymentStatus));
+
+                            })
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .findFirst();
 
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedOutFlows().stream()
                             .map(CashCategory::getGroupedTransactions)
-                            .map(GroupedTransactions::values)
-                            .flatMap(Collection::stream)
-                            .flatMap(Collection::stream)
-                            .filter(transactionDetails -> cashChangeId.equals(transactionDetails.getCashChangeId()))
-                            .findFirst()
-                            .map(transactionDetails -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                    transactionDetails.getCashChangeId(),
-                                    cashFlowMonthlyForecast.getPeriod(),
-                                    Type.OUTFLOW));
+                            .map(GroupedTransactions::getTransactions)
+                            .flatMap(paymentStatusListMap -> paymentStatusListMap.entrySet().stream())
+                            .map(entries -> {
+                                PaymentStatus paymentStatus = entries.getKey();
+                                List<TransactionDetails> transactionDetails = entries.getValue();
+
+                                return transactionDetails.stream()
+                                        .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
+                                        .findFirst()
+                                        .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                transactionDetail.getCashChangeId(),
+                                                cashFlowMonthlyForecast.getPeriod(),
+                                                Type.OUTFLOW,
+                                                paymentStatus));
+
+                            })
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .findFirst();
 
                     return inflowCashChangeLocation.or(() -> outflowCashChangeLocation);
                 })
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+    public void move(CashChangeId cashChangeId, YearMonth fromPeriod, YearMonth toPeriod) {
+        CashFlowMonthlyForecast.CashChangeLocation location = locate(cashChangeId)
+                .orElseThrow(() -> new IllegalStateException(
+                        String.format("Cannot find CashChange with id[%s]", cashChangeId)));
+
+        if (INFLOW.equals(location.type())) {
+            GroupedTransactions groupedTransactions = forecasts.get(fromPeriod).getCategorizedInFlows()
+                    .get(0)
+                    .getGroupedTransactions();
+
+            Transaction transaction = groupedTransactions
+                    .findTransaction(cashChangeId);
+
+            groupedTransactions.removeTransaction(transaction);
+
+            forecasts.get(toPeriod)
+                    .getCategorizedInFlows()
+                    .get(0)
+                    .getGroupedTransactions()
+                    .addTransaction(transaction);
+        }
+
     }
 }

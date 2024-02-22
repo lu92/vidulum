@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "260b6a13-3912-4cad-8cbc-e97f829b5d9d"
+    "id" : "5cb804c3-c569-4460-961d-88a6ff788c6e"
   },
   "forecasts" : {
     "2021-06" : {
@@ -54,9 +54,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -71,11 +71,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
-            "FORECAST" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "8ed6f5d2-b32f-452a-a380-42a84b057df9"
+                "id" : "08667a01-def6-4aad-a143-64ece9fde06b"
               },
               "name" : {
                 "name" : "cash change name"
@@ -87,14 +85,17 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : "2021-07-15T16:30:00Z"
-            } ]
+            } ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "ACTIVE"
     },
     "2021-07" : {
       "period" : "2021-07",
@@ -147,9 +148,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -164,11 +165,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
-            "FORECAST" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "efc5f72e-f194-42fa-99fa-29fc79d34e15"
+                "id" : "249057fe-2efb-46f1-ab1c-0c9a73f283bb"
               },
               "name" : {
                 "name" : "cash change name 2 edited"
@@ -180,14 +179,17 @@
               "created" : "2021-07-01T06:30:00Z",
               "dueDate" : "2021-08-12T00:00:00Z",
               "endDate" : "2021-08-10T16:30:00Z"
-            } ]
+            } ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2021-08" : {
       "period" : "2021-08",
@@ -240,9 +242,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -257,16 +259,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2021-09" : {
       "period" : "2021-09",
@@ -319,9 +322,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -336,16 +339,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2021-10" : {
       "period" : "2021-10",
@@ -398,9 +402,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -415,16 +419,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2021-11" : {
       "period" : "2021-11",
@@ -477,9 +482,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -494,16 +499,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2021-12" : {
       "period" : "2021-12",
@@ -556,9 +562,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -573,16 +579,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2022-01" : {
       "period" : "2022-01",
@@ -635,9 +642,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -652,16 +659,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2022-02" : {
       "period" : "2022-02",
@@ -714,9 +722,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -731,16 +739,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2022-03" : {
       "period" : "2022-03",
@@ -793,9 +802,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -810,16 +819,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2022-04" : {
       "period" : "2022-04",
@@ -872,9 +882,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -889,16 +899,17 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     },
     "2022-05" : {
       "period" : "2022-05",
@@ -951,9 +962,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
@@ -968,19 +979,20 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalValue" : {
           "amount" : 0,
           "currency" : "USD"
         }
-      } ]
+      } ],
+      "status" : "FORECASTED"
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "8650e2e72981007fdf1747ee62d5bc83"
+    "checksum" : "81aeb6ed3bb79c1e4e3722ce54dcd8cc"
   }
 }

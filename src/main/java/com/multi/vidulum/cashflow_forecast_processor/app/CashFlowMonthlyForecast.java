@@ -17,7 +17,12 @@ public class CashFlowMonthlyForecast {
     private CashFlowStats cashFlowStats;
     private List<CashCategory> categorizedInFlows;
     private List<CashCategory> categorizedOutFlows;
+    private Status status;
 
-    public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type) {
+    public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type, PaymentStatus paymentStatus) {
+    }
+
+    public enum Status {
+        ATTESTED, ACTIVE, FORECASTED
     }
 }

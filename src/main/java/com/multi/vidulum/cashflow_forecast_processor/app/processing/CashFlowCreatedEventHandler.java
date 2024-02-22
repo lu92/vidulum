@@ -44,11 +44,14 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                         .groupedTransactions(new GroupedTransactions())
                                         .totalValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
-                        )
+                        ),
+                        CashFlowMonthlyForecast.Status.FORECASTED
                 )).collect(Collectors.toMap(
                         CashFlowMonthlyForecast::getPeriod,
                         Function.identity()
                 ));
+
+        monthlyForecasts.get(current).setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
         statementRepository.save(
                 new CashFlowForecastStatement(
