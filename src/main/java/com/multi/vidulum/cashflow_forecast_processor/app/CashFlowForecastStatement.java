@@ -91,42 +91,8 @@ public class CashFlowForecastStatement {
 
 
         if (INFLOW.equals(location.type())) {
-            cashFlowMonthlyForecastReadyToDecrease
-                    .getCategorizedInFlows()
-                    .get(0)
-                    .getGroupedTransactions()
-                    .removeTransaction(transaction);
-
-
-            CashFlowStats cashFlowStatsReadyToDecrease = cashFlowMonthlyForecastReadyToDecrease.getCashFlowStats();
-            CashSummary inflowStatsToDecrease = cashFlowStatsReadyToDecrease.getInflowStats();
-
-            cashFlowStatsReadyToDecrease
-                    .setInflowStats(
-                            new CashSummary(
-                                    PAID.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.actual(),
-                                    EXPECTED.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.expected(),
-                                    FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
-                            )
-                    );
-
-            cashFlowMonthlyForecastToIncrease
-                    .getCategorizedInFlows()
-                    .get(0)
-                    .getGroupedTransactions()
-                    .addTransaction(transaction);
-
-            CashFlowStats cashFlowStatsReadyToIncrease = cashFlowMonthlyForecastToIncrease.getCashFlowStats();
-            CashSummary inflowStats = cashFlowStatsReadyToIncrease.getInflowStats();
-
-            cashFlowStatsReadyToIncrease
-                    .setInflowStats(
-                            new CashSummary(
-                                    PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-                                    EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-                                    FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
-                            )
-                    );
+            cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(transaction);
+            cashFlowMonthlyForecastToIncrease.addToInflows(transaction);
         }
 
     }
