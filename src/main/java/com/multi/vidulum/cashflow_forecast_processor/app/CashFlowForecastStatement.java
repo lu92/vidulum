@@ -87,23 +87,16 @@ public class CashFlowForecastStatement {
 
         CashFlowMonthlyForecast cashFlowMonthlyForecastReadyToDecrease = forecasts.get(fromPeriod);
         CashFlowMonthlyForecast cashFlowMonthlyForecastToIncrease = forecasts.get(toPeriod);
+        Transaction transaction = location.transaction();
 
 
         if (INFLOW.equals(location.type())) {
-            GroupedTransactions groupedTransactions = cashFlowMonthlyForecastReadyToDecrease.getCategorizedInFlows()
-                    .get(0)
-                    .getGroupedTransactions();
-
-            Transaction transaction = groupedTransactions
-                    .findTransaction(cashChangeId);
-
-            groupedTransactions.removeTransaction(transaction);
-
-            cashFlowMonthlyForecastToIncrease
+            cashFlowMonthlyForecastReadyToDecrease
                     .getCategorizedInFlows()
                     .get(0)
                     .getGroupedTransactions()
-                    .addTransaction(transaction);
+                    .removeTransaction(transaction);
+
 
             CashFlowStats cashFlowStatsReadyToDecrease = cashFlowMonthlyForecastReadyToDecrease.getCashFlowStats();
             CashSummary inflowStatsToDecrease = cashFlowStatsReadyToDecrease.getInflowStats();
@@ -116,6 +109,12 @@ public class CashFlowForecastStatement {
                                     FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
                             )
                     );
+
+            cashFlowMonthlyForecastToIncrease
+                    .getCategorizedInFlows()
+                    .get(0)
+                    .getGroupedTransactions()
+                    .addTransaction(transaction);
 
             CashFlowStats cashFlowStatsReadyToIncrease = cashFlowMonthlyForecastToIncrease.getCashFlowStats();
             CashSummary inflowStats = cashFlowStatsReadyToIncrease.getInflowStats();
