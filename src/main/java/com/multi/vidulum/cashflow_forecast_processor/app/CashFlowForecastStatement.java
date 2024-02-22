@@ -93,6 +93,9 @@ public class CashFlowForecastStatement {
         if (INFLOW.equals(location.type())) {
             cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(transaction);
             cashFlowMonthlyForecastToIncrease.addToInflows(transaction);
+        } else {
+            cashFlowMonthlyForecastReadyToDecrease.removeFromOutflows(transaction);
+            cashFlowMonthlyForecastToIncrease.addToOutflows(transaction);
         }
 
     }

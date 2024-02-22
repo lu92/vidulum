@@ -21,6 +21,23 @@ public class CashFlowMonthlyForecast {
     private List<CashCategory> categorizedOutFlows;
     private Status status;
 
+    public void addToInflows(Transaction transaction) {
+        categorizedInFlows
+                .get(0)
+                .getGroupedTransactions()
+                .addTransaction(transaction);
+
+        CashSummary inflowStats = cashFlowStats.getInflowStats();
+        cashFlowStats
+                .setInflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                        )
+                );
+    }
+
     public void removeFromInflows(Transaction transaction) {
         categorizedInFlows
                 .get(0)
@@ -38,19 +55,36 @@ public class CashFlowMonthlyForecast {
                 );
     }
 
-    public void addToInflows(Transaction transaction) {
-        categorizedInFlows
+    public void addToOutflows(Transaction transaction) {
+        categorizedOutFlows
                 .get(0)
                 .getGroupedTransactions()
                 .addTransaction(transaction);
 
-        CashSummary inflowStats = cashFlowStats.getInflowStats();
+        CashSummary outflowStats = cashFlowStats.getOutflowStats();
         cashFlowStats
-                .setInflowStats(
+                .setOutflowStats(
                         new CashSummary(
-                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().plus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().plus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
+                        )
+                );
+    }
+
+    public void removeFromOutflows(Transaction transaction) {
+        categorizedOutFlows
+                .get(0)
+                .getGroupedTransactions()
+                .removeTransaction(transaction);
+
+        CashSummary outflowStatsToDecrease = cashFlowStats.getOutflowStats();
+        cashFlowStats
+                .setOutflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.gapToForecast()
                         )
                 );
     }
