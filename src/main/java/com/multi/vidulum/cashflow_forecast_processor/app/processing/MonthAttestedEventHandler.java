@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
+import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +28,9 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         YearMonth nextPeriod = actualPeriod.plusMonths(1);
 
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
+        CashFlowMonthlyForecast nextCashFlowMonthlyForecast = statement.getForecasts().get(nextPeriod);
         actualCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ATTESTED);
+        nextCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
 
         List<CashChangeId> cashChangesWithExpectedPayment = actualCashFlowMonthlyForecast.getCategorizedInFlows()
@@ -52,6 +55,12 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
 //                        )
 //                );
 
+
+
         // TODO add new Month Forecast
+
+        Checksum lastMessageChecksum = getChecksum(event);
+        statement.setLastMessageChecksum(lastMessageChecksum);
+        statementRepository.save(statement);
     }
 }

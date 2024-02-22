@@ -46,7 +46,7 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
                                 new CashSummary(
                                         PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
                                         EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-                                        FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                                        FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
                                 )
                         );
 

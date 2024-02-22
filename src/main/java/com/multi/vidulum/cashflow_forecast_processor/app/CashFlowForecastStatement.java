@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
+import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
 @Data
 @NoArgsConstructor
@@ -99,6 +100,18 @@ public class CashFlowForecastStatement {
                     .get(0)
                     .getGroupedTransactions()
                     .addTransaction(transaction);
+
+            CashFlowStats cashFlowStatsReadyToIncrease = forecasts.get(toPeriod).getCashFlowStats();
+            CashSummary inflowStats = cashFlowStatsReadyToIncrease.getInflowStats();
+
+            cashFlowStatsReadyToIncrease
+                    .setInflowStats(
+                            new CashSummary(
+                                    PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
+                                    EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
+                                    FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                            )
+                    );
         }
 
     }
