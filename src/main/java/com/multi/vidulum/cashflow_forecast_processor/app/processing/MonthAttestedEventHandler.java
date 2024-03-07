@@ -5,12 +5,15 @@ import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
+import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
 import java.util.List;
 
+import static com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast.Status.ACTIVE;
+import static com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast.Status.ATTESTED;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
 @Component
@@ -33,6 +36,23 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         nextCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
 
+        moveExpectedCashChangesToNextMonth(statement, actualPeriod, nextPeriod);
+
+
+        // TODO add new Month Forecast
+
+        YearMonth newPeriod = actualPeriod.plusMonths(12);
+        Money beginningBalance = Money.zero("USD"); // todo: figure it out
+        statement.addEmptyForecast(newPeriod, beginningBalance);
+
+        Checksum lastMessageChecksum = getChecksum(event);
+        statement.setLastMessageChecksum(lastMessageChecksum);
+        statementRepository.save(statement);
+    }
+
+    private static void moveExpectedCashChangesToNextMonth(CashFlowForecastStatement statement, YearMonth actualPeriod, YearMonth nextPeriod) {
+        CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
+
         List<CashChangeId> cashChangesWithExpectedPayment = actualCashFlowMonthlyForecast.getCategorizedInFlows()
                 .get(0)
                 .getGroupedTransactions().get(EXPECTED)
@@ -43,24 +63,5 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
             statement.move(cashChangeId, actualPeriod, nextPeriod);
 
         });
-
-//        CashSummary inflowStats = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
-//
-//        cashFlowMonthlyForecast.getCashFlowStats()
-//                .setInflowStats(
-//                        new CashSummary(
-//                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-//                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().minus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-//                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.actual().minus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
-//                        )
-//                );
-
-
-
-        // TODO add new Month Forecast
-
-        Checksum lastMessageChecksum = getChecksum(event);
-        statement.setLastMessageChecksum(lastMessageChecksum);
-        statementRepository.save(statement);
     }
 }

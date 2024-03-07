@@ -2,10 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.ContentReader;
 import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.common.Checksum;
-import com.multi.vidulum.common.JsonContent;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -38,7 +35,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
@@ -123,7 +120,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
@@ -208,7 +205,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )

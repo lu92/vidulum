@@ -1,9 +1,8 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Checksum;
+import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,7 +22,8 @@ import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 @Builder
 public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
-    private Map<YearMonth, CashFlowMonthlyForecast> forecasts; // next 12 months
+    private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
+    private BankAccountNumber bankAccountNumber;
     private Checksum lastMessageChecksum;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
@@ -97,6 +97,41 @@ public class CashFlowForecastStatement {
             cashFlowMonthlyForecastReadyToDecrease.removeFromOutflows(transaction);
             cashFlowMonthlyForecastToIncrease.addToOutflows(transaction);
         }
+    }
 
+    public YearMonth fetchCurrentPeriod() {
+        return forecasts.values()
+                .stream()
+                .filter(cashFlowMonthlyForecast -> cashFlowMonthlyForecast.getStatus().equals(CashFlowMonthlyForecast.Status.ACTIVE))
+                .findFirst()
+                .map(CashFlowMonthlyForecast::getPeriod)
+                .orElseThrow(() -> new IllegalStateException(""));
+    }
+
+    public void addEmptyForecast(YearMonth period, Money beginningBalance) {
+        forecasts.put(
+                period,
+                new CashFlowMonthlyForecast(
+                        period,
+                        CashFlowStats.justBalance(beginningBalance),
+                        List.of(
+                                CashCategory.builder()
+                                        .category(new Category("unknown"))
+                                        .subCategories(List.of())
+                                        .groupedTransactions(new GroupedTransactions())
+                                        .totalValue(Money.zero(bankAccountNumber.denomination().getId()))
+                                        .build()
+                        ),
+                        List.of(
+                                CashCategory.builder()
+                                        .category(new Category("unknown"))
+                                        .subCategories(List.of())
+                                        .groupedTransactions(new GroupedTransactions())
+                                        .totalValue(Money.zero(bankAccountNumber.denomination().getId()))
+                                        .build()
+                        ),
+                        CashFlowMonthlyForecast.Status.FORECASTED
+                )
+        );
     }
 }
