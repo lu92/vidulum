@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.BankAccountNumber;
+import com.multi.vidulum.cashflow.domain.CashChangeId;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
+import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -14,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
 @Data
 @NoArgsConstructor
@@ -133,5 +135,13 @@ public class CashFlowForecastStatement {
                         CashFlowMonthlyForecast.Status.FORECASTED
                 )
         );
+    }
+
+    public CashFlowMonthlyForecast findLastMonthlyForecast() {
+
+        YearMonth lastPeriod = forecasts.keySet()
+                .stream().max(YearMonth::compareTo)
+                .orElseThrow();
+        return forecasts.get(lastPeriod);
     }
 }

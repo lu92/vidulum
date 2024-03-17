@@ -40,10 +40,11 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
 
 
         // TODO add new Month Forecast
+        CashFlowMonthlyForecast monthlyForecast = statement.findLastMonthlyForecast();
 
-        YearMonth newPeriod = actualPeriod.plusMonths(12);
+        YearMonth upcomingPeriod = actualPeriod.plusMonths(12);
         Money beginningBalance = Money.zero("USD"); // todo: figure it out
-        statement.addEmptyForecast(newPeriod, beginningBalance);
+        statement.addEmptyForecast(upcomingPeriod, beginningBalance);
 
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);

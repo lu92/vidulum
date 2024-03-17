@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "7684f806-8e5d-45f3-9497-70b35df2662f"
+    "id" : "5fb6ec03-8b12-4757-b106-3064d1c471e9"
   },
   "forecasts" : {
     "2021-06" : {
@@ -56,7 +56,7 @@
           "transactions" : {
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "b2ec913c-a0b0-42ca-bad3-1eb300dd2864"
+                "id" : "e637773d-b6d5-4144-adee-7572ceac2838"
               },
               "name" : {
                 "name" : "cash change name"
@@ -74,7 +74,7 @@
           }
         },
         "totalValue" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         }
       } ],
@@ -150,7 +150,7 @@
           "transactions" : {
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "278d3793-8eff-432b-b938-46a5553a9732"
+                "id" : "465dd327-7709-4960-94b6-1cbf7b63a075"
               },
               "name" : {
                 "name" : "cash change name 2 edited"
@@ -168,7 +168,7 @@
           }
         },
         "totalValue" : {
-          "amount" : 0,
+          "amount" : 120.0,
           "currency" : "USD"
         }
       } ],
@@ -999,6 +999,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "ecccf4db46aa0f2008382d8f2f80c856"
+    "checksum" : "a17686f857f233ddd49d043cf843f89a"
   }
 }

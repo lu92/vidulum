@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,6 +37,13 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
                         )
                 );
+
+        if (transaction.isPaid()) {
+            Money updatedTotalValue = categorizedInFlows.get(0)
+                    .getTotalValue()
+                    .plus(transaction.transactionDetails().getMoney());
+            categorizedInFlows.get(0).setTotalValue(updatedTotalValue);
+        }
     }
 
     public void removeFromInflows(Transaction transaction) {
@@ -70,6 +78,13 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
                         )
                 );
+
+        if (transaction.isPaid()) {
+            Money updatedTotalValue = categorizedInFlows.get(0)
+                    .getTotalValue()
+                    .plus(transaction.transactionDetails().getMoney());
+            categorizedInFlows.get(0).setTotalValue(updatedTotalValue);
+        }
     }
 
     public void removeFromOutflows(Transaction transaction) {
