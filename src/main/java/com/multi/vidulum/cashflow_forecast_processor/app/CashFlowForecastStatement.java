@@ -121,7 +121,7 @@ public class CashFlowForecastStatement {
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(bankAccountNumber.denomination().getId()))
+                                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
                                         .build()
                         ),
                         List.of(
@@ -129,7 +129,7 @@ public class CashFlowForecastStatement {
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(bankAccountNumber.denomination().getId()))
+                                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
                                         .build()
                         ),
                         CashFlowMonthlyForecast.Status.FORECASTED

@@ -40,9 +40,9 @@ public class CashFlowMonthlyForecast {
 
         if (transaction.isPaid()) {
             Money updatedTotalValue = categorizedInFlows.get(0)
-                    .getTotalValue()
+                    .getTotalPaidValue()
                     .plus(transaction.transactionDetails().getMoney());
-            categorizedInFlows.get(0).setTotalValue(updatedTotalValue);
+            categorizedInFlows.get(0).setTotalPaidValue(updatedTotalValue);
         }
     }
 
@@ -81,9 +81,9 @@ public class CashFlowMonthlyForecast {
 
         if (transaction.isPaid()) {
             Money updatedTotalValue = categorizedInFlows.get(0)
-                    .getTotalValue()
+                    .getTotalPaidValue()
                     .plus(transaction.transactionDetails().getMoney());
-            categorizedInFlows.get(0).setTotalValue(updatedTotalValue);
+            categorizedInFlows.get(0).setTotalPaidValue(updatedTotalValue);
         }
     }
 
