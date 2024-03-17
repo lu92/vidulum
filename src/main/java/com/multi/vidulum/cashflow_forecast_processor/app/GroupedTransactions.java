@@ -39,6 +39,14 @@ public class GroupedTransactions {
                 String.format("Cannot find transaction for CashChange [%s]", cashChangeId)));
     }
 
+    public void removeTransaction(Transaction transaction) {
+        transactions.get(transaction.paymentStatus()).remove(transaction.transactionDetails());
+    }
+
+    public void addTransaction(Transaction transaction) {
+        transactions.get(transaction.paymentStatus()).add(transaction.transactionDetails());
+    }
+
     public void replace(ReplacementFrom from, ReplacementTo to) {
         transactions.get(from.status).remove(from.transactionDetails);
         transactions.get(to.status).add(to.transactionDetails);

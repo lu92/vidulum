@@ -34,7 +34,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                        .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
                         ),
                         List.of(
@@ -42,18 +42,22 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                         .category(new Category("unknown"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
-                                        .totalValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                        .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
-                        )
+                        ),
+                        CashFlowMonthlyForecast.Status.FORECASTED
                 )).collect(Collectors.toMap(
                         CashFlowMonthlyForecast::getPeriod,
                         Function.identity()
                 ));
 
+        monthlyForecasts.get(current).setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
+
         statementRepository.save(
                 new CashFlowForecastStatement(
                         event.cashFlowId(),
                         monthlyForecasts,
+                        event.bankAccount().bankAccountNumber(),
                         getChecksum(event)
                 ));
     }

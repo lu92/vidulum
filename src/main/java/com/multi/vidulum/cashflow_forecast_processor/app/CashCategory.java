@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.common.Money;
 import lombok.Builder;
 import lombok.Data;
@@ -12,5 +13,9 @@ public class CashCategory {
     private Category category;
     private List<CashCategory> subCategories;
     private GroupedTransactions groupedTransactions;
-    private Money totalValue;
+
+    /**
+     * updated with {@link CashFlowEvent.CashChangeConfirmedEvent}
+     */
+    private Money totalPaidValue;
 }

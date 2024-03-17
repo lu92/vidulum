@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
@@ -43,7 +44,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"))
         );
@@ -77,7 +78,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
@@ -106,7 +107,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                 new CashFlowEvent.CashChangeAppendedEvent(
@@ -146,7 +147,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
@@ -208,7 +209,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(40, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
@@ -251,7 +252,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
@@ -326,7 +327,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
@@ -370,7 +371,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
@@ -401,7 +402,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
@@ -468,7 +469,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
@@ -511,7 +512,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(
@@ -543,7 +544,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
@@ -600,7 +601,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
@@ -629,7 +630,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Description("description"),
                                 new BankAccount(
                                         new BankName("bank"),
-                                        new AccountNumber("account number"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(500, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(),
@@ -647,7 +648,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Description("description"),
                         new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),

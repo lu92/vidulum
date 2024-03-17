@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.awaitility.Awaitility;
@@ -33,7 +34,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .build()
         );
@@ -47,7 +48,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of())
@@ -75,7 +76,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .build()
         );
@@ -100,7 +101,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
@@ -145,7 +146,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .build()
         );
@@ -177,7 +178,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(100, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
@@ -223,7 +224,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .build()
         );
@@ -259,7 +260,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(
@@ -305,7 +306,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .build()
         );
@@ -338,7 +339,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-flow description")
                         .bankAccount(new BankAccount(
                                 new BankName("bank"),
-                                new AccountNumber("account number"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")))
                         .status(CashFlow.CashFlowStatus.OPEN)
                         .cashChanges(Map.of(

@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "b318f494-bb9f-4ac4-93a8-9bb73a63bbeb"
+    "id" : "62398d42-e183-4e6f-b3b4-7af2a230814a"
   },
   "forecasts" : {
     "2021-06" : {
@@ -20,11 +20,11 @@
         },
         "inflowStats" : {
           "actual" : {
-            "amount" : 0,
+            "amount" : 100.0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0,
+            "amount" : 0.0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -34,11 +34,11 @@
         },
         "outflowStats" : {
           "actual" : {
-            "amount" : 111.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -56,11 +56,25 @@
           "transactions" : {
             "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ {
+              "cashChangeId" : {
+                "id" : "24716d35-4329-4ae7-8c0c-b45a25e40f38"
+              },
+              "name" : {
+                "name" : "cash change name"
+              },
+              "money" : {
+                "amount" : 100.0,
+                "currency" : "USD"
+              },
+              "created" : "2021-06-01T06:30:00Z",
+              "dueDate" : "2021-07-01T06:30:00Z",
+              "endDate" : "2021-06-15T16:30:00Z"
+            } ]
           }
         },
         "totalPaidValue" : {
-          "amount" : 111.0,
+          "amount" : 100.0,
           "currency" : "USD"
         }
       } ],
@@ -73,21 +87,7 @@
           "transactions" : {
             "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ {
-              "cashChangeId" : {
-                "id" : "318fbbc0-0404-4a5b-bfea-f914bea77534"
-              },
-              "name" : {
-                "name" : "cash change name"
-              },
-              "money" : {
-                "amount" : 111.0,
-                "currency" : "USD"
-              },
-              "created" : "2021-06-01T06:30:00Z",
-              "dueDate" : "2021-07-01T06:30:00Z",
-              "endDate" : "2021-07-15T16:30:00Z"
-            } ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -95,7 +95,7 @@
           "currency" : "USD"
         }
       } ],
-      "status" : "ACTIVE"
+      "status" : "ATTESTED"
     },
     "2021-07" : {
       "period" : "2021-07",
@@ -118,7 +118,7 @@
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0,
+            "amount" : 70.0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -128,11 +128,11 @@
         },
         "outflowStats" : {
           "actual" : {
-            "amount" : 130.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -148,13 +148,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
+            "EXPECTED" : [ {
+              "cashChangeId" : {
+                "id" : "a6cf7425-f223-4a78-a042-1f2b111f2f70"
+              },
+              "name" : {
+                "name" : "cash change name 2"
+              },
+              "money" : {
+                "amount" : 70.0,
+                "currency" : "USD"
+              },
+              "created" : "2021-06-03T06:30:00Z",
+              "dueDate" : "2021-08-15T06:30:00Z",
+              "endDate" : null
+            } ],
             "FORECAST" : [ ],
             "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
-          "amount" : 130.0,
+          "amount" : 0,
           "currency" : "USD"
         }
       } ],
@@ -167,21 +181,7 @@
           "transactions" : {
             "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ {
-              "cashChangeId" : {
-                "id" : "7768b985-d5e3-40d1-8380-f5f1d0df5694"
-              },
-              "name" : {
-                "name" : "cash change name 2 edited"
-              },
-              "money" : {
-                "amount" : 130.0,
-                "currency" : "USD"
-              },
-              "created" : "2021-07-01T06:30:00Z",
-              "dueDate" : "2021-08-12T00:00:00Z",
-              "endDate" : "2021-08-10T16:30:00Z"
-            } ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -189,7 +189,7 @@
           "currency" : "USD"
         }
       } ],
-      "status" : "FORECASTED"
+      "status" : "ACTIVE"
     },
     "2021-08" : {
       "period" : "2021-08",
@@ -990,6 +990,86 @@
         }
       } ],
       "status" : "FORECASTED"
+    },
+    "2022-06" : {
+      "period" : "2022-06",
+      "cashFlowStats" : {
+        "start" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "end" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "netChange" : {
+          "amount" : 0,
+          "currency" : "USD"
+        },
+        "inflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        },
+        "outflowStats" : {
+          "actual" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "expected" : {
+            "amount" : 0,
+            "currency" : "USD"
+          },
+          "gapToForecast" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        }
+      },
+      "categorizedInFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "categorizedOutFlows" : [ {
+        "category" : {
+          "category" : "unknown"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      } ],
+      "status" : "FORECASTED"
     }
   },
   "bankAccountNumber" : {
@@ -999,6 +1079,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "748c05fa8e34e1b50e225ae043646599"
+    "checksum" : "1bb16fcb51b8248d638d785868d412da"
   }
 }

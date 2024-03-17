@@ -7,8 +7,19 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class CashFlowStats {
+    /**
+     * Sum of all income with any possible {@link PaymentStatus}
+     */
     private Money start;
+
+    /**
+     * Sum of all outcome with any possible {@link PaymentStatus}
+     */
     private Money end;
+
+    /**
+     * Diff between {@value start} and {@value end}
+     */
     private Money netChange;
     private CashSummary inflowStats;
     private CashSummary outflowStats;
