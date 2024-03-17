@@ -17,5 +17,5 @@ public class CashCategory {
     /**
      * updated with {@link CashFlowEvent.CashChangeConfirmedEvent}
      */
-    private Money totalPaidValue; // updated with confirmed event
+    private Money totalPaidValue;
 }

@@ -23,8 +23,10 @@ public class CashFlowMonthlyForecast {
     private Status status;
 
     public void addToInflows(Transaction transaction) {
-        categorizedInFlows
-                .get(0)
+        // in future there will be more categories, now only operating on first element
+        CashCategory pickedCashCategory = categorizedInFlows.get(0);
+
+        pickedCashCategory
                 .getGroupedTransactions()
                 .addTransaction(transaction);
 
@@ -39,10 +41,10 @@ public class CashFlowMonthlyForecast {
                 );
 
         if (transaction.isPaid()) {
-            Money updatedTotalValue = categorizedInFlows.get(0)
+            Money updatedTotalValue = pickedCashCategory
                     .getTotalPaidValue()
                     .plus(transaction.transactionDetails().getMoney());
-            categorizedInFlows.get(0).setTotalPaidValue(updatedTotalValue);
+            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
         }
     }
 
@@ -64,8 +66,10 @@ public class CashFlowMonthlyForecast {
     }
 
     public void addToOutflows(Transaction transaction) {
-        categorizedOutFlows
-                .get(0)
+        // in future there will be more categories, now only operating on first element
+        CashCategory pickedCashCategory = categorizedOutFlows.get(0);
+
+        pickedCashCategory
                 .getGroupedTransactions()
                 .addTransaction(transaction);
 
@@ -80,10 +84,10 @@ public class CashFlowMonthlyForecast {
                 );
 
         if (transaction.isPaid()) {
-            Money updatedTotalValue = categorizedInFlows.get(0)
+            Money updatedTotalValue = pickedCashCategory
                     .getTotalPaidValue()
                     .plus(transaction.transactionDetails().getMoney());
-            categorizedInFlows.get(0).setTotalPaidValue(updatedTotalValue);
+            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
         }
     }
 

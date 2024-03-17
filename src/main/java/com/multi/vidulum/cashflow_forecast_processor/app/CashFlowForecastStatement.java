@@ -138,7 +138,6 @@ public class CashFlowForecastStatement {
     }
 
     public CashFlowMonthlyForecast findLastMonthlyForecast() {
-
         YearMonth lastPeriod = forecasts.keySet()
                 .stream().max(YearMonth::compareTo)
                 .orElseThrow();
