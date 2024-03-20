@@ -224,6 +224,18 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        new Name("cash change name 2"),
+                        new Description("cash change description 2"),
+                        Money.of(25, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
@@ -234,15 +246,15 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
-                        new Name("cash change name 2"),
-                        new Description("cash change description 2"),
+                        new Name("cash change name 3"),
+                        new Description("cash change description 3"),
                         Money.of(70, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
-        Checksum lastEventChecksum = emit(
+        emit(
                 new CashFlowEvent.MonthAttestedEvent(
                         cashFlowId,
                         YearMonth.parse("2021-06"),
@@ -251,16 +263,16 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         )
         );
 
-//        Checksum lastEventChecksum = emit(
-//                new CashFlowEvent.CashChangeEditedEvent(
-//                        cashFlowId,
-//                        secondCashChangeId,
-//                        new Name("cash change name 2 edited"),
-//                        new Description("cash change description 2 edited"),
-//                        Money.of(120, "USD"),
-//                        ZonedDateTime.parse("2021-08-12T00:00:00Z")
-//                )
-//        );
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeEditedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        new Name("cash change name 3 edited"),
+                        new Description("cash change description 3 edited"),
+                        Money.of(120, "USD"),
+                        ZonedDateTime.parse("2021-08-12T00:00:00Z")
+                )
+        );
 
         await()
                 .until(() -> statementRepository.findByCashFlowId(cashFlowId)
