@@ -137,6 +137,33 @@ public class CashFlowForecastStatement {
         );
     }
 
+    public void updateStats() {
+        String currency = bankAccountNumber.denomination().getId();
+        Money outcome = forecasts.values().stream()
+                .reduce(
+                        Money.zero(currency),
+                        (totalStart, cashFlowMonthlyForecast) -> {
+
+                            Money netChange = cashFlowMonthlyForecast.calcNetChange();
+
+                            CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                            cashFlowMonthlyForecast.setCashFlowStats(
+                                    new CashFlowStats(
+                                            totalStart,
+                                            totalStart.plus(netChange),
+                                            netChange,
+                                            cashFlowStats.getInflowStats(),
+                                            cashFlowStats.getOutflowStats())
+                            );
+
+                            Money actualStart = totalStart.plus(netChange);
+
+                            System.out.println("actual start" + actualStart);
+                            return actualStart;
+                        },
+                        Money::plus);
+    }
+
     public CashFlowMonthlyForecast findLastMonthlyForecast() {
         YearMonth lastPeriod = forecasts.keySet()
                 .stream().max(YearMonth::compareTo)

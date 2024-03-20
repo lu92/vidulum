@@ -2,12 +2,14 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.YearMonth;
+import java.util.Collection;
 import java.util.List;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
@@ -106,6 +108,31 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.gapToForecast()
                         )
                 );
+    }
+
+    /**
+     * Diff between all incomes and outcomes
+     */
+    public Money calcNetChange() {
+        Currency inFlowCurrency = Currency.of(categorizedInFlows.get(0).getTotalPaidValue().getCurrency());
+        Money totalIncomeValue = categorizedInFlows.get(0)
+                .getGroupedTransactions()
+                .values()
+                .stream()
+                .flatMap(Collection::stream)
+                .map(TransactionDetails::getMoney)
+                .reduce(Money.zero(inFlowCurrency.getId()), Money::plus);
+
+        Currency outFlowCurrency = Currency.of(categorizedOutFlows.get(0).getTotalPaidValue().getCurrency());
+        Money totalOutcomeValue = categorizedOutFlows.get(0)
+                .getGroupedTransactions()
+                .values()
+                .stream()
+                .flatMap(Collection::stream)
+                .map(TransactionDetails::getMoney)
+                .reduce(Money.zero(outFlowCurrency.getId()), Money::plus);
+
+        return totalIncomeValue.minus(totalOutcomeValue);
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
