@@ -41,9 +41,11 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -57,8 +59,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
 @DirtiesContext
-@EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
 public abstract class IntegrationTest {
+
+    @Container
+    public static KafkaContainer kafka =
+            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"));
     @Container
     protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
 
@@ -66,6 +71,7 @@ public abstract class IntegrationTest {
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
+        registry.add("kafka.bootstrapAddress", () -> kafka.getBootstrapServers());
     }
 
     @Autowired
