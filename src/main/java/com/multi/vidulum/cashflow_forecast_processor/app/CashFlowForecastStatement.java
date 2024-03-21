@@ -110,11 +110,14 @@ public class CashFlowForecastStatement {
                 .orElseThrow(() -> new IllegalStateException(""));
     }
 
-    public void addEmptyForecast(YearMonth period, Money beginningBalance) {
+    public void addNextForecastAtTheTop() {
+        CashFlowMonthlyForecast lastForecast = findLastMonthlyForecast();
+        YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
+        Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
         forecasts.put(
-                period,
+                upcomingPeriod,
                 new CashFlowMonthlyForecast(
-                        period,
+                        upcomingPeriod,
                         CashFlowStats.justBalance(beginningBalance),
                         List.of(
                                 CashCategory.builder()
@@ -145,7 +148,6 @@ public class CashFlowForecastStatement {
                         (totalStart, cashFlowMonthlyForecast) -> {
 
                             Money netChange = cashFlowMonthlyForecast.calcNetChange();
-
                             CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
                             cashFlowMonthlyForecast.setCashFlowStats(
                                     new CashFlowStats(
@@ -156,10 +158,7 @@ public class CashFlowForecastStatement {
                                             cashFlowStats.getOutflowStats())
                             );
 
-                            Money actualStart = totalStart.plus(netChange);
-
-                            System.out.println("actual start" + actualStart);
-                            return actualStart;
+                            return totalStart.plus(netChange);
                         },
                         Money::plus);
     }

@@ -3,18 +3,18 @@ package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
-import com.multi.vidulum.cashflow_forecast_processor.app.*;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
+import com.multi.vidulum.cashflow_forecast_processor.app.TransactionDetails;
 import com.multi.vidulum.common.Checksum;
-import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
 import java.util.List;
 
-import static com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast.Status.ACTIVE;
-import static com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast.Status.ATTESTED;
-import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
+import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
 
 @Component
 @AllArgsConstructor
@@ -28,23 +28,16 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
         YearMonth actualPeriod = event.period();
-        YearMonth nextPeriod = actualPeriod.plusMonths(1);
 
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
-        CashFlowMonthlyForecast nextCashFlowMonthlyForecast = statement.getForecasts().get(nextPeriod);
+        CashFlowMonthlyForecast nextCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod.plusMonths(1));
         actualCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ATTESTED);
         nextCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
-
-        moveExpectedCashChangesToNextMonth(statement, actualPeriod, nextPeriod);
-
-
-        // TODO add new Month Forecast
-        CashFlowMonthlyForecast monthlyForecast = statement.findLastMonthlyForecast();
-
-        YearMonth upcomingPeriod = actualPeriod.plusMonths(12);
-        Money beginningBalance = Money.zero("USD"); // todo: figure it out
-        statement.addEmptyForecast(upcomingPeriod, beginningBalance);
+        //TODO: consider {@link MonthAttestedEvent.currentMoney} as end of month
+        // and eventual generation of attestation when there is diff between bankAccount and calculation of app
+        moveExpectedCashChangesToNextMonth(statement, actualPeriod);
+        statement.addNextForecastAtTheTop();
 
         statement.updateStats();
 
@@ -53,7 +46,7 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         statementRepository.save(statement);
     }
 
-    private static void moveExpectedCashChangesToNextMonth(CashFlowForecastStatement statement, YearMonth actualPeriod, YearMonth nextPeriod) {
+    private static void moveExpectedCashChangesToNextMonth(CashFlowForecastStatement statement, YearMonth actualPeriod) {
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
 
         List<CashChangeId> cashChangesWithExpectedPayment = actualCashFlowMonthlyForecast.getCategorizedInFlows()
@@ -61,10 +54,12 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
                 .getGroupedTransactions().get(EXPECTED)
                 .stream()
                 .map(TransactionDetails::getCashChangeId).toList();
+        YearMonth nextPeriod = actualPeriod.plusMonths(1);
 
-        cashChangesWithExpectedPayment.stream().forEach(cashChangeId -> {
-            statement.move(cashChangeId, actualPeriod, nextPeriod);
-
-        });
+        cashChangesWithExpectedPayment
+                .forEach(cashChangeId -> statement.move(
+                        cashChangeId,
+                        actualPeriod,
+                        nextPeriod));
     }
 }
