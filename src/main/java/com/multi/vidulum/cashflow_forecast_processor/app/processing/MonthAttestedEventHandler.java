@@ -3,10 +3,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
-import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
-import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
-import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
-import com.multi.vidulum.cashflow_forecast_processor.app.TransactionDetails;
+import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -14,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.YearMonth;
 import java.util.List;
 
+import static com.multi.vidulum.cashflow_forecast_processor.app.Attestation.Type.MANUAL;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
 
 @Component
@@ -27,11 +25,22 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
-        YearMonth actualPeriod = event.period();
+        if (!statement.fetchCurrentPeriod().equals(event.period())) {
+            throw new IllegalArgumentException(String.format("Cannot attest not-active period: %s", event.period()));
+        }
 
+        YearMonth actualPeriod = event.period();
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
+
         CashFlowMonthlyForecast nextCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod.plusMonths(1));
         actualCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ATTESTED);
+        actualCashFlowMonthlyForecast.setAttestation(
+                new Attestation(
+                        event.currentMoney(),
+                        MANUAL,
+                        event.dateTime()
+                )
+        );
         nextCashFlowMonthlyForecast.setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
         //TODO: consider {@link MonthAttestedEvent.currentMoney} as end of month

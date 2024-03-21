@@ -45,7 +45,8 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                         .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
                                         .build()
                         ),
-                        CashFlowMonthlyForecast.Status.FORECASTED
+                        CashFlowMonthlyForecast.Status.FORECASTED,
+                        null
                 )).collect(Collectors.toMap(
                         CashFlowMonthlyForecast::getPeriod,
                         Function.identity()

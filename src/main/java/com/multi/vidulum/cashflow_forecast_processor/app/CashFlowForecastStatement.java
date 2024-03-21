@@ -135,7 +135,8 @@ public class CashFlowForecastStatement {
                                         .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
                                         .build()
                         ),
-                        CashFlowMonthlyForecast.Status.FORECASTED
+                        CashFlowMonthlyForecast.Status.FORECASTED,
+                        null
                 )
         );
     }
