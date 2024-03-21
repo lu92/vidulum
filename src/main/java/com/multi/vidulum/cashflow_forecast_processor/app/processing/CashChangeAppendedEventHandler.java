@@ -5,7 +5,6 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
-import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -41,18 +40,6 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                                 inflowCashSummary.gapToForecast()
                         )
                 );
-
-//                Money netChange = cashFlowMonthlyForecast.calcNetChange();
-//                cashFlowMonthlyForecast.setCashFlowStats(
-//                        new CashFlowStats(
-//                                currentCashFlowStats.getStart(),
-//                                netChange.plus(currentCashFlowStats.getEnd()),
-//                                netChange,
-//                                currentCashFlowStats.getInflowStats(),
-//                                currentCashFlowStats.getOutflowStats()
-//                        )
-//                );
-
             } else {
                 unknownCashCategory = cashFlowMonthlyForecast.getCategorizedOutFlows().get(0);
                 CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
@@ -76,38 +63,10 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                                     null
                             )
                     );
-
-
             return cashFlowMonthlyForecast;
         });
 
-
         statement.updateStats();
-
-//        String currency = statement.getBankAccountNumber().denomination().getId();
-//        Money outcome = statement.getForecasts().values().stream()
-//                .reduce(
-//                        Money.zero(currency),
-//                        (totalStart, cashFlowMonthlyForecast) -> {
-//
-//                            Money netChange = cashFlowMonthlyForecast.calcNetChange();
-//
-//                            CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
-//                            cashFlowMonthlyForecast.setCashFlowStats(
-//                                    new CashFlowStats(
-//                                            totalStart,
-//                                            totalStart.plus(netChange),
-//                                            netChange,
-//                                            cashFlowStats.getInflowStats(),
-//                                            cashFlowStats.getOutflowStats())
-//                            );
-//
-//                            Money actualStart = totalStart.plus(netChange);
-//
-//                            System.out.println("actual start" + actualStart);
-//                            return actualStart;
-//                        },
-//                        Money::plus);
 
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
