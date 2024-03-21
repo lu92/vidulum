@@ -23,6 +23,7 @@ public class CashFlowMonthlyForecast {
     private List<CashCategory> categorizedInFlows;
     private List<CashCategory> categorizedOutFlows;
     private Status status;
+    private Attestation attestation;
 
     public void addToInflows(Transaction transaction) {
         // in future there will be more categories, now only operating on first element
