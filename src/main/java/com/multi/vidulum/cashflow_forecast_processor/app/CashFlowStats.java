@@ -8,12 +8,12 @@ import lombok.Data;
 @AllArgsConstructor
 public class CashFlowStats {
     /**
-     * Sum of all income with any possible {@link PaymentStatus}
+     * Amount of money from the end of previous month
      */
     private Money start;
 
     /**
-     * Sum of all outcome with any possible {@link PaymentStatus}
+     * Amount of money expected on the end of month
      */
     private Money end;
 

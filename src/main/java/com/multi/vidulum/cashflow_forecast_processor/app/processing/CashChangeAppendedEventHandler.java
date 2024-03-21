@@ -30,9 +30,10 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
             CashCategory unknownCashCategory;
             if (Type.INFLOW.equals(event.type())) {
                 unknownCashCategory = cashFlowMonthlyForecast.getCategorizedInFlows().get(0);
-                CashSummary inflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getInflowStats();
+                CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
                 // update stats
-                cashFlowMonthlyForecast.getCashFlowStats().setInflowStats(
+                currentCashFlowStats.setInflowStats(
                         new CashSummary(
                                 inflowCashSummary.actual(),
                                 inflowCashSummary.expected().plus(event.money()),
@@ -62,10 +63,10 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                                     null
                             )
                     );
-
-
             return cashFlowMonthlyForecast;
         });
+
+        statement.updateStats();
 
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);

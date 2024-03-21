@@ -110,11 +110,14 @@ public class CashFlowForecastStatement {
                 .orElseThrow(() -> new IllegalStateException(""));
     }
 
-    public void addEmptyForecast(YearMonth period, Money beginningBalance) {
+    public void addNextForecastAtTheTop() {
+        CashFlowMonthlyForecast lastForecast = findLastMonthlyForecast();
+        YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
+        Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
         forecasts.put(
-                period,
+                upcomingPeriod,
                 new CashFlowMonthlyForecast(
-                        period,
+                        upcomingPeriod,
                         CashFlowStats.justBalance(beginningBalance),
                         List.of(
                                 CashCategory.builder()
@@ -135,6 +138,29 @@ public class CashFlowForecastStatement {
                         CashFlowMonthlyForecast.Status.FORECASTED
                 )
         );
+    }
+
+    public void updateStats() {
+        String currency = bankAccountNumber.denomination().getId();
+        Money outcome = forecasts.values().stream()
+                .reduce(
+                        Money.zero(currency),
+                        (totalStart, cashFlowMonthlyForecast) -> {
+
+                            Money netChange = cashFlowMonthlyForecast.calcNetChange();
+                            CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                            cashFlowMonthlyForecast.setCashFlowStats(
+                                    new CashFlowStats(
+                                            totalStart,
+                                            totalStart.plus(netChange),
+                                            netChange,
+                                            cashFlowStats.getInflowStats(),
+                                            cashFlowStats.getOutflowStats())
+                            );
+
+                            return totalStart.plus(netChange);
+                        },
+                        Money::plus);
     }
 
     public CashFlowMonthlyForecast findLastMonthlyForecast() {

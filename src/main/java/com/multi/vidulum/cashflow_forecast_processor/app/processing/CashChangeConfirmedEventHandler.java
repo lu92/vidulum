@@ -49,6 +49,8 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
             return cashFlowMonthlyForecast;
         });
 
+        statement.updateStats();
+
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
