@@ -114,6 +114,23 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<image>
+					<builder>paketobuildpacks/builder:tiny</builder>
+					<env>
+						<JAVA_TOOL_OPTIONS>--enable-preview</JAVA_TOOL_OPTIONS></env>
+					</image>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>--enable-preview</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<argLine>--enable-preview</argLine>
 				</configuration>
 			</plugin>
             <plugin>
