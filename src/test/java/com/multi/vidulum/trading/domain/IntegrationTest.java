@@ -34,10 +34,12 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -73,6 +75,9 @@ public abstract class IntegrationTest {
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("kafka.bootstrapAddress", () -> kafka.getBootstrapServers());
     }
+
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
     @Autowired
     protected QuoteRestController quoteRestController;
@@ -138,6 +143,12 @@ public abstract class IntegrationTest {
     protected CashFlowEventEmitter cashFlowEventEmitter;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
+
+    @BeforeEach
+    public void beforeTest() {
+        kafkaListenerEndpointRegistry.getListenerContainers().forEach(
+                messageListenerContainer -> ContainerTestUtils.waitForAssignment(messageListenerContainer, 1));
+    }
 
     @Before
     public void cleanUp() {
