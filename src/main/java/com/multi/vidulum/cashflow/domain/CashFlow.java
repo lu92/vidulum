@@ -2,7 +2,6 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
-import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
@@ -31,6 +30,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
     private YearMonth activePeriod;
+    private List<Category> categories;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
@@ -64,6 +64,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 status,
                 cashChangeSnapshotMap,
                 activePeriod,
+                categories,
                 created,
                 lastModification
         );
@@ -96,12 +97,20 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .status(snapshot.status())
                 .cashChanges(cashChanges)
                 .activePeriod(snapshot.activePeriod())
+                .categories(snapshot.categories())
                 .created(snapshot.created())
                 .lastModification(snapshot.lastModification())
                 .build();
     }
 
     public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
+        LinkedList<Category> categories = new LinkedList<>();
+        categories.add(new Category(
+                event.categoryId(),
+                new CategoryName("Uncategorized"),
+                new LinkedList<>(),
+                false
+        ));
         this.cashFlowId = event.cashFlowId();
         this.userId = event.userId();
         this.name = event.name();
@@ -111,6 +120,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.cashChanges = new HashMap<>();
         this.activePeriod = YearMonth.from(event.created());
         this.created = event.created();
+        this.categories = categories;
         this.lastModification = null;
         this.uncommittedEvents = new LinkedList<>();
         this.uncommittedEvents.add(event);

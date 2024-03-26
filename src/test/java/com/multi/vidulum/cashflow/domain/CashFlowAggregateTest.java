@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     void shouldSaveNewlyCreatedCashChange() {
         // given
         CashFlowId cashFlowId = CashFlowId.generate();
+        CategoryId categoryId = CategoryId.generate();
         CashChangeId cashChangeId = CashChangeId.generate();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
@@ -46,6 +48,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"))
         );
 
@@ -58,6 +61,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 )
         );
@@ -95,6 +99,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         ));
@@ -109,6 +121,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
@@ -118,6 +131,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 )
         );
@@ -138,6 +152,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
+        CategoryId categoryId = CategoryId.generate();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -149,6 +164,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
@@ -161,6 +177,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 )
         );
@@ -174,6 +191,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(60, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 )
         );
@@ -239,6 +257,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z")
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -254,6 +280,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
                 new CashFlowEvent.CashChangeAppendedEvent(
@@ -264,6 +291,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ),
                 new CashFlowEvent.CashChangeAppendedEvent(
@@ -274,6 +302,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(60, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ),
                 new CashFlowEvent.CashChangeConfirmedEvent(
@@ -318,6 +347,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         // given
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId cashChangeId = CashChangeId.generate();
+        CategoryId categoryId = CategoryId.generate();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -329,6 +359,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
@@ -341,6 +372,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"))
         );
 
@@ -388,6 +420,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -404,6 +444,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         new BankName("bank"),
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
+                                categoryId,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeAppendedEvent(
@@ -414,6 +455,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 Money.of(100, "USD"),
                                 INFLOW,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                categoryId,
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeEditedEvent(
@@ -459,6 +501,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         // given
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId cashChangeId = CashChangeId.generate();
+        CategoryId categoryId = CategoryId.generate();
 
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
@@ -471,6 +514,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -484,6 +528,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        categoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 )
         );
@@ -529,6 +574,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -546,6 +599,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         new BankName("bank"),
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")),
+                                categoryId,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeAppendedEvent(
@@ -556,6 +610,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 Money.of(100, "USD"),
                                 INFLOW,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                categoryId,
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z")
                         ),
                         new CashFlowEvent.CashChangeRejectedEvent(
@@ -592,6 +647,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     void shouldAttestMonth() {
         // given
         CashFlowId cashFlowId = CashFlowId.generate();
+        CategoryId categoryId = CategoryId.generate();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -603,6 +659,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
@@ -635,6 +692,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(),
                                 YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -650,6 +715,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
+                        categoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
                 new CashFlowEvent.MonthAttestedEvent(

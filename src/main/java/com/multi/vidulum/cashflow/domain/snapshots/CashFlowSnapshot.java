@@ -6,6 +6,7 @@ import com.multi.vidulum.shared.ddd.EntitySnapshot;
 
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 public record CashFlowSnapshot(
@@ -17,6 +18,7 @@ public record CashFlowSnapshot(
         CashFlow.CashFlowStatus status,
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
         YearMonth activePeriod,
+        List<Category> categories,
         ZonedDateTime created,
         ZonedDateTime lastModification) implements EntitySnapshot<CashFlowId> {
 
