@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
+import com.multi.vidulum.cashflow.domain.CategoryId;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -11,6 +12,8 @@ import lombok.Data;
 import java.time.YearMonth;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.Stack;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
@@ -134,6 +137,27 @@ public class CashFlowMonthlyForecast {
                 .reduce(Money.zero(outFlowCurrency.getId()), Money::plus);
 
         return totalIncomeValue.minus(totalOutcomeValue);
+    }
+
+    public Optional<CashCategory> findCategoryInflowsByCategoryId(CategoryId categoryId) {
+        return findCategoryByCategoryId(categoryId, categorizedInFlows);
+    }
+
+    public Optional<CashCategory> findCategoryOutflowsByCategoryId(CategoryId categoryId) {
+        return findCategoryByCategoryId(categoryId, categorizedOutFlows);
+    }
+
+    private Optional<CashCategory> findCategoryByCategoryId(CategoryId categoryId, List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            if (takenCashCategory.getCategoryId().equals(categoryId)) {
+                return Optional.of(takenCashCategory);
+            }
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return Optional.empty();
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,

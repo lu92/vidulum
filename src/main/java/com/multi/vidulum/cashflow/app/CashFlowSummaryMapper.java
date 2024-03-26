@@ -28,6 +28,7 @@ public class CashFlowSummaryMapper {
                 .bankAccount(cashFlowSnapshot.bankAccount())
                 .status(cashFlowSnapshot.status())
                 .cashChanges(cashChanges)
+                .categories(cashFlowSnapshot.categories())
                 .created(cashFlowSnapshot.created())
                 .lastModification(cashFlowSnapshot.lastModification())
                 .build();

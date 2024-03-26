@@ -20,7 +20,7 @@ public sealed interface CashFlowEvent extends DomainEvent
     CashFlowId cashFlowId();
 
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
-                                BankAccount bankAccount, ZonedDateTime created) implements CashFlowEvent {
+                                BankAccount bankAccount, CategoryId categoryId, ZonedDateTime created) implements CashFlowEvent {
     }
 
     record MonthAttestedEvent(CashFlowId cashFlowId, YearMonth period, Money currentMoney,
@@ -29,7 +29,7 @@ public sealed interface CashFlowEvent extends DomainEvent
     }
 
     record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
-                                   Money money, Type type, ZonedDateTime created,
+                                   Money money, Type type, ZonedDateTime created, CategoryId categoryId,
                                    ZonedDateTime dueDate) implements CashFlowEvent {
     }
 

@@ -3,12 +3,9 @@ package com.multi.vidulum.cashflow.infrastructure.entity;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;

@@ -26,6 +26,12 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
+        CategoryId categoryId = cashFlow.getSnapshot().categories().stream()
+                .filter(category -> category.getCategoryName().equals(command.categoryName()))
+                .map(Category::getCategoryId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid category-name"));
+
         CashFlowEvent.CashChangeAppendedEvent event = new CashFlowEvent.CashChangeAppendedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),
@@ -34,6 +40,7 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
                 command.money(),
                 command.type(),
                 ZonedDateTime.now(clock),
+                categoryId,
                 command.dueDate()
         );
         cashFlow.apply(event);

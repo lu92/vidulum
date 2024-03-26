@@ -34,6 +34,7 @@ public class CashFlowEntity {
     private BankAccount bankAccount;
     private CashFlow.CashFlowStatus status;
     private List<CashChangeEntity> cashChanges;
+    private List<Category> categories;
     private String activePeriod;
     private Date created;
     private Date lastModification;
@@ -56,6 +57,7 @@ public class CashFlowEntity {
                 .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChangeEntities)
+                .categories(snapshot.categories())
                 .activePeriod(snapshot.activePeriod().toString())
                 .created(createdDate)
                 .lastModification(lastModification)
@@ -83,6 +85,7 @@ public class CashFlowEntity {
                 status,
                 cashChangeSnapshotMap,
                 YearMonth.parse(activePeriod),
+                categories,
                 createdDateTime,
                 lastModificationDateTime
         );

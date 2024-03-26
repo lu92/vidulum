@@ -6,10 +6,7 @@ import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
-import com.multi.vidulum.cashflow.domain.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Description;
-import com.multi.vidulum.cashflow.domain.Name;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
@@ -49,6 +46,7 @@ public class CashFlowRestController {
         CashChangeId cashChangeId = commandGateway.send(
                 new AppendCashChangeCommand(
                         new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategory()),
                         new CashChangeId(CashChangeId.generate().id()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
