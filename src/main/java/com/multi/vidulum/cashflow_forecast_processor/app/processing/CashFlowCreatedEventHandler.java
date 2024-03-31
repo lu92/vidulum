@@ -31,8 +31,8 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                         CashFlowStats.justBalance(event.bankAccount().balance()),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(event.categoryId())
-                                        .category(new Category("unknown"))
+                                        .categoryId(event.inflowUncategorizedCategoryId())
+                                        .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
                                         .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
@@ -40,8 +40,8 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                         ),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(event.categoryId())
-                                        .category(new Category("unknown"))
+                                        .categoryId(event.outflowUncategorizedCategoryId())
+                                        .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
                                         .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))

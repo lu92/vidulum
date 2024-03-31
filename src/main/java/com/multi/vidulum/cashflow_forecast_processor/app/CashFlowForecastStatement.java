@@ -1,9 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
-import com.multi.vidulum.cashflow.domain.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -121,7 +118,8 @@ public class CashFlowForecastStatement {
                         CashFlowStats.justBalance(beginningBalance),
                         List.of(
                                 CashCategory.builder()
-                                        .category(new Category("unknown"))
+                                        .categoryId(CategoryId.generate())
+                                        .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
                                         .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
@@ -129,7 +127,8 @@ public class CashFlowForecastStatement {
                         ),
                         List.of(
                                 CashCategory.builder()
-                                        .category(new Category("unknown"))
+                                        .categoryId(CategoryId.generate())
+                                        .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
                                         .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))

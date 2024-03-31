@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "adab773b-bad2-4a81-9cff-90fb631c40f4"
+    "id" : "0ec78bfd-d175-4751-a11b-e6149a13ef29"
   },
   "forecasts" : {
     "2021-06" : {
@@ -49,19 +49,18 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "9f80f063-bf93-489b-bd69-a66fed26edda"
+                "id" : "97cb2520-d2e0-41c5-97b1-43d0fbfd62c4"
               },
               "name" : {
                 "name" : "cash change name"
@@ -73,7 +72,8 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : "2021-06-15T16:30:00Z"
-            } ]
+            } ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -83,18 +83,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "9f80f063-bf93-489b-bd69-a66fed26edda"
+                "id" : "97cb2520-d2e0-41c5-97b1-43d0fbfd62c4"
               },
               "name" : {
                 "name" : "cash change name 2"
@@ -107,7 +106,8 @@
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : null
             } ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -171,18 +171,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "274763a8-f844-405f-88eb-c3e42cc478a1"
+                "id" : "740ab091-8bd3-48b4-a1c9-4e54a6586216"
               },
               "name" : {
                 "name" : "cash change name 3 edited"
@@ -195,7 +194,8 @@
               "dueDate" : "2021-08-12T00:00:00Z",
               "endDate" : null
             } ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -205,17 +205,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -272,17 +272,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -292,17 +292,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -359,17 +359,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -379,17 +379,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -446,17 +446,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -466,17 +466,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -533,17 +533,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -553,17 +553,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -620,17 +620,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -640,17 +640,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -707,17 +707,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -727,17 +727,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -794,17 +794,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -814,17 +814,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -881,17 +881,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -901,17 +901,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -968,17 +968,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -988,17 +988,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1055,17 +1055,17 @@
       },
       "categorizedInFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "2b76833f-7939-4773-86eb-9706e651caff"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1075,17 +1075,17 @@
       } ],
       "categorizedOutFlows" : [ {
         "categoryId" : {
-          "id" : "960effba-f9b3-4318-a3dc-4373f3174d8d"
+          "id" : "83965993-5850-47db-ad51-3bad7d2d678b"
         },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1141,16 +1141,18 @@
         }
       },
       "categorizedInFlows" : [ {
-        "categoryId" : null,
+        "categoryId" : {
+          "id" : "1e1a4e59-5a62-4315-b09c-cac7e7ab11e1"
+        },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1159,16 +1161,18 @@
         }
       } ],
       "categorizedOutFlows" : [ {
-        "categoryId" : null,
+        "categoryId" : {
+          "id" : "51a0cc0d-62b1-48ee-8d70-2461f5ca485e"
+        },
         "category" : {
-          "category" : "unknown"
+          "category" : "Uncategorized"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
             "EXPECTED" : [ ],
-            "PAID" : [ ]
+            "PAID" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1187,6 +1191,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "348e96bde07bdf656b48fc9b3815df23"
+    "checksum" : "d8b71ec2e802eda7b4843da2f9c0bf11"
   }
 }

@@ -29,7 +29,7 @@ public class CashFlowMonthlyForecast {
     private Attestation attestation;
 
     public void addToInflows(Transaction transaction) {
-        // in future there will be more categories, now only operating on first element
+        // in future there will be more inflowCategories, now only operating on first element
         CashCategory pickedCashCategory = categorizedInFlows.get(0);
 
         pickedCashCategory
@@ -72,7 +72,7 @@ public class CashFlowMonthlyForecast {
     }
 
     public void addToOutflows(Transaction transaction) {
-        // in future there will be more categories, now only operating on first element
+        // in future there will be more inflowCategories, now only operating on first element
         CashCategory pickedCashCategory = categorizedOutFlows.get(0);
 
         pickedCashCategory

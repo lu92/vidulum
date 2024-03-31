@@ -56,7 +56,15 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
                                 .cashChanges(Map.of())
-                                .categories(List.of(
+                                .inflowCategories(List.of(
+                                        new Category(
+                                                null,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .outflowCategories(List.of(
                                         new Category(
                                                 null,
                                                 new CategoryName("Uncategorized"),
@@ -134,9 +142,17 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         .build()
 
                         ))
-                        .categories(List.of(
+                        .inflowCategories(List.of(
                                 new Category(
-                                        cashFlowSummaryJson.getCategories().get(0).getCategoryId(),
+                                        cashFlowSummaryJson.getInflowCategories().get(0).getCategoryId(),
+                                        new CategoryName("Uncategorized"),
+                                        new LinkedList<>(),
+                                        false
+                                )
+                        ))
+                        .outflowCategories(List.of(
+                                new Category(
+                                        cashFlowSummaryJson.getOutflowCategories().get(0).getCategoryId(),
                                         new CategoryName("Uncategorized"),
                                         new LinkedList<>(),
                                         false
@@ -222,7 +238,15 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
                                 ))
-                                .categories(List.of(
+                                .inflowCategories(List.of(
+                                        new Category(
+                                                null,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .outflowCategories(List.of(
                                         new Category(
                                                 null,
                                                 new CategoryName("Uncategorized"),
@@ -316,7 +340,15 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .categories(List.of(
+                                .inflowCategories(List.of(
+                                        new Category(
+                                                null,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .outflowCategories(List.of(
                                         new Category(
                                                 null,
                                                 new CategoryName("Uncategorized"),
@@ -407,7 +439,15 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .categories(List.of(
+                                .inflowCategories(List.of(
+                                        new Category(
+                                                null,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .outflowCategories(List.of(
                                         new Category(
                                                 null,
                                                 new CategoryName("Uncategorized"),
