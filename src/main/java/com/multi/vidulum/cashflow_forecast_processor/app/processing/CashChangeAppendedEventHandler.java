@@ -30,7 +30,7 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
             CashCategory uncategorizedCashCategory;
             if (Type.INFLOW.equals(event.type())) {
                 uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryId(event.categoryId())
-                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s", event.categoryId())));
+                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s in INFLOWS", event.categoryId())));
                 CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
                 CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
                 // update stats
@@ -43,7 +43,7 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                 );
             } else {
                 uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryId(event.categoryId())
-                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s", event.categoryId())));
+                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s in OUTFLOWS", event.categoryId())));
                 CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
                 // update stats
                 cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(

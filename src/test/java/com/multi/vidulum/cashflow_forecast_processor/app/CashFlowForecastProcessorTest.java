@@ -26,7 +26,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId categoryId = CategoryId.generate();
+        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
+        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -38,7 +39,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -52,7 +54,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -72,7 +74,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(70, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
@@ -115,7 +117,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId categoryId = CategoryId.generate();
+        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
+        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -127,7 +130,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -141,7 +145,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(111, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        categoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -161,7 +165,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(80, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                        categoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
@@ -204,7 +208,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId categoryId = CategoryId.generate();
+        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
+        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -216,7 +221,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -230,7 +236,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -243,7 +249,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(25, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        categoryId,
+                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -263,7 +269,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(70, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
-                        categoryId,
+                        inflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 

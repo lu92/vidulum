@@ -108,15 +108,25 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
     public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
         Category uncategorized = new Category(
-                event.categoryId(),
+                event.inflowUncategorizedCategoryId(),
                 new CategoryName("Uncategorized"),
                 new LinkedList<>(),
                 false
         );
         LinkedList<Category> inflowCategories = new LinkedList<>();
-        inflowCategories.add(uncategorized);
+        inflowCategories.add(new Category(
+                event.inflowUncategorizedCategoryId(),
+                new CategoryName("Uncategorized"),
+                new LinkedList<>(),
+                false
+        ));
         LinkedList<Category> outflowCategories = new LinkedList<>();
-        outflowCategories.add(uncategorized);
+        outflowCategories.add(new Category(
+                event.inflowUncategorizedCategoryId(),
+                new CategoryName("Uncategorized"),
+                new LinkedList<>(),
+                false
+        ));
         this.cashFlowId = event.cashFlowId();
         this.userId = event.userId();
         this.name = event.name();

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -26,7 +27,11 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        CategoryId categoryId = cashFlow.getSnapshot().inflowCategories().stream()
+        List<Category> categories = Type.INFLOW.equals(command.type()) ?
+                cashFlow.getSnapshot().inflowCategories() :
+                cashFlow.getSnapshot().outflowCategories();
+
+        CategoryId categoryId = categories.stream()
                 .filter(category -> category.getCategoryName().equals(command.categoryName()))
                 .map(Category::getCategoryId)
                 .findFirst()
