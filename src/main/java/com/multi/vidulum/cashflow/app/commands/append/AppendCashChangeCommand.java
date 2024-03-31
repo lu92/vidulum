@@ -8,7 +8,7 @@ import java.time.ZonedDateTime;
 
 public record AppendCashChangeCommand(
         CashFlowId cashFlowId,
-
+        CategoryName categoryName,
         CashChangeId cashChangeId,
         Name name,
         Description description,

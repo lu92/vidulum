@@ -26,10 +26,11 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
         YearMonth yearMonth = YearMonth.from(event.created());
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
-            // for now there is only one 'unknown' category for both inflow/outflow
-            CashCategory unknownCashCategory;
+            // for now there is only one 'Uncategorized' category for both inflow/outflow
+            CashCategory uncategorizedCashCategory;
             if (Type.INFLOW.equals(event.type())) {
-                unknownCashCategory = cashFlowMonthlyForecast.getCategorizedInFlows().get(0);
+                uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryId(event.categoryId())
+                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s", event.categoryId())));
                 CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
                 CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
                 // update stats
@@ -41,7 +42,8 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                         )
                 );
             } else {
-                unknownCashCategory = cashFlowMonthlyForecast.getCategorizedOutFlows().get(0);
+                uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryId(event.categoryId())
+                        .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with id %s", event.categoryId())));
                 CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
                 // update stats
                 cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
@@ -52,7 +54,7 @@ public class CashChangeAppendedEventHandler implements CashFlowEventHandler<Cash
                         )
                 );
             }
-            unknownCashCategory.getGroupedTransactions().get(EXPECTED)
+            uncategorizedCashCategory.getGroupedTransactions().get(EXPECTED)
                     .add(
                             new TransactionDetails(
                                     event.cashChangeId(),

@@ -1,14 +1,12 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.cashflow.domain.BankAccount;
-import com.multi.vidulum.cashflow.domain.CashChangeStatus;
-import com.multi.vidulum.cashflow.domain.CashFlow;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Money;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 public final class CashFlowDto {
@@ -26,6 +24,7 @@ public final class CashFlowDto {
     @Builder
     public static class AppendCashChangeJson {
         private String cashFlowId;
+        private String category;
         private String name;
         private String description;
         private Money money;
@@ -69,6 +68,7 @@ public final class CashFlowDto {
         private BankAccount bankAccount;
         private CashFlow.CashFlowStatus status;
         private Map<String, CashChangeSummaryJson> cashChanges;
+        private List<Category> categories;
         private ZonedDateTime created;
         private ZonedDateTime lastModification;
     }

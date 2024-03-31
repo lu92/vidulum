@@ -8,10 +8,9 @@ import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
-import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.FORECAST;
 import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementFrom.from;
 import static com.multi.vidulum.cashflow_forecast_processor.app.GroupedTransactions.ReplacementTo.to;
+import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
 @Component
 @AllArgsConstructor
@@ -28,11 +27,16 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                 .orElseThrow(() -> new IllegalStateException(
                         String.format("Cannot find CashChange with id[%s]", event.cashChangeId())));
         statement.getForecasts().compute(cashChangeLocation.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
+            assert cashFlowMonthlyForecast != null;
 
             if (Type.INFLOW.equals(cashChangeLocation.type())) {
-                Transaction transaction = cashFlowMonthlyForecast.getCategorizedInFlows()
-                        .get(0)
-                        .getGroupedTransactions()
+                GroupedTransactions groupedTransactions = cashFlowMonthlyForecast.findCashCategoryForCashChange(
+                                event.cashChangeId(),
+                                cashFlowMonthlyForecast.getCategorizedInFlows())
+                        .map(CashCategory::getGroupedTransactions)
+                        .orElseThrow();
+
+                Transaction transaction = groupedTransactions
                         .findTransaction(event.cashChangeId());
 
                 TransactionDetails editedTransactionDetails = new TransactionDetails(
@@ -44,9 +48,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         transaction.transactionDetails().getEndDate()
                 );
 
-                cashFlowMonthlyForecast.getCategorizedInFlows()
-                        .get(0)
-                        .getGroupedTransactions()
+                groupedTransactions
                         .replace(
                                 from(transaction.paymentStatus(), transaction.transactionDetails()),
                                 to(transaction.paymentStatus(), editedTransactionDetails));
@@ -61,9 +63,13 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                                 )
                         );
             } else {
-                Transaction transaction = cashFlowMonthlyForecast.getCategorizedOutFlows()
-                        .get(0)
-                        .getGroupedTransactions()
+                GroupedTransactions groupedTransactions = cashFlowMonthlyForecast.findCashCategoryForCashChange(
+                                event.cashChangeId(),
+                                cashFlowMonthlyForecast.getCategorizedOutFlows())
+                        .map(CashCategory::getGroupedTransactions)
+                        .orElseThrow();
+
+                Transaction transaction = groupedTransactions
                         .findTransaction(event.cashChangeId());
 
                 TransactionDetails editedTransactionDetails = new TransactionDetails(
@@ -75,9 +81,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                         transaction.transactionDetails().getEndDate()
                 );
 
-                cashFlowMonthlyForecast.getCategorizedOutFlows()
-                        .get(0)
-                        .getGroupedTransactions()
+                groupedTransactions
                         .replace(
                                 from(transaction.paymentStatus(), transaction.transactionDetails()),
                                 to(transaction.paymentStatus(), editedTransactionDetails));
