@@ -68,7 +68,8 @@ public final class CashFlowDto {
         private BankAccount bankAccount;
         private CashFlow.CashFlowStatus status;
         private Map<String, CashChangeSummaryJson> cashChanges;
-        private List<Category> categories;
+        private List<Category> inflowCategories;
+        private List<Category> outflowCategories;
         private ZonedDateTime created;
         private ZonedDateTime lastModification;
     }

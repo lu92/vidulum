@@ -26,7 +26,7 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        CategoryId categoryId = cashFlow.getSnapshot().categories().stream()
+        CategoryId categoryId = cashFlow.getSnapshot().inflowCategories().stream()
                 .filter(category -> category.getCategoryName().equals(command.categoryName()))
                 .map(Category::getCategoryId)
                 .findFirst()

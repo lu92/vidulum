@@ -107,6 +107,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 false
                                         )
                                 ),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         ));
@@ -257,6 +265,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z")
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 List.of(
                                         new Category(
                                                 categoryId,
@@ -428,6 +444,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 false
                                         )
                                 ),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -582,6 +606,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 false
                                         )
                                 ),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null
                         )
@@ -692,6 +724,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(),
                                 YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                categoryId,
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
                                 List.of(
                                         new Category(
                                                 categoryId,

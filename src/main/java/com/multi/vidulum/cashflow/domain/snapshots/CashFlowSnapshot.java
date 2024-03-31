@@ -18,7 +18,8 @@ public record CashFlowSnapshot(
         CashFlow.CashFlowStatus status,
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
         YearMonth activePeriod,
-        List<Category> categories,
+        List<Category> inflowCategories,
+        List<Category> outflowCategories,
         ZonedDateTime created,
         ZonedDateTime lastModification) implements EntitySnapshot<CashFlowId> {
 

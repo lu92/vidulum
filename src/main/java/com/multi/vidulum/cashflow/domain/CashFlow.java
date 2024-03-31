@@ -30,7 +30,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
     private YearMonth activePeriod;
-    private List<Category> categories;
+    private List<Category> inflowCategories;
+    private List<Category> outflowCategories;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
@@ -64,7 +65,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 status,
                 cashChangeSnapshotMap,
                 activePeriod,
-                categories,
+                inflowCategories,
+                outflowCategories,
                 created,
                 lastModification
         );
@@ -97,20 +99,24 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .status(snapshot.status())
                 .cashChanges(cashChanges)
                 .activePeriod(snapshot.activePeriod())
-                .categories(snapshot.categories())
+                .inflowCategories(snapshot.inflowCategories())
+                .outflowCategories(snapshot.outflowCategories())
                 .created(snapshot.created())
                 .lastModification(snapshot.lastModification())
                 .build();
     }
 
     public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
-        LinkedList<Category> categories = new LinkedList<>();
-        categories.add(new Category(
+        Category uncategorized = new Category(
                 event.categoryId(),
                 new CategoryName("Uncategorized"),
                 new LinkedList<>(),
                 false
-        ));
+        );
+        LinkedList<Category> inflowCategories = new LinkedList<>();
+        inflowCategories.add(uncategorized);
+        LinkedList<Category> outflowCategories = new LinkedList<>();
+        outflowCategories.add(uncategorized);
         this.cashFlowId = event.cashFlowId();
         this.userId = event.userId();
         this.name = event.name();
@@ -120,7 +126,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.cashChanges = new HashMap<>();
         this.activePeriod = YearMonth.from(event.created());
         this.created = event.created();
-        this.categories = categories;
+        this.inflowCategories = inflowCategories;
+        this.outflowCategories = outflowCategories;
         this.lastModification = null;
         this.uncommittedEvents = new LinkedList<>();
         this.uncommittedEvents.add(event);
