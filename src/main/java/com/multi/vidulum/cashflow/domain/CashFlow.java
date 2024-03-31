@@ -46,6 +46,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                         cashChange.getDescription(),
                         cashChange.getMoney(),
                         cashChange.getType(),
+                        cashChange.getCategoryId(),
                         cashChange.getStatus(),
                         cashChange.getCreated(),
                         cashChange.getDueDate(),
@@ -80,6 +81,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                         .description(cashChangeSnapshot.description())
                         .money(cashChangeSnapshot.money())
                         .type(cashChangeSnapshot.type())
+                        .categoryId(cashChangeSnapshot.categoryId())
                         .status(cashChangeSnapshot.status())
                         .created(cashChangeSnapshot.created())
                         .dueDate(cashChangeSnapshot.dueDate())
@@ -150,6 +152,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.description(),
                 event.money(),
                 event.type(),
+                event.categoryId(),
                 CashChangeStatus.PENDING,
                 event.created(),
                 event.dueDate(),

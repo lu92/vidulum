@@ -20,6 +20,7 @@ public class CashChange {
     private Description description;
     private Money money;
     private Type type;
+    private CategoryId categoryId;
     private CashChangeStatus status;
     private ZonedDateTime created;
     private ZonedDateTime dueDate;
@@ -32,6 +33,7 @@ public class CashChange {
                 description,
                 money,
                 type,
+                categoryId,
                 status,
                 created,
                 dueDate,
@@ -46,6 +48,7 @@ public class CashChange {
                 .description(snapshot.description())
                 .money(snapshot.money())
                 .type(snapshot.type())
+                .categoryId(snapshot.categoryId())
                 .status(snapshot.status())
                 .created(snapshot.created())
                 .dueDate(snapshot.dueDate())

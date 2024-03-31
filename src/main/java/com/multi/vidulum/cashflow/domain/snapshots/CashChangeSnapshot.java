@@ -10,7 +10,9 @@ public record CashChangeSnapshot(
         Name name,
         Description description,
         Money money,
-        Type type, CashChangeStatus status,
+        Type type,
+        CategoryId categoryId,
+        CashChangeStatus status,
         ZonedDateTime created,
         ZonedDateTime dueDate,
         ZonedDateTime endDate) {
