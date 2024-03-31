@@ -160,6 +160,24 @@ public class CashFlowMonthlyForecast {
         return Optional.empty();
     }
 
+    public Optional<CashCategory> findCashCategoryForCashChange(CashChangeId cashChangeId, List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            boolean isMatched = takenCashCategory.getGroupedTransactions().getTransactions()
+                    .values().stream()
+                    .flatMap(Collection::stream)
+                    .anyMatch(transactionDetails -> transactionDetails.getCashChangeId().equals(cashChangeId));
+
+            if (isMatched) {
+                return Optional.of(takenCashCategory);
+            }
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return Optional.empty();
+    }
+
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
                                      Transaction transaction) {
     }
