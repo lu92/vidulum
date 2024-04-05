@@ -22,8 +22,6 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
                                 BankAccount bankAccount,
-//                                CategoryName inflowUncategorizedCategoryName,
-//                                CategoryName outflowUncategorizedCategoryName,
                                 ZonedDateTime created) implements CashFlowEvent {
     }
 
