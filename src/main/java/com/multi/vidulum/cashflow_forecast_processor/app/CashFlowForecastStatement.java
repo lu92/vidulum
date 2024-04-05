@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.YearMonth;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -111,20 +112,23 @@ public class CashFlowForecastStatement {
         CashFlowMonthlyForecast lastForecast = findLastMonthlyForecast();
         YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
         Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
+        List<CashCategory> categorizedInflows = new LinkedList<>();
+        categorizedInflows.add(
+                CashCategory.builder()
+                        .categoryName(new CategoryName("Uncategorized"))
+                        .category(new Category("Uncategorized"))
+                        .subCategories(List.of())
+                        .groupedTransactions(new GroupedTransactions())
+                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
+                        .build()
+        );
+
         forecasts.put(
                 upcomingPeriod,
                 new CashFlowMonthlyForecast(
                         upcomingPeriod,
                         CashFlowStats.justBalance(beginningBalance),
-                        List.of(
-                                CashCategory.builder()
-                                        .categoryName(new CategoryName("Uncategorized"))
-                                        .category(new Category("Uncategorized"))
-                                        .subCategories(List.of())
-                                        .groupedTransactions(new GroupedTransactions())
-                                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                                        .build()
-                        ),
+                        categorizedInflows,
                         List.of(
                                 CashCategory.builder()
                                         .categoryName(new CategoryName("Uncategorized"))
