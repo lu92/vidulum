@@ -1,7 +1,8 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
+import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+
+import static java.util.Optional.ofNullable;
 
 @AllArgsConstructor
 @RestController("/cash-flow")
@@ -99,6 +102,18 @@ public class CashFlowRestController {
         );
 
         return mapper.mapCashChange(snapshot);
+    }
+
+    @PostMapping("/{cashFlowId}/category")
+    public void createCategory(@PathVariable("cashFlowId") String cashFlowId, @RequestBody CashFlowDto.CreateCategoryJson request) {
+        commandGateway.send(
+                new CreateCategoryCommand(
+                        new CashFlowId(cashFlowId),
+                        ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
+                        new CategoryName(request.getCategory()),
+                        request.getType()
+                )
+        );
     }
 
 }

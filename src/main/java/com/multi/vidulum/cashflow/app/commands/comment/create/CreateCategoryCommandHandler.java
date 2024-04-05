@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.commands.append;
+package com.multi.vidulum.cashflow.app.commands.comment.create;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.JsonContent;
@@ -8,47 +8,40 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
 @AllArgsConstructor
-public class AppendCashChangeCommandHandler implements CommandHandler<AppendCashChangeCommand, CashChangeId> {
-
-    private final DomainCashFlowRepository domainCashFlowRepository;
+public class CreateCategoryCommandHandler implements CommandHandler<CreateCategoryCommand, Void> {
+    private DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
-    private final Clock clock;
+
 
     @Override
-    public CashChangeId handle(AppendCashChangeCommand command) {
+    public Void handle(CreateCategoryCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        CashFlowEvent.CashChangeAppendedEvent event = new CashFlowEvent.CashChangeAppendedEvent(
+        CashFlowEvent.CategoryCreatedEvent event = new CashFlowEvent.CategoryCreatedEvent(
                 command.cashFlowId(),
-                command.cashChangeId(),
-                command.name(),
-                command.description(),
-                command.money(),
-                command.type(),
-                ZonedDateTime.now(clock),
+                command.parentCategoryName(),
                 command.categoryName(),
-                command.dueDate()
+                command.type()
         );
+
         cashFlow.apply(event);
 
         domainCashFlowRepository.save(cashFlow);
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
-                        .metadata(Map.of("event", CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()))
+                        .metadata(Map.of("event", CashFlowEvent.CategoryCreatedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
         );
-
-        log.info("Cash change [{}] has been appended!", cashFlow.getSnapshot());
-        return command.cashChangeId();
+        log.info("New category [{}] has been added to cash flow [{}]", command.categoryName(), command.cashFlowId());
+        return null;
     }
 }

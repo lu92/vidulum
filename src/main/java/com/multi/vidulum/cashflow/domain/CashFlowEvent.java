@@ -15,13 +15,13 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashChangeAppendedEvent,
         CashFlowEvent.CashChangeConfirmedEvent,
         CashFlowEvent.CashChangeEditedEvent,
-        CashFlowEvent.CashChangeRejectedEvent {
+        CashFlowEvent.CashChangeRejectedEvent,
+        CashFlowEvent.CategoryCreatedEvent {
 
     CashFlowId cashFlowId();
 
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
-                                BankAccount bankAccount, CategoryId inflowUncategorizedCategoryId,
-                                CategoryId outflowUncategorizedCategoryId,
+                                BankAccount bankAccount,
                                 ZonedDateTime created) implements CashFlowEvent {
     }
 
@@ -31,7 +31,7 @@ public sealed interface CashFlowEvent extends DomainEvent
     }
 
     record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
-                                   Money money, Type type, ZonedDateTime created, CategoryId categoryId,
+                                   Money money, Type type, ZonedDateTime created, CategoryName categoryName,
                                    ZonedDateTime dueDate) implements CashFlowEvent {
     }
 
@@ -45,5 +45,13 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     record CashChangeRejectedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId,
                                    Reason reason) implements CashFlowEvent {
+    }
+
+    record CategoryCreatedEvent(
+            CashFlowId cashFlowId,
+            CategoryName parentCategoryName,
+            CategoryName categoryName,
+            Type type
+    ) implements CashFlowEvent {
     }
 }

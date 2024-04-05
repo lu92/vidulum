@@ -11,7 +11,7 @@ public record CashChangeSnapshot(
         Description description,
         Money money,
         Type type,
-        CategoryId categoryId,
+        CategoryName categoryName,
         CashChangeStatus status,
         ZonedDateTime created,
         ZonedDateTime dueDate,

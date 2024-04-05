@@ -42,6 +42,7 @@ public class CashFlowSummaryMapper {
                 .description(snapshot.description().description())
                 .money(snapshot.money())
                 .type(snapshot.type())
+                .categoryName(snapshot.categoryName().name())
                 .status(snapshot.status())
                 .created(snapshot.created())
                 .dueDate(snapshot.dueDate())

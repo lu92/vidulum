@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -31,7 +32,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                         CashFlowStats.justBalance(event.bankAccount().balance()),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(event.inflowUncategorizedCategoryId())
+                                        .categoryName(new CategoryName("Uncategorized"))
                                         .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
@@ -40,7 +41,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                         ),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(event.outflowUncategorizedCategoryId())
+                                        .categoryName(new CategoryName("Uncategorized"))
                                         .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
