@@ -36,6 +36,7 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.CashChangeConfirmedEvent event -> cashChangeConfirmedEventHandler.handle(event);
             case CashFlowEvent.CashChangeRejectedEvent event -> cashChangeRejectedEventHandler.handle(event);
             case CashFlowEvent.CashChangeEditedEvent event -> cashChangeEditedEventHandler.handle(event);
+            case CashFlowEvent.CategoryCreatedEvent event -> log.info("captured {}", event);
             default -> throw new IllegalStateException("Unexpected value: " + cashFlowEvent);
         }
     }

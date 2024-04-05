@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
@@ -26,8 +25,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
-        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -39,8 +36,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        inflowUncategorizedCategoryId,
-                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -54,7 +49,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        inflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -74,7 +69,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(70, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                        inflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
@@ -105,7 +100,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, CategoryId.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/expected_inflow_processing.json")
                                 .to(CashFlowForecastStatement.class));
@@ -117,8 +112,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
-        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -130,8 +123,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        inflowUncategorizedCategoryId,
-                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -145,7 +136,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(111, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        outflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -165,7 +156,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(80, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                        outflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
@@ -196,7 +187,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, CategoryId.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/expected_outflow_processing.json")
                                 .to(CashFlowForecastStatement.class));
@@ -208,8 +199,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
-        CategoryId inflowUncategorizedCategoryId = CategoryId.generate();
-        CategoryId outflowUncategorizedCategoryId = CategoryId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -221,8 +210,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
                                 Money.of(0, "USD")),
-                        inflowUncategorizedCategoryId,
-                        outflowUncategorizedCategoryId,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -236,7 +223,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        inflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -249,7 +236,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(25, "USD"),
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        outflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
@@ -269,7 +256,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(70, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
-                        inflowUncategorizedCategoryId,
+                        new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z")
                 ));
 
@@ -279,7 +266,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         YearMonth.parse("2021-06"),
                         Money.of(75, "USD"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z")
-                        )
+                )
         );
 
         Checksum lastEventChecksum = emit(
@@ -302,7 +289,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, CategoryId.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/attestation_processing.json")
                                 .to(CashFlowForecastStatement.class));

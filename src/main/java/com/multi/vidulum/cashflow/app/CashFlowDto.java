@@ -82,9 +82,18 @@ public final class CashFlowDto {
         private String description;
         private Money money;
         private Type type;
+        private String categoryName;
         private CashChangeStatus status;
         private ZonedDateTime created;
         private ZonedDateTime dueDate;
         private ZonedDateTime endDate;
+    }
+
+    @Data
+    @Builder
+    public static class CreateCategoryJson {
+        private String parentCategoryName; //optional
+        private String category;
+        private Type type;
     }
 }

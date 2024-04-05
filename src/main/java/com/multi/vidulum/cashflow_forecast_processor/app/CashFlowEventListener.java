@@ -46,6 +46,9 @@ public class CashFlowEventListener {
             case "CashChangeRejectedEvent" -> {
                 return event.getContent().to(CashFlowEvent.CashChangeRejectedEvent.class);
             }
+            case "CategoryCreatedEvent" -> {
+                return event.getContent().to(CashFlowEvent.CategoryCreatedEvent.class);
+            }
             default -> throw new IllegalStateException("Unexpected value: " + eventType);
         }
     }

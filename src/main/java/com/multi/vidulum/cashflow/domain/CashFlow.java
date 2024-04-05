@@ -46,7 +46,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                         cashChange.getDescription(),
                         cashChange.getMoney(),
                         cashChange.getType(),
-                        cashChange.getCategoryId(),
+                        cashChange.getCategoryName(),
                         cashChange.getStatus(),
                         cashChange.getCreated(),
                         cashChange.getDueDate(),
@@ -81,7 +81,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                         .description(cashChangeSnapshot.description())
                         .money(cashChangeSnapshot.money())
                         .type(cashChangeSnapshot.type())
-                        .categoryId(cashChangeSnapshot.categoryId())
+                        .categoryName(cashChangeSnapshot.categoryName())
                         .status(cashChangeSnapshot.status())
                         .created(cashChangeSnapshot.created())
                         .dueDate(cashChangeSnapshot.dueDate())
@@ -109,22 +109,14 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
-        Category uncategorized = new Category(
-                event.inflowUncategorizedCategoryId(),
-                new CategoryName("Uncategorized"),
-                new LinkedList<>(),
-                false
-        );
         LinkedList<Category> inflowCategories = new LinkedList<>();
         inflowCategories.add(new Category(
-                event.inflowUncategorizedCategoryId(),
                 new CategoryName("Uncategorized"),
                 new LinkedList<>(),
                 false
         ));
         LinkedList<Category> outflowCategories = new LinkedList<>();
         outflowCategories.add(new Category(
-                event.inflowUncategorizedCategoryId(),
                 new CategoryName("Uncategorized"),
                 new LinkedList<>(),
                 false
@@ -152,7 +144,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.description(),
                 event.money(),
                 event.type(),
-                event.categoryId(),
+                event.categoryName(),
                 CashChangeStatus.PENDING,
                 event.created(),
                 event.dueDate(),
@@ -202,6 +194,39 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         activePeriod = event.period();
         bankAccount = bankAccount.withUpdatedBalance(event.currentMoney());
         add(event);
+    }
+
+    public void apply(CashFlowEvent.CategoryCreatedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.type()) ? inflowCategories : outflowCategories;
+
+        Category newCategory = new Category(
+                event.categoryName(),
+                new LinkedList<>(),
+                true);
+
+        if (event.parentCategoryName().isDefined()) {
+            Category parentCategory = findCategoryByName(event.parentCategoryName(), categories)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid parent category-id!"));
+
+            parentCategory.getSubCategories().add(newCategory);
+        } else {
+            categories.add(newCategory);
+        }
+    }
+
+    private Optional<Category> findCategoryByName(CategoryName categoryName, List<Category> categories) {
+        Stack<Category> stack = new Stack<>();
+        categories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            Category takenCategory = stack.pop();
+            boolean isMatched = categoryName.equals(takenCategory.getCategoryName());
+
+            if (isMatched) {
+                return Optional.of(takenCategory);
+            }
+            takenCategory.getSubCategories().forEach(stack::push);
+        }
+        return Optional.empty();
     }
 
     private Optional<CashChange> fetchCashChange(CashChangeId cashChangeId) {

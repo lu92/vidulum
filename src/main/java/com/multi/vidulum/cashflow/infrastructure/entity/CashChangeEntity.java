@@ -22,7 +22,7 @@ public class CashChangeEntity {
     private String description;
     private Money money;
     private Type type;
-    private CategoryId categoryId;
+    private CategoryName categoryName;
     private CashChangeStatus status;
     private Date created;
     private Date dueDate;
@@ -43,7 +43,7 @@ public class CashChangeEntity {
                 .description(snapshot.description().description())
                 .money(snapshot.money())
                 .type(snapshot.type())
-                .categoryId(snapshot.categoryId())
+                .categoryName(snapshot.categoryName())
                 .status(snapshot.status())
                 .created(createdDate)
                 .dueDate(dueDate)
@@ -63,7 +63,7 @@ public class CashChangeEntity {
                 new Description(description),
                 money,
                 type,
-                categoryId,
+                categoryName,
                 status,
                 createdDateTime,
                 dueDateTime,

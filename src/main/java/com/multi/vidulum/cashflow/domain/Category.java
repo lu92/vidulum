@@ -10,7 +10,6 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 public class Category {
-    CategoryId categoryId;
     CategoryName categoryName;
     List<Category> subCategories;
     boolean isModifiable;

@@ -43,7 +43,6 @@ public class CashFlowControllerTest extends IntegrationTest {
         // when and then
         assertThat(cashFlowRestController.getCashFlow(cashFlowId))
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CategoryId.class)
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
@@ -58,7 +57,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 .cashChanges(Map.of())
                                 .inflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -66,7 +64,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .outflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -135,6 +132,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         .description("cash-change description")
                                         .money(Money.of(100, "USD"))
                                         .type(INFLOW)
+                                        .categoryName("Uncategorized")
                                         .status(PENDING)
                                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                         .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
@@ -144,7 +142,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                         ))
                         .inflowCategories(List.of(
                                 new Category(
-                                        cashFlowSummaryJson.getInflowCategories().get(0).getCategoryId(),
                                         new CategoryName("Uncategorized"),
                                         new LinkedList<>(),
                                         false
@@ -152,7 +149,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                         ))
                         .outflowCategories(List.of(
                                 new Category(
-                                        cashFlowSummaryJson.getOutflowCategories().get(0).getCategoryId(),
                                         new CategoryName("Uncategorized"),
                                         new LinkedList<>(),
                                         false
@@ -212,7 +208,6 @@ public class CashFlowControllerTest extends IntegrationTest {
         // then
         assertThat(cashFlowRestController.getCashFlow(cashFlowId))
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CategoryId.class)
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
@@ -232,6 +227,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .description("cash-change description")
                                                 .money(Money.of(100, "USD"))
                                                 .type(INFLOW)
+                                                .categoryName("Uncategorized")
                                                 .status(CONFIRMED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
@@ -240,7 +236,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .inflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -248,7 +243,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .outflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -313,7 +307,6 @@ public class CashFlowControllerTest extends IntegrationTest {
         // then
         assertThat(cashFlowRestController.getCashFlow(cashFlowId))
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CategoryId.class)
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
@@ -333,6 +326,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .description("cash-change description edited")
                                                 .money(Money.of(200, "USD"))
                                                 .type(INFLOW)
+                                                .categoryName("Uncategorized")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
@@ -342,7 +336,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .inflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -350,7 +343,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .outflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -412,7 +404,6 @@ public class CashFlowControllerTest extends IntegrationTest {
         // then
         assertThat(cashFlowRestController.getCashFlow(cashFlowId))
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CategoryId.class)
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
@@ -432,6 +423,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .description("cash-change description")
                                                 .money(Money.of(100, "USD"))
                                                 .type(INFLOW)
+                                                .categoryName("Uncategorized")
                                                 .status(REJECTED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
@@ -441,7 +433,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .inflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -449,7 +440,6 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 ))
                                 .outflowCategories(List.of(
                                         new Category(
-                                                null,
                                                 new CategoryName("Uncategorized"),
                                                 new LinkedList<>(),
                                                 false
@@ -472,5 +462,106 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 CashFlowEvent.CashChangeRejectedEvent.class.getSimpleName()
                                         ))).orElse(false));
 
+    }
+
+    @Test
+    void shouldAppendCashChangeToNewCategory() {
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("test category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        CashFlowDto.CashFlowSummaryJson cashFlowSummaryJson = cashFlowRestController.getCashFlow(cashFlowId);
+
+        String cashChangeId = cashFlowRestController.appendCashChange(
+                CashFlowDto.AppendCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("test category")
+                        .name("cash-change name")
+                        .description("cash-change description")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .build()
+        );
+
+        // then
+        assertThat(cashFlowRestController.getCashFlow(cashFlowId)).isEqualTo(
+                CashFlowDto.CashFlowSummaryJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .status(CashFlow.CashFlowStatus.OPEN)
+                        .cashChanges(Map.of(
+                                cashChangeId,
+                                CashFlowDto.CashChangeSummaryJson.builder()
+                                        .cashChangeId(cashChangeId)
+                                        .name("cash-change name")
+                                        .description("cash-change description")
+                                        .money(Money.of(100, "USD"))
+                                        .type(INFLOW)
+                                        .categoryName("test category")
+                                        .status(PENDING)
+                                        .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                        .endDate(null)
+                                        .build()
+
+                        ))
+                        .inflowCategories(List.of(
+                                new Category(
+                                        new CategoryName("Uncategorized"),
+                                        new LinkedList<>(),
+                                        false
+                                ),
+                                new Category(
+                                        new CategoryName("test category"),
+                                        new LinkedList<>(),
+                                        true
+                                )
+                        ))
+                        .outflowCategories(List.of(
+                                new Category(
+                                        new CategoryName("Uncategorized"),
+                                        new LinkedList<>(),
+                                        false
+                                )
+                        ))
+                        .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .lastModification(null)
+                        .build()
+        );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()
+                                        ))).orElse(false));
     }
 }

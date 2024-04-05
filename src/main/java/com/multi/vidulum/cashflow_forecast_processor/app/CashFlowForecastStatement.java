@@ -118,7 +118,7 @@ public class CashFlowForecastStatement {
                         CashFlowStats.justBalance(beginningBalance),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(CategoryId.generate())
+                                        .categoryName(new CategoryName("Uncategorized"))
                                         .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())
@@ -127,7 +127,7 @@ public class CashFlowForecastStatement {
                         ),
                         List.of(
                                 CashCategory.builder()
-                                        .categoryId(CategoryId.generate())
+                                        .categoryName(new CategoryName("Uncategorized"))
                                         .category(new Category("Uncategorized"))
                                         .subCategories(List.of())
                                         .groupedTransactions(new GroupedTransactions())

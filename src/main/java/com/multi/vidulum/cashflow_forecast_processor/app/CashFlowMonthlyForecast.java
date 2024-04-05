@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CategoryId;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -139,20 +139,20 @@ public class CashFlowMonthlyForecast {
         return totalIncomeValue.minus(totalOutcomeValue);
     }
 
-    public Optional<CashCategory> findCategoryInflowsByCategoryId(CategoryId categoryId) {
-        return findCategoryByCategoryId(categoryId, categorizedInFlows);
+    public Optional<CashCategory> findCategoryInflowsByCategoryName(CategoryName categoryName) {
+        return findCategoryByCategoryName(categoryName, categorizedInFlows);
     }
 
-    public Optional<CashCategory> findCategoryOutflowsByCategoryId(CategoryId categoryId) {
-        return findCategoryByCategoryId(categoryId, categorizedOutFlows);
+    public Optional<CashCategory> findCategoryOutflowsByCategoryName(CategoryName categoryName) {
+        return findCategoryByCategoryName(categoryName, categorizedOutFlows);
     }
 
-    private Optional<CashCategory> findCategoryByCategoryId(CategoryId categoryId, List<CashCategory> cashCategories) {
+    private Optional<CashCategory> findCategoryByCategoryName(CategoryName categoryName, List<CashCategory> cashCategories) {
         Stack<CashCategory> stack = new Stack<>();
         cashCategories.forEach(stack::push);
         while (!stack.isEmpty()) {
             CashCategory takenCashCategory = stack.pop();
-            if (takenCashCategory.getCategoryId().equals(categoryId)) {
+            if (takenCashCategory.getCategoryName().equals(categoryName)) {
                 return Optional.of(takenCashCategory);
             }
             takenCashCategory.getSubCategories().forEach(stack::push);
