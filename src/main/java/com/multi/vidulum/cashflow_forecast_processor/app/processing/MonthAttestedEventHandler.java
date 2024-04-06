@@ -57,18 +57,20 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
 
     private static void moveExpectedCashChangesToNextMonth(CashFlowForecastStatement statement, YearMonth actualPeriod) {
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
-
-        List<CashChangeId> cashChangesWithExpectedPayment = actualCashFlowMonthlyForecast.getCategorizedInFlows()
-                .get(0)
-                .getGroupedTransactions().get(EXPECTED)
-                .stream()
-                .map(TransactionDetails::getCashChangeId).toList();
         YearMonth nextPeriod = actualPeriod.plusMonths(1);
 
-        cashChangesWithExpectedPayment
-                .forEach(cashChangeId -> statement.move(
-                        cashChangeId,
-                        actualPeriod,
-                        nextPeriod));
+        actualCashFlowMonthlyForecast.getCategorizedInFlows()
+                .forEach(cashCategory -> {
+                    List<CashChangeId> cashChangesWithExpectedPayment = cashCategory
+                            .getGroupedTransactions().get(EXPECTED)
+                            .stream()
+                            .map(TransactionDetails::getCashChangeId).toList();
+
+                    cashChangesWithExpectedPayment
+                            .forEach(cashChangeId -> statement.move(
+                                    cashChangeId,
+                                    actualPeriod,
+                                    nextPeriod));
+                });
     }
 }
