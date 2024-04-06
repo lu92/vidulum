@@ -195,6 +195,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashChangeId secondCashChangeId = CashChangeId.generate();
         CashChangeId thirdCashChangeId = CashChangeId.generate();
         CashChangeId forthCashChangeId = CashChangeId.generate();
+        CashChangeId fifthCashChangeId = CashChangeId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -232,10 +233,18 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Overhead costs"),
+                        OUTFLOW)
+        );
+
+        emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
                         forthCashChangeId,
-                        new Name("cash change for new category"),
+                        new Name("cash change for new category 1"),
                         new Description("cash change description"),
                         Money.of(200, "USD"),
                         INFLOW,
@@ -258,9 +267,29 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        fifthCashChangeId,
+                        new Name("Cost 1"),
+                        new Description("cash change description"),
+                        Money.of(11, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Overhead costs"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
+
+        emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        fifthCashChangeId,
                         ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 

@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "2aa60bbf-52a7-4d52-8272-3c0ecca14603"
+    "id" : "037fea0b-d06b-4669-b656-70b06f7d5c2d"
   },
   "forecasts" : {
     "2021-06" : {
@@ -11,11 +11,11 @@
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 75.0,
+          "amount" : 64.0,
           "currency" : "USD"
         },
         "netChange" : {
-          "amount" : 75.0,
+          "amount" : 64.0,
           "currency" : "USD"
         },
         "inflowStats" : {
@@ -34,7 +34,7 @@
         },
         "outflowStats" : {
           "actual" : {
-            "amount" : 0,
+            "amount" : 11.0,
             "currency" : "USD"
           },
           "expected" : {
@@ -57,11 +57,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
-            "FORECAST" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "95837252-2458-4060-acc1-09502c5a8b2e"
+                "id" : "3b1d7550-af7b-4a57-a605-bb5f0af03595"
               },
               "name" : {
                 "name" : "cash change name"
@@ -73,7 +71,9 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : "2021-06-15T16:30:00Z"
-            } ]
+            } ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -90,9 +90,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -110,9 +110,10 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "6f106470-6fdd-4d5b-b2d4-2ecaf942cf82"
+                "id" : "645d4612-28b5-4064-9bac-9dc3167c1b16"
               },
               "name" : {
                 "name" : "cash change name 2"
@@ -125,12 +126,44 @@
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : null
             } ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
           "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ {
+              "cashChangeId" : {
+                "id" : "42df355a-81d5-4039-9066-f328f8322f8c"
+              },
+              "name" : {
+                "name" : "Cost 1"
+              },
+              "money" : {
+                "amount" : 11.0,
+                "currency" : "USD"
+              },
+              "created" : "2021-06-01T06:30:00Z",
+              "dueDate" : "2021-07-01T06:30:00Z",
+              "endDate" : "2021-06-15T16:30:00Z"
+            } ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 11.0,
           "currency" : "USD"
         }
       } ],
@@ -148,11 +181,11 @@
       "period" : "2021-07",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 75.0,
+          "amount" : 64.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -198,9 +231,10 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "9dc5e0c7-bb72-40b2-a4ae-120203341c16"
+                "id" : "e5a1a6f9-8851-4bfc-924d-8a93cacb72e9"
               },
               "name" : {
                 "name" : "cash change name 3 edited"
@@ -213,8 +247,7 @@
               "dueDate" : "2021-08-12T00:00:00Z",
               "endDate" : null
             } ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -231,12 +264,13 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "7a53e914-2250-4418-9545-df66b2d779c1"
+                "id" : "3ab923c8-4db1-436f-b3f3-ccaffbf1cc05"
               },
               "name" : {
-                "name" : "cash change for new category"
+                "name" : "cash change for new category 1"
               },
               "money" : {
                 "amount" : 200.0,
@@ -246,8 +280,7 @@
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : null
             } ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -265,9 +298,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -282,11 +334,11 @@
       "period" : "2021-08",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -332,9 +384,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -351,9 +403,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -371,9 +423,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -388,11 +459,11 @@
       "period" : "2021-09",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -438,9 +509,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -457,9 +528,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -477,9 +548,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -494,11 +584,11 @@
       "period" : "2021-10",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -544,9 +634,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -563,9 +653,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -583,9 +673,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -600,11 +709,11 @@
       "period" : "2021-11",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -650,9 +759,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -669,9 +778,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -689,9 +798,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -706,11 +834,11 @@
       "period" : "2021-12",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -756,9 +884,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -775,9 +903,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -795,9 +923,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -812,11 +959,11 @@
       "period" : "2022-01",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -862,9 +1009,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -881,9 +1028,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -901,9 +1048,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -918,11 +1084,11 @@
       "period" : "2022-02",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -968,9 +1134,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -987,9 +1153,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1007,9 +1173,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1024,11 +1209,11 @@
       "period" : "2022-03",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1074,9 +1259,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1093,9 +1278,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1113,9 +1298,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1130,11 +1334,11 @@
       "period" : "2022-04",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1180,9 +1384,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1199,9 +1403,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1219,9 +1423,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1236,11 +1459,11 @@
       "period" : "2022-05",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1286,9 +1509,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1305,9 +1528,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1325,9 +1548,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Overhead costs"
+        },
+        "category" : {
+          "category" : "Overhead costs"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1342,11 +1584,11 @@
       "period" : "2022-06",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 395.0,
+          "amount" : 384.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1392,9 +1634,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1412,9 +1654,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1433,6 +1675,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "971e4b08960df84d185a2f93f2bf261a"
+    "checksum" : "2d07d6ea4880f95964dcb98443776e45"
   }
 }
