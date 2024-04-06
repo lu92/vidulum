@@ -224,6 +224,27 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Special category"),
+                        INFLOW)
+        );
+
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        forthCashChangeId,
+                        new Name("cash change for new category"),
+                        new Description("cash change description"),
+                        Money.of(200, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Special category"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,

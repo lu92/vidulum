@@ -93,8 +93,13 @@ public class CashFlowForecastStatement {
 
 
         if (INFLOW.equals(location.type())) {
-            cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(transaction);
-            cashFlowMonthlyForecastToIncrease.addToInflows(transaction);
+            CategoryName categoryName = cashFlowMonthlyForecastReadyToDecrease
+                    .findCashCategoryForCashChange(cashChangeId, cashFlowMonthlyForecastReadyToDecrease.getCategorizedInFlows())
+                    .map(CashCategory::getCategoryName)
+                    .orElseThrow();
+
+            cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(categoryName, transaction);
+            cashFlowMonthlyForecastToIncrease.addToInflows(categoryName, transaction);
         } else {
             cashFlowMonthlyForecastReadyToDecrease.removeFromOutflows(transaction);
             cashFlowMonthlyForecastToIncrease.addToOutflows(transaction);

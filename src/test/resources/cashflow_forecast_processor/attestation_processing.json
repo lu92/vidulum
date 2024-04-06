@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "6109a766-516b-4d18-be25-e2e6e090e281"
+    "id" : "2aa60bbf-52a7-4d52-8272-3c0ecca14603"
   },
   "forecasts" : {
     "2021-06" : {
@@ -57,10 +57,11 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "746beb1c-8736-4e4d-a3c6-fbd1c7c30cef"
+                "id" : "95837252-2458-4060-acc1-09502c5a8b2e"
               },
               "name" : {
                 "name" : "cash change name"
@@ -72,12 +73,30 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : "2021-06-15T16:30:00Z"
-            } ],
-            "EXPECTED" : [ ]
+            } ]
           }
         },
         "totalPaidValue" : {
           "amount" : 100.0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
           "currency" : "USD"
         }
       } ],
@@ -91,11 +110,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
-            "PAID" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "746beb1c-8736-4e4d-a3c6-fbd1c7c30cef"
+                "id" : "6f106470-6fdd-4d5b-b2d4-2ecaf942cf82"
               },
               "name" : {
                 "name" : "cash change name 2"
@@ -107,7 +124,9 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : null
-            } ]
+            } ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -133,11 +152,11 @@
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
-          "amount" : 120.0,
+          "amount" : 320.0,
           "currency" : "USD"
         },
         "inflowStats" : {
@@ -179,11 +198,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "FORECAST" : [ ],
-            "PAID" : [ ],
             "EXPECTED" : [ {
               "cashChangeId" : {
-                "id" : "b6099637-7356-4d02-af1f-46df9fc0ca7d"
+                "id" : "9dc5e0c7-bb72-40b2-a4ae-120203341c16"
               },
               "name" : {
                 "name" : "cash change name 3 edited"
@@ -195,7 +212,42 @@
               "created" : "2021-06-03T06:30:00Z",
               "dueDate" : "2021-08-12T00:00:00Z",
               "endDate" : null
-            } ]
+            } ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ {
+              "cashChangeId" : {
+                "id" : "7a53e914-2250-4418-9545-df66b2d779c1"
+              },
+              "name" : {
+                "name" : "cash change for new category"
+              },
+              "money" : {
+                "amount" : 200.0,
+                "currency" : "USD"
+              },
+              "created" : "2021-06-01T06:30:00Z",
+              "dueDate" : "2021-07-01T06:30:00Z",
+              "endDate" : null
+            } ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -213,9 +265,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -230,11 +282,11 @@
       "period" : "2021-08",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -280,9 +332,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -300,9 +371,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -317,11 +388,11 @@
       "period" : "2021-09",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -367,9 +438,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -387,9 +477,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -404,11 +494,11 @@
       "period" : "2021-10",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -454,9 +544,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -474,9 +583,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -491,11 +600,11 @@
       "period" : "2021-11",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -541,9 +650,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -561,9 +689,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -578,11 +706,11 @@
       "period" : "2021-12",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -628,9 +756,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -648,9 +795,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -665,11 +812,11 @@
       "period" : "2022-01",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -715,9 +862,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -735,9 +901,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -752,11 +918,11 @@
       "period" : "2022-02",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -802,9 +968,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -822,9 +1007,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -839,11 +1024,11 @@
       "period" : "2022-03",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -889,9 +1074,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -909,9 +1113,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -926,11 +1130,11 @@
       "period" : "2022-04",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -976,9 +1180,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -996,9 +1219,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1013,11 +1236,11 @@
       "period" : "2022-05",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1063,9 +1286,28 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special category"
+        },
+        "category" : {
+          "category" : "Special category"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1083,9 +1325,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1100,11 +1342,11 @@
       "period" : "2022-06",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 195.0,
+          "amount" : 395.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1150,9 +1392,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1170,9 +1412,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ ],
-            "EXPECTED" : [ ]
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1191,6 +1433,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "d2776a1f38f4635c28e716176f28abd9"
+    "checksum" : "971e4b08960df84d185a2f93f2bf261a"
   }
 }
