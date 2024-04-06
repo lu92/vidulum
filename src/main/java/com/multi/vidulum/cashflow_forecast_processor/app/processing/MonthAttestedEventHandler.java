@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.Attestation.Type.MANUAL;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
@@ -59,7 +60,9 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
         YearMonth nextPeriod = actualPeriod.plusMonths(1);
 
-        actualCashFlowMonthlyForecast.getCategorizedInFlows()
+        Stream.concat(
+                        actualCashFlowMonthlyForecast.getCategorizedInFlows().stream(),
+                        actualCashFlowMonthlyForecast.getCategorizedOutFlows().stream())
                 .forEach(cashCategory -> {
                     List<CashChangeId> cashChangesWithExpectedPayment = cashCategory
                             .getGroupedTransactions().get(EXPECTED)
