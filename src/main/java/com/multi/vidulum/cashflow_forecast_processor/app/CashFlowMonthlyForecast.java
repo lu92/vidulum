@@ -54,9 +54,54 @@ public class CashFlowMonthlyForecast {
         }
     }
 
+    public void addToInflows(CategoryName categoryName, Transaction transaction) {
+        // in future there will be more inflowCategories, now only operating on first element
+
+        CashCategory cashCategory = findCategoryInflowsByCategoryName(categoryName).orElseThrow();
+
+        cashCategory
+                .getGroupedTransactions()
+                .addTransaction(transaction);
+
+        CashSummary inflowStats = cashFlowStats.getInflowStats();
+        cashFlowStats
+                .setInflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
+                        )
+                );
+
+        if (transaction.isPaid()) {
+            Money updatedTotalValue = cashCategory
+                    .getTotalPaidValue()
+                    .plus(transaction.transactionDetails().getMoney());
+            cashCategory.setTotalPaidValue(updatedTotalValue);
+        }
+    }
+
     public void removeFromInflows(Transaction transaction) {
         categorizedInFlows
                 .get(0)
+                .getGroupedTransactions()
+                .removeTransaction(transaction);
+
+        CashSummary inflowStatsToDecrease = cashFlowStats.getInflowStats();
+        cashFlowStats
+                .setInflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
+                        )
+                );
+    }
+
+    public void removeFromInflows(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryInflowsByCategoryName(categoryName).orElseThrow();
+
+        cashCategory
                 .getGroupedTransactions()
                 .removeTransaction(transaction);
 
@@ -97,9 +142,55 @@ public class CashFlowMonthlyForecast {
         }
     }
 
+    public void addToOutflows(CategoryName categoryName, Transaction transaction) {
+        // in future there will be more inflowCategories, now only operating on first element
+        CashCategory pickedCashCategory = findCategoryOutflowsByCategoryName(categoryName).orElseThrow();
+
+
+        pickedCashCategory
+                .getGroupedTransactions()
+                .addTransaction(transaction);
+
+        CashSummary outflowStats = cashFlowStats.getOutflowStats();
+        cashFlowStats
+                .setOutflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().plus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().plus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
+                        )
+                );
+
+        if (transaction.isPaid()) {
+            Money updatedTotalValue = pickedCashCategory
+                    .getTotalPaidValue()
+                    .plus(transaction.transactionDetails().getMoney());
+            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
+        }
+    }
+
     public void removeFromOutflows(Transaction transaction) {
         categorizedOutFlows
                 .get(0)
+                .getGroupedTransactions()
+                .removeTransaction(transaction);
+
+        CashSummary outflowStatsToDecrease = cashFlowStats.getOutflowStats();
+        cashFlowStats
+                .setOutflowStats(
+                        new CashSummary(
+                                PAID.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.actual(),
+                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.expected(),
+                                FORECAST.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.gapToForecast()
+                        )
+                );
+    }
+
+    public void removeFromOutflows(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryOutflowsByCategoryName(categoryName).orElseThrow();
+
+
+        cashCategory
                 .getGroupedTransactions()
                 .removeTransaction(transaction);
 
@@ -119,19 +210,19 @@ public class CashFlowMonthlyForecast {
      */
     public Money calcNetChange() {
         Currency inFlowCurrency = Currency.of(categorizedInFlows.get(0).getTotalPaidValue().getCurrency());
-        Money totalIncomeValue = categorizedInFlows.get(0)
-                .getGroupedTransactions()
-                .values()
-                .stream()
+        Money totalIncomeValue = categorizedInFlows.stream()
+                .map(CashCategory::getGroupedTransactions)
+                .map(GroupedTransactions::values)
+                .flatMap(Collection::stream)
                 .flatMap(Collection::stream)
                 .map(TransactionDetails::getMoney)
                 .reduce(Money.zero(inFlowCurrency.getId()), Money::plus);
 
         Currency outFlowCurrency = Currency.of(categorizedOutFlows.get(0).getTotalPaidValue().getCurrency());
-        Money totalOutcomeValue = categorizedOutFlows.get(0)
-                .getGroupedTransactions()
-                .values()
-                .stream()
+        Money totalOutcomeValue = categorizedOutFlows.stream()
+                .map(CashCategory::getGroupedTransactions)
+                .map(GroupedTransactions::values)
+                .flatMap(Collection::stream)
                 .flatMap(Collection::stream)
                 .map(TransactionDetails::getMoney)
                 .reduce(Money.zero(outFlowCurrency.getId()), Money::plus);

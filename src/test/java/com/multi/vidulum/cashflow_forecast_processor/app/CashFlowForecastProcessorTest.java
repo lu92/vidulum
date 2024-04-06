@@ -295,6 +295,101 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .to(CashFlowForecastStatement.class));
     }
 
+    @Test
+    public void shouldCreateNewCategory() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId firstCashChangeId = CashChangeId.generate();
+        CashChangeId secondCashChangeId = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Special Category For Inflows"),
+                        INFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Special Category For Outflows"),
+                        OUTFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        new Name("cash change name"),
+                        new Description("cash change description"),
+                        Money.of(100, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Special Category For Inflows"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        new Name("cash change name outflow"),
+                        new Description("cash change description"),
+                        Money.of(70, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Special Category For Outflows"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
+
+
+        await()
+                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
+                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
+                        .orElse(false));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .usingRecursiveComparison()
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
+                .isEqualTo(
+                        ContentReader.load("cashflow_forecast_processor/new_category.json")
+                                .to(CashFlowForecastStatement.class));
+    }
+
+
     private Checksum emit(CashFlowEvent cashFlowEvent) {
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

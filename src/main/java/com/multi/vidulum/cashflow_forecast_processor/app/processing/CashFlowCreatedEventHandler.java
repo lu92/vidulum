@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,30 +28,39 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
         YearMonth current = YearMonth.from(event.created());
         Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = IntStream.rangeClosed(0, 11)
                 .mapToObj(current::plusMonths)
-                .map(yearMonth -> new CashFlowMonthlyForecast(
-                        yearMonth,
-                        CashFlowStats.justBalance(event.bankAccount().balance()),
-                        List.of(
-                                CashCategory.builder()
-                                        .categoryName(new CategoryName("Uncategorized"))
-                                        .category(new Category("Uncategorized"))
-                                        .subCategories(List.of())
-                                        .groupedTransactions(new GroupedTransactions())
-                                        .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
-                                        .build()
-                        ),
-                        List.of(
-                                CashCategory.builder()
-                                        .categoryName(new CategoryName("Uncategorized"))
-                                        .category(new Category("Uncategorized"))
-                                        .subCategories(List.of())
-                                        .groupedTransactions(new GroupedTransactions())
-                                        .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
-                                        .build()
-                        ),
-                        CashFlowMonthlyForecast.Status.FORECASTED,
-                        null
-                )).collect(Collectors.toMap(
+                .map(yearMonth -> {
+                    List<CashCategory> categorizedInflows = new LinkedList<>();
+                    categorizedInflows.add(
+                            CashCategory.builder()
+                                    .categoryName(new CategoryName("Uncategorized"))
+                                    .category(new Category("Uncategorized"))
+                                    .subCategories(List.of())
+                                    .groupedTransactions(new GroupedTransactions())
+                                    .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                    .build()
+                    );
+
+                    List<CashCategory> categorizedOutflows = new LinkedList<>();
+                    categorizedOutflows.add(
+                            CashCategory.builder()
+                                    .categoryName(new CategoryName("Uncategorized"))
+                                    .category(new Category("Uncategorized"))
+                                    .subCategories(List.of())
+                                    .groupedTransactions(new GroupedTransactions())
+                                    .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                    .build()
+
+                    );
+
+                    return new CashFlowMonthlyForecast(
+                            yearMonth,
+                            CashFlowStats.justBalance(event.bankAccount().balance()),
+                            categorizedInflows,
+                            categorizedOutflows,
+                            CashFlowMonthlyForecast.Status.FORECASTED,
+                            null
+                    );
+                }).collect(Collectors.toMap(
                         CashFlowMonthlyForecast::getPeriod,
                         Function.identity()
                 ));

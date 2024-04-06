@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "70e56b77-4811-4c78-96f6-04db370d0342"
+    "id" : "a09f7f1e-80b8-45a9-86b4-6612caf9fae7"
   },
   "forecasts" : {
     "2021-06" : {
@@ -11,11 +11,11 @@
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 100.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
-          "amount" : 100.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "inflowStats" : {
@@ -34,11 +34,11 @@
         },
         "outflowStats" : {
           "actual" : {
-            "amount" : 0,
+            "amount" : 70.0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0,
+            "amount" : 0.0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -47,8 +47,7 @@
           }
         }
       },
-      "categorizedInFlows" : [
-        {
+      "categorizedInFlows" : [ {
         "categoryName" : {
           "name" : "Uncategorized"
         },
@@ -58,11 +57,30 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "a050ca73-7e84-47c2-a20c-6111407cfc32"
+                "id" : "88b85920-4ee2-48bd-97fa-aef873564482"
               },
               "name" : {
                 "name" : "cash change name"
@@ -73,7 +91,7 @@
               },
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
-              "endDate" : "2021-07-15T16:30:00Z"
+              "endDate" : "2021-06-15T16:30:00Z"
             } ]
           }
         },
@@ -92,13 +110,46 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
           "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ {
+              "cashChangeId" : {
+                "id" : "aa62af4f-9c18-425b-b1cf-3e083f8b408d"
+              },
+              "name" : {
+                "name" : "cash change name outflow"
+              },
+              "money" : {
+                "amount" : 70.0,
+                "currency" : "USD"
+              },
+              "created" : "2021-06-01T06:30:00Z",
+              "dueDate" : "2021-07-01T06:30:00Z",
+              "endDate" : "2021-06-15T16:30:00Z"
+            } ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 70.0,
           "currency" : "USD"
         }
       } ],
@@ -109,24 +160,24 @@
       "period" : "2021-07",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 100.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
-          "amount" : 120.0,
+          "amount" : 0,
           "currency" : "USD"
         },
         "inflowStats" : {
           "actual" : {
-            "amount" : 120.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0.0,
+            "amount" : 0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -159,27 +210,32 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
-            "PAID" : [ {
-              "cashChangeId" : {
-                "id" : "31e6a5b9-94e1-4266-a8f1-5beeeda24c09"
-              },
-              "name" : {
-                "name" : "cash change name 2 edited"
-              },
-              "money" : {
-                "amount" : 120.0,
-                "currency" : "USD"
-              },
-              "created" : "2021-07-01T06:30:00Z",
-              "dueDate" : "2021-08-12T00:00:00Z",
-              "endDate" : "2021-08-10T16:30:00Z"
-            } ]
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
-          "amount" : 120.0,
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
           "currency" : "USD"
         }
       } ],
@@ -193,8 +249,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -210,11 +285,11 @@
       "period" : "2021-08",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -260,8 +335,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -280,8 +374,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -297,11 +410,11 @@
       "period" : "2021-09",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -347,8 +460,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -367,8 +499,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -384,11 +535,11 @@
       "period" : "2021-10",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -434,8 +585,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -454,8 +624,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -471,11 +660,11 @@
       "period" : "2021-11",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -521,8 +710,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -541,8 +749,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -558,11 +785,11 @@
       "period" : "2021-12",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -608,8 +835,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -628,8 +874,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -645,11 +910,11 @@
       "period" : "2022-01",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -695,8 +960,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -715,8 +999,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -732,11 +1035,11 @@
       "period" : "2022-02",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -782,8 +1085,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -802,8 +1124,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -819,11 +1160,11 @@
       "period" : "2022-03",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -869,8 +1210,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -889,8 +1249,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -906,11 +1285,11 @@
       "period" : "2022-04",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -956,8 +1335,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -976,8 +1374,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -993,11 +1410,11 @@
       "period" : "2022-05",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 220.0,
+          "amount" : 30.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1043,8 +1460,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Inflows"
+        },
+        "category" : {
+          "category" : "Special Category For Inflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -1063,8 +1499,27 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
             "FORECAST" : [ ],
+            "EXPECTED" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "FORECAST" : [ ],
+            "EXPECTED" : [ ],
             "PAID" : [ ]
           }
         },
@@ -1084,6 +1539,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "907920dec1b13a30354b1b65cda13314"
+    "checksum" : "47de764968e2c8939db62980a34e8c05"
   }
 }
