@@ -48,8 +48,12 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                 cashFlowMonthlyForecast.addToInflows(categoryName, updatedTransaction);
 
             } else {
-                cashFlowMonthlyForecast.removeFromOutflows(currentTransaction);
-                cashFlowMonthlyForecast.addToOutflows(updatedTransaction);
+                CategoryName categoryName = cashFlowMonthlyForecast.findCashCategoryForCashChange(event.cashChangeId(), cashFlowMonthlyForecast.getCategorizedOutFlows())
+                        .map(CashCategory::getCategoryName)
+                        .orElseThrow(() -> new IllegalArgumentException(""));
+
+                cashFlowMonthlyForecast.removeFromOutflows(categoryName, currentTransaction);
+                cashFlowMonthlyForecast.addToOutflows(categoryName, updatedTransaction);
             }
             return cashFlowMonthlyForecast;
         });

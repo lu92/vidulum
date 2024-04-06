@@ -329,7 +329,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         cashFlowId,
                         null,
                         new CategoryName("Special Category For Outflows"),
-                        INFLOW
+                        OUTFLOW
                 )
         );
 
@@ -346,10 +346,30 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
-        Checksum lastEventChecksum = emit(
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        new Name("cash change name outflow"),
+                        new Description("cash change description"),
+                        Money.of(70, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Special Category For Outflows"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
                         ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 
