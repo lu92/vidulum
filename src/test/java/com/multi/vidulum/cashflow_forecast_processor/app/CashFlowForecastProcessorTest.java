@@ -91,10 +91,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-08-10T16:30:00Z")
                 ));
 
-        await()
-                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
-                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                        .orElse(false));
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
@@ -178,10 +175,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-08-10T16:30:00Z")
                 ));
 
-        await()
-                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
-                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                        .orElse(false));
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
@@ -195,10 +189,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
     }
 
     @Test
-    public void shouldAttestedMonth() {
+    public void shouldAttestMonth() {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashChangeId thirdCashChangeId = CashChangeId.generate();
+        CashChangeId forthCashChangeId = CashChangeId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -228,9 +224,30 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Special category"),
+                        INFLOW)
+        );
+
+        emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
-                        firstCashChangeId,
+                        forthCashChangeId,
+                        new Name("cash change for new category"),
+                        new Description("cash change description"),
+                        Money.of(200, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Special category"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
                         new Name("cash change name 2"),
                         new Description("cash change description 2"),
                         Money.of(25, "USD"),
@@ -250,7 +267,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
-                        secondCashChangeId,
+                        thirdCashChangeId,
                         new Name("cash change name 3"),
                         new Description("cash change description 3"),
                         Money.of(70, "USD"),
@@ -272,7 +289,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         Checksum lastEventChecksum = emit(
                 new CashFlowEvent.CashChangeEditedEvent(
                         cashFlowId,
-                        secondCashChangeId,
+                        thirdCashChangeId,
                         new Name("cash change name 3 edited"),
                         new Description("cash change description 3 edited"),
                         Money.of(120, "USD"),
@@ -280,10 +297,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 )
         );
 
-        await()
-                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
-                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                        .orElse(false));
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
@@ -374,10 +388,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
 
-        await()
-                .until(() -> statementRepository.findByCashFlowId(cashFlowId)
-                        .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                        .orElse(false));
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
 
         assertThat(statementRepository.findByCashFlowId(cashFlowId))
                 .isPresent()
@@ -401,5 +412,11 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         JsonContent.asJson(cashFlowEvent)
                                 .content()
                                 .getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private boolean lastEventIsProcessed(CashFlowId cashFlowId, Checksum lastEventChecksum) {
+        return statementRepository.findByCashFlowId(cashFlowId)
+                .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
+                .orElse(false);
     }
 }

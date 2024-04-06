@@ -270,7 +270,9 @@ public class CashFlowMonthlyForecast {
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
-                                     Transaction transaction) {
+                                     Transaction transaction
+                                     // TODO add CategoryName to improve searching in {@link com.multi.vidulum.cashflow_forecast_processor.app.processing.MonthAttestedEventHandler}
+    ) {
     }
 
     public enum Status {
