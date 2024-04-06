@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.YearMonth;
 import java.util.LinkedList;
@@ -17,9 +18,10 @@ import java.util.Optional;
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 
 @Data
+@Slf4j
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
     private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
@@ -151,15 +153,19 @@ public class CashFlowForecastStatement {
                         Money.zero(currency),
                         (totalStart, cashFlowMonthlyForecast) -> {
 
-                            Money netChange = cashFlowMonthlyForecast.calcNetChange();
+                            Money netChange = cashFlowMonthlyForecast.calcNetChange(); //tu zzle liczy
+//                            log.info("calculated net change: {}", netChange);
+
                             CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                            CashFlowStats updatedCashFlowStats = new CashFlowStats(
+                                    totalStart,
+                                    totalStart.plus(netChange),
+                                    netChange,
+                                    cashFlowStats.getInflowStats(),
+                                    cashFlowStats.getOutflowStats());
+//                            log.info("Updated cash stats period: {} value: {}", cashFlowMonthlyForecast.getPeriod(), cashFlowStats);
                             cashFlowMonthlyForecast.setCashFlowStats(
-                                    new CashFlowStats(
-                                            totalStart,
-                                            totalStart.plus(netChange),
-                                            netChange,
-                                            cashFlowStats.getInflowStats(),
-                                            cashFlowStats.getOutflowStats())
+                                    updatedCashFlowStats
                             );
 
                             return totalStart.plus(netChange);

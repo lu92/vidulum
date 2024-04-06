@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "39275196-c27d-47c7-a4e0-86a7bfcfce58"
+    "id" : "7a8f37ed-adc9-4536-8846-675be9a84379"
   },
   "forecasts" : {
     "2021-06" : {
@@ -11,20 +11,20 @@
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "inflowStats" : {
           "actual" : {
-            "amount" : 0,
+            "amount" : 100.0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 100.0,
+            "amount" : 0.0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -76,9 +76,11 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ {
               "cashChangeId" : {
-                "id" : "750a52e2-71c1-4e75-9c25-142f88f1d082"
+                "id" : "db96cee0-4557-46de-9542-a8b8ebcab0ae"
               },
               "name" : {
                 "name" : "cash change name"
@@ -89,14 +91,12 @@
               },
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
-              "endDate" : null
-            } ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+              "endDate" : "2021-06-15T16:30:00Z"
+            } ]
           }
         },
         "totalPaidValue" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         }
       } ],
@@ -127,11 +127,11 @@
       "period" : "2021-07",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -233,11 +233,11 @@
       "period" : "2021-08",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -339,11 +339,11 @@
       "period" : "2021-09",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -445,11 +445,11 @@
       "period" : "2021-10",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -551,11 +551,11 @@
       "period" : "2021-11",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -657,11 +657,11 @@
       "period" : "2021-12",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -763,11 +763,11 @@
       "period" : "2022-01",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -869,11 +869,11 @@
       "period" : "2022-02",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -975,11 +975,11 @@
       "period" : "2022-03",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1081,11 +1081,11 @@
       "period" : "2022-04",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1187,11 +1187,11 @@
       "period" : "2022-05",
       "cashFlowStats" : {
         "start" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "end" : {
-          "amount" : 0,
+          "amount" : 100.0,
           "currency" : "USD"
         },
         "netChange" : {
@@ -1297,6 +1297,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "23db2eedbe3a763baa11f61aded3ce9c"
+    "checksum" : "66fcc6d74b707ac22e4bd650f3e78805"
   }
 }

@@ -324,7 +324,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 )
         );
 
-        Checksum lastEventChecksum = emit(
+        emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
@@ -337,12 +337,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
-//        Checksum lastEventChecksum = emit(
-//                new CashFlowEvent.CashChangeConfirmedEvent(
-//                        cashFlowId,
-//                        firstCashChangeId,
-//                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
-//                ));
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
 
 
         await()
