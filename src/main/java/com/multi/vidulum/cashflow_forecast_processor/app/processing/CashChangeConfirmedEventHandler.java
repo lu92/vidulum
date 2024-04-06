@@ -2,7 +2,6 @@ package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
-import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
@@ -40,20 +39,12 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
             );
 
             if (Type.INFLOW.equals(location.type())) {
-                CategoryName categoryName = cashFlowMonthlyForecast.findCashCategoryForCashChange(event.cashChangeId(), cashFlowMonthlyForecast.getCategorizedInFlows())
-                        .map(CashCategory::getCategoryName)
-                        .orElseThrow(() -> new IllegalArgumentException(""));
-
-                cashFlowMonthlyForecast.removeFromInflows(categoryName, currentTransaction);
-                cashFlowMonthlyForecast.addToInflows(categoryName, updatedTransaction);
+                cashFlowMonthlyForecast.removeFromInflows(location.categoryName(), currentTransaction);
+                cashFlowMonthlyForecast.addToInflows(location.categoryName(), updatedTransaction);
 
             } else {
-                CategoryName categoryName = cashFlowMonthlyForecast.findCashCategoryForCashChange(event.cashChangeId(), cashFlowMonthlyForecast.getCategorizedOutFlows())
-                        .map(CashCategory::getCategoryName)
-                        .orElseThrow(() -> new IllegalArgumentException(""));
-
-                cashFlowMonthlyForecast.removeFromOutflows(categoryName, currentTransaction);
-                cashFlowMonthlyForecast.addToOutflows(categoryName, updatedTransaction);
+                cashFlowMonthlyForecast.removeFromOutflows(location.categoryName(), currentTransaction);
+                cashFlowMonthlyForecast.addToOutflows(location.categoryName(), updatedTransaction);
             }
             return cashFlowMonthlyForecast;
         });

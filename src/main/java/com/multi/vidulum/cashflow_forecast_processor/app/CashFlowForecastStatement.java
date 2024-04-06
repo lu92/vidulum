@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.BankAccountNumber;
+import com.multi.vidulum.cashflow.domain.CashChangeId;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -16,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
+import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 
 @Data
 @Slf4j
@@ -31,49 +35,59 @@ public class CashFlowForecastStatement {
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
         return forecasts.values().stream()
                 .map(cashFlowMonthlyForecast -> {
-                    Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedInFlows().stream()
-                            .map(CashCategory::getGroupedTransactions)
-                            .map(GroupedTransactions::getTransactions)
-                            .flatMap(paymentStatusListMap -> paymentStatusListMap.entrySet().stream())
-                            .map(entries -> {
-                                PaymentStatus paymentStatus = entries.getKey();
-                                List<TransactionDetails> transactionDetails = entries.getValue();
+                    Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation =
+                            cashFlowMonthlyForecast.getCategorizedInFlows().stream()
+                                    .map(cashCategory -> {
+                                        CategoryName categoryName = cashCategory.getCategoryName();
+                                        return cashCategory.getGroupedTransactions().getTransactions().entrySet()
+                                                .stream()
+                                                .map(entries -> {
+                                                    PaymentStatus paymentStatus = entries.getKey();
+                                                    List<TransactionDetails> transactionDetails = entries.getValue();
+                                                    return transactionDetails.stream()
+                                                            .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
+                                                            .findFirst()
+                                                            .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                                    transactionDetail.getCashChangeId(),
+                                                                    cashFlowMonthlyForecast.getPeriod(),
+                                                                    INFLOW,
+                                                                    new Transaction(transactionDetail, paymentStatus),
+                                                                    categoryName));
+                                                })
+                                                .filter(Optional::isPresent)
+                                                .map(Optional::get)
+                                                .findFirst();
+                                    })
+                                    .filter(Optional::isPresent)
+                                    .findFirst()
+                                    .orElse(Optional.empty());
 
-                                return transactionDetails.stream()
-                                        .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
-                                        .findFirst()
-                                        .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                                transactionDetail.getCashChangeId(),
-                                                cashFlowMonthlyForecast.getPeriod(),
-                                                INFLOW,
-                                                new Transaction(transactionDetail, paymentStatus)));
-
-                            })
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .findFirst();
-
-                    Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation = cashFlowMonthlyForecast.getCategorizedOutFlows().stream()
-                            .map(CashCategory::getGroupedTransactions)
-                            .map(GroupedTransactions::getTransactions)
-                            .flatMap(paymentStatusListMap -> paymentStatusListMap.entrySet().stream())
-                            .map(entries -> {
-                                PaymentStatus paymentStatus = entries.getKey();
-                                List<TransactionDetails> transactionDetails = entries.getValue();
-
-                                return transactionDetails.stream()
-                                        .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
-                                        .findFirst()
-                                        .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                                transactionDetail.getCashChangeId(),
-                                                cashFlowMonthlyForecast.getPeriod(),
-                                                Type.OUTFLOW,
-                                                new Transaction(transactionDetail, paymentStatus)));
-
-                            })
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .findFirst();
+                    Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation =
+                            cashFlowMonthlyForecast.getCategorizedOutFlows().stream()
+                                    .map(cashCategory -> {
+                                        CategoryName categoryName = cashCategory.getCategoryName();
+                                        return cashCategory.getGroupedTransactions().getTransactions().entrySet()
+                                                .stream()
+                                                .map(entries -> {
+                                                    PaymentStatus paymentStatus = entries.getKey();
+                                                    List<TransactionDetails> transactionDetails = entries.getValue();
+                                                    return transactionDetails.stream()
+                                                            .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
+                                                            .findFirst()
+                                                            .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                                    transactionDetail.getCashChangeId(),
+                                                                    cashFlowMonthlyForecast.getPeriod(),
+                                                                    OUTFLOW,
+                                                                    new Transaction(transactionDetail, paymentStatus),
+                                                                    categoryName));
+                                                })
+                                                .filter(Optional::isPresent)
+                                                .map(Optional::get)
+                                                .findFirst();
+                                    })
+                                    .filter(Optional::isPresent)
+                                    .findFirst()
+                                    .orElse(Optional.empty());
 
                     return inflowCashChangeLocation.or(() -> outflowCashChangeLocation);
                 })
@@ -93,13 +107,8 @@ public class CashFlowForecastStatement {
 
 
         if (INFLOW.equals(location.type())) {
-            CategoryName categoryName = cashFlowMonthlyForecastReadyToDecrease
-                    .findCashCategoryForCashChange(cashChangeId, cashFlowMonthlyForecastReadyToDecrease.getCategorizedInFlows())
-                    .map(CashCategory::getCategoryName)
-                    .orElseThrow();
-
-            cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(categoryName, transaction);
-            cashFlowMonthlyForecastToIncrease.addToInflows(categoryName, transaction);
+            cashFlowMonthlyForecastReadyToDecrease.removeFromInflows(location.categoryName(), transaction);
+            cashFlowMonthlyForecastToIncrease.addToInflows(location.categoryName(), transaction);
         } else {
             cashFlowMonthlyForecastReadyToDecrease.removeFromOutflows(transaction);
             cashFlowMonthlyForecastToIncrease.addToOutflows(transaction);
@@ -158,8 +167,7 @@ public class CashFlowForecastStatement {
                         Money.zero(currency),
                         (totalStart, cashFlowMonthlyForecast) -> {
 
-                            Money netChange = cashFlowMonthlyForecast.calcNetChange(); //tu zzle liczy
-//                            log.info("calculated net change: {}", netChange);
+                            Money netChange = cashFlowMonthlyForecast.calcNetChange();
 
                             CashFlowStats cashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
                             CashFlowStats updatedCashFlowStats = new CashFlowStats(
@@ -168,11 +176,8 @@ public class CashFlowForecastStatement {
                                     netChange,
                                     cashFlowStats.getInflowStats(),
                                     cashFlowStats.getOutflowStats());
-//                            log.info("Updated cash stats period: {} value: {}", cashFlowMonthlyForecast.getPeriod(), cashFlowStats);
-                            cashFlowMonthlyForecast.setCashFlowStats(
-                                    updatedCashFlowStats
-                            );
 
+                            cashFlowMonthlyForecast.setCashFlowStats(updatedCashFlowStats);
                             return totalStart.plus(netChange);
                         },
                         Money::plus);
