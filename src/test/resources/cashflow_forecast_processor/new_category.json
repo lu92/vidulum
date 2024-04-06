@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "7a8f37ed-adc9-4536-8846-675be9a84379"
+    "id" : "ef510cb6-3598-4e6f-bd7d-f98c5471e139"
   },
   "forecasts" : {
     "2021-06" : {
@@ -57,9 +57,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -68,19 +68,17 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
-            "EXPECTED" : [ ],
-            "FORECAST" : [ ],
             "PAID" : [ {
               "cashChangeId" : {
-                "id" : "db96cee0-4557-46de-9542-a8b8ebcab0ae"
+                "id" : "b937550e-6148-4cd3-be71-aaf76306660d"
               },
               "name" : {
                 "name" : "cash change name"
@@ -92,11 +90,32 @@
               "created" : "2021-06-01T06:30:00Z",
               "dueDate" : "2021-07-01T06:30:00Z",
               "endDate" : "2021-06-15T16:30:00Z"
-            } ]
+            } ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
           "amount" : 100.0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
           "currency" : "USD"
         }
       } ],
@@ -110,9 +129,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -177,9 +196,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -188,17 +207,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -216,9 +254,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -283,9 +321,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -294,17 +332,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -322,9 +379,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -389,9 +446,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -400,17 +457,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -428,9 +504,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -495,9 +571,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -506,17 +582,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -534,9 +629,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -601,9 +696,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -612,17 +707,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -640,9 +754,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -707,9 +821,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -718,17 +832,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -746,9 +879,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -813,9 +946,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -824,17 +957,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -852,9 +1004,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -919,9 +1071,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -930,17 +1082,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -958,9 +1129,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1025,9 +1196,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1036,17 +1207,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1064,9 +1254,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1131,9 +1321,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1142,17 +1332,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1170,9 +1379,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1237,9 +1446,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1248,17 +1457,36 @@
         }
       }, {
         "categoryName" : {
-          "name" : "Special"
+          "name" : "Special Category For Inflows"
         },
         "category" : {
-          "category" : "Special"
+          "category" : "Special Category For Inflows"
         },
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Special Category For Outflows"
+        },
+        "category" : {
+          "category" : "Special Category For Outflows"
+        },
+        "subCategories" : [ ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "PAID" : [ ],
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1276,9 +1504,9 @@
         "subCategories" : [ ],
         "groupedTransactions" : {
           "transactions" : {
+            "PAID" : [ ],
             "EXPECTED" : [ ],
-            "FORECAST" : [ ],
-            "PAID" : [ ]
+            "FORECAST" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1297,6 +1525,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "66fcc6d74b707ac22e4bd650f3e78805"
+    "checksum" : "e7f44503df12941131269dd19a2e72e6"
   }
 }

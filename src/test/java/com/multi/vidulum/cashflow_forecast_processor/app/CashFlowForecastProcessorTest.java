@@ -319,7 +319,16 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 new CashFlowEvent.CategoryCreatedEvent(
                         cashFlowId,
                         null,
-                        new CategoryName("Special"),
+                        new CategoryName("Special Category For Inflows"),
+                        INFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        null,
+                        new CategoryName("Special Category For Outflows"),
                         INFLOW
                 )
         );
@@ -333,7 +342,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         Money.of(100, "USD"),
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Special"),
+                        new CategoryName("Special Category For Inflows"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
