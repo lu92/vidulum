@@ -33,7 +33,7 @@ public class CashFlowForecastStatement {
         return forecasts.values().stream()
                 .map(cashFlowMonthlyForecast -> {
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation =
-                            cashFlowMonthlyForecast.getCategorizedInFlows().stream()
+                            flattenCategories(cashFlowMonthlyForecast.getCategorizedInFlows()).stream()
                                     .map(cashCategory -> {
                                         CategoryName categoryName = cashCategory.getCategoryName();
                                         return cashCategory.getGroupedTransactions().getTransactions().entrySet()

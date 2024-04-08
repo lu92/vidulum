@@ -468,6 +468,24 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Sales"),
+                        INFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        new CategoryName("Sales"),
+                        new CategoryName("Main product"),
+                        INFLOW
+                )
+        );
+
+        emit(
                 new CashFlowEvent.CashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
@@ -480,32 +498,34 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ));
 
-//        emit(
-//                new CashFlowEvent.CashChangeAppendedEvent(
-//                        cashFlowId,
-//                        secondCashChangeId,
-//                        new Name("cash change name outflow"),
-//                        new Description("cash change description"),
-//                        Money.of(70, "USD"),
-//                        OUTFLOW,
-//                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-//                        new CategoryName("Special Category For Outflows"),
-//                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-//                ));
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        new Name("Main product purchase"),
+                        new Description("Main product purchase description"),
+                        Money.of(79, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Main product"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
 
-        Checksum lastEventChecksum = emit(
+        emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 
-//        Checksum lastEventChecksum = emit(
-//                new CashFlowEvent.CashChangeConfirmedEvent(
-//                        cashFlowId,
-//                        secondCashChangeId,
-//                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
-//                ));
+
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
 
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));

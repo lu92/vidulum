@@ -1,6 +1,6 @@
 {
   "cashFlowId" : {
-    "id" : "a2aaa1ca-7240-4d43-8ef8-72bf282277cb"
+    "id" : "f3da6f8f-e2e0-4f11-8916-37e140ec979f"
   },
   "forecasts" : {
     "2021-06" : {
@@ -20,11 +20,11 @@
         },
         "inflowStats" : {
           "actual" : {
-            "amount" : 0,
+            "amount" : 79.0,
             "currency" : "USD"
           },
           "expected" : {
-            "amount" : 0,
+            "amount" : 0.0,
             "currency" : "USD"
           },
           "gapToForecast" : {
@@ -58,8 +58,60 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ {
+                "cashChangeId" : {
+                  "id" : "2e5cadf3-df66-4ff5-9477-4e37dd4d2624"
+                },
+                "name" : {
+                  "name" : "Main product purchase"
+                },
+                "money" : {
+                  "amount" : 79.0,
+                  "currency" : "USD"
+                },
+                "created" : "2021-06-01T06:30:00Z",
+                "dueDate" : "2021-07-01T06:30:00Z",
+                "endDate" : "2021-06-15T16:30:00Z"
+              } ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 79.0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -78,8 +130,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -104,9 +156,10 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
+              "FORECAST" : [ ],
               "PAID" : [ {
                 "cashChangeId" : {
-                  "id" : "ee241ee9-7dfb-4e3b-8515-69c242f3050f"
+                  "id" : "95092907-81a7-4d0a-bf67-0615bfa0c2dd"
                 },
                 "name" : {
                   "name" : "Morgan Stanley fee"
@@ -118,8 +171,7 @@
                 "created" : "2021-06-01T06:30:00Z",
                 "dueDate" : "2021-07-01T06:30:00Z",
                 "endDate" : "2021-06-15T16:30:00Z"
-              } ],
-              "FORECAST" : [ ]
+              } ]
             }
           },
           "totalPaidValue" : {
@@ -130,8 +182,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -197,8 +249,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -217,8 +307,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -243,8 +333,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -255,8 +345,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -322,8 +412,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -342,8 +470,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -368,8 +496,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -380,8 +508,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -447,8 +575,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -467,8 +633,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -493,8 +659,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -505,8 +671,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -572,8 +738,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -592,8 +796,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -618,8 +822,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -630,8 +834,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -697,8 +901,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -717,8 +959,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -743,8 +985,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -755,8 +997,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -822,8 +1064,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -842,8 +1122,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -868,8 +1148,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -880,8 +1160,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -947,8 +1227,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -967,8 +1285,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -993,8 +1311,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -1005,8 +1323,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1072,8 +1390,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1092,8 +1448,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1118,8 +1474,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -1130,8 +1486,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1197,8 +1553,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1217,8 +1611,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1243,8 +1637,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -1255,8 +1649,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1322,8 +1716,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1342,8 +1774,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1368,8 +1800,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -1380,8 +1812,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1447,8 +1879,46 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
+          }
+        },
+        "totalPaidValue" : {
+          "amount" : 0,
+          "currency" : "USD"
+        }
+      }, {
+        "categoryName" : {
+          "name" : "Sales"
+        },
+        "category" : {
+          "category" : "Sales"
+        },
+        "subCategories" : [ {
+          "categoryName" : {
+            "name" : "Main product"
+          },
+          "category" : {
+            "category" : "Main product"
+          },
+          "subCategories" : [ ],
+          "groupedTransactions" : {
+            "transactions" : {
+              "EXPECTED" : [ ],
+              "FORECAST" : [ ],
+              "PAID" : [ ]
+            }
+          },
+          "totalPaidValue" : {
+            "amount" : 0,
+            "currency" : "USD"
+          }
+        } ],
+        "groupedTransactions" : {
+          "transactions" : {
+            "EXPECTED" : [ ],
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1467,8 +1937,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1493,8 +1963,8 @@
           "groupedTransactions" : {
             "transactions" : {
               "EXPECTED" : [ ],
-              "PAID" : [ ],
-              "FORECAST" : [ ]
+              "FORECAST" : [ ],
+              "PAID" : [ ]
             }
           },
           "totalPaidValue" : {
@@ -1505,8 +1975,8 @@
         "groupedTransactions" : {
           "transactions" : {
             "EXPECTED" : [ ],
-            "PAID" : [ ],
-            "FORECAST" : [ ]
+            "FORECAST" : [ ],
+            "PAID" : [ ]
           }
         },
         "totalPaidValue" : {
@@ -1525,6 +1995,6 @@
     }
   },
   "lastMessageChecksum" : {
-    "checksum" : "3bd6bf0756e428d11af97bc05ccfe7da"
+    "checksum" : "edb6accd98012f6d832bc9c4b62a8e27"
   }
 }
