@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
+import java.util.List;
 
 @Component
 @AllArgsConstructor
@@ -32,21 +33,8 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
                     .totalPaidValue(Money.zero(statement.getBankAccountNumber().denomination().getId()))
                     .build();
 
-            if (event.parentCategoryName().isDefined()) {
-                if (Type.INFLOW.equals(event.type())) {
-                    CashCategory parentCashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.parentCategoryName()).orElseThrow();
-                    parentCashCategory.getSubCategories().add(newCashCategory);
-                } else {
-                    CashCategory parentCashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.parentCategoryName()).orElseThrow();
-                    parentCashCategory.getSubCategories().add(newCashCategory);
-                }
-            } else {
-                if (Type.INFLOW.equals(event.type())) {
-                    cashFlowMonthlyForecast.getCategorizedInFlows().add(newCashCategory);
-                } else {
-                    cashFlowMonthlyForecast.getCategorizedOutFlows().add(newCashCategory);
-                }
-            }
+            List<CashCategory> properCategories = findProperCategories(event, cashFlowMonthlyForecast);
+            properCategories.add(newCashCategory);
         });
 
         statement.updateStats();
@@ -54,5 +42,18 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
+    }
+
+    private List<CashCategory> findProperCategories(CashFlowEvent.CategoryCreatedEvent event, CashFlowMonthlyForecast cashFlowMonthlyForecast) {
+        if (event.parentCategoryName().isDefined()) {
+            CashCategory parentCashCategory = Type.INFLOW.equals(event.type()) ?
+                    cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.parentCategoryName()).orElseThrow() :
+                    cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.parentCategoryName()).orElseThrow();
+            return parentCashCategory.getSubCategories();
+        } else {
+            return Type.INFLOW.equals(event.type()) ?
+                    cashFlowMonthlyForecast.getCategorizedInFlows() :
+                    cashFlowMonthlyForecast.getCategorizedOutFlows();
+        }
     }
 }
