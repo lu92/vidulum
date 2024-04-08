@@ -227,7 +227,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CategoryCreatedEvent(
                         cashFlowId,
-                        null,
+                        CategoryName.NOT_DEFINED,
                         new CategoryName("Special category"),
                         INFLOW)
         );
@@ -235,7 +235,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CategoryCreatedEvent(
                         cashFlowId,
-                        null,
+                        CategoryName.NOT_DEFINED,
                         new CategoryName("Overhead costs"),
                         OUTFLOW)
         );
@@ -361,7 +361,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CategoryCreatedEvent(
                         cashFlowId,
-                        null,
+                        CategoryName.NOT_DEFINED,
                         new CategoryName("Special Category For Inflows"),
                         INFLOW
                 )
@@ -370,7 +370,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CategoryCreatedEvent(
                         cashFlowId,
-                        null,
+                        CategoryName.NOT_DEFINED,
                         new CategoryName("Special Category For Outflows"),
                         OUTFLOW
                 )
@@ -429,6 +429,96 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .to(CashFlowForecastStatement.class));
     }
 
+    @Test
+    public void shouldAppendCashChangeToSubCategory() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId firstCashChangeId = CashChangeId.generate();
+        CashChangeId secondCashChangeId = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Overhead costs"),
+                        OUTFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        new CategoryName("Overhead costs"),
+                        new CategoryName("Bank fees"),
+                        OUTFLOW
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        new Name("Morgan Stanley fee"),
+                        new Description("Morgan Stanley fee"),
+                        Money.of(50, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Bank fees"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+//        emit(
+//                new CashFlowEvent.CashChangeAppendedEvent(
+//                        cashFlowId,
+//                        secondCashChangeId,
+//                        new Name("cash change name outflow"),
+//                        new Description("cash change description"),
+//                        Money.of(70, "USD"),
+//                        OUTFLOW,
+//                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+//                        new CategoryName("Special Category For Outflows"),
+//                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+//                ));
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        firstCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
+
+//        Checksum lastEventChecksum = emit(
+//                new CashFlowEvent.CashChangeConfirmedEvent(
+//                        cashFlowId,
+//                        secondCashChangeId,
+//                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+//                ));
+
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .usingRecursiveComparison()
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
+                .isEqualTo(
+                        ContentReader.load("cashflow_forecast_processor/append-cash-change-to-subcategory.json")
+                                .to(CashFlowForecastStatement.class));
+    }
 
     private Checksum emit(CashFlowEvent cashFlowEvent) {
         cashFlowEventEmitter.emit(

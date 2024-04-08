@@ -13,10 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.YearMonth;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
@@ -63,7 +60,7 @@ public class CashFlowForecastStatement {
                                     .orElse(Optional.empty());
 
                     Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation =
-                            cashFlowMonthlyForecast.getCategorizedOutFlows().stream()
+                            flattenCategories(cashFlowMonthlyForecast.getCategorizedOutFlows()).stream()
                                     .map(cashCategory -> {
                                         CategoryName categoryName = cashCategory.getCategoryName();
                                         return cashCategory.getGroupedTransactions().getTransactions().entrySet()
@@ -94,6 +91,18 @@ public class CashFlowForecastStatement {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+    private List<CashCategory> flattenCategories(List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        List<CashCategory> outcome = new LinkedList<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            outcome.add(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return outcome;
     }
 
     public void move(CashChangeId cashChangeId, YearMonth fromPeriod, YearMonth toPeriod) {
