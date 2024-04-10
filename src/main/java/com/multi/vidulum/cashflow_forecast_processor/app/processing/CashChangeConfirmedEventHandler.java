@@ -46,6 +46,7 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                 cashFlowMonthlyForecast.removeFromOutflows(location.categoryName(), currentTransaction);
                 cashFlowMonthlyForecast.addToOutflows(location.categoryName(), updatedTransaction);
             }
+            cashFlowMonthlyForecast.updateTotalPaidValue();
             return cashFlowMonthlyForecast;
         });
 
@@ -55,6 +56,4 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
     }
-
-
 }

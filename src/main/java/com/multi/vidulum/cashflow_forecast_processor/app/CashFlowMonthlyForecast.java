@@ -11,6 +11,7 @@ import lombok.Data;
 
 import java.time.YearMonth;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
@@ -69,27 +70,6 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
                         )
                 );
-
-        if (transaction.isPaid()) {
-
-            // policzyc totalPaid dla wszystkich subcategorii w dol w dol
-
-            Money alreadyPaid = cashCategory.getSubCategories().stream()
-                    .map(CashCategory::getTotalPaidValue)
-                    .reduce(Money.zero("USD"), Money::plus);
-//            alreadyPaid
-
-
-            Money updatedTotalValue = flattenCategories(List.of(cashCategory)).stream()
-                    .map(CashCategory::getGroupedTransactions)
-                    .map(x -> x.get(PAID))
-                    .flatMap(Collection::stream)
-                    .map(TransactionDetails::getMoney)
-                    .reduce(Money.zero(transaction.transactionDetails().getMoney().getCurrency()), Money::plus);
-//                    .plus(transaction.transactionDetails().getMoney());
-
-            cashCategory.setTotalPaidValue(updatedTotalValue);
-        }
     }
 
     public void removeFromInflows(Transaction transaction) {
@@ -290,6 +270,31 @@ public class CashFlowMonthlyForecast {
             takenCashCategory.getSubCategories().forEach(stack::push);
         }
         return outcome;
+    }
+
+    public void updateTotalPaidValue() {
+        Consumer<CashCategory> updateTotalPaid = cashCategory -> {
+            Money totalPaidValue = flattenCategories(List.of(cashCategory)).stream()
+                    .map(CashCategory::getGroupedTransactions)
+                    .map(x -> x.get(PAID))
+                    .flatMap(Collection::stream)
+                    .map(TransactionDetails::getMoney)
+                    .reduce(Money.zero("USD"), Money::plus);
+            cashCategory.setTotalPaidValue(totalPaidValue);
+        };
+
+        visit(categorizedInFlows, updateTotalPaid);
+        visit(categorizedOutFlows, updateTotalPaid);
+    }
+
+    private void visit(List<CashCategory> cashCategories, Consumer<CashCategory> action) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            action.accept(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
