@@ -434,6 +434,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashChangeId thirdCashChangeId = CashChangeId.generate();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -512,6 +513,19 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
+                new CashFlowEvent.CashChangeAppendedEvent(
+                        cashFlowId,
+                        thirdCashChangeId,
+                        new Name("Sales purchase"),
+                        new Description("Main product purchase description"),
+                        Money.of(10, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Sales"),
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ));
+
+        emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
@@ -519,11 +533,17 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
 
+        emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        secondCashChangeId,
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
+                ));
 
         Checksum lastEventChecksum = emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
-                        secondCashChangeId,
+                        thirdCashChangeId,
                         ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 
