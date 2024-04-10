@@ -10,10 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.YearMonth;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Stack;
+import java.util.*;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
@@ -74,9 +71,23 @@ public class CashFlowMonthlyForecast {
                 );
 
         if (transaction.isPaid()) {
-            Money updatedTotalValue = cashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
+
+            // policzyc totalPaid dla wszystkich subcategorii w dol w dol
+
+            Money alreadyPaid = cashCategory.getSubCategories().stream()
+                    .map(CashCategory::getTotalPaidValue)
+                    .reduce(Money.zero("USD"), Money::plus);
+//            alreadyPaid
+
+
+            Money updatedTotalValue = flattenCategories(List.of(cashCategory)).stream()
+                    .map(CashCategory::getGroupedTransactions)
+                    .map(x -> x.get(PAID))
+                    .flatMap(Collection::stream)
+                    .map(TransactionDetails::getMoney)
+                    .reduce(Money.zero(transaction.transactionDetails().getMoney().getCurrency()), Money::plus);
+//                    .plus(transaction.transactionDetails().getMoney());
+
             cashCategory.setTotalPaidValue(updatedTotalValue);
         }
     }
@@ -267,6 +278,18 @@ public class CashFlowMonthlyForecast {
             takenCashCategory.getSubCategories().forEach(stack::push);
         }
         return Optional.empty();
+    }
+
+    private List<CashCategory> flattenCategories(List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        List<CashCategory> outcome = new LinkedList<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            outcome.add(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return outcome;
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
