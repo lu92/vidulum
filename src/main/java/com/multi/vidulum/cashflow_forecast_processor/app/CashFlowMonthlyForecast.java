@@ -82,13 +82,6 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
                         )
                 );
-
-        if (transaction.isPaid()) {
-            Money updatedTotalValue = pickedCashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
-            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
-        }
     }
 
     public void removeFromOutflows(CategoryName categoryName, Transaction transaction) {
