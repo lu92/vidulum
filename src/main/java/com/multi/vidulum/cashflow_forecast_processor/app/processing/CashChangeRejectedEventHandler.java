@@ -29,9 +29,9 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
             assert cashFlowMonthlyForecast != null;
 
             if (Type.INFLOW.equals(location.type())) {
-                cashFlowMonthlyForecast.removeFromInflows(location.transaction());
+                cashFlowMonthlyForecast.removeFromInflows(location.categoryName(), location.transaction());
             } else {
-                cashFlowMonthlyForecast.removeFromOutflows(location.transaction());
+                cashFlowMonthlyForecast.removeFromOutflows(location.categoryName(), location.transaction());
             }
 
             return cashFlowMonthlyForecast;
