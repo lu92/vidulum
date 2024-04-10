@@ -10,10 +10,8 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.YearMonth;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Stack;
+import java.util.*;
+import java.util.function.Consumer;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
@@ -27,32 +25,6 @@ public class CashFlowMonthlyForecast {
     private List<CashCategory> categorizedOutFlows;
     private Status status;
     private Attestation attestation;
-
-    public void addToInflows(Transaction transaction) {
-        // in future there will be more inflowCategories, now only operating on first element
-        CashCategory pickedCashCategory = categorizedInFlows.get(0);
-
-        pickedCashCategory
-                .getGroupedTransactions()
-                .addTransaction(transaction);
-
-        CashSummary inflowStats = cashFlowStats.getInflowStats();
-        cashFlowStats
-                .setInflowStats(
-                        new CashSummary(
-                                PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
-                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
-                                FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
-                        )
-                );
-
-        if (transaction.isPaid()) {
-            Money updatedTotalValue = pickedCashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
-            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
-        }
-    }
 
     public void addToInflows(CategoryName categoryName, Transaction transaction) {
         // in future there will be more inflowCategories, now only operating on first element
@@ -70,30 +42,6 @@ public class CashFlowMonthlyForecast {
                                 PAID.equals(transaction.paymentStatus()) ? inflowStats.actual().plus(transaction.transactionDetails().getMoney()) : inflowStats.actual(),
                                 EXPECTED.equals(transaction.paymentStatus()) ? inflowStats.expected().plus(transaction.transactionDetails().getMoney()) : inflowStats.expected(),
                                 FORECAST.equals(transaction.paymentStatus()) ? inflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : inflowStats.gapToForecast()
-                        )
-                );
-
-        if (transaction.isPaid()) {
-            Money updatedTotalValue = cashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
-            cashCategory.setTotalPaidValue(updatedTotalValue);
-        }
-    }
-
-    public void removeFromInflows(Transaction transaction) {
-        categorizedInFlows
-                .get(0)
-                .getGroupedTransactions()
-                .removeTransaction(transaction);
-
-        CashSummary inflowStatsToDecrease = cashFlowStats.getInflowStats();
-        cashFlowStats
-                .setInflowStats(
-                        new CashSummary(
-                                PAID.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.actual(),
-                                EXPECTED.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.expected(),
-                                FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
                         )
                 );
     }
@@ -116,32 +64,6 @@ public class CashFlowMonthlyForecast {
                 );
     }
 
-    public void addToOutflows(Transaction transaction) {
-        // in future there will be more inflowCategories, now only operating on first element
-        CashCategory pickedCashCategory = categorizedOutFlows.get(0);
-
-        pickedCashCategory
-                .getGroupedTransactions()
-                .addTransaction(transaction);
-
-        CashSummary outflowStats = cashFlowStats.getOutflowStats();
-        cashFlowStats
-                .setOutflowStats(
-                        new CashSummary(
-                                PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().plus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
-                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().plus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
-                                FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
-                        )
-                );
-
-        if (transaction.isPaid()) {
-            Money updatedTotalValue = pickedCashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
-            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
-        }
-    }
-
     public void addToOutflows(CategoryName categoryName, Transaction transaction) {
         // in future there will be more inflowCategories, now only operating on first element
         CashCategory pickedCashCategory = findCategoryOutflowsByCategoryName(categoryName).orElseThrow();
@@ -158,30 +80,6 @@ public class CashFlowMonthlyForecast {
                                 PAID.equals(transaction.paymentStatus()) ? outflowStats.actual().plus(transaction.transactionDetails().getMoney()) : outflowStats.actual(),
                                 EXPECTED.equals(transaction.paymentStatus()) ? outflowStats.expected().plus(transaction.transactionDetails().getMoney()) : outflowStats.expected(),
                                 FORECAST.equals(transaction.paymentStatus()) ? outflowStats.gapToForecast().plus(transaction.transactionDetails().getMoney()) : outflowStats.gapToForecast()
-                        )
-                );
-
-        if (transaction.isPaid()) {
-            Money updatedTotalValue = pickedCashCategory
-                    .getTotalPaidValue()
-                    .plus(transaction.transactionDetails().getMoney());
-            pickedCashCategory.setTotalPaidValue(updatedTotalValue);
-        }
-    }
-
-    public void removeFromOutflows(Transaction transaction) {
-        categorizedOutFlows
-                .get(0)
-                .getGroupedTransactions()
-                .removeTransaction(transaction);
-
-        CashSummary outflowStatsToDecrease = cashFlowStats.getOutflowStats();
-        cashFlowStats
-                .setOutflowStats(
-                        new CashSummary(
-                                PAID.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.actual().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.actual(),
-                                EXPECTED.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.expected().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.expected(),
-                                FORECAST.equals(transaction.paymentStatus()) ? outflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : outflowStatsToDecrease.gapToForecast()
                         )
                 );
     }
@@ -267,6 +165,43 @@ public class CashFlowMonthlyForecast {
             takenCashCategory.getSubCategories().forEach(stack::push);
         }
         return Optional.empty();
+    }
+
+    private List<CashCategory> flattenCategories(List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        List<CashCategory> outcome = new LinkedList<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            outcome.add(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return outcome;
+    }
+
+    public void updateTotalPaidValue() {
+        Consumer<CashCategory> updateTotalPaid = cashCategory -> {
+            Money totalPaidValue = flattenCategories(List.of(cashCategory)).stream()
+                    .map(CashCategory::getGroupedTransactions)
+                    .map(x -> x.get(PAID))
+                    .flatMap(Collection::stream)
+                    .map(TransactionDetails::getMoney)
+                    .reduce(Money.zero("USD"), Money::plus);
+            cashCategory.setTotalPaidValue(totalPaidValue);
+        };
+
+        visit(categorizedInFlows, updateTotalPaid);
+        visit(categorizedOutFlows, updateTotalPaid);
+    }
+
+    private void visit(List<CashCategory> cashCategories, Consumer<CashCategory> action) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            action.accept(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
     }
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
