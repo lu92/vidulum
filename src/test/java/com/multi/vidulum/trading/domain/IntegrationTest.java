@@ -73,7 +73,7 @@ public abstract class IntegrationTest {
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("kafka.bootstrapAddress", () -> kafka.getBootstrapServers());
+        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
     }
 
     @Autowired
