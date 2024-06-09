@@ -8,26 +8,17 @@ import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
 import com.multi.vidulum.trading.infrastructure.TradeEntity;
 import com.multi.vidulum.user.infrastructure.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 import java.time.Clock;
 import java.util.List;
 
 @SpringBootApplication
-@EnableMongoRepositories(basePackages = "com.multi.vidulum")
 public class VidulumApplication implements CommandLineRunner {
-
-    @Value( "${spring.data.mongodb.uri}" )
-    private String dbUrl;
-
-    @Value( "${mongodb.port}" )
-    private String dbPort;
 
     @Autowired
     private MongoTemplate mongoTemplate;
