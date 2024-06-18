@@ -10,7 +10,7 @@ spring:
   data:
     mongodb:
       database: testDB
-      host: enggadda
+      host: mongodb
       port: 27017
   kafka:
     bootstrap-servers: kafka:9092
