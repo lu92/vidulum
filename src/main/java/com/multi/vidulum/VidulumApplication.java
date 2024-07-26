@@ -1,6 +1,8 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.security.User;
+import com.multi.vidulum.security.token.Token;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -51,5 +53,7 @@ public class VidulumApplication implements CommandLineRunner {
         mongoTemplate.dropCollection(PortfolioEntity.class);
         mongoTemplate.dropCollection(UserEntity.class);
         mongoTemplate.dropCollection(TradeEntity.class);
+        mongoTemplate.dropCollection(User.class);
+        mongoTemplate.dropCollection(Token.class);
     }
 }
