@@ -17,8 +17,8 @@ services:
     ports:
       - "9092:9092"
     environment:
-#      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
-      KAFKA_ADVERTISED_HOST_NAME: kafka
+#      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1 # in case of local deployment
+      KAFKA_ADVERTISED_HOST_NAME: kafka # in case of container's mode deployment
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
     depends_on:
@@ -34,41 +34,6 @@ services:
     depends_on:
       - kafka
 
-  postgres:
-    image: postgres:15.6
-    container_name: postgres_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: password
-
-  keycloak_web:
-    image: quay.io/keycloak/keycloak:24.0.3
-    container_name: keycloak_web
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: password
-
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-
-      KC_LOG_LEVEL: info
-      KC_METRICS_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev
-    depends_on:
-      - postgres
-    ports:
-      - 8080:8080
-
-
   vidulum:
     image: vidulum:latest
     container_name: "vidulum-app"
@@ -80,7 +45,3 @@ services:
     depends_on:
       - kafka
       - kafdrop
-      - keycloak_web
-      - postgres
-volumes:
-  postgres_data:

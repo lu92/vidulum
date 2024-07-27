@@ -1,6 +1,9 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
+import com.multi.vidulum.security.token.Token;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -17,8 +20,11 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import java.time.Clock;
 import java.util.List;
 
+import static com.multi.vidulum.security.Role.ADMIN;
+import static com.multi.vidulum.security.Role.MANAGER;
+
 @SpringBootApplication
-public class VidulumApplication implements CommandLineRunner {
+public class VidulumApplication {
 
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -46,10 +52,35 @@ public class VidulumApplication implements CommandLineRunner {
         SpringApplication.run(VidulumApplication.class, args);
     }
 
-    @Override
-    public void run(String... args) {
+    @Bean
+    public CommandLineRunner commandLineRunner(
+            AuthenticationService service
+    ) {
+        clearData();
+        return args -> {
+            var admin = RegisterRequest.builder()
+                    .username("Admin")
+                    .email("admin@mail.com")
+                    .password("password")
+                    .role(ADMIN)
+                    .build();
+            System.out.println("Admin token: " + service.register(admin).getAccessToken());
+
+            var manager = RegisterRequest.builder()
+                    .username("Manager")
+                    .email("manager@mail.com")
+                    .password("password")
+                    .role(MANAGER)
+                    .build();
+            System.out.println("Manager token: " + service.register(manager).getAccessToken());
+        };
+    }
+
+    private void clearData() {
         mongoTemplate.dropCollection(PortfolioEntity.class);
         mongoTemplate.dropCollection(UserEntity.class);
         mongoTemplate.dropCollection(TradeEntity.class);
+        mongoTemplate.dropCollection(UserEntity.class);
+        mongoTemplate.dropCollection(Token.class);
     }
 }
