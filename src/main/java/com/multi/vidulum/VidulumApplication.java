@@ -1,7 +1,6 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
-import com.multi.vidulum.security.User;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.security.token.Token;
@@ -81,7 +80,7 @@ public class VidulumApplication {
         mongoTemplate.dropCollection(PortfolioEntity.class);
         mongoTemplate.dropCollection(UserEntity.class);
         mongoTemplate.dropCollection(TradeEntity.class);
-        mongoTemplate.dropCollection(User.class);
+        mongoTemplate.dropCollection(UserEntity.class);
         mongoTemplate.dropCollection(Token.class);
     }
 }

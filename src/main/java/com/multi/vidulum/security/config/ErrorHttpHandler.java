@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 public class ErrorHttpHandler {
 
-
     @ExceptionHandler
     public ProblemDetail handle(Exception ex) {
         log.error("error occurred", ex);
