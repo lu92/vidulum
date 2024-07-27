@@ -10,12 +10,12 @@ spring:
   data:
     mongodb:
       database: testDB
-#      host: mongodb
-      host: localhost
+      host: mongodb
+#      host: localhost
       port: 27017
   kafka:
-#    bootstrap-servers: kafka:9092
-    bootstrap-servers: 127.0.0.1:9092
+    bootstrap-servers: kafka:9092
+#    bootstrap-servers: 127.0.0.1:9092
     consumer:
       group-id: group-id
       auto-offset-reset: manual

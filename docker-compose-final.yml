@@ -17,8 +17,8 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1 # in case of local deployment
-#      KAFKA_ADVERTISED_HOST_NAME: kafka # in case of container's mode deployment
+#      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1 # in case of local deployment
+      KAFKA_ADVERTISED_HOST_NAME: kafka # in case of container's mode deployment
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
     depends_on:
@@ -34,14 +34,14 @@ services:
     depends_on:
       - kafka
 
-#  vidulum:
-#    image: vidulum:latest
-#    container_name: "vidulum-app"
-#    ports:
-#      - 9090:8080
-#    links:
-#      - kafka
-#      - mongodb
-#    depends_on:
-#      - kafka
-#      - kafdrop
+  vidulum:
+    image: vidulum:latest
+    container_name: "vidulum-app"
+    ports:
+      - 9090:8080
+    links:
+      - kafka
+      - mongodb
+    depends_on:
+      - kafka
+      - kafdrop
