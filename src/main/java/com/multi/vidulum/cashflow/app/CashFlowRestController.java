@@ -22,7 +22,8 @@ import java.time.ZonedDateTime;
 import static java.util.Optional.ofNullable;
 
 @AllArgsConstructor
-@RestController("/cash-flow")
+@RestController
+@RequestMapping("/cash-flow")
 public class CashFlowRestController {
 
     private final CommandGateway commandGateway;
