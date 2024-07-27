@@ -4,14 +4,17 @@ import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.security.config.JwtService;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.user.app.commands.activate.ActivateUserCommand;
 import com.multi.vidulum.user.app.commands.create.CreateUserCommand;
 import com.multi.vidulum.user.app.commands.portfolio.register.RegisterPortfolioCommand;
+import com.multi.vidulum.user.app.queries.GetUserByEmailQuery;
 import com.multi.vidulum.user.app.queries.GetUserQuery;
 import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.stream.Collectors;
@@ -22,6 +25,7 @@ public class UserRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final JwtService jwtService;
 
     @PostMapping("/user")
     public UserDto.UserSummaryJson createUser(@RequestBody UserDto.CreateUserJson request) {
@@ -39,6 +43,19 @@ public class UserRestController {
     @GetMapping("/user/{userId}")
     public UserDto.UserSummaryJson getUser(@PathVariable("userId") String userId) {
         GetUserQuery query = GetUserQuery.builder().userId(UserId.of(userId)).build();
+        User user = queryGateway.send(query);
+        return mapUserToSummary(user);
+    }
+
+    @GetMapping("/user")
+    public UserDto.UserSummaryJson getUserByJwtToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Missing authorization header");
+        }
+        String jwt = authHeader.substring(7);
+        String email = jwtService.extractEmail(jwt);
+
+        GetUserByEmailQuery query = GetUserByEmailQuery.builder().email(email).build();
         User user = queryGateway.send(query);
         return mapUserToSummary(user);
     }
