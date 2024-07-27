@@ -45,5 +45,3 @@ services:
 #    depends_on:
 #      - kafka
 #      - kafdrop
-#      - keycloak_web
-#      - postgres

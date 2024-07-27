@@ -96,13 +96,11 @@ public class AuthenticationService {
             HttpServletResponse response
     ) throws IOException {
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        final String refreshToken;
-        final String userEmail;
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return;
         }
-        refreshToken = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(refreshToken);
+        String refreshToken = authHeader.substring(7);
+        String userEmail = jwtService.extractUsername(refreshToken);
         if (userEmail != null) {
             var user = this.repository.findByEmail(userEmail)
                     .orElseThrow();
