@@ -2,6 +2,7 @@ package com.multi.vidulum.user.infrastructure;
 
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioId;
+import com.multi.vidulum.security.Role;
 import com.multi.vidulum.user.domain.UserSnapshot;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class UserEntity {
     private String password;
     private String email;
     private boolean isActive;
+    private Role role;
     private List<String> portfolios;
 
 
@@ -41,6 +43,7 @@ public class UserEntity {
                 .username(snapshot.getUsername())
                 .password(snapshot.getPassword())
                 .email(snapshot.getEmail())
+                .role(snapshot.getRole())
                 .isActive(snapshot.isActive())
                 .portfolios(portfolios)
                 .build();
@@ -50,6 +53,6 @@ public class UserEntity {
         List<PortfolioId> portfolioIds = portfolios.stream()
                 .map(PortfolioId::of)
                 .collect(Collectors.toList());
-        return new UserSnapshot(UserId.of(id), username, password, email, isActive, portfolioIds);
+        return new UserSnapshot(UserId.of(id), username, password, email, role, isActive, portfolioIds);
     }
 }

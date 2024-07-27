@@ -60,8 +60,7 @@ public class VidulumApplication {
         clearData();
         return args -> {
             var admin = RegisterRequest.builder()
-                    .firstname("Admin")
-                    .lastname("Admin")
+                    .username("Admin")
                     .email("admin@mail.com")
                     .password("password")
                     .role(ADMIN)
@@ -69,8 +68,7 @@ public class VidulumApplication {
             System.out.println("Admin token: " + service.register(admin).getAccessToken());
 
             var manager = RegisterRequest.builder()
-                    .firstname("Manager")
-                    .lastname("Manager")
+                    .username("Manager")
                     .email("manager@mail.com")
                     .password("password")
                     .role(MANAGER)
