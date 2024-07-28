@@ -26,7 +26,7 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username).map(this::toUserDetails)
+        return username -> userRepository.findByUsername(username).map(this::toUserDetails)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
@@ -63,7 +63,7 @@ public class ApplicationConfig {
 
             @Override
             public String getUsername() {
-                return user.getEmail();
+                return user.getUsername();
             }
 
             @Override

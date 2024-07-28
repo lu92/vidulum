@@ -30,13 +30,13 @@ public class DomainUserRepositoryImpl implements DomainUserRepository {
     }
 
     @Override
-    public boolean existsByEmail(String email) {
-        return userMongoRepository.existsByEmail(email);
+    public boolean existsByUsername(String username) {
+        return userMongoRepository.existsByUsername(username);
     }
 
     @Override
-    public Optional<User> findByEmail(String email) {
-        return userMongoRepository.findByEmail(email)
+    public Optional<User> findByUsername(String username) {
+        return userMongoRepository.findByUsername(username)
                 .map(UserEntity::toSnapshot)
                 .map(User::from);
     }

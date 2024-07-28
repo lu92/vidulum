@@ -9,13 +9,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 @AllArgsConstructor
-public class GetUserByEmailQueryHandler implements QueryHandler<GetUserByEmailQuery, User> {
+public class GetUserByUsernameQueryHandler implements QueryHandler<GetUserByUsernameQuery, User> {
 
     private final DomainUserRepository repository;
 
     @Override
-    public User query(GetUserByEmailQuery query) {
-        return repository.findByEmail(query.getEmail())
-                .orElseThrow(() -> new UserNotFoundException(query.getEmail()));
+    public User query(GetUserByUsernameQuery query) {
+        return repository.findByUsername(query.getUsername())
+                .orElseThrow(() -> new UserNotFoundException(query.getUsername()));
     }
 }
