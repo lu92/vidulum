@@ -6,8 +6,8 @@ import com.multi.vidulum.shared.ddd.DomainRepository;
 import java.util.Optional;
 
 public interface DomainUserRepository extends DomainRepository<UserId, User> {
-    boolean existsByEmail(String email);
+    boolean existsByUsername(String username);
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByUsername(String username);
 
 }

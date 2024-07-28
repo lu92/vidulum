@@ -30,7 +30,7 @@ public class AuthenticationService {
 
     public AuthenticationResponse register(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByUsername(request.getEmail())) {
             throw new IllegalArgumentException("Used email is already taken");
         }
 
@@ -56,11 +56,11 @@ public class AuthenticationService {
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        request.getUsername(),
                         request.getPassword()
                 )
         );
-        var user = userRepository.findByEmail(request.getEmail())
+        var user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow();
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
@@ -103,12 +103,12 @@ public class AuthenticationService {
             return;
         }
         String refreshToken = authHeader.substring(7);
-        String userEmail = jwtService.extractEmail(refreshToken);
-        if (userEmail != null) {
-            var user = this.userRepository.findByEmail(userEmail)
+        String username = jwtService.extractUsername(refreshToken);
+        if (username != null) {
+            var user = this.userRepository.findByUsername(username)
                     .orElseThrow();
 
-            if (jwtService.isTokenValid(refreshToken, user.getEmail())) {
+            if (jwtService.isTokenValid(refreshToken, user.getUsername())) {
                 var accessToken = jwtService.generateToken(user);
                 revokeAllUserTokens(user);
                 saveUserToken(user, accessToken);

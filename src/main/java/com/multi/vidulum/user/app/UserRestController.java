@@ -10,7 +10,7 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.user.app.commands.activate.ActivateUserCommand;
 import com.multi.vidulum.user.app.commands.create.CreateUserCommand;
 import com.multi.vidulum.user.app.commands.portfolio.register.RegisterPortfolioCommand;
-import com.multi.vidulum.user.app.queries.GetUserByEmailQuery;
+import com.multi.vidulum.user.app.queries.GetUserByUsernameQuery;
 import com.multi.vidulum.user.app.queries.GetUserQuery;
 import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;
@@ -53,9 +53,9 @@ public class UserRestController {
             throw new IllegalArgumentException("Missing authorization header");
         }
         String jwt = authHeader.substring(7);
-        String email = jwtService.extractEmail(jwt);
+        String username = jwtService.extractUsername(jwt);
 
-        GetUserByEmailQuery query = GetUserByEmailQuery.builder().email(email).build();
+        GetUserByUsernameQuery query = GetUserByUsernameQuery.of(username);
         User user = queryGateway.send(query);
         return mapUserToSummary(user);
     }
