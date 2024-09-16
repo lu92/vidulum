@@ -31,6 +31,7 @@ public class TradeEntity {
     private Quantity quantity;
     private Price price;
     private FeeEntity fee;
+    private ExchangeRate exchangeCurrencyRate;
     private Money localValue; // value expressed in local currency [reference to price's currency]
     private Money value; // value expressed in original currency of portfolio
     private Money totalValue; // value + totalFee
@@ -56,6 +57,7 @@ public class TradeEntity {
                         snapshot.getFee().exchangeCurrencyFee(),
                         snapshot.getFee().transactionFee(),
                         snapshot.getFee().totalFee()))
+                .exchangeCurrencyRate(snapshot.getExchangeCurrencyRate())
                 .localValue(snapshot.getLocalValue())
                 .value(snapshot.getValue())
                 .totalValue(snapshot.getTotalValue())
@@ -81,6 +83,7 @@ public class TradeEntity {
                         fee.exchangeCurrencyFee,
                         fee.transactionFee,
                         fee.totalFee))
+                .exchangeCurrencyRate(exchangeCurrencyRate)
                 .localValue(localValue)
                 .value(value)
                 .totalValue(totalValue)
