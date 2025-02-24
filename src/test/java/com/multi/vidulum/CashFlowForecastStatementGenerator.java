@@ -39,7 +39,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
     private Clock clock;
 
     private static final int ITERATIONS_PER_PERIOD = 10;
-    private static final int NUMBER_OF_ATTESTED_MONTHS = 0;
+    private static final int NUMBER_OF_ATTESTED_MONTHS = 8;
 
     @Test
     void test() {
@@ -54,7 +54,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
         CashChangeId lastCashChangeId = CashChangeId.generate();
         CashChangeStatus statusOfLastCashChange = CashChangeStatus.PENDING;
         YearMonth processingPeriod = YearMonth.now(clock);
-        for (int i = 0; i < NUMBER_OF_ATTESTED_MONTHS+12; i++) {
+        for (int i = 0; i < 12+NUMBER_OF_ATTESTED_MONTHS; i++) {
 
             boolean isMonthMeantToBeAttested = i <= NUMBER_OF_ATTESTED_MONTHS;
             for (int iteration = 0; iteration < ITERATIONS_PER_PERIOD; iteration++) {

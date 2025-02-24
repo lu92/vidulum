@@ -188,7 +188,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
     public void apply(CashFlowEvent.MonthAttestedEvent event) {
         if (!activePeriod.plusMonths(1).equals(event.period())) {
-            throw new IllegalArgumentException("invalid period!");
+            throw new IllegalArgumentException("Active period [%s] and requested attestation period: [%s] - invalid period!".formatted(activePeriod, event.period()));
         }
 
         activePeriod = event.period();

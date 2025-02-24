@@ -6,6 +6,7 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
@@ -15,6 +16,7 @@ import java.util.stream.Stream;
 import static com.multi.vidulum.cashflow_forecast_processor.app.Attestation.Type.MANUAL;
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EXPECTED;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowEvent.MonthAttestedEvent> {
@@ -25,12 +27,14 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
     public void handle(CashFlowEvent.MonthAttestedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+        YearMonth actualPeriod = statement.fetchCurrentPeriod();
 
-        if (!statement.fetchCurrentPeriod().equals(event.period())) {
-            throw new IllegalArgumentException(String.format("Cannot attest not-active period: %s", event.period()));
+        log.info("Attempt of attestation of month: [{}]", actualPeriod);
+
+        if (!statement.fetchCurrentPeriod().plusMonths(1).equals(event.period())) {
+            throw new IllegalArgumentException(String.format("Cannot attest not-active period: %s, active period [%s]", event.period(), statement.fetchCurrentPeriod()));
         }
 
-        YearMonth actualPeriod = event.period();
         CashFlowMonthlyForecast actualCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod);
 
         CashFlowMonthlyForecast nextCashFlowMonthlyForecast = statement.getForecasts().get(actualPeriod.plusMonths(1));
@@ -54,6 +58,7 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
+        log.info("Month attested: [{}]", actualPeriod);
     }
 
     private static void moveExpectedCashChangesToNextMonth(CashFlowForecastStatement statement, YearMonth actualPeriod) {
