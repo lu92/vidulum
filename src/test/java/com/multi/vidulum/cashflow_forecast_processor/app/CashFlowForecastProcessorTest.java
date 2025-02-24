@@ -572,10 +572,4 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .content()
                                 .getBytes(StandardCharsets.UTF_8)));
     }
-
-    private boolean lastEventIsProcessed(CashFlowId cashFlowId, Checksum lastEventChecksum) {
-        return statementRepository.findByCashFlowId(cashFlowId)
-                .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                .orElse(false);
-    }
 }

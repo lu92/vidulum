@@ -14,6 +14,7 @@ public record AppendCashChangeCommand(
         Description description,
         Money money,
         Type type,
+        ZonedDateTime created,
         ZonedDateTime dueDate
 ) implements Command {
 }

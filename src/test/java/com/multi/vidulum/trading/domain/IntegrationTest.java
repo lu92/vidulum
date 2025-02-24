@@ -3,6 +3,7 @@ package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
@@ -294,6 +295,12 @@ public abstract class IntegrationTest {
                                     asset.getFree().equals(expectedFree))
                     .orElse(false);
         });
+    }
+
+    protected boolean lastEventIsProcessed(CashFlowId cashFlowId, Checksum lastEventChecksum) {
+        return statementRepository.findByCashFlowId(cashFlowId)
+                .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
+                .orElse(false);
     }
 
     @Value
