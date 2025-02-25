@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationCommand;
+import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
@@ -13,6 +14,7 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
     private static final int ITERATIONS_PER_PERIOD = 10;
     private static final int NUMBER_OF_ATTESTED_MONTHS = 8;
 
+    @SneakyThrows
     @Test
     void test() {
         Random random = new Random();
@@ -50,6 +53,15 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
 
         Map<CashChangeId, CashChangeStatus> statusMap = new HashMap<>();
 
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category1"), INFLOW);
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category2"), INFLOW);
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category3"), OUTFLOW);
+
+
+        Map<Type, List<CategoryName>> categoryMap = Map.of(
+                INFLOW, List.of(new CategoryName("Uncategorized"), new CategoryName("Category1"), new CategoryName("Category2")),
+                OUTFLOW, List.of(new CategoryName("Uncategorized"), new CategoryName("Category3"))
+        );
 
         CashChangeId lastCashChangeId = CashChangeId.generate();
         CashChangeStatus statusOfLastCashChange = CashChangeStatus.PENDING;
@@ -60,10 +72,11 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
             for (int iteration = 0; iteration < ITERATIONS_PER_PERIOD; iteration++) {
 
                 Type type = random.nextBoolean() ? INFLOW : OUTFLOW;
+                CategoryName categoryName = categoryMap.get(type).get(random.nextInt(categoryMap.get(type).size()));
                 ZonedDateTime created = ZonedDateTime.now(clock).plusMonths(i);
                 ZonedDateTime dueDate = ZonedDateTime.now(clock).plusMonths(i).plusDays(3);
                 log.info("Suppose to append cash change: created {}, duedate {}", created, dueDate);
-                lastCashChangeId = actor.appendCashChange(cashFlowId, type, Money.of(random.nextInt(20) * 100, "USD"), created, dueDate);
+                lastCashChangeId = actor.appendCashChange(cashFlowId, categoryName, type, Money.of(random.nextInt(20) * 100, "USD"), created, dueDate);
                 statusMap.put(lastCashChangeId, CashChangeStatus.PENDING);
                 statusOfLastCashChange = CashChangeStatus.PENDING;
                 boolean shouldConfirm = random.nextBoolean();
@@ -86,6 +99,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
         await().until(() -> statementRepository.findByCashFlowId(cashFlowId).isPresent());
 
         YearMonth finalProcessingPeriod = processingPeriod;
+
 
         await().until(() -> cashChangeInStatusHasBeenProcessed(cashFlowId, finalProcessingPeriod, finalLastCashChangeId, expectedPaymentStatusOfLastCashChange));
 
@@ -132,11 +146,11 @@ class Actor {
         ));
     }
 
-    CashChangeId appendCashChange(CashFlowId cashFlowId, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
+    CashChangeId appendCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
         return commandGateway.send(
                 new AppendCashChangeCommand(
                         cashFlowId,
-                        new CategoryName("Uncategorized"),
+                        category,
                         new CashChangeId(CashChangeId.generate().id()),
                         new Name("cash-change name"),
                         new Description("cash-change description"),
@@ -164,6 +178,19 @@ class Actor {
     ) {
         commandGateway.send(new MakeMonthlyAttestationCommand(
                 cashFlowId, period, currentMoney, dateTime
+        ));
+    }
+
+
+    public void addCategory(CashFlowId cashFlowId,
+                            CategoryName parentCategoryName,
+                            CategoryName categoryName,
+                            Type type) {
+        commandGateway.send(new CreateCategoryCommand(
+                cashFlowId,
+                parentCategoryName,
+                categoryName,
+                type
         ));
     }
 }

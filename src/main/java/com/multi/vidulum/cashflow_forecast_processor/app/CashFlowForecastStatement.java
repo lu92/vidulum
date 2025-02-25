@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.util.Pair;
 
 import java.time.YearMonth;
 import java.util.*;
@@ -137,16 +138,10 @@ public class CashFlowForecastStatement {
         CashFlowMonthlyForecast lastForecast = findLastMonthlyForecast();
         YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
         Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
-        List<CashCategory> categorizedInflows = new LinkedList<>();
-        categorizedInflows.add(
-                CashCategory.builder()
-                        .categoryName(new CategoryName("Uncategorized"))
-                        .category(new Category("Uncategorized"))
-                        .subCategories(List.of())
-                        .groupedTransactions(new GroupedTransactions())
-                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                        .build()
-        );
+
+        List<CashCategory> categorizedInflows = prepareCategories(lastForecast.getCategorizedInFlows());
+        List<CashCategory> categorizedOutflows = prepareCategories(lastForecast.getCategorizedOutFlows());
+
 
         forecasts.put(
                 upcomingPeriod,
@@ -154,19 +149,30 @@ public class CashFlowForecastStatement {
                         upcomingPeriod,
                         CashFlowStats.justBalance(beginningBalance),
                         categorizedInflows,
-                        List.of(
-                                CashCategory.builder()
-                                        .categoryName(new CategoryName("Uncategorized"))
-                                        .category(new Category("Uncategorized"))
-                                        .subCategories(List.of())
-                                        .groupedTransactions(new GroupedTransactions())
-                                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                                        .build()
-                        ),
+                        categorizedOutflows,
                         CashFlowMonthlyForecast.Status.FORECASTED,
                         null
                 )
         );
+    }
+
+    private List<CashCategory> prepareCategories(List<CashCategory> cashCategories) {
+        List<Pair<CategoryName, Category>> metadataOfCategories = getMetadataOfCategories(cashCategories);
+        return new LinkedList<>(metadataOfCategories.stream()
+                .map(metadataOfCategory -> CashCategory.builder()
+                        .categoryName(metadataOfCategory.getFirst())
+                        .category(metadataOfCategory.getSecond())
+                        .subCategories(List.of())
+                        .groupedTransactions(new GroupedTransactions())
+                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
+                        .build())
+                .toList());
+    }
+
+    private static List<Pair<CategoryName, Category>> getMetadataOfCategories(List<CashCategory> cashCategories) {
+        return cashCategories.stream()
+                .map(cashCategory -> Pair.of(cashCategory.getCategoryName(), cashCategory.getCategory()))
+                .toList();
     }
 
     public void updateStats() {

@@ -7,11 +7,13 @@ import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlowEvent.CategoryCreatedEvent> {
@@ -42,6 +44,7 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
+        log.info("Projection of cashflow [{}] amended with new category [{}]", event.cashFlowId().id(), event.categoryName().name());
     }
 
     private List<CashCategory> findProperCategories(CashFlowEvent.CategoryCreatedEvent event, CashFlowMonthlyForecast cashFlowMonthlyForecast) {
