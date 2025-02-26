@@ -309,9 +309,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.MonthAttestedEvent(
                         cashFlowId,
-                        YearMonth.parse("2021-06"),
+                        YearMonth.parse("2021-07"),
                         Money.of(75, "USD"),
-                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-15T06:30:00Z")
                 )
         );
 
