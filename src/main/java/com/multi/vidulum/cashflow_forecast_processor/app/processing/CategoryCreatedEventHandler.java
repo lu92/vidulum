@@ -27,6 +27,8 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
+        fun(statement.getCategoryStructure(), event);
+
         statement.getForecasts().values().forEach(cashFlowMonthlyForecast -> {
 
             CashCategory newCashCategory = CashCategory.builder()
@@ -43,7 +45,6 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
 
         statement.updateStats();
 
-        fun(statement.getCategoryStructure(), event);
 
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
