@@ -72,9 +72,13 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
 
         monthlyForecasts.get(current).setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
+        List<CategoryNode> inflowCategoryStructure = new LinkedList<>();
+        inflowCategoryStructure.add(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>()));
+        List<CategoryNode> outflowCategoryStructure = new LinkedList<>();
+        outflowCategoryStructure.add(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>()));
         CurrentCategoryStructure currentCategoryStructure = new CurrentCategoryStructure(
-                List.of(new CategoryNode(null, new CategoryName("Uncategorized"), List.of())),
-                List.of(new CategoryNode(null, new CategoryName("Uncategorized"), List.of())),
+                inflowCategoryStructure,
+                outflowCategoryStructure,
                 ZonedDateTime.now(this.clock)
         );
 

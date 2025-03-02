@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Stack;
 
 @Slf4j
@@ -53,13 +52,25 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
     }
 
     private void fun(CurrentCategoryStructure categoryStructure, CashFlowEvent.CategoryCreatedEvent event) {
-        CategoryNode parent = findParentNode(event.type() == Type.INFLOW ?
-                        categoryStructure.inflowCategoryStructure() :
-                        categoryStructure.outflowCategoryStructure(),
-                event.parentCategoryName());
-        CategoryNode newCategoryNode = new CategoryNode(parent, event.categoryName(), List.of());
-        assert parent != null;
-        parent.nodes().add(newCategoryNode);
+        CategoryNode newCategoryNode = null;
+
+        if (event.parentCategoryName().equals(CategoryName.NOT_DEFINED)) {
+            newCategoryNode = new CategoryNode(null, event.categoryName(), new LinkedList<>());
+            if (event.type() == Type.INFLOW) {
+                categoryStructure.inflowCategoryStructure().add(newCategoryNode);
+            } else {
+                categoryStructure.outflowCategoryStructure().add(newCategoryNode);
+            }
+        } else {
+            CategoryNode parent = findParentNode(event.type() == Type.INFLOW ?
+                            categoryStructure.inflowCategoryStructure() :
+                            categoryStructure.outflowCategoryStructure(),
+                    event.parentCategoryName());
+            newCategoryNode = new CategoryNode(parent, event.categoryName(), new LinkedList<>());
+
+            assert parent != null;
+            parent.nodes().add(newCategoryNode);
+        }
     }
 
     private CategoryNode findParentNode(List<CategoryNode> categoryNodes, CategoryName parentCategoryName) {
