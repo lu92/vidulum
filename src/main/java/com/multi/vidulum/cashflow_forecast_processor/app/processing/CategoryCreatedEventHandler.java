@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import com.multi.vidulum.common.Checksum;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Stack;
 
 @Slf4j
 @Component
@@ -41,10 +44,35 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
 
         statement.updateStats();
 
+        fun(statement.getCategoryStructure(), event);
+
         Checksum lastMessageChecksum = getChecksum(event);
         statement.setLastMessageChecksum(lastMessageChecksum);
         statementRepository.save(statement);
         log.info("Projection of cashflow [{}] amended with new category [{}]", event.cashFlowId().id(), event.categoryName().name());
+    }
+
+    private void fun(CurrentCategoryStructure categoryStructure, CashFlowEvent.CategoryCreatedEvent event) {
+        CategoryNode parent = findParentNode(event.type() == Type.INFLOW ?
+                        categoryStructure.inflowCategoryStructure() :
+                        categoryStructure.outflowCategoryStructure(),
+                event.parentCategoryName());
+        CategoryNode newCategoryNode = new CategoryNode(parent, event.categoryName(), List.of());
+        assert parent != null;
+        parent.nodes().add(newCategoryNode);
+    }
+
+    private CategoryNode findParentNode(List<CategoryNode> categoryNodes, CategoryName parentCategoryName) {
+        Stack<CategoryNode> stack = new Stack<>();
+        categoryNodes.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CategoryNode takenCashCategoryNode = stack.pop();
+            if (takenCashCategoryNode.categoryName().equals(parentCategoryName)) {
+                return takenCashCategoryNode;
+            }
+            takenCashCategoryNode.nodes().forEach(stack::push);
+        }
+        return null;
     }
 
     private List<CashCategory> findProperCategories(CashFlowEvent.CategoryCreatedEvent event, CashFlowMonthlyForecast cashFlowMonthlyForecast) {

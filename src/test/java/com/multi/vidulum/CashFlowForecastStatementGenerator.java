@@ -54,8 +54,15 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
         Map<CashChangeId, CashChangeStatus> statusMap = new HashMap<>();
 
         actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category1"), INFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category1"), new CategoryName("Category101"), INFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category101"), new CategoryName("Category10001"), INFLOW);
         actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category2"), INFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category2"), new CategoryName("Category201"), INFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category2"), new CategoryName("Category202"), INFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category202"), new CategoryName("Category20002"), INFLOW);
         actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Category3"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category3"), new CategoryName("Category303"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Category303"), new CategoryName("Category30003"), OUTFLOW);
 
 
         Map<Type, List<CategoryName>> categoryMap = Map.of(

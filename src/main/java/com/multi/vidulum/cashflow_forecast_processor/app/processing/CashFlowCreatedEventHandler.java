@@ -8,7 +8,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,9 @@ import java.util.stream.IntStream;
 @Component
 @AllArgsConstructor
 public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlowEvent.CashFlowCreatedEvent> {
+
+    @Autowired
+    private Clock clock;
 
     @Autowired
     private final CashFlowForecastStatementRepository statementRepository;
@@ -67,12 +72,19 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
 
         monthlyForecasts.get(current).setStatus(CashFlowMonthlyForecast.Status.ACTIVE);
 
+        CurrentCategoryStructure currentCategoryStructure = new CurrentCategoryStructure(
+                List.of(new CategoryNode(null, new CategoryName("Uncategorized"), List.of())),
+                List.of(new CategoryNode(null, new CategoryName("Uncategorized"), List.of())),
+                ZonedDateTime.now(this.clock)
+        );
+
         statementRepository.save(
                 new CashFlowForecastStatement(
                         event.cashFlowId(),
                         monthlyForecasts,
                         event.bankAccount().bankAccountNumber(),
-                        getChecksum(event)
+                        getChecksum(event),
+                        currentCategoryStructure
                 ));
     }
 
