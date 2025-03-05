@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.BankAccountNumber;
+import com.multi.vidulum.cashflow.domain.CashChangeId;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -25,8 +28,8 @@ public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
     private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
     private BankAccountNumber bankAccountNumber;
+    private CurrentCategoryStructure categoryStructure;
     private Checksum lastMessageChecksum;
-    private CurrentCategoryStructure  categoryStructure;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
         return forecasts.values().stream()
@@ -137,8 +140,8 @@ public class CashFlowForecastStatement {
         YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
         Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
 
-        List<CashCategory> categorizedInflows = prepareCategories(lastForecast.getCategorizedInFlows());
-        List<CashCategory> categorizedOutflows = prepareCategories(lastForecast.getCategorizedOutFlows());
+        List<CashCategory> categorizedInflows = createCategoriesBasedOnConfig(categoryStructure.inflowCategoryStructure());
+        List<CashCategory> categorizedOutflows = createCategoriesBasedOnConfig(categoryStructure.outflowCategoryStructure());
 
 
         forecasts.put(
@@ -154,23 +157,53 @@ public class CashFlowForecastStatement {
         );
     }
 
-    private List<CashCategory> prepareCategories(List<CashCategory> cashCategories) {
-        List<Pair<CategoryName, Category>> metadataOfCategories = getMetadataOfCategories(cashCategories);
-        return new LinkedList<>(metadataOfCategories.stream()
-                .map(metadataOfCategory -> CashCategory.builder()
-                        .categoryName(metadataOfCategory.getFirst())
-                        .category(metadataOfCategory.getSecond())
-                        .subCategories(List.of())
-                        .groupedTransactions(new GroupedTransactions())
-                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                        .build())
-                .toList());
+    private List<CashCategory> createCategoriesBasedOnConfig(List<CategoryNode> categoryNodes) {
+        List<CashCategory> cashCategories = new LinkedList<>();
+        Stack<CategoryNode> stack = new Stack<>();
+//        Collections.reverse(categoryNodes);
+        LinkedList<CategoryNode> copy = new LinkedList<>(categoryNodes);
+        Collections.reverse(copy);
+        copy.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CategoryNode takenCashCategoryNode = stack.pop();
+
+            CashCategory cashCategory = CashCategory.builder()
+                    .categoryName(takenCashCategoryNode.categoryName())
+                    .category(new Category(takenCashCategoryNode.categoryName().name()))
+                    .subCategories(new LinkedList<>())
+                    .groupedTransactions(new GroupedTransactions())
+                    .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
+                    .build();
+
+            if (takenCashCategoryNode.parentCategoryNode() != null && takenCashCategoryNode.parentCategoryNode().categoryName().isDefined()) {
+
+                CashCategory parent = findParent(takenCashCategoryNode.parentCategoryNode().categoryName(), cashCategories);
+                parent.getSubCategories().add(cashCategory);
+
+            } else {
+                cashCategories.add(cashCategory);
+            }
+
+
+            LinkedList<CategoryNode> copyOfNodes = new LinkedList<>(takenCashCategoryNode.nodes());
+            Collections.reverse(copyOfNodes);
+            copyOfNodes.forEach(stack::push);
+        }
+        return cashCategories;
     }
 
-    private static List<Pair<CategoryName, Category>> getMetadataOfCategories(List<CashCategory> cashCategories) {
-        return cashCategories.stream()
-                .map(cashCategory -> Pair.of(cashCategory.getCategoryName(), cashCategory.getCategory()))
-                .toList();
+    private CashCategory findParent(CategoryName parentName, List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            if (takenCashCategory.getCategoryName().equals(parentName)) {
+                return takenCashCategory;
+            }
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+
+        return null;
     }
 
     public void updateStats() {

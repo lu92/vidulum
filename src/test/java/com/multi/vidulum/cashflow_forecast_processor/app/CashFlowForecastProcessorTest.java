@@ -554,7 +554,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, CategoryNode.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/append-cash-change-to-subcategory.json")
                                 .to(CashFlowForecastStatement.class));

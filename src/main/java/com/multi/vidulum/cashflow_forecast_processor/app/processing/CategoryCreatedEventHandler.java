@@ -39,8 +39,17 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
                     .totalPaidValue(Money.zero(statement.getBankAccountNumber().denomination().getId()))
                     .build();
 
-            List<CashCategory> properCategories = findProperCategories(event, cashFlowMonthlyForecast);
-            properCategories.add(newCashCategory);
+            if (event.parentCategoryName().isDefined()) {
+                CashCategory parentCategory = findParentCategory(event, cashFlowMonthlyForecast, statement.getCategoryStructure());
+                parentCategory.getSubCategories().add(newCashCategory);
+            } else {
+
+                if (Type.INFLOW.equals(event.type())) {
+                    cashFlowMonthlyForecast.getCategorizedInFlows().add(newCashCategory);
+                } else {
+                    cashFlowMonthlyForecast.getCategorizedOutFlows().add(newCashCategory);
+                }
+            }
         });
 
         statement.updateStats();
@@ -87,16 +96,44 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         return null;
     }
 
-    private List<CashCategory> findProperCategories(CashFlowEvent.CategoryCreatedEvent event, CashFlowMonthlyForecast cashFlowMonthlyForecast) {
-        if (event.parentCategoryName().isDefined()) {
-            CashCategory parentCashCategory = Type.INFLOW.equals(event.type()) ?
-                    cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.parentCategoryName()).orElseThrow() :
-                    cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.parentCategoryName()).orElseThrow();
-            return parentCashCategory.getSubCategories();
-        } else {
+    private CashCategory findParentCategory(CashFlowEvent.CategoryCreatedEvent event, CashFlowMonthlyForecast cashFlowMonthlyForecast, CurrentCategoryStructure categoryStructure) {
+//        if (event.parentCategoryName().isDefined()) {
+//
+
             return Type.INFLOW.equals(event.type()) ?
-                    cashFlowMonthlyForecast.getCategorizedInFlows() :
-                    cashFlowMonthlyForecast.getCategorizedOutFlows();
+                    fun2(cashFlowMonthlyForecast.getCategorizedInFlows(), event.parentCategoryName()):
+                    fun2(cashFlowMonthlyForecast.getCategorizedOutFlows(), event.parentCategoryName());
+
+//        } else {
+//            return Type.INFLOW.equals(event.type()) ?
+//                    cashFlowMonthlyForecast.getCategorizedInFlows() :
+//                    cashFlowMonthlyForecast.getCategorizedOutFlows();
+//        }
+    }
+
+    private List<CategoryNode> fun(List<CategoryNode> categoryNodes, CategoryName parentCategoryName) {
+        Stack<List<CategoryNode>> stack = new Stack<>();
+        stack.push(categoryNodes);
+        while (!stack.isEmpty()) {
+            List<CategoryNode> takenList = stack.pop();
+            if (takenList.stream().anyMatch(categoryNode -> categoryNode.categoryName().equals(parentCategoryName))) {
+                return takenList;
+            }
+            takenList.stream().map(CategoryNode::nodes).forEach(stack::push);
         }
+        return null;
+    }
+
+    private CashCategory fun2(List<CashCategory> cashCategories, CategoryName parentCategoryName) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory cashCategory = stack.pop();
+            if (cashCategory.getCategoryName().equals(parentCategoryName)) {
+                return cashCategory;
+            }
+            cashCategory.getSubCategories().forEach(stack::push);
+        }
+        return null;
     }
 }
