@@ -309,9 +309,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.MonthAttestedEvent(
                         cashFlowId,
-                        YearMonth.parse("2021-06"),
+                        YearMonth.parse("2021-07"),
                         Money.of(75, "USD"),
-                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-15T06:30:00Z")
                 )
         );
 
@@ -554,7 +554,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, CategoryNode.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/append-cash-change-to-subcategory.json")
                                 .to(CashFlowForecastStatement.class));
@@ -571,11 +571,5 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         JsonContent.asJson(cashFlowEvent)
                                 .content()
                                 .getBytes(StandardCharsets.UTF_8)));
-    }
-
-    private boolean lastEventIsProcessed(CashFlowId cashFlowId, Checksum lastEventChecksum) {
-        return statementRepository.findByCashFlowId(cashFlowId)
-                .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                .orElse(false);
     }
 }

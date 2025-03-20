@@ -29,6 +29,7 @@ public class MakeMonthlyAttestationCommandHandler implements CommandHandler<Make
                 command.dateTime()
         );
         cashFlow.apply(event);
+        domainCashFlowRepository.save(cashFlow);
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

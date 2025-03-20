@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.util.Pair;
 
 import java.time.YearMonth;
 import java.util.*;
@@ -27,6 +28,7 @@ public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
     private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
     private BankAccountNumber bankAccountNumber;
+    private CurrentCategoryStructure categoryStructure;
     private Checksum lastMessageChecksum;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
@@ -137,16 +139,10 @@ public class CashFlowForecastStatement {
         CashFlowMonthlyForecast lastForecast = findLastMonthlyForecast();
         YearMonth upcomingPeriod = lastForecast.getPeriod().plusMonths(1);
         Money beginningBalance = lastForecast.getCashFlowStats().getEnd();
-        List<CashCategory> categorizedInflows = new LinkedList<>();
-        categorizedInflows.add(
-                CashCategory.builder()
-                        .categoryName(new CategoryName("Uncategorized"))
-                        .category(new Category("Uncategorized"))
-                        .subCategories(List.of())
-                        .groupedTransactions(new GroupedTransactions())
-                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                        .build()
-        );
+
+        List<CashCategory> categorizedInflows = createCategoriesBasedOnConfig(categoryStructure.inflowCategoryStructure());
+        List<CashCategory> categorizedOutflows = createCategoriesBasedOnConfig(categoryStructure.outflowCategoryStructure());
+
 
         forecasts.put(
                 upcomingPeriod,
@@ -154,19 +150,60 @@ public class CashFlowForecastStatement {
                         upcomingPeriod,
                         CashFlowStats.justBalance(beginningBalance),
                         categorizedInflows,
-                        List.of(
-                                CashCategory.builder()
-                                        .categoryName(new CategoryName("Uncategorized"))
-                                        .category(new Category("Uncategorized"))
-                                        .subCategories(List.of())
-                                        .groupedTransactions(new GroupedTransactions())
-                                        .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
-                                        .build()
-                        ),
+                        categorizedOutflows,
                         CashFlowMonthlyForecast.Status.FORECASTED,
                         null
                 )
         );
+    }
+
+    private List<CashCategory> createCategoriesBasedOnConfig(List<CategoryNode> categoryNodes) {
+        List<CashCategory> cashCategories = new LinkedList<>();
+        Stack<CategoryNode> stack = new Stack<>();
+//        Collections.reverse(categoryNodes);
+        LinkedList<CategoryNode> copy = new LinkedList<>(categoryNodes);
+        Collections.reverse(copy);
+        copy.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CategoryNode takenCashCategoryNode = stack.pop();
+
+            CashCategory cashCategory = CashCategory.builder()
+                    .categoryName(takenCashCategoryNode.categoryName())
+                    .category(new Category(takenCashCategoryNode.categoryName().name()))
+                    .subCategories(new LinkedList<>())
+                    .groupedTransactions(new GroupedTransactions())
+                    .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
+                    .build();
+
+            if (takenCashCategoryNode.parentCategoryNode() != null && takenCashCategoryNode.parentCategoryNode().categoryName().isDefined()) {
+
+                CashCategory parent = findParent(takenCashCategoryNode.parentCategoryNode().categoryName(), cashCategories);
+                parent.getSubCategories().add(cashCategory);
+
+            } else {
+                cashCategories.add(cashCategory);
+            }
+
+
+            LinkedList<CategoryNode> copyOfNodes = new LinkedList<>(takenCashCategoryNode.nodes());
+            Collections.reverse(copyOfNodes);
+            copyOfNodes.forEach(stack::push);
+        }
+        return cashCategories;
+    }
+
+    private CashCategory findParent(CategoryName parentName, List<CashCategory> cashCategories) {
+        Stack<CashCategory> stack = new Stack<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            if (takenCashCategory.getCategoryName().equals(parentName)) {
+                return takenCashCategory;
+            }
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+
+        return null;
     }
 
     public void updateStats() {

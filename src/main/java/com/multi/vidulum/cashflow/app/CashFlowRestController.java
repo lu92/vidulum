@@ -56,6 +56,7 @@ public class CashFlowRestController {
                         new Description(request.getDescription()),
                         request.getMoney(),
                         request.getType(),
+                        ZonedDateTime.now(clock),
                         request.getDueDate()
                 )
         );

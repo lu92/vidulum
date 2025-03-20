@@ -8,8 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.ZonedDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -19,7 +17,6 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
-    private final Clock clock;
 
     @Override
     public CashChangeId handle(AppendCashChangeCommand command) {
@@ -33,7 +30,7 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
                 command.description(),
                 command.money(),
                 command.type(),
-                ZonedDateTime.now(clock),
+                command.created(),
                 command.categoryName(),
                 command.dueDate()
         );
