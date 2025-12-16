@@ -11,7 +11,7 @@ import java.util.List;
 
 @Component
 @AllArgsConstructor
-public class GetDetailsOfCashFlowQueryViaUserHandler implements QueryHandler<GetDetailsOfCashFlowViaUserQuery, List<CashFlowSnapshot>> {
+public class GetDetailsOfCashFlowViaUserQueryHandler implements QueryHandler<GetDetailsOfCashFlowViaUserQuery, List<CashFlowSnapshot>> {
     private final DomainCashFlowRepository domainCashFlowRepository;
 
     @Override
