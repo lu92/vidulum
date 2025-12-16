@@ -7,6 +7,7 @@ import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
+import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Reason;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static java.util.Optional.ofNullable;
 
@@ -103,7 +105,18 @@ public class CashFlowRestController {
                 new GetCashFlowQuery(new CashFlowId(cashFlowId))
         );
 
-        return mapper.mapCashChange(snapshot);
+        return mapper.mapCashFlow(snapshot);
+    }
+
+    @GetMapping("/viaUser/{userId}")
+    public List<CashFlowDto.CashFlowSummaryJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
+        List<CashFlowSnapshot> snapshots = queryGateway.send(
+                new GetDetailsOfCashFlowViaUserQuery(new UserId(userId))
+        );
+
+        return snapshots.stream()
+                .map(mapper::mapCashFlow)
+                .toList();
     }
 
     @PostMapping("/{cashFlowId}/category")

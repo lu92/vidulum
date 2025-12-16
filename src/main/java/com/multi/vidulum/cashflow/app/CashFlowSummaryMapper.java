@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 @Component
 public class CashFlowSummaryMapper {
 
-    public CashFlowDto.CashFlowSummaryJson mapCashChange(CashFlowSnapshot cashFlowSnapshot) {
+    public CashFlowDto.CashFlowSummaryJson mapCashFlow(CashFlowSnapshot cashFlowSnapshot) {
         Map<String, CashFlowDto.CashChangeSummaryJson> cashChanges = cashFlowSnapshot.cashChanges().values()
                 .stream()
                 .map(this::mapCashChange)

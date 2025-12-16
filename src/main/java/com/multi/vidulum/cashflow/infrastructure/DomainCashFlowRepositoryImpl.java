@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import com.multi.vidulum.shared.ddd.event.StoredDomainEvent;
 import lombok.AllArgsConstructor;
@@ -67,6 +68,11 @@ public class DomainCashFlowRepositoryImpl implements DomainCashFlowRepository {
         return eventStore.getOrDefault(cashFlowId, List.of()).stream()
                 .map(StoredDomainEvent::event)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CashFlow> findDetailsByUserId(UserId userId) {
+        return List.of();
     }
 
 }
