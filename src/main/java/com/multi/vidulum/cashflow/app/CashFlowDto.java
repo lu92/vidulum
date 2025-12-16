@@ -76,6 +76,21 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    public static class CashFlowDetailJson {
+        private String cashFlowId;
+        private String userId;
+        private String name;
+        private String description;
+        private BankAccount bankAccount;
+        private CashFlow.CashFlowStatus status;
+        private List<Category> inflowCategories;
+        private List<Category> outflowCategories;
+        private ZonedDateTime created;
+        private ZonedDateTime lastModification;
+    }
+
+    @Data
+    @Builder
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String name;

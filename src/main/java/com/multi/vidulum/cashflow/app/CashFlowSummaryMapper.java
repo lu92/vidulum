@@ -35,6 +35,21 @@ public class CashFlowSummaryMapper {
                 .build();
     }
 
+    public CashFlowDto.CashFlowDetailJson mapCashFlowDetails(CashFlowSnapshot cashFlowSnapshot) {
+        return CashFlowDto.CashFlowDetailJson.builder()
+                .cashFlowId(cashFlowSnapshot.cashFlowId().id())
+                .userId(cashFlowSnapshot.userId().getId())
+                .name(cashFlowSnapshot.name().name())
+                .description(cashFlowSnapshot.description().description())
+                .bankAccount(cashFlowSnapshot.bankAccount())
+                .status(cashFlowSnapshot.status())
+                .inflowCategories(cashFlowSnapshot.inflowCategories())
+                .outflowCategories(cashFlowSnapshot.outflowCategories())
+                .created(cashFlowSnapshot.created())
+                .lastModification(cashFlowSnapshot.lastModification())
+                .build();
+    }
+
     private CashFlowDto.CashChangeSummaryJson mapCashChange(CashChangeSnapshot snapshot) {
         return CashFlowDto.CashChangeSummaryJson.builder()
                 .cashChangeId(snapshot.cashChangeId().id())

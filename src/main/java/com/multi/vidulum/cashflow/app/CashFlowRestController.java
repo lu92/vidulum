@@ -109,13 +109,13 @@ public class CashFlowRestController {
     }
 
     @GetMapping("/viaUser/{userId}")
-    public List<CashFlowDto.CashFlowSummaryJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
+    public List<CashFlowDto.CashFlowDetailJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
         List<CashFlowSnapshot> snapshots = queryGateway.send(
                 new GetDetailsOfCashFlowViaUserQuery(new UserId(userId))
         );
 
         return snapshots.stream()
-                .map(mapper::mapCashFlow)
+                .map(mapper::mapCashFlowDetails)
                 .toList();
     }
 
