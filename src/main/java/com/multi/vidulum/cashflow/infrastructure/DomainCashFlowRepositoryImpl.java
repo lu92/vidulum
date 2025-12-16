@@ -72,7 +72,10 @@ public class DomainCashFlowRepositoryImpl implements DomainCashFlowRepository {
 
     @Override
     public List<CashFlow> findDetailsByUserId(UserId userId) {
-        return List.of();
+        return cashFlowMongoRepository.findByUserId(userId.getId()).stream()
+                .map(CashFlowEntity::toSnapshot)
+                .map(CashFlow::from)
+                .toList();
     }
 
 }

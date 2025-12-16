@@ -686,4 +686,167 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()
                                         ))).orElse(false));
     }
+
+    @Test
+    void shouldGetCashFlowsDetailsByUserId() {
+        // given
+        String userId = "test-user-123";
+
+        // Create first cash flow for user
+        String cashFlowId1 = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name("Personal Budget")
+                        .description("My personal budget")
+                        .bankAccount(new BankAccount(
+                                new BankName("Chase Bank"),
+                                new BankAccountNumber("US123456789", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .build()
+        );
+
+        // Create second cash flow for same user
+        String cashFlowId2 = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name("Business Budget")
+                        .description("My business budget")
+                        .bankAccount(new BankAccount(
+                                new BankName("Bank of America"),
+                                new BankAccountNumber("US987654321", Currency.of("USD")),
+                                Money.of(10000, "USD")))
+                        .build()
+        );
+
+        // Create cash flow for different user (should not be returned)
+        String otherUserId = "other-user-456";
+        String cashFlowId3 = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(otherUserId)
+                        .name("Other User Budget")
+                        .description("Other user budget")
+                        .bankAccount(new BankAccount(
+                                new BankName("Wells Fargo"),
+                                new BankAccountNumber("US111222333", Currency.of("USD")),
+                                Money.of(3000, "USD")))
+                        .build()
+        );
+
+        // Add categories to first cash flow
+        cashFlowRestController.createCategory(
+                cashFlowId1,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Salary")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // Add cash changes to first cash flow
+        String cashChangeId1 = cashFlowRestController.appendCashChange(
+                CashFlowDto.AppendCashChangeJson.builder()
+                        .cashFlowId(cashFlowId1)
+                        .category("Salary")
+                        .name("Monthly Salary")
+                        .description("January salary")
+                        .money(Money.of(5000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .build()
+        );
+
+        cashFlowRestController.confirm(
+                CashFlowDto.ConfirmCashChangeJson.builder()
+                        .cashFlowId(cashFlowId1)
+                        .cashChangeId(cashChangeId1)
+                        .build()
+        );
+
+        // Add categories to second cash flow
+        cashFlowRestController.createCategory(
+                cashFlowId2,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Revenue")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId2,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Expenses")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Add cash changes to second cash flow
+        String cashChangeId2 = cashFlowRestController.appendCashChange(
+                CashFlowDto.AppendCashChangeJson.builder()
+                        .cashFlowId(cashFlowId2)
+                        .category("Revenue")
+                        .name("Client Payment")
+                        .description("Payment from client ABC")
+                        .money(Money.of(2500, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2024-01-15T00:00:00Z"))
+                        .build()
+        );
+
+        String cashChangeId3 = cashFlowRestController.appendCashChange(
+                CashFlowDto.AppendCashChangeJson.builder()
+                        .cashFlowId(cashFlowId2)
+                        .category("Expenses")
+                        .name("Office Rent")
+                        .description("Monthly office rent")
+                        .money(Money.of(800, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2024-01-05T00:00:00Z"))
+                        .build()
+        );
+
+        cashFlowRestController.confirm(
+                CashFlowDto.ConfirmCashChangeJson.builder()
+                        .cashFlowId(cashFlowId2)
+                        .cashChangeId(cashChangeId3)
+                        .build()
+        );
+
+        // when
+        List<CashFlowDto.CashFlowDetailJson> cashFlowDetails = cashFlowRestController.getDetailsOfCashFlowViaUser(userId);
+
+        // then
+        assertThat(cashFlowDetails).hasSize(2);
+
+        // Verify first cash flow details
+        assertThat(cashFlowDetails)
+                .anySatisfy(detail -> {
+                    assertThat(detail.getCashFlowId()).isEqualTo(cashFlowId1);
+                    assertThat(detail.getUserId()).isEqualTo(userId);
+                    assertThat(detail.getName()).isEqualTo("Personal Budget");
+                    assertThat(detail.getDescription()).isEqualTo("My personal budget");
+                    assertThat(detail.getBankAccount().balance()).isEqualTo(Money.of(10000, "USD"));
+                    assertThat(detail.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+                    assertThat(detail.getInflowCategories()).hasSize(2); // Uncategorized + Salary
+                });
+
+        // Verify second cash flow details
+        assertThat(cashFlowDetails)
+                .anySatisfy(detail -> {
+                    assertThat(detail.getCashFlowId()).isEqualTo(cashFlowId2);
+                    assertThat(detail.getUserId()).isEqualTo(userId);
+                    assertThat(detail.getName()).isEqualTo("Business Budget");
+                    assertThat(detail.getDescription()).isEqualTo("My business budget");
+                    assertThat(detail.getBankAccount().balance()).isEqualTo(Money.of(9200, "USD"));
+                    assertThat(detail.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+                    assertThat(detail.getInflowCategories()).hasSize(2); // Uncategorized + Revenue
+                    assertThat(detail.getOutflowCategories()).hasSize(2); // Uncategorized + Expenses
+                });
+
+        // Verify other user's cash flow is not returned
+        assertThat(cashFlowDetails)
+                .noneMatch(detail -> detail.getCashFlowId().equals(cashFlowId3));
+
+        // Verify empty result for non-existent user
+        List<CashFlowDto.CashFlowDetailJson> emptyResult = cashFlowRestController.getDetailsOfCashFlowViaUser("non-existent-user");
+        assertThat(emptyResult).isEmpty();
+    }
 }
