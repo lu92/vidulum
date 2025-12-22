@@ -849,4 +849,242 @@ public class CashFlowControllerTest extends IntegrationTest {
         List<CashFlowDto.CashFlowDetailJson> emptyResult = cashFlowRestController.getDetailsOfCashFlowViaUser("non-existent-user");
         assertThat(emptyResult).isEmpty();
     }
+
+    @Test
+    void shouldSetBudgetingForCategory() {
+        // given
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        // Create a category for budgeting
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Groceries")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // when
+        cashFlowRestController.setBudgeting(
+                CashFlowDto.SetBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Groceries")
+                        .categoryType(OUTFLOW)
+                        .budget(Money.of(500, "USD"))
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlow.getOutflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Groceries");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(500, "USD"));
+                });
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.BudgetingSetEvent.class.getSimpleName()))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldUpdateBudgetingForCategory() {
+        // given
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        // Create a category and set budgeting
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Entertainment")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.setBudgeting(
+                CashFlowDto.SetBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Entertainment")
+                        .categoryType(OUTFLOW)
+                        .budget(Money.of(200, "USD"))
+                        .build()
+        );
+
+        // when
+        cashFlowRestController.updateBudgeting(
+                CashFlowDto.UpdateBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Entertainment")
+                        .categoryType(OUTFLOW)
+                        .newBudget(Money.of(300, "USD"))
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlow.getOutflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Entertainment");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(300, "USD"));
+                });
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(List.of(
+                                        CashFlowEvent.BudgetingSetEvent.class.getSimpleName(),
+                                        CashFlowEvent.BudgetingUpdatedEvent.class.getSimpleName()
+                                )))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldRemoveBudgetingFromCategory() {
+        // given
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        // Create a category and set budgeting
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Dining")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.setBudgeting(
+                CashFlowDto.SetBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Dining")
+                        .categoryType(OUTFLOW)
+                        .budget(Money.of(150, "USD"))
+                        .build()
+        );
+
+        // Verify budgeting was set
+        CashFlowDto.CashFlowSummaryJson cashFlowBefore = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlowBefore.getOutflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Dining");
+                    assertThat(category.getBudgeting()).isNotNull();
+                });
+
+        // when
+        cashFlowRestController.removeBudgeting(
+                CashFlowDto.RemoveBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Dining")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlowAfter = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlowAfter.getOutflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Dining");
+                    assertThat(category.getBudgeting()).isNull();
+                });
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(List.of(
+                                        CashFlowEvent.BudgetingSetEvent.class.getSimpleName(),
+                                        CashFlowEvent.BudgetingRemovedEvent.class.getSimpleName()
+                                )))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldSetBudgetingForInflowCategory() {
+        // given
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        // Create an inflow category for budgeting
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Salary")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // when
+        cashFlowRestController.setBudgeting(
+                CashFlowDto.SetBudgetingJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .categoryName("Salary")
+                        .categoryType(INFLOW)
+                        .budget(Money.of(5000, "USD"))
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlow.getInflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Salary");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(5000, "USD"));
+                });
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.BudgetingSetEvent.class.getSimpleName()))
+                        .orElse(false));
+    }
 }

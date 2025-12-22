@@ -111,4 +111,30 @@ public final class CashFlowDto {
         private String category;
         private Type type;
     }
+
+    @Data
+    @Builder
+    public static class SetBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
+        private Money budget;
+    }
+
+    @Data
+    @Builder
+    public static class UpdateBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
+        private Money newBudget;
+    }
+
+    @Data
+    @Builder
+    public static class RemoveBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
+    }
 }

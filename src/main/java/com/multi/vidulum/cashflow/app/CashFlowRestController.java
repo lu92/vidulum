@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.set.SetBudgetingCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
@@ -127,6 +130,41 @@ public class CashFlowRestController {
                         ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
                         new CategoryName(request.getCategory()),
                         request.getType()
+                )
+        );
+    }
+
+    @PostMapping("/budgeting")
+    public void setBudgeting(@RequestBody CashFlowDto.SetBudgetingJson request) {
+        commandGateway.send(
+                new SetBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType(),
+                        request.getBudget()
+                )
+        );
+    }
+
+    @PutMapping("/budgeting")
+    public void updateBudgeting(@RequestBody CashFlowDto.UpdateBudgetingJson request) {
+        commandGateway.send(
+                new UpdateBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType(),
+                        request.getNewBudget()
+                )
+        );
+    }
+
+    @DeleteMapping("/budgeting")
+    public void removeBudgeting(@RequestBody CashFlowDto.RemoveBudgetingJson request) {
+        commandGateway.send(
+                new RemoveBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType()
                 )
         );
     }
