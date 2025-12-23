@@ -197,6 +197,34 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         actor.addCategory(cashFlowId, new CategoryName("Clothing"), new CategoryName("Footwear"), OUTFLOW);
 
         actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Savings"), OUTFLOW);
+
+        // Set budgeting for selected categories (categories WITH budgeting that have transactions)
+        // Salary - expected monthly income
+        actor.setBudgeting(cashFlowId, new CategoryName("Salary"), INFLOW, Money.of(5000, "USD"));
+
+        // Rent - fixed monthly expense with budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Rent"), OUTFLOW, Money.of(1500, "USD"));
+
+        // Groceries - monthly budget for food shopping
+        actor.setBudgeting(cashFlowId, new CategoryName("Groceries"), OUTFLOW, Money.of(600, "USD"));
+
+        // Fuel - monthly transportation budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Fuel"), OUTFLOW, Money.of(300, "USD"));
+
+        // Streaming - entertainment budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Streaming"), OUTFLOW, Money.of(50, "USD"));
+
+        // Savings - monthly savings goal
+        actor.setBudgeting(cashFlowId, new CategoryName("Savings"), OUTFLOW, Money.of(500, "USD"));
+
+        // Note: Categories WITHOUT budgeting that still have transactions:
+        // - Bonus (INFLOW) - no budget, occasional income
+        // - Dividends, Interest (INFLOW) - no budget, variable income
+        // - Restaurants (OUTFLOW) - no budget, discretionary spending
+        // - Gym (OUTFLOW) - no budget
+        // - Electricity, Gas, Internet (OUTFLOW) - no budget, variable utilities
+
+        log.info("Home budget categories created with budgeting set for: Salary, Rent, Groceries, Fuel, Streaming, Savings");
     }
 
     private void setupBusinessBudgetCategories(CashFlowId cashFlowId) {
@@ -246,6 +274,41 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         actor.addCategory(cashFlowId, new CategoryName("Travel"), new CategoryName("Meals"), OUTFLOW);
 
         actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Taxes"), OUTFLOW);
+
+        // Set budgeting for selected categories (categories WITH budgeting that have transactions)
+        // Product Sales - expected monthly revenue target
+        actor.setBudgeting(cashFlowId, new CategoryName("Product Sales"), INFLOW, Money.of(25000, "USD"));
+
+        // Service Revenue - expected service income
+        actor.setBudgeting(cashFlowId, new CategoryName("Service Revenue"), INFLOW, Money.of(15000, "USD"));
+
+        // Office Rent - fixed monthly expense
+        actor.setBudgeting(cashFlowId, new CategoryName("Office Rent"), OUTFLOW, Money.of(3000, "USD"));
+
+        // Salaries - fixed payroll budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Salaries"), OUTFLOW, Money.of(20000, "USD"));
+
+        // Advertising - marketing budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Advertising"), OUTFLOW, Money.of(2000, "USD"));
+
+        // Software Subscriptions - technology budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Software Subscriptions"), OUTFLOW, Money.of(1500, "USD"));
+
+        // Cloud Services - infrastructure budget
+        actor.setBudgeting(cashFlowId, new CategoryName("Cloud Services"), OUTFLOW, Money.of(1000, "USD"));
+
+        // Note: Categories WITHOUT budgeting that still have transactions:
+        // - Consulting Fees (INFLOW) - no budget, variable income
+        // - Interest Income (INFLOW) - no budget, variable income
+        // - Office Utilities (OUTFLOW) - no budget, variable expense
+        // - Contractor Payments (OUTFLOW) - no budget, variable expense
+        // - Social Media (OUTFLOW) - no budget
+        // - Legal Fees (OUTFLOW) - no budget, occasional expense
+        // - Accounting (OUTFLOW) - no budget
+        // - Business Trips (OUTFLOW) - no budget, occasional expense
+        // - Taxes (OUTFLOW) - no budget, quarterly
+
+        log.info("Business budget categories created with budgeting set for: Product Sales, Service Revenue, Office Rent, Salaries, Advertising, Software Subscriptions, Cloud Services");
     }
 
     private record TransactionResult(CashChangeId lastCashChangeId, PaymentStatus lastPaymentStatus) {}
@@ -781,5 +844,16 @@ class DualBudgetActor {
                 categoryName,
                 type
         ));
+    }
+
+    void setBudgeting(CashFlowId cashFlowId, CategoryName categoryName, Type categoryType, Money budget) {
+        cashFlowRestController.setBudgeting(
+                CashFlowDto.SetBudgetingJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .categoryName(categoryName.name())
+                        .categoryType(categoryType)
+                        .budget(budget)
+                        .build()
+        );
     }
 }
