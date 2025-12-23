@@ -49,6 +49,15 @@ public class CashFlowEventListener {
             case "CategoryCreatedEvent" -> {
                 return event.getContent().to(CashFlowEvent.CategoryCreatedEvent.class);
             }
+            case "BudgetingSetEvent" -> {
+                return event.getContent().to(CashFlowEvent.BudgetingSetEvent.class);
+            }
+            case "BudgetingUpdatedEvent" -> {
+                return event.getContent().to(CashFlowEvent.BudgetingUpdatedEvent.class);
+            }
+            case "BudgetingRemovedEvent" -> {
+                return event.getContent().to(CashFlowEvent.BudgetingRemovedEvent.class);
+            }
             default -> throw new IllegalStateException("Unexpected value: " + eventType);
         }
     }

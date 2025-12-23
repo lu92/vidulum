@@ -215,6 +215,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         } else {
             categories.add(newCategory);
         }
+        add(event);
     }
 
     public void apply(CashFlowEvent.BudgetingSetEvent event) {
