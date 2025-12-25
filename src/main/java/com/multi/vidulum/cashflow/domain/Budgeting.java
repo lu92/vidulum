@@ -1,20 +1,28 @@
 package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.common.Money;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+@Data
+@Builder
+@NoArgsConstructor(force = true)
+@AllArgsConstructor
 public final class Budgeting {
     private final Money budget;
     private final ZonedDateTime created;
     private final ZonedDateTime lastUpdated;
 
-    public Budgeting(Money budget, ZonedDateTime created, ZonedDateTime lastUpdated) {
-        this.budget = budget;
-        this.created = created;
-        this.lastUpdated = lastUpdated;
-    }
+//    public Budgeting(Money budget, ZonedDateTime created, ZonedDateTime lastUpdated) {
+//        this.budget = budget;
+//        this.created = created;
+//        this.lastUpdated = lastUpdated;
+//    }
 
     public Money budget() {
         return budget;

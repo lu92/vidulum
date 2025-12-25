@@ -168,16 +168,17 @@ public class CashFlowForecastStatement {
             CategoryNode takenCashCategoryNode = stack.pop();
 
             CashCategory cashCategory = CashCategory.builder()
-                    .categoryName(takenCashCategoryNode.categoryName())
-                    .category(new Category(takenCashCategoryNode.categoryName().name()))
+                    .categoryName(takenCashCategoryNode.getCategoryName())
+                    .category(new Category(takenCashCategoryNode.getCategoryName().name()))
                     .subCategories(new LinkedList<>())
                     .groupedTransactions(new GroupedTransactions())
                     .totalPaidValue(Money.zero(bankAccountNumber.denomination().getId()))
+                    .budgeting(takenCashCategoryNode.getBudgeting())
                     .build();
 
-            if (takenCashCategoryNode.parentCategoryNode() != null && takenCashCategoryNode.parentCategoryNode().categoryName().isDefined()) {
+            if (takenCashCategoryNode.getParentCategoryNode() != null && takenCashCategoryNode.getParentCategoryNode().getCategoryName().isDefined()) {
 
-                CashCategory parent = findParent(takenCashCategoryNode.parentCategoryNode().categoryName(), cashCategories);
+                CashCategory parent = findParent(takenCashCategoryNode.getParentCategoryNode().getCategoryName(), cashCategories);
                 parent.getSubCategories().add(cashCategory);
 
             } else {
@@ -185,7 +186,7 @@ public class CashFlowForecastStatement {
             }
 
 
-            LinkedList<CategoryNode> copyOfNodes = new LinkedList<>(takenCashCategoryNode.nodes());
+            LinkedList<CategoryNode> copyOfNodes = new LinkedList<>(takenCashCategoryNode.getNodes());
             Collections.reverse(copyOfNodes);
             copyOfNodes.forEach(stack::push);
         }

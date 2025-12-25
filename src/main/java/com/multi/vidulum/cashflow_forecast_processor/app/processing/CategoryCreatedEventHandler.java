@@ -79,7 +79,7 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
             newCategoryNode = new CategoryNode(parent, event.categoryName(), new LinkedList<>());
 
             assert parent != null;
-            parent.nodes().add(newCategoryNode);
+            parent.getNodes().add(newCategoryNode);
         }
     }
 
@@ -88,10 +88,10 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         categoryNodes.forEach(stack::push);
         while (!stack.isEmpty()) {
             CategoryNode takenCashCategoryNode = stack.pop();
-            if (takenCashCategoryNode.categoryName().equals(parentCategoryName)) {
+            if (takenCashCategoryNode.getCategoryName().equals(parentCategoryName)) {
                 return takenCashCategoryNode;
             }
-            takenCashCategoryNode.nodes().forEach(stack::push);
+            takenCashCategoryNode.getNodes().forEach(stack::push);
         }
         return null;
     }
@@ -116,10 +116,10 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
         stack.push(categoryNodes);
         while (!stack.isEmpty()) {
             List<CategoryNode> takenList = stack.pop();
-            if (takenList.stream().anyMatch(categoryNode -> categoryNode.categoryName().equals(parentCategoryName))) {
+            if (takenList.stream().anyMatch(categoryNode -> categoryNode.getCategoryName().equals(parentCategoryName))) {
                 return takenList;
             }
-            takenList.stream().map(CategoryNode::nodes).forEach(stack::push);
+            takenList.stream().map(CategoryNode::getNodes).forEach(stack::push);
         }
         return null;
     }
