@@ -20,4 +20,6 @@ public class CashCategory {
      * updated with {@link CashFlowEvent.CashChangeConfirmedEvent}
      */
     private Money totalPaidValue;
+
+    private Budgeting budgeting;
 }

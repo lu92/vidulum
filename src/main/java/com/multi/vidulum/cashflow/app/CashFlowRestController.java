@@ -1,12 +1,16 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.set.SetBudgetingCommand;
+import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
+import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Reason;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static java.util.Optional.ofNullable;
 
@@ -103,7 +108,18 @@ public class CashFlowRestController {
                 new GetCashFlowQuery(new CashFlowId(cashFlowId))
         );
 
-        return mapper.mapCashChange(snapshot);
+        return mapper.mapCashFlow(snapshot);
+    }
+
+    @GetMapping("/viaUser/{userId}")
+    public List<CashFlowDto.CashFlowDetailJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
+        List<CashFlowSnapshot> snapshots = queryGateway.send(
+                new GetDetailsOfCashFlowViaUserQuery(new UserId(userId))
+        );
+
+        return snapshots.stream()
+                .map(mapper::mapCashFlowDetails)
+                .toList();
     }
 
     @PostMapping("/{cashFlowId}/category")
@@ -114,6 +130,41 @@ public class CashFlowRestController {
                         ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
                         new CategoryName(request.getCategory()),
                         request.getType()
+                )
+        );
+    }
+
+    @PostMapping("/budgeting")
+    public void setBudgeting(@RequestBody CashFlowDto.SetBudgetingJson request) {
+        commandGateway.send(
+                new SetBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType(),
+                        request.getBudget()
+                )
+        );
+    }
+
+    @PutMapping("/budgeting")
+    public void updateBudgeting(@RequestBody CashFlowDto.UpdateBudgetingJson request) {
+        commandGateway.send(
+                new UpdateBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType(),
+                        request.getNewBudget()
+                )
+        );
+    }
+
+    @DeleteMapping("/budgeting")
+    public void removeBudgeting(@RequestBody CashFlowDto.RemoveBudgetingJson request) {
+        commandGateway.send(
+                new RemoveBudgetingCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType()
                 )
         );
     }

@@ -34,8 +34,8 @@ public class CashFlowEntity {
     private BankAccount bankAccount;
     private CashFlow.CashFlowStatus status;
     private List<CashChangeEntity> cashChanges;
-    private List<Category> inflowCategories;
-    private List<Category> outflowCategories;
+    private List<CategoryEntity> inflowCategories;
+    private List<CategoryEntity> outflowCategories;
     private String activePeriod;
     private Date created;
     private Date lastModification;
@@ -58,8 +58,8 @@ public class CashFlowEntity {
                 .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChangeEntities)
-                .inflowCategories(snapshot.inflowCategories())
-                .outflowCategories(snapshot.outflowCategories())
+                .inflowCategories(CategoryEntity.fromDomainList(snapshot.inflowCategories()))
+                .outflowCategories(CategoryEntity.fromDomainList(snapshot.outflowCategories()))
                 .activePeriod(snapshot.activePeriod().toString())
                 .created(createdDate)
                 .lastModification(lastModification)
@@ -87,8 +87,8 @@ public class CashFlowEntity {
                 status,
                 cashChangeSnapshotMap,
                 YearMonth.parse(activePeriod),
-                inflowCategories,
-                outflowCategories,
+                CategoryEntity.toDomainList(inflowCategories),
+                CategoryEntity.toDomainList(outflowCategories),
                 createdDateTime,
                 lastModificationDateTime
         );

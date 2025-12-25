@@ -112,12 +112,14 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         LinkedList<Category> inflowCategories = new LinkedList<>();
         inflowCategories.add(new Category(
                 new CategoryName("Uncategorized"),
+                null,
                 new LinkedList<>(),
                 false
         ));
         LinkedList<Category> outflowCategories = new LinkedList<>();
         outflowCategories.add(new Category(
                 new CategoryName("Uncategorized"),
+                null,
                 new LinkedList<>(),
                 false
         ));
@@ -201,6 +203,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
         Category newCategory = new Category(
                 event.categoryName(),
+                null,
                 new LinkedList<>(),
                 true);
 
@@ -212,6 +215,52 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         } else {
             categories.add(newCategory);
         }
+        add(event);
+    }
+
+    public void apply(CashFlowEvent.BudgetingSetEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+        Category category = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        if (category.getBudgeting() != null) {
+            throw new BudgetingAlreadyExistsException(event.categoryName());
+        }
+
+        Budgeting budgeting = new Budgeting(event.budget(), event.created(), event.created());
+        category.setBudgeting(budgeting);
+        add(event);
+    }
+
+    public void apply(CashFlowEvent.BudgetingUpdatedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+        Category category = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        if (category.getBudgeting() == null) {
+            throw new BudgetingDoesNotExistsException(event.categoryName());
+        }
+
+        Budgeting updatedBudgeting = new Budgeting(
+                event.newBudget(),
+                category.getBudgeting().created(),
+                event.updated()
+        );
+        category.setBudgeting(updatedBudgeting);
+        add(event);
+    }
+
+    public void apply(CashFlowEvent.BudgetingRemovedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+        Category category = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        if (category.getBudgeting() == null) {
+            throw new BudgetingDoesNotExistsException(event.categoryName());
+        }
+
+        category.setBudgeting(null);
+        add(event);
     }
 
     private Optional<Category> findCategoryByName(CategoryName categoryName, List<Category> categories) {

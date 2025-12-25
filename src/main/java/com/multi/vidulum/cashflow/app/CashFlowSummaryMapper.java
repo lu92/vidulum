@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 @Component
 public class CashFlowSummaryMapper {
 
-    public CashFlowDto.CashFlowSummaryJson mapCashChange(CashFlowSnapshot cashFlowSnapshot) {
+    public CashFlowDto.CashFlowSummaryJson mapCashFlow(CashFlowSnapshot cashFlowSnapshot) {
         Map<String, CashFlowDto.CashChangeSummaryJson> cashChanges = cashFlowSnapshot.cashChanges().values()
                 .stream()
                 .map(this::mapCashChange)
@@ -28,6 +28,21 @@ public class CashFlowSummaryMapper {
                 .bankAccount(cashFlowSnapshot.bankAccount())
                 .status(cashFlowSnapshot.status())
                 .cashChanges(cashChanges)
+                .inflowCategories(cashFlowSnapshot.inflowCategories())
+                .outflowCategories(cashFlowSnapshot.outflowCategories())
+                .created(cashFlowSnapshot.created())
+                .lastModification(cashFlowSnapshot.lastModification())
+                .build();
+    }
+
+    public CashFlowDto.CashFlowDetailJson mapCashFlowDetails(CashFlowSnapshot cashFlowSnapshot) {
+        return CashFlowDto.CashFlowDetailJson.builder()
+                .cashFlowId(cashFlowSnapshot.cashFlowId().id())
+                .userId(cashFlowSnapshot.userId().getId())
+                .name(cashFlowSnapshot.name().name())
+                .description(cashFlowSnapshot.description().description())
+                .bankAccount(cashFlowSnapshot.bankAccount())
+                .status(cashFlowSnapshot.status())
                 .inflowCategories(cashFlowSnapshot.inflowCategories())
                 .outflowCategories(cashFlowSnapshot.outflowCategories())
                 .created(cashFlowSnapshot.created())

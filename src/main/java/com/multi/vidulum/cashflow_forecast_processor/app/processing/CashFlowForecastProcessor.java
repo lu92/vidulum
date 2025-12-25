@@ -23,6 +23,9 @@ public class CashFlowForecastProcessor {
     private final CashChangeEditedEventHandler cashChangeEditedEventHandler;
     private final CashChangeRejectedEventHandler cashChangeRejectedEventHandler;
     private final CategoryCreatedEventHandler categoryCreatedEventHandler;
+    private final BudgetingSetEventHandler budgetingSetEventHandler;
+    private final BudgetingUpdatedEventHandler budgetingUpdatedEventHandler;
+    private final BudgetingRemovedEventHandler budgetingRemovedEventHandler;
 
     public void process(CashFlowEvent cashFlowEvent) {
         oldProcessing(cashFlowEvent);
@@ -38,7 +41,9 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.CashChangeRejectedEvent event -> cashChangeRejectedEventHandler.handle(event);
             case CashFlowEvent.CashChangeEditedEvent event -> cashChangeEditedEventHandler.handle(event);
             case CashFlowEvent.CategoryCreatedEvent event -> categoryCreatedEventHandler.handle(event);
-            default -> throw new IllegalStateException("Unexpected value: " + cashFlowEvent);
+            case CashFlowEvent.BudgetingSetEvent event -> budgetingSetEventHandler.handle(event);
+            case CashFlowEvent.BudgetingUpdatedEvent event -> budgetingUpdatedEventHandler.handle(event);
+            case CashFlowEvent.BudgetingRemovedEvent event -> budgetingRemovedEventHandler.handle(event);
         }
     }
 

@@ -76,6 +76,21 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    public static class CashFlowDetailJson {
+        private String cashFlowId;
+        private String userId;
+        private String name;
+        private String description;
+        private BankAccount bankAccount;
+        private CashFlow.CashFlowStatus status;
+        private List<Category> inflowCategories;
+        private List<Category> outflowCategories;
+        private ZonedDateTime created;
+        private ZonedDateTime lastModification;
+    }
+
+    @Data
+    @Builder
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String name;
@@ -95,5 +110,31 @@ public final class CashFlowDto {
         private String parentCategoryName; //optional
         private String category;
         private Type type;
+    }
+
+    @Data
+    @Builder
+    public static class SetBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
+        private Money budget;
+    }
+
+    @Data
+    @Builder
+    public static class UpdateBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
+        private Money newBudget;
+    }
+
+    @Data
+    @Builder
+    public static class RemoveBudgetingJson {
+        private String cashFlowId;
+        private String categoryName;
+        private Type categoryType;
     }
 }

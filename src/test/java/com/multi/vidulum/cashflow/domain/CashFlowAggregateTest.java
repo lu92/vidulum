@@ -755,4 +755,268 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
 
     }
+
+    @Test
+    void shouldSetBudgetingAndTrackUncommittedEvents() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.apply(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ));
+
+        cashFlow.apply(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Groceries"),
+                        OUTFLOW
+                )
+        );
+
+        CashFlowEvent.BudgetingSetEvent budgetingSetEvent = new CashFlowEvent.BudgetingSetEvent(
+                cashFlowId,
+                new CategoryName("Groceries"),
+                OUTFLOW,
+                Money.of(500, "USD"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        );
+
+        // when
+        cashFlow.apply(budgetingSetEvent);
+
+        // then - verify uncommitted events contain the budgeting event
+        assertThat(cashFlow.getUncommittedEvents())
+                .contains(budgetingSetEvent);
+
+        // verify budgeting is set on the category
+        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+        assertThat(snapshot.outflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Groceries");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(500, "USD"));
+                });
+
+        // when save
+        domainCashFlowRepository.save(cashFlow);
+
+        // then - verify domain events are persisted
+        assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
+                .contains(budgetingSetEvent);
+    }
+
+    @Test
+    void shouldUpdateBudgetingAndTrackUncommittedEvents() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.apply(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ));
+
+        cashFlow.apply(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Entertainment"),
+                        OUTFLOW
+                )
+        );
+
+        cashFlow.apply(
+                new CashFlowEvent.BudgetingSetEvent(
+                        cashFlowId,
+                        new CategoryName("Entertainment"),
+                        OUTFLOW,
+                        Money.of(200, "USD"),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        CashFlowEvent.BudgetingUpdatedEvent budgetingUpdatedEvent = new CashFlowEvent.BudgetingUpdatedEvent(
+                cashFlowId,
+                new CategoryName("Entertainment"),
+                OUTFLOW,
+                Money.of(350, "USD"),
+                ZonedDateTime.parse("2021-06-02T06:30:00Z")
+        );
+
+        // when
+        cashFlow.apply(budgetingUpdatedEvent);
+
+        // then - verify uncommitted events contain the budgeting updated event
+        assertThat(cashFlow.getUncommittedEvents())
+                .contains(budgetingUpdatedEvent);
+
+        // verify budgeting is updated on the category
+        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+        assertThat(snapshot.outflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Entertainment");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(350, "USD"));
+                });
+
+        // when save
+        domainCashFlowRepository.save(cashFlow);
+
+        // then - verify domain events are persisted
+        assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
+                .contains(budgetingUpdatedEvent);
+    }
+
+    @Test
+    void shouldRemoveBudgetingAndTrackUncommittedEvents() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.apply(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ));
+
+        cashFlow.apply(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Dining"),
+                        OUTFLOW
+                )
+        );
+
+        cashFlow.apply(
+                new CashFlowEvent.BudgetingSetEvent(
+                        cashFlowId,
+                        new CategoryName("Dining"),
+                        OUTFLOW,
+                        Money.of(150, "USD"),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        CashFlowEvent.BudgetingRemovedEvent budgetingRemovedEvent = new CashFlowEvent.BudgetingRemovedEvent(
+                cashFlowId,
+                new CategoryName("Dining"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-02T06:30:00Z")
+        );
+
+        // when
+        cashFlow.apply(budgetingRemovedEvent);
+
+        // then - verify uncommitted events contain the budgeting removed event
+        assertThat(cashFlow.getUncommittedEvents())
+                .contains(budgetingRemovedEvent);
+
+        // verify budgeting is removed from the category
+        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+        assertThat(snapshot.outflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Dining");
+                    assertThat(category.getBudgeting()).isNull();
+                });
+
+        // when save
+        domainCashFlowRepository.save(cashFlow);
+
+        // then - verify domain events are persisted
+        assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
+                .contains(budgetingRemovedEvent);
+    }
+
+    @Test
+    void shouldProjectBudgetingEventsCorrectly() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.apply(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                ));
+
+        cashFlow.apply(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Salary"),
+                        INFLOW
+                )
+        );
+
+        cashFlow.apply(
+                new CashFlowEvent.BudgetingSetEvent(
+                        cashFlowId,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        Money.of(5000, "USD"),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        cashFlow.apply(
+                new CashFlowEvent.BudgetingUpdatedEvent(
+                        cashFlowId,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        Money.of(6000, "USD"),
+                        ZonedDateTime.parse("2021-06-02T06:30:00Z")
+                )
+        );
+
+        // when
+        domainCashFlowRepository.save(cashFlow);
+
+        // then
+        List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
+                .stream()
+                .map(domainEvent -> (CashFlowEvent) domainEvent)
+                .collect(Collectors.toList());
+
+        CashFlow reprocessedCashFlow = cashFlowAggregateProjector.process(domainEvents);
+        assertThat(reprocessedCashFlow.getSnapshot())
+                .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
+
+        // verify the projected cashflow has the correct budgeting
+        assertThat(reprocessedCashFlow.getSnapshot().inflowCategories())
+                .anySatisfy(category -> {
+                    assertThat(category.getCategoryName().name()).isEqualTo("Salary");
+                    assertThat(category.getBudgeting()).isNotNull();
+                    assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(6000, "USD"));
+                });
+    }
 }
