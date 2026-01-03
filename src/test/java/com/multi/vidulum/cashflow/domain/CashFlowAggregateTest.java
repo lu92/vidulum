@@ -2,14 +2,13 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
-import com.multi.vidulum.common.Currency;
-import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.Reason;
-import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.*;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
@@ -31,38 +30,43 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Autowired
     private CashFlowAggregateProjector cashFlowAggregateProjector;
 
+    private Checksum calculateChecksum(CashFlowEvent event) {
+        String jsonizedEvent = JsonContent.asJson(event).content();
+        return new Checksum(DigestUtils.md5DigestAsHex(jsonizedEvent.getBytes(StandardCharsets.UTF_8)));
+    }
+
     @Test
     void shouldSaveNewlyCreatedCashChange() {
         // given
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId cashChangeId = CashChangeId.generate();
         CashFlow cashFlow = new CashFlow();
-        cashFlow.apply(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        cashFlowId,
-                        UserId.of("user"),
-                        new Name("name"),
-                        new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"))
-        );
+        CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(0, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"));
+        cashFlow.apply(createdEvent);
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change description"),
-                        Money.of(100, "USD"),
-                        INFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
+        CashFlowEvent.CashChangeAppendedEvent appendedEvent = new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("cash change name"),
+                new Description("cash change description"),
+                Money.of(100, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
         );
+        cashFlow.apply(appendedEvent);
+
+        Checksum expectedChecksum = calculateChecksum(appendedEvent);
 
         // when
         domainCashFlowRepository.save(cashFlow);
@@ -74,7 +78,6 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         assertThat(actualSnapshot)
                 .usingRecursiveComparison()
-                .ignoringFields("lastMessageChecksum")
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
@@ -119,32 +122,12 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                expectedChecksum
                         ));
-        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        cashFlowId,
-                        new UserId("user"),
-                        new Name("name"),
-                        new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")),
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change description"),
-                        Money.of(100, "USD"),
-                        INFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
+                createdEvent,
+                appendedEvent
         );
 
         List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
@@ -164,62 +147,57 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashChangeId firstCashChangeId = CashChangeId.generate();
         CashChangeId secondCashChangeId = CashChangeId.generate();
         CashFlow cashFlow = new CashFlow();
-        cashFlow.apply(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        cashFlowId,
-                        UserId.of("user"),
-                        new Name("name"),
-                        new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
-                ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        firstCashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change inflow description"),
-                        Money.of(100, "USD"),
-                        INFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
-        );
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(0, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        secondCashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change outflow description"),
-                        Money.of(60, "USD"),
-                        OUTFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
-        );
+        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
+                firstCashChangeId,
+                new Name("cash change name"),
+                new Description("cash change inflow description"),
+                Money.of(100, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeConfirmedEvent(
-                        cashFlowId,
-                        firstCashChangeId,
-                        ZonedDateTime.parse("2021-07-10T06:30:00Z")
-                )
-        );
+        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
+                secondCashChangeId,
+                new Name("cash change name"),
+                new Description("cash change outflow description"),
+                Money.of(60, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeConfirmedEvent(
-                        cashFlowId,
-                        secondCashChangeId,
-                        ZonedDateTime.parse("2021-07-10T06:30:00Z")
-                )
+        cashFlow.apply(new CashFlowEvent.CashChangeConfirmedEvent(
+                cashFlowId,
+                firstCashChangeId,
+                ZonedDateTime.parse("2021-07-10T06:30:00Z")
+        ));
+
+        CashFlowEvent.CashChangeConfirmedEvent lastEvent = new CashFlowEvent.CashChangeConfirmedEvent(
+                cashFlowId,
+                secondCashChangeId,
+                ZonedDateTime.parse("2021-07-10T06:30:00Z")
         );
+        cashFlow.apply(lastEvent);
+
+        Checksum expectedChecksum = calculateChecksum(lastEvent);
 
         // when
         domainCashFlowRepository.save(cashFlow);
@@ -231,7 +209,6 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         assertThat(actualSnapshot)
                 .usingRecursiveComparison()
-                .ignoringFields("lastMessageChecksum")
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
@@ -289,10 +266,9 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
-                                null
+                                expectedChecksum
                         )
                 );
-        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -371,43 +347,42 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlowId cashFlowId = CashFlowId.generate();
         CashChangeId cashChangeId = CashChangeId.generate();
         CashFlow cashFlow = new CashFlow();
-        cashFlow.apply(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        cashFlowId,
-                        UserId.of("user"),
-                        new Name("name"),
-                        new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
-                ));
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(0, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change description"),
-                        Money.of(100, "USD"),
-                        INFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z"))
+        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("cash change name"),
+                new Description("cash change description"),
+                Money.of(100, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"))
         );
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeEditedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Name("name edited"),
-                        new Description("description edited"),
-                        Money.of(500, "USD"),
-                        ZonedDateTime.parse("2021-08-01T00:00:00Z"),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
-                )
+        CashFlowEvent.CashChangeEditedEvent lastEvent = new CashFlowEvent.CashChangeEditedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("name edited"),
+                new Description("description edited"),
+                Money.of(500, "USD"),
+                ZonedDateTime.parse("2021-08-01T00:00:00Z"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
         );
+        cashFlow.apply(lastEvent);
+
+        Checksum expectedChecksum = calculateChecksum(lastEvent);
 
         // when
         domainCashFlowRepository.save(cashFlow);
@@ -419,7 +394,6 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         assertThat(actualSnapshot)
                 .usingRecursiveComparison()
-                .ignoringFields("lastMessageChecksum")
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
@@ -464,10 +438,9 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                expectedChecksum
                         )
                 );
-        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
                 .containsExactly(
@@ -539,42 +512,39 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashChangeId cashChangeId = CashChangeId.generate();
 
         CashFlow cashFlow = new CashFlow();
-        cashFlow.apply(
-                new CashFlowEvent.CashFlowCreatedEvent(
-                        cashFlowId,
-                        UserId.of("user"),
-                        new Name("name"),
-                        new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
-                )
-        );
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(0, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeAppendedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Name("cash change name"),
-                        new Description("cash change description"),
-                        Money.of(100, "USD"),
-                        INFLOW,
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                        new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
-        );
+        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("cash change name"),
+                new Description("cash change description"),
+                Money.of(100, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+        ));
 
-        cashFlow.apply(
-                new CashFlowEvent.CashChangeRejectedEvent(
-                        cashFlowId,
-                        cashChangeId,
-                        new Reason("some reason"),
-                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
-                )
+        CashFlowEvent.CashChangeRejectedEvent lastEvent = new CashFlowEvent.CashChangeRejectedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Reason("some reason"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
         );
+        cashFlow.apply(lastEvent);
+
+        Checksum expectedChecksum = calculateChecksum(lastEvent);
 
         // when
         domainCashFlowRepository.save(cashFlow);
@@ -586,7 +556,6 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         assertThat(actualSnapshot)
                 .usingRecursiveComparison()
-                .ignoringFields("lastMessageChecksum")
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
@@ -631,10 +600,9 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                expectedChecksum
                         )
                 );
-        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
                 .contains(
@@ -709,14 +677,14 @@ class CashFlowAggregateTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ));
 
-        cashFlow.apply(
-                new CashFlowEvent.MonthAttestedEvent(
-                        cashFlowId,
-                        YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
-                        Money.of(500, "USD"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
+        CashFlowEvent.MonthAttestedEvent lastEvent = new CashFlowEvent.MonthAttestedEvent(
+                cashFlowId,
+                YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                Money.of(500, "USD"),
+                ZonedDateTime.parse("2021-07-01T06:30:00Z")
         );
+        cashFlow.apply(lastEvent);
+        Checksum expectedChecksum = calculateChecksum(lastEvent);
 
         // when
         domainCashFlowRepository.save(cashFlow);
@@ -728,7 +696,6 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         assertThat(actualSnapshot)
                 .usingRecursiveComparison()
-                .ignoringFields("lastMessageChecksum")
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
@@ -760,10 +727,9 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                                null
+                                expectedChecksum
                         )
                 );
-        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -777,12 +743,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
-                new CashFlowEvent.MonthAttestedEvent(
-                        cashFlowId,
-                        YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
-                        Money.of(500, "USD"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
-                )
+                lastEvent
         );
 
         List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
