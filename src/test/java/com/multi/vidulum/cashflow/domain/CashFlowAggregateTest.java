@@ -113,7 +113,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ));
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
@@ -276,7 +276,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                ZonedDateTime.parse("2021-07-10T06:30:00Z")
                         )
                 );
 
@@ -390,7 +390,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new Name("name edited"),
                         new Description("description edited"),
                         Money.of(500, "USD"),
-                        ZonedDateTime.parse("2021-08-01T00:00:00Z")
+                        ZonedDateTime.parse("2021-08-01T00:00:00Z"),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 
@@ -443,7 +444,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         )
                 );
 
@@ -477,7 +478,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Name("name edited"),
                                 new Description("description edited"),
                                 Money.of(500, "USD"),
-                                ZonedDateTime.parse("2021-08-01T00:00:00Z")
+                                ZonedDateTime.parse("2021-08-01T00:00:00Z"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         )
                 );
     }
@@ -548,7 +550,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                 new CashFlowEvent.CashChangeRejectedEvent(
                         cashFlowId,
                         cashChangeId,
-                        new Reason("some reason")
+                        new Reason("some reason"),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 
@@ -601,7 +604,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         )
                 );
 
@@ -633,7 +636,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new CashFlowEvent.CashChangeRejectedEvent(
                                 cashFlowId,
                                 cashChangeId,
-                                new Reason("some reason")
+                                new Reason("some reason"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         )
                 );
     }
@@ -722,7 +726,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                null
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z")
                         )
                 );
 
@@ -779,7 +783,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         cashFlowId,
                         CategoryName.NOT_DEFINED,
                         new CategoryName("Groceries"),
-                        OUTFLOW
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 
@@ -838,7 +843,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         cashFlowId,
                         CategoryName.NOT_DEFINED,
                         new CategoryName("Entertainment"),
-                        OUTFLOW
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 
@@ -907,7 +913,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         cashFlowId,
                         CategoryName.NOT_DEFINED,
                         new CategoryName("Dining"),
-                        OUTFLOW
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 
@@ -974,7 +981,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         cashFlowId,
                         CategoryName.NOT_DEFINED,
                         new CategoryName("Salary"),
-                        INFLOW
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
 

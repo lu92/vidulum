@@ -8,16 +8,17 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Component
 @AllArgsConstructor
 public class CreateCategoryCommandHandler implements CommandHandler<CreateCategoryCommand, Void> {
-    private DomainCashFlowRepository domainCashFlowRepository;
+    private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
-
+    private final Clock clock;
 
     @Override
     public Void handle(CreateCategoryCommand command) {
@@ -28,7 +29,8 @@ public class CreateCategoryCommandHandler implements CommandHandler<CreateCatego
                 command.cashFlowId(),
                 command.parentCategoryName(),
                 command.categoryName(),
-                command.type()
+                command.type(),
+                ZonedDateTime.now(clock)
         );
 
         cashFlow.apply(event);

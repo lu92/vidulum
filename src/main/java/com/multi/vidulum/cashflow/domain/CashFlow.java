@@ -290,6 +290,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     private void add(CashFlowEvent event) {
+        // update lastModification timestamp
+        this.lastModification = event.occurredAt();
         // store event temporary
         getUncommittedEvents().add(event);
     }

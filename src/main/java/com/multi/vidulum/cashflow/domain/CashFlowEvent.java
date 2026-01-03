@@ -23,39 +23,69 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     CashFlowId cashFlowId();
 
+    ZonedDateTime occurredAt();
+
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
                                 BankAccount bankAccount,
                                 ZonedDateTime created) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
     }
 
     record MonthAttestedEvent(CashFlowId cashFlowId, YearMonth period, Money currentMoney,
                               ZonedDateTime dateTime) implements CashFlowEvent {
-
+        @Override
+        public ZonedDateTime occurredAt() {
+            return dateTime;
+        }
     }
 
     record CashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
                                    Money money, Type type, ZonedDateTime created, CategoryName categoryName,
                                    ZonedDateTime dueDate) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
     }
 
     record CashChangeConfirmedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId,
                                     ZonedDateTime endDate) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return endDate;
+        }
     }
 
     record CashChangeEditedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
-                                 Money money, ZonedDateTime dueDate) implements CashFlowEvent {
+                                 Money money, ZonedDateTime dueDate, ZonedDateTime editedAt) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return editedAt;
+        }
     }
 
     record CashChangeRejectedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId,
-                                   Reason reason) implements CashFlowEvent {
+                                   Reason reason, ZonedDateTime rejectedAt) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return rejectedAt;
+        }
     }
 
     record CategoryCreatedEvent(
             CashFlowId cashFlowId,
             CategoryName parentCategoryName,
             CategoryName categoryName,
-            Type type
+            Type type,
+            ZonedDateTime createdAt
     ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return createdAt;
+        }
     }
 
     record BudgetingSetEvent(
@@ -65,6 +95,10 @@ public sealed interface CashFlowEvent extends DomainEvent
             Money budget,
             ZonedDateTime created
     ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
     }
 
     record BudgetingUpdatedEvent(
@@ -74,6 +108,10 @@ public sealed interface CashFlowEvent extends DomainEvent
             Money newBudget,
             ZonedDateTime updated
     ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return updated;
+        }
     }
 
     record BudgetingRemovedEvent(
@@ -82,5 +120,9 @@ public sealed interface CashFlowEvent extends DomainEvent
             Type categoryType,
             ZonedDateTime removed
     ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return removed;
+        }
     }
 }
