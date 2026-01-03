@@ -3,6 +3,7 @@ package com.multi.vidulum.cashflow.infrastructure.entity;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.UserId;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,6 +40,7 @@ public class CashFlowEntity {
     private String activePeriod;
     private Date created;
     private Date lastModification;
+    private String lastMessageChecksum;
 
     public static CashFlowEntity fromSnapshot(CashFlowSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.cashFlowId())
@@ -46,6 +48,7 @@ public class CashFlowEntity {
 
         Date createdDate = snapshot.created() != null ? Date.from(snapshot.created().toInstant()) : null;
         Date lastModification = snapshot.lastModification() != null ? Date.from(snapshot.lastModification().toInstant()) : null;
+        String lastMessageChecksum = snapshot.lastMessageChecksum() != null ? snapshot.lastMessageChecksum().checksum() : null;
         List<CashChangeEntity> cashChangeEntities = snapshot.cashChanges().values().stream()
                 .map(CashChangeEntity::fromSnapshot)
                 .collect(Collectors.toList());
@@ -63,6 +66,7 @@ public class CashFlowEntity {
                 .activePeriod(snapshot.activePeriod().toString())
                 .created(createdDate)
                 .lastModification(lastModification)
+                .lastMessageChecksum(lastMessageChecksum)
                 .build();
     }
 
@@ -70,7 +74,7 @@ public class CashFlowEntity {
 
         ZonedDateTime createdDateTime = ZonedDateTime.ofInstant(created.toInstant(), ZoneOffset.UTC);
         ZonedDateTime lastModificationDateTime = lastModification != null ? ZonedDateTime.ofInstant(lastModification.toInstant(), ZoneOffset.UTC) : null;
-
+        Checksum checksumValue = lastMessageChecksum != null ? new Checksum(lastMessageChecksum) : null;
 
         Map<CashChangeId, CashChangeSnapshot> cashChangeSnapshotMap = cashChanges.stream()
                 .map(CashChangeEntity::toSnapshot)
@@ -90,7 +94,8 @@ public class CashFlowEntity {
                 CategoryEntity.toDomainList(inflowCategories),
                 CategoryEntity.toDomainList(outflowCategories),
                 createdDateTime,
-                lastModificationDateTime
+                lastModificationDateTime,
+                checksumValue
         );
     }
 }

@@ -88,6 +88,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                         monthlyForecasts,
                         event.bankAccount().bankAccountNumber(),
                         currentCategoryStructure,
+                        event.created(),
                         getChecksum(event)
                 ));
     }

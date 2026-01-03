@@ -2,12 +2,16 @@ package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.Checksum;
+import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -34,6 +38,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private List<Category> outflowCategories;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
+    private Checksum lastMessageChecksum;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
 
@@ -69,7 +74,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 inflowCategories,
                 outflowCategories,
                 created,
-                lastModification
+                lastModification,
+                lastMessageChecksum
         );
     }
 
@@ -105,6 +111,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .outflowCategories(snapshot.outflowCategories())
                 .created(snapshot.created())
                 .lastModification(snapshot.lastModification())
+                .lastMessageChecksum(snapshot.lastMessageChecksum())
                 .build();
     }
 
@@ -135,6 +142,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.inflowCategories = inflowCategories;
         this.outflowCategories = outflowCategories;
         this.lastModification = null;
+        this.lastMessageChecksum = calculateChecksum(event);
         this.uncommittedEvents = new LinkedList<>();
         this.uncommittedEvents.add(event);
     }
@@ -290,8 +298,17 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     private void add(CashFlowEvent event) {
+        // update lastModification timestamp
+        this.lastModification = event.occurredAt();
+        // update checksum for synchronization with read models
+        this.lastMessageChecksum = calculateChecksum(event);
         // store event temporary
         getUncommittedEvents().add(event);
+    }
+
+    private Checksum calculateChecksum(CashFlowEvent event) {
+        String jsonizedEvent = JsonContent.asJson(event).content();
+        return new Checksum(DigestUtils.md5DigestAsHex(jsonizedEvent.getBytes(StandardCharsets.UTF_8)));
     }
 
     public List<CashFlowEvent> getUncommittedEvents() {

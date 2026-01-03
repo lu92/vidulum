@@ -46,6 +46,7 @@ public class BudgetingRemovedEventHandler implements CashFlowEventHandler<CashFl
             }
         });
 
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
         log.info("Budgeting removed for category [{}] in cashflow [{}]", event.categoryName().name(), event.cashFlowId().id());
     }

@@ -156,7 +156,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 )
                         ))
                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                        .lastModification(null)
+                        .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 
@@ -250,7 +250,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         )
                                 ))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                .lastModification(null)
+                                .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
                 );
 
@@ -350,7 +350,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         )
                                 ))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                .lastModification(null)
+                                .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
                 );
 
@@ -447,7 +447,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         )
                                 ))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                .lastModification(null)
+                                .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
                 );
 
@@ -548,7 +548,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 )
                         ))
                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                        .lastModification(null)
+                        .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 
@@ -671,7 +671,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 )
                         ))
                         .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                        .lastModification(null)
+                        .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 

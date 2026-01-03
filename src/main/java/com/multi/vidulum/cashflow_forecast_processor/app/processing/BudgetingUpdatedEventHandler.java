@@ -48,6 +48,7 @@ public class BudgetingUpdatedEventHandler implements CashFlowEventHandler<CashFl
             }
         });
 
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
         log.info("Budgeting updated for category [{}] in cashflow [{}]", event.categoryName().name(), event.cashFlowId().id());
     }
