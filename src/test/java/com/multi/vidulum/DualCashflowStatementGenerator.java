@@ -23,6 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -222,6 +225,29 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         log.info("  - Business: {} transactions", businessTransactionCount);
 
         log.info("CashFlowForecastRestController test completed successfully with large data!");
+
+        // Save responses to JSON files for mockup data
+        Path outputDir = Path.of("src/test/java/com/multi/vidulum");
+
+        Path homeForecastFile = outputDir.resolve("home_forecast_statement.json");
+        Path businessForecastFile = outputDir.resolve("business_forecast_statement.json");
+        Path userCashFlowsFile = outputDir.resolve("user_cashflows_response.json");
+
+        try {
+            Files.writeString(homeForecastFile, JsonContent.asJson(homeForecastStatement).content());
+            Files.writeString(businessForecastFile, JsonContent.asJson(businessForecastStatement).content());
+            Files.writeString(userCashFlowsFile, JsonContent.asJson(userCashFlows).content());
+
+            log.info("=".repeat(80));
+            log.info("Generated JSON mockup files:");
+            log.info("  1. Home Forecast Statement: {}", homeForecastFile.toAbsolutePath());
+            log.info("  2. Business Forecast Statement: {}", businessForecastFile.toAbsolutePath());
+            log.info("  3. User CashFlows Response: {}", userCashFlowsFile.toAbsolutePath());
+            log.info("=".repeat(80));
+        } catch (IOException e) {
+            log.error("Failed to write JSON files", e);
+            throw new RuntimeException("Failed to write JSON mockup files", e);
+        }
     }
 
     private void setupHomeBudgetCategories(CashFlowId cashFlowId) {
