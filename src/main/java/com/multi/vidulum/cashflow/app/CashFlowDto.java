@@ -72,6 +72,7 @@ public final class CashFlowDto {
         private List<Category> outflowCategories;
         private ZonedDateTime created;
         private ZonedDateTime lastModification;
+        private String lastMessageChecksum;
     }
 
     @Data
