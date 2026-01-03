@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
 
 import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
@@ -29,6 +30,7 @@ public class CashFlowForecastStatement {
     private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
     private BankAccountNumber bankAccountNumber;
     private CurrentCategoryStructure categoryStructure;
+    private ZonedDateTime lastModification;
     private Checksum lastMessageChecksum;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {

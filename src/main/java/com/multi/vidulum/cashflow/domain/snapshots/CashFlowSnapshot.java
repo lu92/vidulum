@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.domain.snapshots;
 
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 
@@ -21,7 +22,8 @@ public record CashFlowSnapshot(
         List<Category> inflowCategories,
         List<Category> outflowCategories,
         ZonedDateTime created,
-        ZonedDateTime lastModification) implements EntitySnapshot<CashFlowId> {
+        ZonedDateTime lastModification,
+        Checksum lastMessageChecksum) implements EntitySnapshot<CashFlowId> {
 
     @Override
     public CashFlowId id() {

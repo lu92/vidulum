@@ -6,7 +6,6 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
-import com.multi.vidulum.common.Checksum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -39,8 +38,7 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
 
         statement.updateStats();
 
-        Checksum lastMessageChecksum = getChecksum(event);
-        statement.setLastMessageChecksum(lastMessageChecksum);
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
     }
 }

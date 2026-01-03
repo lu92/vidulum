@@ -48,6 +48,7 @@ public class BudgetingSetEventHandler implements CashFlowEventHandler<CashFlowEv
             }
         });
 
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
         log.info("Budgeting set for category [{}] in cashflow [{}]", event.categoryName().name(), event.cashFlowId().id());
     }

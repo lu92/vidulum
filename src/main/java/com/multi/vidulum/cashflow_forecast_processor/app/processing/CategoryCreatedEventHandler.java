@@ -5,7 +5,6 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
-import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,9 +53,7 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
 
         statement.updateStats();
 
-
-        Checksum lastMessageChecksum = getChecksum(event);
-        statement.setLastMessageChecksum(lastMessageChecksum);
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
         log.info("Projection of cashflow [{}] amended with new category [{}]", event.cashFlowId().id(), event.categoryName().name());
     }
