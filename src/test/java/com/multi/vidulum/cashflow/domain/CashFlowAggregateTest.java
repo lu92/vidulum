@@ -68,19 +68,60 @@ class CashFlowAggregateTest extends IntegrationTest {
         domainCashFlowRepository.save(cashFlow);
 
         // then
-        assertThat(domainCashFlowRepository.findById(cashFlowId))
-                .isPresent()
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
                 .map(CashFlow::getSnapshot)
-                .get()
-                .satisfies(snapshot -> {
-                    assertThat(snapshot.cashFlowId()).isEqualTo(cashFlowId);
-                    assertThat(snapshot.userId()).isEqualTo(new UserId("user"));
-                    assertThat(snapshot.name()).isEqualTo(new Name("name"));
-                    assertThat(snapshot.status()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
-                    assertThat(snapshot.cashChanges()).containsKey(cashChangeId);
-                    assertThat(snapshot.lastModification()).isEqualTo(ZonedDateTime.parse("2021-06-01T06:30:00Z"));
-                    assertThat(snapshot.lastMessageChecksum()).isNotNull();
-                });
+                .orElseThrow();
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(0, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(
+                                        cashChangeId,
+                                        new CashChangeSnapshot(
+                                                cashChangeId,
+                                                new Name("cash change name"),
+                                                new Description("cash change description"),
+                                                Money.of(100, "USD"),
+                                                INFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                PENDING,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                                null
+                                        )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null
+                        ));
+        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -184,18 +225,74 @@ class CashFlowAggregateTest extends IntegrationTest {
         domainCashFlowRepository.save(cashFlow);
 
         // then
-        assertThat(domainCashFlowRepository.findById(cashFlowId)).isPresent()
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
                 .map(CashFlow::getSnapshot)
-                .get()
-                .satisfies(snapshot -> {
-                    assertThat(snapshot.cashFlowId()).isEqualTo(cashFlowId);
-                    assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(40, "USD"));
-                    assertThat(snapshot.cashChanges()).containsKeys(firstCashChangeId, secondCashChangeId);
-                    assertThat(snapshot.cashChanges().get(firstCashChangeId).status()).isEqualTo(CONFIRMED);
-                    assertThat(snapshot.cashChanges().get(secondCashChangeId).status()).isEqualTo(CONFIRMED);
-                    assertThat(snapshot.lastModification()).isEqualTo(ZonedDateTime.parse("2021-07-10T06:30:00Z"));
-                    assertThat(snapshot.lastMessageChecksum()).isNotNull();
-                });
+                .orElseThrow();
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(40, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(
+                                        firstCashChangeId,
+                                        new CashChangeSnapshot(
+                                                firstCashChangeId,
+                                                new Name("cash change name"),
+                                                new Description("cash change inflow description"),
+                                                Money.of(100, "USD"),
+                                                INFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                CONFIRMED,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-10T06:30:00Z")
+                                        ),
+                                        secondCashChangeId,
+                                        new CashChangeSnapshot(
+                                                secondCashChangeId,
+                                                new Name("cash change name"),
+                                                new Description("cash change outflow description"),
+                                                Money.of(60, "USD"),
+                                                OUTFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                CONFIRMED,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-10T06:30:00Z")
+                                        )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-07-10T06:30:00Z"),
+                                null
+                        )
+                );
+        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -316,17 +413,61 @@ class CashFlowAggregateTest extends IntegrationTest {
         domainCashFlowRepository.save(cashFlow);
 
         // then
-        assertThat(domainCashFlowRepository.findById(cashFlowId))
-                .isPresent()
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
                 .map(CashFlow::getSnapshot)
-                .get()
-                .satisfies(snapshot -> {
-                    assertThat(snapshot.cashFlowId()).isEqualTo(cashFlowId);
-                    assertThat(snapshot.cashChanges().get(cashChangeId).name()).isEqualTo(new Name("name edited"));
-                    assertThat(snapshot.cashChanges().get(cashChangeId).money()).isEqualTo(Money.of(500, "USD"));
-                    assertThat(snapshot.lastModification()).isEqualTo(ZonedDateTime.parse("2021-06-01T06:30:00Z"));
-                    assertThat(snapshot.lastMessageChecksum()).isNotNull();
-                });
+                .orElseThrow();
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(0, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(
+                                        cashChangeId,
+                                        new CashChangeSnapshot(
+                                                cashChangeId,
+                                                new Name("name edited"),
+                                                new Description("description edited"),
+                                                Money.of(500, "USD"),
+                                                INFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                PENDING,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-08-01T00:00:00Z"),
+                                                null
+                                        )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null
+                        )
+                );
+        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
                 .containsExactly(
@@ -439,16 +580,61 @@ class CashFlowAggregateTest extends IntegrationTest {
         domainCashFlowRepository.save(cashFlow);
 
         // then
-        assertThat(domainCashFlowRepository.findById(cashFlowId))
-                .isPresent()
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
                 .map(CashFlow::getSnapshot)
-                .get()
-                .satisfies(snapshot -> {
-                    assertThat(snapshot.cashFlowId()).isEqualTo(cashFlowId);
-                    assertThat(snapshot.cashChanges().get(cashChangeId).status()).isEqualTo(REJECTED);
-                    assertThat(snapshot.lastModification()).isEqualTo(ZonedDateTime.parse("2021-06-01T06:30:00Z"));
-                    assertThat(snapshot.lastMessageChecksum()).isNotNull();
-                });
+                .orElseThrow();
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(0, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(
+                                        cashChangeId,
+                                        new CashChangeSnapshot(
+                                                cashChangeId,
+                                                new Name("cash change name"),
+                                                new Description("cash change description"),
+                                                Money.of(100, "USD"),
+                                                INFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                REJECTED,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                                null
+                                        )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null
+                        )
+                );
+        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
                 .contains(
@@ -536,16 +722,48 @@ class CashFlowAggregateTest extends IntegrationTest {
         domainCashFlowRepository.save(cashFlow);
 
         // then
-        assertThat(domainCashFlowRepository.findById(cashFlowId)).isPresent()
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
                 .map(CashFlow::getSnapshot)
-                .get()
-                .satisfies(snapshot -> {
-                    assertThat(snapshot.cashFlowId()).isEqualTo(cashFlowId);
-                    assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(500, "USD"));
-                    assertThat(snapshot.activePeriod()).isEqualTo(YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")));
-                    assertThat(snapshot.lastModification()).isEqualTo(ZonedDateTime.parse("2021-07-01T06:30:00Z"));
-                    assertThat(snapshot.lastMessageChecksum()).isNotNull();
-                });
+                .orElseThrow();
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(500, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(),
+                                YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                null
+                        )
+                );
+        assertThat(actualSnapshot.lastMessageChecksum()).isNotNull();
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
