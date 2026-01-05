@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidulum - CashFlow Onboarding UI Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'vidulum': {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+        .journey-step {
+            opacity: 0.4;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .journey-step.active {
+            opacity: 1;
+        }
+        .journey-step:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-vidulum-500 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">V</span>
+                    </div>
+                    <span class="font-semibold text-gray-900">Vidulum UI Design</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="showJourney('quick-start')" id="btn-quick" class="px-4 py-2 rounded-lg text-sm font-medium bg-vidulum-500 text-white">
+                        Quick Start Journey
+                    </button>
+                    <button onclick="showJourney('advanced')" id="btn-advanced" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        Advanced Setup Journey
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Journey Progress -->
+    <div class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div id="journey-steps" class="flex items-center space-x-2 overflow-x-auto pb-2">
+                <!-- Steps will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+
+        <!-- ==================== QUICK START JOURNEY ==================== -->
+
+        <!-- QS Step 1: Welcome -->
+        <div id="qs-1" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-vidulum-500 to-vidulum-600 px-8 py-12 text-center">
+                    <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold text-white mb-2">Witaj w Vidulum!</h1>
+                    <p class="text-vidulum-100 text-lg">Zacznij kontrolować swoje finanse</p>
+                </div>
+
+                <div class="p-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 text-center">Jak chcesz zacząć?</h2>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Quick Start Option -->
+                        <div class="border-2 border-vidulum-500 rounded-xl p-6 bg-vidulum-50 cursor-pointer hover:shadow-lg transition-shadow">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 bg-vidulum-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-900 mb-1">Szybki Start</h3>
+                                    <p class="text-sm text-gray-600 mb-3">Zacznij od zera, dodawaj transakcje ręcznie. Idealne na początek.</p>
+                                    <div class="flex items-center text-sm text-vidulum-600">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        ~2 minuty
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-vidulum-200">
+                                <ul class="space-y-2 text-sm text-gray-600">
+                                    <li class="flex items-center">
+                                        <svg class="w-4 h-4 text-vidulum-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        AI kategoryzacja transakcji
+                                    </li>
+                                    <li class="flex items-center">
+                                        <svg class="w-4 h-4 text-vidulum-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Natychmiastowy start
+                                    </li>
+                                    <li class="flex items-center text-gray-400">
+                                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Brak historii
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Setup Option -->
+                        <div class="border-2 border-gray-200 rounded-xl p-6 bg-white cursor-pointer hover:border-gray-300 hover:shadow-lg transition-all" onclick="showJourney('advanced')">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-900 mb-1">Import z banku</h3>
+                                    <p class="text-sm text-gray-600 mb-3">Wgraj historię transakcji z wyciągu bankowego.</p>
+                                    <div class="flex items-center text-sm text-gray-500">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        ~15-30 minut
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <ul class="space-y-2 text-sm text-gray-600">
+                                    <li class="flex items-center">
+                                        <svg class="w-4 h-4 text-vidulum-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Pełna historia (do 5 lat)
+                                    </li>
+                                    <li class="flex items-center">
+                                        <svg class="w-4 h-4 text-vidulum-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Dokładne statystyki i trendy
+                                    </li>
+                                    <li class="flex items-center">
+                                        <svg class="w-4 h-4 text-vidulum-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Mapowanie kategorii
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 text-center">
+                        <button onclick="nextStep()" class="px-8 py-3 bg-vidulum-500 text-white rounded-xl font-medium hover:bg-vidulum-600 transition-colors">
+                            Kontynuuj z Szybkim Startem
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 2: Basic Info -->
+        <div id="qs-2" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="px-8 py-6 border-b border-gray-100">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-vidulum-100 rounded-full flex items-center justify-center">
+                            <span class="text-vidulum-600 font-semibold">1</span>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Podstawowe informacje</h2>
+                            <p class="text-sm text-gray-500">Podaj dane swojego konta</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-8">
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nazwa konta</label>
+                            <input type="text" value="Moje ING" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500" placeholder="np. Konto główne, ING, mBank...">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Waluta</label>
+                                <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500">
+                                    <option selected>PLN - Polski złoty</option>
+                                    <option>EUR - Euro</option>
+                                    <option>USD - Dolar</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Obecne saldo</label>
+                                <div class="relative">
+                                    <input type="text" value="4 250,00" class="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500">
+                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">PLN</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 rounded-xl p-4">
+                            <div class="flex items-start space-x-3">
+                                <svg class="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                <div class="text-sm text-blue-800">
+                                    <p class="font-medium">Saldo to Twój punkt startowy</p>
+                                    <p class="mt-1 text-blue-600">Wprowadź aktualne saldo z konta bankowego. Od tego momentu będziemy śledzić wszystkie zmiany.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button onclick="prevStep()" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                            Wstecz
+                        </button>
+                        <button onclick="nextStep()" class="px-8 py-3 bg-vidulum-500 text-white rounded-xl font-medium hover:bg-vidulum-600 transition-colors">
+                            Utwórz konto
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 3: Dashboard Empty -->
+        <div id="qs-3" class="screen">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Moje ING</h1>
+                            <p class="text-gray-500">Styczeń 2026</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Saldo</p>
+                            <p class="text-3xl font-bold text-gray-900">4 250,00 <span class="text-lg text-gray-500">PLN</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wpływy</p>
+                        <p class="text-xl font-semibold text-green-600">0,00 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wydatki</p>
+                        <p class="text-xl font-semibold text-red-600">0,00 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Transakcje</p>
+                        <p class="text-xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Brak transakcji</h3>
+                    <p class="text-gray-500 mb-6">Dodaj swoją pierwszą transakcję, aby zacząć śledzić wydatki</p>
+
+                    <div class="flex justify-center space-x-4">
+                        <button onclick="nextStep()" class="px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Dodaj wydatek
+                        </button>
+                        <button class="px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Dodaj wpływ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 4: Add Transaction with AI -->
+        <div id="qs-4" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Nowy wydatek</h2>
+                    <button class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nazwa transakcji</label>
+                        <input type="text" value="Biedronka zakupy" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Kwota</label>
+                            <div class="relative">
+                                <input type="text" value="127,50" class="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">PLN</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data</label>
+                            <input type="date" value="2026-01-06" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-vidulum-500 focus:border-vidulum-500">
+                        </div>
+                    </div>
+
+                    <!-- AI Suggestion -->
+                    <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-5 border border-purple-100">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-purple-800">Sugerowana kategoria</span>
+                                    <span class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">pewność: 94%</span>
+                                </div>
+                                <div class="flex items-center space-x-3 mb-3">
+                                    <span class="text-2xl">🍎</span>
+                                    <span class="text-lg font-semibold text-gray-900">Jedzenie</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-4">"Biedronka to sieć sklepów spożywczych w Polsce"</p>
+
+                                <div class="flex space-x-3">
+                                    <button onclick="nextStep()" class="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors">
+                                        ✓ Użyj tej kategorii
+                                    </button>
+                                    <button class="px-4 py-2 border border-purple-300 text-purple-700 rounded-lg font-medium hover:bg-purple-50 transition-colors">
+                                        ✎ Wybierz inną
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 rounded-xl p-4 flex items-start space-x-3">
+                        <svg class="w-5 h-5 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="text-sm text-amber-800">
+                            <p class="font-medium">Nie masz jeszcze kategorii "Jedzenie"</p>
+                            <p class="text-amber-600">Utworzymy ją automatycznie po zapisaniu.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end space-x-3">
+                    <button class="px-6 py-2 text-gray-600 hover:text-gray-900 font-medium">
+                        Anuluj
+                    </button>
+                    <button onclick="nextStep()" class="px-6 py-2 bg-vidulum-500 text-white rounded-lg font-medium hover:bg-vidulum-600 transition-colors">
+                        Zapisz transakcję
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 5: Dashboard with Transaction -->
+        <div id="qs-5" class="screen">
+            <div class="space-y-6">
+                <!-- Success Toast -->
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-medium text-green-800">Transakcja dodana!</p>
+                        <p class="text-sm text-green-600">Utworzono kategorię "Jedzenie" i regułę dla "BIEDRONKA*"</p>
+                    </div>
+                </div>
+
+                <!-- Header -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Moje ING</h1>
+                            <p class="text-gray-500">Styczeń 2026</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Saldo</p>
+                            <p class="text-3xl font-bold text-gray-900">4 250,00 <span class="text-lg text-gray-500">PLN</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wpływy</p>
+                        <p class="text-xl font-semibold text-green-600">0,00 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wydatki (oczekiwane)</p>
+                        <p class="text-xl font-semibold text-amber-600">127,50 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Transakcje</p>
+                        <p class="text-xl font-semibold text-gray-900">1</p>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-900">Transakcje</h3>
+                        <button onclick="nextStep()" class="text-sm text-vidulum-600 hover:text-vidulum-700 font-medium">+ Dodaj</button>
+                    </div>
+
+                    <div class="divide-y divide-gray-100">
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Biedronka zakupy</p>
+                                    <p class="text-sm text-gray-500">6 sty 2026 · 🍎 Jedzenie</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">-127,50 PLN</p>
+                                <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Oczekuje</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button onclick="nextStep()" class="px-6 py-3 bg-vidulum-500 text-white rounded-xl font-medium hover:bg-vidulum-600 transition-colors">
+                        Dodaj więcej transakcji
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 6: Multiple Transactions + AI Learning -->
+        <div id="qs-6" class="screen">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Moje ING</h1>
+                            <p class="text-gray-500">Styczeń 2026 · Po tygodniu używania</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Saldo prognozowane</p>
+                            <p class="text-3xl font-bold text-gray-900">3 102,50 <span class="text-lg text-gray-500">PLN</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wpływy</p>
+                        <p class="text-xl font-semibold text-green-600">+8 500 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Wydatki</p>
+                        <p class="text-xl font-semibold text-red-600">-1 147,50 PLN</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">Transakcje</p>
+                        <p class="text-xl font-semibold text-gray-900">8</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow">
+                        <p class="text-sm text-gray-500">AI trafność</p>
+                        <p class="text-xl font-semibold text-purple-600">87%</p>
+                    </div>
+                </div>
+
+                <!-- AI Learning Info -->
+                <div class="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-medium text-purple-800">AI nauczył się Twoich preferencji</p>
+                            <p class="text-sm text-purple-600 mt-1">Utworzono 5 reguł kategoryzacji. Następne transakcje z tych sklepów będą kategoryzowane automatycznie.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900">Ostatnie transakcje</h3>
+                    </div>
+
+                    <div class="divide-y divide-gray-100">
+                        <!-- Confirmed transaction -->
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Wynagrodzenie</p>
+                                    <p class="text-sm text-gray-500">1 sty · 💰 Przychód</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-green-600">+8 500,00 PLN</p>
+                                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Zapłacone</span>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Biedronka zakupy</p>
+                                    <p class="text-sm text-gray-500">6 sty · 🍎 Jedzenie</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">-127,50 PLN</p>
+                                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Zapłacone</span>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Orlen paliwo</p>
+                                    <p class="text-sm text-gray-500">5 sty · 🚗 Transport</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">-320,00 PLN</p>
+                                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Zapłacone</span>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Netflix</p>
+                                    <p class="text-sm text-gray-500">15 sty · 📺 Rozrywka</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">-52,99 PLN</p>
+                                <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Oczekuje</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button onclick="nextStep()" class="px-6 py-3 bg-vidulum-500 text-white rounded-xl font-medium hover:bg-vidulum-600 transition-colors">
+                        Zobacz podsumowanie miesiąca
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QS Step 7: Monthly Summary -->
+        <div id="qs-7" class="screen">
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-vidulum-500 to-vidulum-600 rounded-2xl shadow-lg p-6 text-white">
+                    <h1 class="text-2xl font-bold mb-1">Podsumowanie: Styczeń 2026</h1>
+                    <p class="text-vidulum-100">Twój pierwszy miesiąc z Vidulum</p>
+                </div>
+
+                <!-- Balance Card -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <div class="grid grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Saldo początkowe</p>
+                            <p class="text-xl font-bold text-gray-900">4 250 PLN</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Wpływy</p>
+                            <p class="text-xl font-bold text-green-600">+8 850 PLN</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Wydatki</p>
+                            <p class="text-xl font-bold text-red-600">-5 780 PLN</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 mb-1">Saldo końcowe</p>
+                            <p class="text-xl font-bold text-gray-900">7 320 PLN</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4">Wydatki po kategoriach</h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">🍎 Jedzenie</span>
+                                <span class="font-medium">1 847 PLN (32%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 rounded-full" style="width: 32%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">💻 Elektronika</span>
+                                <span class="font-medium">2 340 PLN (40%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 rounded-full" style="width: 40%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">🚗 Transport</span>
+                                <span class="font-medium">520 PLN (9%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-amber-500 rounded-full" style="width: 9%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">📺 Rozrywka</span>
+                                <span class="font-medium">159 PLN (3%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-purple-500 rounded-full" style="width: 3%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">📦 Inne</span>
+                                <span class="font-medium">914 PLN (16%)</span>
+                            </div>
+                            <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-gray-400 rounded-full" style="width: 16%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Stats -->
+                <div class="bg-purple-50 rounded-2xl p-6 border border-purple-100">
+                    <h3 class="font-semibold text-purple-900 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        Statystyki AI
+                    </h3>
+
+                    <div class="grid grid-cols-4 gap-4 text-center">
+                        <div class="bg-white rounded-xl p-4">
+                            <p class="text-2xl font-bold text-purple-600">45</p>
+                            <p class="text-sm text-gray-600">Transakcji</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4">
+                            <p class="text-2xl font-bold text-green-600">84%</p>
+                            <p class="text-sm text-gray-600">Auto-kategoryzacja</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4">
+                            <p class="text-2xl font-bold text-purple-600">12</p>
+                            <p class="text-sm text-gray-600">Reguł AI</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4">
+                            <p class="text-2xl font-bold text-amber-600">7</p>
+                            <p class="text-sm text-gray-600">Poprawek</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== ADVANCED SETUP JOURNEY ==================== -->
+
+        <!-- ADV Step 1: Welcome -->
+        <div id="adv-1" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-12 text-center">
+                    <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold text-white mb-2">Import z banku</h1>
+                    <p class="text-indigo-100 text-lg">Wgraj historię transakcji</p>
+                </div>
+
+                <div class="p-8">
+                    <!-- Progress Steps -->
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-medium">1</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Informacje</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">2</div>
+                            <span class="ml-2 text-sm text-gray-500">Import</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">3</div>
+                            <span class="ml-2 text-sm text-gray-500">Kategorie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">4</div>
+                            <span class="ml-2 text-sm text-gray-500">Aktywacja</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nazwa konta</label>
+                            <input type="text" value="Konto główne ING" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Bank</label>
+                                <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option selected>ING Bank Śląski</option>
+                                    <option>mBank</option>
+                                    <option>PKO BP</option>
+                                    <option>Santander</option>
+                                    <option>Inne</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Waluta</label>
+                                <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option selected>PLN - Polski złoty</option>
+                                    <option>EUR - Euro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data początkowa historii</label>
+                                <input type="date" value="2024-01-01" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <p class="text-xs text-gray-500 mt-1">Saldo konta na ten dzień</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Saldo początkowe</label>
+                                <div class="relative">
+                                    <input type="text" value="3 000,00" class="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">PLN</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Obecne saldo (z banku)</label>
+                            <div class="relative">
+                                <input type="text" value="5 247,83" class="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">PLN</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Sprawdź aktualne saldo w bankowości internetowej</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button onclick="showJourney('quick-start')" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                            ← Wróć do wyboru
+                        </button>
+                        <button onclick="nextStep()" class="px-8 py-3 bg-indigo-500 text-white rounded-xl font-medium hover:bg-indigo-600 transition-colors">
+                            Dalej
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADV Step 2: File Upload -->
+        <div id="adv-2" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="px-8 py-6 border-b border-gray-100">
+                    <!-- Progress -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Informacje</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-indigo-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-medium">2</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Import</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">3</div>
+                            <span class="ml-2 text-sm text-gray-500">Kategorie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">4</div>
+                            <span class="ml-2 text-sm text-gray-500">Aktywacja</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-900">Import danych z banku</h2>
+                    <p class="text-gray-500 text-sm">Wybierz źródło danych</p>
+                </div>
+
+                <div class="p-8">
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <!-- CSV Upload -->
+                        <div class="border-2 border-indigo-500 rounded-xl p-6 bg-indigo-50">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 mb-1">Plik CSV / MT940</h3>
+                                    <p class="text-sm text-gray-600">Wyeksportuj historię z bankowości internetowej</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center bg-white">
+                                <svg class="w-10 h-10 text-indigo-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-sm text-gray-600 mb-2">Przeciągnij plik lub</p>
+                                <button class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600">
+                                    Wybierz plik
+                                </button>
+                                <p class="text-xs text-gray-500 mt-2">wyciag_2024.csv</p>
+                            </div>
+                        </div>
+
+                        <!-- Bank API -->
+                        <div class="border-2 border-gray-200 rounded-xl p-6 opacity-60">
+                            <div class="flex items-start space-x-4">
+                                <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="font-semibold text-gray-900">Połącz z bankiem</h3>
+                                        <span class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Wkrótce</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Automatyczny import przez API (Nordigen)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Summary -->
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h4 class="font-medium text-gray-900 mb-4">Podgląd zaimportowanych danych</h4>
+
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-2xl font-bold text-gray-900">247</p>
+                                <p class="text-xs text-gray-500">Transakcji</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-2xl font-bold text-gray-900">12</p>
+                                <p class="text-xs text-gray-500">Miesięcy</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-2xl font-bold text-green-600">+96k</p>
+                                <p class="text-xs text-gray-500">Wpływy</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-2xl font-bold text-red-600">-93.7k</p>
+                                <p class="text-xs text-gray-500">Wydatki</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-2xl font-bold text-indigo-600">12</p>
+                                <p class="text-xs text-gray-500">Kategorii</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button onclick="prevStep()" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                            ← Wstecz
+                        </button>
+                        <button onclick="nextStep()" class="px-8 py-3 bg-indigo-500 text-white rounded-xl font-medium hover:bg-indigo-600 transition-colors">
+                            Dalej - Mapowanie kategorii
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADV Step 3: Category Mapping -->
+        <div id="adv-3" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="px-8 py-6 border-b border-gray-100">
+                    <!-- Progress -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Informacje</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Import</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-indigo-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-medium">3</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Kategorie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">4</div>
+                            <span class="ml-2 text-sm text-gray-500">Aktywacja</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-900">Mapowanie kategorii</h2>
+                    <p class="text-gray-500 text-sm">Przypisz kategorie bankowe do kategorii w systemie</p>
+                </div>
+
+                <div class="p-8">
+                    <div class="space-y-4">
+                        <!-- Category 1 -->
+                        <div class="border border-gray-200 rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm text-gray-500">Kategoria z banku:</span>
+                                    <span class="ml-2 font-medium text-gray-900">"Groceries"</span>
+                                </div>
+                                <div class="text-sm text-gray-500">45 transakcji · -3 450 PLN</div>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="cat1" checked class="w-4 h-4 text-indigo-500">
+                                    <span class="text-sm">Nowa kategoria:</span>
+                                </label>
+                                <input type="text" value="Jedzenie" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Category 2 -->
+                        <div class="border border-gray-200 rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm text-gray-500">Kategoria z banku:</span>
+                                    <span class="ml-2 font-medium text-gray-900">"Bills"</span>
+                                </div>
+                                <div class="text-sm text-gray-500">24 transakcji · -12 800 PLN</div>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="cat2" checked class="w-4 h-4 text-indigo-500">
+                                    <span class="text-sm">Nowa kategoria:</span>
+                                </label>
+                                <input type="text" value="Rachunki" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Category 3 -->
+                        <div class="border border-gray-200 rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm text-gray-500">Kategoria z banku:</span>
+                                    <span class="ml-2 font-medium text-gray-900">"Transport"</span>
+                                </div>
+                                <div class="text-sm text-gray-500">28 transakcji · -4 200 PLN</div>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="cat3" class="w-4 h-4 text-indigo-500">
+                                    <span class="text-sm">Subkategoria:</span>
+                                </label>
+                                <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                    <option>Samochód</option>
+                                </select>
+                                <span class="text-gray-400">/</span>
+                                <input type="text" value="Paliwo" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Category 4 - Uncategorized -->
+                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm text-gray-500">Kategoria z banku:</span>
+                                    <span class="ml-2 font-medium text-gray-900">"ATM"</span>
+                                </div>
+                                <div class="text-sm text-gray-500">15 transakcji · -2 100 PLN</div>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="cat4" checked class="w-4 h-4 text-indigo-500">
+                                    <span class="text-sm text-gray-600">Bez kategorii (Uncategorized)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Salary -->
+                        <div class="border border-green-200 rounded-xl p-4 bg-green-50">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <span class="text-sm text-gray-500">Kategoria z banku:</span>
+                                    <span class="ml-2 font-medium text-gray-900">"Salary"</span>
+                                    <span class="ml-2 px-2 py-0.5 bg-green-200 text-green-800 text-xs rounded-full">WPŁYW</span>
+                                </div>
+                                <div class="text-sm text-green-600">12 transakcji · +96 000 PLN</div>
+                            </div>
+
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="cat5" checked class="w-4 h-4 text-green-500">
+                                    <span class="text-sm">Nowa kategoria:</span>
+                                </label>
+                                <input type="text" value="Wynagrodzenie" class="flex-1 px-3 py-2 border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-between">
+                        <button onclick="prevStep()" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                            ← Wstecz
+                        </button>
+                        <button onclick="nextStep()" class="px-8 py-3 bg-indigo-500 text-white rounded-xl font-medium hover:bg-indigo-600 transition-colors">
+                            Dalej - Podsumowanie
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADV Step 4: Activation -->
+        <div id="adv-4" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="px-8 py-6 border-b border-gray-100">
+                    <!-- Progress -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Informacje</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Import</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">✓</div>
+                            <span class="ml-2 text-sm text-green-600">Kategorie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-indigo-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-medium">4</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Aktywacja</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-900">Podsumowanie i aktywacja</h2>
+                    <p class="text-gray-500 text-sm">Sprawdź dane przed aktywacją</p>
+                </div>
+
+                <div class="p-8">
+                    <!-- Summary -->
+                    <div class="bg-gray-50 rounded-xl p-6 mb-6">
+                        <h4 class="font-semibold text-gray-900 mb-4">Podsumowanie importu</h4>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Konto</p>
+                                <p class="font-medium text-gray-900">Konto główne ING</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Okres</p>
+                                <p class="font-medium text-gray-900">2024-01-01 → 2024-12-31</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Transakcji</p>
+                                <p class="font-medium text-gray-900">247</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Kategorii utworzonych</p>
+                                <p class="font-medium text-gray-900">8</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Balance Check -->
+                    <div class="bg-green-50 rounded-xl p-6 mb-6 border border-green-200">
+                        <h4 class="font-semibold text-green-900 mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            Weryfikacja salda
+                        </h4>
+
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Saldo początkowe:</span>
+                                <span class="font-medium">3 000,00 PLN</span>
+                            </div>
+                            <div class="flex justify-between text-green-600">
+                                <span>+ Suma wpływów:</span>
+                                <span class="font-medium">+96 000,00 PLN</span>
+                            </div>
+                            <div class="flex justify-between text-red-600">
+                                <span>- Suma wydatków:</span>
+                                <span class="font-medium">-93 752,17 PLN</span>
+                            </div>
+                            <div class="border-t border-green-200 pt-2 mt-2">
+                                <div class="flex justify-between font-semibold">
+                                    <span>= Saldo wyliczone:</span>
+                                    <span>5 247,83 PLN</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="text-gray-600">Saldo potwierdzone:</span>
+                                <span class="font-semibold text-green-600 flex items-center">
+                                    5 247,83 PLN
+                                    <svg class="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Zgodne!
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning -->
+                    <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200">
+                        <div class="flex items-start space-x-3">
+                            <svg class="w-5 h-5 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div class="text-sm text-amber-800">
+                                <p class="font-medium">Po aktywacji:</p>
+                                <ul class="mt-1 list-disc list-inside text-amber-700">
+                                    <li>Dane historyczne zostaną zamknięte (ATTESTED)</li>
+                                    <li>Import historyczny nie będzie już możliwy</li>
+                                    <li>Kategorie z importu zostaną oznaczone jako archiwalne</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <div class="flex space-x-3">
+                            <button onclick="prevStep()" class="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium">
+                                ← Wstecz
+                            </button>
+                            <button class="px-6 py-3 border border-red-300 text-red-600 rounded-xl font-medium hover:bg-red-50">
+                                🔄 Resetuj import
+                            </button>
+                        </div>
+                        <button onclick="nextStep()" class="px-8 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                            Aktywuj CashFlow
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADV Step 5: Dashboard with History -->
+        <div id="adv-5" class="screen">
+            <div class="space-y-6">
+                <!-- Success Banner -->
+                <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">CashFlow aktywowany!</h2>
+                            <p class="text-green-100">Zaimportowano 247 transakcji z 12 miesięcy</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Header -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Konto główne ING</h1>
+                            <p class="text-gray-500">Styczeń 2026</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Saldo</p>
+                            <p class="text-3xl font-bold text-gray-900">5 247,83 <span class="text-lg text-gray-500">PLN</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Months -->
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-900">Historia (2024)</h3>
+                    </div>
+
+                    <div class="divide-y divide-gray-100">
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-16 text-sm font-medium text-gray-900">Gru 2024</span>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">ATTESTED</span>
+                            </div>
+                            <div class="flex items-center space-x-6 text-sm">
+                                <span class="text-green-600">+8 000 PLN</span>
+                                <span class="text-red-600">-9 234 PLN</span>
+                                <span class="font-medium text-gray-900 w-24 text-right">4 892 PLN</span>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-16 text-sm font-medium text-gray-900">Lis 2024</span>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">ATTESTED</span>
+                            </div>
+                            <div class="flex items-center space-x-6 text-sm">
+                                <span class="text-green-600">+8 000 PLN</span>
+                                <span class="text-red-600">-7 126 PLN</span>
+                                <span class="font-medium text-gray-900 w-24 text-right">6 126 PLN</span>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-16 text-sm font-medium text-gray-900">Paź 2024</span>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">ATTESTED</span>
+                            </div>
+                            <div class="flex items-center space-x-6 text-sm">
+                                <span class="text-green-600">+8 000 PLN</span>
+                                <span class="text-red-600">-7 748 PLN</span>
+                                <span class="font-medium text-gray-900 w-24 text-right">5 252 PLN</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-3 bg-gray-50 text-center">
+                        <button class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            Zobacz wszystkie 12 miesięcy →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Insights Preview -->
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-100">
+                    <h3 class="font-semibold text-purple-900 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        Insights z historii
+                    </h3>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-xl p-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-lg">📈</span>
+                                <span class="font-medium text-gray-900">Trend wydatków</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Wydatki na jedzenie wzrosły o 12% w Q4 2024 vs Q3</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-lg">💡</span>
+                                <span class="font-medium text-gray-900">Oszczędność</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Średnio oszczędzasz 874 PLN miesięcznie</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+            <p>Vidulum UI Design Mockup · Quick Start + AI vs Advanced Setup</p>
+        </div>
+    </footer>
+
+    <script>
+        const journeys = {
+            'quick-start': {
+                steps: [
+                    { id: 'qs-1', name: 'Wybór trybu' },
+                    { id: 'qs-2', name: 'Dane konta' },
+                    { id: 'qs-3', name: 'Pusty dashboard' },
+                    { id: 'qs-4', name: 'Dodaj + AI' },
+                    { id: 'qs-5', name: 'Po dodaniu' },
+                    { id: 'qs-6', name: 'Po tygodniu' },
+                    { id: 'qs-7', name: 'Podsumowanie' }
+                ]
+            },
+            'advanced': {
+                steps: [
+                    { id: 'adv-1', name: 'Informacje' },
+                    { id: 'adv-2', name: 'Import pliku' },
+                    { id: 'adv-3', name: 'Kategorie' },
+                    { id: 'adv-4', name: 'Aktywacja' },
+                    { id: 'adv-5', name: 'Dashboard' }
+                ]
+            }
+        };
+
+        let currentJourney = 'quick-start';
+        let currentStep = 0;
+
+        function showJourney(journey) {
+            currentJourney = journey;
+            currentStep = 0;
+
+            // Update buttons
+            document.getElementById('btn-quick').className = journey === 'quick-start'
+                ? 'px-4 py-2 rounded-lg text-sm font-medium bg-vidulum-500 text-white'
+                : 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
+            document.getElementById('btn-advanced').className = journey === 'advanced'
+                ? 'px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white'
+                : 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300';
+
+            renderSteps();
+            showStep(0);
+        }
+
+        function renderSteps() {
+            const container = document.getElementById('journey-steps');
+            const steps = journeys[currentJourney].steps;
+
+            container.innerHTML = steps.map((step, index) => `
+                <button onclick="showStep(${index})" class="journey-step flex items-center space-x-2 px-3 py-2 rounded-lg ${index === currentStep ? 'active bg-gray-100' : ''} hover:bg-gray-50 transition-colors whitespace-nowrap">
+                    <span class="w-6 h-6 rounded-full ${index === currentStep ? 'bg-vidulum-500 text-white' : 'bg-gray-200 text-gray-600'} flex items-center justify-center text-xs font-medium">${index + 1}</span>
+                    <span class="text-sm ${index === currentStep ? 'text-gray-900 font-medium' : 'text-gray-500'}">${step.name}</span>
+                </button>
+            `).join('');
+        }
+
+        function showStep(index) {
+            const steps = journeys[currentJourney].steps;
+            currentStep = index;
+
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+            // Show current screen
+            document.getElementById(steps[index].id).classList.add('active');
+
+            // Update step indicators
+            renderSteps();
+        }
+
+        function nextStep() {
+            const steps = journeys[currentJourney].steps;
+            if (currentStep < steps.length - 1) {
+                showStep(currentStep + 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                showStep(currentStep - 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Initialize
+        showJourney('quick-start');
+    </script>
+
+</body>
+</html>
