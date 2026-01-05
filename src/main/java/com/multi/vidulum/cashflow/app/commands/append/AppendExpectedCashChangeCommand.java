@@ -6,7 +6,7 @@ import com.multi.vidulum.shared.cqrs.commands.Command;
 
 import java.time.ZonedDateTime;
 
-public record AppendCashChangeCommand(
+public record AppendExpectedCashChangeCommand(
         CashFlowId cashFlowId,
         CategoryName categoryName,
         CashChangeId cashChangeId,

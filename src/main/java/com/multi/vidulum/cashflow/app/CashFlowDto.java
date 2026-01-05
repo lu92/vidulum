@@ -22,7 +22,7 @@ public final class CashFlowDto {
 
     @Data
     @Builder
-    public static class AppendCashChangeJson {
+    public static class AppendExpectedCashChangeJson {
         private String cashFlowId;
         private String category;
         private String name;

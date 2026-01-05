@@ -41,7 +41,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("cash change name"),
@@ -61,7 +61,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("cash change name 2"),
@@ -126,7 +126,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("cash change name"),
@@ -146,7 +146,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("cash change name 2"),
@@ -214,7 +214,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("cash change name"),
@@ -245,7 +245,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         forthCashChangeId,
                         new Name("cash change for new category 1"),
@@ -258,7 +258,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("cash change name 2"),
@@ -271,7 +271,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         fifthCashChangeId,
                         new Name("Cost 1"),
@@ -298,7 +298,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         thirdCashChangeId,
                         new Name("cash change name 3"),
@@ -384,7 +384,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("cash change name"),
@@ -397,7 +397,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("cash change name outflow"),
@@ -498,7 +498,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         );
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("Morgan Stanley fee"),
@@ -511,7 +511,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("Main product purchase"),
@@ -524,7 +524,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 ));
 
         emit(
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         thirdCashChangeId,
                         new Name("Sales purchase"),

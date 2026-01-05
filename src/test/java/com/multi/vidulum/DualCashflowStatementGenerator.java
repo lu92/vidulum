@@ -2,7 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
-import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
@@ -427,7 +427,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Salary - almost always present
         if (random.nextDouble() < 0.95) {
             ZonedDateTime salaryDate = currentPeriod.atDay(10).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId salaryId = actor.appendCashChange(cashFlowId, new CategoryName("Salary"), INFLOW,
+            CashChangeId salaryId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Salary"), INFLOW,
                     Money.of(4500 + random.nextInt(1000), "USD"), salaryDate, salaryDate.plusDays(1));
             if (isAttestedMonth || random.nextDouble() < 0.8) {
                 actor.confirmCashChange(cashFlowId, salaryId);
@@ -441,7 +441,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Bonus (occasional)
         if (random.nextDouble() < 0.15) {
             ZonedDateTime bonusDate = currentPeriod.atDay(15 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId bonusId = actor.appendCashChange(cashFlowId, new CategoryName("Bonus"), INFLOW,
+            CashChangeId bonusId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Bonus"), INFLOW,
                     Money.of(500 + random.nextInt(2500), "USD"), bonusDate, bonusDate.plusDays(1));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, bonusId);
@@ -456,7 +456,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         if (random.nextDouble() < 0.25) {
             CategoryName investmentCategory = random.nextBoolean() ? new CategoryName("Dividends") : new CategoryName("Interest");
             ZonedDateTime investDate = currentPeriod.atDay(1 + random.nextInt(25)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId investId = actor.appendCashChange(cashFlowId, investmentCategory, INFLOW,
+            CashChangeId investId = actor.appendExpectedCashChange(cashFlowId, investmentCategory, INFLOW,
                     Money.of(25 + random.nextInt(250), "USD"), investDate, investDate.plusDays(3));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, investId);
@@ -469,7 +469,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Rent - always present
         ZonedDateTime rentDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId rentId = actor.appendCashChange(cashFlowId, new CategoryName("Rent"), OUTFLOW,
+        CashChangeId rentId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Rent"), OUTFLOW,
                 Money.of(1200 + random.nextInt(300), "USD"), rentDate, rentDate.plusDays(5));
         if (isAttestedMonth) {
             actor.confirmCashChange(cashFlowId, rentId);
@@ -483,7 +483,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         for (CategoryName utility : List.of(new CategoryName("Electricity"), new CategoryName("Gas"), new CategoryName("Internet"))) {
             ZonedDateTime utilityDate = currentPeriod.atDay(5 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
             int amount = utility.name().equals("Internet") ? 50 + random.nextInt(30) : 60 + random.nextInt(100);
-            CashChangeId utilityId = actor.appendCashChange(cashFlowId, utility, OUTFLOW,
+            CashChangeId utilityId = actor.appendExpectedCashChange(cashFlowId, utility, OUTFLOW,
                     Money.of(amount, "USD"), utilityDate, utilityDate.plusDays(10));
             if (isAttestedMonth && random.nextDouble() < 0.95) {
                 actor.confirmCashChange(cashFlowId, utilityId);
@@ -498,7 +498,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int groceryTransactions = 4 + random.nextInt(8);
         for (int i = 0; i < groceryTransactions; i++) {
             ZonedDateTime groceryDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId groceryId = actor.appendCashChange(cashFlowId, new CategoryName("Groceries"), OUTFLOW,
+            CashChangeId groceryId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Groceries"), OUTFLOW,
                     Money.of(30 + random.nextInt(150), "USD"), groceryDate, groceryDate);
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, groceryId);
@@ -513,7 +513,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int restaurantVisits = random.nextInt(6);
         for (int i = 0; i < restaurantVisits; i++) {
             ZonedDateTime restDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId restId = actor.appendCashChange(cashFlowId, new CategoryName("Restaurants"), OUTFLOW,
+            CashChangeId restId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Restaurants"), OUTFLOW,
                     Money.of(20 + random.nextInt(100), "USD"), restDate, restDate);
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, restId);
@@ -528,7 +528,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int fuelTransactions = 2 + random.nextInt(4);
         for (int i = 0; i < fuelTransactions; i++) {
             ZonedDateTime fuelDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId fuelId = actor.appendCashChange(cashFlowId, new CategoryName("Fuel"), OUTFLOW,
+            CashChangeId fuelId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Fuel"), OUTFLOW,
                     Money.of(40 + random.nextInt(60), "USD"), fuelDate, fuelDate);
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, fuelId);
@@ -542,7 +542,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Gym (monthly)
         if (random.nextDouble() < 0.7) {
             ZonedDateTime gymDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId gymId = actor.appendCashChange(cashFlowId, new CategoryName("Gym"), OUTFLOW,
+            CashChangeId gymId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Gym"), OUTFLOW,
                     Money.of(30 + random.nextInt(50), "USD"), gymDate, gymDate.plusDays(5));
             if (isAttestedMonth && random.nextDouble() < 0.95) {
                 actor.confirmCashChange(cashFlowId, gymId);
@@ -557,7 +557,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         for (String service : List.of("Netflix", "Spotify", "HBO")) {
             if (random.nextDouble() < 0.6) {
                 ZonedDateTime streamDate = currentPeriod.atDay(1 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId streamId = actor.appendCashChange(cashFlowId, new CategoryName("Streaming"), OUTFLOW,
+                CashChangeId streamId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Streaming"), OUTFLOW,
                         Money.of(10 + random.nextInt(20), "USD"), streamDate, streamDate.plusDays(3));
                 if (isAttestedMonth && random.nextDouble() < 0.95) {
                     actor.confirmCashChange(cashFlowId, streamId);
@@ -572,7 +572,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Savings (monthly)
         if (random.nextDouble() < 0.6) {
             ZonedDateTime savingsDate = currentPeriod.atDay(25 + random.nextInt(3)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId savingsId = actor.appendCashChange(cashFlowId, new CategoryName("Savings"), OUTFLOW,
+            CashChangeId savingsId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Savings"), OUTFLOW,
                     Money.of(200 + random.nextInt(800), "USD"), savingsDate, savingsDate.plusDays(3));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, savingsId);
@@ -594,7 +594,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int productSalesCount = 3 + random.nextInt(10);
         for (int i = 0; i < productSalesCount; i++) {
             ZonedDateTime saleDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId saleId = actor.appendCashChange(cashFlowId, new CategoryName("Product Sales"), INFLOW,
+            CashChangeId saleId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Product Sales"), INFLOW,
                     Money.of(500 + random.nextInt(5000), "USD"), saleDate, saleDate.plusDays(random.nextInt(30)));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, saleId);
@@ -609,7 +609,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int serviceRevenueCount = 1 + random.nextInt(5);
         for (int i = 0; i < serviceRevenueCount; i++) {
             ZonedDateTime serviceDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId serviceId = actor.appendCashChange(cashFlowId, new CategoryName("Service Revenue"), INFLOW,
+            CashChangeId serviceId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Service Revenue"), INFLOW,
                     Money.of(1000 + random.nextInt(10000), "USD"), serviceDate, serviceDate.plusDays(30));
             if (isAttestedMonth && random.nextDouble() < 0.8) {
                 actor.confirmCashChange(cashFlowId, serviceId);
@@ -623,7 +623,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Consulting Fees (occasional)
         if (random.nextDouble() < 0.4) {
             ZonedDateTime consultDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId consultId = actor.appendCashChange(cashFlowId, new CategoryName("Consulting Fees"), INFLOW,
+            CashChangeId consultId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Consulting Fees"), INFLOW,
                     Money.of(2000 + random.nextInt(8000), "USD"), consultDate, consultDate.plusDays(14));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, consultId);
@@ -637,7 +637,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Interest Income (occasional)
         if (random.nextDouble() < 0.3) {
             ZonedDateTime interestDate = currentPeriod.atDay(28).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId interestId = actor.appendCashChange(cashFlowId, new CategoryName("Interest Income"), INFLOW,
+            CashChangeId interestId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Interest Income"), INFLOW,
                     Money.of(50 + random.nextInt(500), "USD"), interestDate, interestDate.plusDays(3));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, interestId);
@@ -650,7 +650,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Office Rent - always present
         ZonedDateTime rentDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId rentId = actor.appendCashChange(cashFlowId, new CategoryName("Office Rent"), OUTFLOW,
+        CashChangeId rentId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Office Rent"), OUTFLOW,
                 Money.of(2500 + random.nextInt(1000), "USD"), rentDate, rentDate.plusDays(5));
         if (isAttestedMonth) {
             actor.confirmCashChange(cashFlowId, rentId);
@@ -662,7 +662,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Office Utilities
         ZonedDateTime utilityDate = currentPeriod.atDay(5 + random.nextInt(5)).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId utilityId = actor.appendCashChange(cashFlowId, new CategoryName("Office Utilities"), OUTFLOW,
+        CashChangeId utilityId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Office Utilities"), OUTFLOW,
                 Money.of(200 + random.nextInt(300), "USD"), utilityDate, utilityDate.plusDays(10));
         if (isAttestedMonth && random.nextDouble() < 0.95) {
             actor.confirmCashChange(cashFlowId, utilityId);
@@ -675,7 +675,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Office Supplies (occasional)
         if (random.nextDouble() < 0.5) {
             ZonedDateTime suppliesDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId suppliesId = actor.appendCashChange(cashFlowId, new CategoryName("Office Supplies"), OUTFLOW,
+            CashChangeId suppliesId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Office Supplies"), OUTFLOW,
                     Money.of(50 + random.nextInt(300), "USD"), suppliesDate, suppliesDate.plusDays(7));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, suppliesId);
@@ -688,7 +688,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Salaries - always present
         ZonedDateTime salaryDate = currentPeriod.atDay(25).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId salaryId = actor.appendCashChange(cashFlowId, new CategoryName("Salaries"), OUTFLOW,
+        CashChangeId salaryId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Salaries"), OUTFLOW,
                 Money.of(15000 + random.nextInt(10000), "USD"), salaryDate, salaryDate.plusDays(5));
         if (isAttestedMonth) {
             actor.confirmCashChange(cashFlowId, salaryId);
@@ -702,7 +702,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         int contractorPayments = random.nextInt(5);
         for (int i = 0; i < contractorPayments; i++) {
             ZonedDateTime contractorDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId contractorId = actor.appendCashChange(cashFlowId, new CategoryName("Contractor Payments"), OUTFLOW,
+            CashChangeId contractorId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Contractor Payments"), OUTFLOW,
                     Money.of(500 + random.nextInt(3000), "USD"), contractorDate, contractorDate.plusDays(14));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, contractorId);
@@ -716,7 +716,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Marketing - Advertising
         if (random.nextDouble() < 0.7) {
             ZonedDateTime adDate = currentPeriod.atDay(1 + random.nextInt(15)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId adId = actor.appendCashChange(cashFlowId, new CategoryName("Advertising"), OUTFLOW,
+            CashChangeId adId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Advertising"), OUTFLOW,
                     Money.of(500 + random.nextInt(3000), "USD"), adDate, adDate.plusDays(7));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, adId);
@@ -730,7 +730,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Social Media Marketing
         if (random.nextDouble() < 0.6) {
             ZonedDateTime socialDate = currentPeriod.atDay(1 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId socialId = actor.appendCashChange(cashFlowId, new CategoryName("Social Media"), OUTFLOW,
+            CashChangeId socialId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Social Media"), OUTFLOW,
                     Money.of(200 + random.nextInt(800), "USD"), socialDate, socialDate.plusDays(5));
             if (isAttestedMonth && random.nextDouble() < 0.9) {
                 actor.confirmCashChange(cashFlowId, socialId);
@@ -743,7 +743,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Software Subscriptions - always present
         ZonedDateTime softwareDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId softwareId = actor.appendCashChange(cashFlowId, new CategoryName("Software Subscriptions"), OUTFLOW,
+        CashChangeId softwareId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Software Subscriptions"), OUTFLOW,
                 Money.of(500 + random.nextInt(1500), "USD"), softwareDate, softwareDate.plusDays(3));
         if (isAttestedMonth && random.nextDouble() < 0.95) {
             actor.confirmCashChange(cashFlowId, softwareId);
@@ -755,7 +755,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Cloud Services
         ZonedDateTime cloudDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId cloudId = actor.appendCashChange(cashFlowId, new CategoryName("Cloud Services"), OUTFLOW,
+        CashChangeId cloudId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Cloud Services"), OUTFLOW,
                 Money.of(300 + random.nextInt(2000), "USD"), cloudDate, cloudDate.plusDays(5));
         if (isAttestedMonth && random.nextDouble() < 0.95) {
             actor.confirmCashChange(cashFlowId, cloudId);
@@ -768,7 +768,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Legal Fees (occasional)
         if (random.nextDouble() < 0.2) {
             ZonedDateTime legalDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId legalId = actor.appendCashChange(cashFlowId, new CategoryName("Legal Fees"), OUTFLOW,
+            CashChangeId legalId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Legal Fees"), OUTFLOW,
                     Money.of(500 + random.nextInt(5000), "USD"), legalDate, legalDate.plusDays(30));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, legalId);
@@ -781,7 +781,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // Accounting (monthly)
         ZonedDateTime accountingDate = currentPeriod.atDay(28).atStartOfDay(ZoneOffset.UTC);
-        CashChangeId accountingId = actor.appendCashChange(cashFlowId, new CategoryName("Accounting"), OUTFLOW,
+        CashChangeId accountingId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Accounting"), OUTFLOW,
                 Money.of(300 + random.nextInt(500), "USD"), accountingDate, accountingDate.plusDays(7));
         if (isAttestedMonth && random.nextDouble() < 0.95) {
             actor.confirmCashChange(cashFlowId, accountingId);
@@ -794,7 +794,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Insurance (quarterly)
         if (currentPeriod.getMonthValue() % 3 == 1) {
             ZonedDateTime insuranceDate = currentPeriod.atDay(15).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId insuranceId = actor.appendCashChange(cashFlowId, new CategoryName("Insurance"), OUTFLOW,
+            CashChangeId insuranceId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Insurance"), OUTFLOW,
                     Money.of(1000 + random.nextInt(2000), "USD"), insuranceDate, insuranceDate.plusDays(14));
             if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, insuranceId);
@@ -808,7 +808,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Business Trips (occasional)
         if (random.nextDouble() < 0.25) {
             ZonedDateTime tripDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId tripId = actor.appendCashChange(cashFlowId, new CategoryName("Business Trips"), OUTFLOW,
+            CashChangeId tripId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Business Trips"), OUTFLOW,
                     Money.of(500 + random.nextInt(2000), "USD"), tripDate, tripDate.plusDays(14));
             if (isAttestedMonth && random.nextDouble() < 0.85) {
                 actor.confirmCashChange(cashFlowId, tripId);
@@ -822,7 +822,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         // Taxes (quarterly)
         if (currentPeriod.getMonthValue() % 3 == 0) {
             ZonedDateTime taxDate = currentPeriod.atDay(15).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId taxId = actor.appendCashChange(cashFlowId, new CategoryName("Taxes"), OUTFLOW,
+            CashChangeId taxId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Taxes"), OUTFLOW,
                     Money.of(5000 + random.nextInt(15000), "USD"), taxDate, taxDate.plusDays(14));
             if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, taxId);
@@ -903,9 +903,9 @@ class DualBudgetActor {
         ));
     }
 
-    CashChangeId appendCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
+    CashChangeId appendExpectedCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
         return commandGateway.send(
-                new AppendCashChangeCommand(
+                new AppendExpectedCashChangeCommand(
                         cashFlowId,
                         category,
                         new CashChangeId(CashChangeId.generate().id()),

@@ -95,8 +95,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add an inflow cash change
-        String inflowCashChangeId = cashFlowRestController.appendCashChange(
-                CashFlowDto.AppendCashChangeJson.builder()
+        String inflowCashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
                         .category("Uncategorized")
                         .name("Monthly Salary")
@@ -108,8 +108,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add an outflow cash change
-        String outflowCashChangeId = cashFlowRestController.appendCashChange(
-                CashFlowDto.AppendCashChangeJson.builder()
+        String outflowCashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
                         .category("Uncategorized")
                         .name("Rent Payment")
@@ -128,7 +128,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                                 .toList()
                                 .containsAll(List.of(
                                         CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
-                                        CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()
+                                        CashFlowEvent.ExpectedCashChangeAppendedEvent.class.getSimpleName()
                                 )))
                         .orElse(false));
 
@@ -245,8 +245,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add and confirm an inflow cash change
-        String cashChangeId = cashFlowRestController.appendCashChange(
-                CashFlowDto.AppendCashChangeJson.builder()
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
                         .category("Uncategorized")
                         .name("Bonus")
@@ -313,8 +313,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add a cash change to generate more events
-        String cashChangeId = cashFlowRestController.appendCashChange(
-                CashFlowDto.AppendCashChangeJson.builder()
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
                         .category("Uncategorized")
                         .name("Test Transaction")
@@ -383,8 +383,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add cash change
-        String cashChangeId = cashFlowRestController.appendCashChange(
-                CashFlowDto.AppendCashChangeJson.builder()
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
                         .category("Salary")
                         .name("Monthly Salary")

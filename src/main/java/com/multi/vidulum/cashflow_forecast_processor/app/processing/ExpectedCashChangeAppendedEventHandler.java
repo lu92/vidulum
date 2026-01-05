@@ -13,12 +13,12 @@ import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.EX
 
 @Component
 @AllArgsConstructor
-public class CashChangeAppendedEventHandler implements CashFlowEventHandler<CashFlowEvent.CashChangeAppendedEvent> {
+public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHandler<CashFlowEvent.ExpectedCashChangeAppendedEvent> {
 
     private final CashFlowForecastStatementRepository statementRepository;
 
     @Override
-    public void handle(CashFlowEvent.CashChangeAppendedEvent event) {
+    public void handle(CashFlowEvent.ExpectedCashChangeAppendedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 

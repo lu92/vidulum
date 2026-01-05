@@ -13,17 +13,17 @@ import java.util.Map;
 @Slf4j
 @Component
 @AllArgsConstructor
-public class AppendCashChangeCommandHandler implements CommandHandler<AppendCashChangeCommand, CashChangeId> {
+public class AppendExpectedCashChangeCommandHandler implements CommandHandler<AppendExpectedCashChangeCommand, CashChangeId> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
 
     @Override
-    public CashChangeId handle(AppendCashChangeCommand command) {
+    public CashChangeId handle(AppendExpectedCashChangeCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        CashFlowEvent.CashChangeAppendedEvent event = new CashFlowEvent.CashChangeAppendedEvent(
+        CashFlowEvent.ExpectedCashChangeAppendedEvent event = new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),
                 command.name(),
@@ -40,12 +40,12 @@ public class AppendCashChangeCommandHandler implements CommandHandler<AppendCash
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
-                        .metadata(Map.of("event", CashFlowEvent.CashChangeAppendedEvent.class.getSimpleName()))
+                        .metadata(Map.of("event", CashFlowEvent.ExpectedCashChangeAppendedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
         );
 
-        log.info("Cash change [{}] has been appended!", cashFlow.getSnapshot());
+        log.info("Expected cash change [{}] has been appended!", cashFlow.getSnapshot());
         return command.cashChangeId();
     }
 }

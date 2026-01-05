@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.set.SetBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingCommand;
@@ -50,10 +50,10 @@ public class CashFlowRestController {
         return snapshot.cashFlowId().id();
     }
 
-    @PostMapping("/cash-change")
-    public String appendCashChange(@RequestBody CashFlowDto.AppendCashChangeJson request) {
+    @PostMapping("/expected-cash-change")
+    public String appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
-                new AppendCashChangeCommand(
+                new AppendExpectedCashChangeCommand(
                         new CashFlowId(request.getCashFlowId()),
                         new CategoryName(request.getCategory()),
                         new CashChangeId(CashChangeId.generate().id()),
