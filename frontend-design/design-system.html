@@ -1,0 +1,1361 @@
+aplika<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidulum - Financial Portfolio Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Primary palette - Deep blue/indigo for trust & finance
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        },
+                        // Accent - Emerald for positive/profit
+                        profit: {
+                            light: '#10b981',
+                            DEFAULT: '#059669',
+                            dark: '#047857',
+                        },
+                        // Loss - Rose for negative
+                        loss: {
+                            light: '#f43f5e',
+                            DEFAULT: '#e11d48',
+                            dark: '#be123c',
+                        },
+                        // Dark theme background
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'pulse-soft': 'pulseSoft 2s infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.7' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Glassmorphism effect */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Subtle glow effects */
+        .glow-profit {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .glow-loss {
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.3);
+        }
+        .glow-primary {
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-dark-100 font-sans antialiased">
+
+<!-- ==================== -->
+<!-- LOGIN PAGE -->
+<!-- ==================== -->
+<section id="login-page" class="min-h-screen flex">
+    <!-- Left Panel - Branding -->
+    <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-dark-900 via-primary-950 to-dark-950 p-12 flex-col justify-between relative overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-20 left-20 w-72 h-72 bg-primary-500 rounded-full filter blur-3xl"></div>
+            <div class="absolute bottom-20 right-20 w-96 h-96 bg-primary-600 rounded-full filter blur-3xl"></div>
+        </div>
+
+        <!-- Logo -->
+        <div class="relative z-10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold text-white">Vidulum</span>
+            </div>
+        </div>
+
+        <!-- Hero content -->
+        <div class="relative z-10 space-y-6">
+            <h1 class="text-4xl xl:text-5xl font-bold text-white leading-tight">
+                Master Your <br/>
+                <span class="gradient-text">Financial Portfolio</span>
+            </h1>
+            <p class="text-dark-300 text-lg max-w-md">
+                Track, analyze, and optimize your investments across multiple brokers with real-time insights and powerful analytics.
+            </p>
+
+            <!-- Feature highlights -->
+            <div class="space-y-4 pt-4">
+                <div class="flex items-center space-x-3 text-dark-200">
+                    <div class="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <span>Multi-portfolio aggregation</span>
+                </div>
+                <div class="flex items-center space-x-3 text-dark-200">
+                    <div class="w-8 h-8 bg-profit/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-profit-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                    <span>Real-time P&L tracking</span>
+                </div>
+                <div class="flex items-center space-x-3 text-dark-200">
+                    <div class="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <span>Secure & encrypted</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="relative z-10 text-dark-400 text-sm">
+            &copy; 2024 Vidulum. All rights reserved.
+        </div>
+    </div>
+
+    <!-- Right Panel - Login Form -->
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-dark-950">
+        <div class="w-full max-w-md space-y-8 animate-fade-in">
+            <!-- Mobile logo -->
+            <div class="lg:hidden flex items-center justify-center space-x-3 mb-8">
+                <div class="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold text-white">Vidulum</span>
+            </div>
+
+            <div class="text-center lg:text-left">
+                <h2 class="text-3xl font-bold text-white">Welcome back</h2>
+                <p class="mt-2 text-dark-400">Sign in to access your portfolios</p>
+            </div>
+
+            <form class="space-y-6">
+                <!-- Username -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Username</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <input type="text"
+                               class="w-full pl-12 pr-4 py-3.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Enter your username">
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <input type="password"
+                               class="w-full pl-12 pr-12 py-3.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Enter your password">
+                        <button type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                            <svg class="w-5 h-5 text-dark-500 hover:text-dark-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember & Forgot -->
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 bg-dark-800 border-dark-600 rounded text-primary-500 focus:ring-primary-500 focus:ring-offset-0">
+                        <span class="text-sm text-dark-400">Remember me</span>
+                    </label>
+                    <a href="#" class="text-sm text-primary-400 hover:text-primary-300 transition-colors">Forgot password?</a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit"
+                        class="w-full py-3.5 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-dark-950 glow-primary">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-dark-800"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-4 bg-dark-950 text-dark-500">or continue with</span>
+                </div>
+            </div>
+
+            <!-- Social login -->
+            <div class="grid grid-cols-2 gap-4">
+                <button class="flex items-center justify-center space-x-2 py-3 bg-dark-900 border border-dark-700 rounded-xl hover:bg-dark-800 transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span class="text-dark-300">Google</span>
+                </button>
+                <button class="flex items-center justify-center space-x-2 py-3 bg-dark-900 border border-dark-700 rounded-xl hover:bg-dark-800 transition-colors">
+                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span class="text-dark-300">GitHub</span>
+                </button>
+            </div>
+
+            <!-- Register link -->
+            <p class="text-center text-dark-400">
+                Don't have an account?
+                <a href="#register-page" class="text-primary-400 hover:text-primary-300 font-medium transition-colors">Create account</a>
+            </p>
+        </div>
+    </div>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- ==================== -->
+<!-- REGISTER PAGE -->
+<!-- ==================== -->
+<section id="register-page" class="min-h-screen flex">
+    <!-- Left Panel - Form -->
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-dark-950">
+        <div class="w-full max-w-md space-y-8 animate-fade-in">
+            <!-- Mobile logo -->
+            <div class="lg:hidden flex items-center justify-center space-x-3 mb-8">
+                <div class="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold text-white">Vidulum</span>
+            </div>
+
+            <div class="text-center lg:text-left">
+                <h2 class="text-3xl font-bold text-white">Create account</h2>
+                <p class="mt-2 text-dark-400">Start your investment journey today</p>
+            </div>
+
+            <form class="space-y-5">
+                <!-- Username -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Username</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <input type="text"
+                               class="w-full pl-12 pr-4 py-3.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Choose a username">
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Email</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <input type="email"
+                               class="w-full pl-12 pr-4 py-3.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Enter your email">
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="w-5 h-5 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <input type="password"
+                               class="w-full pl-12 pr-4 py-3.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Create a password">
+                    </div>
+                    <!-- Password strength indicator -->
+                    <div class="flex space-x-1 pt-1">
+                        <div class="h-1 flex-1 rounded-full bg-profit-light"></div>
+                        <div class="h-1 flex-1 rounded-full bg-profit-light"></div>
+                        <div class="h-1 flex-1 rounded-full bg-profit-light"></div>
+                        <div class="h-1 flex-1 rounded-full bg-dark-700"></div>
+                    </div>
+                    <p class="text-xs text-dark-500">Strong password</p>
+                </div>
+
+                <!-- Role Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Account Type</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="role" value="MANAGER" class="peer sr-only" checked>
+                            <div class="p-4 bg-dark-900 border border-dark-700 rounded-xl peer-checked:border-primary-500 peer-checked:bg-primary-500/10 transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Manager</p>
+                                        <p class="text-xs text-dark-400">Personal use</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="role" value="ADMIN" class="peer sr-only">
+                            <div class="p-4 bg-dark-900 border border-dark-700 rounded-xl peer-checked:border-primary-500 peer-checked:bg-primary-500/10 transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Admin</p>
+                                        <p class="text-xs text-dark-400">Full access</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Terms -->
+                <div class="flex items-start space-x-3">
+                    <input type="checkbox" class="mt-1 w-4 h-4 bg-dark-800 border-dark-600 rounded text-primary-500 focus:ring-primary-500 focus:ring-offset-0">
+                    <span class="text-sm text-dark-400">
+                        I agree to the <a href="#" class="text-primary-400 hover:text-primary-300">Terms of Service</a>
+                        and <a href="#" class="text-primary-400 hover:text-primary-300">Privacy Policy</a>
+                    </span>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit"
+                        class="w-full py-3.5 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-dark-950 glow-primary">
+                    Create Account
+                </button>
+            </form>
+
+            <!-- Login link -->
+            <p class="text-center text-dark-400">
+                Already have an account?
+                <a href="#login-page" class="text-primary-400 hover:text-primary-300 font-medium transition-colors">Sign in</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Right Panel - Branding -->
+    <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-dark-900 via-primary-950 to-dark-950 p-12 flex-col justify-center relative overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-20 right-20 w-72 h-72 bg-primary-500 rounded-full filter blur-3xl"></div>
+            <div class="absolute bottom-20 left-20 w-96 h-96 bg-primary-600 rounded-full filter blur-3xl"></div>
+        </div>
+
+        <div class="relative z-10 space-y-8">
+            <h2 class="text-3xl font-bold text-white">Why Vidulum?</h2>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 gap-6">
+                <div class="glass rounded-2xl p-6">
+                    <p class="text-3xl font-bold text-white">10+</p>
+                    <p class="text-dark-400 mt-1">Supported Brokers</p>
+                </div>
+                <div class="glass rounded-2xl p-6">
+                    <p class="text-3xl font-bold text-white">Real-time</p>
+                    <p class="text-dark-400 mt-1">P&L Tracking</p>
+                </div>
+                <div class="glass rounded-2xl p-6">
+                    <p class="text-3xl font-bold text-white">100%</p>
+                    <p class="text-dark-400 mt-1">Secure & Private</p>
+                </div>
+                <div class="glass rounded-2xl p-6">
+                    <p class="text-3xl font-bold text-white">24/7</p>
+                    <p class="text-dark-400 mt-1">Market Coverage</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- ==================== -->
+<!-- PORTFOLIO DASHBOARD -->
+<!-- ==================== -->
+<section id="portfolio-dashboard" class="min-h-screen bg-dark-950">
+    <!-- Top Navigation -->
+    <nav class="border-b border-dark-800 bg-dark-900/50 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold text-white">Vidulum</span>
+                </div>
+
+                <!-- Navigation Links -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="#" class="px-4 py-2 text-white bg-dark-800 rounded-lg font-medium">Portfolio</a>
+                    <a href="#" class="px-4 py-2 text-dark-400 hover:text-white rounded-lg transition-colors">Trading</a>
+                    <a href="#" class="px-4 py-2 text-dark-400 hover:text-white rounded-lg transition-colors">Orders</a>
+                    <a href="#" class="px-4 py-2 text-dark-400 hover:text-white rounded-lg transition-colors">Analytics</a>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center space-x-4">
+                    <!-- Notifications -->
+                    <button class="p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800 transition-colors relative">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-loss-light rounded-full"></span>
+                    </button>
+
+                    <!-- User menu -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                            <span class="text-sm font-semibold text-white">JD</span>
+                        </div>
+                        <div class="hidden sm:block">
+                            <p class="text-sm font-medium text-white">John Doe</p>
+                            <p class="text-xs text-dark-400">Manager</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Aggregated Portfolio</h1>
+                <p class="text-dark-400 mt-1">Overview of all your investments</p>
+            </div>
+            <div class="flex items-center space-x-3 mt-4 sm:mt-0">
+                <select class="px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option>USD</option>
+                    <option>EUR</option>
+                    <option>PLN</option>
+                </select>
+                <button class="px-4 py-2.5 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-xl transition-colors flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    <span>New Portfolio</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Portfolio Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Value -->
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-dark-700 transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-dark-400 text-sm font-medium">Total Value</span>
+                    <div class="w-10 h-10 bg-primary-500/20 rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white">$124,532.00</p>
+                <div class="flex items-center mt-2 text-profit-light">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                    <span class="text-sm font-medium">+12.5%</span>
+                    <span class="text-dark-500 text-sm ml-2">vs last month</span>
+                </div>
+            </div>
+
+            <!-- Invested Balance -->
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-dark-700 transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-dark-400 text-sm font-medium">Invested Balance</span>
+                    <div class="w-10 h-10 bg-dark-700 rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white">$98,000.00</p>
+                <p class="text-dark-500 text-sm mt-2">Initial investment</p>
+            </div>
+
+            <!-- Total Profit -->
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-dark-700 transition-colors glow-profit">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-dark-400 text-sm font-medium">Total Profit</span>
+                    <div class="w-10 h-10 bg-profit/20 rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 text-profit-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-profit-light">+$26,532.00</p>
+                <p class="text-profit-light/70 text-sm mt-2">+27.07% ROI</p>
+            </div>
+
+            <!-- Portfolios Count -->
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-dark-700 transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-dark-400 text-sm font-medium">Active Portfolios</span>
+                    <div class="w-10 h-10 bg-dark-700 rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-white">3</p>
+                <p class="text-dark-500 text-sm mt-2">Binance, XTB, eToro</p>
+            </div>
+        </div>
+
+        <!-- Portfolio Tabs -->
+        <div class="mb-6">
+            <div class="border-b border-dark-800">
+                <nav class="flex space-x-8">
+                    <button class="py-4 px-1 text-white border-b-2 border-primary-500 font-medium">All Assets</button>
+                    <button class="py-4 px-1 text-dark-400 hover:text-white border-b-2 border-transparent transition-colors">By Portfolio</button>
+                    <button class="py-4 px-1 text-dark-400 hover:text-white border-b-2 border-transparent transition-colors">Open Positions</button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Assets Table -->
+        <div class="bg-dark-900 border border-dark-800 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-dark-800">
+                            <th class="text-left py-4 px-6 text-dark-400 font-medium text-sm">Asset</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Quantity</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Avg. Price</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Current Price</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Value</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Profit/Loss</th>
+                            <th class="text-right py-4 px-6 text-dark-400 font-medium text-sm">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-800">
+                        <!-- BTC Row -->
+                        <tr class="hover:bg-dark-800/50 transition-colors">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+                                        <span class="text-orange-400 font-bold text-sm">BTC</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Bitcoin</p>
+                                        <p class="text-dark-500 text-sm">BTC/USD</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-white font-mono">1.5000</p>
+                                <p class="text-dark-500 text-xs">0.2 locked</p>
+                            </td>
+                            <td class="py-4 px-6 text-right font-mono text-dark-300">$42,150.00</td>
+                            <td class="py-4 px-6 text-right font-mono text-white">$48,320.00</td>
+                            <td class="py-4 px-6 text-right font-mono text-white font-medium">$72,480.00</td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-profit-light font-medium">+$9,255.00</p>
+                                <p class="text-profit-light/70 text-sm">+14.64%</p>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <button class="p-2 hover:bg-dark-700 rounded-lg transition-colors">
+                                    <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- ETH Row -->
+                        <tr class="hover:bg-dark-800/50 transition-colors">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                        <span class="text-blue-400 font-bold text-sm">ETH</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Ethereum</p>
+                                        <p class="text-dark-500 text-sm">ETH/USD</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-white font-mono">12.0000</p>
+                                <p class="text-dark-500 text-xs">0 locked</p>
+                            </td>
+                            <td class="py-4 px-6 text-right font-mono text-dark-300">$2,180.00</td>
+                            <td class="py-4 px-6 text-right font-mono text-white">$2,540.00</td>
+                            <td class="py-4 px-6 text-right font-mono text-white font-medium">$30,480.00</td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-profit-light font-medium">+$4,320.00</p>
+                                <p class="text-profit-light/70 text-sm">+16.51%</p>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <button class="p-2 hover:bg-dark-700 rounded-lg transition-colors">
+                                    <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- AAPL Row (Loss example) -->
+                        <tr class="hover:bg-dark-800/50 transition-colors">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gray-500/20 rounded-full flex items-center justify-center">
+                                        <span class="text-gray-400 font-bold text-sm">AAPL</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Apple Inc.</p>
+                                        <p class="text-dark-500 text-sm">NASDAQ</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-white font-mono">50.0000</p>
+                                <p class="text-dark-500 text-xs">0 locked</p>
+                            </td>
+                            <td class="py-4 px-6 text-right font-mono text-dark-300">$195.00</td>
+                            <td class="py-4 px-6 text-right font-mono text-white">$182.50</td>
+                            <td class="py-4 px-6 text-right font-mono text-white font-medium">$9,125.00</td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-loss-light font-medium">-$625.00</p>
+                                <p class="text-loss-light/70 text-sm">-6.41%</p>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <button class="p-2 hover:bg-dark-700 rounded-lg transition-colors">
+                                    <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Cash Row -->
+                        <tr class="hover:bg-dark-800/50 transition-colors bg-dark-800/30">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                                        <span class="text-green-400 font-bold text-sm">$</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-white">Cash (USD)</p>
+                                        <p class="text-dark-500 text-sm">Available</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6 text-right font-mono text-white">-</td>
+                            <td class="py-4 px-6 text-right font-mono text-dark-300">-</td>
+                            <td class="py-4 px-6 text-right font-mono text-white">-</td>
+                            <td class="py-4 px-6 text-right font-mono text-white font-medium">$12,447.00</td>
+                            <td class="py-4 px-6 text-right">
+                                <p class="text-dark-400">-</p>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <button class="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg transition-colors">
+                                    Deposit
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Open Positions Section -->
+        <div class="mt-8">
+            <h2 class="text-xl font-bold text-white mb-4">Open Positions</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Position Card 1 -->
+                <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-primary-500/50 transition-colors">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                <span class="text-orange-400 font-bold">BTC</span>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white">BTC/USD Long</p>
+                                <p class="text-dark-400 text-sm">Entry: $42,150.00</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-profit/20 text-profit-light text-sm font-medium rounded-full">Active</span>
+                    </div>
+
+                    <!-- Price levels -->
+                    <div class="space-y-3 mb-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Target Price</span>
+                            <span class="text-profit-light font-mono">$55,000.00</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Stop Loss</span>
+                            <span class="text-loss-light font-mono">$38,000.00</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Current</span>
+                            <span class="text-white font-mono">$48,320.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="relative h-2 bg-dark-700 rounded-full overflow-hidden mb-4">
+                        <div class="absolute left-0 top-0 h-full w-[45%] bg-gradient-to-r from-loss-light via-yellow-500 to-profit-light rounded-full"></div>
+                        <div class="absolute top-1/2 -translate-y-1/2 left-[45%] w-2 h-4 bg-white rounded-full shadow-lg"></div>
+                    </div>
+
+                    <!-- Risk/Reward -->
+                    <div class="grid grid-cols-3 gap-4 pt-4 border-t border-dark-800">
+                        <div>
+                            <p class="text-dark-500 text-xs">Risk</p>
+                            <p class="text-loss-light font-medium">$6,225.00</p>
+                        </div>
+                        <div>
+                            <p class="text-dark-500 text-xs">Reward</p>
+                            <p class="text-profit-light font-medium">$19,275.00</p>
+                        </div>
+                        <div>
+                            <p class="text-dark-500 text-xs">R:R Ratio</p>
+                            <p class="text-white font-medium">1:3.1</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Position Card 2 -->
+                <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6 hover:border-primary-500/50 transition-colors">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                <span class="text-blue-400 font-bold">ETH</span>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white">ETH/USD Long</p>
+                                <p class="text-dark-400 text-sm">Entry: $2,180.00</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-profit/20 text-profit-light text-sm font-medium rounded-full">Active</span>
+                    </div>
+
+                    <div class="space-y-3 mb-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Target Price</span>
+                            <span class="text-profit-light font-mono">$3,200.00</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Stop Loss</span>
+                            <span class="text-loss-light font-mono">$1,900.00</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-dark-400 text-sm">Current</span>
+                            <span class="text-white font-mono">$2,540.00</span>
+                        </div>
+                    </div>
+
+                    <div class="relative h-2 bg-dark-700 rounded-full overflow-hidden mb-4">
+                        <div class="absolute left-0 top-0 h-full w-[35%] bg-gradient-to-r from-loss-light via-yellow-500 to-profit-light rounded-full"></div>
+                        <div class="absolute top-1/2 -translate-y-1/2 left-[35%] w-2 h-4 bg-white rounded-full shadow-lg"></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 pt-4 border-t border-dark-800">
+                        <div>
+                            <p class="text-dark-500 text-xs">Risk</p>
+                            <p class="text-loss-light font-medium">$3,360.00</p>
+                        </div>
+                        <div>
+                            <p class="text-dark-500 text-xs">Reward</p>
+                            <p class="text-profit-light font-medium">$12,240.00</p>
+                        </div>
+                        <div>
+                            <p class="text-dark-500 text-xs">R:R Ratio</p>
+                            <p class="text-white font-medium">1:3.6</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders Section -->
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-white">Recent Orders</h2>
+                <a href="#" class="text-primary-400 hover:text-primary-300 text-sm font-medium transition-colors">View all</a>
+            </div>
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl overflow-hidden">
+                <div class="divide-y divide-dark-800">
+                    <!-- Order 1 -->
+                    <div class="p-4 flex items-center justify-between hover:bg-dark-800/50 transition-colors">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-profit/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-profit-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">BTC/USD <span class="text-profit-light">BUY</span></p>
+                                <p class="text-dark-500 text-sm">Limit @ $45,000.00</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-white font-medium">0.5 BTC</p>
+                            <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded">PENDING</span>
+                        </div>
+                    </div>
+
+                    <!-- Order 2 -->
+                    <div class="p-4 flex items-center justify-between hover:bg-dark-800/50 transition-colors">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-loss/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-loss-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">ETH/USD <span class="text-loss-light">SELL</span></p>
+                                <p class="text-dark-500 text-sm">Market Order</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-white font-medium">2.0 ETH</p>
+                            <span class="px-2 py-0.5 bg-profit/20 text-profit-light text-xs font-medium rounded">FILLED</span>
+                        </div>
+                    </div>
+
+                    <!-- Order 3 -->
+                    <div class="p-4 flex items-center justify-between hover:bg-dark-800/50 transition-colors">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 bg-profit/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-profit-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">AAPL <span class="text-profit-light">BUY</span></p>
+                                <p class="text-dark-500 text-sm">Stop @ $175.00</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-white font-medium">25 shares</p>
+                            <span class="px-2 py-0.5 bg-dark-600 text-dark-300 text-xs font-medium rounded">CANCELLED</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- ==================== -->
+<!-- SINGLE PORTFOLIO VIEW -->
+<!-- ==================== -->
+<section id="single-portfolio" class="min-h-screen bg-dark-950 pb-12">
+    <nav class="border-b border-dark-800 bg-dark-900/50 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="p-2 hover:bg-dark-800 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-lg font-semibold text-white">Binance Portfolio</h1>
+                        <p class="text-dark-500 text-sm">Crypto Trading</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="px-3 py-1 bg-profit/20 text-profit-light text-sm font-medium rounded-full">OPEN</span>
+                    <button class="p-2 hover:bg-dark-800 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Quick Actions -->
+        <div class="flex flex-wrap gap-3 mb-8">
+            <button class="px-5 py-2.5 bg-profit hover:bg-profit-dark text-white font-medium rounded-xl transition-colors flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span>Deposit</span>
+            </button>
+            <button class="px-5 py-2.5 bg-dark-800 hover:bg-dark-700 text-white font-medium rounded-xl transition-colors flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                </svg>
+                <span>Withdraw</span>
+            </button>
+            <button class="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-xl transition-colors flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+                <span>New Order</span>
+            </button>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-dark-900 border border-dark-800 rounded-xl p-5">
+                <p class="text-dark-400 text-sm mb-1">Current Value</p>
+                <p class="text-2xl font-bold text-white">$72,480.00</p>
+            </div>
+            <div class="bg-dark-900 border border-dark-800 rounded-xl p-5">
+                <p class="text-dark-400 text-sm mb-1">Invested</p>
+                <p class="text-2xl font-bold text-white">$58,000.00</p>
+            </div>
+            <div class="bg-dark-900 border border-dark-800 rounded-xl p-5 glow-profit">
+                <p class="text-dark-400 text-sm mb-1">Profit</p>
+                <p class="text-2xl font-bold text-profit-light">+$14,480.00</p>
+            </div>
+            <div class="bg-dark-900 border border-dark-800 rounded-xl p-5">
+                <p class="text-dark-400 text-sm mb-1">ROI</p>
+                <p class="text-2xl font-bold text-profit-light">+24.96%</p>
+            </div>
+        </div>
+
+        <!-- Asset Allocation Chart Placeholder -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 bg-dark-900 border border-dark-800 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Asset Allocation</h3>
+                <div class="flex items-center justify-center h-64 text-dark-500">
+                    <!-- Placeholder for chart -->
+                    <div class="text-center">
+                        <div class="w-48 h-48 mx-auto rounded-full border-8 border-primary-500 border-t-profit-light border-r-orange-500 border-b-blue-500"></div>
+                        <p class="mt-4 text-sm">Portfolio distribution</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-dark-900 border border-dark-800 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Holdings</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                <span class="text-orange-400 text-xs font-bold">BTC</span>
+                            </div>
+                            <span class="text-white">Bitcoin</span>
+                        </div>
+                        <span class="text-dark-300">45%</span>
+                    </div>
+                    <div class="w-full h-2 bg-dark-700 rounded-full">
+                        <div class="h-full w-[45%] bg-orange-500 rounded-full"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                <span class="text-blue-400 text-xs font-bold">ETH</span>
+                            </div>
+                            <span class="text-white">Ethereum</span>
+                        </div>
+                        <span class="text-dark-300">35%</span>
+                    </div>
+                    <div class="w-full h-2 bg-dark-700 rounded-full">
+                        <div class="h-full w-[35%] bg-blue-500 rounded-full"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                <span class="text-green-400 text-xs font-bold">$</span>
+                            </div>
+                            <span class="text-white">Cash</span>
+                        </div>
+                        <span class="text-dark-300">20%</span>
+                    </div>
+                    <div class="w-full h-2 bg-dark-700 rounded-full">
+                        <div class="h-full w-[20%] bg-green-500 rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- ==================== -->
+<!-- MODALS -->
+<!-- ==================== -->
+
+<!-- Deposit Modal -->
+<section id="deposit-modal" class="min-h-screen bg-dark-950 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-dark-900 border border-dark-700 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-dark-800 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-white">Deposit Funds</h3>
+                <button class="p-2 hover:bg-dark-800 rounded-lg transition-colors">
+                    <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 space-y-6">
+                <!-- Portfolio Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Portfolio</label>
+                    <select class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <option>Binance - Crypto Trading</option>
+                        <option>XTB - Stocks</option>
+                        <option>eToro - Mixed</option>
+                    </select>
+                </div>
+
+                <!-- Amount -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Amount</label>
+                    <div class="relative">
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white text-xl font-mono placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                               placeholder="0.00"
+                               value="5,000.00">
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                            <select class="bg-transparent text-dark-300 font-medium focus:outline-none">
+                                <option>USD</option>
+                                <option>EUR</option>
+                                <option>PLN</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick amounts -->
+                <div class="flex space-x-2">
+                    <button class="flex-1 py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg transition-colors text-sm">$1,000</button>
+                    <button class="flex-1 py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg transition-colors text-sm">$5,000</button>
+                    <button class="flex-1 py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg transition-colors text-sm">$10,000</button>
+                    <button class="flex-1 py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 rounded-lg transition-colors text-sm">$25,000</button>
+                </div>
+
+                <!-- Current balance info -->
+                <div class="bg-dark-800/50 rounded-xl p-4">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-dark-400">Current Balance</span>
+                        <span class="text-white font-mono">$12,447.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm mt-2">
+                        <span class="text-dark-400">After Deposit</span>
+                        <span class="text-profit-light font-mono">$17,447.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-dark-800 flex space-x-3">
+                <button class="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-medium rounded-xl transition-colors">
+                    Cancel
+                </button>
+                <button class="flex-1 py-3 bg-profit hover:bg-profit-dark text-white font-medium rounded-xl transition-colors">
+                    Confirm Deposit
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- New Order Modal -->
+<section id="order-modal" class="min-h-screen bg-dark-950 flex items-center justify-center p-4">
+    <div class="w-full max-w-lg">
+        <div class="bg-dark-900 border border-dark-700 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-dark-800">
+                <h3 class="text-lg font-semibold text-white">New Order</h3>
+                <p class="text-dark-400 text-sm">Place a new trading order</p>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 space-y-5">
+                <!-- Side Toggle -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-dark-800 rounded-xl">
+                    <button class="py-3 bg-profit text-white font-medium rounded-lg transition-colors">BUY</button>
+                    <button class="py-3 text-dark-400 hover:text-white font-medium rounded-lg transition-colors">SELL</button>
+                </div>
+
+                <!-- Symbol -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Symbol</label>
+                    <div class="relative">
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                               placeholder="e.g., BTC/USD"
+                               value="BTC/USD">
+                    </div>
+                </div>
+
+                <!-- Order Type -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Order Type</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="py-2.5 bg-primary-600 text-white text-sm font-medium rounded-lg">LIMIT</button>
+                        <button class="py-2.5 bg-dark-800 text-dark-400 hover:text-white text-sm font-medium rounded-lg transition-colors">STOP</button>
+                        <button class="py-2.5 bg-dark-800 text-dark-400 hover:text-white text-sm font-medium rounded-lg transition-colors">TARGET</button>
+                    </div>
+                </div>
+
+                <!-- Price & Quantity Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-dark-300">Limit Price</label>
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white font-mono placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                               placeholder="0.00"
+                               value="45,000.00">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-dark-300">Quantity</label>
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white font-mono placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                               placeholder="0.00"
+                               value="0.5">
+                    </div>
+                </div>
+
+                <!-- Stop Loss & Target -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-dark-300">Stop Loss</label>
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white font-mono placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-loss-light"
+                               placeholder="Optional"
+                               value="42,000.00">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-dark-300">Target Price</label>
+                        <input type="text"
+                               class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white font-mono placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-profit-light"
+                               placeholder="Optional"
+                               value="55,000.00">
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="bg-dark-800/50 rounded-xl p-4 space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-dark-400">Order Value</span>
+                        <span class="text-white font-mono">$22,500.00</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-dark-400">Estimated Fee</span>
+                        <span class="text-dark-300 font-mono">$22.50</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm pt-2 border-t border-dark-700">
+                        <span class="text-dark-400">Total</span>
+                        <span class="text-white font-mono font-medium">$22,522.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-dark-800 flex space-x-3">
+                <button class="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-medium rounded-xl transition-colors">
+                    Cancel
+                </button>
+                <button class="flex-1 py-3 bg-profit hover:bg-profit-dark text-white font-medium rounded-xl transition-colors">
+                    Place Order
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="h-px bg-gradient-to-r from-transparent via-primary-500 to-transparent my-16"></div>
+
+<!-- Register Portfolio Modal -->
+<section id="register-portfolio-modal" class="min-h-screen bg-dark-950 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-dark-900 border border-dark-700 rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+            <div class="px-6 py-4 border-b border-dark-800">
+                <h3 class="text-lg font-semibold text-white">Create New Portfolio</h3>
+                <p class="text-dark-400 text-sm">Set up a new investment portfolio</p>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Portfolio Name -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Portfolio Name</label>
+                    <input type="text"
+                           class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                           placeholder="e.g., Crypto Trading">
+                </div>
+
+                <!-- Broker Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Broker</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="broker" class="peer sr-only" checked>
+                            <div class="p-4 bg-dark-800 border border-dark-700 rounded-xl text-center peer-checked:border-primary-500 peer-checked:bg-primary-500/10 transition-all">
+                                <span class="text-2xl">🟡</span>
+                                <p class="text-white text-sm mt-1">Binance</p>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="broker" class="peer sr-only">
+                            <div class="p-4 bg-dark-800 border border-dark-700 rounded-xl text-center peer-checked:border-primary-500 peer-checked:bg-primary-500/10 transition-all">
+                                <span class="text-2xl">🔵</span>
+                                <p class="text-white text-sm mt-1">XTB</p>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="broker" class="peer sr-only">
+                            <div class="p-4 bg-dark-800 border border-dark-700 rounded-xl text-center peer-checked:border-primary-500 peer-checked:bg-primary-500/10 transition-all">
+                                <span class="text-2xl">🟢</span>
+                                <p class="text-white text-sm mt-1">eToro</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Base Currency -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-dark-300">Deposit Currency</label>
+                    <select class="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <option>USD - US Dollar</option>
+                        <option>EUR - Euro</option>
+                        <option>PLN - Polish Zloty</option>
+                        <option>GBP - British Pound</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-dark-800 flex space-x-3">
+                <button class="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-white font-medium rounded-xl transition-colors">
+                    Cancel
+                </button>
+                <button class="flex-1 py-3 bg-primary-600 hover:bg-primary-500 text-white font-medium rounded-xl transition-colors">
+                    Create Portfolio
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+</body>
+</html>
