@@ -2,7 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
-import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
@@ -123,7 +123,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Generate regular monthly income (salary) - almost always present
             if (random.nextDouble() < 0.95) {
                 ZonedDateTime salaryDate = currentPeriod.atDay(10).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId salaryId = actor.appendCashChange(
+                CashChangeId salaryId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Salary"),
                         INFLOW,
@@ -145,7 +145,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Generate bonus (occasional)
             if (random.nextDouble() < 0.15) {
                 ZonedDateTime bonusDate = currentPeriod.atDay(15 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId bonusId = actor.appendCashChange(
+                CashChangeId bonusId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Bonus"),
                         INFLOW,
@@ -167,7 +167,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             if (random.nextDouble() < 0.25) {
                 CategoryName investmentCategory = random.nextBoolean() ? new CategoryName("Dividends") : new CategoryName("Interest");
                 ZonedDateTime investDate = currentPeriod.atDay(1 + random.nextInt(25)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId investId = actor.appendCashChange(
+                CashChangeId investId = actor.appendExpectedCashChange(
                         cashFlowId,
                         investmentCategory,
                         INFLOW,
@@ -189,7 +189,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             for (CategoryName otherIncome : List.of(new CategoryName("Refunds"), new CategoryName("Gifts"), new CategoryName("Sales"))) {
                 if (random.nextDouble() < 0.1) {
                     ZonedDateTime otherDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                    CashChangeId otherId = actor.appendCashChange(
+                    CashChangeId otherId = actor.appendExpectedCashChange(
                             cashFlowId,
                             otherIncome,
                             INFLOW,
@@ -211,7 +211,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Fixed monthly expenses (rent, utilities)
             // Rent - always present
             ZonedDateTime rentDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId rentId = actor.appendCashChange(
+            CashChangeId rentId = actor.appendExpectedCashChange(
                     cashFlowId,
                     new CategoryName("Rent"),
                     OUTFLOW,
@@ -231,7 +231,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             for (CategoryName utility : List.of(new CategoryName("Electricity"), new CategoryName("Gas"), new CategoryName("Internet"))) {
                 ZonedDateTime utilityDate = currentPeriod.atDay(5 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
                 int amount = utility.name().equals("Internet") ? 50 + random.nextInt(30) : 60 + random.nextInt(100);
-                CashChangeId utilityId = actor.appendCashChange(
+                CashChangeId utilityId = actor.appendExpectedCashChange(
                         cashFlowId,
                         utility,
                         OUTFLOW,
@@ -253,7 +253,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             int groceryTransactions = 4 + random.nextInt(8);
             for (int i = 0; i < groceryTransactions; i++) {
                 ZonedDateTime groceryDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId groceryId = actor.appendCashChange(
+                CashChangeId groceryId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Groceries"),
                         OUTFLOW,
@@ -287,7 +287,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             int restaurantVisits = random.nextInt(6);
             for (int i = 0; i < restaurantVisits; i++) {
                 ZonedDateTime restDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId restId = actor.appendCashChange(
+                CashChangeId restId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Restaurants"),
                         OUTFLOW,
@@ -309,7 +309,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             int deliveries = random.nextInt(8);
             for (int i = 0; i < deliveries; i++) {
                 ZonedDateTime deliveryDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId deliveryId = actor.appendCashChange(
+                CashChangeId deliveryId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Food Delivery"),
                         OUTFLOW,
@@ -331,7 +331,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             int fuelTransactions = 2 + random.nextInt(4);
             for (int i = 0; i < fuelTransactions; i++) {
                 ZonedDateTime fuelDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId fuelId = actor.appendCashChange(
+                CashChangeId fuelId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Fuel"),
                         OUTFLOW,
@@ -352,7 +352,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Car insurance (once a year)
             if (monthOffset % 12 == 0) {
                 ZonedDateTime insuranceDate = currentPeriod.atDay(15).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId insuranceId = actor.appendCashChange(
+                CashChangeId insuranceId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Car Insurance"),
                         OUTFLOW,
@@ -373,7 +373,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Car service (occasional)
             if (random.nextDouble() < 0.15) {
                 ZonedDateTime serviceDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId serviceId = actor.appendCashChange(
+                CashChangeId serviceId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Car Service"),
                         OUTFLOW,
@@ -406,7 +406,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Public transport (occasional)
             if (random.nextDouble() < 0.4) {
                 ZonedDateTime ptDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId ptId = actor.appendCashChange(
+                CashChangeId ptId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Public Transit"),
                         OUTFLOW,
@@ -427,7 +427,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Health - gym membership (monthly)
             if (random.nextDouble() < 0.7) {
                 ZonedDateTime gymDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId gymId = actor.appendCashChange(
+                CashChangeId gymId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Gym"),
                         OUTFLOW,
@@ -448,7 +448,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Medicine (occasional)
             if (random.nextDouble() < 0.3) {
                 ZonedDateTime medDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId medId = actor.appendCashChange(
+                CashChangeId medId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Medicine"),
                         OUTFLOW,
@@ -469,7 +469,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Doctor visits (occasional)
             if (random.nextDouble() < 0.2) {
                 ZonedDateTime docDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId docId = actor.appendCashChange(
+                CashChangeId docId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Doctor Visits"),
                         OUTFLOW,
@@ -491,7 +491,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             for (String streaming : List.of("Netflix", "Spotify", "HBO")) {
                 if (random.nextDouble() < 0.6) {
                     ZonedDateTime streamDate = currentPeriod.atDay(1 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-                    CashChangeId streamId = actor.appendCashChange(
+                    CashChangeId streamId = actor.appendExpectedCashChange(
                             cashFlowId,
                             new CategoryName("Streaming"),
                             OUTFLOW,
@@ -513,7 +513,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Cinema (occasional)
             if (random.nextDouble() < 0.3) {
                 ZonedDateTime cinemaDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId cinemaId = actor.appendCashChange(
+                CashChangeId cinemaId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Cinema"),
                         OUTFLOW,
@@ -534,7 +534,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Games (occasional)
             if (random.nextDouble() < 0.15) {
                 ZonedDateTime gameDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId gameId = actor.appendCashChange(
+                CashChangeId gameId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Games"),
                         OUTFLOW,
@@ -555,7 +555,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Books (occasional)
             if (random.nextDouble() < 0.25) {
                 ZonedDateTime bookDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId bookId = actor.appendCashChange(
+                CashChangeId bookId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Books"),
                         OUTFLOW,
@@ -576,7 +576,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Education - courses (occasional)
             if (random.nextDouble() < 0.1) {
                 ZonedDateTime courseDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId courseId = actor.appendCashChange(
+                CashChangeId courseId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Courses"),
                         OUTFLOW,
@@ -609,7 +609,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Subscriptions
             if (random.nextDouble() < 0.5) {
                 ZonedDateTime subDate = currentPeriod.atDay(1 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId subId = actor.appendCashChange(
+                CashChangeId subId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Subscriptions"),
                         OUTFLOW,
@@ -631,7 +631,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             if (random.nextDouble() < 0.2) {
                 CategoryName clothesCategory = random.nextBoolean() ? new CategoryName("Apparel") : new CategoryName("Footwear");
                 ZonedDateTime clothesDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId clothesId = actor.appendCashChange(
+                CashChangeId clothesId = actor.appendExpectedCashChange(
                         cashFlowId,
                         clothesCategory,
                         OUTFLOW,
@@ -652,7 +652,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
             // Savings (monthly)
             if (random.nextDouble() < 0.6) {
                 ZonedDateTime savingsDate = currentPeriod.atDay(25 + random.nextInt(3)).atStartOfDay(ZoneOffset.UTC);
-                CashChangeId savingsId = actor.appendCashChange(
+                CashChangeId savingsId = actor.appendExpectedCashChange(
                         cashFlowId,
                         new CategoryName("Savings"),
                         OUTFLOW,
@@ -750,9 +750,9 @@ class HomeBudgetActor {
         ));
     }
 
-    CashChangeId appendCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
+    CashChangeId appendExpectedCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
         return commandGateway.send(
-                new AppendCashChangeCommand(
+                new AppendExpectedCashChangeCommand(
                         cashFlowId,
                         category,
                         new CashChangeId(CashChangeId.generate().id()),

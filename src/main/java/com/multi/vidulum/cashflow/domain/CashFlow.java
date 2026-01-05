@@ -147,7 +147,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.uncommittedEvents.add(event);
     }
 
-    public void apply(CashFlowEvent.CashChangeAppendedEvent event) {
+    public void apply(CashFlowEvent.ExpectedCashChangeAppendedEvent event) {
         CashChange cashChange = new CashChange(
                 event.cashChangeId(),
                 event.name(),
@@ -319,6 +319,6 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public enum CashFlowStatus {
-        OPEN, CLOSED
+        SETUP, OPEN, CLOSED
     }
 }

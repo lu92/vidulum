@@ -53,7 +53,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"));
         cashFlow.apply(createdEvent);
 
-        CashFlowEvent.CashChangeAppendedEvent appendedEvent = new CashFlowEvent.CashChangeAppendedEvent(
+        CashFlowEvent.ExpectedCashChangeAppendedEvent appendedEvent = new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 cashFlowId,
                 cashChangeId,
                 new Name("cash change name"),
@@ -160,7 +160,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
         ));
 
-        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+        cashFlow.apply(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 cashFlowId,
                 firstCashChangeId,
                 new Name("cash change name"),
@@ -172,7 +172,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 ZonedDateTime.parse("2021-07-01T06:30:00Z")
         ));
 
-        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+        cashFlow.apply(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 cashFlowId,
                 secondCashChangeId,
                 new Name("cash change name"),
@@ -282,7 +282,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 Money.of(0, "USD")),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 ),
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         firstCashChangeId,
                         new Name("cash change name"),
@@ -293,7 +293,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-01T06:30:00Z")
                 ),
-                new CashFlowEvent.CashChangeAppendedEvent(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
                         secondCashChangeId,
                         new Name("cash change name"),
@@ -359,7 +359,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
         ));
 
-        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+        cashFlow.apply(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 cashFlowId,
                 cashChangeId,
                 new Name("cash change name"),
@@ -455,7 +455,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
-                        new CashFlowEvent.CashChangeAppendedEvent(
+                        new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                                 cashFlowId,
                                 cashChangeId,
                                 new Name("cash change name"),
@@ -524,7 +524,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
         ));
 
-        cashFlow.apply(new CashFlowEvent.CashChangeAppendedEvent(
+        cashFlow.apply(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 cashFlowId,
                 cashChangeId,
                 new Name("cash change name"),
@@ -617,7 +617,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         Money.of(0, "USD")),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         ),
-                        new CashFlowEvent.CashChangeAppendedEvent(
+                        new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                                 cashFlowId,
                                 cashChangeId,
                                 new Name("cash change name"),

@@ -2,7 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
-import com.multi.vidulum.cashflow.app.commands.append.AppendCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.domain.*;
@@ -83,7 +83,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
                 ZonedDateTime created = ZonedDateTime.now(clock).plusMonths(i);
                 ZonedDateTime dueDate = ZonedDateTime.now(clock).plusMonths(i).plusDays(3);
                 log.info("Suppose to append cash change: created {}, duedate {}", created, dueDate);
-                lastCashChangeId = actor.appendCashChange(cashFlowId, categoryName, type, Money.of(random.nextInt(20) * 100, "USD"), created, dueDate);
+                lastCashChangeId = actor.appendExpectedCashChange(cashFlowId, categoryName, type, Money.of(random.nextInt(20) * 100, "USD"), created, dueDate);
                 statusMap.put(lastCashChangeId, CashChangeStatus.PENDING);
                 statusOfLastCashChange = CashChangeStatus.PENDING;
                 boolean shouldConfirm = random.nextBoolean();
@@ -153,9 +153,9 @@ class Actor {
         ));
     }
 
-    CashChangeId appendCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
+    CashChangeId appendExpectedCashChange(CashFlowId cashFlowId, CategoryName category, Type type, Money money, ZonedDateTime created, ZonedDateTime dueDate) {
         return commandGateway.send(
-                new AppendCashChangeCommand(
+                new AppendExpectedCashChangeCommand(
                         cashFlowId,
                         category,
                         new CashChangeId(CashChangeId.generate().id()),
