@@ -2,9 +2,11 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.Checksum;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,9 @@ public class CashFlowSummaryMapper {
                 .outflowCategories(cashFlowSnapshot.outflowCategories())
                 .created(cashFlowSnapshot.created())
                 .lastModification(cashFlowSnapshot.lastModification())
+                .lastMessageChecksum(Optional.ofNullable(cashFlowSnapshot.lastMessageChecksum())
+                        .map(Checksum::checksum)
+                        .orElse(null))
                 .build();
     }
 

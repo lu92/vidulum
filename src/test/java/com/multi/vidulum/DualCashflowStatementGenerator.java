@@ -8,6 +8,8 @@ import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryComm
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastDto;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastRestController;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
@@ -21,6 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -39,6 +44,9 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
     @Autowired
     private CashFlowRestController cashFlowRestController;
+
+    @Autowired
+    private CashFlowForecastRestController cashFlowForecastRestController;
 
     @Autowired
     private Clock clock;
@@ -141,6 +149,105 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
                 });
 
         log.info("Successfully verified 2 cashflows for user {} via /viaUser endpoint", USER_ID);
+
+        // Test the new CashFlowForecastRestController endpoint with large data
+        log.info("Testing CashFlowForecastRestController.getForecastStatement with large data...");
+
+        // Get forecast statement for home cashflow
+        CashFlowForecastDto.CashFlowForecastStatementJson homeForecastStatement =
+                cashFlowForecastRestController.getForecastStatement(homeCashFlowId.id());
+
+        assertThat(homeForecastStatement).isNotNull();
+        assertThat(homeForecastStatement.getCashFlowId()).isEqualTo(homeCashFlowId.id());
+        assertThat(homeForecastStatement.getForecasts()).isNotEmpty();
+        assertThat(homeForecastStatement.getLastMessageChecksum()).isNotNull();
+        assertThat(homeForecastStatement.getLastModification()).isNotNull();
+
+        log.info("Home forecast statement retrieved successfully:");
+        log.info("  - CashFlowId: {}", homeForecastStatement.getCashFlowId());
+        log.info("  - Number of forecast months: {}", homeForecastStatement.getForecasts().size());
+        log.info("  - Last checksum: {}", homeForecastStatement.getLastMessageChecksum());
+        log.info("  - Inflow categories: {}", homeForecastStatement.getCategoryStructure().getInflowCategoryStructure().size());
+        log.info("  - Outflow categories: {}", homeForecastStatement.getCategoryStructure().getOutflowCategoryStructure().size());
+
+        // Get forecast statement for business cashflow
+        CashFlowForecastDto.CashFlowForecastStatementJson businessForecastStatement =
+                cashFlowForecastRestController.getForecastStatement(businessCashFlowId.id());
+
+        assertThat(businessForecastStatement).isNotNull();
+        assertThat(businessForecastStatement.getCashFlowId()).isEqualTo(businessCashFlowId.id());
+        assertThat(businessForecastStatement.getForecasts()).isNotEmpty();
+        assertThat(businessForecastStatement.getLastMessageChecksum()).isNotNull();
+        assertThat(businessForecastStatement.getLastModification()).isNotNull();
+
+        log.info("Business forecast statement retrieved successfully:");
+        log.info("  - CashFlowId: {}", businessForecastStatement.getCashFlowId());
+        log.info("  - Number of forecast months: {}", businessForecastStatement.getForecasts().size());
+        log.info("  - Last checksum: {}", businessForecastStatement.getLastMessageChecksum());
+        log.info("  - Inflow categories: {}", businessForecastStatement.getCategoryStructure().getInflowCategoryStructure().size());
+        log.info("  - Outflow categories: {}", businessForecastStatement.getCategoryStructure().getOutflowCategoryStructure().size());
+
+        // Verify checksum synchronization between aggregate and forecast statement
+        CashFlowDto.CashFlowSummaryJson homeCashFlowSummary = cashFlowRestController.getCashFlow(homeCashFlowId.id());
+        CashFlowDto.CashFlowSummaryJson businessCashFlowSummary = cashFlowRestController.getCashFlow(businessCashFlowId.id());
+
+        assertThat(homeForecastStatement.getLastMessageChecksum())
+                .as("Home cashflow checksum should be synchronized between aggregate and forecast statement")
+                .isEqualTo(homeCashFlowSummary.getLastMessageChecksum());
+
+        assertThat(businessForecastStatement.getLastMessageChecksum())
+                .as("Business cashflow checksum should be synchronized between aggregate and forecast statement")
+                .isEqualTo(businessCashFlowSummary.getLastMessageChecksum());
+
+        log.info("Checksum synchronization verified for both cashflows");
+        log.info("  - Home: aggregate={}, forecast={}", homeCashFlowSummary.getLastMessageChecksum(), homeForecastStatement.getLastMessageChecksum());
+        log.info("  - Business: aggregate={}, forecast={}", businessCashFlowSummary.getLastMessageChecksum(), businessForecastStatement.getLastMessageChecksum());
+
+        // Count total transactions in forecasts
+        long homeTransactionCount = homeForecastStatement.getForecasts().values().stream()
+                .flatMap(forecast -> Stream.concat(
+                        forecast.getCategorizedInFlows().stream(),
+                        forecast.getCategorizedOutFlows().stream()))
+                .flatMap(category -> category.getGroupedTransactions().getTransactions().values().stream())
+                .mapToLong(List::size)
+                .sum();
+
+        long businessTransactionCount = businessForecastStatement.getForecasts().values().stream()
+                .flatMap(forecast -> Stream.concat(
+                        forecast.getCategorizedInFlows().stream(),
+                        forecast.getCategorizedOutFlows().stream()))
+                .flatMap(category -> category.getGroupedTransactions().getTransactions().values().stream())
+                .mapToLong(List::size)
+                .sum();
+
+        log.info("Total transactions in forecast statements:");
+        log.info("  - Home: {} transactions", homeTransactionCount);
+        log.info("  - Business: {} transactions", businessTransactionCount);
+
+        log.info("CashFlowForecastRestController test completed successfully with large data!");
+
+        // Save responses to JSON files for mockup data
+        Path outputDir = Path.of("src/test/java/com/multi/vidulum");
+
+        Path homeForecastFile = outputDir.resolve("home_forecast_statement.json");
+        Path businessForecastFile = outputDir.resolve("business_forecast_statement.json");
+        Path userCashFlowsFile = outputDir.resolve("user_cashflows_response.json");
+
+        try {
+            Files.writeString(homeForecastFile, JsonContent.asJson(homeForecastStatement).content());
+            Files.writeString(businessForecastFile, JsonContent.asJson(businessForecastStatement).content());
+            Files.writeString(userCashFlowsFile, JsonContent.asJson(userCashFlows).content());
+
+            log.info("=".repeat(80));
+            log.info("Generated JSON mockup files:");
+            log.info("  1. Home Forecast Statement: {}", homeForecastFile.toAbsolutePath());
+            log.info("  2. Business Forecast Statement: {}", businessForecastFile.toAbsolutePath());
+            log.info("  3. User CashFlows Response: {}", userCashFlowsFile.toAbsolutePath());
+            log.info("=".repeat(80));
+        } catch (IOException e) {
+            log.error("Failed to write JSON files", e);
+            throw new RuntimeException("Failed to write JSON mockup files", e);
+        }
     }
 
     private void setupHomeBudgetCategories(CashFlowId cashFlowId) {
