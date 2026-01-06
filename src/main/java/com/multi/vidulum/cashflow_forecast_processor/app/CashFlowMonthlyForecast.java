@@ -210,6 +210,6 @@ public class CashFlowMonthlyForecast {
     }
 
     public enum Status {
-        ATTESTED, ACTIVE, FORECASTED
+        SETUP_PENDING, ATTESTED, ACTIVE, FORECASTED
     }
 }

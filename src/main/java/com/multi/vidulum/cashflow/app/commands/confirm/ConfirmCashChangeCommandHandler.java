@@ -23,6 +23,11 @@ public class ConfirmCashChangeCommandHandler implements CommandHandler<ConfirmCa
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
+        // Validate: operation not allowed in SETUP mode
+        if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status())) {
+            throw new OperationNotAllowedInSetupModeException("confirmCashChange", command.cashFlowId());
+        }
+
         CashFlowEvent.CashChangeConfirmedEvent event = new CashFlowEvent.CashChangeConfirmedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),

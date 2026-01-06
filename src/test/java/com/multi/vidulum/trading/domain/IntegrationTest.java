@@ -5,6 +5,7 @@ import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.*;
@@ -118,6 +119,9 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected DomainCashFlowRepository domainCashFlowRepository;
+
+    @Autowired
+    protected CashFlowMongoRepository cashFlowMongoRepository;
 
     @Autowired
     protected RiskManagementRestController riskManagementRestController;
