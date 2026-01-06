@@ -3693,29 +3693,30 @@ Twoja stopa oszczędności:  22%
 2. [x] Nowy status IMPORT_PENDING dla Forecast (wcześniej SETUP_PENDING)
 3. [x] Command: `createCashFlowWithHistory`
 4. [x] Command: `importHistoricalCashChange` (pojedyncza) z walidacją `paidDate <= now()`
-5. [ ] Command: `activateCashFlow`
+5. [x] Command: `attestHistoricalImport` (aktywacja CashFlow z weryfikacją salda)
 6. [ ] Command: `rollbackImport`
 7. [x] Walidacje w istniejących commandach (blokada w SETUP)
 8. [x] Testy integracyjne
+9. [x] Generator danych testowych z historią (`DualCashflowStatementGeneratorWithHistory`)
 
 ### Faza 2: Categories & Mapping
-9. [ ] Struktura kategorii z validFrom/validTo
-10. [ ] Command: `configureCategoryMapping`
-11. [x] Event handlers dla nowych eventów
-12. [x] Forecast processor - obsługa IMPORT_PENDING
+10. [ ] Struktura kategorii z validFrom/validTo
+11. [ ] Command: `configureCategoryMapping`
+12. [x] Event handlers dla nowych eventów
+13. [x] Forecast processor - obsługa IMPORT_PENDING
 
 ### Faza 3: Batch & UI
-13. [ ] Command: `batchImportHistoricalCashChanges`
-14. [ ] CSV Parser (generic + ING, mBank, PKO)
-15. [ ] REST API endpoints
-16. [ ] UI Wizard (frontend)
+14. [ ] Command: `batchImportHistoricalCashChanges`
+15. [ ] CSV Parser (generic + ING, mBank, PKO)
+16. [ ] REST API endpoints
+17. [ ] UI Wizard (frontend)
 
 ### Faza 4: Polish
-17. [ ] `appendPaidCashChange` command
-18. [ ] Balance validation przy aktywacji
-19. [ ] Adjustment transaction
-20. [ ] Progress tracking dla batch import
-21. [ ] Deduplikacja (bankTransactionId)
+18. [x] `appendPaidCashChange` command
+19. [x] Balance validation przy aktywacji (w attestHistoricalImport)
+20. [ ] Adjustment transaction
+21. [ ] Progress tracking dla batch import
+22. [ ] Deduplikacja (bankTransactionId)
 
 ---
 
