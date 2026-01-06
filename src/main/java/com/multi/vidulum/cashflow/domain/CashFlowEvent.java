@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 public sealed interface CashFlowEvent extends DomainEvent
         permits
         CashFlowEvent.CashFlowCreatedEvent,
+        CashFlowEvent.CashFlowWithHistoryCreatedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
         CashFlowEvent.PaidCashChangeAppendedEvent,
@@ -29,6 +30,37 @@ public sealed interface CashFlowEvent extends DomainEvent
     record CashFlowCreatedEvent(CashFlowId cashFlowId, UserId userId, Name name, Description description,
                                 BankAccount bankAccount,
                                 ZonedDateTime created) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
+    }
+
+    /**
+     * Event for creating a CashFlow with historical data support.
+     * Creates a CashFlow in SETUP mode with historical months marked as SETUP_PENDING.
+     *
+     * @param cashFlowId     unique identifier of the cash flow
+     * @param userId         the user who owns this cash flow
+     * @param name           name of the cash flow
+     * @param description    description of the cash flow
+     * @param bankAccount    bank account details with current balance
+     * @param startPeriod    the first historical month
+     * @param activePeriod   the current active month (derived from created timestamp)
+     * @param initialBalance the balance at the start of startPeriod
+     * @param created        timestamp when the cash flow was created
+     */
+    record CashFlowWithHistoryCreatedEvent(
+            CashFlowId cashFlowId,
+            UserId userId,
+            Name name,
+            Description description,
+            BankAccount bankAccount,
+            YearMonth startPeriod,
+            YearMonth activePeriod,
+            Money initialBalance,
+            ZonedDateTime created
+    ) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return created;

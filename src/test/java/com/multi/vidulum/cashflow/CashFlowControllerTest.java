@@ -3,7 +3,8 @@ package com.multi.vidulum.cashflow;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -12,6 +13,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
@@ -1489,9 +1491,9 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAppendExpectedCashChangeWhenCashFlowInSetupMode() {
-        // given - create CashFlow and change status to SETUP
-        String cashFlowId = cashFlowRestController.createCashFlow(
-                CashFlowDto.CreateCashFlowJson.builder()
+        // given - create CashFlow with history (starts in SETUP mode)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
@@ -1499,27 +1501,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
                                 Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
                         .build()
         );
-
-        // Change CashFlow status to SETUP mode directly in database
-        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
-        CashFlowEntity setupEntity = CashFlowEntity.builder()
-                .cashFlowId(entity.getCashFlowId())
-                .userId(entity.getUserId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .bankAccount(entity.getBankAccount())
-                .status(CashFlow.CashFlowStatus.SETUP)
-                .cashChanges(entity.getCashChanges())
-                .inflowCategories(entity.getInflowCategories())
-                .outflowCategories(entity.getOutflowCategories())
-                .activePeriod(entity.getActivePeriod())
-                .created(entity.getCreated())
-                .lastModification(entity.getLastModification())
-                .lastMessageChecksum(entity.getLastMessageChecksum())
-                .build();
-        cashFlowMongoRepository.save(setupEntity);
 
         // when/then - trying to append expected cash change should fail
         assertThatThrownBy(() -> cashFlowRestController.appendExpectedCashChange(
@@ -1539,9 +1524,9 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAppendPaidCashChangeWhenCashFlowInSetupMode() {
-        // given - create CashFlow and change status to SETUP
-        String cashFlowId = cashFlowRestController.createCashFlow(
-                CashFlowDto.CreateCashFlowJson.builder()
+        // given - create CashFlow with history (starts in SETUP mode)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
@@ -1549,27 +1534,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
                                 Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
                         .build()
         );
-
-        // Change CashFlow status to SETUP mode directly in database
-        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
-        CashFlowEntity setupEntity = CashFlowEntity.builder()
-                .cashFlowId(entity.getCashFlowId())
-                .userId(entity.getUserId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .bankAccount(entity.getBankAccount())
-                .status(CashFlow.CashFlowStatus.SETUP)
-                .cashChanges(entity.getCashChanges())
-                .inflowCategories(entity.getInflowCategories())
-                .outflowCategories(entity.getOutflowCategories())
-                .activePeriod(entity.getActivePeriod())
-                .created(entity.getCreated())
-                .lastModification(entity.getLastModification())
-                .lastMessageChecksum(entity.getLastMessageChecksum())
-                .build();
-        cashFlowMongoRepository.save(setupEntity);
 
         // when/then - trying to append paid cash change should fail
         assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
@@ -1590,9 +1558,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectEditCashChangeWhenCashFlowInSetupMode() {
-        // given - create CashFlow with a cash change, then switch to SETUP mode
-        String cashFlowId = cashFlowRestController.createCashFlow(
-                CashFlowDto.CreateCashFlowJson.builder()
+        // given - create CashFlow with history (starts in SETUP mode)
+        // Note: In SETUP mode we can't add cash changes via normal flow,
+        // so we test with a fake cashChangeId
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
@@ -1600,46 +1570,16 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
                                 Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
                         .build()
         );
 
-        // Add a cash change first (while still in OPEN mode)
-        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
-                CashFlowDto.AppendExpectedCashChangeJson.builder()
-                        .cashFlowId(cashFlowId)
-                        .category("Uncategorized")
-                        .name("Original name")
-                        .description("Original description")
-                        .money(Money.of(100, "USD"))
-                        .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
-                        .build()
-        );
-
-        // Change CashFlow status to SETUP mode directly in database
-        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
-        CashFlowEntity setupEntity = CashFlowEntity.builder()
-                .cashFlowId(entity.getCashFlowId())
-                .userId(entity.getUserId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .bankAccount(entity.getBankAccount())
-                .status(CashFlow.CashFlowStatus.SETUP)
-                .cashChanges(entity.getCashChanges())
-                .inflowCategories(entity.getInflowCategories())
-                .outflowCategories(entity.getOutflowCategories())
-                .activePeriod(entity.getActivePeriod())
-                .created(entity.getCreated())
-                .lastModification(entity.getLastModification())
-                .lastMessageChecksum(entity.getLastMessageChecksum())
-                .build();
-        cashFlowMongoRepository.save(setupEntity);
-
-        // when/then - trying to edit cash change should fail
+        // when/then - trying to edit cash change should fail (even with non-existent cashChangeId)
         assertThatThrownBy(() -> cashFlowRestController.edit(
                 CashFlowDto.EditCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
-                        .cashChangeId(cashChangeId)
+                        .cashChangeId("fake-cash-change-id")
                         .name("Updated name")
                         .description("Updated description")
                         .money(Money.of(200, "USD"))
@@ -1652,9 +1592,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectConfirmCashChangeWhenCashFlowInSetupMode() {
-        // given - create CashFlow with a pending cash change, then switch to SETUP mode
-        String cashFlowId = cashFlowRestController.createCashFlow(
-                CashFlowDto.CreateCashFlowJson.builder()
+        // given - create CashFlow with history (starts in SETUP mode)
+        // Note: In SETUP mode we can't add cash changes via normal flow,
+        // so we test with a fake cashChangeId
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
@@ -1662,49 +1604,174 @@ public class CashFlowControllerTest extends IntegrationTest {
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
                                 Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
                         .build()
         );
 
-        // Add a cash change first (while still in OPEN mode)
-        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
-                CashFlowDto.AppendExpectedCashChangeJson.builder()
-                        .cashFlowId(cashFlowId)
-                        .category("Uncategorized")
-                        .name("Transaction to confirm")
-                        .description("Description")
-                        .money(Money.of(100, "USD"))
-                        .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
-                        .build()
-        );
-
-        // Change CashFlow status to SETUP mode directly in database
-        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
-        CashFlowEntity setupEntity = CashFlowEntity.builder()
-                .cashFlowId(entity.getCashFlowId())
-                .userId(entity.getUserId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .bankAccount(entity.getBankAccount())
-                .status(CashFlow.CashFlowStatus.SETUP)
-                .cashChanges(entity.getCashChanges())
-                .inflowCategories(entity.getInflowCategories())
-                .outflowCategories(entity.getOutflowCategories())
-                .activePeriod(entity.getActivePeriod())
-                .created(entity.getCreated())
-                .lastModification(entity.getLastModification())
-                .lastMessageChecksum(entity.getLastMessageChecksum())
-                .build();
-        cashFlowMongoRepository.save(setupEntity);
-
-        // when/then - trying to confirm cash change should fail
+        // when/then - trying to confirm cash change should fail (even with non-existent cashChangeId)
         assertThatThrownBy(() -> cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
-                        .cashChangeId(cashChangeId)
+                        .cashChangeId("fake-cash-change-id")
                         .build()
         )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
                 .hasMessageContaining("confirmCashChange")
                 .hasMessageContaining("SETUP mode");
+    }
+
+    // ==================== CREATE CASH FLOW WITH HISTORY TESTS ====================
+
+    @Test
+    void shouldCreateCashFlowWithHistoryInSetupStatus() {
+        // given - FixedClockConfig sets clock to 2022-01-01, so startPeriod 2021-06 is in the past
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("Cash flow with historical data support")
+                        .bankAccount(new BankAccount(
+                                new BankName("Chase Bank"),
+                                new BankAccountNumber("US12345", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-06")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // then - CashFlow should be in SETUP status
+        CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
+
+        assertThat(result.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(result.getUserId()).isEqualTo("userId");
+        assertThat(result.getName()).isEqualTo("Historical Cash Flow");
+        assertThat(result.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(result.getBankAccount().balance()).isEqualTo(Money.of(5000, "USD"));
+
+        // Wait for Kafka event to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.CashFlowWithHistoryCreatedEvent.class.getSimpleName()))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldCreateMonthlyForecastsWithCorrectStatusesForHistoricalCashFlow() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        // startPeriod: 2021-10 (historical)
+        // activePeriod: 2022-01 (current)
+        // So we expect:
+        // - 2021-10, 2021-11, 2021-12: SETUP_PENDING (historical months)
+        // - 2022-01: ACTIVE (current month)
+        // - 2022-02 to 2022-12: FORECASTED (future months)
+
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(2000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(500, "USD"))
+                        .build()
+        );
+
+        // Wait for the forecast statement to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // then - verify monthly forecast statuses
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        Map<YearMonth, CashFlowMonthlyForecast> forecasts = statement.getForecasts();
+
+        // Verify historical months are SETUP_PENDING
+        assertThat(forecasts.get(YearMonth.of(2021, 10)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+        assertThat(forecasts.get(YearMonth.of(2021, 11)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+        assertThat(forecasts.get(YearMonth.of(2021, 12)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+
+        // Verify active month is ACTIVE
+        assertThat(forecasts.get(YearMonth.of(2022, 1)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.ACTIVE);
+
+        // Verify future months are FORECASTED
+        assertThat(forecasts.get(YearMonth.of(2022, 2)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.FORECASTED);
+        assertThat(forecasts.get(YearMonth.of(2022, 12)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.FORECASTED);
+
+        // Verify total count of monthly forecasts: 3 historical + 1 active + 11 future = 15
+        assertThat(forecasts).hasSize(15);
+    }
+
+    @Test
+    void shouldRejectCashFlowWithHistoryWhenStartPeriodIsInFuture() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        // Trying to create with startPeriod 2023-01 (future) should fail
+
+        // when/then
+        assertThatThrownBy(() -> cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Future Start Period")
+                        .description("This should fail")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .startPeriod("2023-01")  // Future!
+                        .initialBalance(Money.of(500, "USD"))
+                        .build()
+        )).isInstanceOf(StartPeriodInFutureException.class);
+    }
+
+    @Test
+    void shouldCreateCashFlowWithHistoryStartingFromCurrentMonth() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        // startPeriod same as activePeriod (2022-01) - edge case, no historical months
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Current Month Start")
+                        .description("No historical data")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(3000, "USD")))
+                        .startPeriod("2022-01")  // Same as current active period
+                        .initialBalance(Money.of(3000, "USD"))
+                        .build()
+        );
+
+        // Wait for the forecast statement to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // then
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        Map<YearMonth, CashFlowMonthlyForecast> forecasts = statement.getForecasts();
+
+        // No historical months - only active and future
+        // 1 active + 11 future = 12 months
+        assertThat(forecasts).hasSize(12);
+
+        // First month should be ACTIVE (current month)
+        assertThat(forecasts.get(YearMonth.of(2022, 1)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.ACTIVE);
+
+        // CashFlow should be in SETUP status
+        CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(result.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
     }
 }
