@@ -571,6 +571,277 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .to(CashFlowForecastStatement.class));
     }
 
+    @Test
+    public void processPaidInflows() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId paidCashChangeId1 = CashChangeId.generate();
+        CashChangeId paidCashChangeId2 = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId1,
+                        new Name("paid inflow 1"),
+                        new Description("already paid inflow"),
+                        Money.of(500, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                ));
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId2,
+                        new Name("paid inflow 2"),
+                        new Description("second paid inflow"),
+                        Money.of(300, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-20T06:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast juneForecast = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(juneForecast).isNotNull();
+
+                    // Verify inflow stats - both transactions should be in actual (already paid)
+                    CashSummary inflowStats = juneForecast.getCashFlowStats().getInflowStats();
+                    assertThat(inflowStats.actual()).isEqualTo(Money.of(800, "USD"));
+
+                    // Verify transactions are in PAID group
+                    CashCategory uncategorizedInflow = juneForecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(uncategorizedInflow.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(2);
+                    assertThat(uncategorizedInflow.getTotalPaidValue()).isEqualTo(Money.of(800, "USD"));
+                });
+    }
+
+    @Test
+    public void processPaidOutflows() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId paidCashChangeId1 = CashChangeId.generate();
+        CashChangeId paidCashChangeId2 = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(2000, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId1,
+                        new Name("paid outflow 1"),
+                        new Description("already paid outflow"),
+                        Money.of(150, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                ));
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId2,
+                        new Name("paid outflow 2"),
+                        new Description("second paid outflow"),
+                        Money.of(250, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast juneForecast = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(juneForecast).isNotNull();
+
+                    // Verify outflow stats - both transactions should be in actual (already paid)
+                    CashSummary outflowStats = juneForecast.getCashFlowStats().getOutflowStats();
+                    assertThat(outflowStats.actual()).isEqualTo(Money.of(400, "USD"));
+
+                    // Verify transactions are in PAID group
+                    CashCategory uncategorizedOutflow = juneForecast.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(uncategorizedOutflow.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(2);
+                    assertThat(uncategorizedOutflow.getTotalPaidValue()).isEqualTo(Money.of(400, "USD"));
+                });
+    }
+
+    @Test
+    public void processMixedExpectedAndPaidCashChanges() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId expectedCashChangeId = CashChangeId.generate();
+        CashChangeId paidCashChangeId = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        // Add expected cash change (PENDING)
+        emit(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        expectedCashChangeId,
+                        new Name("expected inflow"),
+                        new Description("pending inflow"),
+                        Money.of(200, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-05T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                ));
+
+        // Add paid cash change (already CONFIRMED)
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId,
+                        new Name("paid inflow"),
+                        new Description("already paid inflow"),
+                        Money.of(300, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast juneForecast = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(juneForecast).isNotNull();
+
+                    // Verify inflow stats
+                    CashSummary inflowStats = juneForecast.getCashFlowStats().getInflowStats();
+                    // Paid should be in actual
+                    assertThat(inflowStats.actual()).isEqualTo(Money.of(300, "USD"));
+                    // Expected should be in expected
+                    assertThat(inflowStats.expected()).isEqualTo(Money.of(200, "USD"));
+
+                    // Verify transactions in correct groups
+                    CashCategory uncategorizedInflow = juneForecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(uncategorizedInflow.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(uncategorizedInflow.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
+                });
+    }
+
+    @Test
+    public void processPaidCashChangeWithCustomCategory() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId paidCashChangeId = CashChangeId.generate();
+
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("name"),
+                        new Description("description"),
+                        new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                )
+        );
+
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        paidCashChangeId,
+                        new Name("Monthly Salary"),
+                        new Description("June salary payment"),
+                        Money.of(5000, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast juneForecast = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(juneForecast).isNotNull();
+
+                    // Verify the Salary category has the paid transaction
+                    CashCategory salaryCategory = juneForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                    assertThat(salaryCategory.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(salaryCategory.getTotalPaidValue()).isEqualTo(Money.of(5000, "USD"));
+
+                    // Verify inflow stats
+                    CashSummary inflowStats = juneForecast.getCashFlowStats().getInflowStats();
+                    assertThat(inflowStats.actual()).isEqualTo(Money.of(5000, "USD"));
+                });
+    }
+
     private Checksum emit(CashFlowEvent cashFlowEvent) {
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -17,9 +19,16 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
+    private final Clock clock;
 
     @Override
     public CashChangeId handle(AppendPaidCashChangeCommand command) {
+        // Validate: paidDate cannot be in the future
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        if (command.paidDate().isAfter(now)) {
+            throw new PaidDateInFutureException(command.paidDate(), now);
+        }
+
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 

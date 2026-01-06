@@ -355,20 +355,22 @@ public enum Status {
 
 ### Podział odpowiedzialności
 
-| Endpoint | Status CashChange | Dozwolone miesiące | CashFlow Status |
-|----------|-------------------|--------------------|-----------------------------|
-| `appendCashChange` | PENDING | ACTIVE, FORECASTED | tylko OPEN |
-| `appendPaidCashChange` | CONFIRMED | ACTIVE, FORECASTED | tylko OPEN |
-| `importHistoricalCashChange` | CONFIRMED | SETUP_PENDING | tylko SETUP |
+| Endpoint | Status CashChange | Dozwolone miesiące | CashFlow Status | Walidacje |
+|----------|-------------------|--------------------|-----------------------------|-----------|
+| `appendExpectedCashChange` | PENDING | ACTIVE, FORECASTED | tylko OPEN | `dueDate` w ACTIVE/FORECASTED |
+| `appendPaidCashChange` | CONFIRMED | **tylko ACTIVE** | tylko OPEN | `paidDate <= now()`, `paidDate` w ACTIVE |
+| `importHistoricalCashChange` | CONFIRMED | SETUP_PENDING | tylko SETUP | tylko historyczne miesiące |
 
-### 1. `appendCashChange` (istniejący - zmodyfikowany)
+> **Uwaga:** `appendPaidCashChange` obsługuje tylko ACTIVE miesiąc, ponieważ reprezentuje realną transakcję bankową. Transakcje z przyszłości (FORECASTED) powinny być dodawane jako `appendExpectedCashChange`.
+
+### 1. `appendExpectedCashChange` (przemianowany z `appendCashChange`)
 
 Dodaje oczekiwaną transakcję (PENDING) do bieżącego lub przyszłego miesiąca.
 
 ```java
 @Data
 @Builder
-public static class AppendCashChangeJson {
+public static class AppendExpectedCashChangeJson {
     private String cashFlowId;
     private String category;
     private String name;
@@ -446,22 +448,48 @@ public static class AppendPaidCashChangeJson {
 Wskaźnik terminowości = liczba transakcji gdzie paidDate <= dueDate / wszystkie transakcje
 ```
 
-**Walidacje:**
+**Walidacje (ZAIMPLEMENTOWANE):**
+
+| Walidacja | Miejsce | Wyjątek | Opis |
+|-----------|---------|---------|------|
+| `paidDate <= now()` | Command Handler | `PaidDateInFutureException` | Nie można "zapłacić" w przyszłości |
+| `paidDate` w ACTIVE period | Aggregate | `PaidDateNotInActivePeriodException` | Paid transakcje tylko w bieżącym miesiącu |
+
 ```java
-// tylko w OPEN
-if (cashFlow.getStatus() != OPEN) {
-    throw new OperationNotAllowedInSetupModeException();
+// W AppendPaidCashChangeCommandHandler:
+// Walidacja 1: paidDate nie może być w przyszłości
+ZonedDateTime now = ZonedDateTime.now(clock);
+if (command.paidDate().isAfter(now)) {
+    throw new PaidDateInFutureException(command.paidDate(), now);
 }
 
-// tylko ACTIVE/FORECASTED
-if (targetMonth.isBefore(activeMonth)) {
-    throw new CannotAppendToHistoricalMonthException();
+// W CashFlow.apply(PaidCashChangeAppendedEvent):
+// Walidacja 2: paidDate musi być w ACTIVE period
+YearMonth paidDatePeriod = YearMonth.from(event.paidDate());
+if (!paidDatePeriod.equals(activePeriod)) {
+    throw new PaidDateNotInActivePeriodException(event.paidDate(), activePeriod);
 }
+```
 
-// paidDate nie może być w przyszłości
-if (paidDate.isAfter(now)) {
-    throw new PaidDateCannotBeInFutureException();
-}
+**Dlaczego tylko ACTIVE period?**
+
+Paid transakcja to **realna transakcja na koncie bankowym** - pieniądze już przepłynęły.
+
+| Miesiąc | Status | Czy można dodać PaidCashChange? | Powód |
+|---------|--------|--------------------------------|-------|
+| Przeszłość | ATTESTED | ❌ NIE | Miesiąc zamknięty i zweryfikowany |
+| Bieżący | ACTIVE | ✅ TAK | Aktywny miesiąc operacyjny |
+| Przyszłość | FORECASTED | ❌ NIE | `paidDate` byłby w przyszłości (walidacja 1) |
+
+**Co jeśli zapomniałem dodać transakcję z zeszłego miesiąca?**
+- Na razie: nie można - miesiąc jest ATTESTED
+- W przyszłości: mechanizm korekt (osobna funkcjonalność)
+
+**Przypisanie do miesiąca w Forecast:**
+```java
+// PaidCashChangeAppendedEventHandler używa paidDate (nie created!)
+// do określenia miesiąca w ForecastStatement
+YearMonth yearMonth = YearMonth.from(event.paidDate());
 ```
 
 ### 3. `importHistoricalCashChange` (nowy)

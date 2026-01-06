@@ -165,6 +165,12 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public void apply(CashFlowEvent.PaidCashChangeAppendedEvent event) {
+        // Validate: paidDate must be in the active period
+        YearMonth paidDatePeriod = YearMonth.from(event.paidDate());
+        if (!paidDatePeriod.equals(activePeriod)) {
+            throw new PaidDateNotInActivePeriodException(event.paidDate(), activePeriod);
+        }
+
         CashChange cashChange = new CashChange(
                 event.cashChangeId(),
                 event.name(),

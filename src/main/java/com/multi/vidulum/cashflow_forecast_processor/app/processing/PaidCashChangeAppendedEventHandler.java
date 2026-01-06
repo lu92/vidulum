@@ -22,7 +22,8 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
-        YearMonth yearMonth = YearMonth.from(event.created());
+        // Use paidDate to determine the month (not created) - paid transactions belong to the month they were paid
+        YearMonth yearMonth = YearMonth.from(event.paidDate());
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
             CashCategory cashCategory;
