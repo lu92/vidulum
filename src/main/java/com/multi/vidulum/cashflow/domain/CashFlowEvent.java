@@ -39,7 +39,7 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     /**
      * Event for creating a CashFlow with historical data support.
-     * Creates a CashFlow in SETUP mode with historical months marked as SETUP_PENDING.
+     * Creates a CashFlow in SETUP mode with historical months marked as IMPORT_PENDING.
      *
      * @param cashFlowId     unique identifier of the cash flow
      * @param userId         the user who owns this cash flow

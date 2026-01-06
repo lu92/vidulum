@@ -1667,7 +1667,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         // startPeriod: 2021-10 (historical)
         // activePeriod: 2022-01 (current)
         // So we expect:
-        // - 2021-10, 2021-11, 2021-12: SETUP_PENDING (historical months)
+        // - 2021-10, 2021-11, 2021-12: IMPORT_PENDING (historical months)
         // - 2022-01: ACTIVE (current month)
         // - 2022-02 to 2022-12: FORECASTED (future months)
 
@@ -1694,13 +1694,13 @@ public class CashFlowControllerTest extends IntegrationTest {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
         Map<YearMonth, CashFlowMonthlyForecast> forecasts = statement.getForecasts();
 
-        // Verify historical months are SETUP_PENDING
+        // Verify historical months are IMPORT_PENDING
         assertThat(forecasts.get(YearMonth.of(2021, 10)).getStatus())
-                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
         assertThat(forecasts.get(YearMonth.of(2021, 11)).getStatus())
-                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
         assertThat(forecasts.get(YearMonth.of(2021, 12)).getStatus())
-                .isEqualTo(CashFlowMonthlyForecast.Status.SETUP_PENDING);
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
 
         // Verify active month is ACTIVE
         assertThat(forecasts.get(YearMonth.of(2022, 1)).getStatus())
@@ -1800,7 +1800,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         Awaitility.await().until(
                 () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
 
-        // when - import historical transaction to November 2021 (SETUP_PENDING month)
+        // when - import historical transaction to November 2021 (IMPORT_PENDING month)
         String cashChangeId = cashFlowRestController.importHistoricalCashChange(
                 cashFlowId,
                 CashFlowDto.ImportHistoricalCashChangeJson.builder()

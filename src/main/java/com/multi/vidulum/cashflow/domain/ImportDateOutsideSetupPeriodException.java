@@ -4,7 +4,7 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 
 /**
- * Exception thrown when attempting to import historical data to a month that is not in SETUP_PENDING status.
+ * Exception thrown when attempting to import historical data to a month that is not in IMPORT_PENDING status.
  * Historical imports are only allowed to months between startPeriod and activePeriod-1.
  */
 public class ImportDateOutsideSetupPeriodException extends RuntimeException {

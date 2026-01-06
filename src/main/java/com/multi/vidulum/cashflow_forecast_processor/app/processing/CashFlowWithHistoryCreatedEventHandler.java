@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 /**
  * Handler for CashFlowWithHistoryCreatedEvent.
  * Creates monthly forecasts with:
- * - SETUP_PENDING for historical months (from startPeriod to month before activePeriod)
+ * - IMPORT_PENDING for historical months (from startPeriod to month before activePeriod)
  * - ACTIVE for the current month (activePeriod)
  * - FORECASTED for future months (11 months after activePeriod)
  */
@@ -43,9 +43,9 @@ public class CashFlowWithHistoryCreatedEventHandler implements CashFlowEventHand
 
         // Create monthly forecasts for all periods
         Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = Stream.concat(
-                // Historical months (SETUP_PENDING): from startPeriod to month before activePeriod
+                // Historical months (IMPORT_PENDING): from startPeriod to month before activePeriod
                 generateMonths(startPeriod, activePeriod.minusMonths(1))
-                        .map(yearMonth -> createMonthlyForecast(yearMonth, currency, CashFlowMonthlyForecast.Status.SETUP_PENDING)),
+                        .map(yearMonth -> createMonthlyForecast(yearMonth, currency, CashFlowMonthlyForecast.Status.IMPORT_PENDING)),
                 // Current and future months: activePeriod + 11 months
                 generateMonths(activePeriod, activePeriod.plusMonths(11))
                         .map(yearMonth -> {

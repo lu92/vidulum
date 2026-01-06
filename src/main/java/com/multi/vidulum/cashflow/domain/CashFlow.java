@@ -239,7 +239,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     /**
      * Imports a historical cash change into a CashFlow in SETUP mode.
      * Historical transactions are imported as already CONFIRMED.
-     * No active period validation - historical imports go to SETUP_PENDING months.
+     * No active period validation - historical imports go to IMPORT_PENDING months.
      */
     public void apply(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
         CashChange cashChange = new CashChange(

@@ -13,7 +13,7 @@ import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.PA
 
 /**
  * Handler for HistoricalCashChangeImportedEvent.
- * Adds historical transactions to SETUP_PENDING months.
+ * Adds historical transactions to IMPORT_PENDING months.
  * Historical transactions are added directly as PAID since they represent past confirmed transactions.
  */
 @Component

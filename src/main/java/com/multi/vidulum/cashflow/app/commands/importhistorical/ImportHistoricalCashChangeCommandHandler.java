@@ -42,7 +42,7 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
             throw new ImportDateOutsideSetupPeriodException(command.paidDate(), targetPeriod, activePeriod);
         }
 
-        // Validation 3: paidDate must be >= startPeriod (month must exist in SETUP_PENDING)
+        // Validation 3: paidDate must be >= startPeriod (month must exist in IMPORT_PENDING)
         YearMonth startPeriod = snapshot.startPeriod();
         if (targetPeriod.isBefore(startPeriod)) {
             throw new ImportDateBeforeStartPeriodException(command.paidDate(), targetPeriod, startPeriod);
