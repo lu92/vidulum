@@ -210,6 +210,10 @@ public class CashFlowMonthlyForecast {
     }
 
     public enum Status {
-        SETUP_PENDING, ATTESTED, ACTIVE, FORECASTED
+        IMPORT_PENDING,  // Month awaiting historical import (before activation)
+        IMPORTED,        // Month with imported historical data (after activation)
+        ATTESTED,        // Month closed through normal usage (attestMonth)
+        ACTIVE,          // Current month
+        FORECASTED       // Future months
     }
 }
