@@ -2569,10 +2569,10 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(summary.getCashChanges()).hasSize(3);
     }
 
-    // ==================== ACTIVATE CASH FLOW TESTS ====================
+    // ==================== ATTEST HISTORICAL IMPORT TESTS ====================
 
     @Test
-    void shouldActivateCashFlowWhenBalancesMatch() {
+    void shouldAttestHistoricalImportWhenBalancesMatch() {
         // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
         // initialBalance = 1000 USD
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
@@ -2625,11 +2625,11 @@ public class CashFlowControllerTest extends IntegrationTest {
         // Expected balance: 1000 (initial) + 3000 (inflow) - 500 (outflow) = 3500 USD
 
         // when - activate with matching balance
-        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(3500, "USD"))
-                        .forceActivation(false)
+                        .forceAttestation(false)
                         .build()
         );
 
@@ -2650,7 +2650,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         Awaitility.await().until(
                 () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
                         .map(entity -> entity.getEvents().stream()
-                                .anyMatch(p -> p.type().equals("CashFlowActivatedEvent")))
+                                .anyMatch(p -> p.type().equals("HistoricalImportAttestedEvent")))
                         .orElse(false));
 
         // Verify IMPORT_PENDING months changed to IMPORTED
@@ -2663,7 +2663,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldRejectActivationWhenBalancesMismatchAndNotForced() {
+    void shouldRejectAttestationWhenBalancesMismatchAndNotForced() {
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
@@ -2701,11 +2701,11 @@ public class CashFlowControllerTest extends IntegrationTest {
         // But user tries to confirm with 4000 USD (mismatch!)
 
         // when/then - should throw BalanceMismatchException
-        assertThatThrownBy(() -> cashFlowRestController.activateCashFlow(
+        assertThatThrownBy(() -> cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(4000, "USD"))  // Wrong balance!
-                        .forceActivation(false)
+                        .forceAttestation(false)
                         .build()
         )).isInstanceOf(BalanceMismatchException.class);
 
@@ -2715,7 +2715,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldForceActivationWhenBalancesMismatch() {
+    void shouldForceAttestationWhenBalancesMismatch() {
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
@@ -2754,11 +2754,11 @@ public class CashFlowControllerTest extends IntegrationTest {
         // With forceActivation=true, this should succeed
 
         // when - force activation despite balance mismatch
-        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(3500, "USD"))  // 500 USD mismatch
-                        .forceActivation(true)
+                        .forceAttestation(true)
                         .build()
         );
 
@@ -2777,7 +2777,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldRejectActivationWhenCashFlowNotInSetupMode() {
+    void shouldRejectAttestationWhenCashFlowNotInSetupMode() {
         // given - create normal CashFlow (OPEN mode, not SETUP)
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
@@ -2792,17 +2792,17 @@ public class CashFlowControllerTest extends IntegrationTest {
         );
 
         // when/then - trying to activate should fail (already OPEN)
-        assertThatThrownBy(() -> cashFlowRestController.activateCashFlow(
+        assertThatThrownBy(() -> cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(1000, "USD"))
-                        .forceActivation(false)
+                        .forceAttestation(false)
                         .build()
-        )).isInstanceOf(ActivationNotAllowedInNonSetupModeException.class);
+        )).isInstanceOf(AttestationNotAllowedInNonSetupModeException.class);
     }
 
     @Test
-    void shouldActivateCashFlowWithNoImportedTransactions() {
+    void shouldAttestHistoricalImportWithNoImportedTransactions() {
         // given - create CashFlow with history but don't import any transactions
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
@@ -2825,11 +2825,11 @@ public class CashFlowControllerTest extends IntegrationTest {
         // Expected balance: 2000 USD (initial, no transactions)
 
         // when - activate with matching balance
-        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(2000, "USD"))
-                        .forceActivation(false)
+                        .forceAttestation(false)
                         .build()
         );
 
@@ -2840,7 +2840,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldChangeImportPendingToImportedAfterActivation() {
+    void shouldChangeImportPendingToImportedAfterAttestation() {
         // given - create CashFlow with history (Oct 2021 - Dec 2021 are IMPORT_PENDING)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
@@ -2872,11 +2872,11 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(CashFlowMonthlyForecast.Status.ACTIVE);
 
         // when - activate
-        cashFlowRestController.activateCashFlow(
+        cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(1000, "USD"))
-                        .forceActivation(false)
+                        .forceAttestation(false)
                         .build()
         );
 
@@ -2906,7 +2906,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldActivateCashFlowWithNegativeBalanceDifference() {
+    void shouldAttestHistoricalImportWithNegativeBalanceDifference() {
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
@@ -2944,11 +2944,11 @@ public class CashFlowControllerTest extends IntegrationTest {
         // User confirms with 2500 USD (negative mismatch of -500 USD)
 
         // when - force activation with negative difference
-        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
                 cashFlowId,
-                CashFlowDto.ActivateCashFlowJson.builder()
+                CashFlowDto.AttestHistoricalImportJson.builder()
                         .confirmedBalance(Money.of(2500, "USD"))  // -500 USD mismatch
-                        .forceActivation(true)
+                        .forceAttestation(true)
                         .build()
         );
 

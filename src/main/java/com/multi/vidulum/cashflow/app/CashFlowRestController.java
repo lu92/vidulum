@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.cashflow.app.commands.activate.ActivateCashFlowCommand;
+import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHistoricalImportCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
@@ -101,25 +101,25 @@ public class CashFlowRestController {
     }
 
     /**
-     * Activate a CashFlow, transitioning from SETUP to OPEN mode.
+     * Attest a historical import, transitioning CashFlow from SETUP to OPEN mode.
      * This marks the end of the historical import process.
      * All IMPORT_PENDING months will be changed to IMPORTED.
      */
-    @PostMapping("/{cashFlowId}/activate")
-    public CashFlowDto.ActivateCashFlowResponseJson activateCashFlow(
+    @PostMapping("/{cashFlowId}/attest-historical-import")
+    public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody CashFlowDto.ActivateCashFlowJson request) {
+            @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
 
-        // Get CashFlow before activation to calculate the balance
-        CashFlow cashFlowBeforeActivation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))
+        // Get CashFlow before attestation to calculate the balance
+        CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(new CashFlowId(cashFlowId)));
-        Money calculatedBalance = cashFlowBeforeActivation.calculateCurrentBalance();
+        Money calculatedBalance = cashFlowBeforeAttestation.calculateCurrentBalance();
 
         CashFlowSnapshot snapshot = commandGateway.send(
-                new ActivateCashFlowCommand(
+                new AttestHistoricalImportCommand(
                         new CashFlowId(cashFlowId),
                         request.getConfirmedBalance(),
-                        request.isForceActivation()
+                        request.isForceAttestation()
                 )
         );
 
@@ -127,12 +127,12 @@ public class CashFlowRestController {
         Money difference = confirmedBalance.minus(calculatedBalance);
         boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
 
-        return CashFlowDto.ActivateCashFlowResponseJson.builder()
+        return CashFlowDto.AttestHistoricalImportResponseJson.builder()
                 .cashFlowId(snapshot.cashFlowId().id())
                 .confirmedBalance(confirmedBalance)
                 .calculatedBalance(calculatedBalance)
                 .difference(difference)
-                .forced(request.isForceActivation() && !isZeroDifference)
+                .forced(request.isForceAttestation() && !isZeroDifference)
                 .status(snapshot.status())
                 .build();
     }

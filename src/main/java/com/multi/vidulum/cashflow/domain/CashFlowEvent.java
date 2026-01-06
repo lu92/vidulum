@@ -12,7 +12,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         permits
         CashFlowEvent.CashFlowCreatedEvent,
         CashFlowEvent.CashFlowWithHistoryCreatedEvent,
-        CashFlowEvent.CashFlowActivatedEvent,
+        CashFlowEvent.HistoricalImportAttestedEvent,
         CashFlowEvent.HistoricalCashChangeImportedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
@@ -103,27 +103,27 @@ public sealed interface CashFlowEvent extends DomainEvent
     }
 
     /**
-     * Event for activating a CashFlow, transitioning from SETUP to OPEN mode.
-     * This marks the end of the historical import process.
+     * Event for attesting a historical import, transitioning CashFlow from SETUP to OPEN mode.
+     * This marks the end of the historical import process and confirms the balance.
      *
      * @param cashFlowId        unique identifier of the cash flow
      * @param confirmedBalance  the user-confirmed current balance
      * @param calculatedBalance the system-calculated balance based on imports
      * @param balanceDifference the difference between confirmed and calculated (0 if matching)
-     * @param forced            true if activation was forced despite balance mismatch
-     * @param activatedAt       timestamp when activation occurred (becomes importCutoffDateTime)
+     * @param forced            true if attestation was forced despite balance mismatch
+     * @param attestedAt        timestamp when attestation occurred (becomes importCutoffDateTime)
      */
-    record CashFlowActivatedEvent(
+    record HistoricalImportAttestedEvent(
             CashFlowId cashFlowId,
             Money confirmedBalance,
             Money calculatedBalance,
             Money balanceDifference,
             boolean forced,
-            ZonedDateTime activatedAt
+            ZonedDateTime attestedAt
     ) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
-            return activatedAt;
+            return attestedAt;
         }
     }
 

@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.commands.activate;
+package com.multi.vidulum.cashflow.app.commands.attesthistoricalimport;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
@@ -17,14 +17,14 @@ import java.util.Map;
 @Slf4j
 @Component
 @AllArgsConstructor
-public class ActivateCashFlowCommandHandler implements CommandHandler<ActivateCashFlowCommand, CashFlowSnapshot> {
+public class AttestHistoricalImportCommandHandler implements CommandHandler<AttestHistoricalImportCommand, CashFlowSnapshot> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
     private final Clock clock;
 
     @Override
-    public CashFlowSnapshot handle(ActivateCashFlowCommand command) {
+    public CashFlowSnapshot handle(AttestHistoricalImportCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
@@ -32,7 +32,7 @@ public class ActivateCashFlowCommandHandler implements CommandHandler<ActivateCa
 
         // Validation 1: CashFlow must be in SETUP mode
         if (snapshot.status() != CashFlow.CashFlowStatus.SETUP) {
-            throw new ActivationNotAllowedInNonSetupModeException(command.cashFlowId(), snapshot.status());
+            throw new AttestationNotAllowedInNonSetupModeException(command.cashFlowId(), snapshot.status());
         }
 
         ZonedDateTime now = ZonedDateTime.now(clock);
@@ -46,7 +46,7 @@ public class ActivateCashFlowCommandHandler implements CommandHandler<ActivateCa
         boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
 
         // Validation 2: If balance mismatch and not forced, throw exception
-        if (!isZeroDifference && !command.forceActivation()) {
+        if (!isZeroDifference && !command.forceAttestation()) {
             throw new BalanceMismatchException(
                     command.cashFlowId(),
                     confirmedBalance,
@@ -55,25 +55,25 @@ public class ActivateCashFlowCommandHandler implements CommandHandler<ActivateCa
             );
         }
 
-        CashFlowEvent.CashFlowActivatedEvent event = new CashFlowEvent.CashFlowActivatedEvent(
+        CashFlowEvent.HistoricalImportAttestedEvent event = new CashFlowEvent.HistoricalImportAttestedEvent(
                 command.cashFlowId(),
                 confirmedBalance,
                 calculatedBalance,
                 difference,
-                command.forceActivation() && !isZeroDifference,
+                command.forceAttestation() && !isZeroDifference,
                 now
         );
 
         cashFlow.apply(event);
         domainCashFlowRepository.save(cashFlow);
 
-        log.info("CashFlow [{}] activated. Confirmed balance: [{}], Calculated balance: [{}], Difference: [{}], Forced: [{}]",
+        log.info("Historical import attested for CashFlow [{}]. Confirmed balance: [{}], Calculated balance: [{}], Difference: [{}], Forced: [{}]",
                 command.cashFlowId().id(), confirmedBalance, calculatedBalance, difference,
-                command.forceActivation() && !isZeroDifference);
+                command.forceAttestation() && !isZeroDifference);
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
-                        .metadata(Map.of("event", CashFlowEvent.CashFlowActivatedEvent.class.getSimpleName()))
+                        .metadata(Map.of("event", CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
         );

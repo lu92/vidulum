@@ -79,24 +79,24 @@ public final class CashFlowDto {
     }
 
     /**
-     * DTO for activating a CashFlow.
+     * DTO for attesting a historical import.
      * Transitions the CashFlow from SETUP to OPEN mode.
      */
     @Data
     @Builder
-    public static class ActivateCashFlowJson {
+    public static class AttestHistoricalImportJson {
         /** The user-confirmed current balance (for validation against calculated balance) */
         private Money confirmedBalance;
-        /** If true, activate even if confirmed balance differs from calculated balance */
-        private boolean forceActivation;
+        /** If true, attest even if confirmed balance differs from calculated balance */
+        private boolean forceAttestation;
     }
 
     /**
-     * Response DTO for CashFlow activation.
+     * Response DTO for historical import attestation.
      */
     @Data
     @Builder
-    public static class ActivateCashFlowResponseJson {
+    public static class AttestHistoricalImportResponseJson {
         private String cashFlowId;
         private Money confirmedBalance;
         private Money calculatedBalance;

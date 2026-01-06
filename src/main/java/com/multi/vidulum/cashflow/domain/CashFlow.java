@@ -269,11 +269,11 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     /**
-     * Activates a CashFlow, transitioning from SETUP to OPEN mode.
+     * Attests a historical import, transitioning CashFlow from SETUP to OPEN mode.
      * This marks the end of the historical import process.
      * The bank balance is updated to the confirmed balance from the event.
      */
-    public void apply(CashFlowEvent.CashFlowActivatedEvent event) {
+    public void apply(CashFlowEvent.HistoricalImportAttestedEvent event) {
         this.status = CashFlowStatus.OPEN;
         this.bankAccount = bankAccount.withUpdatedBalance(event.confirmedBalance());
         add(event);
