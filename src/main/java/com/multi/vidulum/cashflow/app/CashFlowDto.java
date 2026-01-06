@@ -20,6 +20,23 @@ public final class CashFlowDto {
         private BankAccount bankAccount;
     }
 
+    /**
+     * DTO for creating a CashFlow with historical data support.
+     * Creates a CashFlow in SETUP mode for historical data import.
+     */
+    @Data
+    @Builder
+    public static class CreateCashFlowWithHistoryJson {
+        private String userId;
+        private String name;
+        private String description;
+        private BankAccount bankAccount;
+        /** The first historical month (e.g., "2024-01" for importing from January 2024) */
+        private String startPeriod;
+        /** The balance at the start of startPeriod (opening balance) */
+        private Money initialBalance;
+    }
+
     @Data
     @Builder
     public static class AppendExpectedCashChangeJson {

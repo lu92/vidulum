@@ -147,6 +147,42 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.uncommittedEvents.add(event);
     }
 
+    /**
+     * Creates a CashFlow in SETUP mode for historical data import.
+     * The CashFlow will have status SETUP until activated.
+     */
+    public void apply(CashFlowEvent.CashFlowWithHistoryCreatedEvent event) {
+        LinkedList<Category> inflowCategories = new LinkedList<>();
+        inflowCategories.add(new Category(
+                new CategoryName("Uncategorized"),
+                null,
+                new LinkedList<>(),
+                false
+        ));
+        LinkedList<Category> outflowCategories = new LinkedList<>();
+        outflowCategories.add(new Category(
+                new CategoryName("Uncategorized"),
+                null,
+                new LinkedList<>(),
+                false
+        ));
+        this.cashFlowId = event.cashFlowId();
+        this.userId = event.userId();
+        this.name = event.name();
+        this.description = event.description();
+        this.bankAccount = event.bankAccount();
+        this.status = CashFlowStatus.SETUP;  // SETUP mode for historical import
+        this.cashChanges = new HashMap<>();
+        this.activePeriod = event.activePeriod();
+        this.created = event.created();
+        this.inflowCategories = inflowCategories;
+        this.outflowCategories = outflowCategories;
+        this.lastModification = null;
+        this.lastMessageChecksum = calculateChecksum(event);
+        this.uncommittedEvents = new LinkedList<>();
+        this.uncommittedEvents.add(event);
+    }
+
     public void apply(CashFlowEvent.ExpectedCashChangeAppendedEvent event) {
         CashChange cashChange = new CashChange(
                 event.cashChangeId(),

@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingC
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
+import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowWithHistoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
@@ -22,6 +23,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -45,6 +47,26 @@ public class CashFlowRestController {
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getBankAccount()
+                )
+        );
+
+        return snapshot.cashFlowId().id();
+    }
+
+    /**
+     * Create a CashFlow with historical data support.
+     * The CashFlow will be created in SETUP mode, allowing import of historical transactions.
+     */
+    @PostMapping("/with-history")
+    public String createCashFlowWithHistory(@RequestBody CashFlowDto.CreateCashFlowWithHistoryJson request) {
+        CashFlowSnapshot snapshot = commandGateway.send(
+                new CreateCashFlowWithHistoryCommand(
+                        new UserId(request.getUserId()),
+                        new Name(request.getName()),
+                        new Description(request.getDescription()),
+                        request.getBankAccount(),
+                        YearMonth.parse(request.getStartPeriod()),
+                        request.getInitialBalance()
                 )
         );
 
