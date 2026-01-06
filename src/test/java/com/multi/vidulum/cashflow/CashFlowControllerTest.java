@@ -2959,4 +2959,390 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(response.getDifference()).isEqualTo(Money.of(-500, "USD"));
         assertThat(response.isForced()).isTrue();
     }
+
+    // ==================== ROLLBACK IMPORT TESTS ====================
+
+    @Test
+    void shouldRollbackImportAndClearAllTransactions() {
+        // given - create CashFlow with history and import some transactions
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For rollback testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import some transactions
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary 1")
+                        .description("October salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Rent")
+                        .description("November rent")
+                        .money(Money.of(1200, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .build()
+        );
+
+        // Verify transactions were imported
+        CashFlowDto.CashFlowSummaryJson summaryBefore = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryBefore.getCashChanges()).hasSize(2);
+        assertThat(summaryBefore.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+
+        // when - rollback import
+        CashFlowDto.RollbackImportResponseJson response = cashFlowRestController.rollbackImport(
+                cashFlowId,
+                CashFlowDto.RollbackImportJson.builder()
+                        .deleteCategories(false)
+                        .build()
+        );
+
+        // then - CashFlow should be cleared but remain in SETUP
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(response.isCategoriesDeleted()).isFalse();
+
+        // Verify all transactions were deleted
+        CashFlowDto.CashFlowSummaryJson summaryAfter = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryAfter.getCashChanges()).isEmpty();
+        assertThat(summaryAfter.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+    }
+
+    @Test
+    void shouldRollbackImportAndClearCategoriesWhenRequested() {
+        // given - create CashFlow with history and add custom categories
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For rollback with categories")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Add custom categories
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Income")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName("Income")
+                        .category("Salary")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // Import transaction to custom category
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Salary")
+                        .name("October salary")
+                        .description("Salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Verify categories were created
+        CashFlowDto.CashFlowSummaryJson summaryBefore = cashFlowRestController.getCashFlow(cashFlowId);
+        // Should have: Uncategorized, Income, Salary
+        assertThat(summaryBefore.getInflowCategories()).hasSizeGreaterThan(1);
+
+        // when - rollback import with deleteCategories=true
+        CashFlowDto.RollbackImportResponseJson response = cashFlowRestController.rollbackImport(
+                cashFlowId,
+                CashFlowDto.RollbackImportJson.builder()
+                        .deleteCategories(true)
+                        .build()
+        );
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(response.isCategoriesDeleted()).isTrue();
+
+        // Verify categories were reset to just Uncategorized
+        CashFlowDto.CashFlowSummaryJson summaryAfter = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryAfter.getInflowCategories()).hasSize(1);
+        assertThat(summaryAfter.getInflowCategories().get(0).getCategoryName().name()).isEqualTo("Uncategorized");
+        assertThat(summaryAfter.getCashChanges()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectRollbackOnNonSetupCashFlow() {
+        // given - create CashFlow with history and attest it (making it OPEN)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("Will be attested")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Attest the import to make CashFlow OPEN
+        cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(1000, "USD"))
+                        .forceAttestation(false)
+                        .build()
+        );
+
+        // Verify CashFlow is now OPEN
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+
+        // when/then - trying to rollback should fail
+        assertThatThrownBy(() -> cashFlowRestController.rollbackImport(
+                cashFlowId,
+                CashFlowDto.RollbackImportJson.builder()
+                        .deleteCategories(false)
+                        .build()
+        )).isInstanceOf(RollbackNotAllowedInNonSetupModeException.class)
+                .hasMessageContaining("SETUP mode")
+                .hasMessageContaining(cashFlowId);
+    }
+
+    @Test
+    void shouldClearForecastTransactionsAfterRollback() {
+        // given - create CashFlow with history and import transactions
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For forecast clearing test")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transactions to different months
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("October salary")
+                        .description("Salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("November rent")
+                        .description("Rent")
+                        .money(Money.of(1200, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for transactions to be processed in forecast
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement stmt = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            CashFlowMonthlyForecast oct = stmt.getForecasts().get(YearMonth.of(2021, 10));
+            return oct.getCategorizedInFlows().stream()
+                    .flatMap(c -> c.getGroupedTransactions().getTransactions().values().stream())
+                    .flatMap(List::stream)
+                    .count() > 0;
+        });
+
+        // Verify transactions exist in forecast before rollback
+        CashFlowForecastStatement statementBefore = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        CashFlowMonthlyForecast octBefore = statementBefore.getForecasts().get(YearMonth.of(2021, 10));
+        long octTransactionsBefore = octBefore.getCategorizedInFlows().stream()
+                .flatMap(c -> c.getGroupedTransactions().getTransactions().values().stream())
+                .flatMap(List::stream)
+                .count();
+        assertThat(octTransactionsBefore).isGreaterThan(0);
+
+        // when - rollback import
+        cashFlowRestController.rollbackImport(
+                cashFlowId,
+                CashFlowDto.RollbackImportJson.builder()
+                        .deleteCategories(false)
+                        .build()
+        );
+
+        // then - wait for forecast to be cleared
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement stmt = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            CashFlowMonthlyForecast oct = stmt.getForecasts().get(YearMonth.of(2021, 10));
+            long transactionCount = oct.getCategorizedInFlows().stream()
+                    .flatMap(c -> c.getGroupedTransactions().getTransactions().values().stream())
+                    .flatMap(List::stream)
+                    .count();
+            return transactionCount == 0;
+        });
+
+        // Verify all IMPORT_PENDING months are cleared
+        CashFlowForecastStatement statementAfter = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+
+        // Check October 2021
+        CashFlowMonthlyForecast octAfter = statementAfter.getForecasts().get(YearMonth.of(2021, 10));
+        assertThat(octAfter.getStatus()).isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
+        long octTransactionsAfter = octAfter.getCategorizedInFlows().stream()
+                .flatMap(c -> c.getGroupedTransactions().getTransactions().values().stream())
+                .flatMap(List::stream)
+                .count();
+        assertThat(octTransactionsAfter).isZero();
+
+        // Check November 2021
+        CashFlowMonthlyForecast novAfter = statementAfter.getForecasts().get(YearMonth.of(2021, 11));
+        assertThat(novAfter.getStatus()).isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
+        long novOutflowsAfter = novAfter.getCategorizedOutFlows().stream()
+                .flatMap(c -> c.getGroupedTransactions().getTransactions().values().stream())
+                .flatMap(List::stream)
+                .count();
+        assertThat(novOutflowsAfter).isZero();
+    }
+
+    @Test
+    void shouldAllowReImportAfterRollback() {
+        // given - create CashFlow with history and import some transactions
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For re-import testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import first batch of transactions (with "wrong" data)
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Wrong amount")
+                        .description("Wrong")
+                        .money(Money.of(9999, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Rollback the import
+        cashFlowRestController.rollbackImport(
+                cashFlowId,
+                CashFlowDto.RollbackImportJson.builder()
+                        .deleteCategories(false)
+                        .build()
+        );
+
+        // Verify CashFlow is still in SETUP mode and can accept new imports
+        CashFlowDto.CashFlowSummaryJson summaryAfterRollback = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryAfterRollback.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(summaryAfterRollback.getCashChanges()).isEmpty();
+
+        // when - re-import with correct data
+        String newCashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Correct salary")
+                        .description("Correct")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // then - verify new import was successful
+        assertThat(newCashChangeId).isNotBlank();
+
+        CashFlowDto.CashFlowSummaryJson summaryAfterReImport = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryAfterReImport.getCashChanges()).hasSize(1);
+        assertThat(summaryAfterReImport.getCashChanges().get(newCashChangeId).getName()).isEqualTo("Correct salary");
+        assertThat(summaryAfterReImport.getCashChanges().get(newCashChangeId).getMoney()).isEqualTo(Money.of(3000, "USD"));
+
+        // And verify we can still attest
+        CashFlowDto.AttestHistoricalImportResponseJson attestResponse = cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(4000, "USD"))  // 1000 initial + 3000 inflow
+                        .forceAttestation(false)
+                        .build()
+        );
+
+        assertThat(attestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(attestResponse.getCalculatedBalance()).isEqualTo(Money.of(4000, "USD"));
+    }
 }

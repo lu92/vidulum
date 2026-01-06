@@ -40,6 +40,9 @@ public class CashFlowEventListener {
             case "HistoricalImportAttestedEvent" -> {
                 return event.getContent().to(CashFlowEvent.HistoricalImportAttestedEvent.class);
             }
+            case "ImportRolledBackEvent" -> {
+                return event.getContent().to(CashFlowEvent.ImportRolledBackEvent.class);
+            }
             case "MonthAttestedEvent" -> {
                 return event.getContent().to(CashFlowEvent.MonthAttestedEvent.class);
             }
