@@ -18,6 +18,7 @@ public record CashFlowSnapshot(
         BankAccount bankAccount,
         CashFlow.CashFlowStatus status,
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
+        YearMonth startPeriod,
         YearMonth activePeriod,
         List<Category> inflowCategories,
         List<Category> outflowCategories,

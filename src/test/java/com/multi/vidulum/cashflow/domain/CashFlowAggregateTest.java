@@ -105,6 +105,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -217,6 +218,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                                         )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 List.of(
                                         new Category(
@@ -506,6 +508,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z")
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -678,6 +681,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -840,6 +844,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 null
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -966,6 +971,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         Money.of(500, "USD")),
                                 CashFlow.CashFlowStatus.OPEN,
                                 Map.of(),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
                                 List.of(
                                         new Category(

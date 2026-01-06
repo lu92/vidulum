@@ -12,6 +12,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         permits
         CashFlowEvent.CashFlowCreatedEvent,
         CashFlowEvent.CashFlowWithHistoryCreatedEvent,
+        CashFlowEvent.HistoricalCashChangeImportedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
         CashFlowEvent.PaidCashChangeAppendedEvent,
@@ -64,6 +65,39 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return created;
+        }
+    }
+
+    /**
+     * Event for importing a historical cash change into a CashFlow in SETUP mode.
+     * Historical transactions are imported as already CONFIRMED.
+     *
+     * @param cashFlowId    unique identifier of the cash flow
+     * @param cashChangeId  unique identifier of the imported cash change
+     * @param name          name/description of the transaction
+     * @param description   additional details
+     * @param money         the amount
+     * @param type          INFLOW or OUTFLOW
+     * @param categoryName  the category for this transaction
+     * @param dueDate       when the transaction was due/occurred
+     * @param paidDate      when the transaction was actually paid
+     * @param importedAt    timestamp when the import occurred
+     */
+    record HistoricalCashChangeImportedEvent(
+            CashFlowId cashFlowId,
+            CashChangeId cashChangeId,
+            Name name,
+            Description description,
+            Money money,
+            Type type,
+            CategoryName categoryName,
+            ZonedDateTime dueDate,
+            ZonedDateTime paidDate,
+            ZonedDateTime importedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return importedAt;
         }
     }
 
