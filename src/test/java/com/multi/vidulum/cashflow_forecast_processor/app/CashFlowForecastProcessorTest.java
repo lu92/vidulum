@@ -842,6 +842,271 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 });
     }
 
+    @Test
+    public void shouldRollbackImportAndClearTransactionsFromImportPendingMonths() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId historicalCashChangeId1 = CashChangeId.generate();
+        CashChangeId historicalCashChangeId2 = CashChangeId.generate();
+
+        // Create CashFlow with history (SETUP mode)
+        emit(
+                new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("Test CashFlow"),
+                        new Description("CashFlow for rollback test"),
+                        new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("PL123", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        YearMonth.parse("2021-01"),
+                        YearMonth.parse("2021-06"),
+                        Money.of(1000, "USD"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // Import historical transactions
+        emit(
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        historicalCashChangeId1,
+                        new Name("Historical inflow"),
+                        new Description("Historical payment"),
+                        Money.of(500, "USD"),
+                        INFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                ));
+
+        emit(
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        historicalCashChangeId2,
+                        new Name("Historical outflow"),
+                        new Description("Historical expense"),
+                        Money.of(200, "USD"),
+                        OUTFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-04-20T10:00:00Z"),
+                        ZonedDateTime.parse("2021-04-20T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                ));
+
+        // Rollback the import (clear transactions but keep categories)
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.ImportRolledBackEvent(
+                        cashFlowId,
+                        2,  // deletedTransactionsCount
+                        0,  // deletedCategoriesCount
+                        false,  // categoriesDeleted
+                        ZonedDateTime.parse("2021-06-15T12:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify IMPORT_PENDING months have no transactions
+                    for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
+                        if (forecast.getStatus() == CashFlowMonthlyForecast.Status.IMPORT_PENDING) {
+                            // Stats should be reset to zero
+                            assertThat(forecast.getCashFlowStats().getInflowStats().actual()).isEqualTo(Money.zero("USD"));
+                            assertThat(forecast.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+
+                            // Transactions should be cleared (all lists empty)
+                            for (CashCategory category : forecast.getCategorizedInFlows()) {
+                                int totalTransactions = category.getGroupedTransactions().getTransactions().values().stream()
+                                        .mapToInt(java.util.List::size).sum();
+                                assertThat(totalTransactions).isZero();
+                            }
+                            for (CashCategory category : forecast.getCategorizedOutFlows()) {
+                                int totalTransactions = category.getGroupedTransactions().getTransactions().values().stream()
+                                        .mapToInt(java.util.List::size).sum();
+                                assertThat(totalTransactions).isZero();
+                            }
+                        }
+                    }
+                });
+    }
+
+    @Test
+    public void shouldRollbackImportAndClearCategoriesWhenRequested() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId historicalCashChangeId = CashChangeId.generate();
+
+        // Create CashFlow with history
+        emit(
+                new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("Test CashFlow"),
+                        new Description("CashFlow for category rollback test"),
+                        new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("PL123", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        YearMonth.parse("2021-01"),
+                        YearMonth.parse("2021-06"),
+                        Money.of(1000, "USD"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // Create custom category
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // Import transaction to custom category
+        emit(
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        historicalCashChangeId,
+                        new Name("Salary payment"),
+                        new Description("Monthly salary"),
+                        Money.of(5000, "USD"),
+                        INFLOW,
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                ));
+
+        // Rollback with category deletion
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.ImportRolledBackEvent(
+                        cashFlowId,
+                        1,  // deletedTransactionsCount
+                        1,  // deletedCategoriesCount
+                        true,  // categoriesDeleted
+                        ZonedDateTime.parse("2021-06-15T12:30:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify category structure is reset to just Uncategorized
+                    assertThat(statement.getCategoryStructure().inflowCategoryStructure())
+                            .hasSize(1)
+                            .extracting(CategoryNode::getCategoryName)
+                            .containsExactly(new CategoryName("Uncategorized"));
+
+                    assertThat(statement.getCategoryStructure().outflowCategoryStructure())
+                            .hasSize(1)
+                            .extracting(CategoryNode::getCategoryName)
+                            .containsExactly(new CategoryName("Uncategorized"));
+
+                    // Verify IMPORT_PENDING months have only Uncategorized category
+                    for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
+                        if (forecast.getStatus() == CashFlowMonthlyForecast.Status.IMPORT_PENDING) {
+                            assertThat(forecast.getCategorizedInFlows())
+                                    .hasSize(1)
+                                    .extracting(cat -> cat.getCategoryName().name())
+                                    .containsExactly("Uncategorized");
+
+                            assertThat(forecast.getCategorizedOutFlows())
+                                    .hasSize(1)
+                                    .extracting(cat -> cat.getCategoryName().name())
+                                    .containsExactly("Uncategorized");
+                        }
+                    }
+                });
+    }
+
+    @Test
+    public void shouldAllowReImportAfterRollback() {
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId historicalCashChangeId1 = CashChangeId.generate();
+        CashChangeId historicalCashChangeId2 = CashChangeId.generate();
+
+        // Create CashFlow with history
+        emit(
+                new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                        cashFlowId,
+                        UserId.of("user"),
+                        new Name("Test CashFlow"),
+                        new Description("CashFlow for re-import test"),
+                        new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("PL123", Currency.of("USD")),
+                                Money.of(1000, "USD")),
+                        YearMonth.parse("2021-01"),
+                        YearMonth.parse("2021-06"),
+                        Money.of(1000, "USD"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // First import
+        emit(
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        historicalCashChangeId1,
+                        new Name("Wrong import"),
+                        new Description("This will be rolled back"),
+                        Money.of(100, "USD"),
+                        INFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                ));
+
+        // Rollback
+        emit(
+                new CashFlowEvent.ImportRolledBackEvent(
+                        cashFlowId,
+                        1,
+                        0,
+                        false,
+                        ZonedDateTime.parse("2021-06-15T12:30:00Z")
+                ));
+
+        // Re-import with correct data
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        historicalCashChangeId2,
+                        new Name("Correct import"),
+                        new Description("This is the correct data"),
+                        Money.of(750, "USD"),
+                        INFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:35:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast marchForecast = statement.getForecasts().get(YearMonth.parse("2021-03"));
+                    assertThat(marchForecast).isNotNull();
+
+                    // Only the re-imported transaction should exist
+                    CashCategory uncategorizedInflow = marchForecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(uncategorizedInflow.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(uncategorizedInflow.getTotalPaidValue()).isEqualTo(Money.of(750, "USD"));
+                });
+    }
+
     private Checksum emit(CashFlowEvent cashFlowEvent) {
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

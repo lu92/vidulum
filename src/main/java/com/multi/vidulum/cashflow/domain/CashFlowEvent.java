@@ -13,6 +13,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashFlowCreatedEvent,
         CashFlowEvent.CashFlowWithHistoryCreatedEvent,
         CashFlowEvent.HistoricalImportAttestedEvent,
+        CashFlowEvent.ImportRolledBackEvent,
         CashFlowEvent.HistoricalCashChangeImportedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
@@ -124,6 +125,29 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return attestedAt;
+        }
+    }
+
+    /**
+     * Event for rolling back (clearing) all imported historical data from a CashFlow in SETUP mode.
+     * This clears all imported transactions and optionally categories, allowing a fresh start.
+     *
+     * @param cashFlowId                 unique identifier of the cash flow
+     * @param deletedTransactionsCount   number of transactions that were deleted
+     * @param deletedCategoriesCount     number of categories that were deleted (0 if deleteCategories was false)
+     * @param categoriesDeleted          true if custom categories were also deleted
+     * @param rolledBackAt               timestamp when rollback occurred
+     */
+    record ImportRolledBackEvent(
+            CashFlowId cashFlowId,
+            int deletedTransactionsCount,
+            int deletedCategoriesCount,
+            boolean categoriesDeleted,
+            ZonedDateTime rolledBackAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return rolledBackAt;
         }
     }
 

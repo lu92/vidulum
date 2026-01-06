@@ -280,6 +280,39 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     /**
+     * Rolls back (clears) all imported historical data from a CashFlow in SETUP mode.
+     * This clears all cash changes and optionally resets categories to just Uncategorized.
+     * The CashFlow remains in SETUP mode, ready for fresh import.
+     */
+    public void apply(CashFlowEvent.ImportRolledBackEvent event) {
+        // Clear all cash changes
+        this.cashChanges.clear();
+
+        // Optionally reset categories to just Uncategorized
+        if (event.categoriesDeleted()) {
+            LinkedList<Category> newInflowCategories = new LinkedList<>();
+            newInflowCategories.add(new Category(
+                    new CategoryName("Uncategorized"),
+                    null,
+                    new LinkedList<>(),
+                    false
+            ));
+            LinkedList<Category> newOutflowCategories = new LinkedList<>();
+            newOutflowCategories.add(new Category(
+                    new CategoryName("Uncategorized"),
+                    null,
+                    new LinkedList<>(),
+                    false
+            ));
+            this.inflowCategories = newInflowCategories;
+            this.outflowCategories = newOutflowCategories;
+        }
+
+        // CashFlow remains in SETUP mode
+        add(event);
+    }
+
+    /**
      * Calculates the current balance based on initial balance and all confirmed cash changes.
      * Formula: initialBalance + sum(INFLOW amounts) - sum(OUTFLOW amounts)
      *

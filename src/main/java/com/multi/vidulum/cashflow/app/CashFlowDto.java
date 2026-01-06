@@ -105,6 +105,30 @@ public final class CashFlowDto {
         private CashFlow.CashFlowStatus status;
     }
 
+    /**
+     * DTO for rolling back (clearing) imported historical data.
+     * Allows the user to start the import process fresh.
+     */
+    @Data
+    @Builder
+    public static class RollbackImportJson {
+        /** If true, also delete all custom categories (except Uncategorized) */
+        private boolean deleteCategories;
+    }
+
+    /**
+     * Response DTO for import rollback.
+     */
+    @Data
+    @Builder
+    public static class RollbackImportResponseJson {
+        private String cashFlowId;
+        private int deletedTransactionsCount;
+        private int deletedCategoriesCount;
+        private boolean categoriesDeleted;
+        private CashFlow.CashFlowStatus status;
+    }
+
     @Data
     @Builder
     public static class ConfirmCashChangeJson {
