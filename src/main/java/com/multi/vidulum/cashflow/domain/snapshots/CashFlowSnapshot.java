@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.domain.snapshots;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Checksum;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
 
@@ -20,6 +21,7 @@ public record CashFlowSnapshot(
         Map<CashChangeId, CashChangeSnapshot> cashChanges,
         YearMonth startPeriod,
         YearMonth activePeriod,
+        Money initialBalance,
         List<Category> inflowCategories,
         List<Category> outflowCategories,
         ZonedDateTime created,

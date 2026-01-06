@@ -2568,4 +2568,395 @@ public class CashFlowControllerTest extends IntegrationTest {
         CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
         assertThat(summary.getCashChanges()).hasSize(3);
     }
+
+    // ==================== ACTIVATE CASH FLOW TESTS ====================
+
+    @Test
+    void shouldActivateCashFlowWhenBalancesMatch() {
+        // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
+        // initialBalance = 1000 USD
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For activation testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import some historical transactions
+        // INFLOW: +3000 USD (salary Oct)
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("October Salary")
+                        .description("Oct salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // OUTFLOW: -500 USD (rent Nov)
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("November Rent")
+                        .description("Nov rent")
+                        .money(Money.of(500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 3000 (inflow) - 500 (outflow) = 3500 USD
+
+        // when - activate with matching balance
+        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(3500, "USD"))
+                        .forceActivation(false)
+                        .build()
+        );
+
+        // then - CashFlow should be activated (OPEN status)
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getConfirmedBalance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(response.getDifference()).isEqualTo(Money.of(0, "USD"));
+        assertThat(response.isForced()).isFalse();
+
+        // Verify CashFlow status via getCashFlow
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(summary.getBankAccount().balance()).isEqualTo(Money.of(3500, "USD"));
+
+        // Wait for Kafka event to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(p -> p.type().equals("CashFlowActivatedEvent")))
+                        .orElse(false));
+
+        // Verify IMPORT_PENDING months changed to IMPORTED
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            return statement.getForecasts().get(YearMonth.of(2021, 10)).getStatus() == CashFlowMonthlyForecast.Status.IMPORTED
+                    && statement.getForecasts().get(YearMonth.of(2021, 11)).getStatus() == CashFlowMonthlyForecast.Status.IMPORTED
+                    && statement.getForecasts().get(YearMonth.of(2021, 12)).getStatus() == CashFlowMonthlyForecast.Status.IMPORTED;
+        });
+    }
+
+    @Test
+    void shouldRejectActivationWhenBalancesMismatchAndNotForced() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For balance mismatch testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+        // But user tries to confirm with 4000 USD (mismatch!)
+
+        // when/then - should throw BalanceMismatchException
+        assertThatThrownBy(() -> cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(4000, "USD"))  // Wrong balance!
+                        .forceActivation(false)
+                        .build()
+        )).isInstanceOf(BalanceMismatchException.class);
+
+        // Verify CashFlow is still in SETUP status
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+    }
+
+    @Test
+    void shouldForceActivationWhenBalancesMismatch() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For force activation testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+        // But user confirms with 3500 USD (mismatch of 500 USD)
+        // With forceActivation=true, this should succeed
+
+        // when - force activation despite balance mismatch
+        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(3500, "USD"))  // 500 USD mismatch
+                        .forceActivation(true)
+                        .build()
+        );
+
+        // then - CashFlow should be activated with forced flag
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getConfirmedBalance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(3000, "USD"));
+        assertThat(response.getDifference()).isEqualTo(Money.of(500, "USD"));
+        assertThat(response.isForced()).isTrue();
+
+        // Verify CashFlow status and balance
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(summary.getBankAccount().balance()).isEqualTo(Money.of(3500, "USD"));  // Confirmed balance used
+    }
+
+    @Test
+    void shouldRejectActivationWhenCashFlowNotInSetupMode() {
+        // given - create normal CashFlow (OPEN mode, not SETUP)
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Normal Cash Flow")
+                        .description("In OPEN mode")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // when/then - trying to activate should fail (already OPEN)
+        assertThatThrownBy(() -> cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(1000, "USD"))
+                        .forceActivation(false)
+                        .build()
+        )).isInstanceOf(ActivationNotAllowedInNonSetupModeException.class);
+    }
+
+    @Test
+    void shouldActivateCashFlowWithNoImportedTransactions() {
+        // given - create CashFlow with history but don't import any transactions
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Empty Historical Cash Flow")
+                        .description("No imports")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(2000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(2000, "USD"))  // Same as bank balance
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Expected balance: 2000 USD (initial, no transactions)
+
+        // when - activate with matching balance
+        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(2000, "USD"))
+                        .forceActivation(false)
+                        .build()
+        );
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(2000, "USD"));
+        assertThat(response.getDifference()).isEqualTo(Money.of(0, "USD"));
+    }
+
+    @Test
+    void shouldChangeImportPendingToImportedAfterActivation() {
+        // given - create CashFlow with history (Oct 2021 - Dec 2021 are IMPORT_PENDING)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For status change testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Verify initial statuses before activation
+        CashFlowForecastStatement statementBefore = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        assertThat(statementBefore.getForecasts().get(YearMonth.of(2021, 10)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
+        assertThat(statementBefore.getForecasts().get(YearMonth.of(2021, 11)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
+        assertThat(statementBefore.getForecasts().get(YearMonth.of(2021, 12)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORT_PENDING);
+        assertThat(statementBefore.getForecasts().get(YearMonth.of(2022, 1)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.ACTIVE);
+
+        // when - activate
+        cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(1000, "USD"))
+                        .forceActivation(false)
+                        .build()
+        );
+
+        // then - wait for status changes
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            return statement.getForecasts().get(YearMonth.of(2021, 10)).getStatus() == CashFlowMonthlyForecast.Status.IMPORTED;
+        });
+
+        CashFlowForecastStatement statementAfter = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+
+        // Verify historical months changed from IMPORT_PENDING to IMPORTED
+        assertThat(statementAfter.getForecasts().get(YearMonth.of(2021, 10)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORTED);
+        assertThat(statementAfter.getForecasts().get(YearMonth.of(2021, 11)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORTED);
+        assertThat(statementAfter.getForecasts().get(YearMonth.of(2021, 12)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.IMPORTED);
+
+        // Verify ACTIVE month remains ACTIVE
+        assertThat(statementAfter.getForecasts().get(YearMonth.of(2022, 1)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.ACTIVE);
+
+        // Verify FORECASTED months remain FORECASTED
+        assertThat(statementAfter.getForecasts().get(YearMonth.of(2022, 2)).getStatus())
+                .isEqualTo(CashFlowMonthlyForecast.Status.FORECASTED);
+    }
+
+    @Test
+    void shouldActivateCashFlowWithNegativeBalanceDifference() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For negative difference testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+        // User confirms with 2500 USD (negative mismatch of -500 USD)
+
+        // when - force activation with negative difference
+        CashFlowDto.ActivateCashFlowResponseJson response = cashFlowRestController.activateCashFlow(
+                cashFlowId,
+                CashFlowDto.ActivateCashFlowJson.builder()
+                        .confirmedBalance(Money.of(2500, "USD"))  // -500 USD mismatch
+                        .forceActivation(true)
+                        .build()
+        );
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getConfirmedBalance()).isEqualTo(Money.of(2500, "USD"));
+        assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(3000, "USD"));
+        assertThat(response.getDifference()).isEqualTo(Money.of(-500, "USD"));
+        assertThat(response.isForced()).isTrue();
+    }
 }

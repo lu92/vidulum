@@ -106,6 +106,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                Money.of(0, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -220,6 +221,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                Money.of(1000, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -509,6 +511,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                Money.of(0, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -682,6 +685,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                Money.of(0, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -845,6 +849,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                Money.of(0, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),
@@ -973,6 +978,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 Map.of(),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
+                                Money.of(0, "USD"),  // initialBalance
                                 List.of(
                                         new Category(
                                                 new CategoryName("Uncategorized"),

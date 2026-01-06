@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Checksum;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,6 +40,7 @@ public class CashFlowEntity {
     private List<CategoryEntity> outflowCategories;
     private String startPeriod;
     private String activePeriod;
+    private Money initialBalance;
     private Date created;
     private Date lastModification;
     private String lastMessageChecksum;
@@ -66,6 +68,7 @@ public class CashFlowEntity {
                 .outflowCategories(CategoryEntity.fromDomainList(snapshot.outflowCategories()))
                 .startPeriod(snapshot.startPeriod() != null ? snapshot.startPeriod().toString() : null)
                 .activePeriod(snapshot.activePeriod().toString())
+                .initialBalance(snapshot.initialBalance())
                 .created(createdDate)
                 .lastModification(lastModification)
                 .lastMessageChecksum(lastMessageChecksum)
@@ -94,6 +97,7 @@ public class CashFlowEntity {
                 cashChangeSnapshotMap,
                 startPeriod != null ? YearMonth.parse(startPeriod) : YearMonth.parse(activePeriod),
                 YearMonth.parse(activePeriod),
+                initialBalance,
                 CategoryEntity.toDomainList(inflowCategories),
                 CategoryEntity.toDomainList(outflowCategories),
                 createdDateTime,

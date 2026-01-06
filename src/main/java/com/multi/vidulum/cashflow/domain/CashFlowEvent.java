@@ -12,6 +12,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         permits
         CashFlowEvent.CashFlowCreatedEvent,
         CashFlowEvent.CashFlowWithHistoryCreatedEvent,
+        CashFlowEvent.CashFlowActivatedEvent,
         CashFlowEvent.HistoricalCashChangeImportedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
@@ -98,6 +99,31 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return importedAt;
+        }
+    }
+
+    /**
+     * Event for activating a CashFlow, transitioning from SETUP to OPEN mode.
+     * This marks the end of the historical import process.
+     *
+     * @param cashFlowId        unique identifier of the cash flow
+     * @param confirmedBalance  the user-confirmed current balance
+     * @param calculatedBalance the system-calculated balance based on imports
+     * @param balanceDifference the difference between confirmed and calculated (0 if matching)
+     * @param forced            true if activation was forced despite balance mismatch
+     * @param activatedAt       timestamp when activation occurred (becomes importCutoffDateTime)
+     */
+    record CashFlowActivatedEvent(
+            CashFlowId cashFlowId,
+            Money confirmedBalance,
+            Money calculatedBalance,
+            Money balanceDifference,
+            boolean forced,
+            ZonedDateTime activatedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return activatedAt;
         }
     }
 

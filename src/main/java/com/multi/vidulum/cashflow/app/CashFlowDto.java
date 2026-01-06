@@ -78,6 +78,33 @@ public final class CashFlowDto {
         private ZonedDateTime paidDate;
     }
 
+    /**
+     * DTO for activating a CashFlow.
+     * Transitions the CashFlow from SETUP to OPEN mode.
+     */
+    @Data
+    @Builder
+    public static class ActivateCashFlowJson {
+        /** The user-confirmed current balance (for validation against calculated balance) */
+        private Money confirmedBalance;
+        /** If true, activate even if confirmed balance differs from calculated balance */
+        private boolean forceActivation;
+    }
+
+    /**
+     * Response DTO for CashFlow activation.
+     */
+    @Data
+    @Builder
+    public static class ActivateCashFlowResponseJson {
+        private String cashFlowId;
+        private Money confirmedBalance;
+        private Money calculatedBalance;
+        private Money difference;
+        private boolean forced;
+        private CashFlow.CashFlowStatus status;
+    }
+
     @Data
     @Builder
     public static class ConfirmCashChangeJson {
