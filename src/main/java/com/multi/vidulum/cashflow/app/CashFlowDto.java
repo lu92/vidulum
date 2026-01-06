@@ -62,6 +62,22 @@ public final class CashFlowDto {
         private ZonedDateTime paidDate;
     }
 
+    /**
+     * DTO for importing a historical cash change.
+     * Used for importing past transactions during SETUP mode.
+     */
+    @Data
+    @Builder
+    public static class ImportHistoricalCashChangeJson {
+        private String category;
+        private String name;
+        private String description;
+        private Money money;
+        private Type type;
+        private ZonedDateTime dueDate;
+        private ZonedDateTime paidDate;
+    }
+
     @Data
     @Builder
     public static class ConfirmCashChangeJson {

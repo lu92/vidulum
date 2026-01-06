@@ -33,6 +33,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private BankAccount bankAccount;
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
+    private YearMonth startPeriod;
     private YearMonth activePeriod;
     private List<Category> inflowCategories;
     private List<Category> outflowCategories;
@@ -70,6 +71,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 bankAccount,
                 status,
                 cashChangeSnapshotMap,
+                startPeriod,
                 activePeriod,
                 inflowCategories,
                 outflowCategories,
@@ -106,6 +108,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .bankAccount(snapshot.bankAccount())
                 .status(snapshot.status())
                 .cashChanges(cashChanges)
+                .startPeriod(snapshot.startPeriod())
                 .activePeriod(snapshot.activePeriod())
                 .inflowCategories(snapshot.inflowCategories())
                 .outflowCategories(snapshot.outflowCategories())
@@ -137,6 +140,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.bankAccount = event.bankAccount();
         this.status = CashFlowStatus.OPEN;
         this.cashChanges = new HashMap<>();
+        this.startPeriod = YearMonth.from(event.created());  // For normal CashFlow, startPeriod = activePeriod
         this.activePeriod = YearMonth.from(event.created());
         this.created = event.created();
         this.inflowCategories = inflowCategories;
@@ -173,6 +177,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.bankAccount = event.bankAccount();
         this.status = CashFlowStatus.SETUP;  // SETUP mode for historical import
         this.cashChanges = new HashMap<>();
+        this.startPeriod = event.startPeriod();  // Historical start period
         this.activePeriod = event.activePeriod();
         this.created = event.created();
         this.inflowCategories = inflowCategories;
@@ -227,6 +232,32 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         } else {
             bankAccount = bankAccount.withUpdatedBalance(bankAccount.balance().minus(event.money()));
         }
+
+        add(event);
+    }
+
+    /**
+     * Imports a historical cash change into a CashFlow in SETUP mode.
+     * Historical transactions are imported as already CONFIRMED.
+     * No active period validation - historical imports go to SETUP_PENDING months.
+     */
+    public void apply(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
+        CashChange cashChange = new CashChange(
+                event.cashChangeId(),
+                event.name(),
+                event.description(),
+                event.money(),
+                event.type(),
+                event.categoryName(),
+                CashChangeStatus.CONFIRMED,
+                event.importedAt(),
+                event.dueDate(),
+                event.paidDate()
+        );
+        cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
+
+        // Note: Bank balance is NOT updated here because this is historical data.
+        // The balance reconciliation happens during activation.
 
         add(event);
     }

@@ -3,8 +3,10 @@ package com.multi.vidulum.cashflow;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
+import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -1773,5 +1775,464 @@ public class CashFlowControllerTest extends IntegrationTest {
         // CashFlow should be in SETUP status
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
         assertThat(result.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+    }
+
+    // ==================== IMPORT HISTORICAL CASH CHANGE TESTS ====================
+
+    @Test
+    void shouldImportHistoricalCashChangeToSetupPendingMonth() {
+        // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For import testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import historical transaction to November 2021 (SETUP_PENDING month)
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Historical Salary")
+                        .description("November salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .build()
+        );
+
+        // then - verify cash change was created
+        assertThat(cashChangeId).isNotNull();
+
+        // Verify cash change exists in CashFlow aggregate
+        CashFlowDto.CashFlowSummaryJson cashFlowSummary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(cashFlowSummary.getCashChanges()).containsKey(cashChangeId);
+        assertThat(cashFlowSummary.getCashChanges().get(cashChangeId).getStatus()).isEqualTo(CONFIRMED);
+
+        // Wait for Kafka event to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(p -> p.type().equals("HistoricalCashChangeImportedEvent")))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldRejectImportWhenCashFlowNotInSetupMode() {
+        // given - create normal CashFlow (OPEN mode, not SETUP)
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Normal Cash Flow")
+                        .description("In OPEN mode")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // when/then - trying to import historical data should fail
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Test Transaction")
+                        .description("This should fail")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(ImportNotAllowedInNonSetupModeException.class);
+    }
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsInActiveOrFuturePeriod() {
+        // given - create CashFlow with history (clock is 2022-01-01, activePeriod = 2022-01)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For import testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(2000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(500, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import to active period (2022-01) should fail
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("January Transaction")
+                        .description("This should fail - not historical")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))  // Active period!
+                        .build()
+        )).isInstanceOf(ImportDateOutsideSetupPeriodException.class);
+    }
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsBeforeStartPeriod() {
+        // given - create CashFlow with history starting from 2021-10
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For import testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(2000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(500, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import to month before startPeriod (2021-09) should fail
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("September Transaction")
+                        .description("This should fail - before startPeriod")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-09-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-09-15T00:00:00Z"))  // Before startPeriod!
+                        .build()
+        )).isInstanceOf(ImportDateBeforeStartPeriodException.class);
+    }
+
+    @Test
+    void shouldImportMultipleHistoricalTransactionsToDifferentMonths() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("Multiple imports")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(10000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import transactions to different historical months
+        String oct2021Id = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("October Salary")
+                        .description("Oct 2021")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        String nov2021Id = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("November Rent")
+                        .description("Nov 2021")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .build()
+        );
+
+        String dec2021Id = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("December Bonus")
+                        .description("Dec 2021")
+                        .money(Money.of(5000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-20T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-20T00:00:00Z"))
+                        .build()
+        );
+
+        // then - verify all transactions exist
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(3);
+        assertThat(summary.getCashChanges()).containsKeys(oct2021Id, nov2021Id, dec2021Id);
+
+        // All should be CONFIRMED (historical transactions)
+        assertThat(summary.getCashChanges().get(oct2021Id).getStatus()).isEqualTo(CONFIRMED);
+        assertThat(summary.getCashChanges().get(nov2021Id).getStatus()).isEqualTo(CONFIRMED);
+        assertThat(summary.getCashChanges().get(dec2021Id).getStatus()).isEqualTo(CONFIRMED);
+    }
+
+    @Test
+    void shouldUpdateForecastWhenImportingHistoricalInflow() {
+        // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For forecast testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import historical INFLOW transaction to November 2021
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Historical Salary")
+                        .description("November salary")
+                        .money(Money.of(3000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for Kafka event to be processed and forecast updated
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            CashFlowMonthlyForecast nov2021 = statement.getForecasts().get(YearMonth.of(2021, 11));
+            return nov2021.getCashFlowStats().getInflowStats().actual().equals(Money.of(3000, "USD"));
+        });
+
+        // then - verify forecast was updated correctly
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        CashFlowMonthlyForecast nov2021Forecast = statement.getForecasts().get(YearMonth.of(2021, 11));
+
+        // Verify inflow stats - actual should be updated (not expected)
+        assertThat(nov2021Forecast.getCashFlowStats().getInflowStats().actual())
+                .isEqualTo(Money.of(3000, "USD"));
+        assertThat(nov2021Forecast.getCashFlowStats().getInflowStats().expected())
+                .isEqualTo(Money.of(0, "USD"));
+
+        // Verify transaction is in PAID group (not PENDING/EXPECTED)
+        CashCategory inflowCategory = nov2021Forecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+        assertThat(inflowCategory.getGroupedTransactions().get(PaymentStatus.PAID))
+                .hasSize(1)
+                .anySatisfy(tx -> {
+                    assertThat(tx.getCashChangeId().id()).isEqualTo(cashChangeId);
+                    assertThat(tx.getMoney()).isEqualTo(Money.of(3000, "USD"));
+                });
+
+        // Verify totalPaidValue is updated
+        assertThat(inflowCategory.getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+    }
+
+    @Test
+    void shouldUpdateForecastWhenImportingHistoricalOutflow() {
+        // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For outflow forecast testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import historical OUTFLOW transaction to December 2021
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Historical Rent")
+                        .description("December rent payment")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-01T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for Kafka event to be processed and forecast updated
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            CashFlowMonthlyForecast dec2021 = statement.getForecasts().get(YearMonth.of(2021, 12));
+            return dec2021.getCashFlowStats().getOutflowStats().actual().equals(Money.of(1500, "USD"));
+        });
+
+        // then - verify forecast was updated correctly
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        CashFlowMonthlyForecast dec2021Forecast = statement.getForecasts().get(YearMonth.of(2021, 12));
+
+        // Verify outflow stats - actual should be updated (not expected)
+        assertThat(dec2021Forecast.getCashFlowStats().getOutflowStats().actual())
+                .isEqualTo(Money.of(1500, "USD"));
+        assertThat(dec2021Forecast.getCashFlowStats().getOutflowStats().expected())
+                .isEqualTo(Money.of(0, "USD"));
+
+        // Verify transaction is in PAID group (not PENDING/EXPECTED)
+        CashCategory outflowCategory = dec2021Forecast.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+        assertThat(outflowCategory.getGroupedTransactions().get(PaymentStatus.PAID))
+                .hasSize(1)
+                .anySatisfy(tx -> {
+                    assertThat(tx.getCashChangeId().id()).isEqualTo(cashChangeId);
+                    assertThat(tx.getMoney()).isEqualTo(Money.of(1500, "USD"));
+                });
+
+        // Verify totalPaidValue is updated
+        assertThat(outflowCategory.getTotalPaidValue()).isEqualTo(Money.of(1500, "USD"));
+    }
+
+    @Test
+    void shouldUpdateForecastWithMultipleHistoricalTransactionsInSameMonth() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("Multiple transactions same month")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(10000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(2000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import multiple transactions to November 2021
+        // INFLOW 1: Salary
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Nov salary")
+                        .money(Money.of(5000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-25T00:00:00Z"))
+                        .build()
+        );
+
+        // INFLOW 2: Bonus
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Bonus")
+                        .description("Nov bonus")
+                        .money(Money.of(1000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-28T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-28T00:00:00Z"))
+                        .build()
+        );
+
+        // OUTFLOW 1: Rent
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Rent")
+                        .description("Nov rent")
+                        .money(Money.of(2000, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-01T00:00:00Z"))
+                        .build()
+        );
+
+        // OUTFLOW 2: Utilities
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Utilities")
+                        .description("Nov utilities")
+                        .money(Money.of(300, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for all Kafka events to be processed
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            CashFlowMonthlyForecast nov2021 = statement.getForecasts().get(YearMonth.of(2021, 11));
+            // Total inflows: 5000 + 1000 = 6000
+            // Total outflows: 2000 + 300 = 2300
+            return nov2021.getCashFlowStats().getInflowStats().actual().equals(Money.of(6000, "USD"))
+                    && nov2021.getCashFlowStats().getOutflowStats().actual().equals(Money.of(2300, "USD"));
+        });
+
+        // then - verify forecast totals
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        CashFlowMonthlyForecast nov2021Forecast = statement.getForecasts().get(YearMonth.of(2021, 11));
+
+        // Verify aggregated inflow stats
+        assertThat(nov2021Forecast.getCashFlowStats().getInflowStats().actual())
+                .isEqualTo(Money.of(6000, "USD"));
+
+        // Verify aggregated outflow stats
+        assertThat(nov2021Forecast.getCashFlowStats().getOutflowStats().actual())
+                .isEqualTo(Money.of(2300, "USD"));
+
+        // Verify transaction counts in PAID groups
+        CashCategory inflowCategory = nov2021Forecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+        assertThat(inflowCategory.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(2);
+        assertThat(inflowCategory.getTotalPaidValue()).isEqualTo(Money.of(6000, "USD"));
+
+        CashCategory outflowCategory = nov2021Forecast.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+        assertThat(outflowCategory.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(2);
+        assertThat(outflowCategory.getTotalPaidValue()).isEqualTo(Money.of(2300, "USD"));
     }
 }

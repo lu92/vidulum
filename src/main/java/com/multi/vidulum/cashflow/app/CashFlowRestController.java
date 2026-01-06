@@ -10,6 +10,7 @@ import com.multi.vidulum.cashflow.app.commands.confirm.ConfirmCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowWithHistoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
@@ -71,6 +72,29 @@ public class CashFlowRestController {
         );
 
         return snapshot.cashFlowId().id();
+    }
+
+    /**
+     * Import a historical cash change to a CashFlow in SETUP mode.
+     * The transaction will be added to the appropriate historical month based on paidDate.
+     */
+    @PostMapping("/{cashFlowId}/import-historical")
+    public String importHistoricalCashChange(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.ImportHistoricalCashChangeJson request) {
+        CashChangeId cashChangeId = commandGateway.send(
+                new ImportHistoricalCashChangeCommand(
+                        new CashFlowId(cashFlowId),
+                        new CategoryName(request.getCategory()),
+                        new Name(request.getName()),
+                        new Description(request.getDescription()),
+                        request.getMoney(),
+                        request.getType(),
+                        request.getDueDate(),
+                        request.getPaidDate()
+                )
+        );
+        return cashChangeId.id();
     }
 
     @PostMapping("/expected-cash-change")
