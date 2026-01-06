@@ -97,26 +97,9 @@ Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
 
 ---
 
-## PR 5: Rollback importu
+## PR 5: Aktywacja CashFlow
 **Branch:** `VID-90`
-**Tytuł:** `VID-90: Add rollbackImport command`
-
-### Zakres:
-- [ ] `RollbackImportCommand` + Handler
-- [ ] `ImportRolledBackEvent`
-- [ ] Usuwanie transakcji z IMPORT_PENDING miesięcy
-- [ ] Opcjonalne usuwanie kategorii
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/rollback-import`
-- [ ] Testy
-
-### Zależności:
-- PR 4 (IMPORT_PENDING status)
-
----
-
-## PR 6: Aktywacja CashFlow
-**Branch:** `VID-91`
-**Tytuł:** `VID-91: Add activateCashFlow command`
+**Tytuł:** `VID-90: Add activateCashFlow command`
 
 ### Zakres:
 - [ ] `ActivateCashFlowCommand` + Handler
@@ -130,6 +113,23 @@ Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
 
 ### Zależności:
 - PR 4 (IMPORT_PENDING status)
+
+---
+
+## PR 6: Rollback importu
+**Branch:** `VID-91`
+**Tytuł:** `VID-91: Add rollbackImport command`
+
+### Zakres:
+- [ ] `RollbackImportCommand` + Handler
+- [ ] `ImportRolledBackEvent`
+- [ ] Usuwanie transakcji z IMPORT_PENDING miesięcy
+- [ ] Opcjonalne usuwanie kategorii
+- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/rollback-import`
+- [ ] Testy
+
+### Zależności:
+- PR 5 (activateCashFlow) - rollback tylko przed aktywacją
 
 ---
 
@@ -237,10 +237,10 @@ Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
 ```
 PR1 (SETUP status) ✅
   └─> PR2 (createCashFlowWithHistory) ✅
-        ├─> PR3 (importHistoricalCashChange) ✅
-        │     └─> PR4 (IMPORT_PENDING + IMPORTED) ✅
-        │           └─> PR5 (rollbackImport)
-        └─> PR6 (activateCashFlow)
+        └─> PR3 (importHistoricalCashChange) ✅
+              └─> PR4 (IMPORT_PENDING + IMPORTED) ✅
+                    ├─> PR5 (activateCashFlow)
+                    └─> PR6 (rollbackImport)
 
 PR7 (kategorie z validFrom/To) - niezależny
   └─> PR8 (configureCategoryMapping)
@@ -258,8 +258,8 @@ PR3 + PR8
 2. **PR2** - tworzenie CashFlow z historią ✅
 3. **PR3** - import pojedynczy ✅
 4. **PR4** - IMPORT_PENDING + IMPORTED status ✅
-5. **PR5** - rollback importu
-6. **PR6** - aktywacja CashFlow
+5. **PR5** - aktywacja CashFlow ⏳ NEXT
+6. **PR6** - rollback importu
 7. **PR7** - kategorie z validFrom/validTo (niezależny)
 8. **PR8** - mapowanie kategorii
 9. **PR9** - batch import
@@ -273,3 +273,4 @@ PR3 + PR8
 |------|--------|
 | 2026-01-06 | Utworzenie dokumentu z podziałem na PR-y |
 | 2026-01-06 | Aktualizacja: PR1-PR4 ukończone, zmiana SETUP_PENDING → IMPORT_PENDING, dodanie IMPORTED, walidacja paidDate <= now() |
+| 2026-01-06 | Zamiana kolejności: PR5 aktywacja, PR6 rollback (aktywacja kończy główny flow importu) |

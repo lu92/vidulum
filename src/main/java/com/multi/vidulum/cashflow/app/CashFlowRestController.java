@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
+import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHistoricalImportCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
@@ -16,6 +17,7 @@ import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -37,6 +39,7 @@ public class CashFlowRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowSummaryMapper mapper;
     private final Clock clock;
 
@@ -95,6 +98,43 @@ public class CashFlowRestController {
                 )
         );
         return cashChangeId.id();
+    }
+
+    /**
+     * Attest a historical import, transitioning CashFlow from SETUP to OPEN mode.
+     * This marks the end of the historical import process.
+     * All IMPORT_PENDING months will be changed to IMPORTED.
+     */
+    @PostMapping("/{cashFlowId}/attest-historical-import")
+    public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
+
+        // Get CashFlow before attestation to calculate the balance
+        CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))
+                .orElseThrow(() -> new CashFlowDoesNotExistsException(new CashFlowId(cashFlowId)));
+        Money calculatedBalance = cashFlowBeforeAttestation.calculateCurrentBalance();
+
+        CashFlowSnapshot snapshot = commandGateway.send(
+                new AttestHistoricalImportCommand(
+                        new CashFlowId(cashFlowId),
+                        request.getConfirmedBalance(),
+                        request.isForceAttestation()
+                )
+        );
+
+        Money confirmedBalance = request.getConfirmedBalance();
+        Money difference = confirmedBalance.minus(calculatedBalance);
+        boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
+
+        return CashFlowDto.AttestHistoricalImportResponseJson.builder()
+                .cashFlowId(snapshot.cashFlowId().id())
+                .confirmedBalance(confirmedBalance)
+                .calculatedBalance(calculatedBalance)
+                .difference(difference)
+                .forced(request.isForceAttestation() && !isZeroDifference)
+                .status(snapshot.status())
+                .build();
     }
 
     @PostMapping("/expected-cash-change")

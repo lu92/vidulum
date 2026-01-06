@@ -78,6 +78,33 @@ public final class CashFlowDto {
         private ZonedDateTime paidDate;
     }
 
+    /**
+     * DTO for attesting a historical import.
+     * Transitions the CashFlow from SETUP to OPEN mode.
+     */
+    @Data
+    @Builder
+    public static class AttestHistoricalImportJson {
+        /** The user-confirmed current balance (for validation against calculated balance) */
+        private Money confirmedBalance;
+        /** If true, attest even if confirmed balance differs from calculated balance */
+        private boolean forceAttestation;
+    }
+
+    /**
+     * Response DTO for historical import attestation.
+     */
+    @Data
+    @Builder
+    public static class AttestHistoricalImportResponseJson {
+        private String cashFlowId;
+        private Money confirmedBalance;
+        private Money calculatedBalance;
+        private Money difference;
+        private boolean forced;
+        private CashFlow.CashFlowStatus status;
+    }
+
     @Data
     @Builder
     public static class ConfirmCashChangeJson {

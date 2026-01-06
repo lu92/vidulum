@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.JsonContent;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
@@ -35,6 +36,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private Map<CashChangeId, CashChange> cashChanges;
     private YearMonth startPeriod;
     private YearMonth activePeriod;
+    private Money initialBalance;
     private List<Category> inflowCategories;
     private List<Category> outflowCategories;
     private ZonedDateTime created;
@@ -73,6 +75,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 cashChangeSnapshotMap,
                 startPeriod,
                 activePeriod,
+                initialBalance,
                 inflowCategories,
                 outflowCategories,
                 created,
@@ -110,6 +113,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .cashChanges(cashChanges)
                 .startPeriod(snapshot.startPeriod())
                 .activePeriod(snapshot.activePeriod())
+                .initialBalance(snapshot.initialBalance())
                 .inflowCategories(snapshot.inflowCategories())
                 .outflowCategories(snapshot.outflowCategories())
                 .created(snapshot.created())
@@ -142,6 +146,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.cashChanges = new HashMap<>();
         this.startPeriod = YearMonth.from(event.created());  // For normal CashFlow, startPeriod = activePeriod
         this.activePeriod = YearMonth.from(event.created());
+        this.initialBalance = event.bankAccount().balance();  // For normal CashFlow, initialBalance = current balance
         this.created = event.created();
         this.inflowCategories = inflowCategories;
         this.outflowCategories = outflowCategories;
@@ -179,6 +184,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         this.cashChanges = new HashMap<>();
         this.startPeriod = event.startPeriod();  // Historical start period
         this.activePeriod = event.activePeriod();
+        this.initialBalance = event.initialBalance();  // Balance at start of startPeriod
         this.created = event.created();
         this.inflowCategories = inflowCategories;
         this.outflowCategories = outflowCategories;
@@ -260,6 +266,39 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         // The balance reconciliation happens during activation.
 
         add(event);
+    }
+
+    /**
+     * Attests a historical import, transitioning CashFlow from SETUP to OPEN mode.
+     * This marks the end of the historical import process.
+     * The bank balance is updated to the confirmed balance from the event.
+     */
+    public void apply(CashFlowEvent.HistoricalImportAttestedEvent event) {
+        this.status = CashFlowStatus.OPEN;
+        this.bankAccount = bankAccount.withUpdatedBalance(event.confirmedBalance());
+        add(event);
+    }
+
+    /**
+     * Calculates the current balance based on initial balance and all confirmed cash changes.
+     * Formula: initialBalance + sum(INFLOW amounts) - sum(OUTFLOW amounts)
+     *
+     * @return the calculated balance
+     */
+    public Money calculateCurrentBalance() {
+        Money balance = initialBalance != null ? initialBalance : Money.zero(bankAccount.balance().getCurrency());
+
+        for (CashChange cashChange : cashChanges.values()) {
+            if (cashChange.getStatus() == CashChangeStatus.CONFIRMED) {
+                if (Type.INFLOW.equals(cashChange.getType())) {
+                    balance = balance.plus(cashChange.getMoney());
+                } else {
+                    balance = balance.minus(cashChange.getMoney());
+                }
+            }
+        }
+
+        return balance;
     }
 
     public void apply(CashFlowEvent.CashChangeConfirmedEvent event) {
