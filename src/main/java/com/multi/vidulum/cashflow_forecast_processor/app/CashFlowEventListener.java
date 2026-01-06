@@ -37,6 +37,9 @@ public class CashFlowEventListener {
             case "ExpectedCashChangeAppendedEvent" -> {
                 return event.getContent().to(CashFlowEvent.ExpectedCashChangeAppendedEvent.class);
             }
+            case "PaidCashChangeAppendedEvent" -> {
+                return event.getContent().to(CashFlowEvent.PaidCashChangeAppendedEvent.class);
+            }
             case "CashChangeEditedEvent" -> {
                 return event.getContent().to(CashFlowEvent.CashChangeEditedEvent.class);
             }

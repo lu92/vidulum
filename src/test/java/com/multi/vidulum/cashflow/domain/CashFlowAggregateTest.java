@@ -21,6 +21,7 @@ import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CashFlowAggregateTest extends IntegrationTest {
 
@@ -130,6 +131,263 @@ class CashFlowAggregateTest extends IntegrationTest {
                 appendedEvent
         );
 
+        List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
+                .stream()
+                .map(domainEvent -> (CashFlowEvent) domainEvent)
+                .collect(Collectors.toList());
+
+        CashFlow reprocessedCashFlow = cashFlowAggregateProjector.process(domainEvents);
+        assertThat(reprocessedCashFlow.getSnapshot())
+                .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
+    }
+
+    @Test
+    void shouldSavePaidCashChangeWithConfirmedStatus() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+        CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(1000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"));
+        cashFlow.apply(createdEvent);
+
+        CashFlowEvent.PaidCashChangeAppendedEvent paidEvent = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("paid cash change name"),
+                new Description("paid cash change description"),
+                Money.of(150, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        );
+        cashFlow.apply(paidEvent);
+
+        Checksum expectedChecksum = calculateChecksum(paidEvent);
+
+        // when
+        domainCashFlowRepository.save(cashFlow);
+
+        // then
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        // Verify CashChange is CONFIRMED immediately
+        assertThat(actualSnapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
+        // Verify endDate is set to paidDate
+        assertThat(actualSnapshot.cashChanges().get(cashChangeId).endDate()).isEqualTo(ZonedDateTime.parse("2021-06-01T06:30:00Z"));
+        // Verify balance is updated (1000 + 150 = 1150 for INFLOW)
+        assertThat(actualSnapshot.bankAccount().balance()).isEqualTo(Money.of(1150, "USD"));
+
+        assertThat(actualSnapshot)
+                .usingRecursiveComparison()
+                .isEqualTo(
+                        new CashFlowSnapshot(
+                                cashFlowId,
+                                new UserId("user"),
+                                new Name("name"),
+                                new Description("description"),
+                                new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(1150, "USD")),
+                                CashFlow.CashFlowStatus.OPEN,
+                                Map.of(
+                                        cashChangeId,
+                                        new CashChangeSnapshot(
+                                                cashChangeId,
+                                                new Name("paid cash change name"),
+                                                new Description("paid cash change description"),
+                                                Money.of(150, "USD"),
+                                                INFLOW,
+                                                new CategoryName("Uncategorized"),
+                                                CONFIRMED,
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                                        )),
+                                YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                null,
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                expectedChecksum
+                        ));
+
+        assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
+                createdEvent,
+                paidEvent
+        );
+
+        List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
+                .stream()
+                .map(domainEvent -> (CashFlowEvent) domainEvent)
+                .collect(Collectors.toList());
+
+        CashFlow reprocessedCashFlow = cashFlowAggregateProjector.process(domainEvents);
+        assertThat(reprocessedCashFlow.getSnapshot())
+                .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
+    }
+
+    @Test
+    void shouldSavePaidCashChangeOutflowAndDecreaseBalance() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+        CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(500, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"));
+        cashFlow.apply(createdEvent);
+
+        CashFlowEvent.PaidCashChangeAppendedEvent paidEvent = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("grocery shopping"),
+                new Description("weekly groceries"),
+                Money.of(75, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        );
+        cashFlow.apply(paidEvent);
+
+        // when
+        domainCashFlowRepository.save(cashFlow);
+
+        // then
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        // Verify CashChange is CONFIRMED immediately
+        assertThat(actualSnapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
+        // Verify balance is decreased (500 - 75 = 425 for OUTFLOW)
+        assertThat(actualSnapshot.bankAccount().balance()).isEqualTo(Money.of(425, "USD"));
+
+        List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
+                .stream()
+                .map(domainEvent -> (CashFlowEvent) domainEvent)
+                .collect(Collectors.toList());
+
+        CashFlow reprocessedCashFlow = cashFlowAggregateProjector.process(domainEvents);
+        assertThat(reprocessedCashFlow.getSnapshot())
+                .isEqualTo(domainCashFlowRepository.findById(cashFlowId).get().getSnapshot());
+    }
+
+    @Test
+    void shouldHandleMultiplePaidCashChanges() {
+        // given
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId inflowId = CashChangeId.generate();
+        CashChangeId outflow1Id = CashChangeId.generate();
+        CashChangeId outflow2Id = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(1000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")));
+
+        // Add inflow: +500
+        cashFlow.apply(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                inflowId,
+                new Name("salary"),
+                new Description("monthly salary"),
+                Money.of(500, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Add outflow: -100
+        cashFlow.apply(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                outflow1Id,
+                new Name("groceries"),
+                new Description("food"),
+                Money.of(100, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-02T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-02T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-02T06:30:00Z")
+        ));
+
+        // Add outflow: -50
+        cashFlow.apply(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                outflow2Id,
+                new Name("fuel"),
+                new Description("gas station"),
+                Money.of(50, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-03T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-03T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-03T06:30:00Z")
+        ));
+
+        // when
+        domainCashFlowRepository.save(cashFlow);
+
+        // then
+        CashFlowSnapshot actualSnapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        // Verify all CashChanges are CONFIRMED
+        assertThat(actualSnapshot.cashChanges().get(inflowId).status()).isEqualTo(CONFIRMED);
+        assertThat(actualSnapshot.cashChanges().get(outflow1Id).status()).isEqualTo(CONFIRMED);
+        assertThat(actualSnapshot.cashChanges().get(outflow2Id).status()).isEqualTo(CONFIRMED);
+
+        // Verify balance: 1000 + 500 - 100 - 50 = 1350
+        assertThat(actualSnapshot.bankAccount().balance()).isEqualTo(Money.of(1350, "USD"));
+
+        // Verify projection works correctly
         List<CashFlowEvent> domainEvents = domainCashFlowRepository.findDomainEvents(cashFlowId)
                 .stream()
                 .map(domainEvent -> (CashFlowEvent) domainEvent)
@@ -1022,5 +1280,226 @@ class CashFlowAggregateTest extends IntegrationTest {
                     assertThat(category.getBudgeting()).isNotNull();
                     assertThat(category.getBudgeting().budget()).isEqualTo(Money.of(6000, "USD"));
                 });
+    }
+
+    @Test
+    void shouldRejectPaidCashChangeWhenPaidDateNotInActivePeriod() {
+        // given - CashFlow created in June 2021, so active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(1000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - trying to add paid cash change with paidDate in July (not active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent eventWithWrongPeriod = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("salary"),
+                new Description("july salary"),
+                Money.of(500, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // created
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate
+                ZonedDateTime.parse("2021-07-15T06:30:00Z")   // paidDate in JULY - wrong!
+        );
+
+        // then - should throw exception
+        assertThatThrownBy(() -> cashFlow.apply(eventWithWrongPeriod))
+                .isInstanceOf(PaidDateNotInActivePeriodException.class)
+                .hasMessageContaining("2021-07-15")
+                .hasMessageContaining("2021-06");
+    }
+
+    @Test
+    void shouldRejectPaidCashChangeWhenPaidDateInPastAttestedPeriod() {
+        // given - CashFlow created in June, then attested to July
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(1000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Attest June, move to July
+        cashFlow.apply(new CashFlowEvent.MonthAttestedEvent(
+                cashFlowId,
+                YearMonth.of(2021, 7),
+                Money.of(1000, "USD"),
+                ZonedDateTime.parse("2021-07-01T00:00:00Z")
+        ));
+
+        // when - trying to add paid cash change with paidDate in June (attested period)
+        CashFlowEvent.PaidCashChangeAppendedEvent eventWithAttestedPeriod = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("late payment"),
+                new Description("forgot to register in june"),
+                Money.of(200, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // created
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),  // dueDate in June
+                ZonedDateTime.parse("2021-06-20T06:30:00Z")   // paidDate in JUNE - attested!
+        );
+
+        // then - should throw exception (active period is now July)
+        assertThatThrownBy(() -> cashFlow.apply(eventWithAttestedPeriod))
+                .isInstanceOf(PaidDateNotInActivePeriodException.class)
+                .hasMessageContaining("2021-06-20")
+                .hasMessageContaining("2021-07");
+    }
+
+    @Test
+    void shouldAcceptPaidCashChangeWhenPaidDateInActivePeriod() {
+        // given - CashFlow created in June 2021, active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(1000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - adding paid cash change with paidDate in June (active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent validEvent = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("salary"),
+                new Description("june salary"),
+                Money.of(500, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z")  // paidDate in June - correct!
+        );
+
+        cashFlow.apply(validEvent);
+
+        // then - should succeed and update balance
+        domainCashFlowRepository.save(cashFlow);
+
+        CashFlowSnapshot snapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(1500, "USD"));
+        assertThat(snapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
+    }
+
+    @Test
+    void shouldRejectPaidCashChangeOutflowWhenPaidDateNotInActivePeriod() {
+        // given - CashFlow created in June 2021, so active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(5000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - trying to add paid OUTFLOW with paidDate in July (not active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent eventWithWrongPeriod = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("rent payment"),
+                new Description("july rent"),
+                Money.of(1500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-07-05T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-05T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-05T06:30:00Z")  // paidDate in JULY - wrong!
+        );
+
+        // then - should throw exception
+        assertThatThrownBy(() -> cashFlow.apply(eventWithWrongPeriod))
+                .isInstanceOf(PaidDateNotInActivePeriodException.class)
+                .hasMessageContaining("2021-07-05")
+                .hasMessageContaining("2021-06");
+    }
+
+    @Test
+    void shouldAcceptPaidCashChangeOutflowWhenPaidDateInActivePeriod() {
+        // given - CashFlow created in June 2021, active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(5000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - adding paid OUTFLOW with paidDate in June (active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent validEvent = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("rent payment"),
+                new Description("june rent"),
+                Money.of(1500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z")  // paidDate in June - correct!
+        );
+
+        cashFlow.apply(validEvent);
+
+        // then - should succeed and decrease balance
+        domainCashFlowRepository.save(cashFlow);
+
+        CashFlowSnapshot snapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        // Balance should decrease: 5000 - 1500 = 3500
+        assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(snapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
     }
 }

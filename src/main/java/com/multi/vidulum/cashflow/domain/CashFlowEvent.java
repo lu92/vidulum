@@ -13,6 +13,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashFlowCreatedEvent,
         CashFlowEvent.MonthAttestedEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
+        CashFlowEvent.PaidCashChangeAppendedEvent,
         CashFlowEvent.CashChangeConfirmedEvent,
         CashFlowEvent.CashChangeEditedEvent,
         CashFlowEvent.CashChangeRejectedEvent,
@@ -45,6 +46,15 @@ public sealed interface CashFlowEvent extends DomainEvent
     record ExpectedCashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
                                    Money money, Type type, ZonedDateTime created, CategoryName categoryName,
                                    ZonedDateTime dueDate) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
+    }
+
+    record PaidCashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
+                                       Money money, Type type, ZonedDateTime created, CategoryName categoryName,
+                                       ZonedDateTime dueDate, ZonedDateTime paidDate) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return created;

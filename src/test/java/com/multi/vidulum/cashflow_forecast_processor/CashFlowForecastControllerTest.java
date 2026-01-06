@@ -446,4 +446,261 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         assertThat(forecastStatement.getLastModification()).isNotNull();
         assertThat(cashFlowSummary.getLastModification()).isNotNull();
     }
+
+    @Test
+    void shouldGetForecastStatementWithPaidCashChange() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Cash Flow with paid transaction")
+                        .description("Test description")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("US888999000", Currency.of("USD")),
+                                Money.of(2000, "USD")))
+                        .build()
+        );
+
+        // Add a paid inflow cash change (already confirmed)
+        String paidInflowId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Paid Salary")
+                        .description("Already received salary")
+                        .money(Money.of(3500, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for all events to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()))
+                        .orElse(false));
+
+        // when
+        CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement =
+                cashFlowForecastRestController.getForecastStatement(cashFlowId);
+
+        // then
+        assertThat(forecastStatement.getCashFlowId()).isEqualTo(cashFlowId);
+
+        // Find January 2022 forecast (clock is fixed to 2022-01-01)
+        CashFlowForecastDto.CashFlowMonthlyForecastJson januaryForecast =
+                forecastStatement.getForecasts().get("2022-01");
+
+        assertThat(januaryForecast).isNotNull();
+
+        // Verify the transaction is directly in PAID status (not EXPECTED)
+        boolean hasPaidTransaction = januaryForecast.getCategorizedInFlows().stream()
+                .flatMap(category -> {
+                    List<CashFlowForecastDto.TransactionDetailsJson> paidTransactions =
+                            category.getGroupedTransactions().getTransactions().get("PAID");
+                    return paidTransactions != null ? paidTransactions.stream() : java.util.stream.Stream.empty();
+                })
+                .anyMatch(tx -> tx.getCashChangeId().equals(paidInflowId));
+        assertThat(hasPaidTransaction).isTrue();
+    }
+
+    @Test
+    void shouldGetForecastStatementWithMixedExpectedAndPaidCashChanges() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Mixed Cash Flow")
+                        .description("Cash flow with expected and paid transactions")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("US222333444", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .build()
+        );
+
+        // Add an expected cash change
+        String expectedInflowId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Expected Bonus")
+                        .description("Pending bonus")
+                        .money(Money.of(1000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        );
+
+        // Add a paid cash change
+        String paidInflowId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Received Payment")
+                        .description("Already received payment")
+                        .money(Money.of(2500, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for all events to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(List.of(
+                                        CashFlowEvent.ExpectedCashChangeAppendedEvent.class.getSimpleName(),
+                                        CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()
+                                )))
+                        .orElse(false));
+
+        // when
+        CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement =
+                cashFlowForecastRestController.getForecastStatement(cashFlowId);
+
+        // then
+        CashFlowForecastDto.CashFlowMonthlyForecastJson januaryForecast =
+                forecastStatement.getForecasts().get("2022-01");
+
+        assertThat(januaryForecast).isNotNull();
+
+        // Verify expected transaction is in EXPECTED group
+        boolean hasExpectedTransaction = januaryForecast.getCategorizedInFlows().stream()
+                .flatMap(category -> {
+                    List<CashFlowForecastDto.TransactionDetailsJson> expectedTransactions =
+                            category.getGroupedTransactions().getTransactions().get("EXPECTED");
+                    return expectedTransactions != null ? expectedTransactions.stream() : java.util.stream.Stream.empty();
+                })
+                .anyMatch(tx -> tx.getCashChangeId().equals(expectedInflowId));
+        assertThat(hasExpectedTransaction).isTrue();
+
+        // Verify paid transaction is in PAID group
+        boolean hasPaidTransaction = januaryForecast.getCategorizedInFlows().stream()
+                .flatMap(category -> {
+                    List<CashFlowForecastDto.TransactionDetailsJson> paidTransactions =
+                            category.getGroupedTransactions().getTransactions().get("PAID");
+                    return paidTransactions != null ? paidTransactions.stream() : java.util.stream.Stream.empty();
+                })
+                .anyMatch(tx -> tx.getCashChangeId().equals(paidInflowId));
+        assertThat(hasPaidTransaction).isTrue();
+    }
+
+    @Test
+    void shouldGetForecastStatementWithPaidOutflow() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Cash Flow with paid outflow")
+                        .description("Test description")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("US555666777", Currency.of("USD")),
+                                Money.of(10000, "USD")))
+                        .build()
+        );
+
+        // Add a paid outflow cash change
+        String paidOutflowId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Office Rent Paid")
+                        .description("Already paid rent")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
+                        .build()
+        );
+
+        // Wait for all events to be processed
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()))
+                        .orElse(false));
+
+        // when
+        CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement =
+                cashFlowForecastRestController.getForecastStatement(cashFlowId);
+
+        // then
+        CashFlowForecastDto.CashFlowMonthlyForecastJson januaryForecast =
+                forecastStatement.getForecasts().get("2022-01");
+
+        assertThat(januaryForecast).isNotNull();
+
+        // Verify the outflow transaction is in PAID status
+        boolean hasPaidOutflow = januaryForecast.getCategorizedOutFlows().stream()
+                .flatMap(category -> {
+                    List<CashFlowForecastDto.TransactionDetailsJson> paidTransactions =
+                            category.getGroupedTransactions().getTransactions().get("PAID");
+                    return paidTransactions != null ? paidTransactions.stream() : java.util.stream.Stream.empty();
+                })
+                .anyMatch(tx -> tx.getCashChangeId().equals(paidOutflowId));
+        assertThat(hasPaidOutflow).isTrue();
+    }
+
+    @Test
+    void shouldSynchronizeChecksumAfterPaidCashChange() {
+        // given - FixedClockConfig sets clock to 2022-01-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("Paid Checksum Test")
+                        .description("Testing checksum after paid cash change")
+                        .bankAccount(new BankAccount(
+                                new BankName("Sync Bank"),
+                                new BankAccountNumber("US999888777", Currency.of("USD")),
+                                Money.of(3000, "USD")))
+                        .build()
+        );
+
+        // Add a paid cash change
+        cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Paid Transaction")
+                        .description("Transaction for checksum test")
+                        .money(Money.of(750, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .build()
+        );
+
+        // Get checksum from the aggregate
+        CashFlowDto.CashFlowSummaryJson cashFlowSummary = cashFlowRestController.getCashFlow(cashFlowId);
+        String aggregateChecksum = cashFlowSummary.getLastMessageChecksum();
+
+        // Wait for all events to be processed
+        Awaitility.await().until(
+                () -> {
+                    CashFlowForecastDto.CashFlowForecastStatementJson statement =
+                            cashFlowForecastRestController.getForecastStatement(cashFlowId);
+                    return aggregateChecksum.equals(statement.getLastMessageChecksum());
+                });
+
+        // when
+        CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement =
+                cashFlowForecastRestController.getForecastStatement(cashFlowId);
+
+        // then
+        assertThat(forecastStatement.getLastMessageChecksum())
+                .as("Checksum should be synchronized after paid cash change")
+                .isEqualTo(aggregateChecksum);
+    }
 }
