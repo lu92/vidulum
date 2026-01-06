@@ -164,6 +164,31 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         add(event);
     }
 
+    public void apply(CashFlowEvent.PaidCashChangeAppendedEvent event) {
+        CashChange cashChange = new CashChange(
+                event.cashChangeId(),
+                event.name(),
+                event.description(),
+                event.money(),
+                event.type(),
+                event.categoryName(),
+                CashChangeStatus.CONFIRMED,
+                event.created(),
+                event.dueDate(),
+                event.paidDate()
+        );
+        cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
+
+        // Update bank balance
+        if (Type.INFLOW.equals(event.type())) {
+            bankAccount = bankAccount.withUpdatedBalance(bankAccount.balance().plus(event.money()));
+        } else {
+            bankAccount = bankAccount.withUpdatedBalance(bankAccount.balance().minus(event.money()));
+        }
+
+        add(event);
+    }
+
     public void apply(CashFlowEvent.CashChangeConfirmedEvent event) {
         performOn(event.cashChangeId(), cashChange ->
                 cashChange.onlyWhenIsPending(() -> {

@@ -20,8 +20,9 @@
 16. [Analiza konkurencji](#analiza-konkurencji)
 17. [Model biznesowy](#model-biznesowy)
 18. [Zagrożenia i ryzyka](#zagrożenia-i-ryzyka)
-19. [Pytania otwarte](#pytania-otwarte)
-20. [Następne kroki](#następne-kroki)
+19. [Metryki i Raporty CashFlow](#metryki-i-raporty-cashflow)
+20. [Pytania otwarte](#pytania-otwarte)
+21. [Następne kroki](#następne-kroki)
 
 ---
 
@@ -415,6 +416,34 @@ public static class AppendPaidCashChangeJson {
     private ZonedDateTime dueDate;
     private ZonedDateTime paidDate;  // wymagane
 }
+```
+
+#### Uwaga o `dueDate` vs `paidDate`
+
+**Dlaczego oba pola są potrzebne?**
+
+| Pole | Znaczenie | Przykład |
+|------|-----------|----------|
+| `dueDate` | Planowana/oryginalna data płatności | Faktura z terminem 14 dni |
+| `paidDate` | Faktyczna data zapłaty | Kiedy user faktycznie zapłacił |
+
+**Scenariusze gdzie oba mają sens:**
+1. **Faktura z terminem** - dueDate: 2024-01-15, paidDate: 2024-01-10 (zapłacono przed terminem)
+2. **Opóźniona płatność** - dueDate: 2024-01-01, paidDate: 2024-01-05 (zapłacono po terminie)
+3. **Import z banku** - możemy mieć informację o oryginalnym terminie płatności
+
+**Scenariusze gdzie wystarczy samo `paidDate`:**
+1. **Quick Start** - user dodaje transakcję którą właśnie zapłacił, nie zna/nie obchodzi go dueDate
+2. **Zakupy codzienne** - grocery, paliwo - płatność natychmiastowa
+
+**Decyzja projektowa:**
+- Zachowujemy oba pola dla pełnej elastyczności i analityki (np. analiza terminowości płatności)
+- W Quick Start UI można uprościć formularz - user podaje tylko `paidDate`, a `dueDate` ustawiamy automatycznie na tę samą wartość
+- Przy imporcie historycznym (Advanced Setup) oba pola mogą być różne jeśli bank dostarcza takie dane
+
+**Przyszła analityka:**
+```
+Wskaźnik terminowości = liczba transakcji gdzie paidDate <= dueDate / wszystkie transakcje
 ```
 
 **Walidacje:**
@@ -3352,6 +3381,220 @@ Auto-sync eliminuje ten problem całkowicie.
 
 ---
 
+## Metryki i Raporty CashFlow
+
+### Przegląd
+
+CashFlow agreguje dane transakcyjne które można wykorzystać do obliczania metryk i generowania raportów dla użytkownika. Ta sekcja opisuje planowane funkcjonalności analityczne.
+
+### 1. Metryki Real-time (Dashboard)
+
+#### Podstawowe metryki
+
+| Metryka | Opis | Przykład |
+|---------|------|----------|
+| **Current Balance** | Aktualne saldo | 12,450 PLN |
+| **Monthly Burn Rate** | Średnie miesięczne wydatki | 8,200 PLN/mies |
+| **Monthly Income** | Średnie miesięczne przychody | 11,500 PLN/mies |
+| **Net Cash Flow** | Przychody - Wydatki | +3,300 PLN/mies |
+| **Runway** | Ile miesięcy przeżyjesz przy obecnym tempie | 14.2 miesięcy |
+
+#### Metryki terminowości płatności
+
+| Metryka | Opis | Formuła |
+|---------|------|---------|
+| **On-time Payment Rate** | % płatności w terminie | `count(paidDate <= dueDate) / count(all)` |
+| **Average Days Early/Late** | Średnia ilość dni przed/po terminie | `avg(dueDate - paidDate)` |
+| **Overdue Amount** | Suma zaległych płatności | `Σ pending WHERE dueDate < now` |
+
+#### Metryki budżetowania
+
+| Metryka | Opis |
+|---------|------|
+| **Budget Utilization** | % wykorzystania budżetu per kategoria |
+| **Budget Variance** | Odchylenie od budżetu (actual vs planned) |
+| **Categories Over Budget** | Liczba kategorii z przekroczonym budżetem |
+
+### 2. Raporty Okresowe
+
+#### Raport Miesięczny
+
+```
+📊 Styczeń 2024
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Przychody:        +15,200 PLN
+Wydatki:          -11,800 PLN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Bilans:            +3,400 PLN
+
+Top 5 kategorii wydatków:
+1. Mieszkanie      3,200 PLN (27%)
+2. Jedzenie        2,100 PLN (18%)
+3. Transport       1,500 PLN (13%)
+4. Rozrywka          800 PLN (7%)
+5. Zdrowie           600 PLN (5%)
+
+vs poprzedni miesiąc: +12% wydatków
+vs średnia roczna:    -5% wydatków
+```
+
+#### Raport Roczny
+- Podsumowanie 12 miesięcy
+- Trend przychodów/wydatków
+- Najlepszy/najgorszy miesiąc
+- Oszczędności roczne
+- Porównanie z poprzednim rokiem
+
+#### Raport Porównawczy (dla wielu CashFlow)
+- Porównanie wielu CashFlow jednego usera
+- Home vs Business budget
+- Consolidated view
+
+### 3. Trendy i Prognozy
+
+#### Analiza trendów
+
+| Trend | Opis |
+|-------|------|
+| **Spending Trend** | Czy wydatki rosną/maleją (regresja liniowa) |
+| **Seasonality** | Wykrywanie sezonowości (np. grudzień = więcej wydatków) |
+| **Category Trends** | Które kategorie rosną najszybciej |
+
+#### Prognozy (AI-powered)
+
+| Prognoza | Opis |
+|----------|------|
+| **End of Month Balance** | Przewidywane saldo na koniec miesiąca |
+| **Cash Crunch Alert** | Ostrzeżenie gdy saldo spadnie poniżej progu |
+| **Upcoming Large Expenses** | Przypomnienie o cyklicznych dużych wydatkach |
+
+### 4. Wskaźniki Zdrowia Finansowego
+
+#### Personal Finance Score (0-100)
+
+```
+🏆 Twój wynik: 72/100
+
+Składowe:
+├─ Oszczędności (20%)     ████████░░ 16/20
+├─ Terminowość (20%)      ██████████ 20/20
+├─ Budżetowanie (20%)     ██████░░░░ 12/20
+├─ Stabilność (20%)       ████████░░ 14/20
+└─ Dywersyfikacja (20%)   ██████░░░░ 10/20
+```
+
+#### Szczegółowe wskaźniki
+
+| Wskaźnik | Formuła | Benchmark |
+|----------|---------|-----------|
+| **Savings Rate** | Oszczędności / Przychody | > 20% = dobry |
+| **Emergency Fund Ratio** | Saldo / Miesięczne wydatki | > 3 mies = bezpieczny |
+| **Expense Volatility** | Std dev wydatków miesięcznych | Niższy = lepszy |
+| **Income Stability** | Std dev przychodów | Niższy = lepszy |
+| **Debt-to-Income** | Raty / Przychody | < 30% = zdrowy |
+
+### 5. Alerty i Powiadomienia
+
+| Alert | Trigger | Priorytet |
+|-------|---------|-----------|
+| **Low Balance** | Saldo < próg użytkownika | 🔴 Wysoki |
+| **Budget Exceeded** | Kategoria > 100% budżetu | 🟡 Średni |
+| **Unusual Spending** | Wydatek > 2x średnia w kategorii | 🟡 Średni |
+| **Upcoming Bill** | Cykliczna płatność za 3 dni | 🟢 Niski |
+| **Positive Milestone** | Oszczędności > cel | 🎉 Info |
+
+### 6. Raporty Business (PRO/BUSINESS tier)
+
+#### Cash Flow Statement (standard księgowy)
+
+```
+CASH FLOW STATEMENT - Q1 2024
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Operating Activities:
+  Cash from customers         +125,000 PLN
+  Cash paid to suppliers       -45,000 PLN
+  Cash paid for salaries       -60,000 PLN
+  Other operating expenses     -12,000 PLN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Net Cash from Operations:       +8,000 PLN
+
+Investing Activities:
+  Equipment purchase            -5,000 PLN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Net Cash from Investing:        -5,000 PLN
+
+Net Change in Cash:             +3,000 PLN
+```
+
+#### Burn Rate Analysis (dla startupów)
+- Monthly burn rate trend
+- Runway projection
+- Break-even analysis
+
+#### Tax Reports
+- Podsumowanie przychodów/kosztów dla księgowego
+- Eksport do formatu akceptowanego przez biura rachunkowe
+
+### 7. Eksport i Integracje
+
+| Format | Use case |
+|--------|----------|
+| **PDF** | Raporty do druku/archiwizacji |
+| **Excel/CSV** | Dalsza analiza, księgowość |
+| **JSON/API** | Integracja z innymi systemami |
+
+### 8. Porównanie z rynkiem (opcjonalne, anonimowe)
+
+```
+📊 Jak wypadasz na tle innych?
+
+Twoje wydatki na Jedzenie: 2,100 PLN/mies
+Średnia w Twojej grupie:   1,800 PLN/mies
+                           ▲ 17% powyżej średniej
+
+Twoja stopa oszczędności:  22%
+Średnia w Twojej grupie:   15%
+                           ⭐ Top 20%!
+```
+
+*Uwaga: Wymaga anonimowej agregacji danych użytkowników za ich zgodą.*
+
+### 9. Architektura - Warstwy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                        │
+│  Dashboard widgets, Charts, PDF reports, Export              │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────┐
+│                    METRICS SERVICE                           │
+│  Obliczanie metryk, agregacje, cache                         │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────┐
+│                    DATA SOURCES                              │
+│  CashFlow Aggregate, Forecast Statement, Historical data     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 10. Priorytety implementacji metryk
+
+| Faza | Funkcjonalność | Tier |
+|------|----------------|------|
+| **MVP** | Basic metrics (balance, income, expenses) | FREE |
+| **MVP** | Monthly report | FREE |
+| **V1** | Budget tracking metrics | FREE |
+| **V1** | Trends (3-6 miesięcy) | PRO |
+| **V1** | Alerts (3 podstawowe) | FREE |
+| **V2** | Financial Health Score | PRO |
+| **V2** | Prognozy AI | PRO |
+| **V2** | Cash Flow Statement | BUSINESS |
+| **V3** | Benchmark comparison | PRO |
+| **V3** | Advanced tax reports | BUSINESS |
+
+---
+
 ## Pytania otwarte
 
 ### Do decyzji przed implementacją
@@ -3454,3 +3697,5 @@ Auto-sync eliminuje ten problem całkowicie.
 | 2026-01-05 | Dodano analizę opłacalności Nordigen + AI: unit economics, ROI, priorytety implementacji |
 | 2026-01-06 | Dodano pełny design AI kategoryzacji: architektura, cache, prompt engineering, API, fazy implementacji |
 | 2026-01-06 | Dodano przykład user journey: Quick Start + AI kategoryzacja (7 kroków, UI mockupy, wpływ na system) |
+| 2026-01-06 | Dodano uwagę o `dueDate` vs `paidDate` w `appendPaidCashChange` - kiedy oba pola mają sens |
+| 2026-01-06 | Dodano sekcję Metryki i Raporty CashFlow: dashboard metrics, raporty okresowe, trendy, Financial Health Score, alerty, eksport |

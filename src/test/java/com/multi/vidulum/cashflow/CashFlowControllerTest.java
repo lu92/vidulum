@@ -187,6 +187,149 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
+    void shouldAppendPaidCashChange() {
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(0, "USD")))
+                        .build()
+        );
+
+        String cashChangeId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("paid cash-change name")
+                        .description("paid cash-change description")
+                        .money(Money.of(150, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
+
+        // verify lastMessageChecksum is set (contains MD5 hash of last event)
+        assertThat(result.getLastMessageChecksum()).isNotNull();
+
+        // Cash change should be CONFIRMED immediately and balance should be updated
+        assertThat(result)
+                .usingRecursiveComparison()
+                .ignoringFields("lastMessageChecksum")
+                .isEqualTo(
+                        CashFlowDto.CashFlowSummaryJson.builder()
+                                .cashFlowId(cashFlowId)
+                                .userId("userId")
+                                .name("cash-flow name")
+                                .description("cash-flow description")
+                                .bankAccount(new BankAccount(
+                                        new BankName("bank"),
+                                        new BankAccountNumber("account number", Currency.of("USD")),
+                                        Money.of(150, "USD"))) // Balance updated immediately
+                                .status(CashFlow.CashFlowStatus.OPEN)
+                                .cashChanges(Map.of(
+                                        cashChangeId,
+                                        CashFlowDto.CashChangeSummaryJson.builder()
+                                                .cashChangeId(cashChangeId)
+                                                .name("paid cash-change name")
+                                                .description("paid cash-change description")
+                                                .money(Money.of(150, "USD"))
+                                                .type(INFLOW)
+                                                .categoryName("Uncategorized")
+                                                .status(CONFIRMED) // Status is CONFIRMED immediately
+                                                .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                                                .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z")) // endDate is set to paidDate
+                                                .build()
+                                ))
+                                .inflowCategories(List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .outflowCategories(List.of(
+                                        new Category(
+                                                new CategoryName("Uncategorized"),
+                                                new LinkedList<>(),
+                                                false
+                                        )
+                                ))
+                                .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                                .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                                .build()
+                );
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()
+                                        ))).orElse(false));
+    }
+
+    @Test
+    void shouldAppendPaidCashChangeForOutflow() {
+        // when
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(500, "USD")))
+                        .build()
+        );
+
+        String cashChangeId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("grocery shopping")
+                        .description("weekly groceries")
+                        .money(Money.of(75, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .build()
+        );
+
+        // then
+        CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
+
+        // Balance should be decreased by outflow amount
+        assertThat(result.getBankAccount().balance()).isEqualTo(Money.of(425, "USD"));
+        assertThat(result.getCashChanges().get(cashChangeId).getStatus()).isEqualTo(CONFIRMED);
+        assertThat(result.getCashChanges().get(cashChangeId).getType()).isEqualTo(OUTFLOW);
+
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(cashFlowForecastEntity -> cashFlowForecastEntity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .containsAll(
+                                        List.of(
+                                                CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
+                                                CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()
+                                        ))).orElse(false));
+    }
+
+    @Test
     void shouldConfirmCashChange() {
         // when
         String cashFlowId = cashFlowRestController.createCashFlow(

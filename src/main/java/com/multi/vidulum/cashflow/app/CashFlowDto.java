@@ -34,6 +34,19 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    public static class AppendPaidCashChangeJson {
+        private String cashFlowId;
+        private String category;
+        private String name;
+        private String description;
+        private Money money;
+        private Type type;
+        private ZonedDateTime dueDate;
+        private ZonedDateTime paidDate;
+    }
+
+    @Data
+    @Builder
     public static class ConfirmCashChangeJson {
         private String cashFlowId;
         private String cashChangeId;

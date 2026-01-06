@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.set.SetBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingCommand;
@@ -63,6 +64,25 @@ public class CashFlowRestController {
                         request.getType(),
                         ZonedDateTime.now(clock),
                         request.getDueDate()
+                )
+        );
+        return cashChangeId.id();
+    }
+
+    @PostMapping("/paid-cash-change")
+    public String appendPaidCashChange(@RequestBody CashFlowDto.AppendPaidCashChangeJson request) {
+        CashChangeId cashChangeId = commandGateway.send(
+                new AppendPaidCashChangeCommand(
+                        new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategory()),
+                        new CashChangeId(CashChangeId.generate().id()),
+                        new Name(request.getName()),
+                        new Description(request.getDescription()),
+                        request.getMoney(),
+                        request.getType(),
+                        ZonedDateTime.now(clock),
+                        request.getDueDate(),
+                        request.getPaidDate()
                 )
         );
         return cashChangeId.id();
