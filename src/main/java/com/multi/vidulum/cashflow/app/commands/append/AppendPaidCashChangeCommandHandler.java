@@ -32,6 +32,11 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
+        // Validate: operation not allowed in SETUP mode
+        if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status())) {
+            throw new OperationNotAllowedInSetupModeException("appendPaidCashChange", command.cashFlowId());
+        }
+
         CashFlowEvent.PaidCashChangeAppendedEvent event = new CashFlowEvent.PaidCashChangeAppendedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),

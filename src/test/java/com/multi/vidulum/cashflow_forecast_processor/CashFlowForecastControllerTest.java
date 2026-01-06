@@ -463,6 +463,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add a paid inflow cash change (already confirmed)
+        // Note: paidDate must be <= current time (2022-01-01 from FixedClockConfig)
         String paidInflowId = cashFlowRestController.appendPaidCashChange(
                 CashFlowDto.AppendPaidCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
@@ -471,8 +472,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .description("Already received salary")
                         .money(Money.of(3500, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
-                        .paidDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 
@@ -538,6 +539,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add a paid cash change
+        // Note: paidDate must be <= current time (2022-01-01 from FixedClockConfig)
         String paidInflowId = cashFlowRestController.appendPaidCashChange(
                 CashFlowDto.AppendPaidCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
@@ -546,8 +548,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .description("Already received payment")
                         .money(Money.of(2500, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
-                        .paidDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 
@@ -610,6 +612,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add a paid outflow cash change
+        // Note: paidDate must be <= current time (2022-01-01 from FixedClockConfig)
         String paidOutflowId = cashFlowRestController.appendPaidCashChange(
                 CashFlowDto.AppendPaidCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
@@ -618,8 +621,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .description("Already paid rent")
                         .money(Money.of(1500, "USD"))
                         .type(OUTFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
-                        .paidDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 
@@ -669,6 +672,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         );
 
         // Add a paid cash change
+        // Note: paidDate must be <= current time (2022-01-01 from FixedClockConfig)
         cashFlowRestController.appendPaidCashChange(
                 CashFlowDto.AppendPaidCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
@@ -677,8 +681,8 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .description("Transaction for checksum test")
                         .money(Money.of(750, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
-                        .paidDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                         .build()
         );
 

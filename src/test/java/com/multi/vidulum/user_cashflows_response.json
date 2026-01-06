@@ -1,0 +1,816 @@
+[
+  {
+    "cashFlowId": "4c7e1139-ec06-4926-b6dd-514c10dfdb22",
+    "userId": "dual-budget-user",
+    "name": "Home Budget",
+    "description": "Personal home budget with multiple categories",
+    "bankAccount": {
+      "bankName": {
+        "name": "Chase Bank"
+      },
+      "bankAccountNumber": {
+        "account": "US12345678901234567890",
+        "denomination": {
+          "id": "USD"
+        }
+      },
+      "balance": {
+        "amount": 24486.0,
+        "currency": "USD"
+      }
+    },
+    "status": "OPEN",
+    "inflowCategories": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "budgeting": null,
+        "subCategories": [],
+        "modifiable": false
+      },
+      {
+        "categoryName": {
+          "name": "Income"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Salary"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 5000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Bonus"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Other Income"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Refunds"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Gifts"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Sales"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Investments"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Dividends"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Interest"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      }
+    ],
+    "outflowCategories": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "budgeting": null,
+        "subCategories": [],
+        "modifiable": false
+      },
+      {
+        "categoryName": {
+          "name": "Housing"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Rent"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 1500.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Utilities"
+            },
+            "budgeting": null,
+            "subCategories": [
+              {
+                "categoryName": {
+                  "name": "Electricity"
+                },
+                "budgeting": null,
+                "subCategories": [],
+                "modifiable": true
+              },
+              {
+                "categoryName": {
+                  "name": "Gas"
+                },
+                "budgeting": null,
+                "subCategories": [],
+                "modifiable": true
+              },
+              {
+                "categoryName": {
+                  "name": "Internet"
+                },
+                "budgeting": null,
+                "subCategories": [],
+                "modifiable": true
+              }
+            ],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Food"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Groceries"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 600.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Restaurants"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Food Delivery"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Transportation"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Fuel"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 300.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Car Insurance"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Car Service"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Public Transit"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Health"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Medicine"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Doctor Visits"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Gym"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Entertainment"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Streaming"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 50.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Cinema"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Games"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Books"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Education"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Courses"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Subscriptions"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Clothing"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Apparel"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Footwear"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Savings"
+        },
+        "budgeting": {
+          "budget": {
+            "amount": 500.0,
+            "currency": "USD"
+          },
+          "created": "2022-01-01T00:00:00Z",
+          "lastUpdated": "2022-01-01T00:00:00Z"
+        },
+        "subCategories": [],
+        "modifiable": true
+      }
+    ],
+    "created": "2022-01-01T00:00:00Z",
+    "lastModification": "2024-12-25T00:00:00Z"
+  },
+  {
+    "cashFlowId": "a71bd4f5-ab71-47a2-bb42-662fae44197d",
+    "userId": "dual-budget-user",
+    "name": "Business Budget",
+    "description": "Business budget with revenue and expenses tracking",
+    "bankAccount": {
+      "bankName": {
+        "name": "Bank of America"
+      },
+      "bankAccountNumber": {
+        "account": "US98765432109876543210",
+        "denomination": {
+          "id": "USD"
+        }
+      },
+      "balance": {
+        "amount": 0,
+        "currency": "USD"
+      }
+    },
+    "status": "OPEN",
+    "inflowCategories": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "budgeting": null,
+        "subCategories": [],
+        "modifiable": false
+      },
+      {
+        "categoryName": {
+          "name": "Revenue"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Product Sales"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 25000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Service Revenue"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 15000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Consulting Fees"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Other Revenue"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Interest Income"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Royalties"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Grants"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      }
+    ],
+    "outflowCategories": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "budgeting": null,
+        "subCategories": [],
+        "modifiable": false
+      },
+      {
+        "categoryName": {
+          "name": "Operating Expenses"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Office Rent"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 3000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Office Utilities"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Office Supplies"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Equipment"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Payroll"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Salaries"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 20000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Contractor Payments"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Benefits"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Marketing"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Advertising"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 2000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Social Media"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Events"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "PR"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Technology"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Software Subscriptions"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 1500.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Cloud Services"
+            },
+            "budgeting": {
+              "budget": {
+                "amount": 1000.0,
+                "currency": "USD"
+              },
+              "created": "2022-01-01T00:00:00Z",
+              "lastUpdated": "2022-01-01T00:00:00Z"
+            },
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "IT Support"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Hardware"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Professional Services"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Legal Fees"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Accounting"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Insurance"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Travel"
+        },
+        "budgeting": null,
+        "subCategories": [
+          {
+            "categoryName": {
+              "name": "Business Trips"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Accommodation"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          },
+          {
+            "categoryName": {
+              "name": "Meals"
+            },
+            "budgeting": null,
+            "subCategories": [],
+            "modifiable": true
+          }
+        ],
+        "modifiable": true
+      },
+      {
+        "categoryName": {
+          "name": "Taxes"
+        },
+        "budgeting": null,
+        "subCategories": [],
+        "modifiable": true
+      }
+    ],
+    "created": "2022-01-01T00:00:00Z",
+    "lastModification": "2024-12-15T00:00:00Z"
+  }
+]

@@ -107,3 +107,16 @@ Key patterns:
 - **MongoDB**: Database `testDB`, host `mongodb:27017`
 - **Kafka**: Broker `kafka:9092`, consumer group `group-id`
 - **Docker**: `docker-compose-final.yml` for local development
+
+## Sound Notification
+
+After completing long-running operations (tests, builds, compilations), play a notification sound to alert the user:
+
+```bash
+afplay /System/Library/Sounds/Glass.aiff
+```
+
+Use this after:
+- Running tests (`./mvnw test`)
+- Building the project (`./mvnw clean compile`, `./mvnw package`)
+- Any operation taking more than 20 seconds

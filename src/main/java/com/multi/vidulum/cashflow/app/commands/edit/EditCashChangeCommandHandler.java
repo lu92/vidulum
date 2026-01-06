@@ -27,6 +27,11 @@ public class EditCashChangeCommandHandler implements CommandHandler<EditCashChan
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
+        // Validate: operation not allowed in SETUP mode
+        if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status())) {
+            throw new OperationNotAllowedInSetupModeException("editCashChange", command.cashFlowId());
+        }
+
         CashFlowEvent.CashChangeEditedEvent event = new CashFlowEvent.CashChangeEditedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),

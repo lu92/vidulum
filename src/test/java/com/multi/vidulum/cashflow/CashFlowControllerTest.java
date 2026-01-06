@@ -3,6 +3,7 @@ package com.multi.vidulum.cashflow;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -1482,5 +1483,228 @@ public class CashFlowControllerTest extends IntegrationTest {
         CashFlowDto.CashChangeSummaryJson cashChange = cashFlow.getCashChanges().get(cashChangeId);
         assertThat(cashChange.getStatus()).isEqualTo(CONFIRMED);
         assertThat(cashChange.getType()).isEqualTo(OUTFLOW);
+    }
+
+    // ==================== SETUP MODE VALIDATION TESTS ====================
+
+    @Test
+    void shouldRejectAppendExpectedCashChangeWhenCashFlowInSetupMode() {
+        // given - create CashFlow and change status to SETUP
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Change CashFlow status to SETUP mode directly in database
+        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
+        CashFlowEntity setupEntity = CashFlowEntity.builder()
+                .cashFlowId(entity.getCashFlowId())
+                .userId(entity.getUserId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .bankAccount(entity.getBankAccount())
+                .status(CashFlow.CashFlowStatus.SETUP)
+                .cashChanges(entity.getCashChanges())
+                .inflowCategories(entity.getInflowCategories())
+                .outflowCategories(entity.getOutflowCategories())
+                .activePeriod(entity.getActivePeriod())
+                .created(entity.getCreated())
+                .lastModification(entity.getLastModification())
+                .lastMessageChecksum(entity.getLastMessageChecksum())
+                .build();
+        cashFlowMongoRepository.save(setupEntity);
+
+        // when/then - trying to append expected cash change should fail
+        assertThatThrownBy(() -> cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Test transaction")
+                        .description("This should fail")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
+                .hasMessageContaining("appendExpectedCashChange")
+                .hasMessageContaining("SETUP mode");
+    }
+
+    @Test
+    void shouldRejectAppendPaidCashChangeWhenCashFlowInSetupMode() {
+        // given - create CashFlow and change status to SETUP
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Change CashFlow status to SETUP mode directly in database
+        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
+        CashFlowEntity setupEntity = CashFlowEntity.builder()
+                .cashFlowId(entity.getCashFlowId())
+                .userId(entity.getUserId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .bankAccount(entity.getBankAccount())
+                .status(CashFlow.CashFlowStatus.SETUP)
+                .cashChanges(entity.getCashChanges())
+                .inflowCategories(entity.getInflowCategories())
+                .outflowCategories(entity.getOutflowCategories())
+                .activePeriod(entity.getActivePeriod())
+                .created(entity.getCreated())
+                .lastModification(entity.getLastModification())
+                .lastMessageChecksum(entity.getLastMessageChecksum())
+                .build();
+        cashFlowMongoRepository.save(setupEntity);
+
+        // when/then - trying to append paid cash change should fail
+        assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Test payment")
+                        .description("This should fail")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
+                .hasMessageContaining("appendPaidCashChange")
+                .hasMessageContaining("SETUP mode");
+    }
+
+    @Test
+    void shouldRejectEditCashChangeWhenCashFlowInSetupMode() {
+        // given - create CashFlow with a cash change, then switch to SETUP mode
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Add a cash change first (while still in OPEN mode)
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Original name")
+                        .description("Original description")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        );
+
+        // Change CashFlow status to SETUP mode directly in database
+        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
+        CashFlowEntity setupEntity = CashFlowEntity.builder()
+                .cashFlowId(entity.getCashFlowId())
+                .userId(entity.getUserId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .bankAccount(entity.getBankAccount())
+                .status(CashFlow.CashFlowStatus.SETUP)
+                .cashChanges(entity.getCashChanges())
+                .inflowCategories(entity.getInflowCategories())
+                .outflowCategories(entity.getOutflowCategories())
+                .activePeriod(entity.getActivePeriod())
+                .created(entity.getCreated())
+                .lastModification(entity.getLastModification())
+                .lastMessageChecksum(entity.getLastMessageChecksum())
+                .build();
+        cashFlowMongoRepository.save(setupEntity);
+
+        // when/then - trying to edit cash change should fail
+        assertThatThrownBy(() -> cashFlowRestController.edit(
+                CashFlowDto.EditCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .cashChangeId(cashChangeId)
+                        .name("Updated name")
+                        .description("Updated description")
+                        .money(Money.of(200, "USD"))
+                        .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
+                .hasMessageContaining("editCashChange")
+                .hasMessageContaining("SETUP mode");
+    }
+
+    @Test
+    void shouldRejectConfirmCashChangeWhenCashFlowInSetupMode() {
+        // given - create CashFlow with a pending cash change, then switch to SETUP mode
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Add a cash change first (while still in OPEN mode)
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Transaction to confirm")
+                        .description("Description")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        );
+
+        // Change CashFlow status to SETUP mode directly in database
+        CashFlowEntity entity = cashFlowMongoRepository.findByCashFlowId(cashFlowId).orElseThrow();
+        CashFlowEntity setupEntity = CashFlowEntity.builder()
+                .cashFlowId(entity.getCashFlowId())
+                .userId(entity.getUserId())
+                .name(entity.getName())
+                .description(entity.getDescription())
+                .bankAccount(entity.getBankAccount())
+                .status(CashFlow.CashFlowStatus.SETUP)
+                .cashChanges(entity.getCashChanges())
+                .inflowCategories(entity.getInflowCategories())
+                .outflowCategories(entity.getOutflowCategories())
+                .activePeriod(entity.getActivePeriod())
+                .created(entity.getCreated())
+                .lastModification(entity.getLastModification())
+                .lastMessageChecksum(entity.getLastMessageChecksum())
+                .build();
+        cashFlowMongoRepository.save(setupEntity);
+
+        // when/then - trying to confirm cash change should fail
+        assertThatThrownBy(() -> cashFlowRestController.confirm(
+                CashFlowDto.ConfirmCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .cashChangeId(cashChangeId)
+                        .build()
+        )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
+                .hasMessageContaining("confirmCashChange")
+                .hasMessageContaining("SETUP mode");
     }
 }
