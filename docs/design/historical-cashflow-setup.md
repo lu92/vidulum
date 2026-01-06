@@ -208,19 +208,22 @@ public enum CashFlowStatus {
 
 ```java
 public enum Status {
-    SETUP_PENDING,  // historyczny miesiąc w trakcie importu
-    ATTESTED,       // zamknięty, dane finalne
+    IMPORT_PENDING, // historyczny miesiąc oczekujący na import (przed aktywacją)
+    IMPORTED,       // miesiąc z zaimportowanymi danymi historycznymi (po aktywacji)
+    ATTESTED,       // zamknięty przez normalną pracę (attestMonth)
     ACTIVE,         // bieżący miesiąc
     FORECASTED      // przyszłe miesiące
 }
 ```
 
+> **Uwaga:** `IMPORTED` różni się od `ATTESTED` tym, że oznacza miesiące zamknięte przez import historyczny podczas procesu SETUP, a nie przez normalną pracę z aplikacją (attestMonth).
+
 ### Macierz: CashFlow Status × Forecast Status
 
 | Utworzenie z datą | Miesiące historyczne | Bieżący miesiąc | Miesiące przyszłe |
 |-------------------|---------------------|-----------------|-------------------|
-| 2024-01-01 (2 lata temu) | SETUP_PENDING | ACTIVE | FORECASTED |
-| Po aktywacji | ATTESTED | ACTIVE | FORECASTED |
+| 2024-01-01 (2 lata temu) | IMPORT_PENDING | ACTIVE | FORECASTED |
+| Po aktywacji | IMPORTED | ACTIVE | FORECASTED |
 
 ---
 
@@ -244,7 +247,7 @@ public enum Status {
 │                                                                             │
 │ Efekt:                                                                      │
 │   - Status: SETUP                                                           │
-│   - Miesiące 2024-01 → 2025-12: SETUP_PENDING                               │
+│   - Miesiące 2024-01 → 2025-12: IMPORT_PENDING                              │
 │   - Miesiąc 2026-01: ACTIVE                                                 │
 │   - Miesiące 2026-02 → 2026-12: FORECASTED                                  │
 │   - Domyślne kategorie: Uncategorized (INFLOW + OUTFLOW)                    │
@@ -295,7 +298,7 @@ public enum Status {
 │                                                                             │
 │ System wykonuje import:                                                     │
 │   1. Tworzy kategorie według mapowania (z validFrom/validTo)                │
-│   2. Importuje transakcje do odpowiednich miesięcy (SETUP_PENDING)          │
+│   2. Importuje transakcje do odpowiednich miesięcy (IMPORT_PENDING)         │
 │   3. Przelicza balance dla każdego miesiąca                                 │
 │                                                                             │
 │ User może powtórzyć etapy 2-4 (np. import kolejnych miesięcy)               │
@@ -323,7 +326,7 @@ public enum Status {
 │                                                                             │
 │ Efekt:                                                                      │
 │   - Status: SETUP → OPEN                                                    │
-│   - Wszystkie SETUP_PENDING → ATTESTED                                      │
+│   - Wszystkie IMPORT_PENDING → IMPORTED                                     │
 │   - Kategorie historyczne: archived = true                                  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -359,7 +362,7 @@ public enum Status {
 |----------|-------------------|--------------------|-----------------------------|-----------|
 | `appendExpectedCashChange` | PENDING | ACTIVE, FORECASTED | tylko OPEN | `dueDate` w ACTIVE/FORECASTED |
 | `appendPaidCashChange` | CONFIRMED | **tylko ACTIVE** | tylko OPEN | `paidDate <= now()`, `paidDate` w ACTIVE |
-| `importHistoricalCashChange` | CONFIRMED | SETUP_PENDING | tylko SETUP | tylko historyczne miesiące |
+| `importHistoricalCashChange` | CONFIRMED | IMPORT_PENDING | tylko SETUP | `paidDate <= now()`, tylko historyczne miesiące |
 
 > **Uwaga:** `appendPaidCashChange` obsługuje tylko ACTIVE miesiąc, ponieważ reprezentuje realną transakcję bankową. Transakcje z przyszłości (FORECASTED) powinny być dodawane jako `appendExpectedCashChange`.
 
@@ -522,15 +525,27 @@ if (cashFlow.getStatus() != SETUP) {
     );
 }
 
-// tylko historyczne miesiące (SETUP_PENDING)
-YearMonth targetMonth = YearMonth.from(dueDate);
+// tylko historyczne miesiące (IMPORT_PENDING)
+YearMonth targetMonth = YearMonth.from(paidDate);
 YearMonth activeMonth = cashFlow.getActivePeriod();
 
 if (targetMonth.compareTo(activeMonth) >= 0) {
-    throw new CanOnlyImportToHistoricalMonthsException(
+    throw new ImportDateOutsideSetupPeriodException(
         "Cannot import to current or future months. " +
         "Target: " + targetMonth + ", Active: " + activeMonth
     );
+}
+
+// paidDate >= startPeriod (miesiąc musi istnieć)
+YearMonth startPeriod = cashFlow.getStartPeriod();
+if (targetMonth.isBefore(startPeriod)) {
+    throw new ImportDateBeforeStartPeriodException(paidDate, targetMonth, startPeriod);
+}
+
+// paidDate <= now() (nie można importować przyszłych transakcji)
+ZonedDateTime now = ZonedDateTime.now(clock);
+if (paidDate.isAfter(now)) {
+    throw new ImportDateInFutureException(paidDate, now);
 }
 
 // kategoria musi istnieć (utworzona przez mapowanie)
@@ -543,7 +558,7 @@ if (!categoryExists(categoryName, type)) {
 
 | CashFlow | Miesiąc | `append` | `appendPaid` | `importHistorical` | `edit` | `confirm` |
 |----------|---------|----------|--------------|---------------------|--------|-----------|
-| SETUP | SETUP_PENDING | ❌ | ❌ | ✅ | ❌ | ❌ |
+| SETUP | IMPORT_PENDING | ❌ | ❌ | ✅ | ❌ | ❌ |
 | SETUP | ACTIVE | ❌ | ❌ | ❌ | ❌ | ❌ |
 | SETUP | FORECASTED | ❌ | ❌ | ❌ | ❌ | ❌ |
 | OPEN | ATTESTED | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -917,10 +932,10 @@ if (!calculatedBalance.equals(confirmedBalance)) {
 // 1. Zmień status CashFlow
 cashFlow.setStatus(CashFlowStatus.OPEN);
 
-// 2. Zmień status wszystkich SETUP_PENDING → ATTESTED
+// 2. Zmień status wszystkich IMPORT_PENDING → IMPORTED
 for (CashFlowMonthlyForecast forecast : cashFlow.getForecasts().values()) {
-    if (forecast.getStatus() == Status.SETUP_PENDING) {
-        forecast.setStatus(Status.ATTESTED);
+    if (forecast.getStatus() == Status.IMPORT_PENDING) {
+        forecast.setStatus(Status.IMPORTED);
     }
 }
 
@@ -972,9 +987,9 @@ if (cashFlow.getStatus() != SETUP) {
 // 1. Usuń wszystkie zaimportowane transakcje
 cashChangeRepository.deleteAllByCashFlowId(cashFlowId);
 
-// 2. Resetuj statystyki miesięcy SETUP_PENDING
+// 2. Resetuj statystyki miesięcy IMPORT_PENDING
 for (CashFlowMonthlyForecast forecast : cashFlow.getForecasts().values()) {
-    if (forecast.getStatus() == Status.SETUP_PENDING) {
+    if (forecast.getStatus() == Status.IMPORT_PENDING) {
         forecast.resetToEmpty();
     }
 }
@@ -3674,20 +3689,20 @@ Twoja stopa oszczędności:  22%
 ## Następne kroki
 
 ### Faza 1: Core (MVP)
-1. [ ] Nowy status SETUP dla CashFlow
-2. [ ] Nowy status SETUP_PENDING dla Forecast
-3. [ ] Command: `createCashFlowWithHistory`
-4. [ ] Command: `importHistoricalCashChange` (pojedyncza)
+1. [x] Nowy status SETUP dla CashFlow
+2. [x] Nowy status IMPORT_PENDING dla Forecast (wcześniej SETUP_PENDING)
+3. [x] Command: `createCashFlowWithHistory`
+4. [x] Command: `importHistoricalCashChange` (pojedyncza) z walidacją `paidDate <= now()`
 5. [ ] Command: `activateCashFlow`
 6. [ ] Command: `rollbackImport`
-7. [ ] Walidacje w istniejących commandach (blokada w SETUP)
-8. [ ] Testy integracyjne
+7. [x] Walidacje w istniejących commandach (blokada w SETUP)
+8. [x] Testy integracyjne
 
 ### Faza 2: Categories & Mapping
 9. [ ] Struktura kategorii z validFrom/validTo
 10. [ ] Command: `configureCategoryMapping`
-11. [ ] Event handlers dla nowych eventów
-12. [ ] Forecast processor - obsługa SETUP_PENDING
+11. [x] Event handlers dla nowych eventów
+12. [x] Forecast processor - obsługa IMPORT_PENDING
 
 ### Faza 3: Batch & UI
 13. [ ] Command: `batchImportHistoricalCashChanges`
@@ -3722,6 +3737,8 @@ Twoja stopa oszczędności:  22%
 | 2026-01-05 | Dodano projekcję przychodów i strategię go-to-market |
 | 2026-01-05 | Dodano szczerą analizę Monarch Money i Copilot Money - gdzie wygrywamy, gdzie przegrywamy |
 | 2026-01-05 | Zaktualizowano roadmap: Nordigen (PSD2), AI kategoryzacja (LLM), multi-portfolio + sektory, trade history, shared accounts |
+| 2026-01-06 | Zmiana nazwy SETUP_PENDING → IMPORT_PENDING, dodanie statusu IMPORTED dla miesięcy po aktywacji |
+| 2026-01-06 | Dodano walidację `paidDate <= now()` w importHistoricalCashChange - nie można importować przyszłych transakcji |
 | 2026-01-05 | Dodano analizę opłacalności Nordigen + AI: unit economics, ROI, priorytety implementacji |
 | 2026-01-06 | Dodano pełny design AI kategoryzacji: architektura, cache, prompt engineering, API, fazy implementacji |
 | 2026-01-06 | Dodano przykład user journey: Quick Start + AI kategoryzacja (7 kroków, UI mockupy, wpływ na system) |

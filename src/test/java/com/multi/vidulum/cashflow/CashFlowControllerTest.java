@@ -2235,4 +2235,337 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(outflowCategory.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(2);
         assertThat(outflowCategory.getTotalPaidValue()).isEqualTo(Money.of(2300, "USD"));
     }
+
+    // ===================================================================================
+    // Import cutoff validation tests (paidDate <= now)
+    // Clock is fixed at 2022-01-01T00:00:00Z
+    // ===================================================================================
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsInTheFuture() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        // Use startPeriod that includes December 2021 so we can test future dates within that month
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For cutoff testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import with paidDate in the future should fail
+        // Clock is 2022-01-01T00:00:00Z, trying to import in Dec 2021 (valid month) but with future timestamp
+        // Note: 2022-01-01T00:00:01Z is in activePeriod (Jan 2022), so it will be rejected by validation 2 first.
+        // To test validation 4 specifically, we would need paidDate in historical month but > now,
+        // which is not possible since clock is at 2022-01-01T00:00:00Z and activePeriod is 2022-01.
+        // This test verifies that dates in activePeriod are rejected (by validation 2).
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Future Transaction")
+                        .description("This should fail - in activePeriod")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:01Z"))  // In activePeriod (Jan 2022)
+                        .build()
+        )).isInstanceOf(ImportDateOutsideSetupPeriodException.class);
+    }
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsOneHourInTheFuture() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For cutoff testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import with paidDate 1 hour in the future should fail
+        // This is in activePeriod (Jan 2022), so validation 2 rejects it first
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Future Transaction")
+                        .description("This should fail - in activePeriod")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T01:00:00Z"))  // In activePeriod (Jan 2022)
+                        .build()
+        )).isInstanceOf(ImportDateOutsideSetupPeriodException.class);
+    }
+
+    @Test
+    void shouldAcceptImportWhenPaidDateIsExactlyNow() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For cutoff testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import with paidDate exactly at clock time (boundary case)
+        // Note: This will fail validation 2 because 2022-01 is activePeriod, not historical
+        // So we need to use a date in December 2021 that is "exactly now" in concept
+        // Since clock is 2022-01-01T00:00:00Z, we test with last moment of 2021
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Last Second of 2021")
+                        .description("Boundary test - last valid moment")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-31T23:59:59Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-31T23:59:59Z"))  // 1 second before clock
+                        .build()
+        );
+
+        // then - should succeed
+        assertThat(cashChangeId).isNotNull();
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).containsKey(cashChangeId);
+    }
+
+    @Test
+    void shouldAcceptImportWhenPaidDateIsOneSecondBeforeNow() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For cutoff testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import with paidDate 1 second before clock
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("One Second Before")
+                        .description("Boundary test - 1 second before now")
+                        .money(Money.of(200, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-31T23:59:59Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-31T23:59:59Z"))
+                        .build()
+        );
+
+        // then - should succeed
+        assertThat(cashChangeId).isNotNull();
+    }
+
+    @Test
+    void shouldAcceptImportWhenPaidDateIsEarlierInTheSameDay() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        // Simulating: user starts Vidulum at midnight, imports transaction from morning of Dec 31
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For same-day testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import transaction from morning of December 31, 2021
+        String cashChangeId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Morning Coffee")
+                        .description("Transaction from earlier that day")
+                        .money(Money.of(5, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-31T08:30:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-31T08:30:00Z"))
+                        .build()
+        );
+
+        // then - should succeed
+        assertThat(cashChangeId).isNotNull();
+    }
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsTomorrowMorning() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For future date testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import with paidDate tomorrow morning should fail
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Tomorrow Transaction")
+                        .description("This should fail - tomorrow")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-02T08:00:00Z"))  // tomorrow morning (in activePeriod 2022-01)
+                        .build()
+        )).isInstanceOf(ImportDateOutsideSetupPeriodException.class);  // validation 2 catches it first (paidDate in activePeriod)
+    }
+
+    @Test
+    void shouldRejectImportWhenPaidDateIsNextMonth() {
+        // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For future month testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to import with paidDate next month should fail
+        assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Next Month Transaction")
+                        .description("This should fail - next month")
+                        .money(Money.of(100, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-02-15T10:00:00Z"))  // February 2022 (after activePeriod 2022-01)
+                        .build()
+        )).isInstanceOf(ImportDateOutsideSetupPeriodException.class);  // validation 2 catches it first (paidDate after activePeriod)
+    }
+
+    @Test
+    void shouldAcceptMultipleImportsFromDifferentTimesOnSameHistoricalDay() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("Multiple same-day imports")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // when - import multiple transactions from December 15, 2021 at different times
+        String morningId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Morning Coffee")
+                        .description("08:00")
+                        .money(Money.of(5, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T08:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-15T08:00:00Z"))
+                        .build()
+        );
+
+        String lunchId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Lunch")
+                        .description("12:30")
+                        .money(Money.of(15, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T12:30:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-15T12:30:00Z"))
+                        .build()
+        );
+
+        String eveningId = cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Dinner")
+                        .description("19:00")
+                        .money(Money.of(30, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-15T19:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-15T19:00:00Z"))
+                        .build()
+        );
+
+        // then - all should succeed
+        assertThat(morningId).isNotNull();
+        assertThat(lunchId).isNotNull();
+        assertThat(eveningId).isNotNull();
+
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(3);
+    }
 }

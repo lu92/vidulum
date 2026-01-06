@@ -49,6 +49,11 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
         }
 
         ZonedDateTime now = ZonedDateTime.now(clock);
+
+        // Validation 4: paidDate must not be in the future (can only import past transactions)
+        if (command.paidDate().isAfter(now)) {
+            throw new ImportDateInFutureException(command.paidDate(), now);
+        }
         CashChangeId cashChangeId = CashChangeId.generate();
 
         CashFlowEvent.HistoricalCashChangeImportedEvent event = new CashFlowEvent.HistoricalCashChangeImportedEvent(
