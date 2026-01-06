@@ -1415,4 +1415,91 @@ class CashFlowAggregateTest extends IntegrationTest {
         assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(1500, "USD"));
         assertThat(snapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
     }
+
+    @Test
+    void shouldRejectPaidCashChangeOutflowWhenPaidDateNotInActivePeriod() {
+        // given - CashFlow created in June 2021, so active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(5000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - trying to add paid OUTFLOW with paidDate in July (not active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent eventWithWrongPeriod = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("rent payment"),
+                new Description("july rent"),
+                Money.of(1500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-07-05T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-07-05T06:30:00Z"),
+                ZonedDateTime.parse("2021-07-05T06:30:00Z")  // paidDate in JULY - wrong!
+        );
+
+        // then - should throw exception
+        assertThatThrownBy(() -> cashFlow.apply(eventWithWrongPeriod))
+                .isInstanceOf(PaidDateNotInActivePeriodException.class)
+                .hasMessageContaining("2021-07-05")
+                .hasMessageContaining("2021-06");
+    }
+
+    @Test
+    void shouldAcceptPaidCashChangeOutflowWhenPaidDateInActivePeriod() {
+        // given - CashFlow created in June 2021, active period is 2021-06
+        CashFlowId cashFlowId = CashFlowId.generate();
+        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlow cashFlow = new CashFlow();
+
+        cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                UserId.of("user"),
+                new Name("name"),
+                new Description("description"),
+                new BankAccount(
+                        new BankName("bank"),
+                        new BankAccountNumber("account number", Currency.of("USD")),
+                        Money.of(5000, "USD")),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // when - adding paid OUTFLOW with paidDate in June (active period)
+        CashFlowEvent.PaidCashChangeAppendedEvent validEvent = new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId,
+                new Name("rent payment"),
+                new Description("june rent"),
+                Money.of(1500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z")  // paidDate in June - correct!
+        );
+
+        cashFlow.apply(validEvent);
+
+        // then - should succeed and decrease balance
+        domainCashFlowRepository.save(cashFlow);
+
+        CashFlowSnapshot snapshot = domainCashFlowRepository.findById(cashFlowId)
+                .map(CashFlow::getSnapshot)
+                .orElseThrow();
+
+        // Balance should decrease: 5000 - 1500 = 3500
+        assertThat(snapshot.bankAccount().balance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(snapshot.cashChanges().get(cashChangeId).status()).isEqualTo(CONFIRMED);
+    }
 }

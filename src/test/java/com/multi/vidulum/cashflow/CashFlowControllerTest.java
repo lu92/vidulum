@@ -1380,4 +1380,107 @@ public class CashFlowControllerTest extends IntegrationTest {
         CashFlowDto.CashChangeSummaryJson cashChange = cashFlow.getCashChanges().get(cashChangeId);
         assertThat(cashChange.getStatus()).isEqualTo(CONFIRMED);
     }
+
+    @Test
+    void shouldRejectPaidCashChangeOutflowWhenPaidDateInFuture() {
+        // given - FixedClockConfig sets clock to 2022-01-01T00:00:00Z
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .build()
+        );
+
+        // when - trying to add paid OUTFLOW with paidDate in future (Feb 2022)
+        // then - should throw PaidDateInFutureException
+        assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Future rent")
+                        .description("This should fail")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-02-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-02-01T00:00:00Z"))  // Future!
+                        .build()
+        )).isInstanceOf(PaidDateInFutureException.class);
+    }
+
+    @Test
+    void shouldRejectPaidCashChangeOutflowWhenPaidDateNotInActivePeriod() {
+        // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .build()
+        );
+
+        // when - trying to add paid OUTFLOW with paidDate in December 2021 (not active)
+        // then - should throw PaidDateNotInActivePeriodException
+        assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Past rent")
+                        .description("This should fail - past month")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-12-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-12-01T00:00:00Z"))  // December 2021 - not active!
+                        .build()
+        )).isInstanceOf(PaidDateNotInActivePeriodException.class);
+    }
+
+    @Test
+    void shouldAcceptPaidCashChangeOutflowInActivePeriod() {
+        // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .build()
+        );
+
+        // when - adding paid OUTFLOW with paidDate on 2022-01-01 (active period, not future)
+        String cashChangeId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Uncategorized")
+                        .name("Valid rent payment")
+                        .description("This should succeed")
+                        .money(Money.of(1500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))  // Jan 2022 - active!
+                        .build()
+        );
+
+        // then - should succeed and decrease balance
+        assertThat(cashChangeId).isNotNull();
+
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowRestController.getCashFlow(cashFlowId);
+        // Balance should decrease: 5000 - 1500 = 3500
+        assertThat(cashFlow.getBankAccount().balance()).isEqualTo(Money.of(3500, "USD"));
+
+        CashFlowDto.CashChangeSummaryJson cashChange = cashFlow.getCashChanges().get(cashChangeId);
+        assertThat(cashChange.getStatus()).isEqualTo(CONFIRMED);
+        assertThat(cashChange.getType()).isEqualTo(OUTFLOW);
+    }
 }
