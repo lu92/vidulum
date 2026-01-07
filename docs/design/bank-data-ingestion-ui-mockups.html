@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Data Ingestion - UI Mockups</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .screen-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .mockup-frame {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .step-indicator {
+            scroll-margin-top: 20px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="screen-container">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">Bank Data Ingestion Pipeline</h1>
+            <p class="text-gray-600 text-lg">UI Mockups - Krok po kroku</p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="bg-white rounded-lg shadow-md p-4 mb-8 sticky top-4 z-50">
+            <div class="flex flex-wrap gap-2 justify-center">
+                <a href="#step1" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">1. Upload CSV</a>
+                <a href="#step2" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">2. Configure Mappings</a>
+                <a href="#step3" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">3. Preview</a>
+                <a href="#step4" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">4. Import Progress</a>
+                <a href="#step5" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition">5. Success</a>
+                <a href="#step6" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">6. Error</a>
+                <a href="#step7" class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition">7. Rollback</a>
+            </div>
+        </nav>
+
+        <!-- ==================== STEP 1: Upload CSV ==================== -->
+        <section id="step1" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">1</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Upload CSV</h2>
+                    <p class="text-gray-600">Użytkownik wybiera plik z wyciągiem bankowym</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="bg-gray-50 px-6 py-3 border-b">
+                    <div class="flex items-center text-sm text-gray-600">
+                        <a href="#" class="hover:text-indigo-600">Dashboard</a>
+                        <i class="fas fa-chevron-right mx-2 text-xs"></i>
+                        <a href="#" class="hover:text-indigo-600">Konto ING</a>
+                        <i class="fas fa-chevron-right mx-2 text-xs"></i>
+                        <span class="text-indigo-600 font-medium">Import danych</span>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <!-- Status Badge -->
+                    <div class="mb-6">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                            <i class="fas fa-clock mr-2"></i>
+                            Status: SETUP - Import w toku
+                        </span>
+                    </div>
+
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Import danych z banku</h3>
+                    <p class="text-gray-600 mb-8">Wybierz plik CSV z wyciągiem bankowym lub połącz się z API banku</p>
+
+                    <!-- Upload Area -->
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-indigo-400 transition cursor-pointer bg-gray-50">
+                        <div class="mb-4">
+                            <i class="fas fa-cloud-upload-alt text-6xl text-gray-400"></i>
+                        </div>
+                        <p class="text-xl font-medium text-gray-700 mb-2">Przeciągnij plik CSV tutaj</p>
+                        <p class="text-gray-500 mb-4">lub</p>
+                        <button class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">
+                            <i class="fas fa-folder-open mr-2"></i>
+                            Wybierz plik
+                        </button>
+                        <p class="text-sm text-gray-500 mt-4">Obsługiwane formaty: CSV (ING, mBank, PKO BP)</p>
+                    </div>
+
+                    <!-- Bank Selection -->
+                    <div class="mt-8">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Wybierz bank</h4>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="border-2 border-indigo-500 rounded-lg p-4 text-center bg-indigo-50 cursor-pointer">
+                                <div class="w-12 h-12 bg-orange-500 rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold">ING</div>
+                                <span class="text-sm font-medium">ING Bank</span>
+                            </div>
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 cursor-pointer">
+                                <div class="w-12 h-12 bg-red-600 rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold text-xs">mBank</div>
+                                <span class="text-sm font-medium text-gray-600">mBank</span>
+                            </div>
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 cursor-pointer">
+                                <div class="w-12 h-12 bg-blue-800 rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold">PKO</div>
+                                <span class="text-sm font-medium text-gray-600">PKO BP</span>
+                            </div>
+                            <div class="border-2 border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 cursor-pointer">
+                                <div class="w-12 h-12 bg-gray-400 rounded-lg mx-auto mb-2 flex items-center justify-center text-white">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-600">Inny</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Or API -->
+                    <div class="mt-8 pt-8 border-t">
+                        <div class="flex items-center justify-center text-gray-500 mb-6">
+                            <div class="flex-1 border-t border-gray-300"></div>
+                            <span class="px-4">lub połącz się przez API</span>
+                            <div class="flex-1 border-t border-gray-300"></div>
+                        </div>
+                        <div class="text-center">
+                            <button class="px-6 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition font-medium">
+                                <i class="fas fa-plug mr-2"></i>
+                                Połącz z bankiem (PSD2)
+                            </button>
+                            <p class="text-sm text-gray-500 mt-2">Automatyczne pobieranie transakcji przez Open Banking</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 2: Configure Mappings ==================== -->
+        <section id="step2" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">2</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Configure Mappings</h2>
+                    <p class="text-gray-600">Użytkownik mapuje kategorie bankowe na kategorie systemowe</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="bg-gray-50 px-6 py-4 border-b">
+                    <div class="flex items-center justify-between max-w-2xl mx-auto">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Upload</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Mapowanie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-300 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm">3</div>
+                            <span class="ml-2 text-sm text-gray-500">Podgląd</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-300 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm">4</div>
+                            <span class="ml-2 text-sm text-gray-500">Import</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <!-- File Info -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center">
+                        <i class="fas fa-file-csv text-blue-500 text-2xl mr-4"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-800">ing_wyciag_2024_Q1.csv</p>
+                            <p class="text-sm text-gray-600">150 transakcji • Okres: 01.01.2024 - 31.03.2024</p>
+                        </div>
+                        <button class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Mapowanie kategorii</h3>
+                    <p class="text-gray-600 mb-6">Przypisz kategorie z wyciągu bankowego do kategorii w systemie</p>
+
+                    <!-- Unmapped Warning -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-3"></i>
+                            <span class="text-yellow-800">4 kategorie wymagają mapowania</span>
+                        </div>
+                    </div>
+
+                    <!-- Mapping Table -->
+                    <div class="border rounded-lg overflow-hidden mb-6">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Kategoria bankowa</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Transakcje</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Typ</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Akcja</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Kategoria docelowa</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <!-- Mapped Row -->
+                                <tr class="bg-green-50">
+                                    <td class="px-4 py-3">
+                                        <span class="font-medium">Zakupy kartą</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-600">80</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">OUTFLOW</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                            <option selected>Użyj istniejącej</option>
+                                            <option>Utwórz nową</option>
+                                            <option>Utwórz podkategorię</option>
+                                            <option>Uncategorized</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                            <option selected>Groceries</option>
+                                            <option>Shopping</option>
+                                            <option>Entertainment</option>
+                                        </select>
+                                        <i class="fas fa-check-circle text-green-500 ml-2"></i>
+                                    </td>
+                                </tr>
+
+                                <!-- Unmapped Row - Netflix -->
+                                <tr class="bg-yellow-50">
+                                    <td class="px-4 py-3">
+                                        <span class="font-medium">Netflix</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-600">3</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">OUTFLOW</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border-2 border-yellow-400 rounded px-3 py-1.5 text-sm bg-white">
+                                            <option>-- Wybierz akcję --</option>
+                                            <option>Użyj istniejącej</option>
+                                            <option selected>Utwórz podkategorię</option>
+                                            <option>Utwórz nową</option>
+                                            <option>Uncategorized</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center space-x-2">
+                                            <input type="text" value="Netflix" class="border rounded px-3 py-1.5 text-sm w-32" placeholder="Nazwa">
+                                            <span class="text-gray-500">w</span>
+                                            <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                                <option selected>Subscriptions</option>
+                                                <option>Entertainment</option>
+                                            </select>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Unmapped Row - Przelew własny OUTFLOW -->
+                                <tr class="bg-yellow-50">
+                                    <td class="px-4 py-3">
+                                        <span class="font-medium">Przelew własny</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-600">25</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">OUTFLOW</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border-2 border-yellow-400 rounded px-3 py-1.5 text-sm bg-white">
+                                            <option>-- Wybierz akcję --</option>
+                                            <option selected>Utwórz nową</option>
+                                            <option>Użyj istniejącej</option>
+                                            <option>Uncategorized</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input type="text" value="Transfers Out" class="border rounded px-3 py-1.5 text-sm" placeholder="Nazwa nowej kategorii">
+                                    </td>
+                                </tr>
+
+                                <!-- Przelew własny INFLOW -->
+                                <tr class="bg-yellow-50">
+                                    <td class="px-4 py-3">
+                                        <span class="font-medium">Przelew własny</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-600">3</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">INFLOW</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                            <option selected>Użyj istniejącej</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                            <option selected>Salary</option>
+                                            <option>Other Income</option>
+                                        </select>
+                                        <i class="fas fa-check-circle text-green-500 ml-2"></i>
+                                    </td>
+                                </tr>
+
+                                <!-- Opłata bankowa -->
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <span class="font-medium text-gray-500">Opłata za prowadzenie</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-600">1</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">OUTFLOW</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select class="border rounded px-3 py-1.5 text-sm bg-white">
+                                            <option selected>Uncategorized</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-gray-500 italic">Uncategorized</span>
+                                        <i class="fas fa-check-circle text-green-500 ml-2"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-between items-center">
+                        <button class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Wróć
+                        </button>
+                        <div class="flex space-x-3">
+                            <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Zapisz mappingi
+                            </button>
+                            <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                                Dalej - Podgląd
+                                <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 3: Preview ==================== -->
+        <section id="step3" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">3</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Preview (Staging)</h2>
+                    <p class="text-gray-600">Użytkownik widzi podsumowanie przed importem</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="bg-gray-50 px-6 py-4 border-b">
+                    <div class="flex items-center justify-between max-w-2xl mx-auto">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Upload</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Mapowanie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Podgląd</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-gray-300 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm">4</div>
+                            <span class="ml-2 text-sm text-gray-500">Import</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Podsumowanie importu</h3>
+                    <p class="text-gray-600 mb-6">Sprawdź dane przed rozpoczęciem importu</p>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="bg-blue-50 rounded-lg p-4 text-center">
+                            <div class="text-3xl font-bold text-blue-600">147</div>
+                            <div class="text-sm text-gray-600">Transakcji do importu</div>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                            <div class="text-3xl font-bold text-yellow-600">3</div>
+                            <div class="text-sm text-gray-600">Duplikaty (pominięte)</div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4 text-center">
+                            <div class="text-3xl font-bold text-green-600">2</div>
+                            <div class="text-sm text-gray-600">Nowe kategorie</div>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4 text-center">
+                            <div class="text-3xl font-bold text-purple-600">3</div>
+                            <div class="text-sm text-gray-600">Miesiące</div>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Podział na kategorie</h4>
+                        <div class="border rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Kategoria</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Typ</th>
+                                        <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600">Transakcje</th>
+                                        <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600">Suma</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y">
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="font-medium">Groceries</span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">80</td>
+                                        <td class="px-4 py-3 text-right font-medium text-red-600">-4 250,00 PLN</td>
+                                    </tr>
+                                    <tr class="bg-green-50">
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center">
+                                                <span class="font-medium">Netflix</span>
+                                                <span class="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded text-xs">NOWA</span>
+                                            </div>
+                                            <span class="text-sm text-gray-500">w Subscriptions</span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">3</td>
+                                        <td class="px-4 py-3 text-right font-medium text-red-600">-156,00 PLN</td>
+                                    </tr>
+                                    <tr class="bg-green-50">
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center">
+                                                <span class="font-medium">Transfers Out</span>
+                                                <span class="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded text-xs">NOWA</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">25</td>
+                                        <td class="px-4 py-3 text-right font-medium text-red-600">-12 500,00 PLN</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="font-medium">Salary</span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">INFLOW</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">3</td>
+                                        <td class="px-4 py-3 text-right font-medium text-green-600">+15 000,00 PLN</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <span class="font-medium text-gray-500">Uncategorized</span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">1</td>
+                                        <td class="px-4 py-3 text-right font-medium text-red-600">-15,00 PLN</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-gray-100">
+                                    <tr>
+                                        <td colspan="2" class="px-4 py-3 font-semibold">Razem</td>
+                                        <td class="px-4 py-3 text-right font-semibold">147</td>
+                                        <td class="px-4 py-3 text-right font-semibold text-red-600">-1 921,00 PLN</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Breakdown -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Podział miesięczny</h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="border rounded-lg p-4">
+                                <div class="text-lg font-semibold text-gray-800 mb-2">Styczeń 2024</div>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wpływy:</span>
+                                        <span class="text-green-600 font-medium">+5 000,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wydatki:</span>
+                                        <span class="text-red-600 font-medium">-3 200,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1 border-t">
+                                        <span class="text-gray-600">Transakcje:</span>
+                                        <span class="font-medium">52</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border rounded-lg p-4">
+                                <div class="text-lg font-semibold text-gray-800 mb-2">Luty 2024</div>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wpływy:</span>
+                                        <span class="text-green-600 font-medium">+5 000,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wydatki:</span>
+                                        <span class="text-red-600 font-medium">-2 800,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1 border-t">
+                                        <span class="text-gray-600">Transakcje:</span>
+                                        <span class="font-medium">48</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border rounded-lg p-4">
+                                <div class="text-lg font-semibold text-gray-800 mb-2">Marzec 2024</div>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wpływy:</span>
+                                        <span class="text-green-600 font-medium">+5 000,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Wydatki:</span>
+                                        <span class="text-red-600 font-medium">-3 100,00 PLN</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1 border-t">
+                                        <span class="text-gray-600">Transakcje:</span>
+                                        <span class="font-medium">47</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Duplicates Info -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+                        <div class="flex items-start">
+                            <i class="fas fa-info-circle text-yellow-500 mt-1 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-yellow-800">3 duplikaty zostaną pominięte</p>
+                                <p class="text-sm text-yellow-700 mt-1">Te transakcje już istnieją w systemie i nie zostaną zaimportowane ponownie.</p>
+                                <button class="text-sm text-yellow-800 underline mt-2">Pokaż duplikaty</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expiry Warning -->
+                    <div class="bg-gray-50 border rounded-lg p-4 mb-8">
+                        <div class="flex items-center">
+                            <i class="fas fa-clock text-gray-400 mr-3"></i>
+                            <span class="text-sm text-gray-600">
+                                Dane staging wygasną za <strong>23 godziny 45 minut</strong>.
+                                Po tym czasie konieczne będzie ponowne przesłanie pliku.
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-between items-center">
+                        <button class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Wróć do mapowania
+                        </button>
+                        <div class="flex space-x-3">
+                            <button class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
+                                <i class="fas fa-times mr-2"></i>
+                                Anuluj
+                            </button>
+                            <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                                <i class="fas fa-play mr-2"></i>
+                                Rozpocznij import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 4: Import Progress ==================== -->
+        <section id="step4" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">4</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Import Progress</h2>
+                    <p class="text-gray-600">Użytkownik obserwuje postęp importu</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Progress Steps - All Green -->
+                <div class="bg-gray-50 px-6 py-4 border-b">
+                    <div class="flex items-center justify-between max-w-2xl mx-auto">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Upload</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Mapowanie</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-green-600">Podgląd</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-indigo-500 mx-4"></div>
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-indigo-600">Import</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <div class="max-w-2xl mx-auto">
+                        <!-- Main Progress -->
+                        <div class="text-center mb-8">
+                            <div class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-indigo-100 mb-4">
+                                <span class="text-4xl font-bold text-indigo-600">68%</span>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-800">Importowanie danych...</h3>
+                            <p class="text-gray-600 mt-2">Nie zamykaj tej strony</p>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="mb-8">
+                            <div class="flex justify-between text-sm text-gray-600 mb-2">
+                                <span>Postęp całkowity</span>
+                                <span>100 / 149</span>
+                            </div>
+                            <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-indigo-600 rounded-full transition-all duration-500" style="width: 68%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Phases -->
+                        <div class="space-y-4 mb-8">
+                            <!-- Phase 1 - Complete -->
+                            <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center mr-3">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Tworzenie kategorii</p>
+                                            <p class="text-sm text-gray-600">Netflix, Transfers Out</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-green-600 font-medium">2 / 2</span>
+                                        <p class="text-xs text-gray-500">1.2s</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Phase 2 - In Progress -->
+                            <div class="border-2 border-indigo-300 rounded-lg p-4 bg-indigo-50">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center mr-3">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Importowanie transakcji</p>
+                                            <p class="text-sm text-gray-600">Przetwarzanie...</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-indigo-600 font-medium">98 / 147</span>
+                                        <p class="text-xs text-gray-500">~45s pozostało</p>
+                                    </div>
+                                </div>
+                                <div class="h-2 bg-indigo-200 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-600 rounded-full" style="width: 67%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Log -->
+                        <div class="bg-gray-900 rounded-lg p-4 text-sm font-mono text-gray-300 h-32 overflow-auto">
+                            <div class="text-green-400">[10:15:01] Utworzono kategorię: Netflix</div>
+                            <div class="text-green-400">[10:15:01] Utworzono kategorię: Transfers Out</div>
+                            <div>[10:15:02] Importowanie transakcji 1-50...</div>
+                            <div>[10:15:15] Importowanie transakcji 51-98...</div>
+                            <div class="text-yellow-400">[10:15:20] Pominięto duplikat: ING-2024-050</div>
+                            <div class="animate-pulse">▌</div>
+                        </div>
+
+                        <!-- Cancel Button -->
+                        <div class="mt-8 text-center">
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times mr-2"></i>
+                                Anuluj import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 5: Success ==================== -->
+        <section id="step5" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">5</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Import Completed - Success</h2>
+                    <p class="text-gray-600">Import zakończony pomyślnie</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <div class="max-w-2xl mx-auto text-center">
+                        <!-- Success Icon -->
+                        <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-6">
+                            <i class="fas fa-check-circle text-6xl text-green-500"></i>
+                        </div>
+
+                        <h3 class="text-3xl font-bold text-gray-800 mb-2">Import zakończony!</h3>
+                        <p class="text-gray-600 mb-8">Wszystkie dane zostały pomyślnie zaimportowane</p>
+
+                        <!-- Summary Stats -->
+                        <div class="grid grid-cols-3 gap-4 mb-8">
+                            <div class="bg-green-50 rounded-lg p-6">
+                                <div class="text-4xl font-bold text-green-600">147</div>
+                                <div class="text-sm text-gray-600 mt-1">Transakcji zaimportowanych</div>
+                            </div>
+                            <div class="bg-blue-50 rounded-lg p-6">
+                                <div class="text-4xl font-bold text-blue-600">2</div>
+                                <div class="text-sm text-gray-600 mt-1">Kategorii utworzonych</div>
+                            </div>
+                            <div class="bg-purple-50 rounded-lg p-6">
+                                <div class="text-4xl font-bold text-purple-600">5m 29s</div>
+                                <div class="text-sm text-gray-600 mt-1">Czas importu</div>
+                            </div>
+                        </div>
+
+                        <!-- Rollback Warning -->
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8 text-left">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
+                                <div>
+                                    <p class="font-medium text-yellow-800">Możliwość wycofania importu</p>
+                                    <p class="text-sm text-yellow-700 mt-1">
+                                        Masz <strong>59 minut</strong> na wycofanie tego importu, jeśli zauważysz błędy.
+                                        Po tym czasie lub po attestacji CashFlow, wycofanie nie będzie możliwe.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex justify-center space-x-4">
+                            <button class="px-6 py-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium">
+                                <i class="fas fa-undo mr-2"></i>
+                                Wycofaj import
+                            </button>
+                            <button class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                                <i class="fas fa-check mr-2"></i>
+                                Zatwierdź i zakończ
+                            </button>
+                        </div>
+
+                        <!-- Secondary Actions -->
+                        <div class="mt-6 pt-6 border-t">
+                            <div class="flex justify-center space-x-6 text-sm">
+                                <a href="#" class="text-indigo-600 hover:text-indigo-800">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Zobacz zaimportowane transakcje
+                                </a>
+                                <a href="#" class="text-indigo-600 hover:text-indigo-800">
+                                    <i class="fas fa-upload mr-1"></i>
+                                    Importuj więcej danych
+                                </a>
+                                <a href="#" class="text-indigo-600 hover:text-indigo-800">
+                                    <i class="fas fa-file-alt mr-1"></i>
+                                    Attestuj CashFlow
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 6: Error ==================== -->
+        <section id="step6" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">6</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Import Error</h2>
+                    <p class="text-gray-600">Błąd podczas importu</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <div class="max-w-2xl mx-auto">
+                        <!-- Error Icon -->
+                        <div class="text-center mb-8">
+                            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-100 mb-6">
+                                <i class="fas fa-times-circle text-6xl text-red-500"></i>
+                            </div>
+                            <h3 class="text-3xl font-bold text-gray-800 mb-2">Import częściowo nieudany</h3>
+                            <p class="text-gray-600">Niektóre transakcje nie mogły zostać zaimportowane</p>
+                        </div>
+
+                        <!-- Partial Success Stats -->
+                        <div class="grid grid-cols-3 gap-4 mb-8">
+                            <div class="bg-green-50 rounded-lg p-4 text-center">
+                                <div class="text-3xl font-bold text-green-600">142</div>
+                                <div class="text-sm text-gray-600">Zaimportowanych</div>
+                            </div>
+                            <div class="bg-red-50 rounded-lg p-4 text-center">
+                                <div class="text-3xl font-bold text-red-600">5</div>
+                                <div class="text-sm text-gray-600">Błędów</div>
+                            </div>
+                            <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                                <div class="text-3xl font-bold text-yellow-600">3</div>
+                                <div class="text-sm text-gray-600">Duplikatów</div>
+                            </div>
+                        </div>
+
+                        <!-- Error Details -->
+                        <div class="bg-red-50 border border-red-200 rounded-lg overflow-hidden mb-8">
+                            <div class="px-4 py-3 bg-red-100 border-b border-red-200">
+                                <h4 class="font-semibold text-red-800">
+                                    <i class="fas fa-exclamation-circle mr-2"></i>
+                                    Szczegóły błędów
+                                </h4>
+                            </div>
+                            <div class="p-4 space-y-3">
+                                <div class="flex items-start p-3 bg-white rounded border border-red-100">
+                                    <i class="fas fa-times-circle text-red-500 mt-1 mr-3"></i>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-800">ING-2024-125: AMAZON.DE</p>
+                                        <p class="text-sm text-red-600">Data transakcji (2024-04-15) jest poza zakresem importu</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start p-3 bg-white rounded border border-red-100">
+                                    <i class="fas fa-times-circle text-red-500 mt-1 mr-3"></i>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-800">ING-2024-126: ALLEGRO</p>
+                                        <p class="text-sm text-red-600">Data transakcji (2024-04-16) jest poza zakresem importu</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start p-3 bg-white rounded border border-red-100">
+                                    <i class="fas fa-times-circle text-red-500 mt-1 mr-3"></i>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-800">ING-2024-130, ING-2024-131, ING-2024-132</p>
+                                        <p class="text-sm text-red-600">Nieznana waluta: EUR (oczekiwano PLN)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="bg-gray-50 rounded-lg p-6 mb-8">
+                            <h4 class="font-semibold text-gray-800 mb-4">Co chcesz zrobić?</h4>
+                            <div class="space-y-3">
+                                <label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-white">
+                                    <input type="radio" name="error-action" class="mt-1 mr-3" checked>
+                                    <div>
+                                        <p class="font-medium text-gray-800">Zachowaj zaimportowane, pomiń błędne</p>
+                                        <p class="text-sm text-gray-600">142 transakcji zostanie zachowane, 5 błędnych pominięte</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-white">
+                                    <input type="radio" name="error-action" class="mt-1 mr-3">
+                                    <div>
+                                        <p class="font-medium text-gray-800">Wycofaj cały import</p>
+                                        <p class="text-sm text-gray-600">Usuń wszystkie zaimportowane transakcje i zacznij od nowa</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex justify-center space-x-4">
+                            <button class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                                <i class="fas fa-arrow-left mr-2"></i>
+                                Wróć do mapowania
+                            </button>
+                            <button class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                                <i class="fas fa-check mr-2"></i>
+                                Zastosuj wybraną opcję
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 7: Rollback ==================== -->
+        <section id="step7" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-yellow-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">7</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Rollback Confirmation</h2>
+                    <p class="text-gray-600">Potwierdzenie wycofania importu</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <div class="max-w-lg mx-auto">
+                        <!-- Modal-like Dialog -->
+                        <div class="border-2 border-red-200 rounded-xl overflow-hidden shadow-lg">
+                            <!-- Header -->
+                            <div class="bg-red-50 px-6 py-4 border-b border-red-200">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl mr-3"></i>
+                                    <h3 class="text-xl font-bold text-gray-800">Wycofanie importu</h3>
+                                </div>
+                            </div>
+
+                            <!-- Body -->
+                            <div class="p-6">
+                                <p class="text-gray-700 mb-6">
+                                    Czy na pewno chcesz wycofać import <strong>job-uuid-456</strong>?
+                                </p>
+
+                                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                                    <h4 class="font-semibold text-gray-800 mb-3">Zostaną usunięte:</h4>
+                                    <ul class="space-y-2">
+                                        <li class="flex items-center text-gray-700">
+                                            <i class="fas fa-trash text-red-400 w-6"></i>
+                                            <span><strong>147</strong> transakcji</span>
+                                        </li>
+                                        <li class="flex items-center text-gray-700">
+                                            <i class="fas fa-folder-minus text-red-400 w-6"></i>
+                                            <span><strong>2</strong> kategorie (Netflix, Transfers Out)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                                    <h4 class="font-semibold text-gray-800 mb-3">Zostaną zachowane:</h4>
+                                    <ul class="space-y-2">
+                                        <li class="flex items-center text-gray-700">
+                                            <i class="fas fa-check text-blue-400 w-6"></i>
+                                            <span>Konfiguracja mapowań (do ponownego użycia)</span>
+                                        </li>
+                                        <li class="flex items-center text-gray-700">
+                                            <i class="fas fa-check text-blue-400 w-6"></i>
+                                            <span>Dane staging (możesz spróbować ponownie)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <p class="text-sm text-yellow-800">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Ta operacja jest nieodwracalna. Upewnij się, że chcesz usunąć wszystkie zaimportowane dane.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3">
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-white">
+                                    Anuluj
+                                </button>
+                                <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
+                                    <i class="fas fa-undo mr-2"></i>
+                                    Tak, wycofaj import
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- After Rollback Success -->
+                        <div class="mt-8 border-t pt-8">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-4">Po wycofaniu:</h4>
+
+                            <div class="border rounded-lg overflow-hidden">
+                                <div class="bg-green-50 px-6 py-4 border-b">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
+                                        <div>
+                                            <h3 class="font-bold text-gray-800">Import wycofany</h3>
+                                            <p class="text-sm text-gray-600">Wszystkie dane zostały usunięte</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-6">
+                                    <div class="grid grid-cols-2 gap-4 mb-6">
+                                        <div class="text-center">
+                                            <div class="text-3xl font-bold text-red-600">147</div>
+                                            <div class="text-sm text-gray-600">Transakcji usuniętych</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-3xl font-bold text-red-600">2</div>
+                                            <div class="text-sm text-gray-600">Kategorii usuniętych</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex justify-center space-x-4">
+                                        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                            <i class="fas fa-redo mr-2"></i>
+                                            Spróbuj ponownie
+                                        </button>
+                                        <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-home mr-2"></i>
+                                            Wróć do dashboard
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 8: Finalize Confirmation ==================== -->
+        <section id="step8" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">8</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Finalize Confirmation</h2>
+                    <p class="text-gray-600">Potwierdzenie zakończenia importu</p>
+                </div>
+            </div>
+
+            <div class="mockup-frame bg-white">
+                <!-- App Header -->
+                <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-wallet text-2xl"></i>
+                        <span class="text-xl font-semibold">Vidulum CashFlow</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span>Konto ING - PLN</span>
+                        <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JK</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-8">
+                    <div class="max-w-lg mx-auto">
+                        <!-- Modal-like Dialog -->
+                        <div class="border-2 border-green-200 rounded-xl overflow-hidden shadow-lg">
+                            <!-- Header -->
+                            <div class="bg-green-50 px-6 py-4 border-b border-green-200">
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
+                                    <h3 class="text-xl font-bold text-gray-800">Zakończ import</h3>
+                                </div>
+                            </div>
+
+                            <!-- Body -->
+                            <div class="p-6">
+                                <p class="text-gray-700 mb-6">
+                                    Czy chcesz zakończyć import i wyczyścić dane tymczasowe?
+                                </p>
+
+                                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                                    <h4 class="font-semibold text-gray-800 mb-3">Podsumowanie importu:</h4>
+                                    <ul class="space-y-2 text-sm">
+                                        <li class="flex justify-between">
+                                            <span class="text-gray-600">Transakcji zaimportowanych:</span>
+                                            <span class="font-medium">147</span>
+                                        </li>
+                                        <li class="flex justify-between">
+                                            <span class="text-gray-600">Kategorii utworzonych:</span>
+                                            <span class="font-medium">2</span>
+                                        </li>
+                                        <li class="flex justify-between">
+                                            <span class="text-gray-600">Czas importu:</span>
+                                            <span class="font-medium">5m 29s</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Options -->
+                                <div class="space-y-3 mb-6">
+                                    <label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                        <input type="checkbox" class="mt-1 mr-3" checked>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Usuń dane staging</p>
+                                            <p class="text-sm text-gray-600">Zwolni miejsce w bazie danych</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                        <input type="checkbox" class="mt-1 mr-3">
+                                        <div>
+                                            <p class="font-medium text-gray-800">Usuń konfigurację mapowań</p>
+                                            <p class="text-sm text-gray-600">Odznacz jeśli planujesz kolejne importy z tego banku</p>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Po zakończeniu, rollback nie będzie już możliwy. Historia importu zostanie zachowana.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3">
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-white">
+                                    Anuluj
+                                </button>
+                                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                                    <i class="fas fa-check mr-2"></i>
+                                    Zakończ import
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Next Steps -->
+                        <div class="mt-8 bg-indigo-50 rounded-lg p-6">
+                            <h4 class="font-semibold text-indigo-800 mb-3">
+                                <i class="fas fa-lightbulb mr-2"></i>
+                                Następne kroki
+                            </h4>
+                            <ul class="space-y-2 text-sm text-indigo-700">
+                                <li class="flex items-center">
+                                    <i class="fas fa-chevron-right mr-2 text-xs"></i>
+                                    Przejrzyj zaimportowane transakcje
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-chevron-right mr-2 text-xs"></i>
+                                    Zweryfikuj saldo końcowe
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-chevron-right mr-2 text-xs"></i>
+                                    Attestuj CashFlow aby zakończyć tryb SETUP
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-8 text-gray-500">
+            <p>Bank Data Ingestion Pipeline - UI Mockups</p>
+            <p class="text-sm mt-2">Vidulum CashFlow &copy; 2024</p>
+        </footer>
+    </div>
+</body>
+</html>
