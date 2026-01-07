@@ -4,7 +4,10 @@
 
 Ten dokument zawiera podział implementacji funkcjonalności ładowania danych historycznych na małe, przyrostowe Pull Requesty.
 
-Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
+**Powiązane dokumenty:**
+- [historical-cashflow-setup.md](./historical-cashflow-setup.md) - oryginalny design
+- [historical-import-user-guide.md](./historical-import-user-guide.md) - user guide z przykładami
+- [bank-data-ingestion-pipeline.md](./bank-data-ingestion-pipeline.md) - nowy moduł do importu danych z banków
 
 ---
 
@@ -97,127 +100,199 @@ Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
 
 ---
 
-## PR 5: Aktywacja CashFlow
+## PR 5: Attestacja historycznego importu ✅ DONE
 **Branch:** `VID-90`
-**Tytuł:** `VID-90: Add activateCashFlow command`
+**Tytuł:** `VID-90: Attestation of imported historical data`
 
 ### Zakres:
-- [ ] `ActivateCashFlowCommand` + Handler
-- [ ] `CashFlowActivatedEvent`
-- [ ] Walidacja balance (calculated vs confirmed)
-- [ ] Opcje: `forceActivation`, `createAdjustment`
-- [ ] Zmiana statusów: SETUP → OPEN, IMPORT_PENDING → IMPORTED
-- [ ] Ustawienie `importCutoffDateTime = activatedAt` (moment aktywacji jako granica importu)
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/activate`
-- [ ] Testy
+- [x] `AttestHistoricalImportCommand` + Handler
+- [x] `HistoricalImportAttestedEvent`
+- [x] Walidacja balance (calculated vs confirmed)
+- [x] Opcje: `forceAttestation`, `createAdjustment`
+- [x] Zmiana statusów: SETUP → OPEN, IMPORT_PENDING → IMPORTED
+- [x] Ustawienie `importCutoffDateTime` (moment attestacji jako granica importu)
+- [x] REST endpoint: `POST /api/v1/cash-flow/{id}/attest-historical-import`
+- [x] Testy
 
 ### Zależności:
 - PR 4 (IMPORT_PENDING status)
 
 ---
 
-## PR 6: Rollback importu
+## PR 6: Rollback importu ✅ DONE
 **Branch:** `VID-91`
-**Tytuł:** `VID-91: Add rollbackImport command`
+**Tytuł:** `VID-91: Add rollback of historical import`
 
 ### Zakres:
-- [ ] `RollbackImportCommand` + Handler
-- [ ] `ImportRolledBackEvent`
-- [ ] Usuwanie transakcji z IMPORT_PENDING miesięcy
-- [ ] Opcjonalne usuwanie kategorii
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/rollback-import`
-- [ ] Testy
+- [x] `RollbackImportCommand` + Handler
+- [x] `ImportRolledBackEvent`
+- [x] Usuwanie transakcji z IMPORT_PENDING miesięcy
+- [x] Opcjonalne usuwanie kategorii
+- [x] REST endpoint: `POST /api/v1/cash-flow/{id}/rollback-import`
+- [x] Testy
 
 ### Zależności:
-- PR 5 (activateCashFlow) - rollback tylko przed aktywacją
+- PR 5 (attestation) - rollback tylko przed attestacją
 
 ---
 
-## PR 7: Kategorie z okresem ważności
+## PR 7: Fix calculation of flow of money ✅ DONE
 **Branch:** `VID-92`
-**Tytuł:** `VID-92: Add category validity period (validFrom/validTo)`
+**Tytuł:** `VID-92: Fix calculation of flow of money`
 
 ### Zakres:
-- [ ] Rozszerzenie `Category` o `validFrom`, `validTo`, `archived`, `origin`
-- [ ] `CategoryOrigin` enum: SYSTEM, IMPORTED, USER_CREATED
-- [ ] Walidacja przy wyborze kategorii (czy aktywna w danej dacie)
-- [ ] Migracja istniejących kategorii
-- [ ] Testy
-
-### Zależności:
-- Brak (niezależny)
+- [x] Poprawki w kalkulacji przepływów pieniężnych
 
 ---
 
-## PR 8: Konfiguracja mapowania kategorii
+## PR 8: createAdjustment i importCutoffDateTime ✅ DONE
 **Branch:** `VID-93`
-**Tytuł:** `VID-93: Add configureCategoryMapping command`
+**Tytuł:** `VID-93: Add createAdjustment and importCutoffDateTime to historical import attestation`
 
 ### Zakres:
-- [ ] `ConfigureCategoryMappingCommand` + Handler
-- [ ] `CategoryMappingConfiguredEvent`
-- [ ] `CategoryFromMappingCreatedEvent`
-- [ ] `MappingAction` enum: CREATE_NEW, CREATE_SUBCATEGORY, MAP_TO_UNCATEGORIZED
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/category-mapping`
-- [ ] Testy
-
-### Zależności:
-- PR 7 (kategorie z validFrom/validTo)
+- [x] Opcja `createAdjustment` przy attestacji - automatyczne tworzenie transakcji korygującej
+- [x] Pole `importCutoffDateTime` w CashFlow - granica między danymi historycznymi a nowymi
 
 ---
 
-## PR 9: Batch import transakcji
+## PR 9: Walidacja transakcji do zarchiwizowanych kategorii ✅ DONE
 **Branch:** `VID-94`
-**Tytuł:** `VID-94: Add batch import for historical transactions`
+**Tytuł:** `VID-94: Add validation to prevent adding transactions to archived categories`
 
 ### Zakres:
-- [ ] `BatchImportHistoricalCashChangesCommand` + Handler
-- [ ] Response: `BatchImportResultJson` (success/failed/duplicates)
-- [ ] Deduplikacja po `bankTransactionId`
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/import-historical/batch`
-- [ ] Testy
-
-### Zależności:
-- PR 3 (importHistoricalCashChange)
-- PR 8 (configureCategoryMapping)
+- [x] Walidacja w `AppendExpectedCashChangeCommandHandler`
+- [x] Walidacja w `AppendPaidCashChangeCommandHandler`
+- [x] `CategoryIsArchivedException`
+- [x] Obsługa wersjonowanych kategorii (findActiveCategory, findArchivedCategory)
 
 ---
 
-## PR 10: CSV Parser dla banków
+## PR 10: Archiwizacja subkategorii (forceArchiveChildren) ✅ DONE
 **Branch:** `VID-95`
-**Tytuł:** `VID-95: Add CSV parser for bank statements`
+**Tytuł:** `VID-95: Making subcategories archived as well`
 
 ### Zakres:
-- [ ] Interfejs `BankStatementParser`
-- [ ] Implementacje: `IngCsvParser`, `MBankCsvParser`, `PkoCsvParser`
-- [ ] `BankDataParseResultJson` - lista transakcji + kategorii
-- [ ] REST endpoint: `POST /api/v1/cash-flow/{id}/parse-bank-data`
-- [ ] Testy z przykładowymi plikami CSV
-
-### Zależności:
-- PR 9 (batch import)
+- [x] Parametr `forceArchiveChildren` w `ArchiveCategoryCommand`
+- [x] Rekurencyjna archiwizacja subkategorii gdy `forceArchiveChildren=true`
+- [x] Zachowanie aktywnych subkategorii gdy `forceArchiveChildren=false`
+- [x] Testy integracyjne
 
 ---
 
-## PR 11: Dedykowane handlery HTTP dla wyjątków CashFlow
-**Branch:** `VID-99`
-**Tytuł:** `VID-99: Add dedicated HTTP exception handlers for CashFlow exceptions`
+## PR 11: Category validity period (validFrom/validTo) ✅ DONE
+**Wcześniejsze PR-y**
+**Tytuł:** `Category origin, validFrom, validTo, archived fields`
 
 ### Zakres:
-- [ ] Dedykowany handler dla `OperationNotAllowedInSetupModeException`
-- [ ] Dedykowany handler dla `ImportDateInFutureException`
-- [ ] Dedykowany handler dla `ImportDateOutsideSetupPeriodException`
-- [ ] Dedykowany handler dla `ImportDateBeforeStartPeriodException`
-- [ ] Określenie odpowiednich HTTP status codes (np. 409 CONFLICT, 422 UNPROCESSABLE_ENTITY)
-- [ ] Ujednolicony format odpowiedzi błędów
+- [x] Rozszerzenie `Category` o `validFrom`, `validTo`, `archived`, `origin`
+- [x] `CategoryOrigin` enum: SYSTEM, IMPORTED, USER_CREATED
+- [x] Archive/Unarchive commands
+- [x] Event handlers w ForecastProcessor
+
+---
+
+# NOWY MODUŁ: Bank Data Ingestion Pipeline
+
+Poniższe PR-y dotyczą nowego modułu `bank_data_ingestion` opisanego w [bank-data-ingestion-pipeline.md](./bank-data-ingestion-pipeline.md).
+
+---
+
+## PR 12: Category Mappings - podstawa ⏳ NEXT
+**Branch:** `VID-96`
+**Tytuł:** `VID-96: Add category mappings collection and API`
+
+### Zakres:
+- [ ] Nowy moduł `bank_data_ingestion`
+- [ ] `CategoryMapping` domain object
+- [ ] `CategoryMappingEntity` + `CategoryMappingMongoRepository`
+- [ ] `MappingAction` enum: CREATE_NEW, CREATE_SUBCATEGORY, MAP_TO_EXISTING, MAP_TO_UNCATEGORIZED
+- [ ] CRUD dla mappings:
+  - [ ] `ConfigureCategoryMappingCommand` + Handler
+  - [ ] `DeleteCategoryMappingCommand` + Handler
+  - [ ] `GetCategoryMappingsQuery` + Handler
+- [ ] REST endpoints:
+  - [ ] `POST /api/v1/cash-flow/{id}/ingestion/mappings`
+  - [ ] `GET /api/v1/cash-flow/{id}/ingestion/mappings`
+  - [ ] `DELETE /api/v1/cash-flow/{id}/ingestion/mappings/{mappingId}`
+  - [ ] `DELETE /api/v1/cash-flow/{id}/ingestion/mappings`
 - [ ] Testy
 
 ### Zależności:
-- Brak (niezależny)
+- Brak (pierwszy PR nowego modułu)
 
-### Uwagi:
-- Obecnie wszystkie wyjątki zwracają 400 BAD_REQUEST przez generyczny handler
-- RFC 7807 Problem Details format jest już używany
+---
+
+## PR 13: Staged Transactions - staging z preview
+**Branch:** `VID-97`
+**Tytuł:** `VID-97: Add staged transactions collection with preview`
+
+### Zakres:
+- [ ] `StagedTransaction` domain object
+- [ ] `StagedTransactionEntity` + `StagedTransactionMongoRepository`
+- [ ] TTL index (konfigurowalne, default 24h)
+- [ ] `StageTransactionsCommand` + Handler:
+  - [ ] Walidacja transakcji
+  - [ ] Aplikowanie mappings
+  - [ ] Detekcja duplikatów
+  - [ ] Generowanie preview summary
+- [ ] `GetStagingPreviewQuery` + Handler
+- [ ] `DeleteStagingSessionCommand` + Handler
+- [ ] REST endpoints:
+  - [ ] `POST /api/v1/cash-flow/{id}/ingestion/stage`
+  - [ ] `GET /api/v1/cash-flow/{id}/ingestion/stage/{sessionId}`
+  - [ ] `DELETE /api/v1/cash-flow/{id}/ingestion/stage/{sessionId}`
+- [ ] Testy
+
+### Zależności:
+- PR 12 (category mappings)
+
+---
+
+## PR 14: Import Jobs - import z progress tracking
+**Branch:** `VID-98`
+**Tytuł:** `VID-98: Add import jobs with progress tracking`
+
+### Zakres:
+- [ ] `ImportJob` aggregate
+- [ ] `ImportJobEntity` + `ImportJobMongoRepository`
+- [ ] `ImportJobStatus` enum: PENDING, PROCESSING, COMPLETED, FAILED, ROLLED_BACK, FINALIZED
+- [ ] `ImportPhase` enum: CREATING_CATEGORIES, IMPORTING_TRANSACTIONS
+- [ ] `StartImportJobCommand` + Handler:
+  - [ ] Phase 1: Create missing categories
+  - [ ] Phase 2: Import transactions (używa istniejącego ImportHistoricalCashChangeCommand)
+  - [ ] Progress update co N transakcji
+- [ ] `GetImportProgressQuery` + Handler
+- [ ] REST endpoints:
+  - [ ] `POST /api/v1/cash-flow/{id}/ingestion/import`
+  - [ ] `GET /api/v1/cash-flow/{id}/ingestion/import/{jobId}`
+  - [ ] `GET /api/v1/cash-flow/{id}/ingestion/import` (list)
+- [ ] Testy
+
+### Zależności:
+- PR 13 (staged transactions)
+
+---
+
+## PR 15: Import Rollback i Finalize
+**Branch:** `VID-99`
+**Tytuł:** `VID-99: Add import rollback and finalize`
+
+### Zakres:
+- [ ] `RollbackImportJobCommand` + Handler:
+  - [ ] Usuwanie zaimportowanych cashChanges
+  - [ ] Usuwanie utworzonych kategorii (jeśli bez innych transakcji)
+  - [ ] Walidacja: tylko przed attestacją CashFlow
+- [ ] `FinalizeImportJobCommand` + Handler:
+  - [ ] Usuwanie staged_transactions
+  - [ ] Opcjonalne usuwanie mappings
+  - [ ] Oznaczenie job jako FINALIZED
+- [ ] REST endpoints:
+  - [ ] `POST /api/v1/cash-flow/{id}/ingestion/import/{jobId}/rollback`
+  - [ ] `POST /api/v1/cash-flow/{id}/ingestion/import/{jobId}/finalize`
+- [ ] Testy
+
+### Zależności:
+- PR 14 (import jobs)
 
 ---
 
@@ -225,45 +300,63 @@ Bazuje na: [historical-cashflow-setup.md](./historical-cashflow-setup.md)
 
 | Branch | Tytuł | Opis |
 |--------|-------|------|
-| VID-96 | Korekty w miesiącach ATTESTED/IMPORTED | Dodawanie korekt do zamkniętych miesięcy |
-| VID-97 | Progress tracking dla batch import | Śledzenie postępu importu |
-| VID-98 | Nordigen (PSD2) integration | Integracja z API banków przez PSD2 |
-| VID-100 | AI kategoryzacja transakcji | Automatyczna kategoryzacja przez LLM |
+| VID-100 | CSV Parser dla banków | Parsery dla ING, mBank, PKO |
+| VID-101 | Bank API integration (Nordigen/PSD2) | Integracja z API banków |
+| VID-102 | AI kategoryzacja transakcji | Automatyczna kategoryzacja przez LLM |
+| VID-103 | Dedicated HTTP exception handlers | Lepsze kody HTTP (409, 422) |
 
 ---
 
 ## Diagram zależności
 
 ```
+ZAIMPLEMENTOWANE:
+──────────────────
 PR1 (SETUP status) ✅
   └─> PR2 (createCashFlowWithHistory) ✅
         └─> PR3 (importHistoricalCashChange) ✅
               └─> PR4 (IMPORT_PENDING + IMPORTED) ✅
-                    ├─> PR5 (activateCashFlow)
-                    └─> PR6 (rollbackImport)
+                    ├─> PR5 (attestation) ✅
+                    └─> PR6 (rollback) ✅
 
-PR7 (kategorie z validFrom/To) - niezależny
-  └─> PR8 (configureCategoryMapping)
+PR7-PR11 (kategorie: validFrom/To, archived, forceArchiveChildren) ✅
 
-PR3 + PR8
-  └─> PR9 (batch import)
-        └─> PR10 (CSV parser)
+
+DO ZAIMPLEMENTOWANIA (Bank Data Ingestion Pipeline):
+────────────────────────────────────────────────────
+PR12 (category mappings) ⏳ NEXT
+  └─> PR13 (staged transactions)
+        └─> PR14 (import jobs)
+              └─> PR15 (rollback & finalize)
+
+PRZYSZŁE (opcjonalne):
+──────────────────────
+PR16+ (CSV parser, Bank API, AI categorization)
 ```
 
 ---
 
 ## Sugerowana kolejność implementacji
 
+### Zaimplementowane:
 1. **PR1** - fundament (SETUP status) ✅
 2. **PR2** - tworzenie CashFlow z historią ✅
 3. **PR3** - import pojedynczy ✅
 4. **PR4** - IMPORT_PENDING + IMPORTED status ✅
-5. **PR5** - aktywacja CashFlow ⏳ NEXT
-6. **PR6** - rollback importu
-7. **PR7** - kategorie z validFrom/validTo (niezależny)
-8. **PR8** - mapowanie kategorii
-9. **PR9** - batch import
-10. **PR10** - CSV parser
+5. **PR5** - attestacja CashFlow ✅
+6. **PR6** - rollback importu ✅
+7. **PR7-PR11** - kategorie (archived, validFrom/To, forceArchiveChildren) ✅
+
+### Do zaimplementowania:
+8. **PR12** - category mappings (nowy moduł `bank_data_ingestion`) ⏳ NEXT
+9. **PR13** - staged transactions z preview
+10. **PR14** - import jobs z progress tracking
+11. **PR15** - rollback & finalize importu
+
+### Przyszłe:
+12. CSV Parser dla banków
+13. Bank API integration (Nordigen/PSD2)
+14. AI kategoryzacja
 
 ---
 
@@ -272,5 +365,8 @@ PR3 + PR8
 | Data | Zmiany |
 |------|--------|
 | 2026-01-06 | Utworzenie dokumentu z podziałem na PR-y |
-| 2026-01-06 | Aktualizacja: PR1-PR4 ukończone, zmiana SETUP_PENDING → IMPORT_PENDING, dodanie IMPORTED, walidacja paidDate <= now() |
-| 2026-01-06 | Zamiana kolejności: PR5 aktywacja, PR6 rollback (aktywacja kończy główny flow importu) |
+| 2026-01-06 | Aktualizacja: PR1-PR4 ukończone |
+| 2026-01-06 | Zamiana kolejności: PR5 aktywacja, PR6 rollback |
+| 2026-01-07 | Aktualizacja: PR5-PR11 ukończone (attestation, rollback, categories) |
+| 2026-01-07 | Dodanie nowego modułu Bank Data Ingestion Pipeline (PR12-PR15) |
+| 2026-01-07 | Link do dokumentacji: bank-data-ingestion-pipeline.md |
