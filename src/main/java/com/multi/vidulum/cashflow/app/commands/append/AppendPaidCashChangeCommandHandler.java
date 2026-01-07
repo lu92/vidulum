@@ -39,12 +39,19 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
         }
 
         // Validate: cannot add cash change to archived category
+        // When multiple categories with the same name exist (one archived, one active),
+        // we need to check if there's an active one available
         List<Category> categories = command.type() == Type.INFLOW
                 ? cashFlow.getSnapshot().inflowCategories()
                 : cashFlow.getSnapshot().outflowCategories();
-        Category category = findCategory(categories, command.categoryName());
-        if (category != null && category.isArchived()) {
-            throw new CategoryIsArchivedException(command.categoryName());
+        Category activeCategory = findActiveCategory(categories, command.categoryName());
+        if (activeCategory == null) {
+            // No active category found - check if there's an archived one
+            Category archivedCategory = findArchivedCategory(categories, command.categoryName());
+            if (archivedCategory != null) {
+                throw new CategoryIsArchivedException(command.categoryName());
+            }
+            // No category at all - will be handled by domain layer
         }
 
         CashFlowEvent.PaidCashChangeAppendedEvent event = new CashFlowEvent.PaidCashChangeAppendedEvent(
@@ -74,13 +81,33 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
         return command.cashChangeId();
     }
 
-    private Category findCategory(List<Category> categories, CategoryName categoryName) {
+    /**
+     * Finds an active (non-archived) category by name.
+     */
+    private Category findActiveCategory(List<Category> categories, CategoryName categoryName) {
         for (Category category : categories) {
-            if (category.getCategoryName().equals(categoryName)) {
+            if (category.getCategoryName().equals(categoryName) && category.isActive()) {
                 return category;
             }
             // Check subcategories
-            Category found = findCategory(category.getSubCategories(), categoryName);
+            Category found = findActiveCategory(category.getSubCategories(), categoryName);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds an archived category by name.
+     */
+    private Category findArchivedCategory(List<Category> categories, CategoryName categoryName) {
+        for (Category category : categories) {
+            if (category.getCategoryName().equals(categoryName) && category.isArchived()) {
+                return category;
+            }
+            // Check subcategories
+            Category found = findArchivedCategory(category.getSubCategories(), categoryName);
             if (found != null) {
                 return found;
             }

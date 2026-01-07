@@ -507,6 +507,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     /**
      * Archives a category, setting validTo to the archive timestamp.
      * Archived categories are hidden from new transaction creation.
+     * If forceArchiveChildren is true, all subcategories are also archived.
      */
     public void apply(CashFlowEvent.CategoryArchivedEvent event) {
         List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
@@ -514,12 +515,35 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
 
         category.archive(event.archivedAt());
+
+        // If forceArchiveChildren is true, archive all subcategories recursively
+        if (event.forceArchiveChildren()) {
+            archiveSubcategoriesRecursively(category.getSubCategories(), event.archivedAt());
+        }
+
         add(event);
+    }
+
+    /**
+     * Recursively archives all subcategories.
+     */
+    private void archiveSubcategoriesRecursively(List<Category> subcategories, ZonedDateTime archivedAt) {
+        for (Category subcategory : subcategories) {
+            if (!subcategory.isArchived() && subcategory.getOrigin() != CategoryOrigin.SYSTEM) {
+                subcategory.archive(archivedAt);
+            }
+            archiveSubcategoriesRecursively(subcategory.getSubCategories(), archivedAt);
+        }
     }
 
     /**
      * Unarchives a category, clearing the validTo date.
      * The category becomes available for new transaction creation again.
+     * <p>
+     * <b>Note:</b> Unarchive is primarily intended for accidental archive recovery.
+     * If a user archived a category by mistake and there's no new active category with the same name,
+     * they can unarchive to restore it. Once a new category with the same name is created,
+     * the old archived category cannot be unarchived anymore (validation done in handler).
      */
     public void apply(CashFlowEvent.CategoryUnarchivedEvent event) {
         List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;

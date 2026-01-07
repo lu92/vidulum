@@ -1090,4 +1090,592 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                 category.getSubCategories().stream().flatMap(this::flattenCashCategoryJsonStream)
         );
     }
+
+    /**
+     * Test case: Category versioning - archived category + new category with same name + transactions in both.
+     *
+     * Scenario: User archives "Streaming" category, creates a new "Streaming" category,
+     * and both have transactions. This tests the category versioning feature where
+     * archived and active categories with the same name can coexist.
+     */
+    @Test
+    public void shouldSupportVersionedCategoriesWithTransactionsInBoth() {
+        YearMonth activePeriod = YearMonth.now(clock); // 2022-01
+        YearMonth startPeriod = activePeriod.minusMonths(3); // 2021-10
+
+        log.info("=== Test: Versioned Categories with Transactions ===");
+        log.info("Active period: {}, Start period: {}", activePeriod, startPeriod);
+
+        // Create CashFlow with history
+        CashFlowId cashFlowId = new CashFlowId(cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("versioned-category-test-user")
+                        .name("Versioned Category Test Budget")
+                        .description("Test for category versioning")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("TEST123", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod(startPeriod.toString())
+                        .initialBalance(Money.of(5000, "USD"))
+                        .build()
+        ));
+
+        await().until(() -> statementRepository.findByCashFlowId(cashFlowId).isPresent());
+
+        // Create "Streaming" category (v1 - will be archived later)
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Streaming"), OUTFLOW);
+        log.info("Created 'Streaming' category (v1)");
+
+        // Import historical transactions to the FIRST version of Streaming category
+        Money netBalance = Money.of(5000, "USD"); // Initial balance
+
+        // Import 3 historical transactions using Streaming v1
+        for (int monthOffset = 0; monthOffset < 3; monthOffset++) {
+            YearMonth historicalPeriod = startPeriod.plusMonths(monthOffset);
+            ZonedDateTime paidDate = historicalPeriod.atDay(15).atStartOfDay(ZoneOffset.UTC);
+            Money amount = Money.of(15, "USD"); // Netflix-like subscription
+
+            cashFlowRestController.importHistoricalCashChange(
+                    cashFlowId.id(),
+                    CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                            .category("Streaming")
+                            .name("Netflix subscription (old)")
+                            .description("Monthly streaming subscription - OLD category")
+                            .money(amount)
+                            .type(OUTFLOW)
+                            .dueDate(paidDate)
+                            .paidDate(paidDate)
+                            .build()
+            );
+            netBalance = netBalance.minus(amount);
+            log.info("Imported historical transaction to Streaming v1 for {}", historicalPeriod);
+        }
+
+        // Attest historical import
+        CashFlowDto.AttestHistoricalImportResponseJson attestResponse = cashFlowRestController.attestHistoricalImport(
+                cashFlowId.id(),
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(netBalance)
+                        .forceAttestation(false)
+                        .build()
+        );
+        assertThat(attestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        log.info("Attested historical import, balance: {}", netBalance);
+
+        // Wait for attestation to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("HistoricalImportAttestedEvent")))
+                        .orElse(false));
+
+        // Now ARCHIVE the Streaming category (v1)
+        log.info("Archiving 'Streaming' category (v1)");
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Streaming")
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(false)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryArchivedEvent")))
+                        .orElse(false));
+
+        // Create NEW "Streaming" category (v2) with same name
+        log.info("Creating NEW 'Streaming' category (v2) with same name");
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Streaming")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for category creation
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryCreatedEvent"))
+                                .filter(e -> e.event().contains("Streaming"))
+                                .count() >= 2) // Original + new version
+                        .orElse(false));
+
+        // Add transactions to the NEW Streaming category (v2) - these are for current/future periods
+        // Note: paidDate must be in active period for appendPaidCashChange
+        ZonedDateTime currentDate = activePeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
+
+        String newStreamingPaymentId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category("Streaming")
+                        .name("Disney+ subscription (new)")
+                        .description("Monthly streaming subscription - NEW category")
+                        .money(Money.of(12, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(currentDate)
+                        .paidDate(currentDate)
+                        .build()
+        );
+        log.info("Added paid transaction to Streaming v2: {}", newStreamingPaymentId);
+
+        // Also add expected transaction for next month
+        ZonedDateTime nextMonthDate = activePeriod.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC);
+        String expectedStreamingPaymentId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category("Streaming")
+                        .name("Disney+ subscription - February")
+                        .description("Expected monthly subscription")
+                        .money(Money.of(12, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(nextMonthDate)
+                        .build()
+        );
+        log.info("Added expected transaction to Streaming v2 for next month: {}", expectedStreamingPaymentId);
+
+        // Wait for all transactions to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("PaidCashChangeAppendedEvent") ||
+                                            e.type().equals("ExpectedCashChangeAppendedEvent"))
+                                .filter(e -> e.event().contains("Disney+"))
+                                .count() >= 2)
+                        .orElse(false));
+
+        // Verify the setup
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId.id());
+
+        // Should have TWO "Streaming" categories - one archived (v1), one active (v2)
+        List<Category> streamingCategories = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Streaming"))
+                .toList();
+
+        assertThat(streamingCategories).hasSize(2);
+
+        long archivedCount = streamingCategories.stream().filter(Category::isArchived).count();
+        long activeCount = streamingCategories.stream().filter(c -> !c.isArchived()).count();
+
+        assertThat(archivedCount).as("Should have 1 archived Streaming category (v1)").isEqualTo(1);
+        assertThat(activeCount).as("Should have 1 active Streaming category (v2)").isEqualTo(1);
+
+        // Verify historical transactions exist (3 from v1)
+        long historicalTransactionCount = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Streaming") && cc.getName().contains("old"))
+                .count();
+        assertThat(historicalTransactionCount).as("Should have 3 historical transactions from archived Streaming v1").isEqualTo(3);
+
+        // Verify new transactions exist (2 from v2)
+        long newTransactionCount = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Streaming") && cc.getName().contains("Disney+"))
+                .count();
+        assertThat(newTransactionCount).as("Should have 2 new transactions from active Streaming v2").isEqualTo(2);
+
+        // Verify via forecast
+        CashFlowForecastDto.CashFlowForecastStatementJson forecast =
+                cashFlowForecastRestController.getForecastStatement(cashFlowId.id());
+
+        assertThat(forecast).isNotNull();
+        assertThat(forecast.getForecasts()).isNotEmpty();
+
+        log.info("=== Versioned Categories Test PASSED ===");
+        log.info("  - Archived Streaming (v1) has {} historical transactions", historicalTransactionCount);
+        log.info("  - Active Streaming (v2) has {} new transactions", newTransactionCount);
+    }
+
+    /**
+     * Test case: forceArchiveChildren=true with subcategories and transactions.
+     *
+     * Scenario: User has "Marketing" category with subcategories "Advertising" and "Events".
+     * All have transactions. When parent is archived with forceArchiveChildren=true,
+     * all subcategories should also be archived, preserving all transactions.
+     */
+    @Test
+    public void shouldArchiveSubcategoriesWithTransactionsWhenForcedTrue() {
+        YearMonth activePeriod = YearMonth.now(clock); // 2022-01
+        YearMonth startPeriod = activePeriod.minusMonths(2); // 2021-11
+
+        log.info("=== Test: Force Archive Children with Transactions ===");
+
+        // Create CashFlow with history
+        CashFlowId cashFlowId = new CashFlowId(cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("force-archive-test-user")
+                        .name("Force Archive Children Test")
+                        .description("Test for forceArchiveChildren=true")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("FORCE123", Currency.of("USD")),
+                                Money.of(10000, "USD")))
+                        .startPeriod(startPeriod.toString())
+                        .initialBalance(Money.of(10000, "USD"))
+                        .build()
+        ));
+
+        await().until(() -> statementRepository.findByCashFlowId(cashFlowId).isPresent());
+
+        // Create parent category "Marketing" with subcategories
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Marketing"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Marketing"), new CategoryName("Advertising"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Marketing"), new CategoryName("Events"), OUTFLOW);
+        log.info("Created Marketing category with Advertising and Events subcategories");
+
+        // Import historical transactions to parent and subcategories
+        Money netBalance = Money.of(10000, "USD");
+
+        // Transaction to parent "Marketing"
+        ZonedDateTime marketingDate = startPeriod.atDay(5).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Marketing")
+                        .name("Marketing strategy consulting")
+                        .description("General marketing expense")
+                        .money(Money.of(500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(marketingDate)
+                        .paidDate(marketingDate)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(500, "USD"));
+
+        // Transactions to "Advertising" subcategory
+        ZonedDateTime adDate1 = startPeriod.atDay(10).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Advertising")
+                        .name("Google Ads campaign")
+                        .description("PPC advertising")
+                        .money(Money.of(1000, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(adDate1)
+                        .paidDate(adDate1)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(1000, "USD"));
+
+        ZonedDateTime adDate2 = startPeriod.plusMonths(1).atDay(10).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Advertising")
+                        .name("Facebook Ads campaign")
+                        .description("Social media advertising")
+                        .money(Money.of(800, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(adDate2)
+                        .paidDate(adDate2)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(800, "USD"));
+
+        // Transaction to "Events" subcategory
+        ZonedDateTime eventDate = startPeriod.atDay(20).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Events")
+                        .name("Tech conference sponsorship")
+                        .description("Event sponsorship expense")
+                        .money(Money.of(2000, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(eventDate)
+                        .paidDate(eventDate)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(2000, "USD"));
+        log.info("Imported 4 historical transactions: 1 to Marketing, 2 to Advertising, 1 to Events");
+
+        // Attest historical import
+        cashFlowRestController.attestHistoricalImport(
+                cashFlowId.id(),
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(netBalance)
+                        .forceAttestation(false)
+                        .build()
+        );
+
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("HistoricalImportAttestedEvent")))
+                        .orElse(false));
+
+        // Archive parent "Marketing" with forceArchiveChildren=TRUE
+        log.info("Archiving 'Marketing' category with forceArchiveChildren=TRUE");
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Marketing")
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(true)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryArchivedEvent") &&
+                                              e.event().contains("Marketing")))
+                        .orElse(false));
+
+        // Verify results
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId.id());
+
+        // Find Marketing category and its subcategories
+        Category marketing = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Marketing"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(marketing.isArchived()).as("Marketing parent should be archived").isTrue();
+        assertThat(marketing.getValidTo()).as("Marketing should have validTo set").isNotNull();
+
+        // Both subcategories should be archived
+        Category advertising = marketing.getSubCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Advertising"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(advertising.isArchived()).as("Advertising subcategory should be archived").isTrue();
+        assertThat(advertising.getValidTo()).as("Advertising should have validTo set").isNotNull();
+
+        Category events = marketing.getSubCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Events"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(events.isArchived()).as("Events subcategory should be archived").isTrue();
+        assertThat(events.getValidTo()).as("Events should have validTo set").isNotNull();
+
+        // All 4 transactions should still exist
+        long marketingTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Marketing"))
+                .count();
+        long advertisingTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Advertising"))
+                .count();
+        long eventsTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Events"))
+                .count();
+
+        assertThat(marketingTransactions).as("Should have 1 Marketing transaction").isEqualTo(1);
+        assertThat(advertisingTransactions).as("Should have 2 Advertising transactions").isEqualTo(2);
+        assertThat(eventsTransactions).as("Should have 1 Events transaction").isEqualTo(1);
+
+        log.info("=== Force Archive Children Test PASSED ===");
+        log.info("  - Marketing (parent): archived={}, transactions={}", marketing.isArchived(), marketingTransactions);
+        log.info("  - Advertising (child): archived={}, transactions={}", advertising.isArchived(), advertisingTransactions);
+        log.info("  - Events (child): archived={}, transactions={}", events.isArchived(), eventsTransactions);
+    }
+
+    /**
+     * Test case: forceArchiveChildren=false with subcategories and transactions.
+     *
+     * Scenario: User has "Transportation" category with subcategories "Fuel" and "Parking".
+     * All have transactions. When parent is archived with forceArchiveChildren=false,
+     * only the parent should be archived, subcategories remain active.
+     */
+    @Test
+    public void shouldNotArchiveSubcategoriesWithTransactionsWhenForcedFalse() {
+        YearMonth activePeriod = YearMonth.now(clock); // 2022-01
+        YearMonth startPeriod = activePeriod.minusMonths(2); // 2021-11
+
+        log.info("=== Test: Archive Parent Only (forceArchiveChildren=false) ===");
+
+        // Create CashFlow with history
+        CashFlowId cashFlowId = new CashFlowId(cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("no-force-archive-test-user")
+                        .name("No Force Archive Children Test")
+                        .description("Test for forceArchiveChildren=false")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("NOFORCE123", Currency.of("USD")),
+                                Money.of(8000, "USD")))
+                        .startPeriod(startPeriod.toString())
+                        .initialBalance(Money.of(8000, "USD"))
+                        .build()
+        ));
+
+        await().until(() -> statementRepository.findByCashFlowId(cashFlowId).isPresent());
+
+        // Create parent category "Transportation" with subcategories
+        actor.addCategory(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Transportation"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Transportation"), new CategoryName("Fuel"), OUTFLOW);
+        actor.addCategory(cashFlowId, new CategoryName("Transportation"), new CategoryName("Parking"), OUTFLOW);
+        log.info("Created Transportation category with Fuel and Parking subcategories");
+
+        // Import historical transactions
+        Money netBalance = Money.of(8000, "USD");
+
+        // Transaction to parent "Transportation"
+        ZonedDateTime transportDate = startPeriod.atDay(5).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Transportation")
+                        .name("Uber ride")
+                        .description("General transportation expense")
+                        .money(Money.of(25, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(transportDate)
+                        .paidDate(transportDate)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(25, "USD"));
+
+        // Transactions to "Fuel" subcategory
+        ZonedDateTime fuelDate1 = startPeriod.atDay(8).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Fuel")
+                        .name("Gas station fill-up #1")
+                        .description("Fuel expense")
+                        .money(Money.of(60, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(fuelDate1)
+                        .paidDate(fuelDate1)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(60, "USD"));
+
+        ZonedDateTime fuelDate2 = startPeriod.plusMonths(1).atDay(15).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Fuel")
+                        .name("Gas station fill-up #2")
+                        .description("Fuel expense")
+                        .money(Money.of(55, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(fuelDate2)
+                        .paidDate(fuelDate2)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(55, "USD"));
+
+        // Transaction to "Parking" subcategory
+        ZonedDateTime parkingDate = startPeriod.atDay(12).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId.id(),
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Parking")
+                        .name("Downtown parking")
+                        .description("Parking expense")
+                        .money(Money.of(15, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(parkingDate)
+                        .paidDate(parkingDate)
+                        .build()
+        );
+        netBalance = netBalance.minus(Money.of(15, "USD"));
+        log.info("Imported 4 historical transactions: 1 to Transportation, 2 to Fuel, 1 to Parking");
+
+        // Attest historical import
+        cashFlowRestController.attestHistoricalImport(
+                cashFlowId.id(),
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(netBalance)
+                        .forceAttestation(false)
+                        .build()
+        );
+
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("HistoricalImportAttestedEvent")))
+                        .orElse(false));
+
+        // Archive parent "Transportation" with forceArchiveChildren=FALSE
+        log.info("Archiving 'Transportation' category with forceArchiveChildren=FALSE");
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Transportation")
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(false)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryArchivedEvent") &&
+                                              e.event().contains("Transportation")))
+                        .orElse(false));
+
+        // Verify results
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId.id());
+
+        // Find Transportation category and its subcategories
+        Category transportation = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Transportation"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(transportation.isArchived()).as("Transportation parent should be archived").isTrue();
+        assertThat(transportation.getValidTo()).as("Transportation should have validTo set").isNotNull();
+
+        // Subcategories should NOT be archived
+        Category fuel = transportation.getSubCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Fuel"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(fuel.isArchived()).as("Fuel subcategory should NOT be archived").isFalse();
+        assertThat(fuel.getValidTo()).as("Fuel should NOT have validTo set").isNull();
+
+        Category parking = transportation.getSubCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Parking"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(parking.isArchived()).as("Parking subcategory should NOT be archived").isFalse();
+        assertThat(parking.getValidTo()).as("Parking should NOT have validTo set").isNull();
+
+        // All 4 transactions should still exist
+        long transportationTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Transportation"))
+                .count();
+        long fuelTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Fuel"))
+                .count();
+        long parkingTransactions = summary.getCashChanges().values().stream()
+                .filter(cc -> cc.getCategoryName().equals("Parking"))
+                .count();
+
+        assertThat(transportationTransactions).as("Should have 1 Transportation transaction").isEqualTo(1);
+        assertThat(fuelTransactions).as("Should have 2 Fuel transactions").isEqualTo(2);
+        assertThat(parkingTransactions).as("Should have 1 Parking transaction").isEqualTo(1);
+
+        // Subcategories should still be usable for new transactions
+        ZonedDateTime currentDate = activePeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
+        String newFuelPaymentId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category("Fuel")
+                        .name("New fuel expense after parent archived")
+                        .description("Should succeed - Fuel is still active")
+                        .money(Money.of(50, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(currentDate)
+                        .paidDate(currentDate)
+                        .build()
+        );
+        assertThat(newFuelPaymentId).as("Should be able to add transaction to active Fuel subcategory").isNotNull();
+        log.info("Successfully added new transaction to Fuel subcategory after parent was archived");
+
+        log.info("=== No Force Archive Children Test PASSED ===");
+        log.info("  - Transportation (parent): archived={}, transactions={}", transportation.isArchived(), transportationTransactions);
+        log.info("  - Fuel (child): archived={}, transactions={}", fuel.isArchived(), fuelTransactions + 1); // +1 for new
+        log.info("  - Parking (child): archived={}, transactions={}", parking.isArchived(), parkingTransactions);
+    }
 }

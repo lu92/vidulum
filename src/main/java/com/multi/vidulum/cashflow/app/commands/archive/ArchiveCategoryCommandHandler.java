@@ -50,7 +50,8 @@ public class ArchiveCategoryCommandHandler implements CommandHandler<ArchiveCate
                 command.cashFlowId(),
                 command.categoryName(),
                 command.categoryType(),
-                ZonedDateTime.now(clock)
+                ZonedDateTime.now(clock),
+                command.forceArchiveChildren()
         );
 
         cashFlow.apply(event);

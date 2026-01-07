@@ -249,6 +249,11 @@ public final class CashFlowDto {
     public static class ArchiveCategoryJson {
         private String categoryName;
         private Type categoryType;
+        /**
+         * If true, all subcategories will be archived along with the parent category.
+         * If false and the category has active subcategories, only the parent will be archived.
+         */
+        private boolean forceArchiveChildren;
     }
 
     /**

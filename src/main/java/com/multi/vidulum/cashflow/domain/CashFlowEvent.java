@@ -222,16 +222,18 @@ public sealed interface CashFlowEvent extends DomainEvent
      * Event for archiving a category, hiding it from new transactions.
      * Archived categories remain visible in historical transactions that used them.
      *
-     * @param cashFlowId   the CashFlow containing the category
-     * @param categoryName the name of the archived category
-     * @param categoryType INFLOW or OUTFLOW
-     * @param archivedAt   timestamp when the category was archived (becomes validTo)
+     * @param cashFlowId           the CashFlow containing the category
+     * @param categoryName         the name of the archived category
+     * @param categoryType         INFLOW or OUTFLOW
+     * @param archivedAt           timestamp when the category was archived (becomes validTo)
+     * @param forceArchiveChildren if true, all subcategories are also archived
      */
     record CategoryArchivedEvent(
             CashFlowId cashFlowId,
             CategoryName categoryName,
             Type categoryType,
-            ZonedDateTime archivedAt
+            ZonedDateTime archivedAt,
+            boolean forceArchiveChildren
     ) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
