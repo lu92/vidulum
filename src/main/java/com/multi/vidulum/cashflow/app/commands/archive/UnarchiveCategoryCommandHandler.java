@@ -16,6 +16,13 @@ import java.util.Map;
 /**
  * Handler for unarchiving a category in a CashFlow.
  * Unarchived categories become available again for new transaction creation.
+ * <p>
+ * <b>Important:</b> Unarchive is primarily intended for accidental archive recovery.
+ * A category can only be unarchived if there is no other active (non-archived) category
+ * with the same name. Once a new category with the same name is created, the old
+ * archived category cannot be unarchived anymore - this prevents duplicate active categories.
+ *
+ * @see CannotUnarchiveCategoryException
  */
 @Slf4j
 @Component
@@ -39,6 +46,13 @@ public class UnarchiveCategoryCommandHandler implements CommandHandler<Unarchive
         Category category = findCategory(categories, command.categoryName());
         if (category == null) {
             throw new CategoryNotFoundException(command.categoryName(), command.categoryType());
+        }
+
+        // Check if there's another ACTIVE category with the same name
+        // Only allow unarchive if no active category with same name exists
+        boolean hasActiveCategoryWithSameName = hasActiveCategory(categories, command.categoryName());
+        if (hasActiveCategoryWithSameName) {
+            throw new CannotUnarchiveCategoryException(command.categoryName());
         }
 
         CashFlowEvent.CategoryUnarchivedEvent event = new CashFlowEvent.CategoryUnarchivedEvent(
@@ -76,5 +90,22 @@ public class UnarchiveCategoryCommandHandler implements CommandHandler<Unarchive
             }
         }
         return null;
+    }
+
+    /**
+     * Checks if there's an active (non-archived) category with the given name.
+     * This searches through all categories including subcategories.
+     */
+    private boolean hasActiveCategory(List<Category> categories, CategoryName categoryName) {
+        for (Category category : categories) {
+            if (category.getCategoryName().equals(categoryName) && category.isActive()) {
+                return true;
+            }
+            // Check subcategories
+            if (hasActiveCategory(category.getSubCategories(), categoryName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

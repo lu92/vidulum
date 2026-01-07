@@ -5,6 +5,8 @@ import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.CannotUnarchiveCategoryException;
+import com.multi.vidulum.cashflow.domain.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
@@ -3988,5 +3990,279 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(summary.getCashChanges()).hasSize(1);
         assertThat(summary.getCashChanges().get(cashChangeId).getName())
                 .isEqualTo("Test income");
+    }
+
+    @Test
+    void shouldNotAllowCreatingCategoryWithSameNameAsActiveCategory() {
+        // given - create cashflow with a category
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Duplicate Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // when & then - trying to create a category with the same name should fail
+        assertThatThrownBy(() -> cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Duplicate Category")
+                        .type(OUTFLOW)
+                        .build()
+        )).isInstanceOf(CategoryAlreadyExistsException.class)
+                .hasMessageContaining("Category [Duplicate Category] already exists and is active");
+    }
+
+    @Test
+    void shouldAllowCreatingCategoryWithSameNameAsArchivedCategory() {
+        // given - create cashflow with a category and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Versioned Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Versioned Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // when - create a new category with the same name (should succeed)
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Versioned Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // then - there should be two categories with the same name (one archived, one active)
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        List<Category> versionedCategories = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Versioned Category"))
+                .toList();
+
+        assertThat(versionedCategories).hasSize(2);
+
+        // One should be archived, one should be active
+        long archivedCount = versionedCategories.stream().filter(Category::isArchived).count();
+        long activeCount = versionedCategories.stream().filter(c -> !c.isArchived()).count();
+        assertThat(archivedCount).isEqualTo(1);
+        assertThat(activeCount).isEqualTo(1);
+    }
+
+    @Test
+    void shouldNotAllowUnarchivingWhenActiveCategoryWithSameNameExists() {
+        // given - create cashflow with a category, archive it, create new one with same name
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Blocked Unarchive Category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // Archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Blocked Unarchive Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // Create a new active category with the same name
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Blocked Unarchive Category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // when & then - trying to unarchive the old category should fail
+        // (because there's already an active category with the same name)
+        assertThatThrownBy(() -> cashFlowRestController.unarchiveCategory(
+                cashFlowId,
+                CashFlowDto.UnarchiveCategoryJson.builder()
+                        .categoryName("Blocked Unarchive Category")
+                        .categoryType(INFLOW)
+                        .build()
+        )).isInstanceOf(CannotUnarchiveCategoryException.class)
+                .hasMessageContaining("Cannot unarchive category [Blocked Unarchive Category] because another category with the same name is already active");
+    }
+
+    @Test
+    void shouldArchiveSubcategoriesWhenForceArchiveChildrenIsTrue() {
+        // given - create cashflow with parent category and subcategories
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Create parent category
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Parent Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Create subcategories
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName("Parent Category")
+                        .category("Child Category 1")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName("Parent Category")
+                        .category("Child Category 2")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // when - archive parent category with forceArchiveChildren=true
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Parent Category")
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(true)
+                        .build()
+        );
+
+        // then - parent and all subcategories should be archived
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        Category parentCategory = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Parent Category"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(parentCategory.isArchived()).isTrue();
+
+        // Check subcategories are also archived
+        for (Category child : parentCategory.getSubCategories()) {
+            assertThat(child.isArchived()).isTrue();
+            assertThat(child.getValidTo()).isNotNull();
+        }
+    }
+
+    @Test
+    void shouldNotArchiveSubcategoriesWhenForceArchiveChildrenIsFalse() {
+        // given - create cashflow with parent category and subcategories
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Create parent category
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Parent Only Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Create subcategory
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName("Parent Only Category")
+                        .category("Active Child Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // when - archive parent category with forceArchiveChildren=false (default)
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Parent Only Category")
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(false)
+                        .build()
+        );
+
+        // then - only parent should be archived, subcategory should remain active
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        Category parentCategory = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Parent Only Category"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(parentCategory.isArchived()).isTrue();
+
+        // Subcategory should NOT be archived
+        Category childCategory = parentCategory.getSubCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Active Child Category"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(childCategory.isArchived()).isFalse();
+        assertThat(childCategory.getValidTo()).isNull();
     }
 }

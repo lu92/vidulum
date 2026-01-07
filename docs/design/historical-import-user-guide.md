@@ -10,6 +10,8 @@
 6. [Obsługa błędów](#obsługa-błędów)
 7. [Decyzje projektowe](#decyzje-projektowe)
 8. [Archiwizacja kategorii](#archiwizacja-kategorii)
+9. [Wersjonowanie kategorii (Category Versioning)](#wersjonowanie-kategorii-category-versioning)
+10. [Archiwizacja z subkategoriami (forceArchiveChildren)](#archiwizacja-z-subkategoriami-forcearchivechildren)
 
 ---
 
@@ -846,6 +848,564 @@ const CategoryDropdown = ({ categories, showArchived, onToggleArchived }) => {
 
 ---
 
+## Wersjonowanie kategorii (Category Versioning)
+
+### Przegląd
+
+Wersjonowanie kategorii pozwala na zachowanie pełnej historii zmian kategorii w czasie. Gdy kategoria jest archiwizowana, można utworzyć nową kategorię o tej samej nazwie - obie będą współistnieć w systemie, ale tylko jedna będzie aktywna.
+
+### Scenariusz: Zmiana dostawcy usługi streamingowej
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CATEGORY VERSIONING TIMELINE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────┐                    ┌─────────────┐                        │
+│  │  Streaming  │                    │  Streaming  │                        │
+│  │   v1 (Old)  │    Archive         │   v2 (New)  │                        │
+│  │             │  ──────────────▶   │             │                        │
+│  │  Netflix    │    Jan 2024        │  Disney+    │                        │
+│  │  $15/month  │                    │  $12/month  │                        │
+│  └─────────────┘                    └─────────────┘                        │
+│                                                                             │
+│  Jan 2023                           Jan 2024            Present            │
+│  ─────────────────────────────────────────────────────────────────────▶    │
+│                                                                             │
+│  Transactions in v1:                Transactions in v2:                    │
+│  - Netflix Jan 2023                 - Disney+ Feb 2024                     │
+│  - Netflix Feb 2023                 - Disney+ Mar 2024                     │
+│  - ...                              - ...                                  │
+│  - Netflix Dec 2023                                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### User Journey - Wersjonowanie kategorii
+
+#### Krok 1: Kategoria Streaming z subskrypcją Netflix
+
+**Stan początkowy:**
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Streaming",
+        "archived": false,
+        "validFrom": "2023-01-01T00:00:00Z",
+        "validTo": null,
+        "origin": "USER_CREATED",
+        "nodes": []
+      }
+    ]
+  }
+}
+```
+
+**Transakcje w kategorii Streaming (2023):**
+```
+- Netflix January:  $15.00 (2023-01-15)
+- Netflix February: $15.00 (2023-02-15)
+- Netflix March:    $15.00 (2023-03-15)
+...
+- Netflix December: $15.00 (2023-12-15)
+```
+
+#### Krok 2: Archiwizacja kategorii Streaming
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/archive
+Content-Type: application/json
+
+{
+  "categoryName": "Streaming",
+  "categoryType": "OUTFLOW",
+  "forceArchiveChildren": false
+}
+```
+
+**Stan po archiwizacji:**
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Streaming",
+        "archived": true,
+        "validFrom": "2023-01-01T00:00:00Z",
+        "validTo": "2024-01-15T10:00:00Z",
+        "origin": "USER_CREATED",
+        "nodes": []
+      }
+    ]
+  }
+}
+```
+
+#### Krok 3: Utworzenie nowej wersji kategorii Streaming
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category
+Content-Type: application/json
+
+{
+  "category": "Streaming",
+  "type": "OUTFLOW"
+}
+```
+
+**Stan po utworzeniu nowej wersji:**
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Streaming",
+        "archived": true,
+        "validFrom": "2023-01-01T00:00:00Z",
+        "validTo": "2024-01-15T10:00:00Z",
+        "origin": "USER_CREATED",
+        "nodes": []
+      },
+      {
+        "categoryName": "Streaming",
+        "archived": false,
+        "validFrom": "2024-01-15T10:00:00Z",
+        "validTo": null,
+        "origin": "USER_CREATED",
+        "nodes": []
+      }
+    ]
+  }
+}
+```
+
+**Teraz mamy dwie kategorie "Streaming":**
+- v1 (archived): validFrom=2023-01-01, validTo=2024-01-15
+- v2 (active): validFrom=2024-01-15, validTo=null
+
+#### Krok 4: Dodawanie transakcji do nowej wersji
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/append-paid
+Content-Type: application/json
+
+{
+  "name": "Disney+ February",
+  "description": "Monthly Disney+ subscription",
+  "money": { "amount": 12.00, "currency": "USD" },
+  "type": "OUTFLOW",
+  "category": "Streaming",
+  "dueDate": "2024-02-15T10:00:00Z",
+  "paidDate": "2024-02-15T10:00:00Z"
+}
+```
+
+System automatycznie przypisze transakcję do **aktywnej** wersji kategorii Streaming (v2).
+
+### Stan CashFlow i Forecasts po wersjonowaniu
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CashFlowForecastStatement                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ MONTHLY FORECASTS:                                                          │
+│                                                                             │
+│ 2023-12 (IMPORTED):                                                         │
+│   OUTFLOWS:                                                                 │
+│     - Streaming (v1): Netflix December $15.00 [PAID]                       │
+│                                                                             │
+│ 2024-01 (IMPORTED):                                                         │
+│   OUTFLOWS:                                                                 │
+│     - Streaming (v1): Netflix January $15.00 [PAID]                        │
+│       ↑ Transakcja przypisana do v1 (przed archiwizacją)                   │
+│                                                                             │
+│ 2024-02 (ACTIVE):                                                           │
+│   OUTFLOWS:                                                                 │
+│     - Streaming (v2): Disney+ February $12.00 [PAID]                       │
+│       ↑ Transakcja przypisana do v2 (po utworzeniu nowej wersji)           │
+│                                                                             │
+│ CATEGORY STRUCTURE:                                                         │
+│   OUTFLOW:                                                                  │
+│     └── Streaming (v1) [ARCHIVED] - 12 transactions from 2023              │
+│     └── Streaming (v2) [ACTIVE]   - transactions from 2024+                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Obsługa wersjonowanych kategorii w handlerach
+
+System automatycznie znajduje właściwą wersję kategorii:
+
+```java
+// AppendPaidCashChangeCommandHandler.java
+Category activeCategory = findActiveCategory(categories, command.categoryName());
+if (activeCategory == null) {
+    Category archivedCategory = findArchivedCategory(categories, command.categoryName());
+    if (archivedCategory != null) {
+        throw new CategoryIsArchivedException(command.categoryName());
+    }
+}
+```
+
+**Logika:**
+1. Najpierw szukamy aktywnej kategorii o podanej nazwie
+2. Jeśli nie ma aktywnej, sprawdzamy czy istnieje zarchiwizowana
+3. Jeśli jest tylko zarchiwizowana → błąd `CategoryIsArchivedException`
+4. Jeśli jest aktywna → używamy jej do transakcji
+
+---
+
+## Archiwizacja z subkategoriami (forceArchiveChildren)
+
+### Przegląd
+
+Parametr `forceArchiveChildren` kontroluje zachowanie subkategorii podczas archiwizacji kategorii nadrzędnej:
+
+| Wartość | Zachowanie |
+|---------|------------|
+| `true`  | Archiwizuje kategorię nadrzędną ORAZ wszystkie jej subkategorie |
+| `false` | Archiwizuje TYLKO kategorię nadrzędną, subkategorie pozostają aktywne |
+
+### Scenariusz A: forceArchiveChildren = true
+
+**Przypadek użycia:** Całkowite wycofanie działu (np. zamknięcie działu marketingu)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    forceArchiveChildren = TRUE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PRZED ARCHIWIZACJĄ:                     PO ARCHIWIZACJI:                   │
+│                                                                             │
+│  Marketing [ACTIVE]                      Marketing [ARCHIVED]               │
+│    ├── Digital Ads [ACTIVE]                ├── Digital Ads [ARCHIVED]       │
+│    │     └── Google Ads                    │     └── Google Ads             │
+│    │     └── Facebook Ads                  │     └── Facebook Ads           │
+│    └── Print Ads [ACTIVE]                  └── Print Ads [ARCHIVED]         │
+│          └── Magazines                           └── Magazines              │
+│          └── Newspapers                          └── Newspapers             │
+│                                                                             │
+│  Wszystkie transakcje pozostają, ale żadna z tych kategorii               │
+│  nie jest dostępna dla nowych transakcji.                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### User Journey - forceArchiveChildren = true
+
+**Krok 1: Stan początkowy z transakcjami**
+
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Marketing",
+        "archived": false,
+        "nodes": [
+          {
+            "categoryName": "Digital Ads",
+            "archived": false,
+            "nodes": []
+          },
+          {
+            "categoryName": "Print Ads",
+            "archived": false,
+            "nodes": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Transakcje:**
+```
+- Marketing: Campaign Planning $500 (paid)
+- Digital Ads: Google Ads January $200 (paid)
+- Digital Ads: Facebook Ads January $150 (paid)
+- Print Ads: Magazine Ad $300 (paid)
+```
+
+**Krok 2: Archiwizacja z forceArchiveChildren=true**
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/archive
+Content-Type: application/json
+
+{
+  "categoryName": "Marketing",
+  "categoryType": "OUTFLOW",
+  "forceArchiveChildren": true
+}
+```
+
+**Response:**
+```json
+{
+  "archivedCategories": ["Marketing", "Digital Ads", "Print Ads"],
+  "totalArchived": 3
+}
+```
+
+**Krok 3: Stan po archiwizacji**
+
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Marketing",
+        "archived": true,
+        "validTo": "2024-06-01T12:00:00Z",
+        "nodes": [
+          {
+            "categoryName": "Digital Ads",
+            "archived": true,
+            "validTo": "2024-06-01T12:00:00Z",
+            "nodes": []
+          },
+          {
+            "categoryName": "Print Ads",
+            "archived": true,
+            "validTo": "2024-06-01T12:00:00Z",
+            "nodes": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Próba dodania transakcji do Digital Ads:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/append-paid
+{
+  "category": "Digital Ads",
+  ...
+}
+```
+
+**Response (400 Bad Request):**
+```json
+{
+  "error": "CategoryIsArchivedException",
+  "message": "Category [Digital Ads] is archived and cannot accept new transactions"
+}
+```
+
+---
+
+### Scenariusz B: forceArchiveChildren = false
+
+**Przypadek użycia:** Reorganizacja struktury (np. usunięcie kategorii pośredniej, ale zachowanie szczegółowych)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    forceArchiveChildren = FALSE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PRZED ARCHIWIZACJĄ:                     PO ARCHIWIZACJI:                   │
+│                                                                             │
+│  Transportation [ACTIVE]                 Transportation [ARCHIVED]          │
+│    ├── Fuel [ACTIVE]                       ├── Fuel [ACTIVE] ← nadal       │
+│    └── Parking [ACTIVE]                    │     aktywne!                  │
+│                                            └── Parking [ACTIVE]            │
+│                                                                             │
+│  Kategoria nadrzędna zarchiwizowana, ale subkategorie pozostają           │
+│  aktywne i mogą przyjmować nowe transakcje.                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### User Journey - forceArchiveChildren = false
+
+**Krok 1: Stan początkowy z transakcjami**
+
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Transportation",
+        "archived": false,
+        "nodes": [
+          {
+            "categoryName": "Fuel",
+            "archived": false,
+            "nodes": []
+          },
+          {
+            "categoryName": "Parking",
+            "archived": false,
+            "nodes": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Transakcje:**
+```
+- Fuel: Gas Station January $80 (paid)
+- Parking: Downtown Parking $25 (paid)
+```
+
+**Krok 2: Archiwizacja z forceArchiveChildren=false**
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/archive
+Content-Type: application/json
+
+{
+  "categoryName": "Transportation",
+  "categoryType": "OUTFLOW",
+  "forceArchiveChildren": false
+}
+```
+
+**Response:**
+```json
+{
+  "archivedCategories": ["Transportation"],
+  "totalArchived": 1,
+  "activeChildren": ["Fuel", "Parking"]
+}
+```
+
+**Krok 3: Stan po archiwizacji**
+
+```json
+{
+  "categoryStructure": {
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Transportation",
+        "archived": true,
+        "validTo": "2024-06-01T12:00:00Z",
+        "nodes": [
+          {
+            "categoryName": "Fuel",
+            "archived": false,
+            "validTo": null,
+            "nodes": []
+          },
+          {
+            "categoryName": "Parking",
+            "archived": false,
+            "validTo": null,
+            "nodes": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Krok 4: Dodanie nowej transakcji do aktywnej subkategorii**
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/append-paid
+Content-Type: application/json
+
+{
+  "name": "Highway toll",
+  "description": "A4 highway toll",
+  "money": { "amount": 15.00, "currency": "PLN" },
+  "type": "OUTFLOW",
+  "category": "Fuel",
+  "dueDate": "2024-06-15T10:00:00Z",
+  "paidDate": "2024-06-15T10:00:00Z"
+}
+```
+
+**Response:**
+```json
+"cc-toll-june"
+```
+
+Transakcja została pomyślnie dodana do kategorii "Fuel", mimo że kategoria nadrzędna "Transportation" jest zarchiwizowana.
+
+---
+
+### Porównanie scenariuszy
+
+| Aspekt | forceArchiveChildren=true | forceArchiveChildren=false |
+|--------|--------------------------|----------------------------|
+| **Kategoria nadrzędna** | Zarchiwizowana | Zarchiwizowana |
+| **Subkategorie** | Wszystkie zarchiwizowane | Pozostają aktywne |
+| **Nowe transakcje** | Niedozwolone nigdzie | Dozwolone w subkategoriach |
+| **Przypadek użycia** | Całkowite wycofanie | Reorganizacja struktury |
+| **Zachowanie historii** | Pełne | Pełne |
+
+### Stan CashFlow i Forecasts - podsumowanie
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CashFlowForecastStatement - after category operations                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ CATEGORY STRUCTURE SUMMARY:                                                 │
+│                                                                             │
+│ OUTFLOW CATEGORIES:                                                         │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Versioned Category Example:                                             │ │
+│ │                                                                         │ │
+│ │   Streaming (v1) [ARCHIVED]                                            │ │
+│ │     - validFrom: 2023-01-01                                            │ │
+│ │     - validTo: 2024-01-15                                              │ │
+│ │     - transactions: 12 (Netflix 2023)                                  │ │
+│ │                                                                         │ │
+│ │   Streaming (v2) [ACTIVE]                                              │ │
+│ │     - validFrom: 2024-01-15                                            │ │
+│ │     - validTo: null                                                    │ │
+│ │     - transactions: 5 (Disney+ 2024)                                   │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Force Archive Children = TRUE:                                          │ │
+│ │                                                                         │ │
+│ │   Marketing [ARCHIVED]                                                  │ │
+│ │     ├── Digital Ads [ARCHIVED]                                         │ │
+│ │     │     - transactions: 5 (all historical)                           │ │
+│ │     └── Print Ads [ARCHIVED]                                           │ │
+│ │           - transactions: 3 (all historical)                           │ │
+│ │                                                                         │ │
+│ │   ⚠ No new transactions allowed in any of these categories            │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │ Force Archive Children = FALSE:                                         │ │
+│ │                                                                         │ │
+│ │   Transportation [ARCHIVED]                                             │ │
+│ │     ├── Fuel [ACTIVE]                                                  │ │
+│ │     │     - transactions: 8 (can add more!)                            │ │
+│ │     └── Parking [ACTIVE]                                               │ │
+│ │           - transactions: 4 (can add more!)                            │ │
+│ │                                                                         │ │
+│ │   ✓ New transactions allowed in Fuel and Parking                       │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Changelog
 
 | Data | Zmiany |
@@ -854,3 +1414,6 @@ const CategoryDropdown = ({ categories, showArchived, onToggleArchived }) => {
 | 2026-01-07 | Dodanie sekcji o createAdjustment i importCutoffDateTime |
 | 2026-01-07 | Dodanie sekcji o archiwizacji kategorii (VID-92) |
 | 2026-01-07 | Dodanie procesowania eventów archiwizacji w ForecastProcessor |
+| 2026-01-07 | Dodanie sekcji o wersjonowaniu kategorii (VID-90) |
+| 2026-01-07 | Dodanie sekcji o forceArchiveChildren z przykładami TRUE/FALSE |
+| 2026-01-07 | Dodanie diagramów stanu CashFlow i Forecasts po operacjach na kategoriach |

@@ -335,7 +335,8 @@ public class CashFlowRestController {
                 new ArchiveCategoryCommand(
                         new CashFlowId(cashFlowId),
                         new CategoryName(request.getCategoryName()),
-                        request.getCategoryType()
+                        request.getCategoryType(),
+                        request.isForceArchiveChildren()
                 )
         );
     }

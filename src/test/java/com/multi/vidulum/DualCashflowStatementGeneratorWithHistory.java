@@ -248,6 +248,12 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         log.info("=== PHASE 4: Archiving category created after attestation ===");
         archiveCategoryCreatedAfterAttestation(homeCashFlowId, activePeriod);
 
+        // === PHASE 4.5: Demonstrate category versioning scenarios ===
+        log.info("=== PHASE 4.5: Category versioning and forceArchiveChildren scenarios ===");
+        demonstrateCategoryVersioning(homeCashFlowId, activePeriod);
+        demonstrateForceArchiveChildren(homeCashFlowId, activePeriod);
+        demonstrateNonForceArchiveChildren(businessCashFlowId, activePeriod);
+
         log.info("Generated home cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(homeCashFlowId).get()).content());
         log.info("Generated business cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(businessCashFlowId).get()).content());
 
@@ -1089,5 +1095,499 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                 Stream.of(category),
                 category.getSubCategories().stream().flatMap(this::flattenCashCategoryJsonStream)
         );
+    }
+
+    /**
+     * Demonstrates category versioning - archived category + new category with same name + transactions in both.
+     *
+     * Scenario: User has "Streaming" category with historical Netflix transactions.
+     * User archives it and creates a new "Streaming" category for Disney+.
+     * Both categories coexist - one archived with historical data, one active for new transactions.
+     */
+    private void demonstrateCategoryVersioning(CashFlowId cashFlowId, YearMonth activePeriod) {
+        String streamingCategoryName = "Streaming - Versioned";
+        log.info("=== Demonstrating category versioning with '{}' ===", streamingCategoryName);
+
+        // Calculate post-attestation period (same as in archiveCategoryCreatedAfterAttestation)
+        YearMonth postAttestationPeriod = activePeriod.plusMonths(FUTURE_MONTHS + 1 - ATTESTED_MONTHS_OFFSET);
+
+        // 1. Create "Streaming - Versioned" category (v1)
+        log.info("Creating '{}' category (v1) for historical Netflix payments", streamingCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category(streamingCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for category creation
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryCreatedEvent")
+                                        && e.event().contains(streamingCategoryName)))
+                        .orElse(false));
+
+        // 2. Add transactions to Streaming v1 (Netflix payments)
+        ZonedDateTime payment1Date = postAttestationPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
+        String payment1Id = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(streamingCategoryName)
+                        .name("Netflix subscription (old)")
+                        .description("Monthly streaming - OLD category version")
+                        .money(Money.of(15.99, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(payment1Date)
+                        .build()
+        );
+        log.info("Added Netflix payment (v1) for {}: {}", postAttestationPeriod, payment1Id);
+
+        ZonedDateTime payment2Date = postAttestationPeriod.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC);
+        String payment2Id = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(streamingCategoryName)
+                        .name("Netflix subscription (old)")
+                        .description("Monthly streaming - OLD category version")
+                        .money(Money.of(15.99, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(payment2Date)
+                        .build()
+        );
+        log.info("Added Netflix payment (v1) for {}: {}", postAttestationPeriod.plusMonths(1), payment2Id);
+
+        // Wait for transactions
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent")
+                                        && e.event().contains("Netflix"))
+                                .count() >= 2)
+                        .orElse(false));
+
+        // 3. Archive Streaming v1 (user cancelled Netflix)
+        log.info("Archiving '{}' v1 - user cancelled Netflix", streamingCategoryName);
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName(streamingCategoryName)
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(false)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryArchivedEvent"))
+                                .anyMatch(e -> e.event().contains(streamingCategoryName)))
+                        .orElse(false));
+
+        // 4. Create NEW Streaming category with same name (v2)
+        log.info("Creating NEW '{}' category (v2) for Disney+ payments", streamingCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category(streamingCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for second category creation
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryCreatedEvent")
+                                        && e.event().contains(streamingCategoryName))
+                                .count() >= 2)
+                        .orElse(false));
+
+        // 5. Add transactions to Streaming v2 (Disney+ payments)
+        ZonedDateTime disneyPayment1Date = postAttestationPeriod.plusMonths(2).atDay(5).atStartOfDay(ZoneOffset.UTC);
+        String disneyPayment1Id = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(streamingCategoryName)
+                        .name("Disney+ subscription (new)")
+                        .description("Monthly streaming - NEW category version")
+                        .money(Money.of(10.99, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(disneyPayment1Date)
+                        .build()
+        );
+        log.info("Added Disney+ payment (v2) for {}: {}", postAttestationPeriod.plusMonths(2), disneyPayment1Id);
+
+        ZonedDateTime disneyPayment2Date = postAttestationPeriod.plusMonths(3).atDay(5).atStartOfDay(ZoneOffset.UTC);
+        String disneyPayment2Id = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(streamingCategoryName)
+                        .name("Disney+ subscription (new)")
+                        .description("Monthly streaming - NEW category version")
+                        .money(Money.of(10.99, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(disneyPayment2Date)
+                        .build()
+        );
+        log.info("Added Disney+ payment (v2) for {}: {}", postAttestationPeriod.plusMonths(3), disneyPayment2Id);
+
+        // Wait for Disney+ transactions
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent")
+                                        && e.event().contains("Disney+"))
+                                .count() >= 2)
+                        .orElse(false));
+
+        log.info("=== Category versioning completed ===");
+        log.info("  - Archived '{}' (v1) has 2 Netflix transactions ($31.98 total)", streamingCategoryName);
+        log.info("  - Active '{}' (v2) has 2 Disney+ transactions ($21.98 total)", streamingCategoryName);
+        log.info("  - Both categories coexist with same name, one archived, one active");
+    }
+
+    /**
+     * Demonstrates forceArchiveChildren=true - parent category with subcategories and transactions.
+     *
+     * Scenario: User has "Marketing - Archive All" category with "Digital Ads" and "Print Ads" subcategories.
+     * All have transactions. When parent is archived with forceArchiveChildren=true,
+     * all subcategories are also archived.
+     */
+    private void demonstrateForceArchiveChildren(CashFlowId cashFlowId, YearMonth activePeriod) {
+        String marketingCategoryName = "Marketing - Archive All";
+        String digitalAdsCategoryName = "Digital Ads";
+        String printAdsCategoryName = "Print Ads";
+
+        log.info("=== Demonstrating forceArchiveChildren=true with '{}' ===", marketingCategoryName);
+
+        YearMonth postAttestationPeriod = activePeriod.plusMonths(FUTURE_MONTHS + 1 - ATTESTED_MONTHS_OFFSET);
+
+        // 1. Create parent category "Marketing - Archive All"
+        log.info("Creating parent category '{}'", marketingCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category(marketingCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for parent creation
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryCreatedEvent")
+                                        && e.event().contains(marketingCategoryName)))
+                        .orElse(false));
+
+        // 2. Create subcategories
+        log.info("Creating subcategory '{}' under '{}'", digitalAdsCategoryName, marketingCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName(marketingCategoryName)
+                        .category(digitalAdsCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        log.info("Creating subcategory '{}' under '{}'", printAdsCategoryName, marketingCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName(marketingCategoryName)
+                        .category(printAdsCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for subcategory creation
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryCreatedEvent"))
+                                .filter(e -> e.event().contains(digitalAdsCategoryName)
+                                        || e.event().contains(printAdsCategoryName))
+                                .count() >= 2)
+                        .orElse(false));
+
+        // 3. Add transactions to parent category
+        ZonedDateTime marketingDate = postAttestationPeriod.plusMonths(4).atDay(10).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(marketingCategoryName)
+                        .name("Marketing strategy consulting")
+                        .description("General marketing expense")
+                        .money(Money.of(500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(marketingDate)
+                        .build()
+        );
+        log.info("Added transaction to parent '{}': $500", marketingCategoryName);
+
+        // 4. Add transactions to subcategories
+        ZonedDateTime digitalDate1 = postAttestationPeriod.plusMonths(4).atDay(15).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(digitalAdsCategoryName)
+                        .name("Google Ads campaign")
+                        .description("PPC advertising")
+                        .money(Money.of(1000, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(digitalDate1)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $1000 Google Ads", digitalAdsCategoryName);
+
+        ZonedDateTime digitalDate2 = postAttestationPeriod.plusMonths(5).atDay(15).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(digitalAdsCategoryName)
+                        .name("Facebook Ads campaign")
+                        .description("Social media advertising")
+                        .money(Money.of(800, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(digitalDate2)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $800 Facebook Ads", digitalAdsCategoryName);
+
+        ZonedDateTime printDate = postAttestationPeriod.plusMonths(4).atDay(20).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(printAdsCategoryName)
+                        .name("Magazine advertisement")
+                        .description("Print media advertising")
+                        .money(Money.of(2000, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(printDate)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $2000 Magazine ad", printAdsCategoryName);
+
+        // Wait for all transactions
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent"))
+                                .filter(e -> e.event().contains("Google Ads")
+                                        || e.event().contains("Facebook Ads")
+                                        || e.event().contains("Magazine")
+                                        || e.event().contains("Marketing strategy"))
+                                .count() >= 4)
+                        .orElse(false));
+
+        // 5. Archive parent with forceArchiveChildren=TRUE
+        log.info("Archiving '{}' with forceArchiveChildren=TRUE", marketingCategoryName);
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName(marketingCategoryName)
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(true)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryArchivedEvent"))
+                                .anyMatch(e -> e.event().contains(marketingCategoryName)))
+                        .orElse(false));
+
+        log.info("=== forceArchiveChildren=true completed ===");
+        log.info("  - Parent '{}' archived with 1 transaction ($500)", marketingCategoryName);
+        log.info("  - Child '{}' archived with 2 transactions ($1800)", digitalAdsCategoryName);
+        log.info("  - Child '{}' archived with 1 transaction ($2000)", printAdsCategoryName);
+        log.info("  - All 3 categories and 4 transactions preserved but archived");
+    }
+
+    /**
+     * Demonstrates forceArchiveChildren=false - parent category archived but subcategories remain active.
+     *
+     * Scenario: User has "Transportation - Parent Only" category with "Fuel" and "Parking" subcategories.
+     * All have transactions. When parent is archived with forceArchiveChildren=false,
+     * only the parent is archived, subcategories remain active for new transactions.
+     */
+    private void demonstrateNonForceArchiveChildren(CashFlowId cashFlowId, YearMonth activePeriod) {
+        String transportCategoryName = "Transportation - Parent Only";
+        String fuelCategoryName = "Fuel - Active";
+        String parkingCategoryName = "Parking - Active";
+
+        log.info("=== Demonstrating forceArchiveChildren=false with '{}' ===", transportCategoryName);
+
+        YearMonth postAttestationPeriod = activePeriod.plusMonths(FUTURE_MONTHS + 1 - ATTESTED_MONTHS_OFFSET);
+
+        // 1. Create parent category
+        log.info("Creating parent category '{}'", transportCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category(transportCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryCreatedEvent")
+                                        && e.event().contains(transportCategoryName)))
+                        .orElse(false));
+
+        // 2. Create subcategories
+        log.info("Creating subcategory '{}' under '{}'", fuelCategoryName, transportCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName(transportCategoryName)
+                        .category(fuelCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        log.info("Creating subcategory '{}' under '{}'", parkingCategoryName, transportCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .parentCategoryName(transportCategoryName)
+                        .category(parkingCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryCreatedEvent"))
+                                .filter(e -> e.event().contains(fuelCategoryName)
+                                        || e.event().contains(parkingCategoryName))
+                                .count() >= 2)
+                        .orElse(false));
+
+        // 3. Add transactions to parent
+        ZonedDateTime transportDate = postAttestationPeriod.plusMonths(4).atDay(5).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(transportCategoryName)
+                        .name("Uber ride")
+                        .description("General transportation")
+                        .money(Money.of(25, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(transportDate)
+                        .build()
+        );
+        log.info("Added transaction to parent '{}': $25 Uber", transportCategoryName);
+
+        // 4. Add transactions to subcategories
+        ZonedDateTime fuelDate1 = postAttestationPeriod.plusMonths(4).atDay(8).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(fuelCategoryName)
+                        .name("Gas station fill-up #1")
+                        .description("Fuel expense")
+                        .money(Money.of(60, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(fuelDate1)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $60", fuelCategoryName);
+
+        ZonedDateTime fuelDate2 = postAttestationPeriod.plusMonths(5).atDay(15).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(fuelCategoryName)
+                        .name("Gas station fill-up #2")
+                        .description("Fuel expense")
+                        .money(Money.of(55, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(fuelDate2)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $55", fuelCategoryName);
+
+        ZonedDateTime parkingDate = postAttestationPeriod.plusMonths(4).atDay(12).atStartOfDay(ZoneOffset.UTC);
+        cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(parkingCategoryName)
+                        .name("Downtown parking")
+                        .description("Parking expense")
+                        .money(Money.of(15, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(parkingDate)
+                        .build()
+        );
+        log.info("Added transaction to '{}': $15", parkingCategoryName);
+
+        // Wait for all transactions
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent"))
+                                .filter(e -> e.event().contains("Uber")
+                                        || e.event().contains("fill-up")
+                                        || e.event().contains("Downtown parking"))
+                                .count() >= 4)
+                        .orElse(false));
+
+        // 5. Archive parent with forceArchiveChildren=FALSE
+        log.info("Archiving '{}' with forceArchiveChildren=FALSE", transportCategoryName);
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName(transportCategoryName)
+                        .categoryType(OUTFLOW)
+                        .forceArchiveChildren(false)
+                        .build()
+        );
+
+        // Wait for archive event
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryArchivedEvent"))
+                                .anyMatch(e -> e.event().contains(transportCategoryName)))
+                        .orElse(false));
+
+        // 6. Add new transactions to ACTIVE subcategories (should succeed)
+        ZonedDateTime newFuelDate = postAttestationPeriod.plusMonths(6).atDay(1).atStartOfDay(ZoneOffset.UTC);
+        String newFuelPaymentId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(fuelCategoryName)
+                        .name("New fuel expense after parent archived")
+                        .description("Subcategory still active!")
+                        .money(Money.of(50, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(newFuelDate)
+                        .build()
+        );
+        log.info("Successfully added NEW transaction to active '{}' after parent archived: {}", fuelCategoryName, newFuelPaymentId);
+
+        // Wait for new transaction
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent"))
+                                .anyMatch(e -> e.event().contains("New fuel expense")))
+                        .orElse(false));
+
+        log.info("=== forceArchiveChildren=false completed ===");
+        log.info("  - Parent '{}' archived with 1 transaction ($25)", transportCategoryName);
+        log.info("  - Child '{}' ACTIVE with 3 transactions ($165)", fuelCategoryName);
+        log.info("  - Child '{}' ACTIVE with 1 transaction ($15)", parkingCategoryName);
+        log.info("  - Subcategories remain usable for new transactions even after parent is archived");
     }
 }
