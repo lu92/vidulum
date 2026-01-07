@@ -9,6 +9,7 @@
 5. [Stany i przejścia](#stany-i-przejścia)
 6. [Obsługa błędów](#obsługa-błędów)
 7. [Decyzje projektowe](#decyzje-projektowe)
+8. [Archiwizacja kategorii](#archiwizacja-kategorii)
 
 ---
 
@@ -540,9 +541,197 @@ POST /api/v1/cash-flow/cf-abc-123/import-historical
 
 ---
 
+## Archiwizacja kategorii
+
+### Przegląd
+
+Kategorie mogą być archiwizowane, aby ukryć je przed nowymi transakcjami, zachowując jednocześnie pełną historię.
+
+### Model danych kategorii
+
+| Pole | Typ | Opis |
+|------|-----|------|
+| `categoryName` | `CategoryName` | Nazwa kategorii |
+| `origin` | `CategoryOrigin` | Pochodzenie: SYSTEM, IMPORTED, USER_CREATED |
+| `archived` | `boolean` | Czy kategoria jest zarchiwizowana |
+| `validFrom` | `ZonedDateTime` | Data początkowa ważności (nullable = od zawsze) |
+| `validTo` | `ZonedDateTime` | Data końcowa ważności (ustawiana przy archiwizacji) |
+| `isModifiable` | `boolean` | Czy kategoria może być modyfikowana |
+
+### CategoryOrigin
+
+| Wartość | Opis | Możliwe operacje |
+|---------|------|------------------|
+| `SYSTEM` | Kategoria systemowa (np. "Uncategorized") | Tylko odczyt - nie można archiwizować ani usuwać |
+| `IMPORTED` | Kategoria zaimportowana z wyciągu bankowego | Archiwizacja, zmiana nazwy |
+| `USER_CREATED` | Kategoria stworzona ręcznie przez użytkownika | Pełna kontrola - archiwizacja, zmiana nazwy, usunięcie |
+
+### Cykl życia kategorii
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CATEGORY LIFECYCLE                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────┐                                    ┌────────────────┐       │
+│  │  Created   │  ────── archiveCategory ─────────▶ │   Archived     │       │
+│  │            │                                    │                │       │
+│  │ archived:  │                                    │ archived: true │       │
+│  │   false    │  ◀──── unarchiveCategory ───────── │ validTo: now() │       │
+│  │ validTo:   │                                    │                │       │
+│  │   null     │                                    │                │       │
+│  └────────────┘                                    └────────────────┘       │
+│                                                                             │
+│  Kategoria aktywna:                              Kategoria zarchiwizowana:  │
+│  - Widoczna w selekcji                          - Ukryta w selekcji        │
+│  - Możliwa do użycia                            - Niedostępna dla nowych   │
+│    w nowych transakcjach                          transakcji               │
+│                                                 - Widoczna w historii      │
+│                                                 - Można przywrócić         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Przykłady API
+
+#### Tworzenie kategorii użytkownika
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category
+Content-Type: application/json
+
+{
+  "category": "Groceries",
+  "type": "OUTFLOW"
+}
+```
+
+Nowa kategoria ma domyślnie:
+- `origin: USER_CREATED`
+- `archived: false`
+- `validFrom: null` (ważna od zawsze)
+- `validTo: null` (ważna bezterminowo)
+
+#### Archiwizacja kategorii
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/archive
+Content-Type: application/json
+
+{
+  "categoryName": "Groceries",
+  "categoryType": "OUTFLOW"
+}
+```
+
+Po archiwizacji:
+- `archived: true`
+- `validTo: <timestamp archiwizacji>`
+
+#### Próba archiwizacji kategorii systemowej
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/archive
+Content-Type: application/json
+
+{
+  "categoryName": "Uncategorized",
+  "categoryType": "OUTFLOW"
+}
+```
+
+**Response (400 Bad Request):**
+```json
+{
+  "type": "CannotArchiveSystemCategoryException",
+  "message": "Cannot archive system category: Uncategorized"
+}
+```
+
+#### Przywracanie kategorii (unarchive)
+
+**Request:**
+```http
+POST /api/v1/cash-flow/{cashFlowId}/category/unarchive
+Content-Type: application/json
+
+{
+  "categoryName": "Groceries",
+  "categoryType": "OUTFLOW"
+}
+```
+
+Po przywróceniu:
+- `archived: false`
+- `validTo: null`
+
+### Zachowanie historycznych transakcji
+
+Zarchiwizowane kategorie pozostają widoczne w transakcjach, które ich używają:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Transakcja z zarchiwizowaną kategorią                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ cashChangeId: cc-123                                                        │
+│ name: "Weekly groceries"                                                    │
+│ categoryName: "Groceries"  ← kategoria zarchiwizowana, ale nadal widoczna  │
+│ money: 150 PLN                                                              │
+│ type: OUTFLOW                                                               │
+│ status: CONFIRMED                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Lista kategorii OUTFLOW                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Uncategorized (origin: SYSTEM, archived: false)                           │
+│ - Groceries (origin: USER_CREATED, archived: true)  ← widoczna, ale ukryta │
+│   w selekcji przy tworzeniu nowych transakcji                               │
+│ - Rent (origin: USER_CREATED, archived: false)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Filtrowanie kategorii w UI
+
+**Kategorie do wyboru (nowe transakcje):**
+```java
+categories.stream()
+    .filter(c -> !c.isArchived())
+    .collect(toList());
+```
+
+**Wszystkie kategorie (raporty, historia):**
+```java
+categories  // wszystkie, włącznie z zarchiwizowanymi
+```
+
+### Walidacja dat (validFrom/validTo)
+
+Metoda `isValidAt(ZonedDateTime date)` sprawdza czy kategoria jest ważna dla danej daty:
+
+```java
+public boolean isValidAt(ZonedDateTime date) {
+    if (archived) return false;
+    if (validFrom != null && date.isBefore(validFrom)) return false;
+    if (validTo != null && date.isAfter(validTo)) return false;
+    return true;
+}
+```
+
+**Przypadki użycia:**
+- Filtrowanie kategorii dostępnych dla konkretnej daty transakcji
+- Walidacja podczas edycji starych transakcji
+- Raporty uwzględniające historyczne struktury kategorii
+
+---
+
 ## Changelog
 
 | Data | Zmiany |
 |------|--------|
 | 2026-01-07 | Utworzenie dokumentu |
 | 2026-01-07 | Dodanie sekcji o createAdjustment i importCutoffDateTime |
+| 2026-01-07 | Dodanie sekcji o archiwizacji kategorii (VID-92) |

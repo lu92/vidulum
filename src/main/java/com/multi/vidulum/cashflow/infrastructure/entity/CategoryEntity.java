@@ -2,10 +2,14 @@ package com.multi.vidulum.cashflow.infrastructure.entity;
 
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,6 +23,10 @@ public class CategoryEntity {
     private BudgetingEntity budgeting;
     private List<CategoryEntity> subCategories;
     private boolean isModifiable;
+    private Date validFrom;
+    private Date validTo;
+    private boolean archived;
+    private String origin;
 
     public static CategoryEntity fromDomain(Category category) {
         if (category == null) {
@@ -36,6 +44,10 @@ public class CategoryEntity {
                 .budgeting(BudgetingEntity.fromDomain(category.getBudgeting()))
                 .subCategories(subCategoryEntities)
                 .isModifiable(category.isModifiable())
+                .validFrom(category.getValidFrom() != null ? Date.from(category.getValidFrom().toInstant()) : null)
+                .validTo(category.getValidTo() != null ? Date.from(category.getValidTo().toInstant()) : null)
+                .archived(category.isArchived())
+                .origin(category.getOrigin() != null ? category.getOrigin().name() : CategoryOrigin.USER_CREATED.name())
                 .build();
     }
 
@@ -46,12 +58,16 @@ public class CategoryEntity {
                     .collect(Collectors.toCollection(LinkedList::new))
                 : new LinkedList<>();
 
-        return new Category(
-                new CategoryName(categoryName),
-                budgeting != null ? budgeting.toDomain() : null,
-                subCategoryDomains,
-                isModifiable
-        );
+        return Category.builder()
+                .categoryName(new CategoryName(categoryName))
+                .budgeting(budgeting != null ? budgeting.toDomain() : null)
+                .subCategories(subCategoryDomains)
+                .isModifiable(isModifiable)
+                .validFrom(validFrom != null ? ZonedDateTime.ofInstant(validFrom.toInstant(), ZoneOffset.UTC) : null)
+                .validTo(validTo != null ? ZonedDateTime.ofInstant(validTo.toInstant(), ZoneOffset.UTC) : null)
+                .archived(archived)
+                .origin(origin != null ? CategoryOrigin.valueOf(origin) : CategoryOrigin.USER_CREATED)
+                .build();
     }
 
     public static List<CategoryEntity> fromDomainList(List<Category> categories) {

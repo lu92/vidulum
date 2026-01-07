@@ -185,19 +185,10 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
     public void apply(CashFlowEvent.CashFlowCreatedEvent event) {
         LinkedList<Category> inflowCategories = new LinkedList<>();
-        inflowCategories.add(new Category(
-                new CategoryName("Uncategorized"),
-                null,
-                new LinkedList<>(),
-                false
-        ));
+        inflowCategories.add(Category.createUncategorized());
         LinkedList<Category> outflowCategories = new LinkedList<>();
-        outflowCategories.add(new Category(
-                new CategoryName("Uncategorized"),
-                null,
-                new LinkedList<>(),
-                false
-        ));
+        outflowCategories.add(Category.createUncategorized());
+
         this.cashFlowId = event.cashFlowId();
         this.userId = event.userId();
         this.name = event.name();
@@ -223,19 +214,10 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
      */
     public void apply(CashFlowEvent.CashFlowWithHistoryCreatedEvent event) {
         LinkedList<Category> inflowCategories = new LinkedList<>();
-        inflowCategories.add(new Category(
-                new CategoryName("Uncategorized"),
-                null,
-                new LinkedList<>(),
-                false
-        ));
+        inflowCategories.add(Category.createUncategorized());
         LinkedList<Category> outflowCategories = new LinkedList<>();
-        outflowCategories.add(new Category(
-                new CategoryName("Uncategorized"),
-                null,
-                new LinkedList<>(),
-                false
-        ));
+        outflowCategories.add(Category.createUncategorized());
+
         this.cashFlowId = event.cashFlowId();
         this.userId = event.userId();
         this.name = event.name();
@@ -519,6 +501,32 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         }
 
         category.setBudgeting(null);
+        add(event);
+    }
+
+    /**
+     * Archives a category, setting validTo to the archive timestamp.
+     * Archived categories are hidden from new transaction creation.
+     */
+    public void apply(CashFlowEvent.CategoryArchivedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+        Category category = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        category.archive(event.archivedAt());
+        add(event);
+    }
+
+    /**
+     * Unarchives a category, clearing the validTo date.
+     * The category becomes available for new transaction creation again.
+     */
+    public void apply(CashFlowEvent.CategoryUnarchivedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+        Category category = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        category.unarchive();
         add(event);
     }
 

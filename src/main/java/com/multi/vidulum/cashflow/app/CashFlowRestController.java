@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.app;
 
+import com.multi.vidulum.cashflow.app.commands.archive.ArchiveCategoryCommand;
+import com.multi.vidulum.cashflow.app.commands.archive.UnarchiveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHistoricalImportCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
@@ -315,6 +317,39 @@ public class CashFlowRestController {
         commandGateway.send(
                 new RemoveBudgetingCommand(
                         new CashFlowId(request.getCashFlowId()),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType()
+                )
+        );
+    }
+
+    /**
+     * Archive a category, hiding it from new transaction creation.
+     * Archived categories remain visible in historical transactions that used them.
+     */
+    @PostMapping("/{cashFlowId}/category/archive")
+    public void archiveCategory(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.ArchiveCategoryJson request) {
+        commandGateway.send(
+                new ArchiveCategoryCommand(
+                        new CashFlowId(cashFlowId),
+                        new CategoryName(request.getCategoryName()),
+                        request.getCategoryType()
+                )
+        );
+    }
+
+    /**
+     * Unarchive a category, making it available for new transaction creation again.
+     */
+    @PostMapping("/{cashFlowId}/category/unarchive")
+    public void unarchiveCategory(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.UnarchiveCategoryJson request) {
+        commandGateway.send(
+                new UnarchiveCategoryCommand(
+                        new CashFlowId(cashFlowId),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType()
                 )

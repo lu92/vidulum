@@ -240,4 +240,40 @@ public final class CashFlowDto {
         private String categoryName;
         private Type categoryType;
     }
+
+    /**
+     * Request to archive a category.
+     */
+    @Data
+    @Builder
+    public static class ArchiveCategoryJson {
+        private String categoryName;
+        private Type categoryType;
+    }
+
+    /**
+     * Request to unarchive a category.
+     */
+    @Data
+    @Builder
+    public static class UnarchiveCategoryJson {
+        private String categoryName;
+        private Type categoryType;
+    }
+
+    /**
+     * Response with category details including archiving status.
+     */
+    @Data
+    @Builder
+    public static class CategoryJson {
+        private String categoryName;
+        private boolean isModifiable;
+        private boolean archived;
+        private String origin;
+        private ZonedDateTime validFrom;
+        private ZonedDateTime validTo;
+        private Money budget;
+        private List<CategoryJson> subCategories;
+    }
 }
