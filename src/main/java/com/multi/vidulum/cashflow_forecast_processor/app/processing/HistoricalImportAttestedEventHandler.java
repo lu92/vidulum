@@ -35,6 +35,7 @@ public class HistoricalImportAttestedEventHandler implements CashFlowEventHandle
             }
         }
 
+        statement.updateStats();
         statement.setLastMessageChecksum(getChecksum(event));
         statementRepository.save(statement);
 

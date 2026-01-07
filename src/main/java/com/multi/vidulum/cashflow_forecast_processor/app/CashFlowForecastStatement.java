@@ -211,7 +211,9 @@ public class CashFlowForecastStatement {
 
     public void updateStats() {
         String currency = bankAccountNumber.denomination().getId();
-        Money outcome = forecasts.values().stream()
+        Money outcome = forecasts.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue)
                 .reduce(
                         Money.zero(currency),
                         (totalStart, cashFlowMonthlyForecast) -> {

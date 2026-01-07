@@ -7,6 +7,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastDto;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastRestController;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
+import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.JsonContent;
@@ -194,6 +195,18 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                 YearMonth attestPeriod = currentPeriod.plusMonths(1);
                 actor.attestMonth(homeCashFlowId, attestPeriod, Money.zero("USD"), attestPeriod.atEndOfMonth().atStartOfDay(ZoneOffset.UTC));
                 actor.attestMonth(businessCashFlowId, attestPeriod, Money.zero("USD"), attestPeriod.atEndOfMonth().atStartOfDay(ZoneOffset.UTC));
+
+                // Wait for attestation events to be processed before next iteration
+                YearMonth periodToCheck = currentPeriod;
+                await().atMost(10, SECONDS).until(() -> {
+                    CashFlowForecastStatement homeStatement = statementRepository.findByCashFlowId(homeCashFlowId).orElse(null);
+                    CashFlowForecastStatement businessStatement = statementRepository.findByCashFlowId(businessCashFlowId).orElse(null);
+                    if (homeStatement == null || businessStatement == null) return false;
+                    CashFlowMonthlyForecast homeForecast = homeStatement.getForecasts().get(periodToCheck);
+                    CashFlowMonthlyForecast businessForecast = businessStatement.getForecasts().get(periodToCheck);
+                    return homeForecast != null && homeForecast.getStatus() == CashFlowMonthlyForecast.Status.ATTESTED
+                            && businessForecast != null && businessForecast.getStatus() == CashFlowMonthlyForecast.Status.ATTESTED;
+                });
             }
         }
 
@@ -635,7 +648,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime salaryDate = currentPeriod.atDay(10).atStartOfDay(ZoneOffset.UTC);
             CashChangeId salaryId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Salary"), INFLOW,
                     Money.of(4500 + random.nextInt(1000), "USD"), salaryDate, salaryDate.plusDays(1));
-            if (isAttestedMonth || random.nextDouble() < 0.8) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, salaryId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -662,7 +675,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime groceryDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
             CashChangeId groceryId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Groceries"), OUTFLOW,
                     Money.of(30 + random.nextInt(150), "USD"), groceryDate, groceryDate);
-            if (isAttestedMonth && random.nextDouble() < 0.9) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, groceryId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -677,7 +690,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime fuelDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
             CashChangeId fuelId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Fuel"), OUTFLOW,
                     Money.of(40 + random.nextInt(60), "USD"), fuelDate, fuelDate);
-            if (isAttestedMonth && random.nextDouble() < 0.9) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, fuelId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -691,7 +704,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime streamDate = currentPeriod.atDay(1 + random.nextInt(10)).atStartOfDay(ZoneOffset.UTC);
             CashChangeId streamId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Streaming"), OUTFLOW,
                     Money.of(10 + random.nextInt(30), "USD"), streamDate, streamDate.plusDays(3));
-            if (isAttestedMonth && random.nextDouble() < 0.95) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, streamId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -731,7 +744,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime saleDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
             CashChangeId saleId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Product Sales"), INFLOW,
                     Money.of(500 + random.nextInt(5000), "USD"), saleDate, saleDate.plusDays(random.nextInt(30)));
-            if (isAttestedMonth && random.nextDouble() < 0.85) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, saleId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -746,7 +759,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             ZonedDateTime serviceDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
             CashChangeId serviceId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Service Revenue"), INFLOW,
                     Money.of(1000 + random.nextInt(10000), "USD"), serviceDate, serviceDate.plusDays(30));
-            if (isAttestedMonth && random.nextDouble() < 0.8) {
+            if (isAttestedMonth) {
                 actor.confirmCashChange(cashFlowId, serviceId);
                 lastPaymentStatus = PaymentStatus.PAID;
             } else {
@@ -783,7 +796,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         ZonedDateTime softwareDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
         CashChangeId softwareId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Software Subscriptions"), OUTFLOW,
                 Money.of(500 + random.nextInt(1500), "USD"), softwareDate, softwareDate.plusDays(3));
-        if (isAttestedMonth && random.nextDouble() < 0.95) {
+        if (isAttestedMonth) {
             actor.confirmCashChange(cashFlowId, softwareId);
             lastPaymentStatus = PaymentStatus.PAID;
         } else {
@@ -795,7 +808,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         ZonedDateTime cloudDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
         CashChangeId cloudId = actor.appendExpectedCashChange(cashFlowId, new CategoryName("Cloud Services"), OUTFLOW,
                 Money.of(300 + random.nextInt(2000), "USD"), cloudDate, cloudDate.plusDays(5));
-        if (isAttestedMonth && random.nextDouble() < 0.95) {
+        if (isAttestedMonth) {
             actor.confirmCashChange(cashFlowId, cloudId);
             lastPaymentStatus = PaymentStatus.PAID;
         } else {
