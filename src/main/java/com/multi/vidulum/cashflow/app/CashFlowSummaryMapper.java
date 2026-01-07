@@ -34,6 +34,7 @@ public class CashFlowSummaryMapper {
                 .outflowCategories(cashFlowSnapshot.outflowCategories())
                 .created(cashFlowSnapshot.created())
                 .lastModification(cashFlowSnapshot.lastModification())
+                .importCutoffDateTime(cashFlowSnapshot.importCutoffDateTime())
                 .lastMessageChecksum(Optional.ofNullable(cashFlowSnapshot.lastMessageChecksum())
                         .map(Checksum::checksum)
                         .orElse(null))
