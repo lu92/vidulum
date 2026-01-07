@@ -53,6 +53,10 @@ public final class CashFlowForecastDto {
         private Money gapToForecast;
     }
 
+    /**
+     * JSON representation of a category in a monthly forecast.
+     * Contains archiving metadata for UI filtering (show active vs all categories).
+     */
     @Data
     @Builder
     public static class CashCategoryJson {
@@ -62,6 +66,14 @@ public final class CashFlowForecastDto {
         private GroupedTransactionsJson groupedTransactions;
         private Money totalPaidValue;
         private BudgetingJson budgeting;
+        /** Whether this category is archived (hidden from new transaction creation) */
+        private boolean archived;
+        /** Start date of validity (null = valid from the beginning) */
+        private ZonedDateTime validFrom;
+        /** End date of validity (set when archived) */
+        private ZonedDateTime validTo;
+        /** Origin of this category (SYSTEM, IMPORTED, USER_CREATED) */
+        private String origin;
     }
 
     @Data
@@ -105,11 +117,23 @@ public final class CashFlowForecastDto {
         private ZonedDateTime lastUpdated;
     }
 
+    /**
+     * JSON representation of a category node in the category structure.
+     * Contains archiving metadata for UI filtering.
+     */
     @Data
     @Builder
     public static class CategoryNodeJson {
         private String categoryName;
         private List<CategoryNodeJson> nodes;
         private BudgetingJson budgeting;
+        /** Whether this category is archived (hidden from new transaction creation) */
+        private boolean archived;
+        /** Start date of validity (null = valid from the beginning) */
+        private ZonedDateTime validFrom;
+        /** End date of validity (set when archived) */
+        private ZonedDateTime validTo;
+        /** Origin of this category (SYSTEM, IMPORTED, USER_CREATED) */
+        private String origin;
     }
 }

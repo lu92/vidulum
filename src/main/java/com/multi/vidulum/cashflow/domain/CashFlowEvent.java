@@ -22,6 +22,8 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashChangeEditedEvent,
         CashFlowEvent.CashChangeRejectedEvent,
         CashFlowEvent.CategoryCreatedEvent,
+        CashFlowEvent.CategoryArchivedEvent,
+        CashFlowEvent.CategoryUnarchivedEvent,
         CashFlowEvent.BudgetingSetEvent,
         CashFlowEvent.BudgetingUpdatedEvent,
         CashFlowEvent.BudgetingRemovedEvent {
@@ -213,6 +215,47 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return createdAt;
+        }
+    }
+
+    /**
+     * Event for archiving a category, hiding it from new transactions.
+     * Archived categories remain visible in historical transactions that used them.
+     *
+     * @param cashFlowId   the CashFlow containing the category
+     * @param categoryName the name of the archived category
+     * @param categoryType INFLOW or OUTFLOW
+     * @param archivedAt   timestamp when the category was archived (becomes validTo)
+     */
+    record CategoryArchivedEvent(
+            CashFlowId cashFlowId,
+            CategoryName categoryName,
+            Type categoryType,
+            ZonedDateTime archivedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return archivedAt;
+        }
+    }
+
+    /**
+     * Event for unarchiving a category, making it available for new transactions again.
+     *
+     * @param cashFlowId   the CashFlow containing the category
+     * @param categoryName the name of the unarchived category
+     * @param categoryType INFLOW or OUTFLOW
+     * @param unarchivedAt timestamp when the category was unarchived
+     */
+    record CategoryUnarchivedEvent(
+            CashFlowId cashFlowId,
+            CategoryName categoryName,
+            Type categoryType,
+            ZonedDateTime unarchivedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return unarchivedAt;
         }
     }
 

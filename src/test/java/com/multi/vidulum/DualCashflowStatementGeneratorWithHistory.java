@@ -158,6 +158,29 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                 businessAttestResponse.getStatus(), businessAttestResponse.getCalculatedBalance(), businessAttestResponse.getConfirmedBalance());
         assertThat(businessAttestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
 
+        // === PHASE 2.5: Archive some historical categories ===
+        log.info("=== PHASE 2.5: Archiving historical categories ===");
+
+        // Archive some categories that were only used in historical data
+        // These simulate categories from old bank imports that user no longer uses
+        archiveHistoricalCategories(homeCashFlowId);
+        archiveHistoricalCategories(businessCashFlowId);
+
+        // Wait for archive events to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(homeCashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryArchivedEvent")))
+                        .orElse(false));
+        log.info("Archive events processed for home budget");
+
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(businessCashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryArchivedEvent")))
+                        .orElse(false));
+        log.info("Archive events processed for business budget");
+
         // === PHASE 3: Generate regular transactions (current and future months) ===
         log.info("=== PHASE 3: Generating regular transactions ===");
 
@@ -220,6 +243,10 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         PaymentStatus finalBusinessLastPaymentStatus = businessLastPaymentStatus;
         YearMonth finalBusinessLastPeriod = businessLastPeriod;
         await().atMost(30, SECONDS).until(() -> cashChangeInStatusHasBeenProcessed(businessCashFlowId, finalBusinessLastPeriod, finalBusinessLastCashChangeId, finalBusinessLastPaymentStatus));
+
+        // === PHASE 4: Demonstrate archiving a category created AFTER attestation ===
+        log.info("=== PHASE 4: Archiving category created after attestation ===");
+        archiveCategoryCreatedAfterAttestation(homeCashFlowId, activePeriod);
 
         log.info("Generated home cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(homeCashFlowId).get()).content());
         log.info("Generated business cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(businessCashFlowId).get()).content());
@@ -297,6 +324,17 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         log.info("Total transactions in forecast statements:");
         log.info("  - Home: {} transactions (including {} imported)", homeTransactionCount, "historical");
         log.info("  - Business: {} transactions (including {} imported)", businessTransactionCount, "historical");
+
+        // Count archived categories
+        long homeArchivedCount = countArchivedCategories(homeForecastStatement);
+        long businessArchivedCount = countArchivedCategories(businessForecastStatement);
+        log.info("Archived categories in forecast statements:");
+        log.info("  - Home: {} archived categories", homeArchivedCount);
+        log.info("  - Business: {} archived categories", businessArchivedCount);
+
+        // Verify archived categories are present
+        assertThat(homeArchivedCount).as("Home budget should have archived categories").isGreaterThan(0);
+        assertThat(businessArchivedCount).as("Business budget should have archived categories").isGreaterThan(0);
 
         // Save responses to JSON files for mockup data
         Path outputDir = Path.of("src/test/java/com/multi/vidulum");
@@ -862,5 +900,194 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
             takenCashCategory.getSubCategories().forEach(stack::push);
         }
         return outcome;
+    }
+
+    /**
+     * Archive some categories to simulate historical categories that are no longer used.
+     * This demonstrates the archived category feature in the generated mock data.
+     */
+    private void archiveHistoricalCategories(CashFlowId cashFlowId) {
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId.id());
+
+        if (summary.getName().contains("Home")) {
+            // Archive some home budget categories that were used historically but no longer needed
+            // For example: old gym membership, cancelled streaming service
+
+            // Archive "Cinema" - user now prefers streaming
+            archiveCategoryIfExists(cashFlowId, "Cinema", OUTFLOW);
+
+            // Archive "Car Service" - user sold their car
+            archiveCategoryIfExists(cashFlowId, "Car Service", OUTFLOW);
+
+            // Archive "Books" - user switched to digital only
+            archiveCategoryIfExists(cashFlowId, "Books", OUTFLOW);
+
+            log.info("Archived 3 historical categories for home budget: Cinema, Car Service, Books");
+        } else if (summary.getName().contains("Business")) {
+            // Archive some business categories that were used in historical imports
+
+            // Archive "Events" - company no longer sponsors events
+            archiveCategoryIfExists(cashFlowId, "Events", OUTFLOW);
+
+            // Archive "PR" - in-house PR team replaced agency
+            archiveCategoryIfExists(cashFlowId, "PR", OUTFLOW);
+
+            // Archive "Royalties" - royalty income stream ended
+            archiveCategoryIfExists(cashFlowId, "Royalties", INFLOW);
+
+            // Archive "Grants" - no longer applying for grants
+            archiveCategoryIfExists(cashFlowId, "Grants", INFLOW);
+
+            log.info("Archived 4 historical categories for business budget: Events, PR, Royalties, Grants");
+        }
+    }
+
+    private void archiveCategoryIfExists(CashFlowId cashFlowId, String categoryName, Type type) {
+        try {
+            cashFlowRestController.archiveCategory(
+                    cashFlowId.id(),
+                    CashFlowDto.ArchiveCategoryJson.builder()
+                            .categoryName(categoryName)
+                            .categoryType(type)
+                            .build()
+            );
+            log.debug("Archived category [{}] of type [{}] in cashflow [{}]", categoryName, type, cashFlowId.id());
+        } catch (Exception e) {
+            log.warn("Could not archive category [{}]: {}", categoryName, e.getMessage());
+        }
+    }
+
+    /**
+     * Demonstrates archiving a category that was created AFTER the historical import attestation.
+     * This shows that archiving works for categories created in normal OPEN mode, not just imported ones.
+     *
+     * Scenario: User signs up for a gym, uses it for a few months, then cancels the membership.
+     *
+     * By the time PHASE 4 runs, the active period has progressed due to attestations.
+     * We add expected transactions for 3 consecutive months starting from the future months,
+     * and then archive the category.
+     */
+    private void archiveCategoryCreatedAfterAttestation(CashFlowId cashFlowId, YearMonth activePeriod) {
+        String gymCategoryName = "Gym - CityFit";
+
+        // Calculate the period after all attestations - PHASE 3 attests multiple months
+        // The test attests numberOfAttestedMonths = totalMonths - ATTESTED_MONTHS_OFFSET = 13 - 6 = 7 months
+        // So after PHASE 3, the active period is activePeriod + 7 = 2022-08
+        YearMonth postAttestationPeriod = activePeriod.plusMonths(FUTURE_MONTHS + 1 - ATTESTED_MONTHS_OFFSET);
+        log.info("Current active period after attestations: {}", postAttestationPeriod);
+
+        // 1. Create a new category for gym membership (this happens in OPEN mode)
+        log.info("Creating category '{}' after attestation (in OPEN mode)", gymCategoryName);
+        cashFlowRestController.createCategory(
+                cashFlowId.id(),
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category(gymCategoryName)
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for category creation event to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .anyMatch(e -> e.type().equals("CategoryCreatedEvent")
+                                        && e.event().contains(gymCategoryName)))
+                        .orElse(false));
+
+        // 2. Add gym payments for 3 months (all as expected, since we're in future periods)
+        ZonedDateTime firstPaymentDate = postAttestationPeriod.atDay(5).atStartOfDay(ZoneOffset.UTC);
+        ZonedDateTime secondPaymentDate = postAttestationPeriod.plusMonths(1).atDay(5).atStartOfDay(ZoneOffset.UTC);
+        ZonedDateTime thirdPaymentDate = postAttestationPeriod.plusMonths(2).atDay(5).atStartOfDay(ZoneOffset.UTC);
+
+        log.info("Adding gym payment for month 1 (expected): {}", postAttestationPeriod);
+        String firstPaymentId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(gymCategoryName)
+                        .name("Gym membership - August")
+                        .description("Monthly gym fee at CityFit")
+                        .money(Money.of(99.00, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(firstPaymentDate)
+                        .build()
+        );
+
+        log.info("Adding gym payment for month 2 (expected): {}", postAttestationPeriod.plusMonths(1));
+        String secondPaymentId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(gymCategoryName)
+                        .name("Gym membership - September")
+                        .description("Monthly gym fee at CityFit")
+                        .money(Money.of(99.00, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(secondPaymentDate)
+                        .build()
+        );
+
+        log.info("Adding gym payment for month 3 (expected): {}", postAttestationPeriod.plusMonths(2));
+        String thirdPaymentId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId.id())
+                        .category(gymCategoryName)
+                        .name("Gym membership - October (final)")
+                        .description("Last month - cancelling membership")
+                        .money(Money.of(99.00, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(thirdPaymentDate)
+                        .build()
+        );
+
+        // Wait for the last payment to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("ExpectedCashChangeAppendedEvent")
+                                        && e.event().contains(gymCategoryName))
+                                .count() >= 3)  // All 3 expected payments for gym
+                        .orElse(false));
+
+        // 3. User cancels gym membership and archives the category
+        log.info("User cancelled gym membership - archiving category '{}'", gymCategoryName);
+        cashFlowRestController.archiveCategory(
+                cashFlowId.id(),
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName(gymCategoryName)
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // Wait for archive event to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId.id())
+                        .map(entity -> entity.getEvents().stream()
+                                .filter(e -> e.type().equals("CategoryArchivedEvent"))
+                                .anyMatch(e -> e.event().contains(gymCategoryName)))
+                        .orElse(false));
+
+        log.info("Category '{}' archived successfully. It had 3 expected payments totaling $297.00", gymCategoryName);
+        log.info("The category remains visible in transaction history but is hidden from new transaction dropdown");
+    }
+
+    /**
+     * Count archived categories in a forecast statement.
+     */
+    private long countArchivedCategories(CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement) {
+        return forecastStatement.getForecasts().values().stream()
+                .flatMap(forecast -> Stream.concat(
+                        forecast.getCategorizedInFlows().stream(),
+                        forecast.getCategorizedOutFlows().stream()))
+                .flatMap(this::flattenCashCategoryJsonStream)
+                .filter(CashFlowForecastDto.CashCategoryJson::isArchived)
+                .map(CashFlowForecastDto.CashCategoryJson::getCategoryName)
+                .distinct()
+                .count();
+    }
+
+    private Stream<CashFlowForecastDto.CashCategoryJson> flattenCashCategoryJsonStream(CashFlowForecastDto.CashCategoryJson category) {
+        return Stream.concat(
+                Stream.of(category),
+                category.getSubCategories().stream().flatMap(this::flattenCashCategoryJsonStream)
+        );
     }
 }

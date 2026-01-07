@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.app.commands.append;
+package com.multi.vidulum.cashflow.app.commands.archive;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.JsonContent;
@@ -13,65 +13,55 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Handler for unarchiving a category in a CashFlow.
+ * Unarchived categories become available again for new transaction creation.
+ */
 @Slf4j
 @Component
 @AllArgsConstructor
-public class AppendPaidCashChangeCommandHandler implements CommandHandler<AppendPaidCashChangeCommand, CashChangeId> {
+public class UnarchiveCategoryCommandHandler implements CommandHandler<UnarchiveCategoryCommand, Void> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
     private final Clock clock;
 
     @Override
-    public CashChangeId handle(AppendPaidCashChangeCommand command) {
-        // Validate: paidDate cannot be in the future
-        ZonedDateTime now = ZonedDateTime.now(clock);
-        if (command.paidDate().isAfter(now)) {
-            throw new PaidDateInFutureException(command.paidDate(), now);
-        }
-
+    public Void handle(UnarchiveCategoryCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
-        // Validate: operation not allowed in SETUP mode
-        if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status())) {
-            throw new OperationNotAllowedInSetupModeException("appendPaidCashChange", command.cashFlowId());
-        }
-
-        // Validate: cannot add cash change to archived category
-        List<Category> categories = command.type() == Type.INFLOW
+        // Find the category
+        List<Category> categories = command.categoryType() == Type.INFLOW
                 ? cashFlow.getSnapshot().inflowCategories()
                 : cashFlow.getSnapshot().outflowCategories();
+
         Category category = findCategory(categories, command.categoryName());
-        if (category != null && category.isArchived()) {
-            throw new CategoryIsArchivedException(command.categoryName());
+        if (category == null) {
+            throw new CategoryNotFoundException(command.categoryName(), command.categoryType());
         }
 
-        CashFlowEvent.PaidCashChangeAppendedEvent event = new CashFlowEvent.PaidCashChangeAppendedEvent(
+        CashFlowEvent.CategoryUnarchivedEvent event = new CashFlowEvent.CategoryUnarchivedEvent(
                 command.cashFlowId(),
-                command.cashChangeId(),
-                command.name(),
-                command.description(),
-                command.money(),
-                command.type(),
-                command.created(),
                 command.categoryName(),
-                command.dueDate(),
-                command.paidDate()
+                command.categoryType(),
+                ZonedDateTime.now(clock)
         );
+
         cashFlow.apply(event);
 
         domainCashFlowRepository.save(cashFlow);
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()
-                        .metadata(Map.of("event", CashFlowEvent.PaidCashChangeAppendedEvent.class.getSimpleName()))
+                        .metadata(Map.of("event", CashFlowEvent.CategoryUnarchivedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
         );
 
-        log.info("Paid cash change [{}] has been appended!", cashFlow.getSnapshot());
-        return command.cashChangeId();
+        log.info("Category [{}] of type [{}] unarchived in cashflow [{}]",
+                command.categoryName().name(), command.categoryType(), command.cashFlowId().id());
+        return null;
     }
 
     private Category findCategory(List<Category> categories, CategoryName categoryName) {

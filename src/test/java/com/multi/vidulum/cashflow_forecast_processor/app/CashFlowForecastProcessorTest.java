@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.ContentReader;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.trading.domain.IntegrationTest;
@@ -98,7 +99,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class, CategoryOrigin.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/expected_inflow_processing.json")
                                 .to(CashFlowForecastStatement.class));
@@ -183,7 +184,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class, CategoryOrigin.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/expected_outflow_processing.json")
                                 .to(CashFlowForecastStatement.class));
@@ -337,7 +338,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class, CategoryOrigin.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/attestation_processing.json")
                                 .to(CashFlowForecastStatement.class));
@@ -430,7 +431,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .usingRecursiveComparison()
-                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class)
+                .ignoringFieldsOfTypes(CashFlowId.class, CashChangeId.class, Checksum.class, ZonedDateTime.class, CategoryOrigin.class)
                 .isEqualTo(
                         ContentReader.load("cashflow_forecast_processor/new_category.json")
                                 .to(CashFlowForecastStatement.class));

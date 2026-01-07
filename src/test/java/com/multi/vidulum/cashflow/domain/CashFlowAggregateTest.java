@@ -107,22 +107,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 Money.of(0, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
@@ -223,22 +209,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 Money.of(1000, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
@@ -514,22 +486,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 Money.of(0, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
                                 null,  // importCutoffDateTime
@@ -689,22 +647,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 Money.of(0, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
@@ -854,22 +798,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 Money.of(0, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
@@ -984,22 +914,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-07-01T06:30:00Z")),
                                 Money.of(0, "USD"),  // initialBalance
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
-                                List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                null,
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ),
+                                List.of(Category.createUncategorized()),
+                                List.of(Category.createUncategorized()),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                 null,  // importCutoffDateTime

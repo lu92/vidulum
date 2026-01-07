@@ -77,6 +77,10 @@ public class CashFlowForecastMapper {
                 .groupedTransactions(mapGroupedTransactions(category.getGroupedTransactions()))
                 .totalPaidValue(category.getTotalPaidValue())
                 .budgeting(mapBudgeting(category.getBudgeting()))
+                .archived(category.isArchived())
+                .validFrom(category.getValidFrom())
+                .validTo(category.getValidTo())
+                .origin(ofNullable(category.getOrigin()).map(Enum::name).orElse(null))
                 .build();
     }
 
@@ -147,6 +151,10 @@ public class CashFlowForecastMapper {
                 .categoryName(node.getCategoryName().name())
                 .nodes(mapCategoryNodes(node.getNodes()))
                 .budgeting(mapBudgeting(node.getBudgeting()))
+                .archived(node.isArchived())
+                .validFrom(node.getValidFrom())
+                .validTo(node.getValidTo())
+                .origin(ofNullable(node.getOrigin()).map(Enum::name).orElse(null))
                 .build();
     }
 }

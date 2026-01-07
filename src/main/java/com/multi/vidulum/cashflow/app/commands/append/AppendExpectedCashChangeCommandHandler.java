@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -26,6 +27,15 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
         // Validate: operation not allowed in SETUP mode
         if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status())) {
             throw new OperationNotAllowedInSetupModeException("appendExpectedCashChange", command.cashFlowId());
+        }
+
+        // Validate: cannot add cash change to archived category
+        List<Category> categories = command.type() == Type.INFLOW
+                ? cashFlow.getSnapshot().inflowCategories()
+                : cashFlow.getSnapshot().outflowCategories();
+        Category category = findCategory(categories, command.categoryName());
+        if (category != null && category.isArchived()) {
+            throw new CategoryIsArchivedException(command.categoryName());
         }
 
         CashFlowEvent.ExpectedCashChangeAppendedEvent event = new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -52,5 +62,19 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
 
         log.info("Expected cash change [{}] has been appended!", cashFlow.getSnapshot());
         return command.cashChangeId();
+    }
+
+    private Category findCategory(List<Category> categories, CategoryName categoryName) {
+        for (Category category : categories) {
+            if (category.getCategoryName().equals(categoryName)) {
+                return category;
+            }
+            // Check subcategories
+            Category found = findCategory(category.getSubCategories(), categoryName);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 }

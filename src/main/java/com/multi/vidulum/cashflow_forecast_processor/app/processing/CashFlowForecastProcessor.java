@@ -31,6 +31,8 @@ public class CashFlowForecastProcessor {
     private final BudgetingSetEventHandler budgetingSetEventHandler;
     private final BudgetingUpdatedEventHandler budgetingUpdatedEventHandler;
     private final BudgetingRemovedEventHandler budgetingRemovedEventHandler;
+    private final CategoryArchivedEventHandler categoryArchivedEventHandler;
+    private final CategoryUnarchivedEventHandler categoryUnarchivedEventHandler;
 
     public void process(CashFlowEvent cashFlowEvent) {
         oldProcessing(cashFlowEvent);
@@ -54,6 +56,8 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.BudgetingSetEvent event -> budgetingSetEventHandler.handle(event);
             case CashFlowEvent.BudgetingUpdatedEvent event -> budgetingUpdatedEventHandler.handle(event);
             case CashFlowEvent.BudgetingRemovedEvent event -> budgetingRemovedEventHandler.handle(event);
+            case CashFlowEvent.CategoryArchivedEvent event -> categoryArchivedEventHandler.handle(event);
+            case CashFlowEvent.CategoryUnarchivedEvent event -> categoryUnarchivedEventHandler.handle(event);
         }
     }
 

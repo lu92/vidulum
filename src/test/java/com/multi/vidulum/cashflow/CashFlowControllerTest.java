@@ -2,6 +2,8 @@ package com.multi.vidulum.cashflow;
 
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
+import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
+import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
@@ -69,20 +71,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
                                 .cashChanges(Map.of())
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(null)
                                 .build()
@@ -162,20 +152,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -257,20 +235,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z")) // endDate is set to paidDate
                                                 .build()
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -405,20 +371,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -511,20 +465,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -614,20 +556,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -719,24 +649,15 @@ public class CashFlowControllerTest extends IntegrationTest {
 
                                 ))
                                 .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        ),
-                                        new Category(
-                                                new CategoryName("test category"),
-                                                new LinkedList<>(),
-                                                true
-                                        )
+                                        Category.createUncategorized(),
+                                        Category.builder()
+                                                .categoryName(new CategoryName("test category"))
+                                                .subCategories(new LinkedList<>())
+                                                .isModifiable(true)
+                                                .origin(CategoryOrigin.USER_CREATED)
+                                                .build()
                                 ))
-                                .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .outflowCategories(List.of(Category.createUncategorized()))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .build()
@@ -843,30 +764,22 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .build()
 
                                 ))
-                                .inflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        )
-                                ))
+                                .inflowCategories(List.of(Category.createUncategorized()))
                                 .outflowCategories(List.of(
-                                        new Category(
-                                                new CategoryName("Uncategorized"),
-                                                new LinkedList<>(),
-                                                false
-                                        ),
-                                        new Category(
-                                                new CategoryName("Overhead costs"),
-                                                List.of(
-                                                        new Category(
-                                                                new CategoryName("Bank fees"),
-                                                                new LinkedList<>(),
-                                                                true
-                                                        )
-                                                ),
-                                                true
-                                        )
+                                        Category.createUncategorized(),
+                                        Category.builder()
+                                                .categoryName(new CategoryName("Overhead costs"))
+                                                .subCategories(List.of(
+                                                        Category.builder()
+                                                                .categoryName(new CategoryName("Bank fees"))
+                                                                .subCategories(new LinkedList<>())
+                                                                .isModifiable(true)
+                                                                .origin(CategoryOrigin.USER_CREATED)
+                                                                .build()
+                                                ))
+                                                .isModifiable(true)
+                                                .origin(CategoryOrigin.USER_CREATED)
+                                                .build()
                                 ))
                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                 .lastModification(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
@@ -3644,5 +3557,436 @@ public class CashFlowControllerTest extends IntegrationTest {
 
         assertThat(attestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
         assertThat(attestResponse.getCalculatedBalance()).isEqualTo(Money.of(4000, "USD"));
+    }
+
+    // ========== Category Archiving Tests ==========
+
+    @Test
+    void shouldArchiveUserCreatedCategory() {
+        // given - create cashflow and add a user category
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Create a user category
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("My Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Verify category was created and is not archived
+        CashFlowDto.CashFlowSummaryJson summaryBeforeArchive = cashFlowRestController.getCashFlow(cashFlowId);
+        Category categoryBeforeArchive = summaryBeforeArchive.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("My Category"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(categoryBeforeArchive.isArchived()).isFalse();
+
+        // when - archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("My Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // then - verify category is archived
+        CashFlowDto.CashFlowSummaryJson summaryAfterArchive = cashFlowRestController.getCashFlow(cashFlowId);
+        Category categoryAfterArchive = summaryAfterArchive.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("My Category"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(categoryAfterArchive.isArchived()).isTrue();
+        assertThat(categoryAfterArchive.getValidTo()).isNotNull();
+
+        // Wait for Kafka event processing
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains("CategoryArchivedEvent"))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldUnarchiveCategory() {
+        // given - create cashflow, add a category, and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Archive Test Category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Archive Test Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // Verify it's archived
+        CashFlowDto.CashFlowSummaryJson summaryAfterArchive = cashFlowRestController.getCashFlow(cashFlowId);
+        Category archivedCategory = summaryAfterArchive.getInflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Archive Test Category"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(archivedCategory.isArchived()).isTrue();
+
+        // when - unarchive the category
+        cashFlowRestController.unarchiveCategory(
+                cashFlowId,
+                CashFlowDto.UnarchiveCategoryJson.builder()
+                        .categoryName("Archive Test Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // then - verify category is unarchived
+        CashFlowDto.CashFlowSummaryJson summaryAfterUnarchive = cashFlowRestController.getCashFlow(cashFlowId);
+        Category unarchivedCategory = summaryAfterUnarchive.getInflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Archive Test Category"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(unarchivedCategory.isArchived()).isFalse();
+        assertThat(unarchivedCategory.getValidTo()).isNull();
+
+        // Wait for Kafka event processing
+        Awaitility.await().until(
+                () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains("CategoryUnarchivedEvent"))
+                        .orElse(false));
+    }
+
+    @Test
+    void shouldNotAllowArchivingSystemCategory() {
+        // given - create cashflow (has system "Uncategorized" category)
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // when & then - trying to archive the system "Uncategorized" category should fail
+        assertThatThrownBy(() -> cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Uncategorized")
+                        .categoryType(OUTFLOW)
+                        .build()
+        )).isInstanceOf(CannotArchiveSystemCategoryException.class);
+    }
+
+    @Test
+    void shouldNotAllowArchivingNonExistentCategory() {
+        // given - create cashflow
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // when & then - trying to archive non-existent category should fail
+        assertThatThrownBy(() -> cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Non Existent Category")
+                        .categoryType(INFLOW)
+                        .build()
+        )).isInstanceOf(CategoryNotFoundException.class);
+    }
+
+    @Test
+    void archivedCategoryShouldRemainVisibleInExistingTransactions() {
+        // given - create cashflow and add a category with a transaction
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // Create a user category
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Rent")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        // Add a transaction using the category (test clock is at 2022-01-01, active period is 2022-01)
+        String cashChangeId = cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Rent")
+                        .name("January rent")
+                        .description("Rent payment")
+                        .money(Money.of(500, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                        .build()
+        );
+
+        // when - archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Rent")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // then - the transaction should still reference the category
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        CashFlowDto.CashChangeSummaryJson transaction = summary.getCashChanges().get(cashChangeId);
+        assertThat(transaction.getCategoryName()).isEqualTo("Rent");
+
+        // And the archived category should still be in the list (for historical display)
+        Category rentCategory = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Rent"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(rentCategory.isArchived()).isTrue();
+    }
+
+    @Test
+    void shouldPreserveOriginFieldOnSystemCategory() {
+        // given - create cashflow
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        // when - get cashflow
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+
+        // then - verify Uncategorized has SYSTEM origin
+        Category uncategorizedInflow = summary.getInflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Uncategorized"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(uncategorizedInflow.getOrigin()).isEqualTo(CategoryOrigin.SYSTEM);
+        assertThat(uncategorizedInflow.isModifiable()).isFalse();
+
+        Category uncategorizedOutflow = summary.getOutflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Uncategorized"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(uncategorizedOutflow.getOrigin()).isEqualTo(CategoryOrigin.SYSTEM);
+        assertThat(uncategorizedOutflow.isModifiable()).isFalse();
+    }
+
+    @Test
+    void shouldNotAllowAddingExpectedCashChangeToArchivedCategory() {
+        // given - create cashflow with a category and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Archived Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Archived Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // when & then - trying to add expected cash change to archived category should fail
+        assertThatThrownBy(() -> cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Archived Category")
+                        .name("Test expense")
+                        .description("Test")
+                        .money(Money.of(100, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(CategoryIsArchivedException.class)
+                .hasMessageContaining("Cannot add cash change to archived category [Archived Category]");
+    }
+
+    @Test
+    void shouldNotAllowAddingPaidCashChangeToArchivedCategory() {
+        // given - create cashflow with a category and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Archived Outflow Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Archived Outflow Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // when & then - trying to add paid cash change to archived category should fail
+        // Note: FixedClockConfig sets clock to 2022-01-01T00:00:00Z
+        ZonedDateTime paidDate = ZonedDateTime.parse("2022-01-01T00:00:00Z");
+        assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Archived Outflow Category")
+                        .name("Test paid expense")
+                        .description("Test")
+                        .money(Money.of(50, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(paidDate)
+                        .paidDate(paidDate)
+                        .build()
+        )).isInstanceOf(CategoryIsArchivedException.class)
+                .hasMessageContaining("Cannot add cash change to archived category [Archived Outflow Category]");
+    }
+
+    @Test
+    void shouldAllowAddingCashChangeToUnarchivedCategory() {
+        // given - create cashflow with a category, archive it, then unarchive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Unarchived Category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // Archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Unarchived Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // Unarchive the category
+        cashFlowRestController.unarchiveCategory(
+                cashFlowId,
+                CashFlowDto.UnarchiveCategoryJson.builder()
+                        .categoryName("Unarchived Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // when - add expected cash change to unarchived category (should succeed)
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Unarchived Category")
+                        .name("Test income")
+                        .description("Test")
+                        .money(Money.of(200, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .build()
+        );
+
+        // then - cash change should be created
+        assertThat(cashChangeId).isNotNull();
+
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(1);
+        assertThat(summary.getCashChanges().get(cashChangeId).getName())
+                .isEqualTo("Test income");
     }
 }
