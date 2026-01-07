@@ -43,6 +43,7 @@ public class CashFlowEntity {
     private Money initialBalance;
     private Date created;
     private Date lastModification;
+    private Date importCutoffDateTime;
     private String lastMessageChecksum;
 
     public static CashFlowEntity fromSnapshot(CashFlowSnapshot snapshot) {
@@ -55,6 +56,9 @@ public class CashFlowEntity {
         List<CashChangeEntity> cashChangeEntities = snapshot.cashChanges().values().stream()
                 .map(CashChangeEntity::fromSnapshot)
                 .collect(Collectors.toList());
+
+        Date importCutoffDateTime = snapshot.importCutoffDateTime() != null
+                ? Date.from(snapshot.importCutoffDateTime().toInstant()) : null;
 
         return CashFlowEntity.builder()
                 .cashFlowId(id)
@@ -71,6 +75,7 @@ public class CashFlowEntity {
                 .initialBalance(snapshot.initialBalance())
                 .created(createdDate)
                 .lastModification(lastModification)
+                .importCutoffDateTime(importCutoffDateTime)
                 .lastMessageChecksum(lastMessageChecksum)
                 .build();
     }
@@ -79,6 +84,7 @@ public class CashFlowEntity {
 
         ZonedDateTime createdDateTime = ZonedDateTime.ofInstant(created.toInstant(), ZoneOffset.UTC);
         ZonedDateTime lastModificationDateTime = lastModification != null ? ZonedDateTime.ofInstant(lastModification.toInstant(), ZoneOffset.UTC) : null;
+        ZonedDateTime importCutoffDateTimeValue = importCutoffDateTime != null ? ZonedDateTime.ofInstant(importCutoffDateTime.toInstant(), ZoneOffset.UTC) : null;
         Checksum checksumValue = lastMessageChecksum != null ? new Checksum(lastMessageChecksum) : null;
 
         Map<CashChangeId, CashChangeSnapshot> cashChangeSnapshotMap = cashChanges.stream()
@@ -102,6 +108,7 @@ public class CashFlowEntity {
                 CategoryEntity.toDomainList(outflowCategories),
                 createdDateTime,
                 lastModificationDateTime,
+                importCutoffDateTimeValue,
                 checksumValue
         );
     }

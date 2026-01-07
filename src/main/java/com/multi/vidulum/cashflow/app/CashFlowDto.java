@@ -89,6 +89,8 @@ public final class CashFlowDto {
         private Money confirmedBalance;
         /** If true, attest even if confirmed balance differs from calculated balance */
         private boolean forceAttestation;
+        /** If true and balance differs, create an adjustment transaction to reconcile the difference */
+        private boolean createAdjustment;
     }
 
     /**
@@ -102,6 +104,8 @@ public final class CashFlowDto {
         private Money calculatedBalance;
         private Money difference;
         private boolean forced;
+        private boolean adjustmentCreated;
+        private String adjustmentCashChangeId;
         private CashFlow.CashFlowStatus status;
     }
 
@@ -169,6 +173,7 @@ public final class CashFlowDto {
         private List<Category> outflowCategories;
         private ZonedDateTime created;
         private ZonedDateTime lastModification;
+        private ZonedDateTime importCutoffDateTime;
         private String lastMessageChecksum;
     }
 

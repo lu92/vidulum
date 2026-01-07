@@ -107,12 +107,13 @@ public sealed interface CashFlowEvent extends DomainEvent
      * Event for attesting a historical import, transitioning CashFlow from SETUP to OPEN mode.
      * This marks the end of the historical import process and confirms the balance.
      *
-     * @param cashFlowId        unique identifier of the cash flow
-     * @param confirmedBalance  the user-confirmed current balance
-     * @param calculatedBalance the system-calculated balance based on imports
-     * @param balanceDifference the difference between confirmed and calculated (0 if matching)
-     * @param forced            true if attestation was forced despite balance mismatch
-     * @param attestedAt        timestamp when attestation occurred (becomes importCutoffDateTime)
+     * @param cashFlowId            unique identifier of the cash flow
+     * @param confirmedBalance      the user-confirmed current balance
+     * @param calculatedBalance     the system-calculated balance based on imports
+     * @param balanceDifference     the difference between confirmed and calculated (0 if matching)
+     * @param forced                true if attestation was forced despite balance mismatch
+     * @param adjustmentCashChangeId if createAdjustment was used, the ID of the adjustment transaction (null otherwise)
+     * @param attestedAt            timestamp when attestation occurred (becomes importCutoffDateTime)
      */
     record HistoricalImportAttestedEvent(
             CashFlowId cashFlowId,
@@ -120,6 +121,7 @@ public sealed interface CashFlowEvent extends DomainEvent
             Money calculatedBalance,
             Money balanceDifference,
             boolean forced,
+            CashChangeId adjustmentCashChangeId,
             ZonedDateTime attestedAt
     ) implements CashFlowEvent {
         @Override

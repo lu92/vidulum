@@ -7,6 +7,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
+import com.multi.vidulum.cashflow_forecast_processor.app.TransactionDetails;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -2958,6 +2959,305 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(3000, "USD"));
         assertThat(response.getDifference()).isEqualTo(Money.of(-500, "USD"));
         assertThat(response.isForced()).isTrue();
+    }
+
+    @Test
+    void shouldCreateAdjustmentTransactionWhenBalanceDiffersAndCreateAdjustmentIsTrue() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For adjustment testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+        // User confirms with 3500 USD (positive mismatch of +500 USD)
+        // With createAdjustment=true, should create an INFLOW adjustment of 500 USD
+
+        // when - attest with createAdjustment=true
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(3500, "USD"))
+                        .forceAttestation(false)  // not needed when createAdjustment is true
+                        .createAdjustment(true)
+                        .build()
+        );
+
+        // then - adjustment should be created
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getConfirmedBalance()).isEqualTo(Money.of(3500, "USD"));
+        assertThat(response.getCalculatedBalance()).isEqualTo(Money.of(3000, "USD"));
+        assertThat(response.getDifference()).isEqualTo(Money.of(500, "USD"));
+        assertThat(response.isAdjustmentCreated()).isTrue();
+        assertThat(response.getAdjustmentCashChangeId()).isNotNull();
+
+        // Verify CashFlow has the adjustment transaction
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(2);  // original + adjustment
+
+        // Find the adjustment transaction
+        CashFlowDto.CashChangeSummaryJson adjustment = summary.getCashChanges().get(response.getAdjustmentCashChangeId());
+        assertThat(adjustment).isNotNull();
+        assertThat(adjustment.getName()).isEqualTo("Balance Adjustment");
+        assertThat(adjustment.getMoney()).isEqualTo(Money.of(500, "USD"));
+        assertThat(adjustment.getType()).isEqualTo(INFLOW);
+    }
+
+    @Test
+    void shouldCreateNegativeAdjustmentTransactionWhenConfirmedBalanceIsLower() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For negative adjustment testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+        // User confirms with 2500 USD (negative mismatch of -500 USD)
+        // With createAdjustment=true, should create an OUTFLOW adjustment of 500 USD
+
+        // when - attest with createAdjustment=true
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(2500, "USD"))
+                        .forceAttestation(false)
+                        .createAdjustment(true)
+                        .build()
+        );
+
+        // then - adjustment should be created as OUTFLOW
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getDifference()).isEqualTo(Money.of(-500, "USD"));
+        assertThat(response.isAdjustmentCreated()).isTrue();
+
+        // Verify the adjustment is an OUTFLOW
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        CashFlowDto.CashChangeSummaryJson adjustment = summary.getCashChanges().get(response.getAdjustmentCashChangeId());
+        assertThat(adjustment.getType()).isEqualTo(OUTFLOW);
+        assertThat(adjustment.getMoney()).isEqualTo(Money.of(500, "USD"));
+    }
+
+    @Test
+    void shouldNotCreateAdjustmentWhenBalancesMatch() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For no-adjustment testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // Expected balance: 1000 (initial) + 2000 (inflow) = 3000 USD
+
+        // when - attest with matching balance and createAdjustment=true
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(3000, "USD"))
+                        .forceAttestation(false)
+                        .createAdjustment(true)
+                        .build()
+        );
+
+        // then - no adjustment needed
+        assertThat(response.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(response.getDifference()).isEqualTo(Money.of(0, "USD"));
+        assertThat(response.isAdjustmentCreated()).isFalse();
+        assertThat(response.getAdjustmentCashChangeId()).isNull();
+
+        // Verify only 1 transaction (no adjustment)
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(1);
+    }
+
+    @Test
+    void shouldSetImportCutoffDateTimeAfterAttestation() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For importCutoffDateTime testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Verify importCutoffDateTime is null before attestation
+        CashFlowDto.CashFlowSummaryJson summaryBefore = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryBefore.getImportCutoffDateTime()).isNull();
+
+        // when - attest
+        cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(1000, "USD"))
+                        .forceAttestation(false)
+                        .build()
+        );
+
+        // then - importCutoffDateTime should be set
+        CashFlowDto.CashFlowSummaryJson summaryAfter = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summaryAfter.getImportCutoffDateTime()).isNotNull();
+        assertThat(summaryAfter.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+    }
+
+    @Test
+    void shouldAddAdjustmentToActiveMonthInForecast() {
+        // given - create CashFlow with history
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("Historical Cash Flow")
+                        .description("For forecast adjustment testing")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(5000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // Wait for CashFlow forecast to be created
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
+
+        // Import transaction: +2000 USD
+        cashFlowRestController.importHistoricalCashChange(
+                cashFlowId,
+                CashFlowDto.ImportHistoricalCashChangeJson.builder()
+                        .category("Uncategorized")
+                        .name("Salary")
+                        .description("Salary")
+                        .money(Money.of(2000, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2021-10-25T00:00:00Z"))
+                        .build()
+        );
+
+        // when - attest with positive difference and createAdjustment=true
+        CashFlowDto.AttestHistoricalImportResponseJson response = cashFlowRestController.attestHistoricalImport(
+                cashFlowId,
+                CashFlowDto.AttestHistoricalImportJson.builder()
+                        .confirmedBalance(Money.of(3500, "USD"))  // +500 difference
+                        .forceAttestation(false)
+                        .createAdjustment(true)
+                        .build()
+        );
+
+        assertThat(response.isAdjustmentCreated()).isTrue();
+
+        // then - wait for Kafka event to be processed and verify adjustment in forecast
+        Awaitility.await().until(() -> {
+            CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+            // Active month is 2022-01 (clock is set to 2022-01-01)
+            CashFlowMonthlyForecast activeMonth = statement.getForecasts().get(YearMonth.of(2022, 1));
+            // Check if adjustment transaction is in the ACTIVE month's inflows (as PAID transaction)
+            return activeMonth.getCategorizedInFlows().stream()
+                    .flatMap(c -> c.getGroupedTransactions().get(PaymentStatus.PAID).stream())
+                    .anyMatch(t -> t.getName().equals(new Name("Balance Adjustment")));
+        });
+
+        // Verify the adjustment is in the correct month with correct amount
+        CashFlowForecastStatement statement = statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).orElseThrow();
+        CashFlowMonthlyForecast activeMonth = statement.getForecasts().get(YearMonth.of(2022, 1));
+
+        TransactionDetails adjustmentTx = activeMonth.getCategorizedInFlows().stream()
+                .flatMap(c -> c.getGroupedTransactions().get(PaymentStatus.PAID).stream())
+                .filter(t -> t.getName().equals(new Name("Balance Adjustment")))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(adjustmentTx.getMoney()).isEqualTo(Money.of(500, "USD"));
     }
 
     // ==================== ROLLBACK IMPORT TESTS ====================

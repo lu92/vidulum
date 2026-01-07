@@ -45,8 +45,8 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
         Money difference = confirmedBalance.minus(calculatedBalance);
         boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
 
-        // Validation 2: If balance mismatch and not forced, throw exception
-        if (!isZeroDifference && !command.forceAttestation()) {
+        // Validation 2: If balance mismatch and neither forced nor createAdjustment, throw exception
+        if (!isZeroDifference && !command.forceAttestation() && !command.createAdjustment()) {
             throw new BalanceMismatchException(
                     command.cashFlowId(),
                     confirmedBalance,
@@ -55,21 +55,29 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
             );
         }
 
+        // Determine if we should create an adjustment transaction
+        CashChangeId adjustmentCashChangeId = null;
+        if (!isZeroDifference && command.createAdjustment()) {
+            adjustmentCashChangeId = CashChangeId.generate();
+        }
+
         CashFlowEvent.HistoricalImportAttestedEvent event = new CashFlowEvent.HistoricalImportAttestedEvent(
                 command.cashFlowId(),
                 confirmedBalance,
                 calculatedBalance,
                 difference,
-                command.forceAttestation() && !isZeroDifference,
+                command.forceAttestation() && !isZeroDifference && !command.createAdjustment(),
+                adjustmentCashChangeId,
                 now
         );
 
         cashFlow.apply(event);
         domainCashFlowRepository.save(cashFlow);
 
-        log.info("Historical import attested for CashFlow [{}]. Confirmed balance: [{}], Calculated balance: [{}], Difference: [{}], Forced: [{}]",
+        log.info("Historical import attested for CashFlow [{}]. Confirmed balance: [{}], Calculated balance: [{}], " +
+                        "Difference: [{}], Forced: [{}], AdjustmentCreated: [{}]",
                 command.cashFlowId().id(), confirmedBalance, calculatedBalance, difference,
-                command.forceAttestation() && !isZeroDifference);
+                event.forced(), adjustmentCashChangeId != null);
 
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

@@ -1,5 +1,6 @@
 package com.multi.vidulum.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -80,5 +81,19 @@ public class Money {
 
     public Money withScale(int scale) {
         return new Money(new BigDecimal(amount.toString()).setScale(scale, RoundingMode.HALF_UP), currency);
+    }
+
+    public Money abs() {
+        return new Money(amount.abs(), currency);
+    }
+
+    @JsonIgnore
+    public boolean isPositive() {
+        return amount.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    @JsonIgnore
+    public boolean isNegative() {
+        return amount.compareTo(BigDecimal.ZERO) < 0;
     }
 }

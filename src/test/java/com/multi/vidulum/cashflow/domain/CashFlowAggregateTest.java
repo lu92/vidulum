@@ -125,6 +125,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         ));
 
@@ -240,6 +241,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         ));
 
@@ -530,6 +532,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         )
                 );
@@ -704,6 +707,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         )
                 );
@@ -868,6 +872,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         )
                 );
@@ -997,6 +1002,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 ),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                null,  // importCutoffDateTime
                                 expectedChecksum
                         )
                 );

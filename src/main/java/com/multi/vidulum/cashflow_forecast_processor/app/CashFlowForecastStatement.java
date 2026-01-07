@@ -20,6 +20,31 @@ import java.util.*;
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 
+/**
+ * Read model (projection) representing the cash flow forecast for multiple months.
+ * <p>
+ * Built from CashFlow domain events via Kafka event handlers.
+ * Contains monthly forecasts with transactions grouped by category and payment status.
+ * <p>
+ * <b>Monthly forecast statuses:</b>
+ * <ul>
+ *   <li>{@code IMPORT_PENDING} - historical month waiting for import (before attestation)</li>
+ *   <li>{@code IMPORTED} - historical month with imported data (after attestation)</li>
+ *   <li>{@code ACTIVE} - current month (the "now" month)</li>
+ *   <li>{@code FORECASTED} - future month with projected transactions</li>
+ *   <li>{@code ATTESTED} - closed/reconciled month (monthly close)</li>
+ * </ul>
+ * <p>
+ * <b>State transitions during historical import:</b>
+ * <pre>
+ * createCashFlowWithHistory → months created as IMPORT_PENDING (historical) / ACTIVE / FORECASTED
+ * importHistoricalCashChange → transactions added to IMPORT_PENDING months
+ * attestHistoricalImport → IMPORT_PENDING months change to IMPORTED, adjustment added if needed
+ * </pre>
+ *
+ * @see CashFlowMonthlyForecast
+ * @see CashFlowMonthlyForecast.Status
+ */
 @Data
 @Slf4j
 @Builder
@@ -27,10 +52,29 @@ import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 @AllArgsConstructor
 public class CashFlowForecastStatement {
     private CashFlowId cashFlowId;
-    private Map<YearMonth, CashFlowMonthlyForecast> forecasts;// next 12 months
+
+    /**
+     * Monthly forecasts indexed by YearMonth.
+     * <p>
+     * Contains historical months (IMPORT_PENDING/IMPORTED), current month (ACTIVE),
+     * and future months (FORECASTED). Typically 12+ months total.
+     */
+    private Map<YearMonth, CashFlowMonthlyForecast> forecasts;
+
     private BankAccountNumber bankAccountNumber;
+
+    /**
+     * Current category structure used to create new monthly forecasts.
+     * Updated when categories are added/modified in the CashFlow aggregate.
+     */
     private CurrentCategoryStructure categoryStructure;
+
     private ZonedDateTime lastModification;
+
+    /**
+     * Checksum of the last processed event.
+     * Used for synchronization with the CashFlow aggregate to detect event ordering issues.
+     */
     private Checksum lastMessageChecksum;
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
