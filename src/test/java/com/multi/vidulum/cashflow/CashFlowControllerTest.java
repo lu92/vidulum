@@ -3831,4 +3831,162 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThat(uncategorizedOutflow.getOrigin()).isEqualTo(CategoryOrigin.SYSTEM);
         assertThat(uncategorizedOutflow.isModifiable()).isFalse();
     }
+
+    @Test
+    void shouldNotAllowAddingExpectedCashChangeToArchivedCategory() {
+        // given - create cashflow with a category and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Archived Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Archived Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // when & then - trying to add expected cash change to archived category should fail
+        assertThatThrownBy(() -> cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Archived Category")
+                        .name("Test expense")
+                        .description("Test")
+                        .money(Money.of(100, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .build()
+        )).isInstanceOf(CategoryIsArchivedException.class)
+                .hasMessageContaining("Cannot add cash change to archived category [Archived Category]");
+    }
+
+    @Test
+    void shouldNotAllowAddingPaidCashChangeToArchivedCategory() {
+        // given - create cashflow with a category and archive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Archived Outflow Category")
+                        .type(OUTFLOW)
+                        .build()
+        );
+
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Archived Outflow Category")
+                        .categoryType(OUTFLOW)
+                        .build()
+        );
+
+        // when & then - trying to add paid cash change to archived category should fail
+        // Note: FixedClockConfig sets clock to 2022-01-01T00:00:00Z
+        ZonedDateTime paidDate = ZonedDateTime.parse("2022-01-01T00:00:00Z");
+        assertThatThrownBy(() -> cashFlowRestController.appendPaidCashChange(
+                CashFlowDto.AppendPaidCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Archived Outflow Category")
+                        .name("Test paid expense")
+                        .description("Test")
+                        .money(Money.of(50, "USD"))
+                        .type(OUTFLOW)
+                        .dueDate(paidDate)
+                        .paidDate(paidDate)
+                        .build()
+        )).isInstanceOf(CategoryIsArchivedException.class)
+                .hasMessageContaining("Cannot add cash change to archived category [Archived Outflow Category]");
+    }
+
+    @Test
+    void shouldAllowAddingCashChangeToUnarchivedCategory() {
+        // given - create cashflow with a category, archive it, then unarchive it
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId("userId")
+                        .name("cash-flow name")
+                        .description("cash-flow description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account number", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .build()
+        );
+
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("Unarchived Category")
+                        .type(INFLOW)
+                        .build()
+        );
+
+        // Archive the category
+        cashFlowRestController.archiveCategory(
+                cashFlowId,
+                CashFlowDto.ArchiveCategoryJson.builder()
+                        .categoryName("Unarchived Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // Unarchive the category
+        cashFlowRestController.unarchiveCategory(
+                cashFlowId,
+                CashFlowDto.UnarchiveCategoryJson.builder()
+                        .categoryName("Unarchived Category")
+                        .categoryType(INFLOW)
+                        .build()
+        );
+
+        // when - add expected cash change to unarchived category (should succeed)
+        String cashChangeId = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .category("Unarchived Category")
+                        .name("Test income")
+                        .description("Test")
+                        .money(Money.of(200, "USD"))
+                        .type(INFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
+                        .build()
+        );
+
+        // then - cash change should be created
+        assertThat(cashChangeId).isNotNull();
+
+        CashFlowDto.CashFlowSummaryJson summary = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(summary.getCashChanges()).hasSize(1);
+        assertThat(summary.getCashChanges().get(cashChangeId).getName())
+                .isEqualTo("Test income");
+    }
 }

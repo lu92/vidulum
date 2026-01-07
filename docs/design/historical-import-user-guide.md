@@ -726,6 +726,124 @@ public boolean isValidAt(ZonedDateTime date) {
 - Walidacja podczas edycji starych transakcji
 - Raporty uwzględniające historyczne struktury kategorii
 
+### Procesowanie eventów w CashFlowForecastProcessor
+
+Zdarzenia archiwizacji kategorii są obsługiwane przez dedykowane handlery:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Event Flow dla archiwizacji kategorii                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  CashFlow.apply(CategoryArchivedEvent)                                      │
+│            ↓                                                                │
+│  CashFlowEventEmitter → Kafka (cash_flow topic)                            │
+│            ↓                                                                │
+│  CashFlowEventListener → CashFlowForecastProcessor                         │
+│            ↓                                                                │
+│  CategoryArchivedEventHandler.handle()                                      │
+│     │                                                                       │
+│     ├─→ Update CategoryNode in categoryStructure                           │
+│     │      - archived = true                                               │
+│     │      - validTo = archivedAt                                          │
+│     │                                                                       │
+│     └─→ Update CashCategory in all monthly forecasts                       │
+│            - archived = true                                               │
+│            - validTo = archivedAt                                          │
+│            ↓                                                                │
+│  CashFlowForecastStatementRepository.save()                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### JSON Response - kategorie z metadanymi archiwizacji
+
+```json
+{
+  "categoryStructure": {
+    "inflowCategoryStructure": [
+      {
+        "categoryName": "Salary",
+        "nodes": [],
+        "archived": false,
+        "validFrom": null,
+        "validTo": null,
+        "origin": "USER_CREATED"
+      },
+      {
+        "categoryName": "Royalties",
+        "nodes": [],
+        "archived": true,
+        "validFrom": null,
+        "validTo": "2024-06-15T10:30:00Z",
+        "origin": "IMPORTED"
+      }
+    ],
+    "outflowCategoryStructure": [
+      {
+        "categoryName": "Uncategorized",
+        "nodes": [],
+        "archived": false,
+        "validFrom": null,
+        "validTo": null,
+        "origin": "SYSTEM"
+      },
+      {
+        "categoryName": "Netflix",
+        "nodes": [],
+        "archived": true,
+        "validFrom": "2023-01-01T00:00:00Z",
+        "validTo": "2024-03-01T12:00:00Z",
+        "origin": "USER_CREATED"
+      }
+    ]
+  }
+}
+```
+
+### Implementacja UI - toggle dla zarchiwizowanych kategorii
+
+```typescript
+// Komponent React - przykład
+interface CategoryDropdownProps {
+  categories: CashCategory[];
+  showArchived: boolean;
+  onToggleArchived: () => void;
+}
+
+const CategoryDropdown = ({ categories, showArchived, onToggleArchived }) => {
+  const filteredCategories = showArchived
+    ? categories
+    : categories.filter(c => !c.archived);
+
+  return (
+    <div>
+      <label>
+        <input
+          type="checkbox"
+          checked={showArchived}
+          onChange={onToggleArchived}
+        />
+        Pokaż zarchiwizowane
+      </label>
+
+      <select>
+        {filteredCategories.map(category => (
+          <option
+            key={category.categoryName}
+            disabled={category.archived}
+            className={category.archived ? 'archived' : ''}
+          >
+            {category.categoryName}
+            {category.archived && ' (zarchiwizowana)'}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
+```
+
 ---
 
 ## Changelog
@@ -735,3 +853,4 @@ public boolean isValidAt(ZonedDateTime date) {
 | 2026-01-07 | Utworzenie dokumentu |
 | 2026-01-07 | Dodanie sekcji o createAdjustment i importCutoffDateTime |
 | 2026-01-07 | Dodanie sekcji o archiwizacji kategorii (VID-92) |
+| 2026-01-07 | Dodanie procesowania eventów archiwizacji w ForecastProcessor |

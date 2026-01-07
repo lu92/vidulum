@@ -31,6 +31,8 @@ public class CashFlowForecastProcessor {
     private final BudgetingSetEventHandler budgetingSetEventHandler;
     private final BudgetingUpdatedEventHandler budgetingUpdatedEventHandler;
     private final BudgetingRemovedEventHandler budgetingRemovedEventHandler;
+    private final CategoryArchivedEventHandler categoryArchivedEventHandler;
+    private final CategoryUnarchivedEventHandler categoryUnarchivedEventHandler;
 
     public void process(CashFlowEvent cashFlowEvent) {
         oldProcessing(cashFlowEvent);
@@ -54,9 +56,8 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.BudgetingSetEvent event -> budgetingSetEventHandler.handle(event);
             case CashFlowEvent.BudgetingUpdatedEvent event -> budgetingUpdatedEventHandler.handle(event);
             case CashFlowEvent.BudgetingRemovedEvent event -> budgetingRemovedEventHandler.handle(event);
-            // Category archiving events don't affect forecasts - they're metadata-only changes
-            case CashFlowEvent.CategoryArchivedEvent event -> log.debug("Category archived: {} - no forecast processing needed", event.categoryName());
-            case CashFlowEvent.CategoryUnarchivedEvent event -> log.debug("Category unarchived: {} - no forecast processing needed", event.categoryName());
+            case CashFlowEvent.CategoryArchivedEvent event -> categoryArchivedEventHandler.handle(event);
+            case CashFlowEvent.CategoryUnarchivedEvent event -> categoryUnarchivedEventHandler.handle(event);
         }
     }
 

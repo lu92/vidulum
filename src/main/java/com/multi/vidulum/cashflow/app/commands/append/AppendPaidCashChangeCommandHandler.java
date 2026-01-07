@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -37,6 +38,15 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
             throw new OperationNotAllowedInSetupModeException("appendPaidCashChange", command.cashFlowId());
         }
 
+        // Validate: cannot add cash change to archived category
+        List<Category> categories = command.type() == Type.INFLOW
+                ? cashFlow.getSnapshot().inflowCategories()
+                : cashFlow.getSnapshot().outflowCategories();
+        Category category = findCategory(categories, command.categoryName());
+        if (category != null && category.isArchived()) {
+            throw new CategoryIsArchivedException(command.categoryName());
+        }
+
         CashFlowEvent.PaidCashChangeAppendedEvent event = new CashFlowEvent.PaidCashChangeAppendedEvent(
                 command.cashFlowId(),
                 command.cashChangeId(),
@@ -62,5 +72,19 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
 
         log.info("Paid cash change [{}] has been appended!", cashFlow.getSnapshot());
         return command.cashChangeId();
+    }
+
+    private Category findCategory(List<Category> categories, CategoryName categoryName) {
+        for (Category category : categories) {
+            if (category.getCategoryName().equals(categoryName)) {
+                return category;
+            }
+            // Check subcategories
+            Category found = findCategory(category.getSubCategories(), categoryName);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 }
