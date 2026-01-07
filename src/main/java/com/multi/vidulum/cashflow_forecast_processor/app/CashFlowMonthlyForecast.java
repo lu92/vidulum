@@ -108,7 +108,7 @@ public class CashFlowMonthlyForecast {
      */
     public Money calcNetChange() {
         Currency inFlowCurrency = Currency.of(categorizedInFlows.get(0).getTotalPaidValue().getCurrency());
-        Money totalIncomeValue = categorizedInFlows.stream()
+        Money totalIncomeValue = flattenCategories(categorizedInFlows).stream()
                 .map(CashCategory::getGroupedTransactions)
                 .map(GroupedTransactions::values)
                 .flatMap(Collection::stream)
@@ -117,7 +117,7 @@ public class CashFlowMonthlyForecast {
                 .reduce(Money.zero(inFlowCurrency.getId()), Money::plus);
 
         Currency outFlowCurrency = Currency.of(categorizedOutFlows.get(0).getTotalPaidValue().getCurrency());
-        Money totalOutcomeValue = categorizedOutFlows.stream()
+        Money totalOutcomeValue = flattenCategories(categorizedOutFlows).stream()
                 .map(CashCategory::getGroupedTransactions)
                 .map(GroupedTransactions::values)
                 .flatMap(Collection::stream)
