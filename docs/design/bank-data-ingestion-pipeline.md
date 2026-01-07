@@ -864,21 +864,21 @@ db.import_jobs.createIndex({ "stagingSessionId": 1 })
 ### Base URL
 
 ```
-/api/v1/cash-flow/{cashFlowId}/ingestion
+/api/v1/bank-data-ingestion/{cashFlowId}
 ```
 
 ---
 
 ### 1. Configure Category Mappings
 
-**Endpoint:** `POST /api/v1/cash-flow/{cashFlowId}/ingestion/mappings`
+**Endpoint:** `POST /api/v1/bank-data-ingestion/{cashFlowId}/mappings`
 
 **Description:** Zapisuje konfigurację mapowań kategorii bankowych. Zastępuje istniejące mapowania dla podanych kombinacji (bankCategoryName, categoryType).
 
 **Request:**
 
 ```http
-POST /api/v1/cash-flow/cf-abc-123/ingestion/mappings
+POST /api/v1/bank-data-ingestion/cf-abc-123/mappings
 Content-Type: application/json
 
 {
@@ -982,14 +982,14 @@ Content-Type: application/json
 
 ### 2. Get Category Mappings
 
-**Endpoint:** `GET /api/v1/cash-flow/{cashFlowId}/ingestion/mappings`
+**Endpoint:** `GET /api/v1/bank-data-ingestion/{cashFlowId}/mappings`
 
 **Description:** Pobiera wszystkie skonfigurowane mapowania dla CashFlow.
 
 **Request:**
 
 ```http
-GET /api/v1/cash-flow/cf-abc-123/ingestion/mappings
+GET /api/v1/bank-data-ingestion/cf-abc-123/mappings
 ```
 
 **Response (200 OK):**
@@ -1025,14 +1025,14 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/mappings
 
 ### 3. Delete Category Mapping
 
-**Endpoint:** `DELETE /api/v1/cash-flow/{cashFlowId}/ingestion/mappings/{mappingId}`
+**Endpoint:** `DELETE /api/v1/bank-data-ingestion/{cashFlowId}/mappings/{mappingId}`
 
 **Description:** Usuwa pojedyncze mapowanie.
 
 **Request:**
 
 ```http
-DELETE /api/v1/cash-flow/cf-abc-123/ingestion/mappings/mapping-uuid-001
+DELETE /api/v1/bank-data-ingestion/cf-abc-123/mappings/mapping-uuid-001
 ```
 
 **Response (200 OK):**
@@ -1049,14 +1049,14 @@ DELETE /api/v1/cash-flow/cf-abc-123/ingestion/mappings/mapping-uuid-001
 
 ### 4. Delete All Mappings
 
-**Endpoint:** `DELETE /api/v1/cash-flow/{cashFlowId}/ingestion/mappings`
+**Endpoint:** `DELETE /api/v1/bank-data-ingestion/{cashFlowId}/mappings`
 
 **Description:** Usuwa wszystkie mapowania dla CashFlow.
 
 **Request:**
 
 ```http
-DELETE /api/v1/cash-flow/cf-abc-123/ingestion/mappings
+DELETE /api/v1/bank-data-ingestion/cf-abc-123/mappings
 ```
 
 **Response (200 OK):**
@@ -1079,7 +1079,7 @@ DELETE /api/v1/cash-flow/cf-abc-123/ingestion/mappings
 **Request:**
 
 ```http
-POST /api/v1/cash-flow/cf-abc-123/ingestion/stage
+POST /api/v1/bank-data-ingestion/cf-abc-123/stage
 Content-Type: application/json
 
 {
@@ -1213,7 +1213,7 @@ Content-Type: application/json
 **Request:**
 
 ```http
-GET /api/v1/cash-flow/cf-abc-123/ingestion/stage/session-uuid-100
+GET /api/v1/bank-data-ingestion/cf-abc-123/stage/session-uuid-100
 ```
 
 **Response (200 OK):**
@@ -1241,7 +1241,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/stage/session-uuid-100
 **Request:**
 
 ```http
-DELETE /api/v1/cash-flow/cf-abc-123/ingestion/stage/session-uuid-100
+DELETE /api/v1/bank-data-ingestion/cf-abc-123/stage/session-uuid-100
 ```
 
 **Response (200 OK):**
@@ -1265,7 +1265,7 @@ DELETE /api/v1/cash-flow/cf-abc-123/ingestion/stage/session-uuid-100
 **Request:**
 
 ```http
-POST /api/v1/cash-flow/cf-abc-123/ingestion/import
+POST /api/v1/bank-data-ingestion/cf-abc-123/import
 Content-Type: application/json
 
 {
@@ -1285,7 +1285,7 @@ Content-Type: application/json
     "totalTransactions": 147,
     "categoriesToCreate": 2
   },
-  "pollUrl": "/api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456"
+  "pollUrl": "/api/v1/bank-data-ingestion/cf-abc-123/import/job-uuid-456"
 }
 ```
 
@@ -1300,7 +1300,7 @@ Content-Type: application/json
 **Request:**
 
 ```http
-GET /api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456
+GET /api/v1/bank-data-ingestion/cf-abc-123/import/job-uuid-456
 ```
 
 **Response (200 OK) - In Progress:**
@@ -1392,7 +1392,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456
 **Request:**
 
 ```http
-POST /api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456/rollback
+POST /api/v1/bank-data-ingestion/cf-abc-123/import/job-uuid-456/rollback
 ```
 
 **Response (200 OK):**
@@ -1431,7 +1431,7 @@ POST /api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456/rollback
 **Request:**
 
 ```http
-POST /api/v1/cash-flow/cf-abc-123/ingestion/import/job-uuid-456/finalize
+POST /api/v1/bank-data-ingestion/cf-abc-123/import/job-uuid-456/finalize
 Content-Type: application/json
 
 {
@@ -1470,7 +1470,7 @@ Content-Type: application/json
 **Request:**
 
 ```http
-GET /api/v1/cash-flow/cf-abc-123/ingestion/import?status=COMPLETED,FINALIZED
+GET /api/v1/bank-data-ingestion/cf-abc-123/import?status=COMPLETED,FINALIZED
 ```
 
 **Response (200 OK):**
@@ -1530,7 +1530,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/import?status=COMPLETED,FINALIZED
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ STEP 3: User configures category mappings                          │   │
 │  │                                                                     │   │
-│  │ POST /api/v1/cash-flow/{id}/ingestion/mappings                     │   │
+│  │ POST /api/v1/bank-data-ingestion/{id}/mappings                     │   │
 │  │                                                                     │   │
 │  │ For each bank category, user selects:                              │   │
 │  │ - CREATE_NEW: create new category                                  │   │
@@ -1545,7 +1545,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/import?status=COMPLETED,FINALIZED
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ STEP 4: User stages transactions (preview)                         │   │
 │  │                                                                     │   │
-│  │ POST /api/v1/cash-flow/{id}/ingestion/stage                        │   │
+│  │ POST /api/v1/bank-data-ingestion/{id}/stage                        │   │
 │  │                                                                     │   │
 │  │ - Transactions validated against CashFlow rules                    │   │
 │  │ - Mappings applied to bank categories                              │   │
@@ -1575,7 +1575,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/import?status=COMPLETED,FINALIZED
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ STEP 6: User starts import                                         │   │
 │  │                                                                     │   │
-│  │ POST /api/v1/cash-flow/{id}/ingestion/import                       │   │
+│  │ POST /api/v1/bank-data-ingestion/{id}/import                       │   │
 │  │                                                                     │   │
 │  │ Import job created in: import_jobs collection                      │   │
 │  │                                                                     │   │
@@ -1590,7 +1590,7 @@ GET /api/v1/cash-flow/cf-abc-123/ingestion/import?status=COMPLETED,FINALIZED
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ STEP 7: Import completes                                           │   │
 │  │                                                                     │   │
-│  │ GET /api/v1/cash-flow/{id}/ingestion/import/{jobId}               │   │
+│  │ GET /api/v1/bank-data-ingestion/{id}/import/{jobId}               │   │
 │  │                                                                     │   │
 │  │ status: COMPLETED                                                  │   │
 │  │ transactionsImported: 147                                          │   │
