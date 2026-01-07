@@ -209,11 +209,52 @@ public class CashFlowMonthlyForecast {
                                      CategoryName categoryName) {
     }
 
+    /**
+     * Status of a monthly forecast in the CashFlow lifecycle.
+     * <p>
+     * <b>State transitions:</b>
+     * <pre>
+     * Historical Import Flow:
+     *   IMPORT_PENDING → IMPORTED (via attestHistoricalImport)
+     *
+     * Normal Monthly Flow:
+     *   FORECASTED → ACTIVE (when month becomes current)
+     *   ACTIVE → ATTESTED (via attestMonth - monthly close)
+     * </pre>
+     */
     public enum Status {
-        IMPORT_PENDING,  // Month awaiting historical import (before activation)
-        IMPORTED,        // Month with imported historical data (after activation)
-        ATTESTED,        // Month closed through normal usage (attestMonth)
-        ACTIVE,          // Current month
-        FORECASTED       // Future months
+        /**
+         * Historical month waiting for import (before attestation).
+         * Created during createCashFlowWithHistory for months before activePeriod.
+         * Allows importHistoricalCashChange operations.
+         */
+        IMPORT_PENDING,
+
+        /**
+         * Historical month with finalized imported data (after attestation).
+         * Transitions from IMPORT_PENDING when attestHistoricalImport is called.
+         * No further imports allowed; data is considered historical/read-only.
+         */
+        IMPORTED,
+
+        /**
+         * Month closed through normal monthly attestation (attestMonth).
+         * Represents reconciled/finalized month data from regular usage.
+         */
+        ATTESTED,
+
+        /**
+         * Current month (the "now" month).
+         * Only one month can have ACTIVE status at a time.
+         * Allows normal operations: appendCashChange, confirmCashChange, etc.
+         */
+        ACTIVE,
+
+        /**
+         * Future month with projected/planned transactions.
+         * Created automatically for upcoming months (typically 11 months ahead).
+         * Allows adding expected transactions for planning purposes.
+         */
+        FORECASTED
     }
 }

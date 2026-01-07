@@ -23,6 +23,22 @@ import java.util.stream.Collectors;
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.REJECTED;
 import static java.util.Objects.isNull;
 
+/**
+ * CashFlow aggregate - represents a user's cash flow tracking for a bank account.
+ * <p>
+ * Supports two modes of creation:
+ * <ul>
+ *   <li><b>Quick Start</b> - creates CashFlow in OPEN status, starting from current month</li>
+ *   <li><b>Advanced Setup</b> - creates CashFlow in SETUP status for historical data import</li>
+ * </ul>
+ * <p>
+ * Lifecycle: SETUP → OPEN → CLOSED
+ * <p>
+ * In SETUP mode, only import operations are allowed. After attestation, status changes to OPEN.
+ *
+ * @see CashFlowStatus
+ * @see CashFlowEvent.HistoricalImportAttestedEvent
+ */
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,14 +50,56 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private BankAccount bankAccount;
     private CashFlowStatus status;
     private Map<CashChangeId, CashChange> cashChanges;
+
+    /**
+     * The first month of the CashFlow (inclusive).
+     * <p>
+     * For Quick Start: equals activePeriod (current month).
+     * For Advanced Setup: can be in the past (e.g., 2 years back) to allow historical import.
+     * <p>
+     * Historical transactions can only be imported for months between startPeriod and activePeriod.
+     */
     private YearMonth startPeriod;
+
+    /**
+     * The current active month (the "now" month).
+     * <p>
+     * All months before activePeriod are historical (IMPORT_PENDING or IMPORTED status in forecast).
+     * The activePeriod month has ACTIVE status.
+     * All months after activePeriod are future (FORECASTED status).
+     */
     private YearMonth activePeriod;
+
+    /**
+     * The opening balance at the start of startPeriod.
+     * <p>
+     * This is the bank account balance at the beginning of the first historical month.
+     * Used to calculate expected balance during attestation:
+     * calculatedBalance = initialBalance + sum(inflows) - sum(outflows)
+     */
     private Money initialBalance;
+
     private List<Category> inflowCategories;
     private List<Category> outflowCategories;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
+
+    /**
+     * The timestamp marking the boundary between historical imports and new data.
+     * <p>
+     * Set during attestation (HistoricalImportAttestedEvent) to the attestation timestamp.
+     * Before attestation: null.
+     * After attestation: the moment when historical import was finalized.
+     * <p>
+     * This field can be used to:
+     * <ul>
+     *   <li>Distinguish between imported historical data and manually added transactions</li>
+     *   <li>Apply different validation rules for data before/after this cutoff</li>
+     *   <li>Prevent modifications to historical data after attestation</li>
+     * </ul>
+     */
     private ZonedDateTime importCutoffDateTime;
+
     private Checksum lastMessageChecksum;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
