@@ -120,20 +120,35 @@ public class CashFlowRestController {
                 new AttestHistoricalImportCommand(
                         new CashFlowId(cashFlowId),
                         request.getConfirmedBalance(),
-                        request.isForceAttestation()
+                        request.isForceAttestation(),
+                        request.isCreateAdjustment()
                 )
         );
 
         Money confirmedBalance = request.getConfirmedBalance();
         Money difference = confirmedBalance.minus(calculatedBalance);
         boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
+        boolean adjustmentCreated = !isZeroDifference && request.isCreateAdjustment();
+
+        // Find adjustment cash change ID if created
+        String adjustmentCashChangeId = null;
+        if (adjustmentCreated) {
+            // The adjustment is the last added cash change with name "Balance Adjustment"
+            adjustmentCashChangeId = snapshot.cashChanges().values().stream()
+                    .filter(cc -> "Balance Adjustment".equals(cc.name().name()))
+                    .map(cc -> cc.cashChangeId().id())
+                    .findFirst()
+                    .orElse(null);
+        }
 
         return CashFlowDto.AttestHistoricalImportResponseJson.builder()
                 .cashFlowId(snapshot.cashFlowId().id())
                 .confirmedBalance(confirmedBalance)
                 .calculatedBalance(calculatedBalance)
                 .difference(difference)
-                .forced(request.isForceAttestation() && !isZeroDifference)
+                .forced(request.isForceAttestation() && !isZeroDifference && !request.isCreateAdjustment())
+                .adjustmentCreated(adjustmentCreated)
+                .adjustmentCashChangeId(adjustmentCashChangeId)
                 .status(snapshot.status())
                 .build();
     }

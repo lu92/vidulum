@@ -26,6 +26,7 @@ public record CashFlowSnapshot(
         List<Category> outflowCategories,
         ZonedDateTime created,
         ZonedDateTime lastModification,
+        ZonedDateTime importCutoffDateTime,
         Checksum lastMessageChecksum) implements EntitySnapshot<CashFlowId> {
 
     @Override

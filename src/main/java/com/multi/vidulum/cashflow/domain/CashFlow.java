@@ -41,6 +41,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private List<Category> outflowCategories;
     private ZonedDateTime created;
     private ZonedDateTime lastModification;
+    private ZonedDateTime importCutoffDateTime;
     private Checksum lastMessageChecksum;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
@@ -80,6 +81,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 outflowCategories,
                 created,
                 lastModification,
+                importCutoffDateTime,
                 lastMessageChecksum
         );
     }
@@ -118,6 +120,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .outflowCategories(snapshot.outflowCategories())
                 .created(snapshot.created())
                 .lastModification(snapshot.lastModification())
+                .importCutoffDateTime(snapshot.importCutoffDateTime())
                 .lastMessageChecksum(snapshot.lastMessageChecksum())
                 .build();
     }
@@ -272,10 +275,30 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
      * Attests a historical import, transitioning CashFlow from SETUP to OPEN mode.
      * This marks the end of the historical import process.
      * The bank balance is updated to the confirmed balance from the event.
+     * The importCutoffDateTime is set to mark the boundary between historical and new data.
      */
     public void apply(CashFlowEvent.HistoricalImportAttestedEvent event) {
         this.status = CashFlowStatus.OPEN;
         this.bankAccount = bankAccount.withUpdatedBalance(event.confirmedBalance());
+        this.importCutoffDateTime = event.attestedAt();
+
+        // If adjustment was created, add it as a cash change
+        if (event.adjustmentCashChangeId() != null) {
+            CashChange adjustmentCashChange = new CashChange(
+                    event.adjustmentCashChangeId(),
+                    new Name("Balance Adjustment"),
+                    new Description("Automatic adjustment to reconcile balance difference"),
+                    event.balanceDifference().abs(),
+                    event.balanceDifference().isPositive() ? Type.INFLOW : Type.OUTFLOW,
+                    new CategoryName("Uncategorized"),
+                    CashChangeStatus.CONFIRMED,
+                    event.attestedAt(),
+                    event.attestedAt(),
+                    event.attestedAt()
+            );
+            cashChanges.put(adjustmentCashChange.getCashChangeId(), adjustmentCashChange);
+        }
+
         add(event);
     }
 

@@ -11,10 +11,12 @@ import com.multi.vidulum.shared.cqrs.commands.Command;
  * @param cashFlowId           the cash flow to attest (must be in SETUP mode)
  * @param confirmedBalance     the user-confirmed current balance (for validation)
  * @param forceAttestation     if true, attest even if calculated balance differs from confirmed
+ * @param createAdjustment     if true and balance differs, create an adjustment transaction
  */
 public record AttestHistoricalImportCommand(
         CashFlowId cashFlowId,
         Money confirmedBalance,
-        boolean forceAttestation
+        boolean forceAttestation,
+        boolean createAdjustment
 ) implements Command {
 }
