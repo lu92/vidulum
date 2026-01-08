@@ -12,6 +12,9 @@ public class BankDataIngestionConfig {
     @Value("${vidulum.ingestion.staging.ttl-hours:24}")
     private long stagingTtlHours;
 
+    @Value("${vidulum.ingestion.rollback.window-hours:1}")
+    private long rollbackWindowHours;
+
     @Value("${vidulum.ingestion.processing.batch-size:50}")
     private int batchSize;
 
@@ -20,6 +23,10 @@ public class BankDataIngestionConfig {
 
     public long getStagingTtlHours() {
         return stagingTtlHours;
+    }
+
+    public long getRollbackWindowHours() {
+        return rollbackWindowHours;
     }
 
     public int getBatchSize() {
