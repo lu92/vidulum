@@ -1,16 +1,15 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.start_import;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
-import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
-import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
-import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,58 +17,43 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Handler for starting an import job.
  * This processes staged transactions and imports them into the CashFlow.
- *
+ * <p>
  * The import happens synchronously in two phases:
  * 1. CREATING_CATEGORIES - creates any new categories needed
  * 2. IMPORTING_TRANSACTIONS - imports each valid transaction
  */
 @Slf4j
 @Component
+@AllArgsConstructor
 public class StartImportJobCommandHandler implements CommandHandler<StartImportJobCommand, StartImportJobResult> {
 
     private final ImportJobRepository importJobRepository;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final DomainCashFlowRepository domainCashFlowRepository;
-    private final CommandGateway commandGateway;
+    private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
-
-    public StartImportJobCommandHandler(
-            ImportJobRepository importJobRepository,
-            StagedTransactionRepository stagedTransactionRepository,
-            CategoryMappingRepository categoryMappingRepository,
-            DomainCashFlowRepository domainCashFlowRepository,
-            @Lazy CommandGateway commandGateway,
-            BankDataIngestionConfig config,
-            Clock clock) {
-        this.importJobRepository = importJobRepository;
-        this.stagedTransactionRepository = stagedTransactionRepository;
-        this.categoryMappingRepository = categoryMappingRepository;
-        this.domainCashFlowRepository = domainCashFlowRepository;
-        this.commandGateway = commandGateway;
-        this.config = config;
-        this.clock = clock;
-    }
 
     @Override
     public StartImportJobResult handle(StartImportJobCommand command) {
         ZonedDateTime now = ZonedDateTime.now(clock);
 
         // Validate: CashFlow must exist and be in SETUP mode
-        CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+        CashFlowInfo cashFlowInfo;
+        try {
+            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
+            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+        }
 
-        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
-        if (snapshot.status() != CashFlow.CashFlowStatus.SETUP) {
+        if (!cashFlowInfo.isInSetupMode()) {
             throw new StagingSessionNotReadyException(
                     command.stagingSessionId(),
-                    "CashFlow is not in SETUP mode. Current status: " + snapshot.status()
+                    "CashFlow is not in SETUP mode. Current status: " + cashFlowInfo.status()
             );
         }
 
@@ -107,7 +91,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         // Determine categories to create
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
         List<CategoryToCreate> categoriesToCreate = determineCategoriesToCreate(
-                validTransactions, snapshot, mappings);
+                validTransactions, cashFlowInfo, mappings);
 
         // Create the import job
         ImportJob importJob = ImportJob.create(
@@ -163,10 +147,10 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
      */
     private List<CategoryToCreate> determineCategoriesToCreate(
             List<StagedTransaction> validTransactions,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             List<CategoryMapping> mappings) {
 
-        Set<String> existingCategories = getExistingCategoryNames(snapshot);
+        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
         Map<String, CategoryMapping> mappingByBankCategoryAndType = buildMappingMap(mappings);
         Set<String> categoriesToCreateSet = new HashSet<>();
         List<CategoryToCreate> result = new ArrayList<>();
@@ -175,13 +159,13 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             String categoryKey = st.mappedData().categoryName().name() + ":" + st.mappedData().type();
 
             if (!existingCategories.contains(st.mappedData().categoryName().name()) &&
-                !categoriesToCreateSet.contains(categoryKey)) {
+                    !categoriesToCreateSet.contains(categoryKey)) {
 
                 String mappingKey = st.originalData().bankCategory() + ":" + st.mappedData().type();
                 CategoryMapping mapping = mappingByBankCategoryAndType.get(mappingKey);
 
                 if (mapping != null && (mapping.action() == MappingAction.CREATE_NEW ||
-                                        mapping.action() == MappingAction.CREATE_SUBCATEGORY)) {
+                        mapping.action() == MappingAction.CREATE_SUBCATEGORY)) {
 
                     result.add(new CategoryToCreate(
                             st.mappedData().categoryName().name(),
@@ -197,7 +181,8 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         return result;
     }
 
-    private record CategoryToCreate(String name, String parent, Type type) {}
+    private record CategoryToCreate(String name, String parent, Type type) {
+    }
 
     private Map<String, CategoryMapping> buildMappingMap(List<CategoryMapping> mappings) {
         Map<String, CategoryMapping> map = new HashMap<>();
@@ -206,20 +191,6 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             map.put(key, mapping);
         }
         return map;
-    }
-
-    private Set<String> getExistingCategoryNames(CashFlowSnapshot snapshot) {
-        Set<String> names = new HashSet<>();
-        collectCategoryNames(snapshot.inflowCategories(), names);
-        collectCategoryNames(snapshot.outflowCategories(), names);
-        return names;
-    }
-
-    private void collectCategoryNames(List<Category> categories, Set<String> names) {
-        for (Category cat : categories) {
-            names.add(cat.getCategoryName().name());
-            collectCategoryNames(cat.getSubCategories(), names);
-        }
     }
 
     /**
@@ -235,14 +206,12 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         for (CategoryToCreate cat : categoriesToCreate) {
             try {
-                CreateCategoryCommand createCmd = new CreateCategoryCommand(
-                        importJob.cashFlowId(),
-                        cat.parent() != null ? new CategoryName(cat.parent()) : CategoryName.NOT_DEFINED,
-                        new CategoryName(cat.name()),
+                cashFlowServiceClient.createCategory(
+                        importJob.cashFlowId().id(),
+                        cat.name(),
+                        cat.parent(),
                         cat.type()
                 );
-
-                commandGateway.send(createCmd);
 
                 importJob = importJob.recordCreatedCategory(cat.name());
                 processed++;
@@ -254,7 +223,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
                 log.debug("Created category [{}] ({}/{})", cat.name(), processed, categoriesToCreate.size());
 
-            } catch (CategoryAlreadyExistsException e) {
+            } catch (CashFlowServiceClient.CategoryAlreadyExistsException e) {
                 // Category already exists - not an error, just skip
                 log.debug("Category [{}] already exists, skipping", cat.name());
                 processed++;
@@ -285,20 +254,22 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         for (StagedTransaction st : validTransactions) {
             try {
-                ImportHistoricalCashChangeCommand importCmd = new ImportHistoricalCashChangeCommand(
-                        importJob.cashFlowId(),
-                        st.mappedData().categoryName(),
-                        new Name(st.mappedData().name()),
-                        new Description(st.mappedData().description()),
-                        st.mappedData().money(),
-                        st.mappedData().type(),
-                        st.mappedData().paidDate(),  // dueDate
-                        st.mappedData().paidDate()   // paidDate
-                );
+                CashFlowServiceClient.ImportTransactionRequest request =
+                        new CashFlowServiceClient.ImportTransactionRequest(
+                                st.mappedData().categoryName().name(),
+                                st.mappedData().name(),
+                                st.mappedData().description(),
+                                st.mappedData().money().getAmount().doubleValue(),
+                                st.mappedData().money().getCurrency(),
+                                st.mappedData().type(),
+                                st.mappedData().paidDate().toLocalDate(),  // dueDate
+                                st.mappedData().paidDate().toLocalDate()   // paidDate
+                        );
 
-                CashChangeId cashChangeId = commandGateway.send(importCmd);
+                String cashChangeId = cashFlowServiceClient.importHistoricalTransaction(
+                        importJob.cashFlowId().id(), request);
 
-                importJob = importJob.recordCreatedCashChange(cashChangeId.id());
+                importJob = importJob.recordCreatedCashChange(cashChangeId);
                 processed++;
 
                 if (processed % updateInterval == 0 || processed == validTransactions.size()) {

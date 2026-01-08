@@ -1,10 +1,10 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping;
 
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMapping;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
-import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
-import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,14 +23,15 @@ public class ConfigureCategoryMappingCommandHandler
         implements CommandHandler<ConfigureCategoryMappingCommand, ConfigureCategoryMappingResult> {
 
     private final CategoryMappingRepository categoryMappingRepository;
-    private final DomainCashFlowRepository domainCashFlowRepository;
+    private final CashFlowServiceClient cashFlowServiceClient;
     private final Clock clock;
 
     @Override
     public ConfigureCategoryMappingResult handle(ConfigureCategoryMappingCommand command) {
         // Verify CashFlow exists
-        CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+        if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
+            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+        }
 
         ZonedDateTime now = ZonedDateTime.now(clock);
         List<ConfigureCategoryMappingResult.MappingResult> results = new ArrayList<>();

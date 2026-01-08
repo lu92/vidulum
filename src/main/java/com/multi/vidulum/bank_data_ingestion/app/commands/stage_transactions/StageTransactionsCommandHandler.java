@@ -1,9 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
-import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.domain.CashFlowId;
+import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -15,7 +18,6 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -25,17 +27,20 @@ public class StageTransactionsCommandHandler
 
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final DomainCashFlowRepository domainCashFlowRepository;
+    private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
 
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
-        // Load CashFlow
-        CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+        // Load CashFlow info via service client
+        CashFlowInfo cashFlowInfo;
+        try {
+            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
+            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+        }
 
-        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();
 
@@ -56,11 +61,11 @@ public class StageTransactionsCommandHandler
 
         // Process and stage transactions
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
-        Set<String> existingBankTransactionIds = getExistingBankTransactionIds(cashFlow);
+        Set<String> existingBankTransactionIds = cashFlowInfo.existingTransactionIds();
 
         for (StageTransactionsCommand.BankTransaction txn : command.transactions()) {
             StagedTransaction staged = processTransaction(
-                    txn, command.cashFlowId(), stagingSessionId, snapshot,
+                    txn, command.cashFlowId(), stagingSessionId, cashFlowInfo,
                     mappingMap, existingBankTransactionIds, now);
             stagedTransactions.add(staged);
         }
@@ -73,7 +78,7 @@ public class StageTransactionsCommandHandler
 
         // Build and return result
         return buildResult(stagingSessionId, command.cashFlowId(), stagedTransactions,
-                snapshot, mappingMap, now);
+                cashFlowInfo, mappingMap, now);
     }
 
     private Map<MappingKey, CategoryMapping> buildMappingMap(List<CategoryMapping> mappings) {
@@ -108,17 +113,11 @@ public class StageTransactionsCommandHandler
                 .toList();
     }
 
-    private Set<String> getExistingBankTransactionIds(CashFlow cashFlow) {
-        // In a real implementation, we would track bankTransactionIds in CashChanges
-        // For now, we return an empty set - duplicates will be detected by name + date + amount
-        return new HashSet<>();
-    }
-
     private StagedTransaction processTransaction(
             StageTransactionsCommand.BankTransaction txn,
             CashFlowId cashFlowId,
             StagingSessionId stagingSessionId,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap,
             Set<String> existingBankTransactionIds,
             ZonedDateTime now) {
@@ -148,7 +147,7 @@ public class StageTransactionsCommandHandler
         );
 
         // Validate transaction
-        TransactionValidation validation = validateTransaction(txn, snapshot, existingBankTransactionIds, now);
+        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
 
         return StagedTransaction.create(
                 cashFlowId,
@@ -163,7 +162,7 @@ public class StageTransactionsCommandHandler
 
     private TransactionValidation validateTransaction(
             StageTransactionsCommand.BankTransaction txn,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             Set<String> existingBankTransactionIds,
             ZonedDateTime now) {
 
@@ -175,14 +174,14 @@ public class StageTransactionsCommandHandler
         }
 
         // CashFlow must be in SETUP mode for historical import
-        if (snapshot.status() != CashFlow.CashFlowStatus.SETUP) {
+        if (!cashFlowInfo.isInSetupMode()) {
             errors.add("CashFlow is not in SETUP mode");
         }
 
         // paidDate validation for historical import
         YearMonth paidPeriod = YearMonth.from(txn.paidDate());
-        YearMonth activePeriod = snapshot.activePeriod();
-        YearMonth startPeriod = snapshot.startPeriod();
+        YearMonth activePeriod = cashFlowInfo.activePeriod();
+        YearMonth startPeriod = cashFlowInfo.startPeriod();
 
         if (!paidPeriod.isBefore(activePeriod)) {
             errors.add(String.format("paidDate %s is not before activePeriod %s",
@@ -229,7 +228,7 @@ public class StageTransactionsCommandHandler
             StagingSessionId stagingSessionId,
             CashFlowId cashFlowId,
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap,
             ZonedDateTime now) {
 
@@ -244,11 +243,11 @@ public class StageTransactionsCommandHandler
 
         // Build category breakdown
         List<StageTransactionsResult.CategoryBreakdown> categoryBreakdown =
-                buildCategoryBreakdown(stagedTransactions, snapshot, mappingMap);
+                buildCategoryBreakdown(stagedTransactions, cashFlowInfo, mappingMap);
 
         // Build categories to create
         List<StageTransactionsResult.CategoryToCreate> categoriesToCreate =
-                buildCategoriesToCreate(stagedTransactions, snapshot, mappingMap);
+                buildCategoriesToCreate(stagedTransactions, cashFlowInfo, mappingMap);
 
         // Build monthly breakdown
         List<StageTransactionsResult.MonthlyBreakdown> monthlyBreakdown =
@@ -287,7 +286,7 @@ public class StageTransactionsCommandHandler
 
     private List<StageTransactionsResult.CategoryBreakdown> buildCategoryBreakdown(
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap) {
 
         Map<String, CategoryBreakdownBuilder> builderMap = new HashMap<>();
@@ -308,7 +307,7 @@ public class StageTransactionsCommandHandler
             builder.addTransaction(st.mappedData().money());
         }
 
-        Set<String> existingCategories = getExistingCategoryNames(snapshot);
+        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
 
         return builderMap.values().stream()
                 .map(b -> b.build(existingCategories, mappingMap))
@@ -352,26 +351,12 @@ public class StageTransactionsCommandHandler
         }
     }
 
-    private Set<String> getExistingCategoryNames(CashFlowSnapshot snapshot) {
-        Set<String> names = new HashSet<>();
-        collectCategoryNames(snapshot.inflowCategories(), names);
-        collectCategoryNames(snapshot.outflowCategories(), names);
-        return names;
-    }
-
-    private void collectCategoryNames(List<Category> categories, Set<String> names) {
-        for (Category cat : categories) {
-            names.add(cat.getCategoryName().name());
-            collectCategoryNames(cat.getSubCategories(), names);
-        }
-    }
-
     private List<StageTransactionsResult.CategoryToCreate> buildCategoriesToCreate(
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot,
+            CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap) {
 
-        Set<String> existingCategories = getExistingCategoryNames(snapshot);
+        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
         Set<String> newCategoriesAdded = new HashSet<>();
         List<StageTransactionsResult.CategoryToCreate> result = new ArrayList<>();
 
