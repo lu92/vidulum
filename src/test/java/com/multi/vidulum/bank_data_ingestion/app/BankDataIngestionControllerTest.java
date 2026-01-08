@@ -661,6 +661,351 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getDeletedCount()).isEqualTo(0);
     }
 
+    // ============ Import Job Tests ============
+
+    @Test
+    @DisplayName("Should start import job and complete successfully")
+    void shouldStartImportJobAndComplete() {
+        // given: create a CashFlow, configure mappings, and stage transactions
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Biedronka Zakupy")
+                                .description("Zakupy spożywcze")
+                                .bankCategory("Zakupy kartą")
+                                .amount(150.50)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build(),
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-002")
+                                .name("Przelew z firmy")
+                                .description("Wynagrodzenie")
+                                .bankCategory("Przelew przychodzący")
+                                .amount(8500.00)
+                                .currency("PLN")
+                                .type(Type.INFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 9, 1, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+
+        String stagingSessionId = stageResponse.getStagingSessionId();
+
+        // when: start import
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
+
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, importRequest);
+
+        log.info("Start import response - status: {}, jobId: {}", importResponse.getStatus(), importResponse.getJobId());
+
+        // then: verify import completed
+        assertThat(importResponse.getJobId()).isNotNull();
+        assertThat(importResponse.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(importResponse.getStatus()).isEqualTo("COMPLETED");
+        assertThat(importResponse.getResult().getTransactionsImported()).isEqualTo(2);
+        assertThat(importResponse.isCanRollback()).isTrue();
+        assertThat(importResponse.getPollUrl()).contains(importResponse.getJobId());
+    }
+
+    @Test
+    @DisplayName("Should get import job progress")
+    void shouldGetImportJobProgress() {
+        // given: create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId)
+                        .build());
+
+        String jobId = importResponse.getJobId();
+
+        // when: get import progress
+        BankDataIngestionDto.GetImportProgressResponse progressResponse =
+                bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
+
+        log.info("Import progress - status: {}, percentage: {}%",
+                progressResponse.getStatus(), progressResponse.getProgress().getPercentage());
+
+        // then: verify progress
+        assertThat(progressResponse.getJobId()).isEqualTo(jobId);
+        assertThat(progressResponse.getStatus()).isEqualTo("COMPLETED");
+        assertThat(progressResponse.getProgress().getPercentage()).isEqualTo(100);
+        assertThat(progressResponse.getSummary()).isNotNull();
+        assertThat(progressResponse.isCanRollback()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should finalize import job")
+    void shouldFinalizeImportJob() {
+        // given: create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId)
+                        .build());
+
+        String jobId = importResponse.getJobId();
+
+        // when: finalize import
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse =
+                bankDataIngestionRestController.finalizeImport(cashFlowId, jobId,
+                        BankDataIngestionDto.FinalizeImportRequest.builder()
+                                .deleteMappings(false)
+                                .build());
+
+        log.info("Finalize import response - status: {}, stagedDeleted: {}",
+                finalizeResponse.getStatus(), finalizeResponse.getCleanup().getStagedTransactionsDeleted());
+
+        // then: verify finalization
+        assertThat(finalizeResponse.getJobId()).isEqualTo(jobId);
+        assertThat(finalizeResponse.getStatus()).isEqualTo("FINALIZED");
+        assertThat(finalizeResponse.getCleanup().getStagedTransactionsDeleted()).isGreaterThan(0);
+        assertThat(finalizeResponse.getCleanup().getMappingsDeleted()).isEqualTo(0);
+        assertThat(finalizeResponse.getFinalSummary().getTransactionsImported()).isGreaterThan(0);
+
+        // verify staging session is deleted
+        BankDataIngestionDto.GetStagingPreviewResponse previewResponse =
+                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+        assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("Should finalize import job and delete mappings")
+    void shouldFinalizeImportJobAndDeleteMappings() {
+        // given: create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId)
+                        .build());
+
+        String jobId = importResponse.getJobId();
+
+        // when: finalize import with deleteMappings=true
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse =
+                bankDataIngestionRestController.finalizeImport(cashFlowId, jobId,
+                        BankDataIngestionDto.FinalizeImportRequest.builder()
+                                .deleteMappings(true)
+                                .build());
+
+        log.info("Finalize import response - mappingsDeleted: {}", finalizeResponse.getCleanup().getMappingsDeleted());
+
+        // then: verify mappings deleted
+        assertThat(finalizeResponse.getCleanup().getMappingsDeleted()).isGreaterThan(0);
+
+        // verify mappings are gone
+        BankDataIngestionDto.GetMappingsResponse mappingsResponse =
+                bankDataIngestionRestController.getMappings(cashFlowId);
+        assertThat(mappingsResponse.getMappingsCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Should rollback import job")
+    void shouldRollbackImportJob() {
+        // given: create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId)
+                        .build());
+
+        String jobId = importResponse.getJobId();
+        int transactionsImported = importResponse.getResult().getTransactionsImported();
+
+        // when: rollback import
+        BankDataIngestionDto.RollbackImportResponse rollbackResponse =
+                bankDataIngestionRestController.rollbackImport(cashFlowId, jobId);
+
+        log.info("Rollback import response - status: {}, transactionsDeleted: {}",
+                rollbackResponse.getStatus(), rollbackResponse.getRollbackSummary().getTransactionsDeleted());
+
+        // then: verify rollback
+        assertThat(rollbackResponse.getJobId()).isEqualTo(jobId);
+        assertThat(rollbackResponse.getStatus()).isEqualTo("ROLLED_BACK");
+        assertThat(rollbackResponse.getRollbackSummary().getTransactionsDeleted()).isEqualTo(transactionsImported);
+
+        // verify job status is ROLLED_BACK
+        BankDataIngestionDto.GetImportProgressResponse progressResponse =
+                bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
+        assertThat(progressResponse.getStatus()).isEqualTo("ROLLED_BACK");
+        assertThat(progressResponse.isCanRollback()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should list import jobs")
+    void shouldListImportJobs() {
+        // given: create multiple import jobs
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // First import
+        String stagingSessionId1 = stageTransactionsForImport(cashFlowId);
+        BankDataIngestionDto.StartImportResponse import1 =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId1)
+                        .build());
+
+        // Finalize first import
+        bankDataIngestionRestController.finalizeImport(cashFlowId, import1.getJobId(),
+                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build());
+
+        // Second import
+        String stagingSessionId2 = stageTransactionsForImport(cashFlowId);
+        BankDataIngestionDto.StartImportResponse import2 =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId2)
+                        .build());
+
+        // when: list import jobs
+        BankDataIngestionDto.ListImportJobsResponse listResponse =
+                bankDataIngestionRestController.listImportJobs(cashFlowId, null);
+
+        log.info("List import jobs response - count: {}", listResponse.getJobs().size());
+
+        // then: verify list
+        assertThat(listResponse.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(listResponse.getJobs()).hasSize(2);
+        assertThat(listResponse.getJobs()).extracting(BankDataIngestionDto.ImportJobSummaryJson::getStatus)
+                .containsExactlyInAnyOrder("FINALIZED", "COMPLETED");
+    }
+
+    @Test
+    @DisplayName("Should filter import jobs by status")
+    void shouldFilterImportJobsByStatus() {
+        // given: create import jobs with different statuses
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // First import - finalized
+        String stagingSessionId1 = stageTransactionsForImport(cashFlowId);
+        BankDataIngestionDto.StartImportResponse import1 =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stagingSessionId1)
+                        .build());
+        bankDataIngestionRestController.finalizeImport(cashFlowId, import1.getJobId(),
+                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build());
+
+        // Second import - completed but not finalized
+        String stagingSessionId2 = stageTransactionsForImport(cashFlowId);
+        bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId2)
+                .build());
+
+        // when: filter by COMPLETED status
+        BankDataIngestionDto.ListImportJobsResponse filteredResponse =
+                bankDataIngestionRestController.listImportJobs(cashFlowId, List.of("COMPLETED"));
+
+        log.info("Filtered import jobs response - count: {}", filteredResponse.getJobs().size());
+
+        // then: only completed jobs
+        assertThat(filteredResponse.getJobs()).hasSize(1);
+        assertThat(filteredResponse.getJobs().get(0).getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    @DisplayName("Should create categories during import when configured with CREATE_NEW")
+    void shouldCreateCategoriesDuringImport() {
+        // given: create a CashFlow with mapping that creates a new category
+        String cashFlowId = createCashFlowWithHistory();
+
+        // Configure mapping with CREATE_NEW action
+        BankDataIngestionDto.ConfigureMappingsRequest mappingRequest = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+                .mappings(List.of(
+                        BankDataIngestionDto.MappingConfigJson.builder()
+                                .bankCategoryName("Streaming")
+                                .action(MappingAction.CREATE_NEW)
+                                .targetCategoryName("StreamingServices")
+                                .categoryType(Type.OUTFLOW)
+                                .build()
+                ))
+                .build();
+        bankDataIngestionRestController.configureMappings(cashFlowId, mappingRequest);
+
+        // Stage transactions including one that needs new category
+        BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-streaming-001")
+                                .name("Netflix Subscription")
+                                .description("Monthly subscription")
+                                .bankCategory("Streaming")
+                                .amount(49.99)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+
+        // when: start import
+        BankDataIngestionDto.StartImportResponse importResponse =
+                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+                        .stagingSessionId(stageResponse.getStagingSessionId())
+                        .build());
+
+        log.info("Import with categories - status: {}, categoriesCreated: {}",
+                importResponse.getStatus(), importResponse.getResult().getCategoriesCreated());
+
+        // then: verify category was created
+        assertThat(importResponse.getStatus()).isEqualTo("COMPLETED");
+        assertThat(importResponse.getResult().getCategoriesCreated()).contains("StreamingServices");
+        assertThat(importResponse.getResult().getTransactionsImported()).isEqualTo(1);
+    }
+
+    // Helper to stage transactions for import
+    private String stageTransactionsForImport(String cashFlowId) {
+        BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-" + java.util.UUID.randomUUID())
+                                .name("Test Transaction")
+                                .description("Test")
+                                .bankCategory("Zakupy kartą")
+                                .amount(100.0)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+
+        return stageResponse.getStagingSessionId();
+    }
+
     // Helper method to configure mappings for staging tests
     private void configureMappingsForStaging(String cashFlowId) {
         BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()

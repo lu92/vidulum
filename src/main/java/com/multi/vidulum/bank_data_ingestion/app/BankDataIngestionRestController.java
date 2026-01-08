@@ -8,22 +8,30 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.delete_mapping.DeleteC
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_mapping.DeleteCategoryMappingResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session.DeleteStagingSessionCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session.DeleteStagingSessionResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.finalize_import.FinalizeImportJobCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.finalize_import.FinalizeImportJobResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import.RollbackImportJobCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import.RollbackImportJobResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.start_import.StartImportJobCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.start_import.StartImportJobResult;
+import com.multi.vidulum.bank_data_ingestion.app.queries.get_import_progress.GetImportProgressQuery;
+import com.multi.vidulum.bank_data_ingestion.app.queries.get_import_progress.GetImportProgressResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_mappings.GetCategoryMappingsQuery;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_mappings.GetCategoryMappingsResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.GetStagingPreviewQuery;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.GetStagingPreviewResult;
-import com.multi.vidulum.bank_data_ingestion.domain.CategoryMapping;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingId;
-import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionId;
+import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListImportJobsQuery;
+import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListImportJobsResult;
+import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -444,6 +452,277 @@ public class BankDataIngestionRestController {
                         .errors(preview.validation().errors())
                         .duplicateOf(preview.validation().duplicateOf())
                         .build())
+                .build();
+    }
+
+    // ============ Import Job endpoints ============
+
+    /**
+     * Start an import job from staged transactions.
+     * Creates categories and imports transactions into the CashFlow.
+     */
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public BankDataIngestionDto.StartImportResponse startImport(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody BankDataIngestionDto.StartImportRequest request) {
+
+        StartImportJobResult result = commandGateway.send(
+                new StartImportJobCommand(
+                        new CashFlowId(cashFlowId),
+                        StagingSessionId.of(request.getStagingSessionId())
+                )
+        );
+
+        return toStartImportResponse(result);
+    }
+
+    /**
+     * Get the progress of an import job.
+     */
+    @GetMapping("/import/{jobId}")
+    public BankDataIngestionDto.GetImportProgressResponse getImportProgress(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("jobId") String jobId) {
+
+        GetImportProgressResult result = queryGateway.send(
+                new GetImportProgressQuery(
+                        new CashFlowId(cashFlowId),
+                        ImportJobId.of(jobId)
+                )
+        );
+
+        return toGetImportProgressResponse(result);
+    }
+
+    /**
+     * Rollback an import job - deletes imported transactions and optionally categories.
+     */
+    @PostMapping("/import/{jobId}/rollback")
+    public BankDataIngestionDto.RollbackImportResponse rollbackImport(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("jobId") String jobId) {
+
+        RollbackImportJobResult result = commandGateway.send(
+                new RollbackImportJobCommand(
+                        new CashFlowId(cashFlowId),
+                        ImportJobId.of(jobId)
+                )
+        );
+
+        return toRollbackImportResponse(result);
+    }
+
+    /**
+     * Finalize an import job - deletes staging data and optionally category mappings.
+     */
+    @PostMapping("/import/{jobId}/finalize")
+    public BankDataIngestionDto.FinalizeImportResponse finalizeImport(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("jobId") String jobId,
+            @RequestBody BankDataIngestionDto.FinalizeImportRequest request) {
+
+        FinalizeImportJobResult result = commandGateway.send(
+                new FinalizeImportJobCommand(
+                        new CashFlowId(cashFlowId),
+                        ImportJobId.of(jobId),
+                        request.isDeleteMappings()
+                )
+        );
+
+        return toFinalizeImportResponse(result);
+    }
+
+    /**
+     * List all import jobs for a CashFlow.
+     */
+    @GetMapping("/import")
+    public BankDataIngestionDto.ListImportJobsResponse listImportJobs(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestParam(value = "status", required = false) List<String> statuses) {
+
+        List<ImportJobStatus> statusFilters = statuses != null
+                ? statuses.stream().map(ImportJobStatus::valueOf).toList()
+                : null;
+
+        ListImportJobsResult result = queryGateway.send(
+                new ListImportJobsQuery(
+                        new CashFlowId(cashFlowId),
+                        statusFilters
+                )
+        );
+
+        return toListImportJobsResponse(result);
+    }
+
+    // ============ Import Job mapping helpers ============
+
+    private BankDataIngestionDto.StartImportResponse toStartImportResponse(StartImportJobResult result) {
+        return BankDataIngestionDto.StartImportResponse.builder()
+                .jobId(result.jobId().id())
+                .cashFlowId(result.cashFlowId().id())
+                .stagingSessionId(result.stagingSessionId().id())
+                .status(result.status().name())
+                .input(toImportInputJson(result.input()))
+                .progress(toImportProgressJson(result.progress()))
+                .result(toImportResultJson(result.result()))
+                .canRollback(result.canRollback())
+                .pollUrl(result.pollUrl())
+                .build();
+    }
+
+    private BankDataIngestionDto.GetImportProgressResponse toGetImportProgressResponse(GetImportProgressResult result) {
+        return BankDataIngestionDto.GetImportProgressResponse.builder()
+                .jobId(result.jobId().id())
+                .cashFlowId(result.cashFlowId().id())
+                .status(result.status().name())
+                .progress(toImportProgressJson(result.progress()))
+                .result(toImportResultJson(result.result()))
+                .summary(toImportSummaryJson(result.summary()))
+                .canRollback(result.canRollback())
+                .rollbackDeadline(result.rollbackDeadline())
+                .elapsedTimeMs(result.elapsedTimeMs())
+                .build();
+    }
+
+    private BankDataIngestionDto.RollbackImportResponse toRollbackImportResponse(RollbackImportJobResult result) {
+        return BankDataIngestionDto.RollbackImportResponse.builder()
+                .jobId(result.jobId().id())
+                .status(result.status().name())
+                .rollbackSummary(BankDataIngestionDto.RollbackSummaryJson.builder()
+                        .transactionsDeleted(result.rollbackSummary().transactionsDeleted())
+                        .categoriesDeleted(result.rollbackSummary().categoriesDeleted())
+                        .rollbackDurationMs(result.rollbackSummary().rollbackDurationMs())
+                        .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.FinalizeImportResponse toFinalizeImportResponse(FinalizeImportJobResult result) {
+        return BankDataIngestionDto.FinalizeImportResponse.builder()
+                .jobId(result.jobId().id())
+                .status(result.status().name())
+                .cleanup(BankDataIngestionDto.CleanupSummaryJson.builder()
+                        .stagedTransactionsDeleted(result.cleanup().stagedTransactionsDeleted())
+                        .mappingsDeleted(result.cleanup().mappingsDeleted())
+                        .build())
+                .finalSummary(BankDataIngestionDto.FinalSummaryJson.builder()
+                        .importedAt(result.finalSummary().importedAt())
+                        .totalDurationMs(result.finalSummary().totalDurationMs())
+                        .categoriesCreated(result.finalSummary().categoriesCreated())
+                        .transactionsImported(result.finalSummary().transactionsImported())
+                        .categoryBreakdown(result.finalSummary().categoryBreakdown().stream()
+                                .map(this::toImportCategoryBreakdownJson)
+                                .toList())
+                        .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.ListImportJobsResponse toListImportJobsResponse(ListImportJobsResult result) {
+        return BankDataIngestionDto.ListImportJobsResponse.builder()
+                .cashFlowId(result.cashFlowId().id())
+                .jobs(result.jobs().stream()
+                        .map(this::toImportJobSummaryJson)
+                        .toList())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportInputJson toImportInputJson(StartImportJobResult.InputSummary input) {
+        return BankDataIngestionDto.ImportInputJson.builder()
+                .totalTransactions(input.totalTransactions())
+                .validTransactions(input.validTransactions())
+                .duplicateTransactions(input.duplicateTransactions())
+                .categoriesToCreate(input.categoriesToCreate())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportProgressJson toImportProgressJson(ImportJob.ImportProgress progress) {
+        if (progress == null) return null;
+
+        return BankDataIngestionDto.ImportProgressJson.builder()
+                .percentage(progress.percentage())
+                .currentPhase(progress.currentPhase() != null ? progress.currentPhase().name() : null)
+                .phases(progress.phases().stream()
+                        .map(this::toPhaseProgressJson)
+                        .toList())
+                .build();
+    }
+
+    private BankDataIngestionDto.PhaseProgressJson toPhaseProgressJson(ImportJob.PhaseProgress phase) {
+        return BankDataIngestionDto.PhaseProgressJson.builder()
+                .name(phase.name().name())
+                .status(phase.status().name())
+                .processed(phase.processed())
+                .total(phase.total())
+                .startedAt(phase.startedAt())
+                .completedAt(phase.completedAt())
+                .durationMs(phase.durationMs())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportResultJson toImportResultJson(ImportJob.ImportResult result) {
+        if (result == null) return null;
+
+        return BankDataIngestionDto.ImportResultJson.builder()
+                .categoriesCreated(result.categoriesCreated())
+                .transactionsImported(result.transactionsImported())
+                .transactionsFailed(result.transactionsFailed())
+                .errors(result.errors().stream()
+                        .map(e -> BankDataIngestionDto.ImportErrorJson.builder()
+                                .bankTransactionId(e.bankTransactionId())
+                                .error(e.error())
+                                .build())
+                        .toList())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportSummaryJson toImportSummaryJson(ImportJob.ImportSummary summary) {
+        if (summary == null) return null;
+
+        return BankDataIngestionDto.ImportSummaryJson.builder()
+                .categoryBreakdown(summary.categoryBreakdown().stream()
+                        .map(this::toImportCategoryBreakdownJson)
+                        .toList())
+                .monthlyBreakdown(summary.monthlyBreakdown().stream()
+                        .map(this::toImportMonthlyBreakdownJson)
+                        .toList())
+                .totalDurationMs(summary.totalDurationMs())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportCategoryBreakdownJson toImportCategoryBreakdownJson(
+            ImportJob.CategoryBreakdown breakdown) {
+        return BankDataIngestionDto.ImportCategoryBreakdownJson.builder()
+                .categoryName(breakdown.categoryName())
+                .parentCategory(breakdown.parentCategory())
+                .transactionCount(breakdown.transactionCount())
+                .totalAmount(breakdown.totalAmount().getAmount().doubleValue())
+                .currency(breakdown.totalAmount().getCurrency())
+                .type(breakdown.type())
+                .isNewCategory(breakdown.isNewCategory())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportMonthlyBreakdownJson toImportMonthlyBreakdownJson(
+            ImportJob.MonthlyBreakdown breakdown) {
+        return BankDataIngestionDto.ImportMonthlyBreakdownJson.builder()
+                .month(breakdown.month())
+                .inflowTotal(breakdown.inflowTotal().getAmount().doubleValue())
+                .outflowTotal(breakdown.outflowTotal().getAmount().doubleValue())
+                .currency(breakdown.inflowTotal().getCurrency())
+                .transactionCount(breakdown.transactionCount())
+                .build();
+    }
+
+    private BankDataIngestionDto.ImportJobSummaryJson toImportJobSummaryJson(
+            ListImportJobsResult.ImportJobSummary summary) {
+        return BankDataIngestionDto.ImportJobSummaryJson.builder()
+                .jobId(summary.jobId().id())
+                .status(summary.status().name())
+                .createdAt(summary.createdAt())
+                .completedAt(summary.completedAt())
+                .transactionsImported(summary.transactionsImported())
+                .categoriesCreated(summary.categoriesCreated())
+                .canRollback(summary.canRollback())
                 .build();
     }
 }
