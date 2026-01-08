@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.BankAccount;
@@ -34,6 +35,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +80,9 @@ public class BankDataIngestionControllerTest {
     @Autowired
     private CategoryMappingMongoRepository categoryMappingMongoRepository;
 
+    @Autowired
+    private StagedTransactionMongoRepository stagedTransactionMongoRepository;
+
     private JsonFormatter jsonFormatter = new JsonFormatter();
 
     @BeforeEach
@@ -84,6 +90,7 @@ public class BankDataIngestionControllerTest {
         kafkaListenerEndpointRegistry.getListenerContainers().forEach(
                 messageListenerContainer -> ContainerTestUtils.waitForAssignment(messageListenerContainer, 1));
         categoryMappingMongoRepository.deleteAll();
+        stagedTransactionMongoRepository.deleteAll();
         cashFlowMongoRepository.deleteAll();
         cashFlowForecastMongoRepository.deleteAll();
     }
@@ -376,6 +383,311 @@ public class BankDataIngestionControllerTest {
         assertThat(getMappingsResponse.getMappings())
                 .extracting(BankDataIngestionDto.MappingJson::getCategoryType)
                 .containsExactlyInAnyOrder(Type.INFLOW, Type.OUTFLOW);
+    }
+
+    // ============ Staging Tests ============
+
+    @Test
+    @DisplayName("Should stage transactions with mappings and return preview")
+    void shouldStageTransactionsWithMappings() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // when: stage transactions
+        BankDataIngestionDto.StageTransactionsRequest request = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Biedronka Zakupy")
+                                .description("Zakupy spożywcze")
+                                .bankCategory("Zakupy kartą")
+                                .amount(150.50)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build(),
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-002")
+                                .name("Netflix")
+                                .description("Subskrypcja miesięczna")
+                                .bankCategory("Subskrypcje")
+                                .amount(49.99)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build(),
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-003")
+                                .name("Przelew z firmy")
+                                .description("Wynagrodzenie")
+                                .bankCategory("Przelew przychodzący")
+                                .amount(8500.00)
+                                .currency("PLN")
+                                .type(Type.INFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 9, 1, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse response =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+
+        log.info("Stage transactions response - status: {}, sessionId: {}", response.getStatus(), response.getStagingSessionId());
+
+        // then: verify staging result
+        assertThat(response.getStagingSessionId()).isNotNull();
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(response.getExpiresAt()).isNotNull();
+
+        // verify summary
+        assertThat(response.getSummary().getTotalTransactions()).isEqualTo(3);
+        assertThat(response.getSummary().getValidTransactions()).isEqualTo(3);
+        assertThat(response.getSummary().getInvalidTransactions()).isEqualTo(0);
+        assertThat(response.getSummary().getDuplicateTransactions()).isEqualTo(0);
+
+        // verify category breakdown
+        assertThat(response.getCategoryBreakdown()).isNotEmpty();
+
+        // verify monthly breakdown
+        assertThat(response.getMonthlyBreakdown()).hasSize(2); // August and September
+    }
+
+    @Test
+    @DisplayName("Should return HAS_UNMAPPED_CATEGORIES when mappings are missing")
+    void shouldReturnUnmappedCategoriesWhenMappingsMissing() {
+        // given: create a CashFlow WITHOUT configuring mappings
+        String cashFlowId = createCashFlowWithHistory();
+
+        // when: stage transactions with unmapped categories
+        BankDataIngestionDto.StageTransactionsRequest request = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Unknown Transaction")
+                                .description("Test")
+                                .bankCategory("Unknown Category")
+                                .amount(100.0)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse response =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+
+        log.info("Stage transactions with unmapped categories response - status: {}", response.getStatus());
+
+        // then: verify unmapped categories result
+        assertThat(response.getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(response.getUnmappedCategories()).hasSize(1);
+        assertThat(response.getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
+        assertThat(response.getUnmappedCategories().get(0).getType()).isEqualTo(Type.OUTFLOW);
+        assertThat(response.getUnmappedCategories().get(0).getCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should return HAS_VALIDATION_ERRORS for transactions outside SETUP period")
+    void shouldReturnValidationErrorsForInvalidPeriod() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // when: stage transactions with paidDate in the future (after activePeriod)
+        // Fixed clock is at 2022-01-01, activePeriod is 2022-01
+        // startPeriod is 2021-07, so valid dates are 2021-07 to 2021-12
+        BankDataIngestionDto.StageTransactionsRequest request = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Future Transaction")
+                                .description("Test")
+                                .bankCategory("Zakupy kartą")
+                                .amount(100.0)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2022, 1, 15, 10, 0, 0, 0, ZoneOffset.UTC)) // activePeriod!
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse response =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+
+        log.info("Stage transactions with invalid period response - status: {}, invalid: {}",
+                response.getStatus(), response.getSummary().getInvalidTransactions());
+
+        // then: verify validation errors
+        assertThat(response.getStatus()).isEqualTo("HAS_VALIDATION_ERRORS");
+        assertThat(response.getSummary().getInvalidTransactions()).isEqualTo(1);
+        assertThat(response.getSummary().getValidTransactions()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Should get staging preview for existing session")
+    void shouldGetStagingPreview() {
+        // given: create a CashFlow, configure mappings, and stage transactions
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Biedronka Zakupy")
+                                .description("Zakupy spożywcze")
+                                .bankCategory("Zakupy kartą")
+                                .amount(150.50)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+
+        String stagingSessionId = stageResponse.getStagingSessionId();
+
+        // when: get staging preview
+        BankDataIngestionDto.GetStagingPreviewResponse response =
+                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+
+        log.info("Get staging preview response - status: {}, transactions: {}", response.getStatus(), response.getTransactions().size());
+
+        // then: verify preview content
+        assertThat(response.getStagingSessionId()).isEqualTo(stagingSessionId);
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.getStatus()).isEqualTo("READY_FOR_IMPORT");
+
+        // verify transactions are included
+        assertThat(response.getTransactions()).hasSize(1);
+        assertThat(response.getTransactions().get(0).getBankTransactionId()).isEqualTo("txn-001");
+        assertThat(response.getTransactions().get(0).getName()).isEqualTo("Biedronka Zakupy");
+        assertThat(response.getTransactions().get(0).getTargetCategory()).isEqualTo("Groceries");
+        assertThat(response.getTransactions().get(0).getValidation().getStatus()).isEqualTo("VALID");
+    }
+
+    @Test
+    @DisplayName("Should return NOT_FOUND for non-existent staging session")
+    void shouldReturnNotFoundForNonExistentSession() {
+        // given: create a CashFlow
+        String cashFlowId = createCashFlowWithHistory();
+
+        // when: get staging preview for non-existent session
+        BankDataIngestionDto.GetStagingPreviewResponse response =
+                bankDataIngestionRestController.getStagingPreview(cashFlowId, "non-existent-session-id");
+
+        log.info("Get staging preview (not found) response - status: {}", response.getStatus());
+
+        // then: verify NOT_FOUND status
+        assertThat(response.getStatus()).isEqualTo("NOT_FOUND");
+        assertThat(response.getSummary().getTotalTransactions()).isEqualTo(0);
+        assertThat(response.getTransactions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should delete staging session and all its transactions")
+    void shouldDeleteStagingSession() {
+        // given: create a CashFlow, configure mappings, and stage transactions
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Biedronka Zakupy")
+                                .description("Zakupy spożywcze")
+                                .bankCategory("Zakupy kartą")
+                                .amount(150.50)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build(),
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-002")
+                                .name("Netflix")
+                                .description("Subskrypcja")
+                                .bankCategory("Subskrypcje")
+                                .amount(49.99)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse =
+                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+
+        String stagingSessionId = stageResponse.getStagingSessionId();
+
+        // when: delete staging session
+        BankDataIngestionDto.DeleteStagingSessionResponse response =
+                bankDataIngestionRestController.deleteStagingSession(cashFlowId, stagingSessionId);
+
+        log.info("Delete staging session response - deleted: {}, count: {}", response.isDeleted(), response.getDeletedCount());
+
+        // then: verify deletion
+        assertThat(response.isDeleted()).isTrue();
+        assertThat(response.getDeletedCount()).isEqualTo(2);
+        assertThat(response.getStagingSessionId()).isEqualTo(stagingSessionId);
+
+        // verify session is gone
+        BankDataIngestionDto.GetStagingPreviewResponse previewResponse =
+                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+        assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("Should handle delete of non-existent staging session gracefully")
+    void shouldHandleDeleteOfNonExistentSession() {
+        // given: create a CashFlow
+        String cashFlowId = createCashFlowWithHistory();
+
+        // when: delete non-existent staging session
+        BankDataIngestionDto.DeleteStagingSessionResponse response =
+                bankDataIngestionRestController.deleteStagingSession(cashFlowId, "non-existent-session-id");
+
+        log.info("Delete non-existent staging session response - deleted: {}, count: {}", response.isDeleted(), response.getDeletedCount());
+
+        // then: verify no error, just not deleted
+        assertThat(response.isDeleted()).isFalse();
+        assertThat(response.getDeletedCount()).isEqualTo(0);
+    }
+
+    // Helper method to configure mappings for staging tests
+    private void configureMappingsForStaging(String cashFlowId) {
+        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+                .mappings(List.of(
+                        BankDataIngestionDto.MappingConfigJson.builder()
+                                .bankCategoryName("Zakupy kartą")
+                                .action(MappingAction.MAP_TO_EXISTING)
+                                .targetCategoryName("Groceries")
+                                .categoryType(Type.OUTFLOW)
+                                .build(),
+                        BankDataIngestionDto.MappingConfigJson.builder()
+                                .bankCategoryName("Subskrypcje")
+                                .action(MappingAction.CREATE_SUBCATEGORY)
+                                .targetCategoryName("Netflix")
+                                .parentCategoryName("Subscriptions")
+                                .categoryType(Type.OUTFLOW)
+                                .build(),
+                        BankDataIngestionDto.MappingConfigJson.builder()
+                                .bankCategoryName("Przelew przychodzący")
+                                .action(MappingAction.MAP_TO_EXISTING)
+                                .targetCategoryName("Salary")
+                                .categoryType(Type.INFLOW)
+                                .build()
+                ))
+                .build();
+
+        bankDataIngestionRestController.configureMappings(cashFlowId, request);
     }
 
     // Helper method to create a CashFlow with history
