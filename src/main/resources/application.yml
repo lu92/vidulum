@@ -32,3 +32,21 @@ application:
       expiration: 86400000 # a day
       refresh-token:
         expiration: 604800000 # 7 days
+
+# Bank Data Ingestion configuration
+vidulum:
+  cashflow-service:
+    # Base URL for cashflow-service REST API
+    base-url: http://localhost:8080
+    # Connection timeout in milliseconds
+    connect-timeout-ms: 5000
+    # Read timeout in milliseconds
+    read-timeout-ms: 30000
+  ingestion:
+    staging:
+      ttl-hours: 24
+    rollback:
+      window-hours: 1
+    processing:
+      batch-size: 50
+      progress-update-interval: 10

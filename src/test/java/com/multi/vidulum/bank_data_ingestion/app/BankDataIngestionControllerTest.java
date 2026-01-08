@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
@@ -41,12 +42,28 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Integration tests for BankDataIngestion module.
+ *
+ * Uses direct controller injection similar to DualBudgetActor pattern,
+ * avoiding HTTP communication and commandGateway complexity.
+ */
 @Slf4j
 @SpringBootTest(classes = FixedClockConfig.class)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
+@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
 @Testcontainers
 @DirtiesContext
 public class BankDataIngestionControllerTest {
+
+    @org.springframework.boot.test.context.TestConfiguration
+    static class TestCashFlowServiceClientConfig {
+        @org.springframework.context.annotation.Bean
+        public CashFlowServiceClient cashFlowServiceClient(
+                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
+                @org.springframework.context.annotation.Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
+            return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
+    }
 
     @Container
     public static KafkaContainer kafka =
@@ -60,6 +77,8 @@ public class BankDataIngestionControllerTest {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
+        // Disable the HttpCashFlowServiceClient - tests use direct controller injection
+        registry.add("vidulum.cashflow-service.enabled", () -> "false");
     }
 
     @Autowired
@@ -83,6 +102,9 @@ public class BankDataIngestionControllerTest {
     @Autowired
     private StagedTransactionMongoRepository stagedTransactionMongoRepository;
 
+    @Autowired
+    private ImportJobMongoRepository importJobMongoRepository;
+
     private JsonFormatter jsonFormatter = new JsonFormatter();
 
     @BeforeEach
@@ -91,6 +113,7 @@ public class BankDataIngestionControllerTest {
                 messageListenerContainer -> ContainerTestUtils.waitForAssignment(messageListenerContainer, 1));
         categoryMappingMongoRepository.deleteAll();
         stagedTransactionMongoRepository.deleteAll();
+        importJobMongoRepository.deleteAll();
         cashFlowMongoRepository.deleteAll();
         cashFlowForecastMongoRepository.deleteAll();
     }
@@ -137,8 +160,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse response =
-                bankDataIngestionRestController.configureMappings(cashFlowId, request);
+        BankDataIngestionDto.ConfigureMappingsResponse response = bankDataIngestionRestController.configureMappings(cashFlowId, request);
 
         log.info("Configure mappings response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -186,8 +208,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse response =
-                bankDataIngestionRestController.configureMappings(cashFlowId, updateRequest);
+        BankDataIngestionDto.ConfigureMappingsResponse response = bankDataIngestionRestController.configureMappings(cashFlowId, updateRequest);
 
         log.info("Update mapping response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -223,8 +244,7 @@ public class BankDataIngestionControllerTest {
         bankDataIngestionRestController.configureMappings(cashFlowId, request);
 
         // when: get mappings
-        BankDataIngestionDto.GetMappingsResponse response =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse response = bankDataIngestionRestController.getMappings(cashFlowId);
 
         log.info("Get mappings response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -259,14 +279,11 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse configureResponse =
-                bankDataIngestionRestController.configureMappings(cashFlowId, request);
-
+        BankDataIngestionDto.ConfigureMappingsResponse configureResponse = bankDataIngestionRestController.configureMappings(cashFlowId, request);
         String mappingIdToDelete = configureResponse.getMappings().get(0).getMappingId();
 
         // when: delete the first mapping
-        BankDataIngestionDto.DeleteMappingResponse deleteResponse =
-                bankDataIngestionRestController.deleteMapping(cashFlowId, mappingIdToDelete);
+        BankDataIngestionDto.DeleteMappingResponse deleteResponse = bankDataIngestionRestController.deleteMapping(cashFlowId, mappingIdToDelete);
 
         log.info("Delete mapping response:\n{}", jsonFormatter.formatToPrettyJson(deleteResponse));
 
@@ -275,8 +292,7 @@ public class BankDataIngestionControllerTest {
         assertThat(deleteResponse.getMappingId()).isEqualTo(mappingIdToDelete);
 
         // verify only one mapping remains
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = bankDataIngestionRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(1);
     }
 
@@ -306,8 +322,7 @@ public class BankDataIngestionControllerTest {
         bankDataIngestionRestController.configureMappings(cashFlowId, request);
 
         // when: delete all mappings
-        BankDataIngestionDto.DeleteAllMappingsResponse deleteResponse =
-                bankDataIngestionRestController.deleteAllMappings(cashFlowId);
+        BankDataIngestionDto.DeleteAllMappingsResponse deleteResponse = bankDataIngestionRestController.deleteAllMappings(cashFlowId);
 
         log.info("Delete all mappings response:\n{}", jsonFormatter.formatToPrettyJson(deleteResponse));
 
@@ -316,8 +331,7 @@ public class BankDataIngestionControllerTest {
         assertThat(deleteResponse.getDeletedCount()).isEqualTo(2);
 
         // verify no mappings remain
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = bankDataIngestionRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(0);
     }
 
@@ -328,8 +342,7 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // when: get mappings
-        BankDataIngestionDto.GetMappingsResponse response =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse response = bankDataIngestionRestController.getMappings(cashFlowId);
 
         log.info("Get mappings (empty) response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -364,8 +377,7 @@ public class BankDataIngestionControllerTest {
                 .build();
 
         // when: configure mappings
-        BankDataIngestionDto.ConfigureMappingsResponse response =
-                bankDataIngestionRestController.configureMappings(cashFlowId, request);
+        BankDataIngestionDto.ConfigureMappingsResponse response = bankDataIngestionRestController.configureMappings(cashFlowId, request);
 
         log.info("Configure same bank category with different types response:\n{}",
                 jsonFormatter.formatToPrettyJson(response));
@@ -375,8 +387,7 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getMappings()).allMatch(m -> m.getStatus().equals("CREATED"));
 
         // verify both are retrievable
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = bankDataIngestionRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(2);
 
         // verify they have different category types
@@ -430,8 +441,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse response =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+        BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(cashFlowId, request);
 
         log.info("Stage transactions response - status: {}, sessionId: {}", response.getStatus(), response.getStagingSessionId());
 
@@ -476,8 +486,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse response =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+        BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(cashFlowId, request);
 
         log.info("Stage transactions with unmapped categories response - status: {}", response.getStatus());
 
@@ -514,8 +523,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse response =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, request);
+        BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(cashFlowId, request);
 
         log.info("Stage transactions with invalid period response - status: {}, invalid: {}",
                 response.getStatus(), response.getSummary().getInvalidTransactions());
@@ -548,14 +556,11 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stageResponse =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
-
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // when: get staging preview
-        BankDataIngestionDto.GetStagingPreviewResponse response =
-                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+        BankDataIngestionDto.GetStagingPreviewResponse response = bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
 
         log.info("Get staging preview response - status: {}, transactions: {}", response.getStatus(), response.getTransactions().size());
 
@@ -579,8 +584,7 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // when: get staging preview for non-existent session
-        BankDataIngestionDto.GetStagingPreviewResponse response =
-                bankDataIngestionRestController.getStagingPreview(cashFlowId, "non-existent-session-id");
+        BankDataIngestionDto.GetStagingPreviewResponse response = bankDataIngestionRestController.getStagingPreview(cashFlowId, "non-existent-session-id");
 
         log.info("Get staging preview (not found) response - status: {}", response.getStatus());
 
@@ -622,14 +626,11 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stageResponse =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
-
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // when: delete staging session
-        BankDataIngestionDto.DeleteStagingSessionResponse response =
-                bankDataIngestionRestController.deleteStagingSession(cashFlowId, stagingSessionId);
+        BankDataIngestionDto.DeleteStagingSessionResponse response = bankDataIngestionRestController.deleteStagingSession(cashFlowId, stagingSessionId);
 
         log.info("Delete staging session response - deleted: {}, count: {}", response.isDeleted(), response.getDeletedCount());
 
@@ -639,8 +640,7 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getStagingSessionId()).isEqualTo(stagingSessionId);
 
         // verify session is gone
-        BankDataIngestionDto.GetStagingPreviewResponse previewResponse =
-                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+        BankDataIngestionDto.GetStagingPreviewResponse previewResponse = bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
         assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
     }
 
@@ -651,8 +651,7 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // when: delete non-existent staging session
-        BankDataIngestionDto.DeleteStagingSessionResponse response =
-                bankDataIngestionRestController.deleteStagingSession(cashFlowId, "non-existent-session-id");
+        BankDataIngestionDto.DeleteStagingSessionResponse response = bankDataIngestionRestController.deleteStagingSession(cashFlowId, "non-existent-session-id");
 
         log.info("Delete non-existent staging session response - deleted: {}, count: {}", response.isDeleted(), response.getDeletedCount());
 
@@ -695,9 +694,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stageResponse =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
-
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // when: start import
@@ -705,8 +702,7 @@ public class BankDataIngestionControllerTest {
                 .stagingSessionId(stagingSessionId)
                 .build();
 
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, importRequest);
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
 
         log.info("Start import response - status: {}, jobId: {}", importResponse.getStatus(), importResponse.getJobId());
 
@@ -728,16 +724,15 @@ public class BankDataIngestionControllerTest {
 
         String stagingSessionId = stageTransactionsForImport(cashFlowId);
 
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId)
-                        .build());
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
 
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
         String jobId = importResponse.getJobId();
 
         // when: get import progress
-        BankDataIngestionDto.GetImportProgressResponse progressResponse =
-                bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
+        BankDataIngestionDto.GetImportProgressResponse progressResponse = bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
 
         log.info("Import progress - status: {}, percentage: {}%",
                 progressResponse.getStatus(), progressResponse.getProgress().getPercentage());
@@ -759,19 +754,19 @@ public class BankDataIngestionControllerTest {
 
         String stagingSessionId = stageTransactionsForImport(cashFlowId);
 
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId)
-                        .build());
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
 
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
         String jobId = importResponse.getJobId();
 
         // when: finalize import
-        BankDataIngestionDto.FinalizeImportResponse finalizeResponse =
-                bankDataIngestionRestController.finalizeImport(cashFlowId, jobId,
-                        BankDataIngestionDto.FinalizeImportRequest.builder()
-                                .deleteMappings(false)
-                                .build());
+        BankDataIngestionDto.FinalizeImportRequest finalizeRequest = BankDataIngestionDto.FinalizeImportRequest.builder()
+                .deleteMappings(false)
+                .build();
+
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = bankDataIngestionRestController.finalizeImport(cashFlowId, jobId, finalizeRequest);
 
         log.info("Finalize import response - status: {}, stagedDeleted: {}",
                 finalizeResponse.getStatus(), finalizeResponse.getCleanup().getStagedTransactionsDeleted());
@@ -784,8 +779,7 @@ public class BankDataIngestionControllerTest {
         assertThat(finalizeResponse.getFinalSummary().getTransactionsImported()).isGreaterThan(0);
 
         // verify staging session is deleted
-        BankDataIngestionDto.GetStagingPreviewResponse previewResponse =
-                bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
+        BankDataIngestionDto.GetStagingPreviewResponse previewResponse = bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
         assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
     }
 
@@ -798,19 +792,19 @@ public class BankDataIngestionControllerTest {
 
         String stagingSessionId = stageTransactionsForImport(cashFlowId);
 
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId)
-                        .build());
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
 
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
         String jobId = importResponse.getJobId();
 
         // when: finalize import with deleteMappings=true
-        BankDataIngestionDto.FinalizeImportResponse finalizeResponse =
-                bankDataIngestionRestController.finalizeImport(cashFlowId, jobId,
-                        BankDataIngestionDto.FinalizeImportRequest.builder()
-                                .deleteMappings(true)
-                                .build());
+        BankDataIngestionDto.FinalizeImportRequest finalizeRequest = BankDataIngestionDto.FinalizeImportRequest.builder()
+                .deleteMappings(true)
+                .build();
+
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = bankDataIngestionRestController.finalizeImport(cashFlowId, jobId, finalizeRequest);
 
         log.info("Finalize import response - mappingsDeleted: {}", finalizeResponse.getCleanup().getMappingsDeleted());
 
@@ -818,8 +812,7 @@ public class BankDataIngestionControllerTest {
         assertThat(finalizeResponse.getCleanup().getMappingsDeleted()).isGreaterThan(0);
 
         // verify mappings are gone
-        BankDataIngestionDto.GetMappingsResponse mappingsResponse =
-                bankDataIngestionRestController.getMappings(cashFlowId);
+        BankDataIngestionDto.GetMappingsResponse mappingsResponse = bankDataIngestionRestController.getMappings(cashFlowId);
         assertThat(mappingsResponse.getMappingsCount()).isEqualTo(0);
     }
 
@@ -832,17 +825,16 @@ public class BankDataIngestionControllerTest {
 
         String stagingSessionId = stageTransactionsForImport(cashFlowId);
 
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId)
-                        .build());
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
 
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
         String jobId = importResponse.getJobId();
         int transactionsImported = importResponse.getResult().getTransactionsImported();
 
         // when: rollback import
-        BankDataIngestionDto.RollbackImportResponse rollbackResponse =
-                bankDataIngestionRestController.rollbackImport(cashFlowId, jobId);
+        BankDataIngestionDto.RollbackImportResponse rollbackResponse = bankDataIngestionRestController.rollbackImport(cashFlowId, jobId);
 
         log.info("Rollback import response - status: {}, transactionsDeleted: {}",
                 rollbackResponse.getStatus(), rollbackResponse.getRollbackSummary().getTransactionsDeleted());
@@ -853,8 +845,7 @@ public class BankDataIngestionControllerTest {
         assertThat(rollbackResponse.getRollbackSummary().getTransactionsDeleted()).isEqualTo(transactionsImported);
 
         // verify job status is ROLLED_BACK
-        BankDataIngestionDto.GetImportProgressResponse progressResponse =
-                bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
+        BankDataIngestionDto.GetImportProgressResponse progressResponse = bankDataIngestionRestController.getImportProgress(cashFlowId, jobId);
         assertThat(progressResponse.getStatus()).isEqualTo("ROLLED_BACK");
         assertThat(progressResponse.isCanRollback()).isFalse();
     }
@@ -868,25 +859,27 @@ public class BankDataIngestionControllerTest {
 
         // First import
         String stagingSessionId1 = stageTransactionsForImport(cashFlowId);
-        BankDataIngestionDto.StartImportResponse import1 =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId1)
-                        .build());
+        BankDataIngestionDto.StartImportResponse import1Response = bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId1).build()
+        );
 
         // Finalize first import
-        bankDataIngestionRestController.finalizeImport(cashFlowId, import1.getJobId(),
-                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build());
+        bankDataIngestionRestController.finalizeImport(
+                cashFlowId,
+                import1Response.getJobId(),
+                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build()
+        );
 
         // Second import
         String stagingSessionId2 = stageTransactionsForImport(cashFlowId);
-        BankDataIngestionDto.StartImportResponse import2 =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId2)
-                        .build());
+        bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId2).build()
+        );
 
         // when: list import jobs
-        BankDataIngestionDto.ListImportJobsResponse listResponse =
-                bankDataIngestionRestController.listImportJobs(cashFlowId, null);
+        BankDataIngestionDto.ListImportJobsResponse listResponse = bankDataIngestionRestController.listImportJobs(cashFlowId, null);
 
         log.info("List import jobs response - count: {}", listResponse.getJobs().size());
 
@@ -906,22 +899,25 @@ public class BankDataIngestionControllerTest {
 
         // First import - finalized
         String stagingSessionId1 = stageTransactionsForImport(cashFlowId);
-        BankDataIngestionDto.StartImportResponse import1 =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                        .stagingSessionId(stagingSessionId1)
-                        .build());
-        bankDataIngestionRestController.finalizeImport(cashFlowId, import1.getJobId(),
-                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build());
+        BankDataIngestionDto.StartImportResponse import1Response = bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId1).build()
+        );
+        bankDataIngestionRestController.finalizeImport(
+                cashFlowId,
+                import1Response.getJobId(),
+                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build()
+        );
 
         // Second import - completed but not finalized
         String stagingSessionId2 = stageTransactionsForImport(cashFlowId);
-        bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
-                .stagingSessionId(stagingSessionId2)
-                .build());
+        bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId2).build()
+        );
 
         // when: filter by COMPLETED status
-        BankDataIngestionDto.ListImportJobsResponse filteredResponse =
-                bankDataIngestionRestController.listImportJobs(cashFlowId, List.of("COMPLETED"));
+        BankDataIngestionDto.ListImportJobsResponse filteredResponse = bankDataIngestionRestController.listImportJobs(cashFlowId, List.of("COMPLETED"));
 
         log.info("Filtered import jobs response - count: {}", filteredResponse.getJobs().size());
 
@@ -965,14 +961,15 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stageResponse =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
 
         // when: start import
-        BankDataIngestionDto.StartImportResponse importResponse =
-                bankDataIngestionRestController.startImport(cashFlowId, BankDataIngestionDto.StartImportRequest.builder()
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder()
                         .stagingSessionId(stageResponse.getStagingSessionId())
-                        .build());
+                        .build()
+        );
 
         log.info("Import with categories - status: {}, categoriesCreated: {}",
                 importResponse.getStatus(), importResponse.getResult().getCategoriesCreated());
@@ -983,7 +980,8 @@ public class BankDataIngestionControllerTest {
         assertThat(importResponse.getResult().getTransactionsImported()).isEqualTo(1);
     }
 
-    // Helper to stage transactions for import
+    // ============ Helper Methods ============
+
     private String stageTransactionsForImport(String cashFlowId) {
         BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
                 .transactions(List.of(
@@ -1000,13 +998,10 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stageResponse =
-                bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
-
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest);
         return stageResponse.getStagingSessionId();
     }
 
-    // Helper method to configure mappings for staging tests
     private void configureMappingsForStaging(String cashFlowId) {
         BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
@@ -1035,21 +1030,23 @@ public class BankDataIngestionControllerTest {
         bankDataIngestionRestController.configureMappings(cashFlowId, request);
     }
 
-    // Helper method to create a CashFlow with history
     private String createCashFlowWithHistory() {
-        CashFlowDto.CreateCashFlowWithHistoryJson request = CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                .userId("test-user-123")
-                .name("Test CashFlow")
-                .description("CashFlow for testing category mappings")
-                .bankAccount(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
-                        Money.zero("PLN")
-                ))
-                .startPeriod("2021-07")
-                .initialBalance(Money.of(10000.0, "PLN"))
-                .build();
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("test-user-123")
+                        .name("Test CashFlow")
+                        .description("CashFlow for testing category mappings")
+                        .bankAccount(new BankAccount(
+                                new BankName("Test Bank"),
+                                new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
+                                Money.zero("PLN")
+                        ))
+                        .startPeriod("2021-07")
+                        .initialBalance(Money.of(10000.0, "PLN"))
+                        .build()
+        );
 
-        return cashFlowRestController.createCashFlowWithHistory(request);
+        log.info("Created CashFlow with ID: {}", cashFlowId);
+        return cashFlowId;
     }
 }
