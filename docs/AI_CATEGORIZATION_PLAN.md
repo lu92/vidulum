@@ -509,3 +509,154 @@ public ResponseEntity<AcceptSuggestionsResponse> acceptAiSuggestions(
    └── Oznacz jako "Uncategorized"
    └── Ustaw suggestionSource = FALLBACK
 ```
+
+---
+
+## 13. Szczegółowa analiza kosztów API
+
+### 13.1 Co to jest token?
+
+Token to jednostka tekstu używana przez modele AI:
+- **Angielski**: ~1 token ≈ 4 znaki
+- **Polski**: ~1 token ≈ 2-3 znaki (dłuższe słowa, znaki diakrytyczne)
+
+**Przykład transakcji (~30-40 tokenów input):**
+```
+Nazwa: "ŻABKA Z5432 WARSZAWA UL. MARSZAŁKOWSKA"
+Kwota: -45.99 PLN
+Data: 2024-01-15
+Typ: OUTFLOW
+```
+
+### 13.2 Batch vs pojedyncze requesty - KRYTYCZNA RÓŻNICA
+
+#### Scenariusz A: 100 osobnych requestów (1 transakcja = 1 request)
+
+```
+Request 1:
+  - System prompt: ~500 tokenów (lista kategorii, instrukcje)
+  - User prompt: ~50 tokenów (1 transakcja)
+  - Output: ~30 tokenów (1 sugestia)
+
+  RAZEM: 580 tokenów × 100 requestów = 58,000 tokenów
+```
+
+**Problem:** System prompt powtarza się 100 razy!
+
+#### Scenariusz B: 1 request z 100 transakcjami (batch)
+
+```
+Request 1:
+  - System prompt: ~500 tokenów (raz!)
+  - User prompt: ~5,000 tokenów (100 transakcji × 50)
+  - Output: ~3,000 tokenów (100 sugestii × 30)
+
+  RAZEM: 8,500 tokenów
+```
+
+**Oszczędność: ~7x taniej przy batch processing!**
+
+### 13.3 Tabela kosztów dla 100 transakcji
+
+#### Claude (Anthropic)
+
+| Model | Input (/1M) | Output (/1M) | 100 trans. (batch) | 100 trans. (osobno) |
+|-------|-------------|--------------|---------------------|---------------------|
+| **Claude 3.5 Haiku** | $0.80 | $4.00 | **~$0.02** (8 gr) | ~$0.07 (28 gr) |
+| **Claude 3.5 Sonnet** | $3.00 | $15.00 | **~$0.06** (24 gr) | ~$0.25 (1 zł) |
+| **Claude Opus 4** | $15.00 | $75.00 | **~$0.30** (1.20 zł) | ~$1.20 (4.80 zł) |
+
+#### OpenAI
+
+| Model | Input (/1M) | Output (/1M) | 100 trans. (batch) | 100 trans. (osobno) |
+|-------|-------------|--------------|---------------------|---------------------|
+| **GPT-4o-mini** | $0.15 | $0.60 | **~$0.003** (1.2 gr) | ~$0.01 (4 gr) |
+| **GPT-4o** | $2.50 | $10.00 | **~$0.04** (16 gr) | ~$0.18 (72 gr) |
+| **GPT-4 Turbo** | $10.00 | $30.00 | **~$0.12** (48 gr) | ~$0.50 (2 zł) |
+
+#### Ollama (lokalne)
+
+| Model | Koszt API | 100 transakcji |
+|-------|-----------|----------------|
+| **Llama 3.1 8B** | $0 | **$0** (tylko prąd/sprzęt) |
+| **Mistral 7B** | $0 | **$0** |
+
+### 13.4 Przykładowe scenariusze użytkownika (miesięcznie)
+
+#### Użytkownik "Oszczędny" - 50 transakcji/miesiąc
+
+| Model | Koszt/miesiąc | Koszt/rok |
+|-------|---------------|-----------|
+| GPT-4o-mini | ~2 gr | ~24 gr |
+| Claude Haiku | ~4 gr | ~48 gr |
+| Ollama | 0 zł | 0 zł |
+
+#### Użytkownik "Przeciętny" - 200 transakcji/miesiąc
+
+| Model | Koszt/miesiąc | Koszt/rok |
+|-------|---------------|-----------|
+| GPT-4o-mini | ~6 gr | ~72 gr |
+| Claude Haiku | ~16 gr | ~1.92 zł |
+| Ollama | 0 zł | 0 zł |
+
+#### Użytkownik "Aktywny" - 500 transakcji/miesiąc
+
+| Model | Koszt/miesiąc | Koszt/rok |
+|-------|---------------|-----------|
+| GPT-4o-mini | ~15 gr | ~1.80 zł |
+| Claude Haiku | ~40 gr | ~4.80 zł |
+| Claude Sonnet | ~1.50 zł | ~18 zł |
+
+### 13.5 Ukryte koszty małych requestów
+
+#### Rate limiting
+- OpenAI: 500-10,000 requests/minutę (zależnie od tier)
+- Claude: 50-4,000 requests/minutę
+- **100 osobnych requestów może uderzyć w limity**
+
+#### Latencja
+- 1 request: ~500ms-2s
+- 100 osobnych requestów: **50-200 sekund** (sekwencyjnie) lub 2-5s (równolegle, ale ryzyko rate limit)
+- 1 batch request: **2-5 sekund**
+
+#### Overhead HTTP
+- Każdy request to narzut: DNS, TCP handshake, TLS, headers
+- 100 requestów = 100× overhead
+
+### 13.6 Optymalna strategia kosztowa
+
+```
+Nowe transakcje (100)
+       ↓
+[Filtruj przez istniejące CategoryMapping]
+       ↓
+90 transakcji MA mapping → użyj go (koszt: 0 zł)
+10 transakcji BEZ mappingu → wyślij do AI
+       ↓
+1 batch request (10 transakcji)
+       ↓
+Koszt: ~0.3 gr (GPT-4o-mini)
+       ↓
+Zapisz nowe mappingi → następnym razem koszt = 0
+```
+
+**Efekt uczenia się:** Po kilku miesiącach używania, 95%+ transakcji będzie miało mapping i AI będzie używane tylko dla nowych sklepów/usług.
+
+### 13.7 Rekomendacja wyboru modelu
+
+| Przypadek użycia | Rekomendowany model | Powód |
+|------------------|---------------------|-------|
+| **Minimalne koszty** | GPT-4o-mini | Najtańszy, wystarczający |
+| **Lepsza jakość po polsku** | Claude 3.5 Haiku | Lepsze rozumienie polskiego kontekstu |
+| **Maksymalna prywatność** | Ollama (Llama 3.1) | Dane nie opuszczają serwera |
+| **Najlepsza jakość** | Claude 3.5 Sonnet | Najlepsze wyniki, droższy |
+
+### 13.8 Podsumowanie kosztów
+
+| Pytanie | Odpowiedź |
+|---------|-----------|
+| Czy małe requesty się sumują? | **Tak, i są ~7x droższe** (system prompt powtarzany) |
+| Ile kosztuje 100 transakcji? | **1-40 gr** (zależnie od modelu i strategii batch) |
+| Najlepszy stosunek cena/jakość? | **GPT-4o-mini** (najtańszy) lub **Claude Haiku** (lepszy po polsku) |
+| Jak zoptymalizować koszty? | **Batch processing + caching mappingów** |
+| Czy warto używać lokalnych modeli? | **Tak, dla prywatności i 0 kosztów API** (wymaga GPU/mocnego CPU) |
