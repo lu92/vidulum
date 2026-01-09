@@ -1,0 +1,33 @@
+server:
+  port: 0  # Random port for tests
+
+spring:
+  application:
+    name: vidulum-websocket-gateway-test
+
+  kafka:
+    consumer:
+      group-id: websocket-gateway-test
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+gateway:
+  jwt:
+    secret: testSecretKeyForJwtTokenGenerationThatIsAtLeast256BitsLong!
+  websocket:
+    endpoint: /ws
+    allowed-origins: "*"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.multi.vidulum.gateway: DEBUG
+    org.springframework.web.socket: DEBUG
