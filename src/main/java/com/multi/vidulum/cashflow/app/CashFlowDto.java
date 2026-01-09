@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Money;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
@@ -197,6 +198,7 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @AllArgsConstructor
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String name;

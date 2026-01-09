@@ -5,6 +5,9 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongo
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
+import com.multi.vidulum.cashflow.domain.BankAccount;
+import com.multi.vidulum.cashflow.domain.BankAccountNumber;
+import com.multi.vidulum.cashflow.domain.BankName;
 import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Category;
@@ -45,7 +48,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.YearMonth;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +77,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @DirtiesContext
 public class BankDataIngestionHttpIntegrationTest {
+
+    // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
+    private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
 
     /**
      * Test security configuration that disables authentication for HTTP integration tests.
@@ -165,7 +170,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldGetCashFlowInfoViaRestApi() {
         // given
         YearMonth startPeriod = YearMonth.of(2021, 7);
-        YearMonth activePeriod = YearMonth.of(2022, 1); // FixedClockConfig sets clock to 2022-01-01
+        YearMonth activePeriod = YearMonth.of(2022, 1);
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "test-user-123",
@@ -177,35 +182,55 @@ public class BankDataIngestionHttpIntegrationTest {
         // when
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
 
-        // then - validate whole object using recursive comparison
-        assertThat(cashFlow)
+        // then - validate whole object with all fields
+        // Only ignore cashFlowId (generated), lastMessageChecksum (internal), importCutoffDateTime (not set)
+        assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(cashFlow.getUserId()).isEqualTo("test-user-123");
+        assertThat(cashFlow.getName()).isEqualTo("Test CashFlow");
+        assertThat(cashFlow.getDescription()).isEqualTo("CashFlow for HTTP integration testing");
+        assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(cashFlow.getStartPeriod()).isEqualTo(startPeriod);
+        assertThat(cashFlow.getActivePeriod()).isEqualTo(activePeriod);
+        assertThat(cashFlow.getCashChanges()).isEmpty();
+        assertThat(cashFlow.getCreated()).isEqualTo(FIXED_NOW);
+
+        // Validate bank account using recursive comparison
+        assertThat(cashFlow.getBankAccount())
                 .usingRecursiveComparison()
-                .ignoringFields("created", "lastModification", "importCutoffDateTime", "lastMessageChecksum",
-                        "inflowCategories", "outflowCategories", "bankAccount")
-                .isEqualTo(CashFlowDto.CashFlowSummaryJson.builder()
-                        .cashFlowId(cashFlowId)
-                        .userId("test-user-123")
-                        .name("Test CashFlow")
-                        .description("CashFlow for HTTP integration testing")
-                        .status(CashFlow.CashFlowStatus.SETUP)
-                        .startPeriod(startPeriod)
-                        .activePeriod(activePeriod)
-                        .cashChanges(Map.of())
-                        .build());
+                .isEqualTo(new BankAccount(
+                        new BankName("Test Bank"),
+                        new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
+                        Money.zero("PLN")
+                ));
 
         // Validate system-created "Uncategorized" categories
         assertThat(cashFlow.getInflowCategories()).hasSize(1);
-        assertThat(cashFlow.getInflowCategories().get(0).getCategoryName().name()).isEqualTo("Uncategorized");
+        assertThat(cashFlow.getInflowCategories().get(0))
+                .usingRecursiveComparison()
+                .ignoringFields("validFrom", "validTo")
+                .isEqualTo(Category.builder()
+                        .categoryName(new CategoryName("Uncategorized"))
+                        .isModifiable(false)
+                        .archived(false)
+                        .subCategories(List.of())
+                        .origin(CategoryOrigin.SYSTEM)
+                        .build());
+
         assertThat(cashFlow.getOutflowCategories()).hasSize(1);
-        assertThat(cashFlow.getOutflowCategories().get(0).getCategoryName().name()).isEqualTo("Uncategorized");
+        assertThat(cashFlow.getOutflowCategories().get(0))
+                .usingRecursiveComparison()
+                .ignoringFields("validFrom", "validTo")
+                .isEqualTo(Category.builder()
+                        .categoryName(new CategoryName("Uncategorized"))
+                        .isModifiable(false)
+                        .archived(false)
+                        .subCategories(List.of())
+                        .origin(CategoryOrigin.SYSTEM)
+                        .build());
 
-        // Validate bank account
-        assertThat(cashFlow.getBankAccount().bankName().name()).isEqualTo("Test Bank");
-        assertThat(cashFlow.getBankAccount().bankAccountNumber().account()).isEqualTo("PL12345678901234567890123456");
-        assertThat(cashFlow.getBankAccount().bankAccountNumber().denomination()).isEqualTo(Currency.of("PLN"));
-
-        log.info("CashFlow validated: id={}, status={}, startPeriod={}, activePeriod={}",
-                cashFlow.getCashFlowId(), cashFlow.getStatus(), cashFlow.getStartPeriod(), cashFlow.getActivePeriod());
+        log.info("CashFlow validated: id={}, status={}, startPeriod={}, activePeriod={}, created={}",
+                cashFlow.getCashFlowId(), cashFlow.getStatus(), cashFlow.getStartPeriod(),
+                cashFlow.getActivePeriod(), cashFlow.getCreated());
     }
 
     @Test
@@ -225,10 +250,10 @@ public class BankDataIngestionHttpIntegrationTest {
         // then
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
 
-        // Validate structure
-        assertThat(cashFlow.getOutflowCategories()).hasSize(2); // Uncategorized + NewCategory
+        // Validate structure: Uncategorized (system) + NewCategory (user)
+        assertThat(cashFlow.getOutflowCategories()).hasSize(2);
 
-        // Find and validate the created category
+        // Find and validate the created category with full object comparison
         Category createdCategory = cashFlow.getOutflowCategories().stream()
                 .filter(c -> "NewCategory".equals(c.getCategoryName().name()))
                 .findFirst()
@@ -245,7 +270,8 @@ public class BankDataIngestionHttpIntegrationTest {
                         .origin(CategoryOrigin.USER_CREATED)
                         .build());
 
-        log.info("Category created: name={}, archived={}", createdCategory.getCategoryName().name(), createdCategory.isArchived());
+        log.info("Category created: name={}, origin={}, archived={}",
+                createdCategory.getCategoryName().name(), createdCategory.getOrigin(), createdCategory.isArchived());
     }
 
     @Test
@@ -267,15 +293,16 @@ public class BankDataIngestionHttpIntegrationTest {
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
         assertThat(cashFlow.getOutflowCategories()).hasSize(2); // Uncategorized + ParentCategory
 
-        // Find parent and validate hierarchy
+        // Find and validate parent with child
         Category parentCategory = cashFlow.getOutflowCategories().stream()
                 .filter(c -> "ParentCategory".equals(c.getCategoryName().name()))
                 .findFirst()
                 .orElseThrow();
 
         assertThat(parentCategory.getSubCategories()).hasSize(1);
-        Category childCategory = parentCategory.getSubCategories().get(0);
 
+        // Validate child category with full object comparison
+        Category childCategory = parentCategory.getSubCategories().get(0);
         assertThat(childCategory)
                 .usingRecursiveComparison()
                 .ignoringFields("validFrom", "validTo")
@@ -334,8 +361,8 @@ public class BankDataIngestionHttpIntegrationTest {
         // when - import transactions across different months and categories
 
         // === July 2021 (startPeriod) ===
-        ZonedDateTime july15 = ZonedDateTime.of(2021, 7, 15, 10, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime july25 = ZonedDateTime.of(2021, 7, 25, 14, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime july15 = ZonedDateTime.parse("2021-07-15T10:00:00Z[UTC]");
+        ZonedDateTime july25 = ZonedDateTime.parse("2021-07-25T14:00:00Z[UTC]");
 
         String salaryJuly = actor.importHistoricalTransaction(cashFlowId, "Salary", "July Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, july15, july15);
@@ -345,9 +372,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Biedronka shopping", Money.of(250.0, "PLN"), Type.OUTFLOW, july25, july25);
 
         // === August 2021 ===
-        ZonedDateTime aug10 = ZonedDateTime.of(2021, 8, 10, 9, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime aug15 = ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime aug20 = ZonedDateTime.of(2021, 8, 20, 18, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime aug10 = ZonedDateTime.parse("2021-08-10T09:00:00Z[UTC]");
+        ZonedDateTime aug15 = ZonedDateTime.parse("2021-08-15T12:00:00Z[UTC]");
+        ZonedDateTime aug20 = ZonedDateTime.parse("2021-08-20T18:00:00Z[UTC]");
 
         String salaryAug = actor.importHistoricalTransaction(cashFlowId, "Salary", "August Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, aug10, aug10);
@@ -359,9 +386,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Restaurant visit", Money.of(150.0, "PLN"), Type.OUTFLOW, aug20, aug20);
 
         // === September 2021 ===
-        ZonedDateTime sep5 = ZonedDateTime.of(2021, 9, 5, 11, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime sep15 = ZonedDateTime.of(2021, 9, 15, 10, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime sep28 = ZonedDateTime.of(2021, 9, 28, 16, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime sep5 = ZonedDateTime.parse("2021-09-05T11:00:00Z[UTC]");
+        ZonedDateTime sep15 = ZonedDateTime.parse("2021-09-15T10:00:00Z[UTC]");
+        ZonedDateTime sep28 = ZonedDateTime.parse("2021-09-28T16:00:00Z[UTC]");
 
         String salarySep = actor.importHistoricalTransaction(cashFlowId, "Salary", "September Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, sep5, sep5);
@@ -373,8 +400,8 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Orlen gas station", Money.of(200.0, "PLN"), Type.OUTFLOW, sep15, sep15);
 
         // === October 2021 ===
-        ZonedDateTime oct10 = ZonedDateTime.of(2021, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime oct25 = ZonedDateTime.of(2021, 10, 25, 14, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime oct10 = ZonedDateTime.parse("2021-10-10T10:00:00Z[UTC]");
+        ZonedDateTime oct25 = ZonedDateTime.parse("2021-10-25T14:00:00Z[UTC]");
 
         String salaryOct = actor.importHistoricalTransaction(cashFlowId, "Salary", "October Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, oct10, oct10);
@@ -386,9 +413,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Carrefour shopping", Money.of(220.0, "PLN"), Type.OUTFLOW, oct25, oct25);
 
         // === November 2021 ===
-        ZonedDateTime nov5 = ZonedDateTime.of(2021, 11, 5, 9, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime nov15 = ZonedDateTime.of(2021, 11, 15, 12, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime nov20 = ZonedDateTime.of(2021, 11, 20, 15, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime nov5 = ZonedDateTime.parse("2021-11-05T09:00:00Z[UTC]");
+        ZonedDateTime nov15 = ZonedDateTime.parse("2021-11-15T12:00:00Z[UTC]");
+        ZonedDateTime nov20 = ZonedDateTime.parse("2021-11-20T15:00:00Z[UTC]");
 
         String salaryNov = actor.importHistoricalTransaction(cashFlowId, "Salary", "November Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, nov5, nov5);
@@ -398,10 +425,10 @@ public class BankDataIngestionHttpIntegrationTest {
                 "PGNiG gas", Money.of(120.0, "PLN"), Type.OUTFLOW, nov20, nov20);
 
         // === December 2021 (last historical month before activePeriod 2022-01) ===
-        ZonedDateTime dec10 = ZonedDateTime.of(2021, 12, 10, 10, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime dec15 = ZonedDateTime.of(2021, 12, 15, 12, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime dec24 = ZonedDateTime.of(2021, 12, 24, 11, 0, 0, 0, ZoneOffset.UTC);
-        ZonedDateTime dec28 = ZonedDateTime.of(2021, 12, 28, 14, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec10 = ZonedDateTime.parse("2021-12-10T10:00:00Z[UTC]");
+        ZonedDateTime dec15 = ZonedDateTime.parse("2021-12-15T12:00:00Z[UTC]");
+        ZonedDateTime dec24 = ZonedDateTime.parse("2021-12-24T11:00:00Z[UTC]");
+        ZonedDateTime dec28 = ZonedDateTime.parse("2021-12-28T14:00:00Z[UTC]");
 
         String salaryDec = actor.importHistoricalTransaction(cashFlowId, "Salary", "December Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, dec10, dec10);
@@ -421,6 +448,7 @@ public class BankDataIngestionHttpIntegrationTest {
         assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
         assertThat(cashFlow.getStartPeriod()).isEqualTo(startPeriod);
+        assertThat(cashFlow.getCreated()).isEqualTo(FIXED_NOW);
 
         // Validate total number of transactions (23 transactions imported)
         // July: 3, August: 4, September: 4, October: 4, November: 3, December: 5 = 23
@@ -436,48 +464,122 @@ public class BankDataIngestionHttpIntegrationTest {
                 salaryDec, bonusDec, rentDec, groceriesDec, restaurantDec
         );
 
-        // Validate sample transactions using recursive comparison
-        CashFlowDto.CashChangeSummaryJson julySalaryTx = cashFlow.getCashChanges().get(salaryJuly);
-        assertThat(julySalaryTx)
-                .usingRecursiveComparison()
-                .ignoringFields("created", "dueDate", "endDate")
-                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
-                        .cashChangeId(salaryJuly)
-                        .name("July Salary")
-                        .description("Monthly salary payment")
-                        .categoryName("Salary")
-                        .type(Type.INFLOW)
-                        .money(Money.of(5000.0, "PLN"))
-                        .status(CashChangeStatus.CONFIRMED)
-                        .build());
+        // Validate ALL 23 transactions with FULL object comparison (including time fields)
+        // Using constructor instead of builder ensures compile-time safety when model changes
+        Map<String, CashFlowDto.CashChangeSummaryJson> expectedTransactions = Map.ofEntries(
+                // === July 2021 ===
+                Map.entry(salaryJuly, new CashFlowDto.CashChangeSummaryJson(
+                        salaryJuly, "July Salary", "Monthly salary payment",
+                        Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15)),
+                Map.entry(rentJuly, new CashFlowDto.CashChangeSummaryJson(
+                        rentJuly, "July Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15)),
+                Map.entry(groceriesJuly, new CashFlowDto.CashChangeSummaryJson(
+                        groceriesJuly, "Weekly groceries", "Biedronka shopping",
+                        Money.of(250.0, "PLN"), Type.OUTFLOW, "Groceries",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july25, july25)),
 
-        CashFlowDto.CashChangeSummaryJson q3BonusTx = cashFlow.getCashChanges().get(bonusSep);
-        assertThat(q3BonusTx)
-                .usingRecursiveComparison()
-                .ignoringFields("created", "dueDate", "endDate")
-                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
-                        .cashChangeId(bonusSep)
-                        .name("Q3 Bonus")
-                        .description("Quarterly performance bonus")
-                        .categoryName("Bonus")
-                        .type(Type.INFLOW)
-                        .money(Money.of(2000.0, "PLN"))
-                        .status(CashChangeStatus.CONFIRMED)
-                        .build());
+                // === August 2021 ===
+                Map.entry(salaryAug, new CashFlowDto.CashChangeSummaryJson(
+                        salaryAug, "August Salary", "Monthly salary payment",
+                        Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug10, aug10)),
+                Map.entry(rentAug, new CashFlowDto.CashChangeSummaryJson(
+                        rentAug, "August Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug15, aug15)),
+                Map.entry(utilitiesAug, new CashFlowDto.CashChangeSummaryJson(
+                        utilitiesAug, "Electricity bill", "PGE electricity",
+                        Money.of(180.0, "PLN"), Type.OUTFLOW, "Utilities",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20)),
+                Map.entry(restaurantAug, new CashFlowDto.CashChangeSummaryJson(
+                        restaurantAug, "Dinner out", "Restaurant visit",
+                        Money.of(150.0, "PLN"), Type.OUTFLOW, "Restaurants",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20)),
 
-        CashFlowDto.CashChangeSummaryJson christmasGroceriesTx = cashFlow.getCashChanges().get(groceriesDec);
-        assertThat(christmasGroceriesTx)
-                .usingRecursiveComparison()
-                .ignoringFields("created", "dueDate", "endDate")
-                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
-                        .cashChangeId(groceriesDec)
-                        .name("Christmas shopping")
-                        .description("Holiday groceries")
-                        .categoryName("Groceries")
-                        .type(Type.OUTFLOW)
-                        .money(Money.of(500.0, "PLN"))
-                        .status(CashChangeStatus.CONFIRMED)
-                        .build());
+                // === September 2021 ===
+                Map.entry(salarySep, new CashFlowDto.CashChangeSummaryJson(
+                        salarySep, "September Salary", "Monthly salary payment",
+                        Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep5, sep5)),
+                Map.entry(bonusSep, new CashFlowDto.CashChangeSummaryJson(
+                        bonusSep, "Q3 Bonus", "Quarterly performance bonus",
+                        Money.of(2000.0, "PLN"), Type.INFLOW, "Bonus",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep28, sep28)),
+                Map.entry(rentSep, new CashFlowDto.CashChangeSummaryJson(
+                        rentSep, "September Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15)),
+                Map.entry(transportSep, new CashFlowDto.CashChangeSummaryJson(
+                        transportSep, "Fuel", "Orlen gas station",
+                        Money.of(200.0, "PLN"), Type.OUTFLOW, "Transportation",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15)),
+
+                // === October 2021 ===
+                Map.entry(salaryOct, new CashFlowDto.CashChangeSummaryJson(
+                        salaryOct, "October Salary", "Monthly salary payment",
+                        Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10)),
+                Map.entry(rentOct, new CashFlowDto.CashChangeSummaryJson(
+                        rentOct, "October Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10)),
+                Map.entry(groceriesOct1, new CashFlowDto.CashChangeSummaryJson(
+                        groceriesOct1, "Weekly groceries #1", "Lidl shopping",
+                        Money.of(180.0, "PLN"), Type.OUTFLOW, "Groceries",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10)),
+                Map.entry(groceriesOct2, new CashFlowDto.CashChangeSummaryJson(
+                        groceriesOct2, "Weekly groceries #2", "Carrefour shopping",
+                        Money.of(220.0, "PLN"), Type.OUTFLOW, "Groceries",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct25, oct25)),
+
+                // === November 2021 ===
+                Map.entry(salaryNov, new CashFlowDto.CashChangeSummaryJson(
+                        salaryNov, "November Salary", "Monthly salary payment",
+                        Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov5, nov5)),
+                Map.entry(rentNov, new CashFlowDto.CashChangeSummaryJson(
+                        rentNov, "November Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov15, nov15)),
+                Map.entry(utilitiesNov, new CashFlowDto.CashChangeSummaryJson(
+                        utilitiesNov, "Gas bill", "PGNiG gas",
+                        Money.of(120.0, "PLN"), Type.OUTFLOW, "Utilities",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov20, nov20)),
+
+                // === December 2021 ===
+                Map.entry(salaryDec, new CashFlowDto.CashChangeSummaryJson(
+                        salaryDec, "December Salary", "Monthly salary payment",
+                        Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec10, dec10)),
+                Map.entry(bonusDec, new CashFlowDto.CashChangeSummaryJson(
+                        bonusDec, "Christmas Bonus", "End of year bonus",
+                        Money.of(3000.0, "PLN"), Type.INFLOW, "Bonus",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24)),
+                Map.entry(rentDec, new CashFlowDto.CashChangeSummaryJson(
+                        rentDec, "December Rent", "Monthly rent payment",
+                        Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec15, dec15)),
+                Map.entry(groceriesDec, new CashFlowDto.CashChangeSummaryJson(
+                        groceriesDec, "Christmas shopping", "Holiday groceries",
+                        Money.of(500.0, "PLN"), Type.OUTFLOW, "Groceries",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24)),
+                Map.entry(restaurantDec, new CashFlowDto.CashChangeSummaryJson(
+                        restaurantDec, "Christmas dinner", "Family dinner restaurant",
+                        Money.of(400.0, "PLN"), Type.OUTFLOW, "Restaurants",
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec28, dec28))
+        );
+
+        // Validate each transaction with full recursive comparison
+        for (Map.Entry<String, CashFlowDto.CashChangeSummaryJson> entry : expectedTransactions.entrySet()) {
+            CashFlowDto.CashChangeSummaryJson actual = cashFlow.getCashChanges().get(entry.getKey());
+            assertThat(actual)
+                    .as("Transaction %s (%s)", entry.getValue().getName(), entry.getKey())
+                    .usingRecursiveComparison()
+                    .isEqualTo(entry.getValue());
+        }
 
         // Validate category structure
         assertThat(cashFlow.getOutflowCategories()).hasSize(4); // Uncategorized + Housing + Food + Transportation
@@ -541,43 +643,37 @@ public class BankDataIngestionHttpIntegrationTest {
 
         // then: validate mappings response
         BankDataIngestionDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
+        assertThat(mappingsResponse.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(mappingsResponse.getMappingsCount()).isEqualTo(2);
         assertThat(mappingsResponse.getMappings()).hasSize(2);
 
-        // Validate first mapping (MAP_TO_EXISTING) using recursive comparison
+        // Validate first mapping (MAP_TO_EXISTING) - only ignore generated fields
         BankDataIngestionDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Zakupy kartą".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(groceriesMapping)
-                .usingRecursiveComparison()
-                .ignoringFields("mappingId", "createdAt", "updatedAt", "parentCategoryName")
-                .isEqualTo(BankDataIngestionDto.MappingJson.builder()
-                        .bankCategoryName("Zakupy kartą")
-                        .action(MappingAction.MAP_TO_EXISTING)
-                        .targetCategoryName("Groceries")
-                        .categoryType(Type.OUTFLOW)
-                        .build());
         assertThat(groceriesMapping.getMappingId()).isNotNull();
-        assertThat(groceriesMapping.getCreatedAt()).isNotNull();
+        assertThat(groceriesMapping.getBankCategoryName()).isEqualTo("Zakupy kartą");
+        assertThat(groceriesMapping.getAction()).isEqualTo(MappingAction.MAP_TO_EXISTING);
+        assertThat(groceriesMapping.getTargetCategoryName()).isEqualTo("Groceries");
+        assertThat(groceriesMapping.getParentCategoryName()).isNull();
+        assertThat(groceriesMapping.getCategoryType()).isEqualTo(Type.OUTFLOW);
+        assertThat(groceriesMapping.getCreatedAt()).isEqualTo(FIXED_NOW);
 
-        // Validate second mapping (CREATE_NEW) using recursive comparison
+        // Validate second mapping (CREATE_NEW)
         BankDataIngestionDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Streaming".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(streamingMapping)
-                .usingRecursiveComparison()
-                .ignoringFields("mappingId", "createdAt", "updatedAt", "parentCategoryName")
-                .isEqualTo(BankDataIngestionDto.MappingJson.builder()
-                        .bankCategoryName("Streaming")
-                        .action(MappingAction.CREATE_NEW)
-                        .targetCategoryName("Entertainment")
-                        .categoryType(Type.OUTFLOW)
-                        .build());
         assertThat(streamingMapping.getMappingId()).isNotNull();
-        assertThat(streamingMapping.getCreatedAt()).isNotNull();
+        assertThat(streamingMapping.getBankCategoryName()).isEqualTo("Streaming");
+        assertThat(streamingMapping.getAction()).isEqualTo(MappingAction.CREATE_NEW);
+        assertThat(streamingMapping.getTargetCategoryName()).isEqualTo("Entertainment");
+        assertThat(streamingMapping.getParentCategoryName()).isNull();
+        assertThat(streamingMapping.getCategoryType()).isEqualTo(Type.OUTFLOW);
+        assertThat(streamingMapping.getCreatedAt()).isEqualTo(FIXED_NOW);
 
         log.info("Mappings validated: {} -> {} ({}), {} -> {} ({})",
                 groceriesMapping.getBankCategoryName(), groceriesMapping.getTargetCategoryName(), groceriesMapping.getAction(),
