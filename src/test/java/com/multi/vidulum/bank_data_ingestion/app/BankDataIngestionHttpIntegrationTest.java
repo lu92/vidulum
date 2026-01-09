@@ -1,11 +1,18 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
+import com.multi.vidulum.cashflow.domain.CashChangeStatus;
+import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.domain.Category;
+import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.config.FixedClockConfig;
@@ -157,22 +164,48 @@ public class BankDataIngestionHttpIntegrationTest {
     @DisplayName("Should get CashFlow info via REST API - verifies GET /cash-flow/{id}")
     void shouldGetCashFlowInfoViaRestApi() {
         // given
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        YearMonth activePeriod = YearMonth.of(2022, 1); // FixedClockConfig sets clock to 2022-01-01
+
         String cashFlowId = actor.createCashFlowWithHistory(
                 "test-user-123",
                 "Test CashFlow",
-                YearMonth.of(2021, 7),
+                startPeriod,
                 Money.of(10000.0, "PLN")
         );
 
         // when
-        Map<String, Object> cashFlowInfo = actor.getCashFlowAsMap(cashFlowId);
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
 
-        // then
-        assertThat(cashFlowInfo.get("cashFlowId")).isEqualTo(cashFlowId);
-        assertThat(cashFlowInfo.get("status")).isEqualTo("SETUP");
+        // then - validate whole object using recursive comparison
+        assertThat(cashFlow)
+                .usingRecursiveComparison()
+                .ignoringFields("created", "lastModification", "importCutoffDateTime", "lastMessageChecksum",
+                        "inflowCategories", "outflowCategories", "bankAccount")
+                .isEqualTo(CashFlowDto.CashFlowSummaryJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .userId("test-user-123")
+                        .name("Test CashFlow")
+                        .description("CashFlow for HTTP integration testing")
+                        .status(CashFlow.CashFlowStatus.SETUP)
+                        .startPeriod(startPeriod)
+                        .activePeriod(activePeriod)
+                        .cashChanges(Map.of())
+                        .build());
 
-        log.info("CashFlow info retrieved via REST API: cashFlowId={}, status={}",
-                cashFlowInfo.get("cashFlowId"), cashFlowInfo.get("status"));
+        // Validate system-created "Uncategorized" categories
+        assertThat(cashFlow.getInflowCategories()).hasSize(1);
+        assertThat(cashFlow.getInflowCategories().get(0).getCategoryName().name()).isEqualTo("Uncategorized");
+        assertThat(cashFlow.getOutflowCategories()).hasSize(1);
+        assertThat(cashFlow.getOutflowCategories().get(0).getCategoryName().name()).isEqualTo("Uncategorized");
+
+        // Validate bank account
+        assertThat(cashFlow.getBankAccount().bankName().name()).isEqualTo("Test Bank");
+        assertThat(cashFlow.getBankAccount().bankAccountNumber().account()).isEqualTo("PL12345678901234567890123456");
+        assertThat(cashFlow.getBankAccount().bankAccountNumber().denomination()).isEqualTo(Currency.of("PLN"));
+
+        log.info("CashFlow validated: id={}, status={}, startPeriod={}, activePeriod={}",
+                cashFlow.getCashFlowId(), cashFlow.getStatus(), cashFlow.getStartPeriod(), cashFlow.getActivePeriod());
     }
 
     @Test
@@ -191,11 +224,28 @@ public class BankDataIngestionHttpIntegrationTest {
 
         // then
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
-        boolean categoryExists = cashFlow.getOutflowCategories().stream()
-                .anyMatch(cat -> "NewCategory".equals(cat.getCategoryName().name()));
-        assertThat(categoryExists).isTrue();
 
-        log.info("Category created and verified via REST API");
+        // Validate structure
+        assertThat(cashFlow.getOutflowCategories()).hasSize(2); // Uncategorized + NewCategory
+
+        // Find and validate the created category
+        Category createdCategory = cashFlow.getOutflowCategories().stream()
+                .filter(c -> "NewCategory".equals(c.getCategoryName().name()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(createdCategory)
+                .usingRecursiveComparison()
+                .ignoringFields("validFrom", "validTo")
+                .isEqualTo(Category.builder()
+                        .categoryName(new CategoryName("NewCategory"))
+                        .isModifiable(true)
+                        .archived(false)
+                        .subCategories(List.of())
+                        .origin(CategoryOrigin.USER_CREATED)
+                        .build());
+
+        log.info("Category created: name={}, archived={}", createdCategory.getCategoryName().name(), createdCategory.isArchived());
     }
 
     @Test
@@ -215,51 +265,258 @@ public class BankDataIngestionHttpIntegrationTest {
 
         // then
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
-        var parentCategory = cashFlow.getOutflowCategories().stream()
-                .filter(cat -> "ParentCategory".equals(cat.getCategoryName().name()))
+        assertThat(cashFlow.getOutflowCategories()).hasSize(2); // Uncategorized + ParentCategory
+
+        // Find parent and validate hierarchy
+        Category parentCategory = cashFlow.getOutflowCategories().stream()
+                .filter(c -> "ParentCategory".equals(c.getCategoryName().name()))
                 .findFirst()
-                .orElse(null);
+                .orElseThrow();
 
-        assertThat(parentCategory).isNotNull();
-        assertThat(parentCategory.getSubCategories()).isNotEmpty();
+        assertThat(parentCategory.getSubCategories()).hasSize(1);
+        Category childCategory = parentCategory.getSubCategories().get(0);
 
-        boolean childExists = parentCategory.getSubCategories().stream()
-                .anyMatch(cat -> "ChildCategory".equals(cat.getCategoryName().name()));
-        assertThat(childExists).isTrue();
+        assertThat(childCategory)
+                .usingRecursiveComparison()
+                .ignoringFields("validFrom", "validTo")
+                .isEqualTo(Category.builder()
+                        .categoryName(new CategoryName("ChildCategory"))
+                        .isModifiable(true)
+                        .archived(false)
+                        .subCategories(List.of())
+                        .origin(CategoryOrigin.USER_CREATED)
+                        .build());
 
-        log.info("Subcategory created and verified via REST API");
+        log.info("Subcategory hierarchy: {} -> {}", parentCategory.getCategoryName().name(), childCategory.getCategoryName().name());
     }
 
     @Test
-    @DisplayName("Should import historical transaction via REST API - verifies POST /cash-flow/{id}/import-historical")
+    @DisplayName("Should import multiple historical transactions across categories and months via REST API")
     void shouldImportHistoricalTransactionViaRestApi() {
-        // given
+        // given - create CashFlow with 6 months history (2021-07 to 2021-12)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
         String cashFlowId = actor.createCashFlowWithHistory(
                 "test-user-123",
                 "Test CashFlow",
-                YearMonth.of(2021, 7),
+                startPeriod,
                 Money.of(10000.0, "PLN")
         );
-        actor.createCategory(cashFlowId, "TestCategory", Type.OUTFLOW);
 
-        // when
-        ZonedDateTime transactionDate = ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC);
-        String cashChangeId = actor.importHistoricalTransaction(
-                cashFlowId,
-                "TestCategory",
-                "Test Transaction",
-                "Test Description",
-                Money.of(100.50, "PLN"),
-                Type.OUTFLOW,
-                transactionDate,
-                transactionDate
+        // Create category hierarchy:
+        // OUTFLOW:
+        //   - Housing
+        //     - Rent
+        //     - Utilities
+        //   - Food
+        //     - Groceries
+        //     - Restaurants
+        //   - Transportation
+        // INFLOW:
+        //   - Income
+        //     - Salary
+        //     - Bonus
+
+        // Outflow categories
+        actor.createCategory(cashFlowId, "Housing", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Rent", "Housing", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Utilities", "Housing", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Food", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Groceries", "Food", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Restaurants", "Food", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Transportation", Type.OUTFLOW);
+
+        // Inflow categories
+        actor.createCategory(cashFlowId, "Income", Type.INFLOW);
+        actor.createCategory(cashFlowId, "Salary", "Income", Type.INFLOW);
+        actor.createCategory(cashFlowId, "Bonus", "Income", Type.INFLOW);
+
+        // when - import transactions across different months and categories
+
+        // === July 2021 (startPeriod) ===
+        ZonedDateTime july15 = ZonedDateTime.of(2021, 7, 15, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime july25 = ZonedDateTime.of(2021, 7, 25, 14, 0, 0, 0, ZoneOffset.UTC);
+
+        String salaryJuly = actor.importHistoricalTransaction(cashFlowId, "Salary", "July Salary",
+                "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, july15, july15);
+        String rentJuly = actor.importHistoricalTransaction(cashFlowId, "Rent", "July Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, july15, july15);
+        String groceriesJuly = actor.importHistoricalTransaction(cashFlowId, "Groceries", "Weekly groceries",
+                "Biedronka shopping", Money.of(250.0, "PLN"), Type.OUTFLOW, july25, july25);
+
+        // === August 2021 ===
+        ZonedDateTime aug10 = ZonedDateTime.of(2021, 8, 10, 9, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime aug15 = ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime aug20 = ZonedDateTime.of(2021, 8, 20, 18, 0, 0, 0, ZoneOffset.UTC);
+
+        String salaryAug = actor.importHistoricalTransaction(cashFlowId, "Salary", "August Salary",
+                "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, aug10, aug10);
+        String rentAug = actor.importHistoricalTransaction(cashFlowId, "Rent", "August Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, aug15, aug15);
+        String utilitiesAug = actor.importHistoricalTransaction(cashFlowId, "Utilities", "Electricity bill",
+                "PGE electricity", Money.of(180.0, "PLN"), Type.OUTFLOW, aug20, aug20);
+        String restaurantAug = actor.importHistoricalTransaction(cashFlowId, "Restaurants", "Dinner out",
+                "Restaurant visit", Money.of(150.0, "PLN"), Type.OUTFLOW, aug20, aug20);
+
+        // === September 2021 ===
+        ZonedDateTime sep5 = ZonedDateTime.of(2021, 9, 5, 11, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime sep15 = ZonedDateTime.of(2021, 9, 15, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime sep28 = ZonedDateTime.of(2021, 9, 28, 16, 0, 0, 0, ZoneOffset.UTC);
+
+        String salarySep = actor.importHistoricalTransaction(cashFlowId, "Salary", "September Salary",
+                "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, sep5, sep5);
+        String bonusSep = actor.importHistoricalTransaction(cashFlowId, "Bonus", "Q3 Bonus",
+                "Quarterly performance bonus", Money.of(2000.0, "PLN"), Type.INFLOW, sep28, sep28);
+        String rentSep = actor.importHistoricalTransaction(cashFlowId, "Rent", "September Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, sep15, sep15);
+        String transportSep = actor.importHistoricalTransaction(cashFlowId, "Transportation", "Fuel",
+                "Orlen gas station", Money.of(200.0, "PLN"), Type.OUTFLOW, sep15, sep15);
+
+        // === October 2021 ===
+        ZonedDateTime oct10 = ZonedDateTime.of(2021, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime oct25 = ZonedDateTime.of(2021, 10, 25, 14, 0, 0, 0, ZoneOffset.UTC);
+
+        String salaryOct = actor.importHistoricalTransaction(cashFlowId, "Salary", "October Salary",
+                "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, oct10, oct10);
+        String rentOct = actor.importHistoricalTransaction(cashFlowId, "Rent", "October Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, oct10, oct10);
+        String groceriesOct1 = actor.importHistoricalTransaction(cashFlowId, "Groceries", "Weekly groceries #1",
+                "Lidl shopping", Money.of(180.0, "PLN"), Type.OUTFLOW, oct10, oct10);
+        String groceriesOct2 = actor.importHistoricalTransaction(cashFlowId, "Groceries", "Weekly groceries #2",
+                "Carrefour shopping", Money.of(220.0, "PLN"), Type.OUTFLOW, oct25, oct25);
+
+        // === November 2021 ===
+        ZonedDateTime nov5 = ZonedDateTime.of(2021, 11, 5, 9, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime nov15 = ZonedDateTime.of(2021, 11, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime nov20 = ZonedDateTime.of(2021, 11, 20, 15, 0, 0, 0, ZoneOffset.UTC);
+
+        String salaryNov = actor.importHistoricalTransaction(cashFlowId, "Salary", "November Salary",
+                "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, nov5, nov5);
+        String rentNov = actor.importHistoricalTransaction(cashFlowId, "Rent", "November Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, nov15, nov15);
+        String utilitiesNov = actor.importHistoricalTransaction(cashFlowId, "Utilities", "Gas bill",
+                "PGNiG gas", Money.of(120.0, "PLN"), Type.OUTFLOW, nov20, nov20);
+
+        // === December 2021 (last historical month before activePeriod 2022-01) ===
+        ZonedDateTime dec10 = ZonedDateTime.of(2021, 12, 10, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec15 = ZonedDateTime.of(2021, 12, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec24 = ZonedDateTime.of(2021, 12, 24, 11, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec28 = ZonedDateTime.of(2021, 12, 28, 14, 0, 0, 0, ZoneOffset.UTC);
+
+        String salaryDec = actor.importHistoricalTransaction(cashFlowId, "Salary", "December Salary",
+                "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, dec10, dec10);
+        String bonusDec = actor.importHistoricalTransaction(cashFlowId, "Bonus", "Christmas Bonus",
+                "End of year bonus", Money.of(3000.0, "PLN"), Type.INFLOW, dec24, dec24);
+        String rentDec = actor.importHistoricalTransaction(cashFlowId, "Rent", "December Rent",
+                "Monthly rent payment", Money.of(1500.0, "PLN"), Type.OUTFLOW, dec15, dec15);
+        String groceriesDec = actor.importHistoricalTransaction(cashFlowId, "Groceries", "Christmas shopping",
+                "Holiday groceries", Money.of(500.0, "PLN"), Type.OUTFLOW, dec24, dec24);
+        String restaurantDec = actor.importHistoricalTransaction(cashFlowId, "Restaurants", "Christmas dinner",
+                "Family dinner restaurant", Money.of(400.0, "PLN"), Type.OUTFLOW, dec28, dec28);
+
+        // then - validate the full CashFlow state
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
+
+        // Validate CashFlow basic info
+        assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(cashFlow.getStartPeriod()).isEqualTo(startPeriod);
+
+        // Validate total number of transactions (23 transactions imported)
+        // July: 3, August: 4, September: 4, October: 4, November: 3, December: 5 = 23
+        assertThat(cashFlow.getCashChanges()).hasSize(23);
+
+        // Validate all transaction IDs are present
+        assertThat(cashFlow.getCashChanges().keySet()).containsExactlyInAnyOrder(
+                salaryJuly, rentJuly, groceriesJuly,
+                salaryAug, rentAug, utilitiesAug, restaurantAug,
+                salarySep, bonusSep, rentSep, transportSep,
+                salaryOct, rentOct, groceriesOct1, groceriesOct2,
+                salaryNov, rentNov, utilitiesNov,
+                salaryDec, bonusDec, rentDec, groceriesDec, restaurantDec
         );
 
-        // then
-        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
-        assertThat(cashFlow.getCashChanges()).containsKey(cashChangeId);
+        // Validate sample transactions using recursive comparison
+        CashFlowDto.CashChangeSummaryJson julySalaryTx = cashFlow.getCashChanges().get(salaryJuly);
+        assertThat(julySalaryTx)
+                .usingRecursiveComparison()
+                .ignoringFields("created", "dueDate", "endDate")
+                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
+                        .cashChangeId(salaryJuly)
+                        .name("July Salary")
+                        .description("Monthly salary payment")
+                        .categoryName("Salary")
+                        .type(Type.INFLOW)
+                        .money(Money.of(5000.0, "PLN"))
+                        .status(CashChangeStatus.CONFIRMED)
+                        .build());
 
-        log.info("Historical transaction imported via REST API. CashChangeId: {}", cashChangeId);
+        CashFlowDto.CashChangeSummaryJson q3BonusTx = cashFlow.getCashChanges().get(bonusSep);
+        assertThat(q3BonusTx)
+                .usingRecursiveComparison()
+                .ignoringFields("created", "dueDate", "endDate")
+                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
+                        .cashChangeId(bonusSep)
+                        .name("Q3 Bonus")
+                        .description("Quarterly performance bonus")
+                        .categoryName("Bonus")
+                        .type(Type.INFLOW)
+                        .money(Money.of(2000.0, "PLN"))
+                        .status(CashChangeStatus.CONFIRMED)
+                        .build());
+
+        CashFlowDto.CashChangeSummaryJson christmasGroceriesTx = cashFlow.getCashChanges().get(groceriesDec);
+        assertThat(christmasGroceriesTx)
+                .usingRecursiveComparison()
+                .ignoringFields("created", "dueDate", "endDate")
+                .isEqualTo(CashFlowDto.CashChangeSummaryJson.builder()
+                        .cashChangeId(groceriesDec)
+                        .name("Christmas shopping")
+                        .description("Holiday groceries")
+                        .categoryName("Groceries")
+                        .type(Type.OUTFLOW)
+                        .money(Money.of(500.0, "PLN"))
+                        .status(CashChangeStatus.CONFIRMED)
+                        .build());
+
+        // Validate category structure
+        assertThat(cashFlow.getOutflowCategories()).hasSize(4); // Uncategorized + Housing + Food + Transportation
+        assertThat(cashFlow.getInflowCategories()).hasSize(2);  // Uncategorized + Income
+
+        // Find and validate Housing category with subcategories
+        Category housingCategory = cashFlow.getOutflowCategories().stream()
+                .filter(c -> "Housing".equals(c.getCategoryName().name()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(housingCategory.getSubCategories()).hasSize(2); // Rent, Utilities
+        assertThat(housingCategory.getSubCategories().stream().map(c -> c.getCategoryName().name()))
+                .containsExactlyInAnyOrder("Rent", "Utilities");
+
+        // Find and validate Income category with subcategories
+        Category incomeCategory = cashFlow.getInflowCategories().stream()
+                .filter(c -> "Income".equals(c.getCategoryName().name()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(incomeCategory.getSubCategories()).hasSize(2); // Salary, Bonus
+        assertThat(incomeCategory.getSubCategories().stream().map(c -> c.getCategoryName().name()))
+                .containsExactlyInAnyOrder("Salary", "Bonus");
+
+        // Calculate and log totals by type
+        double totalInflow = cashFlow.getCashChanges().values().stream()
+                .filter(tx -> tx.getType() == Type.INFLOW)
+                .mapToDouble(tx -> tx.getMoney().getAmount().doubleValue())
+                .sum();
+        double totalOutflow = cashFlow.getCashChanges().values().stream()
+                .filter(tx -> tx.getType() == Type.OUTFLOW)
+                .mapToDouble(tx -> tx.getMoney().getAmount().doubleValue())
+                .sum();
+
+        log.info("Historical import completed:");
+        log.info("  - Total transactions: {}", cashFlow.getCashChanges().size());
+        log.info("  - Total inflow: {} PLN", totalInflow);
+        log.info("  - Total outflow: {} PLN", totalOutflow);
+        log.info("  - Net balance change: {} PLN", totalInflow - totalOutflow);
+        log.info("  - Months covered: {} to {}", startPeriod, YearMonth.of(2021, 12));
     }
 
     @Test
@@ -282,11 +539,49 @@ public class BankDataIngestionHttpIntegrationTest {
                 actor.mappingCreateNew("Streaming", "Entertainment", Type.OUTFLOW)
         ));
 
-        // then: retrieve mappings
-        BankDataIngestionDto.GetMappingsResponse mappings = actor.getMappings(cashFlowId);
-        assertThat(mappings.getMappings()).hasSize(2);
+        // then: validate mappings response
+        BankDataIngestionDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
+        assertThat(mappingsResponse.getMappings()).hasSize(2);
 
-        log.info("Configured and retrieved {} mappings via REST API", mappings.getMappings().size());
+        // Validate first mapping (MAP_TO_EXISTING) using recursive comparison
+        BankDataIngestionDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
+                .filter(m -> "Zakupy kartą".equals(m.getBankCategoryName()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(groceriesMapping)
+                .usingRecursiveComparison()
+                .ignoringFields("mappingId", "createdAt", "updatedAt", "parentCategoryName")
+                .isEqualTo(BankDataIngestionDto.MappingJson.builder()
+                        .bankCategoryName("Zakupy kartą")
+                        .action(MappingAction.MAP_TO_EXISTING)
+                        .targetCategoryName("Groceries")
+                        .categoryType(Type.OUTFLOW)
+                        .build());
+        assertThat(groceriesMapping.getMappingId()).isNotNull();
+        assertThat(groceriesMapping.getCreatedAt()).isNotNull();
+
+        // Validate second mapping (CREATE_NEW) using recursive comparison
+        BankDataIngestionDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
+                .filter(m -> "Streaming".equals(m.getBankCategoryName()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(streamingMapping)
+                .usingRecursiveComparison()
+                .ignoringFields("mappingId", "createdAt", "updatedAt", "parentCategoryName")
+                .isEqualTo(BankDataIngestionDto.MappingJson.builder()
+                        .bankCategoryName("Streaming")
+                        .action(MappingAction.CREATE_NEW)
+                        .targetCategoryName("Entertainment")
+                        .categoryType(Type.OUTFLOW)
+                        .build());
+        assertThat(streamingMapping.getMappingId()).isNotNull();
+        assertThat(streamingMapping.getCreatedAt()).isNotNull();
+
+        log.info("Mappings validated: {} -> {} ({}), {} -> {} ({})",
+                groceriesMapping.getBankCategoryName(), groceriesMapping.getTargetCategoryName(), groceriesMapping.getAction(),
+                streamingMapping.getBankCategoryName(), streamingMapping.getTargetCategoryName(), streamingMapping.getAction());
     }
 
     // Note: Tests for stage/import endpoints are in BankDataIngestionControllerTest
