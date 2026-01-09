@@ -1,6 +1,10 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.JsonFormatter;
+import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent;
+import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEventEmitter;
+import com.multi.vidulum.bank_data_ingestion.domain.ImportPhase;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
@@ -15,10 +19,15 @@ import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.events.BankDataIngestionUnifiedEvent;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +35,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -36,9 +48,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -980,7 +995,232 @@ public class BankDataIngestionControllerTest {
         assertThat(importResponse.getResult().getTransactionsImported()).isEqualTo(1);
     }
 
+    // ============ Kafka Event Tests ============
+
+    @Test
+    @DisplayName("Should emit Kafka events during import lifecycle: started, progress, completed")
+    void shouldEmitKafkaEventsDuringImportLifecycle() {
+        // given: create Kafka consumer for bank_data_ingestion topic
+        Consumer<String, BankDataIngestionUnifiedEvent> consumer = createKafkaConsumer();
+        consumer.subscribe(List.of(BankDataIngestionEventEmitter.TOPIC));
+
+        // create a CashFlow, configure mappings, and stage transactions
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        // when: start import
+        BankDataIngestionDto.StartImportRequest importRequest = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
+
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(cashFlowId, importRequest);
+        String jobId = importResponse.getJobId();
+
+        assertThat(importResponse.getStatus()).isEqualTo("COMPLETED");
+
+        // then: verify Kafka events were emitted
+        List<BankDataIngestionUnifiedEvent> allEvents = consumeAllEvents(consumer, Duration.ofSeconds(5));
+        consumer.close();
+
+        // Filter events for THIS job only (other tests may have emitted events)
+        List<BankDataIngestionUnifiedEvent> events = allEvents.stream()
+                .filter(e -> jobId.equals(e.getMetadata().get("jobId")))
+                .toList();
+
+        log.info("Received {} Kafka events for job {}", events.size(), jobId);
+
+        // Verify ImportJobStartedEvent - full object assertion
+        BankDataIngestionEvent.ImportJobStartedEvent startedEvent = extractEvent(events, "ImportJobStartedEvent", BankDataIngestionEvent.ImportJobStartedEvent.class);
+        assertThat(startedEvent).usingRecursiveComparison()
+                .isEqualTo(new BankDataIngestionEvent.ImportJobStartedEvent(
+                        jobId,
+                        cashFlowId,
+                        stagingSessionId,
+                        1,  // totalTransactions
+                        1,  // validTransactions
+                        0,  // categoriesToCreate
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+
+        // Verify ImportProgressEvent - full object assertion
+        BankDataIngestionEvent.ImportProgressEvent progressEvent = extractEvent(events, "ImportProgressEvent", BankDataIngestionEvent.ImportProgressEvent.class);
+        assertThat(progressEvent).usingRecursiveComparison()
+                .isEqualTo(new BankDataIngestionEvent.ImportProgressEvent(
+                        jobId,
+                        cashFlowId,
+                        ImportPhase.IMPORTING_TRANSACTIONS,
+                        1,    // processed
+                        1,    // total
+                        100,  // percent
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+
+        // Verify ImportJobCompletedEvent - full object assertion
+        BankDataIngestionEvent.ImportJobCompletedEvent completedEvent = extractEvent(events, "ImportJobCompletedEvent", BankDataIngestionEvent.ImportJobCompletedEvent.class);
+        assertThat(completedEvent).usingRecursiveComparison()
+                .ignoringFields("durationMs")  // duration is non-deterministic
+                .isEqualTo(new BankDataIngestionEvent.ImportJobCompletedEvent(
+                        jobId,
+                        cashFlowId,
+                        0,  // categoriesCreated
+                        1,  // transactionsImported
+                        0,  // transactionsFailed
+                        0L, // durationMs - ignored
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+    }
+
+    @Test
+    @DisplayName("Should emit ImportJobRolledBackEvent when rollback is performed")
+    void shouldEmitRollbackEvent() {
+        // given: create Kafka consumer for bank_data_ingestion topic
+        Consumer<String, BankDataIngestionUnifiedEvent> consumer = createKafkaConsumer();
+        consumer.subscribe(List.of(BankDataIngestionEventEmitter.TOPIC));
+
+        // create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId).build()
+        );
+        String jobId = importResponse.getJobId();
+
+        // when: rollback import
+        BankDataIngestionDto.RollbackImportResponse rollbackResponse = bankDataIngestionRestController.rollbackImport(cashFlowId, jobId);
+
+        assertThat(rollbackResponse.getStatus()).isEqualTo("ROLLED_BACK");
+
+        // then: verify rollback event was emitted
+        List<BankDataIngestionUnifiedEvent> allEvents = consumeAllEvents(consumer, Duration.ofSeconds(5));
+        consumer.close();
+
+        // Filter events for THIS job only
+        List<BankDataIngestionUnifiedEvent> events = allEvents.stream()
+                .filter(e -> jobId.equals(e.getMetadata().get("jobId")))
+                .toList();
+
+        log.info("Received {} Kafka events for rollback test (job {})", events.size(), jobId);
+
+        // Verify ImportJobRolledBackEvent - full object assertion
+        BankDataIngestionEvent.ImportJobRolledBackEvent rollbackEvent = extractEvent(events, "ImportJobRolledBackEvent", BankDataIngestionEvent.ImportJobRolledBackEvent.class);
+        assertThat(rollbackEvent).usingRecursiveComparison()
+                .ignoringFields("rollbackDurationMs")  // duration is non-deterministic
+                .isEqualTo(new BankDataIngestionEvent.ImportJobRolledBackEvent(
+                        jobId,
+                        cashFlowId,
+                        1,  // transactionsDeleted
+                        0,  // categoriesDeleted
+                        0L, // rollbackDurationMs - ignored
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+    }
+
+    @Test
+    @DisplayName("Should emit ImportJobFinalizedEvent when finalize is performed")
+    void shouldEmitFinalizeEvent() {
+        // given: create Kafka consumer for bank_data_ingestion topic
+        Consumer<String, BankDataIngestionUnifiedEvent> consumer = createKafkaConsumer();
+        consumer.subscribe(List.of(BankDataIngestionEventEmitter.TOPIC));
+
+        // create and complete an import job
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String stagingSessionId = stageTransactionsForImport(cashFlowId);
+
+        BankDataIngestionDto.StartImportResponse importResponse = bankDataIngestionRestController.startImport(
+                cashFlowId,
+                BankDataIngestionDto.StartImportRequest.builder().stagingSessionId(stagingSessionId).build()
+        );
+        String jobId = importResponse.getJobId();
+
+        // when: finalize import
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = bankDataIngestionRestController.finalizeImport(
+                cashFlowId,
+                jobId,
+                BankDataIngestionDto.FinalizeImportRequest.builder().deleteMappings(false).build()
+        );
+
+        assertThat(finalizeResponse.getStatus()).isEqualTo("FINALIZED");
+
+        // then: verify finalize event was emitted
+        List<BankDataIngestionUnifiedEvent> allEvents = consumeAllEvents(consumer, Duration.ofSeconds(5));
+        consumer.close();
+
+        // Filter events for THIS job only
+        List<BankDataIngestionUnifiedEvent> events = allEvents.stream()
+                .filter(e -> jobId.equals(e.getMetadata().get("jobId")))
+                .toList();
+
+        log.info("Received {} Kafka events for finalize test (job {})", events.size(), jobId);
+
+        // Verify ImportJobFinalizedEvent - full object assertion
+        BankDataIngestionEvent.ImportJobFinalizedEvent finalizedEvent = extractEvent(events, "ImportJobFinalizedEvent", BankDataIngestionEvent.ImportJobFinalizedEvent.class);
+        assertThat(finalizedEvent).usingRecursiveComparison()
+                .isEqualTo(new BankDataIngestionEvent.ImportJobFinalizedEvent(
+                        jobId,
+                        cashFlowId,
+                        1,  // stagedTransactionsDeleted
+                        0,  // mappingsDeleted (deleteMappings=false)
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+    }
+
     // ============ Helper Methods ============
+
+    private Consumer<String, BankDataIngestionUnifiedEvent> createKafkaConsumer() {
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(
+                kafka.getBootstrapServers(),
+                "test-consumer-group-" + System.currentTimeMillis(),
+                "true"
+        );
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        JsonDeserializer<BankDataIngestionUnifiedEvent> jsonDeserializer =
+                new JsonDeserializer<>(BankDataIngestionUnifiedEvent.class, false);
+        jsonDeserializer.addTrustedPackages("*");
+
+        DefaultKafkaConsumerFactory<String, BankDataIngestionUnifiedEvent> consumerFactory =
+                new DefaultKafkaConsumerFactory<>(consumerProps, new StringDeserializer(), jsonDeserializer);
+
+        return consumerFactory.createConsumer();
+    }
+
+    private List<BankDataIngestionUnifiedEvent> consumeAllEvents(
+            Consumer<String, BankDataIngestionUnifiedEvent> consumer,
+            Duration timeout) {
+        List<BankDataIngestionUnifiedEvent> allEvents = new ArrayList<>();
+        long endTime = System.currentTimeMillis() + timeout.toMillis();
+
+        while (System.currentTimeMillis() < endTime) {
+            ConsumerRecords<String, BankDataIngestionUnifiedEvent> records = consumer.poll(Duration.ofMillis(100));
+            records.forEach(record -> allEvents.add(record.value()));
+
+            // If we got some events and no new ones in the last poll, we're probably done
+            if (!allEvents.isEmpty() && records.isEmpty()) {
+                // Give it one more chance
+                records = consumer.poll(Duration.ofMillis(500));
+                records.forEach(record -> allEvents.add(record.value()));
+                break;
+            }
+        }
+
+        return allEvents;
+    }
+
+    private <T> T extractEvent(List<BankDataIngestionUnifiedEvent> events, String eventType, Class<T> eventClass) {
+        return events.stream()
+                .filter(e -> eventType.equals(e.getMetadata().get("eventType")))
+                .findFirst()
+                .map(e -> e.getContent().to(eventClass))
+                .orElseThrow(() -> new AssertionError("Expected event " + eventType + " not found in events: " + events));
+    }
 
     private String stageTransactionsForImport(String cashFlowId) {
         BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()

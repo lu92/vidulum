@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.ImportJobRolledBackEvent;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -24,6 +25,7 @@ public class RollbackImportJobCommandHandler implements CommandHandler<RollbackI
 
     private final ImportJobRepository importJobRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final BankDataIngestionEventEmitter eventEmitter;
     private final Clock clock;
 
     @Override
@@ -79,6 +81,16 @@ public class RollbackImportJobCommandHandler implements CommandHandler<RollbackI
 
         log.info("Import job [{}] rolled back. Deleted {} transactions, {} categories in {}ms",
                 command.jobId().id(), transactionsDeleted, categoriesDeleted, durationMs);
+
+        // Emit rollback event
+        eventEmitter.emit(new ImportJobRolledBackEvent(
+                command.jobId().id(),
+                command.cashFlowId().id(),
+                transactionsDeleted,
+                categoriesDeleted,
+                durationMs,
+                endTime
+        ));
 
         return RollbackImportJobResult.from(updatedJob);
     }
