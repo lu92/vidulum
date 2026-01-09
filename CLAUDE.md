@@ -102,6 +102,53 @@ Key patterns:
 - `Awaitility.await()` for async Kafka processing assertions
 - Helper methods: `createUser()`, `depositMoney()`, `placeOrder()`, `makeTrade()`
 
+### Integration Test Guidelines
+
+When writing integration tests, follow these rules:
+
+1. **Use Actor pattern**: Create a dedicated `*Actor` or `*HttpActor` class that encapsulates all HTTP/REST interactions with the system under test. This separates test logic from API communication details. Example: `BankDataIngestionHttpActor`, `DualBudgetActor`.
+
+2. **Whole object assertion**: Always validate entire returned objects using `usingRecursiveComparison()` instead of asserting individual fields.
+
+   **Why**: When asserting individual fields, adding a new field to a model doesn't break any tests - you can forget to add assertions for the new field, leading to incomplete test coverage. With whole object comparison, any new field that doesn't match expected value will cause test failure, forcing you to explicitly handle it.
+   ```java
+   // GOOD - catches any new/changed fields automatically
+   assertThat(actualTransaction)
+           .usingRecursiveComparison()
+           .isEqualTo(expectedTransaction);
+
+   // BAD - new fields go unnoticed, incomplete coverage
+   assertThat(actual.getName()).isEqualTo("expected");
+   assertThat(actual.getAmount()).isEqualTo(100);
+   // forgot to check actual.getNewField()!
+   ```
+
+3. **Minimize ignored fields**: Avoid ignoring fields in assertions. Time fields (`created`, `lastModification`) should be validated using `FixedClockConfig` which sets clock to `2022-01-01T00:00:00Z`. Use `ZonedDateTime.parse()` for readability.
+   ```java
+   private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
+   ```
+
+4. **Use constructors, not builders for expected objects**: When creating expected objects in tests, always use all-args constructors instead of builders. This ensures that when a field is added to a model, tests will fail to compile until updated - preventing forgotten assertions.
+   ```java
+   // GOOD - compile-time safety, fails if model changes
+   new CashChangeSummaryJson(id, name, description, money, type, category, status, created, dueDate, endDate)
+
+   // BAD - builder silently ignores new fields
+   CashChangeSummaryJson.builder().name(name).build()
+   ```
+   Add `@AllArgsConstructor` to DTO classes if missing to enable this pattern.
+
+5. **Complex test scenarios**: Write elaborate test scenarios that cover multiple aspects:
+   - Multiple entities (transactions, categories, subcategories)
+   - Multiple time periods (months)
+   - Category hierarchies (parent/child relationships)
+   - Different types (INFLOW/OUTFLOW)
+   - Edge cases and boundary conditions
+
+6. **Test naming**: Use descriptive method names that explain the scenario, e.g., `shouldImportHistoricalTransactionViaRestApi`, `shouldRejectStagingWithUnmappedCategories`.
+
+7. **Reference tests**: See `BankDataIngestionHttpIntegrationTest` and `DualCashflowStatementGeneratorWithHistory` for examples of well-structured integration tests.
+
 ## Infrastructure
 
 - **MongoDB**: Database `testDB`, host `mongodb:27017`

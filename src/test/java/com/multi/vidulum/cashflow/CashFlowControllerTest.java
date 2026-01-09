@@ -72,6 +72,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of())
                                 .inflowCategories(List.of(Category.createUncategorized()))
                                 .outflowCategories(List.of(Category.createUncategorized()))
@@ -138,6 +140,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -222,6 +226,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(150, "USD"))) // Balance updated immediately
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -358,6 +364,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(100, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -451,6 +459,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -542,6 +552,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -634,6 +646,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(0, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()
@@ -750,6 +764,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                                         new BankAccountNumber("account number", Currency.of("USD")),
                                         Money.of(-67, "USD")))
                                 .status(CashFlow.CashFlowStatus.OPEN)
+                                .activePeriod(YearMonth.of(2022, 1))
+                                .startPeriod(YearMonth.of(2022, 1))
                                 .cashChanges(Map.of(
                                         cashChangeId,
                                         CashFlowDto.CashChangeSummaryJson.builder()

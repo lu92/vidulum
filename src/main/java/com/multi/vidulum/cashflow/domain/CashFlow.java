@@ -448,7 +448,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 new LinkedList<>(),
                 true);
 
-        if (event.parentCategoryName().isDefined()) {
+        if (event.parentCategoryName() != null && event.parentCategoryName().isDefined()) {
             Category parentCategory = findCategoryByName(event.parentCategoryName(), categories)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid parent category-id!"));
 

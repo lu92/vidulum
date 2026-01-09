@@ -2,9 +2,11 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Money;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -168,6 +170,8 @@ public final class CashFlowDto {
         private String description;
         private BankAccount bankAccount;
         private CashFlow.CashFlowStatus status;
+        private YearMonth activePeriod;
+        private YearMonth startPeriod;
         private Map<String, CashChangeSummaryJson> cashChanges;
         private List<Category> inflowCategories;
         private List<Category> outflowCategories;
@@ -194,6 +198,7 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @AllArgsConstructor
     public static class CashChangeSummaryJson {
         private String cashChangeId;
         private String name;
