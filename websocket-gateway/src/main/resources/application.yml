@@ -1,0 +1,37 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: vidulum-websocket-gateway
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: websocket-gateway
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+gateway:
+  jwt:
+    secret: ${JWT_SECRET:mySecretKeyForJwtTokenGenerationThatIsAtLeast256BitsLong}
+  websocket:
+    endpoint: /ws
+    allowed-origins: "*"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.multi.vidulum.gateway: DEBUG
+    org.springframework.web.socket: DEBUG
