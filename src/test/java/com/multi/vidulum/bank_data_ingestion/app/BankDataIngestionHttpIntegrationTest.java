@@ -1,17 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
-import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
-import com.multi.vidulum.cashflow.domain.BankAccount;
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
-import com.multi.vidulum.cashflow.domain.BankName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
-import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
@@ -28,12 +23,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -48,8 +37,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,16 +54,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 1. GET /cash-flow/{id} - get CashFlow info
  * 2. POST /cash-flow/{id}/category - create category
  * 3. POST /cash-flow/{id}/import-historical - import transaction
- * 4. DELETE /cash-flow/{id}/import - rollback import
+ * 4. POST /api/v1/bank-data-ingestion/{id}/stage - stage transactions
+ * 5. POST /api/v1/bank-data-ingestion/{id}/import - start import
  *
- * The test uses TestRestTemplate to verify the REST contracts.
+ * Uses BankDataIngestionHttpActor for cleaner test code following the DualBudgetActor pattern.
  */
 @Slf4j
 @SpringBootTest(
         classes = FixedClockConfig.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class})
+@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class, BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
 @Testcontainers
 @DirtiesContext
 public class BankDataIngestionHttpIntegrationTest {
@@ -107,6 +99,22 @@ public class BankDataIngestionHttpIntegrationTest {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
+        // Disable HttpCashFlowServiceClient - we'll provide a test implementation
+        registry.add("vidulum.cashflow-service.enabled", () -> "false");
+    }
+
+    /**
+     * Test configuration that provides CashFlowServiceClient using direct gateway calls.
+     * Uses @Lazy on CommandGateway to break circular dependency.
+     */
+    @TestConfiguration
+    static class TestCashFlowServiceClientConfig {
+        @Bean
+        public CashFlowServiceClient cashFlowServiceClient(
+                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
+                @org.springframework.context.annotation.Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
+            return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
     }
 
     @Autowired
@@ -130,11 +138,7 @@ public class BankDataIngestionHttpIntegrationTest {
     @Autowired
     private ImportJobMongoRepository importJobMongoRepository;
 
-    private JsonFormatter jsonFormatter = new JsonFormatter();
-
-    private String baseUrl() {
-        return "http://localhost:" + port;
-    }
+    private BankDataIngestionHttpActor actor;
 
     @BeforeEach
     public void beforeTest() {
@@ -145,66 +149,49 @@ public class BankDataIngestionHttpIntegrationTest {
         importJobMongoRepository.deleteAll();
         cashFlowMongoRepository.deleteAll();
         cashFlowForecastMongoRepository.deleteAll();
+
+        actor = new BankDataIngestionHttpActor(restTemplate, port);
     }
 
     @Test
     @DisplayName("Should get CashFlow info via REST API - verifies GET /cash-flow/{id}")
     void shouldGetCashFlowInfoViaRestApi() {
-        // given: create a CashFlow via REST API
-        String cashFlowId = createCashFlowWithHistoryViaHttp();
-
-        // when: get CashFlow via REST GET (use Map to avoid serialization issues with BankAccount)
-        ResponseEntity<Map> response = restTemplate.getForEntity(
-                baseUrl() + "/cash-flow/" + cashFlowId,
-                Map.class
+        // given
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                YearMonth.of(2021, 7),
+                Money.of(10000.0, "PLN")
         );
 
-        // then: verify response
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        Map<String, Object> body = response.getBody();
-        assertThat(body).isNotNull();
-        assertThat(body.get("cashFlowId")).isEqualTo(cashFlowId);
-        assertThat(body.get("status")).isEqualTo("SETUP");
+        // when
+        Map<String, Object> cashFlowInfo = actor.getCashFlowAsMap(cashFlowId);
+
+        // then
+        assertThat(cashFlowInfo.get("cashFlowId")).isEqualTo(cashFlowId);
+        assertThat(cashFlowInfo.get("status")).isEqualTo("SETUP");
 
         log.info("CashFlow info retrieved via REST API: cashFlowId={}, status={}",
-                body.get("cashFlowId"), body.get("status"));
+                cashFlowInfo.get("cashFlowId"), cashFlowInfo.get("status"));
     }
 
     @Test
     @DisplayName("Should create category via REST API - verifies POST /cash-flow/{id}/category")
     void shouldCreateCategoryViaRestApi() {
-        // given: create a CashFlow
-        String cashFlowId = createCashFlowWithHistoryViaHttp();
-
-        // when: create a category via POST
-        CashFlowDto.CreateCategoryJson categoryRequest = CashFlowDto.CreateCategoryJson.builder()
-                .category("NewCategory")
-                .type(Type.OUTFLOW)
-                .build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        ResponseEntity<Void> createResponse = restTemplate.exchange(
-                baseUrl() + "/cash-flow/" + cashFlowId + "/category",
-                HttpMethod.POST,
-                new HttpEntity<>(categoryRequest, headers),
-                Void.class
+        // given
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                YearMonth.of(2021, 7),
+                Money.of(10000.0, "PLN")
         );
 
-        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // when
+        actor.createCategory(cashFlowId, "NewCategory", Type.OUTFLOW);
 
-        // then: verify category exists via GET
-        ResponseEntity<CashFlowDto.CashFlowSummaryJson> getResponse = restTemplate.getForEntity(
-                baseUrl() + "/cash-flow/" + cashFlowId,
-                CashFlowDto.CashFlowSummaryJson.class
-        );
-
-        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        CashFlowDto.CashFlowSummaryJson body = getResponse.getBody();
-        assertThat(body).isNotNull();
-
-        boolean categoryExists = body.getOutflowCategories().stream()
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
+        boolean categoryExists = cashFlow.getOutflowCategories().stream()
                 .anyMatch(cat -> "NewCategory".equals(cat.getCategoryName().name()));
         assertThat(categoryExists).isTrue();
 
@@ -214,52 +201,21 @@ public class BankDataIngestionHttpIntegrationTest {
     @Test
     @DisplayName("Should create subcategory via REST API")
     void shouldCreateSubcategoryViaRestApi() {
-        // given: create a CashFlow
-        String cashFlowId = createCashFlowWithHistoryViaHttp();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // First create a parent category
-        CashFlowDto.CreateCategoryJson parentRequest = CashFlowDto.CreateCategoryJson.builder()
-                .category("ParentCategory")
-                .type(Type.OUTFLOW)
-                .build();
-
-        restTemplate.exchange(
-                baseUrl() + "/cash-flow/" + cashFlowId + "/category",
-                HttpMethod.POST,
-                new HttpEntity<>(parentRequest, headers),
-                Void.class
+        // given
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                YearMonth.of(2021, 7),
+                Money.of(10000.0, "PLN")
         );
 
-        // when: create a subcategory
-        CashFlowDto.CreateCategoryJson childRequest = CashFlowDto.CreateCategoryJson.builder()
-                .category("ChildCategory")
-                .parentCategoryName("ParentCategory")
-                .type(Type.OUTFLOW)
-                .build();
+        // when
+        actor.createCategory(cashFlowId, "ParentCategory", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "ChildCategory", "ParentCategory", Type.OUTFLOW);
 
-        ResponseEntity<Void> createResponse = restTemplate.exchange(
-                baseUrl() + "/cash-flow/" + cashFlowId + "/category",
-                HttpMethod.POST,
-                new HttpEntity<>(childRequest, headers),
-                Void.class
-        );
-
-        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-        // then: verify via GET
-        ResponseEntity<CashFlowDto.CashFlowSummaryJson> getResponse = restTemplate.getForEntity(
-                baseUrl() + "/cash-flow/" + cashFlowId,
-                CashFlowDto.CashFlowSummaryJson.class
-        );
-
-        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        CashFlowDto.CashFlowSummaryJson body = getResponse.getBody();
-
-        // Find parent category and check subcategories
-        var parentCategory = body.getOutflowCategories().stream()
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
+        var parentCategory = cashFlow.getOutflowCategories().stream()
                 .filter(cat -> "ParentCategory".equals(cat.getCategoryName().name()))
                 .findFirst()
                 .orElse(null);
@@ -277,97 +233,63 @@ public class BankDataIngestionHttpIntegrationTest {
     @Test
     @DisplayName("Should import historical transaction via REST API - verifies POST /cash-flow/{id}/import-historical")
     void shouldImportHistoricalTransactionViaRestApi() {
-        // given: create a CashFlow and a category
-        String cashFlowId = createCashFlowWithHistoryViaHttp();
+        // given
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                YearMonth.of(2021, 7),
+                Money.of(10000.0, "PLN")
+        );
+        actor.createCategory(cashFlowId, "TestCategory", Type.OUTFLOW);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // Create a category first
-        CashFlowDto.CreateCategoryJson categoryRequest = CashFlowDto.CreateCategoryJson.builder()
-                .category("TestCategory")
-                .type(Type.OUTFLOW)
-                .build();
-
-        restTemplate.exchange(
-                baseUrl() + "/cash-flow/" + cashFlowId + "/category",
-                HttpMethod.POST,
-                new HttpEntity<>(categoryRequest, headers),
-                Void.class
+        // when
+        ZonedDateTime transactionDate = ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        String cashChangeId = actor.importHistoricalTransaction(
+                cashFlowId,
+                "TestCategory",
+                "Test Transaction",
+                "Test Description",
+                Money.of(100.50, "PLN"),
+                Type.OUTFLOW,
+                transactionDate,
+                transactionDate
         );
 
-        // when: import a historical transaction
-        CashFlowDto.ImportHistoricalCashChangeJson importRequest = CashFlowDto.ImportHistoricalCashChangeJson.builder()
-                .category("TestCategory")
-                .name("Test Transaction")
-                .description("Test Description")
-                .money(Money.of(100.50, "PLN"))
-                .type(Type.OUTFLOW)
-                .dueDate(ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC))
-                .paidDate(ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC))
-                .build();
-
-        ResponseEntity<String> importResponse = restTemplate.exchange(
-                baseUrl() + "/cash-flow/" + cashFlowId + "/import-historical",
-                HttpMethod.POST,
-                new HttpEntity<>(importRequest, headers),
-                String.class
-        );
-
-        // then: verify the transaction was created
-        assertThat(importResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        String cashChangeId = importResponse.getBody();
-        assertThat(cashChangeId).isNotNull().isNotEmpty();
-
-        // Verify via GET
-        ResponseEntity<CashFlowDto.CashFlowSummaryJson> getResponse = restTemplate.getForEntity(
-                baseUrl() + "/cash-flow/" + cashFlowId,
-                CashFlowDto.CashFlowSummaryJson.class
-        );
-
-        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        CashFlowDto.CashFlowSummaryJson body = getResponse.getBody();
-        assertThat(body.getCashChanges()).containsKey(cashChangeId);
+        // then
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlow.getCashChanges()).containsKey(cashChangeId);
 
         log.info("Historical transaction imported via REST API. CashChangeId: {}", cashChangeId);
     }
 
-    // Note: Additional tests for rollback and full flow are covered by BankDataIngestionControllerTest
-    // which uses direct controller injection. The HTTP contracts for these endpoints are validated
-    // through the existing tests above (GET /cash-flow/{id}, POST /cash-flow/{id}/category,
-    // POST /cash-flow/{id}/import-historical).
-
-    // ============ Helper Methods ============
-
-    private String createCashFlowWithHistoryViaHttp() {
-        CashFlowDto.CreateCashFlowWithHistoryJson request = CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                .userId("test-user-123")
-                .name("Test CashFlow HTTP")
-                .description("CashFlow for HTTP integration testing")
-                .bankAccount(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
-                        Money.zero("PLN")
-                ))
-                .startPeriod("2021-07")
-                .initialBalance(Money.of(10000.0, "PLN"))
-                .build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                baseUrl() + "/cash-flow/with-history",
-                HttpMethod.POST,
-                new HttpEntity<>(request, headers),
-                String.class
+    @Test
+    @DisplayName("Should configure and retrieve category mappings via REST API")
+    void shouldConfigureAndRetrieveMappingsViaRestApi() {
+        // given
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                YearMonth.of(2021, 7),
+                Money.of(10000.0, "PLN")
         );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        String cashFlowId = response.getBody();
-        assertThat(cashFlowId).isNotNull().isNotEmpty();
+        // Create a category that will be used as target
+        actor.createCategory(cashFlowId, "Groceries", Type.OUTFLOW);
 
-        log.info("Created CashFlow via HTTP with ID: {}", cashFlowId);
-        return cashFlowId;
+        // when: configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingToExisting("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Streaming", "Entertainment", Type.OUTFLOW)
+        ));
+
+        // then: retrieve mappings
+        BankDataIngestionDto.GetMappingsResponse mappings = actor.getMappings(cashFlowId);
+        assertThat(mappings.getMappings()).hasSize(2);
+
+        log.info("Configured and retrieved {} mappings via REST API", mappings.getMappings().size());
     }
+
+    // Note: Tests for stage/import endpoints are in BankDataIngestionControllerTest
+    // which uses direct controller injection. The REST endpoints for staging and import
+    // will be added in a future implementation.
 }

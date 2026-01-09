@@ -29,6 +29,8 @@ public class CashFlowSummaryMapper {
                 .description(cashFlowSnapshot.description().description())
                 .bankAccount(cashFlowSnapshot.bankAccount())
                 .status(cashFlowSnapshot.status())
+                .activePeriod(cashFlowSnapshot.activePeriod())
+                .startPeriod(cashFlowSnapshot.startPeriod())
                 .cashChanges(cashChanges)
                 .inflowCategories(cashFlowSnapshot.inflowCategories())
                 .outflowCategories(cashFlowSnapshot.outflowCategories())
