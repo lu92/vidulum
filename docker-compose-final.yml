@@ -38,9 +38,26 @@ services:
     container_name: "vidulum-app"
     ports:
       - 9090:8080
+    environment:
+      SPRING_DATA_MONGODB_HOST: mongodb
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     links:
       - kafka
       - mongodb
     depends_on:
       - kafka
       - kafdrop
+
+  websocket-gateway:
+    image: vidulum-websocket-gateway:latest
+    container_name: "websocket-gateway"
+    ports:
+      - 8081:8081
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    links:
+      - kafka
+    depends_on:
+      - kafka
+      - vidulum

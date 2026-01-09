@@ -34,7 +34,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import javax.crypto.SecretKey;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -80,7 +79,9 @@ class WebSocketGatewayIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        // Use BASE64 decoding to match JwtService
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(jwtSecret);
+        secretKey = Keys.hmacShaKeyFor(keyBytes);
         webSocketClient = new TestWebSocketClient();
     }
 

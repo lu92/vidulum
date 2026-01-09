@@ -35,6 +35,8 @@ public class KafkaEventConsumer {
             containerFactory = "kafkaEventListenerContainerFactory"
     )
     public void consumeCashFlowEvent(KafkaEvent event) {
+        log.info("RAW cash_flow event: metadata={}, content={}",
+                event.getMetadata(), event.getContent());
         log.debug("Received cash_flow event: type={}, cashFlowId={}",
                 event.getEventType(), event.getCashFlowId());
 

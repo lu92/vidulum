@@ -16,7 +16,7 @@ spring:
 
 gateway:
   jwt:
-    secret: testSecretKeyForJwtTokenGenerationThatIsAtLeast256BitsLong!
+    secret: dGVzdFNlY3JldEtleUZvckp3dFRva2VuR2VuZXJhdGlvblRoYXRJc0F0TGVhc3QyNTZCaXRzTG9uZyE=
   websocket:
     endpoint: /ws
     allowed-origins: "*"
