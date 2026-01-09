@@ -1,6 +1,7 @@
 package com.multi.vidulum.quotation;
 
 
+import com.multi.vidulum.common.events.BankDataIngestionUnifiedEvent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.common.events.OrderFilledEvent;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
@@ -254,6 +255,49 @@ public class KafkaTopicConfig {
         ConcurrentKafkaListenerContainerFactory<String, CashFlowUnifiedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(cashFlowUnifiedEventConsumerFactory());
+        return factory;
+    }
+
+
+    //    ******* Bank Data Ingestion Events *******
+
+    @Bean
+    public NewTopic bankDataIngestionTopic() {
+        return new NewTopic("bank_data_ingestion", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, BankDataIngestionUnifiedEvent> bankDataIngestionProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, BankDataIngestionUnifiedEvent> bankDataIngestionKafkaTemplate() {
+        return new KafkaTemplate<>(bankDataIngestionProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, BankDataIngestionUnifiedEvent> bankDataIngestionConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(BankDataIngestionUnifiedEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, BankDataIngestionUnifiedEvent> bankDataIngestionContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, BankDataIngestionUnifiedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(bankDataIngestionConsumerFactory());
         return factory;
     }
 

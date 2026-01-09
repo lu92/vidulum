@@ -4,6 +4,7 @@ import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
@@ -35,6 +36,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final BankDataIngestionEventEmitter eventEmitter;
     private final BankDataIngestionConfig config;
     private final Clock clock;
 
@@ -109,6 +111,17 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         log.info("Created import job [{}] for CashFlow [{}] with {} valid transactions and {} categories to create",
                 importJob.jobId().id(), command.cashFlowId().id(), validCount, categoriesToCreate.size());
 
+        // Emit ImportJobStartedEvent
+        eventEmitter.emit(new ImportJobStartedEvent(
+                importJob.jobId().id(),
+                command.cashFlowId().id(),
+                command.stagingSessionId().id(),
+                totalTransactions,
+                validCount,
+                categoriesToCreate.size(),
+                now
+        ));
+
         // Start processing
         importJob = importJob.startProcessing(now);
         importJob = importJobRepository.save(importJob);
@@ -124,7 +137,8 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             ImportJob.ImportSummary summary = buildImportSummary(importJob, validTransactions, now);
 
             // Complete the job
-            importJob = importJob.complete(summary, ZonedDateTime.now(clock), config.getRollbackWindowHours());
+            ZonedDateTime completedAt = ZonedDateTime.now(clock);
+            importJob = importJob.complete(summary, completedAt, config.getRollbackWindowHours());
             importJob = importJobRepository.save(importJob);
 
             log.info("Import job [{}] completed successfully. Imported {} transactions, created {} categories",
@@ -132,10 +146,31 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                     importJob.result().transactionsImported(),
                     importJob.result().categoriesCreated().size());
 
+            // Emit ImportJobCompletedEvent
+            eventEmitter.emit(new ImportJobCompletedEvent(
+                    importJob.jobId().id(),
+                    command.cashFlowId().id(),
+                    importJob.result().categoriesCreated().size(),
+                    importJob.result().transactionsImported(),
+                    importJob.result().transactionsFailed(),
+                    summary.totalDurationMs(),
+                    completedAt
+            ));
+
         } catch (Exception e) {
             log.error("Import job [{}] failed: {}", importJob.jobId().id(), e.getMessage(), e);
-            importJob = importJob.fail(e.getMessage(), ZonedDateTime.now(clock));
+            ZonedDateTime failedAt = ZonedDateTime.now(clock);
+            importJob = importJob.fail(e.getMessage(), failedAt);
             importJob = importJobRepository.save(importJob);
+
+            // Emit ImportJobFailedEvent
+            eventEmitter.emit(new ImportJobFailedEvent(
+                    importJob.jobId().id(),
+                    command.cashFlowId().id(),
+                    importJob.progress().currentPhase(),
+                    e.getMessage(),
+                    failedAt
+            ));
         }
 
         String baseUrl = "/api/v1/bank-data-ingestion/" + command.cashFlowId().id();
@@ -219,6 +254,19 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                 if (processed % updateInterval == 0 || processed == categoriesToCreate.size()) {
                     importJob = importJob.updateProgress(ImportPhase.CREATING_CATEGORIES, processed);
                     importJob = importJobRepository.save(importJob);
+
+                    // Emit progress event
+                    int total = categoriesToCreate.size();
+                    int percent = total > 0 ? (processed * 100) / total : 100;
+                    eventEmitter.emit(new ImportProgressEvent(
+                            importJob.jobId().id(),
+                            importJob.cashFlowId().id(),
+                            ImportPhase.CREATING_CATEGORIES,
+                            processed,
+                            total,
+                            percent,
+                            ZonedDateTime.now(clock)
+                    ));
                 }
 
                 log.debug("Created category [{}] ({}/{})", cat.name(), processed, categoriesToCreate.size());
@@ -275,6 +323,19 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                 if (processed % updateInterval == 0 || processed == validTransactions.size()) {
                     importJob = importJob.updateProgress(ImportPhase.IMPORTING_TRANSACTIONS, processed);
                     importJob = importJobRepository.save(importJob);
+
+                    // Emit progress event
+                    int total = validTransactions.size();
+                    int percent = total > 0 ? (processed * 100) / total : 100;
+                    eventEmitter.emit(new ImportProgressEvent(
+                            importJob.jobId().id(),
+                            importJob.cashFlowId().id(),
+                            ImportPhase.IMPORTING_TRANSACTIONS,
+                            processed,
+                            total,
+                            percent,
+                            ZonedDateTime.now(clock)
+                    ));
                 }
 
                 log.debug("Imported transaction [{}] ({}/{})",

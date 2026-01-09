@@ -1,6 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.finalize_import;
 
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.ImportJobFinalizedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class FinalizeImportJobCommandHandler implements CommandHandler<FinalizeI
     private final ImportJobRepository importJobRepository;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
+    private final BankDataIngestionEventEmitter eventEmitter;
     private final Clock clock;
 
     @Override
@@ -61,6 +63,15 @@ public class FinalizeImportJobCommandHandler implements CommandHandler<FinalizeI
 
         log.info("Import job [{}] finalized. Deleted {} staged transactions, {} mappings",
                 command.jobId().id(), stagedDeleted, mappingsDeleted);
+
+        // Emit finalized event
+        eventEmitter.emit(new ImportJobFinalizedEvent(
+                command.jobId().id(),
+                command.cashFlowId().id(),
+                (int) stagedDeleted,
+                (int) mappingsDeleted,
+                now
+        ));
 
         return FinalizeImportJobResult.from(finalizedJob, stagedDeleted, mappingsDeleted);
     }
