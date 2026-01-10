@@ -3,11 +3,14 @@ package com.multi.vidulum.bank_data_ingestion.infrastructure;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.cashflow.domain.Type;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -35,8 +38,32 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
         this.baseUrl = baseUrl;
         this.restClient = restClientBuilder
                 .baseUrl(baseUrl)
+                .requestInterceptor((request, body, execution) -> {
+                    // Propagate Authorization header from incoming request
+                    String authHeader = getAuthorizationHeader();
+                    if (authHeader != null) {
+                        request.getHeaders().add("Authorization", authHeader);
+                    }
+                    return execution.execute(request, body);
+                })
                 .build();
         log.info("Initialized HttpCashFlowServiceClient with baseUrl: {}", baseUrl);
+    }
+
+    /**
+     * Extract Authorization header from current HTTP request context.
+     */
+    private String getAuthorizationHeader() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                HttpServletRequest request = attributes.getRequest();
+                return request.getHeader("Authorization");
+            }
+        } catch (Exception e) {
+            log.warn("Could not extract Authorization header from request context: {}", e.getMessage());
+        }
+        return null;
     }
 
     @Override
@@ -217,10 +244,19 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     private record CategoryResponse(
-            String categoryName,
+            CategoryNameDto categoryName,
+            Object budgeting,
+            List<CategoryResponse> subCategories,
+            boolean modifiable,
+            String validFrom,
+            String validTo,
             boolean archived,
-            List<CategoryResponse> subCategories
+            String origin,
+            boolean active
     ) {
+    }
+
+    private record CategoryNameDto(String name) {
     }
 
     // ============ Mapping Methods ============
@@ -260,14 +296,15 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     private CashFlowInfo.CategoryInfo mapCategory(CategoryResponse category, String parentName, Type type) {
+        String catName = category.categoryName() != null ? category.categoryName().name() : null;
         return new CashFlowInfo.CategoryInfo(
-                category.categoryName(),
+                catName,
                 parentName,
                 type,
                 category.archived(),
                 category.subCategories() != null
                         ? category.subCategories().stream()
-                        .map(sub -> mapCategory(sub, category.categoryName(), type))
+                        .map(sub -> mapCategory(sub, catName, type))
                         .toList()
                         : List.of()
         );
