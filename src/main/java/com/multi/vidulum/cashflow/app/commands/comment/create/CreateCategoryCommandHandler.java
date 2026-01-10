@@ -39,6 +39,12 @@ public class CreateCategoryCommandHandler implements CommandHandler<CreateCatego
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
+        // Validate: operation not allowed in SETUP mode (unless it's an import operation)
+        // In SETUP mode, categories are created only through bank-data-ingestion import
+        if (CashFlow.CashFlowStatus.SETUP.equals(cashFlow.getSnapshot().status()) && !command.isImportOperation()) {
+            throw new OperationNotAllowedInSetupModeException("createCategory", command.cashFlowId());
+        }
+
         // Check if there's already an active category with the same name
         List<Category> categories = Type.INFLOW.equals(command.type())
                 ? cashFlow.getSnapshot().inflowCategories()

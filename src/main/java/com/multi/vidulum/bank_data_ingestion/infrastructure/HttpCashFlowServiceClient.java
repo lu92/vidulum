@@ -108,14 +108,15 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                     type
             );
 
+            // Use isImport=true to allow category creation in SETUP mode during import
             restClient.post()
-                    .uri("/cash-flow/{cashFlowId}/category", cashFlowId)
+                    .uri("/cash-flow/{cashFlowId}/category?isImport=true", cashFlowId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
                     .toBodilessEntity();
 
-            log.debug("Created category [{}] in CashFlow [{}] via HTTP", categoryName, cashFlowId);
+            log.debug("Created category [{}] in CashFlow [{}] via HTTP (import mode)", categoryName, cashFlowId);
 
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.CONFLICT ||
