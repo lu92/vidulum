@@ -1266,6 +1266,180 @@ public class BankDataIngestionControllerTest {
                 ));
     }
 
+    // ============ CSV Upload Tests ============
+
+    @Test
+    @DisplayName("Should upload CSV file and stage transactions")
+    void shouldUploadCsvFileAndStageTransactions() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Biedronka Zakupy,Zakupy spożywcze,Zakupy kartą,150.50,PLN,OUTFLOW,2021-08-15,2021-08-15,,
+                TXN002,Netflix,Subskrypcja miesięczna,Subskrypcje,49.99,PLN,OUTFLOW,2021-08-20,2021-08-20,,
+                """;
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "transactions.csv",
+                "text/csv",
+                csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // when: upload CSV
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+
+        log.info("Upload CSV response - parsed: {}/{}, staging status: {}",
+                response.getParseSummary().getSuccessfulRows(),
+                response.getParseSummary().getTotalRows(),
+                response.getStagingResult() != null ? response.getStagingResult().getStatus() : "null");
+
+        // then: verify parse summary
+        assertThat(response.getParseSummary().getTotalRows()).isEqualTo(2);
+        assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(2);
+        assertThat(response.getParseSummary().getFailedRows()).isEqualTo(0);
+        assertThat(response.getParseSummary().getErrors()).isEmpty();
+
+        // verify staging result
+        assertThat(response.getStagingResult()).isNotNull();
+        assertThat(response.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(response.getStagingResult().getSummary().getTotalTransactions()).isEqualTo(2);
+        assertThat(response.getStagingResult().getSummary().getValidTransactions()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should upload CSV and return HAS_UNMAPPED_CATEGORIES when mappings missing")
+    void shouldUploadCsvAndReturnUnmappedCategoriesWhenMappingsMissing() {
+        // given: create a CashFlow WITHOUT configuring mappings
+        String cashFlowId = createCashFlowWithHistory();
+
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Unknown Transaction,Test,Unknown Category,100,PLN,OUTFLOW,2021-08-15,,,
+                """;
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "transactions.csv",
+                "text/csv",
+                csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // when: upload CSV
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+
+        log.info("Upload CSV with unmapped categories - staging status: {}", response.getStagingResult().getStatus());
+
+        // then: verify parse is successful but staging has unmapped categories
+        assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(1);
+        assertThat(response.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(response.getStagingResult().getUnmappedCategories()).hasSize(1);
+        assertThat(response.getStagingResult().getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
+    }
+
+    @Test
+    @DisplayName("Should upload CSV with parse errors and return partial result")
+    void shouldUploadCsvWithParseErrorsAndReturnPartialResult() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // CSV with one valid row and one invalid row (missing name)
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Valid Transaction,Desc,Zakupy kartą,100,PLN,OUTFLOW,2021-08-15,,,
+                TXN002,,Missing Name,Zakupy kartą,50,PLN,OUTFLOW,2021-08-16,,,
+                """;
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "transactions.csv",
+                "text/csv",
+                csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // when: upload CSV
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+
+        log.info("Upload CSV with errors - successful: {}, failed: {}",
+                response.getParseSummary().getSuccessfulRows(),
+                response.getParseSummary().getFailedRows());
+
+        // then: verify partial result
+        assertThat(response.getParseSummary().getTotalRows()).isEqualTo(2);
+        assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(1);
+        assertThat(response.getParseSummary().getFailedRows()).isEqualTo(1);
+        assertThat(response.getParseSummary().getErrors()).hasSize(1);
+        assertThat(response.getParseSummary().getErrors().get(0).getRowNumber()).isEqualTo(3); // Row 3 in CSV (1-indexed, header is row 1)
+        assertThat(response.getParseSummary().getErrors().get(0).getMessage()).contains("name");
+
+        // The valid row should still be staged
+        assertThat(response.getStagingResult()).isNotNull();
+        assertThat(response.getStagingResult().getSummary().getTotalTransactions()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should upload CSV and generate transaction IDs when not provided")
+    void shouldUploadCsvAndGenerateTransactionIds() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // CSV without bankTransactionId
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                ,Auto Generated ID,Test,Zakupy kartą,100,PLN,OUTFLOW,2021-08-15,,,
+                """;
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "transactions.csv",
+                "text/csv",
+                csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // when: upload CSV
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+
+        // then: transaction should be staged successfully with generated ID
+        assertThat(response.getStagingResult()).isNotNull();
+        assertThat(response.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(response.getStagingResult().getSummary().getValidTransactions()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should return null staging result when all CSV rows fail parsing")
+    void shouldReturnNullStagingResultWhenAllRowsFail() {
+        // given: create a CashFlow
+        String cashFlowId = createCashFlowWithHistory();
+
+        // CSV with all invalid rows
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,,Missing Name,Cat,100,PLN,OUTFLOW,2021-08-15,,,
+                TXN002,,Also Missing,Cat,200,PLN,INFLOW,2021-08-16,,,
+                """;
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "transactions.csv",
+                "text/csv",
+                csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        // when: upload CSV
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+
+        log.info("Upload CSV with all failures - errors: {}", response.getParseSummary().getErrors().size());
+
+        // then: staging result should be null
+        assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(0);
+        assertThat(response.getParseSummary().getFailedRows()).isEqualTo(2);
+        assertThat(response.getStagingResult()).isNull();
+    }
+
     // ============ Helper Methods ============
 
     private Consumer<String, BankDataIngestionUnifiedEvent> createKafkaConsumer() {

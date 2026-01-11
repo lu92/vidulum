@@ -10,8 +10,14 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -311,7 +317,8 @@ public class BankDataIngestionHttpActor {
                 BankDataIngestionDto.StartImportResponse.class
         );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // Accepts both 200 OK and 202 ACCEPTED (async processing)
+        assertThat(response.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
         BankDataIngestionDto.StartImportResponse body = response.getBody();
         log.info("Started import for CashFlow {}, status: {}", cashFlowId, body.getStatus());
         return body;
@@ -377,6 +384,99 @@ public class BankDataIngestionHttpActor {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         log.info("Deleted staging session {} for CashFlow {}", stagingSessionId, cashFlowId);
+    }
+
+    /**
+     * Uploads a CSV file from classpath resources and stages transactions.
+     * The CSV file must be in BankCsvRow format.
+     *
+     * @param cashFlowId the CashFlow to stage transactions for
+     * @param resourcePath path to CSV file in classpath (e.g., "bank-data-ingestion/historical-transactions.csv")
+     * @return upload result containing parse summary and staging result
+     */
+    public BankDataIngestionDto.UploadCsvResponse uploadCsv(String cashFlowId, String resourcePath) {
+        Resource csvResource = new ClassPathResource(resourcePath);
+
+        // Read file content
+        byte[] fileContent;
+        try (InputStream is = csvResource.getInputStream()) {
+            fileContent = is.readAllBytes();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read CSV file from classpath: " + resourcePath, e);
+        }
+
+        // Build multipart request
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new org.springframework.http.HttpEntity<>(
+                fileContent,
+                createFileHeaders(resourcePath)
+        ));
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
+                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/upload",
+                HttpMethod.POST,
+                requestEntity,
+                BankDataIngestionDto.UploadCsvResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        BankDataIngestionDto.UploadCsvResponse result = response.getBody();
+        log.info("Uploaded CSV file '{}' for CashFlow {}: parsed {}/{} rows, staging status: {}",
+                resourcePath, cashFlowId,
+                result.getParseSummary().getSuccessfulRows(),
+                result.getParseSummary().getTotalRows(),
+                result.getStagingResult() != null ? result.getStagingResult().getStatus() : "null");
+        return result;
+    }
+
+    /**
+     * Uploads a CSV file from byte content and stages transactions.
+     *
+     * @param cashFlowId the CashFlow to stage transactions for
+     * @param fileName filename for the uploaded file
+     * @param csvContent CSV content as bytes
+     * @return upload result containing parse summary and staging result
+     */
+    public BankDataIngestionDto.UploadCsvResponse uploadCsvContent(String cashFlowId, String fileName, byte[] csvContent) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new org.springframework.http.HttpEntity<>(
+                csvContent,
+                createFileHeaders(fileName)
+        ));
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
+                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/upload",
+                HttpMethod.POST,
+                requestEntity,
+                BankDataIngestionDto.UploadCsvResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        BankDataIngestionDto.UploadCsvResponse result = response.getBody();
+        log.info("Uploaded CSV content '{}' for CashFlow {}: parsed {}/{} rows",
+                fileName, cashFlowId,
+                result.getParseSummary().getSuccessfulRows(),
+                result.getParseSummary().getTotalRows());
+        return result;
+    }
+
+    private HttpHeaders createFileHeaders(String fileName) {
+        HttpHeaders fileHeaders = new HttpHeaders();
+        fileHeaders.setContentType(MediaType.parseMediaType("text/csv"));
+        fileHeaders.setContentDispositionFormData("file", fileName.contains("/")
+                ? fileName.substring(fileName.lastIndexOf('/') + 1)
+                : fileName);
+        return fileHeaders;
     }
 
     // ============ Helper Methods ============
