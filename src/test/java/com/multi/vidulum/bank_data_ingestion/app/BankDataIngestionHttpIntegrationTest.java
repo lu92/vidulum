@@ -632,12 +632,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 Money.of(10000.0, "PLN")
         );
 
-        // Create a category that will be used as target
-        actor.createCategory(cashFlowId, "Groceries", Type.OUTFLOW);
-
-        // when: configure mappings
+        // when: configure mappings with CREATE_NEW (MAP_TO_EXISTING was removed - only one file per CashFlow)
         actor.configureMappings(cashFlowId, List.of(
-                actor.mappingToExisting("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNewCategory("Zakupy kartą", "Groceries", Type.OUTFLOW),
                 actor.mappingCreateNew("Streaming", "Entertainment", Type.OUTFLOW)
         ));
 
@@ -647,7 +644,7 @@ public class BankDataIngestionHttpIntegrationTest {
         assertThat(mappingsResponse.getMappingsCount()).isEqualTo(2);
         assertThat(mappingsResponse.getMappings()).hasSize(2);
 
-        // Validate first mapping (MAP_TO_EXISTING) - only ignore generated fields
+        // Validate first mapping (CREATE_NEW) - only ignore generated fields
         BankDataIngestionDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Zakupy kartą".equals(m.getBankCategoryName()))
                 .findFirst()
@@ -655,7 +652,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         assertThat(groceriesMapping.getMappingId()).isNotNull();
         assertThat(groceriesMapping.getBankCategoryName()).isEqualTo("Zakupy kartą");
-        assertThat(groceriesMapping.getAction()).isEqualTo(MappingAction.MAP_TO_EXISTING);
+        assertThat(groceriesMapping.getAction()).isEqualTo(MappingAction.CREATE_NEW);
         assertThat(groceriesMapping.getTargetCategoryName()).isEqualTo("Groceries");
         assertThat(groceriesMapping.getParentCategoryName()).isNull();
         assertThat(groceriesMapping.getCategoryType()).isEqualTo(Type.OUTFLOW);

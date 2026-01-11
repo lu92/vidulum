@@ -52,7 +52,8 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
 
     @Override
     public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
-        commandGateway.send(new CreateCategoryCommand(
+        // Use forImport to allow category creation in SETUP mode (during import)
+        commandGateway.send(CreateCategoryCommand.forImport(
                 new CashFlowId(cashFlowId),
                 parentCategoryName != null ? new CategoryName(parentCategoryName) : null,
                 new CategoryName(categoryName),

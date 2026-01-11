@@ -107,6 +107,7 @@ public class BankDataIngestionHttpActor {
 
     /**
      * Creates a subcategory in a CashFlow via HTTP.
+     * Uses isImport=true to allow category creation in SETUP mode (for import testing).
      */
     public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
         CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
@@ -115,15 +116,16 @@ public class BankDataIngestionHttpActor {
                 .type(type)
                 .build();
 
+        // Use isImport=true to allow category creation in SETUP mode
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category",
+                baseUrl + "/cash-flow/" + cashFlowId + "/category?isImport=true",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 Void.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        log.debug("Created category via HTTP: cashFlowId={}, category={}, parent={}, type={}",
+        log.debug("Created category via HTTP (import mode): cashFlowId={}, category={}, parent={}, type={}",
                 cashFlowId, categoryName, parentCategoryName, type);
     }
 
@@ -182,12 +184,13 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
-     * Creates a simple mapping from bank category to existing CashFlow category.
+     * Creates a mapping that will create a new category during import.
+     * Note: MAP_TO_EXISTING was removed - each CashFlow can only have one file import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingToExisting(String bankCategory, String targetCategory, Type type) {
+    public BankDataIngestionDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
         return BankDataIngestionDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
-                .action(MappingAction.MAP_TO_EXISTING)
+                .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(targetCategory)
                 .categoryType(type)
                 .build();

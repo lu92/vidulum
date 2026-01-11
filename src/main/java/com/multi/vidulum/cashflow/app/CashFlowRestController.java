@@ -276,16 +276,43 @@ public class CashFlowRestController {
                 .toList();
     }
 
+    /**
+     * REST endpoint for category creation.
+     * Use isImport=true query parameter when creating categories during bank data import (allowed in SETUP mode).
+     */
     @PostMapping("/{cashFlowId}/category")
-    public void createCategory(@PathVariable("cashFlowId") String cashFlowId, @RequestBody CashFlowDto.CreateCategoryJson request) {
-        commandGateway.send(
-                new CreateCategoryCommand(
+    public void createCategoryEndpoint(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.CreateCategoryJson request,
+            @RequestParam(name = "isImport", defaultValue = "false") boolean isImport) {
+        createCategory(cashFlowId, request, isImport);
+    }
+
+    /**
+     * Internal method for category creation. Called by REST endpoint and directly by tests.
+     * In SETUP mode, only import operations (isImport=true) can create categories.
+     */
+    public void createCategory(String cashFlowId, CashFlowDto.CreateCategoryJson request, boolean isImport) {
+        CreateCategoryCommand command = isImport
+                ? CreateCategoryCommand.forImport(
                         new CashFlowId(cashFlowId),
                         ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
                         new CategoryName(request.getCategory()),
-                        request.getType()
-                )
-        );
+                        request.getType())
+                : new CreateCategoryCommand(
+                        new CashFlowId(cashFlowId),
+                        ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
+                        new CategoryName(request.getCategory()),
+                        request.getType());
+        commandGateway.send(command);
+    }
+
+    /**
+     * Convenience method for tests - uses isImport=false (user-initiated category creation).
+     * Will throw OperationNotAllowedInSetupModeException if CashFlow is in SETUP mode.
+     */
+    public void createCategory(String cashFlowId, CashFlowDto.CreateCategoryJson request) {
+        createCategory(cashFlowId, request, false);
     }
 
     @PostMapping("/budgeting")

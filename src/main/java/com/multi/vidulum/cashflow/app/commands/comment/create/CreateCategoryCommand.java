@@ -9,6 +9,23 @@ public record CreateCategoryCommand(
         CashFlowId cashFlowId,
         CategoryName parentCategoryName,
         CategoryName categoryName,
-        Type type
+        Type type,
+        boolean isImportOperation
 ) implements Command {
+
+    /**
+     * Constructor for user-initiated category creation (blocks in SETUP mode).
+     */
+    public CreateCategoryCommand(CashFlowId cashFlowId, CategoryName parentCategoryName,
+                                  CategoryName categoryName, Type type) {
+        this(cashFlowId, parentCategoryName, categoryName, type, false);
+    }
+
+    /**
+     * Factory method for import-initiated category creation (allowed in SETUP mode).
+     */
+    public static CreateCategoryCommand forImport(CashFlowId cashFlowId, CategoryName parentCategoryName,
+                                                   CategoryName categoryName, Type type) {
+        return new CreateCategoryCommand(cashFlowId, parentCategoryName, categoryName, type, true);
+    }
 }

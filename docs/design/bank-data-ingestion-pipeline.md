@@ -1728,6 +1728,127 @@ Moduł `bank_data_ingestion` jest zaprojektowany z myślą o łatwym wydzieleniu
 
 ---
 
+## Design Decisions
+
+### 1. Import historyczny tylko przez system
+
+**Decyzja:** Import historycznych transakcji odbywa się TYLKO przez bank-data-ingestion pipeline, nie przez bezpośrednie API.
+
+**Uzasadnienie:**
+- Spójność danych - system waliduje, deduplikuje, mapuje kategorie
+- Audit trail - każdy import ma staging session, job ID
+- Rollback - łatwo cofnąć cały import jako jednostkę
+- UX - użytkownik nie musi ręcznie wklepywać setek transakcji
+
+**Konsekwencje:**
+- Endpoint `POST /cash-flow/{id}/import-historical` jest używany wewnętrznie przez bank-data-ingestion
+- Użytkownik nie wywołuje `importHistoricalCashChange` bezpośrednio
+
+---
+
+### 2. Tworzenie kategorii przez import
+
+**Decyzja:** W trybie SETUP użytkownik nie tworzy kategorii ręcznie - kategorie są tworzone automatycznie podczas importu na podstawie mapowań.
+
+**Flow:**
+1. Użytkownik uploaduje pliki CSV/Excel do wizard
+2. System parsuje i pokazuje znalezione kategorie bankowe
+3. Użytkownik mapuje każdą kategorię (CREATE_NEW, MAP_TO_UNCATEGORIZED)
+4. System tworzy CashFlow + kategorie + importuje transakcje
+
+**Konsekwencje:**
+- `MAP_TO_EXISTING` ma sens głównie przy kolejnych importach (kategorie już istnieją)
+- Pierwszy import używa głównie `CREATE_NEW`
+- Endpoint `POST /cash-flow/{id}/category` w trybie SETUP może być zablokowany lub nieużywany w UI
+
+---
+
+### 3. Merge wielu plików CSV/Excel
+
+**Decyzja:** Użytkownik może wgrać wiele plików na raz - system merguje je do jednego wsadu.
+
+**Flow:**
+```
+Użytkownik wybiera pliki CSV/Excel (1-N)
+         │
+         ▼
+    ┌─────────────────────────────┐
+    │  Parser/Merger (Vidulum)    │
+    │  - parsuje wszystkie pliki  │
+    │  - deduplikuje po txId      │
+    │  - sortuje po dacie         │
+    │  - waliduje format          │
+    └─────────────────────────────┘
+         │
+         ▼
+    Jeden POST /staging
+    { transactions: [...] }
+```
+
+**Uzasadnienie:**
+- Prostszy model - jedna sesja staging zamiast wielu
+- Deduplikacja między plikami
+- Jeden preview pokazuje wszystko razem
+
+---
+
+### 4. Limity plików i transakcji
+
+**Decyzja:** Ustalenie bezpiecznych limitów dla importu.
+
+| Parametr | Limit | Uzasadnienie |
+|----------|-------|--------------|
+| Max rozmiar pliku | **20 MB** | Pokrywa 5+ lat historii |
+| Max transakcji per staging | **20,000** | ~5 lat historii power usera |
+| Max plików per upload | **10** | Rozsądny limit UX |
+| Obsługiwane formaty | CSV, XLSX, XLS | Standardowe formaty bankowe |
+
+**Szacunki rozmiaru:**
+
+| Transakcji | Rozmiar JSON |
+|------------|--------------|
+| 1,000 | ~400 KB |
+| 5,000 | ~2 MB |
+| 10,000 | ~4 MB |
+| 20,000 | ~8 MB |
+
+**Typowa historia użytkownika:**
+
+| Okres | Transakcji/miesiąc | Razem |
+|-------|-------------------|-------|
+| 1 rok | ~100 | ~1,200 |
+| 3 lata | ~100 | ~3,600 |
+| 5 lat | ~100 | ~6,000 |
+| Power user (5 lat) | ~300/mies | ~18,000 |
+
+**Konfiguracja:**
+
+```yaml
+vidulum:
+  bank-data-ingestion:
+    limits:
+      max-file-size-mb: 20
+      max-transactions-per-staging: 20000
+      max-files-per-upload: 10
+      allowed-extensions: [csv, xlsx, xls]
+```
+
+---
+
+### 5. Źródła danych
+
+**Obsługiwane źródła:**
+
+| Źródło | Opis | Implementacja |
+|--------|------|---------------|
+| Pliki CSV | Export z banku | Parser CSV |
+| Pliki Excel (XLSX/XLS) | Export z banku | Apache POI |
+| Open Banking API | Automatyczny pobór | Future: OAuth2 + API client |
+
+**Uwaga do Excel:** Apache POI ładuje cały plik do pamięci. Dla plików do 20MB (~20k transakcji) standardowe API wystarczy. Dla większych plików można użyć streaming API (`SXSSFWorkbook`).
+
+---
+
 ## Changelog
 
 | Data | Zmiany |
@@ -1736,3 +1857,4 @@ Moduł `bank_data_ingestion` jest zaprojektowany z myślą o łatwym wydzieleniu
 | 2024-01-XX | Szczegółowy opis kolekcji MongoDB |
 | 2024-01-XX | Pełna specyfikacja REST API |
 | 2024-01-XX | User Journey diagram |
+| 2026-01-10 | Dodano sekcję Design Decisions: import przez system, kategorie przez import, merge plików, limity |

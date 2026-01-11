@@ -1554,6 +1554,70 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .hasMessageContaining("SETUP mode");
     }
 
+    @Test
+    void shouldRejectCreateCategoryWhenCashFlowInSetupMode() {
+        // given - create CashFlow with history (starts in SETUP mode)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when/then - trying to create category (without isImport flag) should fail
+        assertThatThrownBy(() -> cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("NewCategory")
+                        .type(OUTFLOW)
+                        .build()
+        )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
+                .hasMessageContaining("createCategory")
+                .hasMessageContaining("SETUP mode");
+    }
+
+    @Test
+    void shouldAllowCreateCategoryWhenCashFlowInSetupModeWithImportFlag() {
+        // given - create CashFlow with history (starts in SETUP mode)
+        String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
+                CashFlowDto.CreateCashFlowWithHistoryJson.builder()
+                        .userId("userId")
+                        .name("test cash flow")
+                        .description("description")
+                        .bankAccount(new BankAccount(
+                                new BankName("bank"),
+                                new BankAccountNumber("account", Currency.of("USD")),
+                                Money.of(1000, "USD")))
+                        .startPeriod("2021-10")
+                        .initialBalance(Money.of(1000, "USD"))
+                        .build()
+        );
+
+        // when - creating category with isImport=true flag should succeed
+        cashFlowRestController.createCategory(
+                cashFlowId,
+                CashFlowDto.CreateCategoryJson.builder()
+                        .category("ImportedCategory")
+                        .type(OUTFLOW)
+                        .build(),
+                true  // isImport flag
+        );
+
+        // then - category should be created
+        CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(result.getOutflowCategories()).hasSize(2); // Uncategorized + ImportedCategory
+        assertThat(result.getOutflowCategories().stream()
+                .map(c -> c.getCategoryName().name())
+                .toList()).contains("ImportedCategory");
+    }
+
     // ==================== CREATE CASH FLOW WITH HISTORY TESTS ====================
 
     @Test
@@ -3285,13 +3349,14 @@ public class CashFlowControllerTest extends IntegrationTest {
         Awaitility.await().until(
                 () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId)).isPresent());
 
-        // Add custom categories
+        // Add custom categories (using isImport=true since we're in SETUP mode)
         cashFlowRestController.createCategory(
                 cashFlowId,
                 CashFlowDto.CreateCategoryJson.builder()
                         .category("Income")
                         .type(INFLOW)
-                        .build()
+                        .build(),
+                true  // isImport flag - allows category creation in SETUP mode
         );
 
         cashFlowRestController.createCategory(
@@ -3300,7 +3365,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .parentCategoryName("Income")
                         .category("Salary")
                         .type(INFLOW)
-                        .build()
+                        .build(),
+                true  // isImport flag
         );
 
         // Import transaction to custom category
