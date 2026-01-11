@@ -184,12 +184,13 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
-     * Creates a simple mapping from bank category to existing CashFlow category.
+     * Creates a mapping that will create a new category during import.
+     * Note: MAP_TO_EXISTING was removed - each CashFlow can only have one file import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingToExisting(String bankCategory, String targetCategory, Type type) {
+    public BankDataIngestionDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
         return BankDataIngestionDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
-                .action(MappingAction.MAP_TO_EXISTING)
+                .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(targetCategory)
                 .categoryType(type)
                 .build();

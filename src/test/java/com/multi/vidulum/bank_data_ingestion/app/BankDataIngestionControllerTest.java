@@ -144,7 +144,7 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
@@ -163,7 +163,7 @@ public class BankDataIngestionControllerTest {
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Salary")
                                 .categoryType(Type.INFLOW)
                                 .build(),
@@ -202,7 +202,7 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build()
@@ -216,7 +216,7 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Shopping")
                                 .categoryType(Type.OUTFLOW)
                                 .build()
@@ -243,13 +243,13 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
                                 .categoryType(Type.INFLOW)
                                 .build()
@@ -281,13 +281,13 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
                                 .categoryType(Type.INFLOW)
                                 .build()
@@ -321,13 +321,13 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
                                 .categoryType(Type.INFLOW)
                                 .build()
@@ -384,7 +384,7 @@ public class BankDataIngestionControllerTest {
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Transfers In")
                                 .categoryType(Type.INFLOW)
                                 .build()
@@ -1032,6 +1032,7 @@ public class BankDataIngestionControllerTest {
         log.info("Received {} Kafka events for job {}", events.size(), jobId);
 
         // Verify ImportJobStartedEvent - full object assertion
+        // Note: categoriesToCreate=1 because we use CREATE_NEW mapping (not MAP_TO_EXISTING)
         BankDataIngestionEvent.ImportJobStartedEvent startedEvent = extractEvent(events, "ImportJobStartedEvent", BankDataIngestionEvent.ImportJobStartedEvent.class);
         assertThat(startedEvent).usingRecursiveComparison()
                 .isEqualTo(new BankDataIngestionEvent.ImportJobStartedEvent(
@@ -1040,13 +1041,30 @@ public class BankDataIngestionControllerTest {
                         stagingSessionId,
                         1,  // totalTransactions
                         1,  // validTransactions
-                        0,  // categoriesToCreate
+                        1,  // categoriesToCreate - using CREATE_NEW
                         ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
                 ));
 
-        // Verify ImportProgressEvent - full object assertion
-        BankDataIngestionEvent.ImportProgressEvent progressEvent = extractEvent(events, "ImportProgressEvent", BankDataIngestionEvent.ImportProgressEvent.class);
-        assertThat(progressEvent).usingRecursiveComparison()
+        // Verify ImportProgressEvents - with CREATE_NEW we get two progress events
+        // 1. CREATING_CATEGORIES (for the category creation phase)
+        // 2. IMPORTING_TRANSACTIONS (for the transaction import phase)
+        List<BankDataIngestionEvent.ImportProgressEvent> progressEvents = extractAllEvents(events, "ImportProgressEvent", BankDataIngestionEvent.ImportProgressEvent.class);
+        assertThat(progressEvents).hasSize(2);
+
+        // First: CREATING_CATEGORIES phase
+        assertThat(progressEvents.get(0)).usingRecursiveComparison()
+                .isEqualTo(new BankDataIngestionEvent.ImportProgressEvent(
+                        jobId,
+                        cashFlowId,
+                        ImportPhase.CREATING_CATEGORIES,
+                        1,    // processed
+                        1,    // total
+                        100,  // percent
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                ));
+
+        // Second: IMPORTING_TRANSACTIONS phase
+        assertThat(progressEvents.get(1)).usingRecursiveComparison()
                 .isEqualTo(new BankDataIngestionEvent.ImportProgressEvent(
                         jobId,
                         cashFlowId,
@@ -1058,13 +1076,14 @@ public class BankDataIngestionControllerTest {
                 ));
 
         // Verify ImportJobCompletedEvent - full object assertion
+        // Note: categoriesCreated=1 because we use CREATE_NEW mapping (not MAP_TO_EXISTING)
         BankDataIngestionEvent.ImportJobCompletedEvent completedEvent = extractEvent(events, "ImportJobCompletedEvent", BankDataIngestionEvent.ImportJobCompletedEvent.class);
         assertThat(completedEvent).usingRecursiveComparison()
                 .ignoringFields("durationMs")  // duration is non-deterministic
                 .isEqualTo(new BankDataIngestionEvent.ImportJobCompletedEvent(
                         jobId,
                         cashFlowId,
-                        0,  // categoriesCreated
+                        1,  // categoriesCreated - using CREATE_NEW
                         1,  // transactionsImported
                         0,  // transactionsFailed
                         0L, // durationMs - ignored
@@ -1222,6 +1241,13 @@ public class BankDataIngestionControllerTest {
                 .orElseThrow(() -> new AssertionError("Expected event " + eventType + " not found in events: " + events));
     }
 
+    private <T> List<T> extractAllEvents(List<BankDataIngestionUnifiedEvent> events, String eventType, Class<T> eventClass) {
+        return events.stream()
+                .filter(e -> eventType.equals(e.getMetadata().get("eventType")))
+                .map(e -> e.getContent().to(eventClass))
+                .toList();
+    }
+
     private String stageTransactionsForImport(String cashFlowId) {
         BankDataIngestionDto.StageTransactionsRequest stageRequest = BankDataIngestionDto.StageTransactionsRequest.builder()
                 .transactions(List.of(
@@ -1247,7 +1273,7 @@ public class BankDataIngestionControllerTest {
                 .mappings(List.of(
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
@@ -1260,7 +1286,7 @@ public class BankDataIngestionControllerTest {
                                 .build(),
                         BankDataIngestionDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew przychodzący")
-                                .action(MappingAction.MAP_TO_EXISTING)
+                                .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Salary")
                                 .categoryType(Type.INFLOW)
                                 .build()
