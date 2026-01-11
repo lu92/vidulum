@@ -236,6 +236,23 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
+     * Lists active staging sessions for a CashFlow.
+     * Allows users to return to unfinished imports.
+     */
+    public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(String cashFlowId) {
+        ResponseEntity<BankDataIngestionDto.ListStagingSessionsResponse> response = restTemplate.getForEntity(
+                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging",
+                BankDataIngestionDto.ListStagingSessionsResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        BankDataIngestionDto.ListStagingSessionsResponse body = response.getBody();
+        log.info("Listed staging sessions for CashFlow {}: {} sessions, hasPendingImport={}",
+                cashFlowId, body.getStagingSessions().size(), body.isHasPendingImport());
+        return body;
+    }
+
+    /**
      * Stages transactions for import.
      */
     public BankDataIngestionDto.StageTransactionsResponse stageTransactions(
@@ -247,7 +264,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<BankDataIngestionDto.StageTransactionsResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/stage",
+                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 BankDataIngestionDto.StageTransactionsResponse.class

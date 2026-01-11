@@ -48,6 +48,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -677,7 +678,77 @@ public class BankDataIngestionHttpIntegrationTest {
                 streamingMapping.getBankCategoryName(), streamingMapping.getTargetCategoryName(), streamingMapping.getAction());
     }
 
-    // Note: Tests for stage/import endpoints are in BankDataIngestionControllerTest
-    // which uses direct controller injection. The REST endpoints for staging and import
-    // will be added in a future implementation.
+    @Test
+    @DisplayName("Should list active staging sessions via REST API - verifies GET /bank-data-ingestion/{cashFlowId}/staging")
+    void shouldListActiveStagingSessionsViaRestApi() {
+        // given - create CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Zakupy", "Groceries", Type.OUTFLOW)
+        ));
+
+        // Stage transactions
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+                actor.bankTransaction("txn-001", "Biedronka", "Zakupy", 150.50, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC)),
+                actor.bankTransaction("txn-002", "Lidl", "Zakupy", 89.99, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
+        ));
+
+        String stagingSessionId = stageResponse.getStagingSessionId();
+
+        // when - list staging sessions
+        BankDataIngestionDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
+
+        // then - validate response
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.isHasPendingImport()).isTrue();
+        assertThat(response.getStagingSessions()).hasSize(1);
+
+        BankDataIngestionDto.StagingSessionSummaryJson session = response.getStagingSessions().get(0);
+        assertThat(session.getStagingSessionId()).isEqualTo(stagingSessionId);
+        assertThat(session.getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(session.getCounts().getTotalTransactions()).isEqualTo(2);
+        assertThat(session.getCounts().getValidTransactions()).isEqualTo(2);
+        assertThat(session.getCounts().getInvalidTransactions()).isEqualTo(0);
+        assertThat(session.getCounts().getDuplicateTransactions()).isEqualTo(0);
+        assertThat(session.getCreatedAt()).isEqualTo(FIXED_NOW);
+        assertThat(session.getExpiresAt()).isAfter(session.getCreatedAt());
+
+        log.info("Listed staging session: id={}, status={}, transactions={}",
+                session.getStagingSessionId(), session.getStatus(), session.getCounts().getTotalTransactions());
+    }
+
+    @Test
+    @DisplayName("Should return empty list when no active staging sessions via REST API")
+    void shouldReturnEmptyListWhenNoStagingSessionsViaRestApi() {
+        // given - create CashFlow without any staging
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // when - list staging sessions
+        BankDataIngestionDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
+
+        // then - verify empty response
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.isHasPendingImport()).isFalse();
+        assertThat(response.getStagingSessions()).isEmpty();
+
+        log.info("No active staging sessions found for CashFlow {}", cashFlowId);
+    }
 }

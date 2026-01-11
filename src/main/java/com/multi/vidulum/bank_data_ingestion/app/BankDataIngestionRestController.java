@@ -24,6 +24,8 @@ import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.Get
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.GetStagingPreviewResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListImportJobsQuery;
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListImportJobsResult;
+import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsQuery;
+import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
@@ -198,6 +200,21 @@ public class BankDataIngestionRestController {
     }
 
     // ============ Staging endpoints ============
+
+    /**
+     * List all active (non-expired) staging sessions for a CashFlow.
+     * Allows users to return to unfinished imports.
+     */
+    @GetMapping("/staging")
+    public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(
+            @PathVariable("cashFlowId") String cashFlowId) {
+
+        ListStagingSessionsResult result = queryGateway.send(
+                new ListStagingSessionsQuery(new CashFlowId(cashFlowId))
+        );
+
+        return toListStagingSessionsResponse(result);
+    }
 
     /**
      * Stage bank transactions for import preview.
@@ -451,6 +468,33 @@ public class BankDataIngestionRestController {
                         .status(preview.validation().status())
                         .errors(preview.validation().errors())
                         .duplicateOf(preview.validation().duplicateOf())
+                        .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.ListStagingSessionsResponse toListStagingSessionsResponse(
+            ListStagingSessionsResult result) {
+        return BankDataIngestionDto.ListStagingSessionsResponse.builder()
+                .cashFlowId(result.cashFlowId().id())
+                .stagingSessions(result.stagingSessions().stream()
+                        .map(this::toStagingSessionSummaryJson)
+                        .toList())
+                .hasPendingImport(result.hasPendingImport())
+                .build();
+    }
+
+    private BankDataIngestionDto.StagingSessionSummaryJson toStagingSessionSummaryJson(
+            ListStagingSessionsResult.StagingSessionSummary summary) {
+        return BankDataIngestionDto.StagingSessionSummaryJson.builder()
+                .stagingSessionId(summary.stagingSessionId().id())
+                .status(summary.status())
+                .createdAt(summary.createdAt())
+                .expiresAt(summary.expiresAt())
+                .counts(BankDataIngestionDto.StagingSessionCountsJson.builder()
+                        .totalTransactions(summary.counts().totalTransactions())
+                        .validTransactions(summary.counts().validTransactions())
+                        .invalidTransactions(summary.counts().invalidTransactions())
+                        .duplicateTransactions(summary.counts().duplicateTransactions())
                         .build())
                 .build();
     }

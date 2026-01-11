@@ -487,4 +487,39 @@ public class BankDataIngestionDto {
         private int categoriesCreated;
         private boolean canRollback;
     }
+
+    // ============ List Staging Sessions DTOs ============
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ListStagingSessionsResponse {
+        private String cashFlowId;
+        private List<StagingSessionSummaryJson> stagingSessions;
+        private boolean hasPendingImport;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StagingSessionSummaryJson {
+        private String stagingSessionId;
+        private String status;
+        private ZonedDateTime createdAt;
+        private ZonedDateTime expiresAt;
+        private StagingSessionCountsJson counts;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StagingSessionCountsJson {
+        private int totalTransactions;
+        private int validTransactions;
+        private int invalidTransactions;
+        private int duplicateTransactions;
+    }
 }
