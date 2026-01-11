@@ -675,6 +675,81 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getDeletedCount()).isEqualTo(0);
     }
 
+    @Test
+    @DisplayName("Should list active staging sessions for a CashFlow")
+    void shouldListActiveStagingSessions() {
+        // given: create a CashFlow and configure mappings
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+
+        // Stage first batch of transactions
+        BankDataIngestionDto.StageTransactionsRequest stageRequest1 = BankDataIngestionDto.StageTransactionsRequest.builder()
+                .transactions(List.of(
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-001")
+                                .name("Biedronka Zakupy")
+                                .description("Zakupy spożywcze")
+                                .bankCategory("Zakupy kartą")
+                                .amount(150.50)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build(),
+                        BankDataIngestionDto.BankTransactionJson.builder()
+                                .bankTransactionId("txn-002")
+                                .name("Netflix")
+                                .description("Subskrypcja")
+                                .bankCategory("Subskrypcje")
+                                .amount(49.99)
+                                .currency("PLN")
+                                .type(Type.OUTFLOW)
+                                .paidDate(ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
+                                .build()
+                ))
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stageResponse1 = bankDataIngestionRestController.stageTransactions(cashFlowId, stageRequest1);
+        String stagingSessionId = stageResponse1.getStagingSessionId();
+
+        // when: list staging sessions
+        BankDataIngestionDto.ListStagingSessionsResponse response = bankDataIngestionRestController.listStagingSessions(cashFlowId);
+
+        log.info("List staging sessions response - hasPendingImport: {}, sessions count: {}",
+                response.isHasPendingImport(), response.getStagingSessions().size());
+
+        // then: verify we have one active staging session
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.isHasPendingImport()).isTrue();
+        assertThat(response.getStagingSessions()).hasSize(1);
+
+        BankDataIngestionDto.StagingSessionSummaryJson sessionSummary = response.getStagingSessions().get(0);
+        assertThat(sessionSummary.getStagingSessionId()).isEqualTo(stagingSessionId);
+        assertThat(sessionSummary.getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(sessionSummary.getCounts().getTotalTransactions()).isEqualTo(2);
+        assertThat(sessionSummary.getCounts().getValidTransactions()).isEqualTo(2);
+        assertThat(sessionSummary.getCounts().getInvalidTransactions()).isEqualTo(0);
+        assertThat(sessionSummary.getCounts().getDuplicateTransactions()).isEqualTo(0);
+        assertThat(sessionSummary.getExpiresAt()).isAfter(sessionSummary.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("Should return empty list when no active staging sessions exist")
+    void shouldReturnEmptyListWhenNoActiveStagingSessions() {
+        // given: create a CashFlow with no staging sessions
+        String cashFlowId = createCashFlowWithHistory();
+
+        // when: list staging sessions
+        BankDataIngestionDto.ListStagingSessionsResponse response = bankDataIngestionRestController.listStagingSessions(cashFlowId);
+
+        log.info("List staging sessions (empty) response - hasPendingImport: {}, sessions count: {}",
+                response.isHasPendingImport(), response.getStagingSessions().size());
+
+        // then: verify empty response
+        assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(response.isHasPendingImport()).isFalse();
+        assertThat(response.getStagingSessions()).isEmpty();
+    }
+
     // ============ Import Job Tests ============
 
     @Test
