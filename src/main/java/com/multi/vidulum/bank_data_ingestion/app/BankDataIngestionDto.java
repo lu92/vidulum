@@ -488,6 +488,37 @@ public class BankDataIngestionDto {
         private boolean canRollback;
     }
 
+    // ============ Upload CSV DTOs ============
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UploadCsvResponse {
+        private ParseSummaryJson parseSummary;
+        private StageTransactionsResponse stagingResult;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ParseSummaryJson {
+        private int totalRows;
+        private int successfulRows;
+        private int failedRows;
+        private List<ParseErrorJson> errors;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ParseErrorJson {
+        private int rowNumber;
+        private String message;
+    }
+
     // ============ List Staging Sessions DTOs ============
 
     @Data

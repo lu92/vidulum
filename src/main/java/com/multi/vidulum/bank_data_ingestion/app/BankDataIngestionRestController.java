@@ -16,6 +16,8 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.Sta
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.start_import.StartImportJobCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.start_import.StartImportJobResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv.UploadCsvCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv.UploadCsvResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_import_progress.GetImportProgressQuery;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_import_progress.GetImportProgressResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.get_mappings.GetCategoryMappingsQuery;
@@ -34,7 +36,9 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -277,6 +281,51 @@ public class BankDataIngestionRestController {
                 .stagingSessionId(result.stagingSessionId().id())
                 .deleted(result.deleted())
                 .deletedCount(result.deletedCount())
+                .build();
+    }
+
+    /**
+     * Upload a CSV file with bank transactions in BankCsvRow format.
+     * Parses the CSV and stages transactions for import.
+     */
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public BankDataIngestionDto.UploadCsvResponse uploadCsv(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestParam("file") MultipartFile file) {
+
+        UploadCsvResult result = commandGateway.send(
+                new UploadCsvCommand(
+                        new CashFlowId(cashFlowId),
+                        file
+                )
+        );
+
+        return toUploadCsvResponse(result);
+    }
+
+    // ============ Upload CSV mapping helpers ============
+
+    private BankDataIngestionDto.UploadCsvResponse toUploadCsvResponse(UploadCsvResult result) {
+        BankDataIngestionDto.ParseSummaryJson parseSummary = BankDataIngestionDto.ParseSummaryJson.builder()
+                .totalRows(result.parseResult().totalRows())
+                .successfulRows(result.parseResult().successfulRows())
+                .failedRows(result.parseResult().failedRows())
+                .errors(result.parseResult().errors().stream()
+                        .map(e -> BankDataIngestionDto.ParseErrorJson.builder()
+                                .rowNumber(e.rowNumber())
+                                .message(e.message())
+                                .build())
+                        .toList())
+                .build();
+
+        BankDataIngestionDto.StageTransactionsResponse stagingResponse = null;
+        if (result.stagingResult() != null) {
+            stagingResponse = toStageTransactionsResponse(result.stagingResult());
+        }
+
+        return BankDataIngestionDto.UploadCsvResponse.builder()
+                .parseSummary(parseSummary)
+                .stagingResult(stagingResponse)
                 .build();
     }
 
