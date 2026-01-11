@@ -751,4 +751,186 @@ public class BankDataIngestionHttpIntegrationTest {
 
         log.info("No active staging sessions found for CashFlow {}", cashFlowId);
     }
+
+    // ============ CSV Upload Tests ============
+
+    @Test
+    @DisplayName("Should upload CSV file from resources and stage transactions via REST API")
+    void shouldUploadCsvFileFromResourcesAndStageTransactions() {
+        // given - create CashFlow with 6 months history
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings for bank categories in the CSV file
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
+                actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW),
+                actor.mappingCreateNew("Rozrywka", "Entertainment", Type.OUTFLOW),
+                actor.mappingCreateNew("Transport", "Transportation", Type.OUTFLOW)
+        ));
+
+        // when - upload CSV file from resources
+        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/historical-transactions.csv"
+        );
+
+        // then - verify parse summary (23 transactions in the CSV file)
+        assertThat(uploadResponse.getParseSummary().getTotalRows()).isEqualTo(23);
+        assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(23);
+        assertThat(uploadResponse.getParseSummary().getFailedRows()).isEqualTo(0);
+        assertThat(uploadResponse.getParseSummary().getErrors()).isEmpty();
+
+        // verify staging result
+        assertThat(uploadResponse.getStagingResult()).isNotNull();
+        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+        assertThat(uploadResponse.getStagingResult().getSummary().getTotalTransactions()).isEqualTo(23);
+        assertThat(uploadResponse.getStagingResult().getSummary().getValidTransactions()).isEqualTo(23);
+        assertThat(uploadResponse.getStagingResult().getSummary().getInvalidTransactions()).isEqualTo(0);
+        assertThat(uploadResponse.getStagingResult().getSummary().getDuplicateTransactions()).isEqualTo(0);
+        assertThat(uploadResponse.getStagingResult().getUnmappedCategories()).isEmpty();
+
+        String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
+        assertThat(stagingSessionId).isNotNull();
+
+        // Verify staging preview
+        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+        assertThat(preview.getSummary().getTotalTransactions()).isEqualTo(23);
+
+        // Calculate expected totals from CSV
+        // INFLOW: 5000 + 5000 + 5000 + 2000 + 5200 + 5200 + 5200 + 3000 = 35600
+        // OUTFLOW: 1500 + 250 + 1500 + 180 + 150 + 1500 + 200 + 1500 + 180 + 220 + 1500 + 120 + 1500 + 500 + 400 = 11200
+        double totalInflow = preview.getTransactions().stream()
+                .filter(tx -> tx.getType() == Type.INFLOW)
+                .mapToDouble(tx -> tx.getAmount())
+                .sum();
+        double totalOutflow = preview.getTransactions().stream()
+                .filter(tx -> tx.getType() == Type.OUTFLOW)
+                .mapToDouble(tx -> tx.getAmount())
+                .sum();
+
+        assertThat(totalInflow).isEqualTo(35600.0);
+        assertThat(totalOutflow).isEqualTo(11200.0);
+
+        log.info("CSV upload successful: {} transactions staged, total inflow={} PLN, total outflow={} PLN",
+                preview.getSummary().getTotalTransactions(), totalInflow, totalOutflow);
+    }
+
+    @Test
+    @DisplayName("Should upload CSV file and detect unmapped categories via REST API")
+    void shouldUploadCsvFileAndDetectUnmappedCategoriesViaRestApi() {
+        // given - create CashFlow WITHOUT configuring all mappings
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure only some mappings (missing: Rozrywka, Transport)
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
+                actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW)
+                // Missing: Rozrywka, Transport
+        ));
+
+        // when - upload CSV file from resources
+        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/historical-transactions.csv"
+        );
+
+        // then - CSV should be parsed successfully
+        assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(23);
+
+        // But staging should detect unmapped categories
+        assertThat(uploadResponse.getStagingResult()).isNotNull();
+        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(uploadResponse.getStagingResult().getUnmappedCategories()).hasSize(2);
+
+        List<String> unmappedBankCategories = uploadResponse.getStagingResult().getUnmappedCategories().stream()
+                .map(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
+                .toList();
+        assertThat(unmappedBankCategories).containsExactlyInAnyOrder("Rozrywka", "Transport");
+
+        log.info("CSV upload detected {} unmapped categories: {}",
+                uploadResponse.getStagingResult().getUnmappedCategories().size(),
+                unmappedBankCategories);
+    }
+
+    @Test
+    @DisplayName("Should complete full import flow using CSV file from resources via REST API")
+    void shouldCompleteFullImportFlowUsingCsvFileViaRestApi() {
+        // given - create CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-123",
+                "Test CashFlow",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure all mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
+                actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW),
+                actor.mappingCreateNew("Rozrywka", "Entertainment", Type.OUTFLOW),
+                actor.mappingCreateNew("Transport", "Transportation", Type.OUTFLOW)
+        ));
+
+        // Step 1: Upload CSV
+        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/historical-transactions.csv"
+        );
+
+        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+        String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
+
+        // Step 2: Start import (may complete immediately for small datasets)
+        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        assertThat(importResponse.getStatus()).isIn("IN_PROGRESS", "COMPLETED");
+        String jobId = importResponse.getJobId();
+
+        // Step 3: Check progress (should complete quickly in test)
+        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        // Import should be completed with all transactions processed
+        assertThat(progress.getResult()).isNotNull();
+        assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
+        assertThat(progress.getResult().getTransactionsFailed()).isEqualTo(0);
+
+        // Step 4: Finalize import
+        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
+        assertThat(finalizeResponse.getStatus()).isIn("COMPLETED", "FINALIZED");
+
+        // Step 5: Verify CashFlow has all transactions
+        CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlow.getCashChanges()).hasSize(23);
+
+        // Verify categories were created
+        assertThat(cashFlow.getInflowCategories().stream()
+                .map(c -> c.getCategoryName().name())
+                .toList()).contains("Salary");
+
+        assertThat(cashFlow.getOutflowCategories().stream()
+                .map(c -> c.getCategoryName().name())
+                .toList()).containsAll(List.of("Rent", "Groceries", "Utilities", "Entertainment", "Transportation"));
+
+        log.info("Full import flow completed: {} transactions imported", cashFlow.getCashChanges().size());
+    }
 }
