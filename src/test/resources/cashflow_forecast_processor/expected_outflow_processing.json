@@ -1129,9 +1129,9 @@
     }
   },
   "bankAccountNumber": {
-    "account": "account number",
-    "denomination": {
-      "id": "USD"
+    "accountNumber": "account number",
+    "currency": {
+      "code": "USD"
     }
   },
   "categoryStructure": {

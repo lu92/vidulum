@@ -65,7 +65,6 @@ public class ImportRolledBackEventHandler implements CashFlowEventHandler<CashFl
     }
 
     private String getCurrencyFromStatement(CashFlowForecastStatement statement) {
-        // Get currency from bank account
         return statement.getBankAccountNumber().denomination().getId();
     }
 

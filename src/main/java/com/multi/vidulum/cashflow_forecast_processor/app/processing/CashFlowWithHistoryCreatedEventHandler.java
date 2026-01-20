@@ -39,7 +39,7 @@ public class CashFlowWithHistoryCreatedEventHandler implements CashFlowEventHand
     public void handle(CashFlowEvent.CashFlowWithHistoryCreatedEvent event) {
         YearMonth startPeriod = event.startPeriod();
         YearMonth activePeriod = event.activePeriod();
-        Money currency = event.bankAccount().balance();
+        Money currency = event.initialBalance();
 
         // Create monthly forecasts for all periods
         Map<YearMonth, CashFlowMonthlyForecast> monthlyForecasts = Stream.concat(

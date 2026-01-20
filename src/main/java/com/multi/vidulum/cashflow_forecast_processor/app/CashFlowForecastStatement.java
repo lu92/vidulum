@@ -11,7 +11,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.util.Pair;
 
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
@@ -254,12 +253,12 @@ public class CashFlowForecastStatement {
     }
 
     public void updateStats() {
-        String currency = bankAccountNumber.denomination().getId();
+        String currencyCode = bankAccountNumber.denomination().getId();
         Money outcome = forecasts.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
                 .reduce(
-                        Money.zero(currency),
+                        Money.zero(currencyCode),
                         (totalStart, cashFlowMonthlyForecast) -> {
 
                             Money netChange = cashFlowMonthlyForecast.calcNetChange();
