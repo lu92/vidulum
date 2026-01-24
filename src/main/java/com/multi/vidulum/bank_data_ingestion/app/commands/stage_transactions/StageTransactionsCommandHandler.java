@@ -48,18 +48,11 @@ public class StageTransactionsCommandHandler
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        // Find unmapped categories first
+        // Find unmapped categories
         List<StageTransactionsResult.UnmappedCategory> unmappedCategories = findUnmappedCategories(
                 command.transactions(), mappingMap);
 
-        if (!unmappedCategories.isEmpty()) {
-            log.warn("Found {} unmapped categories for CashFlow [{}]",
-                    unmappedCategories.size(), command.cashFlowId().id());
-            return createUnmappedCategoriesResult(
-                    stagingSessionId, command.cashFlowId(), now, unmappedCategories);
-        }
-
-        // Process and stage transactions
+        // Process and stage ALL transactions (even those with unmapped categories)
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
         Set<String> existingBankTransactionIds = cashFlowInfo.existingTransactionIds();
 
@@ -70,11 +63,19 @@ public class StageTransactionsCommandHandler
             stagedTransactions.add(staged);
         }
 
-        // Save all staged transactions
+        // Save all staged transactions (including those pending mapping)
         stagedTransactionRepository.saveAll(stagedTransactions);
 
         log.info("Staged {} transactions for CashFlow [{}] in session [{}]",
                 stagedTransactions.size(), command.cashFlowId().id(), stagingSessionId.id());
+
+        // If there are unmapped categories, return HAS_UNMAPPED_CATEGORIES status
+        if (!unmappedCategories.isEmpty()) {
+            log.warn("Found {} unmapped categories for CashFlow [{}]",
+                    unmappedCategories.size(), command.cashFlowId().id());
+            return buildUnmappedResult(stagingSessionId, command.cashFlowId(), stagedTransactions,
+                    unmappedCategories, now);
+        }
 
         // Build and return result
         return buildResult(stagingSessionId, command.cashFlowId(), stagedTransactions,
@@ -132,9 +133,22 @@ public class StageTransactionsCommandHandler
                 txn.paidDate()
         );
 
-        // Get mapping
+        // Get mapping (may be null if not configured)
         MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
         CategoryMapping mapping = mappingMap.get(key);
+
+        // If no mapping exists, create transaction with PENDING_MAPPING status
+        if (mapping == null) {
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    null, // no mapped data yet
+                    TransactionValidation.pendingMapping(txn.bankCategory()),
+                    now,
+                    config.getStagingTtlHours()
+            );
+        }
 
         MappedTransactionData mappedData = new MappedTransactionData(
                 txn.name(),
@@ -204,22 +218,33 @@ public class StageTransactionsCommandHandler
         return TransactionValidation.valid();
     }
 
-    private StageTransactionsResult createUnmappedCategoriesResult(
+    private StageTransactionsResult buildUnmappedResult(
             StagingSessionId stagingSessionId,
             CashFlowId cashFlowId,
-            ZonedDateTime now,
-            List<StageTransactionsResult.UnmappedCategory> unmappedCategories) {
+            List<StagedTransaction> stagedTransactions,
+            List<StageTransactionsResult.UnmappedCategory> unmappedCategories,
+            ZonedDateTime now) {
+
+        // Calculate summary including pending mapping transactions
+        int total = stagedTransactions.size();
+        int valid = (int) stagedTransactions.stream().filter(StagedTransaction::isValid).count();
+        int invalid = (int) stagedTransactions.stream().filter(StagedTransaction::isInvalid).count();
+        int duplicates = (int) stagedTransactions.stream().filter(StagedTransaction::isDuplicate).count();
+        int pendingMapping = (int) stagedTransactions.stream().filter(StagedTransaction::isPendingMapping).count();
+
+        StageTransactionsResult.StagingSummary summary =
+                new StageTransactionsResult.StagingSummary(total, valid, invalid, duplicates);
 
         return new StageTransactionsResult(
                 stagingSessionId,
                 cashFlowId,
                 StageTransactionsResult.StagingStatus.HAS_UNMAPPED_CATEGORIES,
                 now.plusHours(config.getStagingTtlHours()),
-                new StageTransactionsResult.StagingSummary(0, 0, 0, 0),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
+                summary,
+                List.of(), // no category breakdown until all mappings configured
+                List.of(), // no categories to create until all mappings configured
+                List.of(), // no monthly breakdown until all mappings configured
+                List.of(), // no duplicates info yet
                 unmappedCategories
         );
     }

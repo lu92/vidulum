@@ -25,6 +25,7 @@ public record GetStagingPreviewResult(
 
     public enum StagingStatus {
         READY_FOR_IMPORT,
+        HAS_UNMAPPED_CATEGORIES,
         HAS_VALIDATION_ERRORS,
         EXPIRED,
         NOT_FOUND

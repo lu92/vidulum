@@ -151,7 +151,9 @@ public class StagedTransactionEntity {
                 .cashFlowId(transaction.cashFlowId().id())
                 .stagingSessionId(transaction.stagingSessionId().id())
                 .originalData(OriginalDataDocument.fromDomain(transaction.originalData()))
-                .mappedData(MappedDataDocument.fromDomain(transaction.mappedData()))
+                .mappedData(transaction.mappedData() != null
+                        ? MappedDataDocument.fromDomain(transaction.mappedData())
+                        : null)
                 .validation(ValidationDocument.fromDomain(transaction.validation()))
                 .createdAt(Date.from(transaction.createdAt().toInstant()))
                 .expiresAt(Date.from(transaction.expiresAt().toInstant()))
@@ -164,7 +166,7 @@ public class StagedTransactionEntity {
                 new CashFlowId(cashFlowId),
                 StagingSessionId.of(stagingSessionId),
                 originalData.toDomain(),
-                mappedData.toDomain(),
+                mappedData != null ? mappedData.toDomain() : null,
                 validation.toDomain(),
                 ZonedDateTime.ofInstant(createdAt.toInstant(), ZoneOffset.UTC),
                 ZonedDateTime.ofInstant(expiresAt.toInstant(), ZoneOffset.UTC)

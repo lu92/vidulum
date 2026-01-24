@@ -10,6 +10,8 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session.DeleteStagingSessionResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.finalize_import.FinalizeImportJobCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.finalize_import.FinalizeImportJobResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import.RollbackImportJobCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import.RollbackImportJobResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsCommand;
@@ -285,6 +287,25 @@ public class BankDataIngestionRestController {
     }
 
     /**
+     * Revalidate a staging session after category mappings have been configured.
+     * Updates transactions that were PENDING_MAPPING to have proper mapped data.
+     */
+    @PostMapping("/staging/{stagingSessionId}/revalidate")
+    public BankDataIngestionDto.RevalidateStagingResponse revalidateStaging(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("stagingSessionId") String stagingSessionId) {
+
+        RevalidateStagingResult result = commandGateway.send(
+                new RevalidateStagingCommand(
+                        new CashFlowId(cashFlowId),
+                        StagingSessionId.of(stagingSessionId)
+                )
+        );
+
+        return toRevalidateStagingResponse(result);
+    }
+
+    /**
      * Upload a CSV file with bank transactions in BankCsvRow format.
      * Parses the CSV and stages transactions for import.
      */
@@ -529,6 +550,24 @@ public class BankDataIngestionRestController {
                         .map(this::toStagingSessionSummaryJson)
                         .toList())
                 .hasPendingImport(result.hasPendingImport())
+                .build();
+    }
+
+    private BankDataIngestionDto.RevalidateStagingResponse toRevalidateStagingResponse(
+            RevalidateStagingResult result) {
+        return BankDataIngestionDto.RevalidateStagingResponse.builder()
+                .stagingSessionId(result.stagingSessionId().id())
+                .cashFlowId(result.cashFlowId().id())
+                .status(result.status().name())
+                .summary(BankDataIngestionDto.RevalidationSummaryJson.builder()
+                        .totalTransactions(result.summary().totalTransactions())
+                        .revalidatedCount(result.summary().revalidatedCount())
+                        .stillPendingCount(result.summary().stillPendingCount())
+                        .validCount(result.summary().validCount())
+                        .invalidCount(result.summary().invalidCount())
+                        .duplicateCount(result.summary().duplicateCount())
+                        .build())
+                .stillUnmappedCategories(result.stillUnmappedCategories())
                 .build();
     }
 

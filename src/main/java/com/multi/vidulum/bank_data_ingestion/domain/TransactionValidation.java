@@ -37,4 +37,13 @@ public record TransactionValidation(
                 duplicateOf
         );
     }
+
+    public static TransactionValidation pendingMapping(String bankCategory) {
+        return new TransactionValidation(
+                ValidationStatus.PENDING_MAPPING,
+                List.of("No mapping configured for bank category: " + bankCategory),
+                false,
+                null
+        );
+    }
 }
