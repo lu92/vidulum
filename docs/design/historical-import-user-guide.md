@@ -6,12 +6,13 @@
 2. [Przegląd procesu](#przegląd-procesu)
 3. [Kluczowe pola i ich znaczenie](#kluczowe-pola-i-ich-znaczenie)
 4. [User Journey z przykładowymi requestami](#user-journey-z-przykładowymi-requestami)
-5. [Stany i przejścia](#stany-i-przejścia)
-6. [Obsługa błędów](#obsługa-błędów)
-7. [Decyzje projektowe](#decyzje-projektowe)
-8. [Archiwizacja kategorii](#archiwizacja-kategorii)
-9. [Wersjonowanie kategorii (Category Versioning)](#wersjonowanie-kategorii-category-versioning)
-10. [Archiwizacja z subkategoriami (forceArchiveChildren)](#archiwizacja-z-subkategoriami-forcearchivechildren)
+5. [Bank Data Ingestion (Import CSV)](#bank-data-ingestion-import-csv)
+6. [Stany i przejścia](#stany-i-przejścia)
+7. [Obsługa błędów](#obsługa-błędów)
+8. [Decyzje projektowe](#decyzje-projektowe)
+9. [Archiwizacja kategorii](#archiwizacja-kategorii)
+10. [Wersjonowanie kategorii (Category Versioning)](#wersjonowanie-kategorii-category-versioning)
+11. [Archiwizacja z subkategoriami (forceArchiveChildren)](#archiwizacja-z-subkategoriami-forcearchivechildren)
 
 ---
 
@@ -377,6 +378,471 @@ Content-Type: application/json
 - Status pozostaje SETUP
 - Miesiące wracają do pustego stanu IMPORT_PENDING
 - Można importować od nowa
+
+---
+
+## Bank Data Ingestion (Import CSV)
+
+### Przegląd
+
+Bank Data Ingestion to alternatywna metoda importu historycznych transakcji poprzez plik CSV.
+Zamiast ręcznego dodawania transakcji pojedynczo (endpoint `/import-historical`), można zaimportować
+cały wyciąg bankowy jednym plikiem.
+
+### Diagram wysokopoziomowy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    BANK DATA INGESTION FLOW                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. CREATE           2. UPLOAD           3. CONFIGURE        4. IMPORT     │
+│  ───────────────     ──────────────      ────────────────    ──────────    │
+│                                                                             │
+│  createCashFlow      POST /upload        POST /mappings      POST /import  │
+│  WithHistory         (plik CSV)          POST /revalidate                  │
+│                                          (w pętli)                         │
+│                                                                             │
+│  Status: SETUP       Staging Session     Category Mappings   Bulk Import   │
+│                      utworzona           skonfigurowane      N transakcji  │
+│                                                                             │
+│                      [status:]           [status:]           [status:]     │
+│                      HAS_UNMAPPED_       READY_FOR_          COMPLETED     │
+│                      CATEGORIES          IMPORT                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Porównanie metod importu
+
+| Aspekt | Manual Import (`/import-historical`) | CSV Import (Bank Data Ingestion) |
+|--------|--------------------------------------|----------------------------------|
+| Liczba transakcji | Pojedyncze, N requestów | Bulk, 1 plik CSV |
+| Kategorie | Muszą istnieć przed importem | Tworzone automatycznie przez mappingi |
+| Walidacja | Natychmiastowa | Staging → Preview → Import |
+| Rollback | Usuwa wszystkie transakcje | Usuwa transakcje z danego importu |
+| Use case | Mało transakcji, ręczne wprowadzanie | Eksport z banku, wiele transakcji |
+
+### Statusy walidacji transakcji (Staging)
+
+| Status | Opis | Akcja wymagana |
+|--------|------|----------------|
+| `PENDING_MAPPING` | Brak skonfigurowanego mappingu dla kategorii bankowej | Skonfiguruj mapping |
+| `VALID` | Transakcja gotowa do importu | Brak |
+| `INVALID` | Błąd walidacji (np. zła data) | Popraw dane lub usuń |
+| `DUPLICATE` | Transakcja już istnieje (ten sam `bankTransactionId`) | Brak (zostanie pominięta) |
+
+### Statusy Staging Session
+
+| Status | Opis | Następny krok |
+|--------|------|---------------|
+| `HAS_UNMAPPED_CATEGORIES` | Są kategorie bez mappingu | `/mappings` → `/revalidate` |
+| `READY_FOR_IMPORT` | Wszystkie transakcje VALID | `/import` |
+| `IMPORT_IN_PROGRESS` | Import w toku | Czekaj |
+| `IMPORT_COMPLETED` | Import zakończony | Gotowe |
+
+---
+
+### Pętla mapowania
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PĘTLA MAPOWANIA                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. POST /upload                                                            │
+│     └─► HAS_UNMAPPED_CATEGORIES (6 kategorii bez mappingu)                 │
+│                                                                             │
+│          ┌──────────────────────────────────────────┐                      │
+│          │  POWTARZAJ AŻ WSZYSTKO ZMAPOWANE:        │                      │
+│          │                                          │                      │
+│     2. ──┤  POST /mappings (mapuj część lub wszystko)                      │
+│          │           │                              │                      │
+│     3. ──┤  POST /revalidate                        │                      │
+│          │           │                              │                      │
+│          │     Sprawdź response:                    │                      │
+│          │     - stillUnmappedCategories: []  ──────┼──► GOTOWE            │
+│          │     - stillUnmappedCategories: [..]  ────┼──► WRÓĆ DO 2.        │
+│          │                                          │                      │
+│          └──────────────────────────────────────────┘                      │
+│                                                                             │
+│  4. POST /import (gdy wszystkie VALID)                                     │
+│     └─► COMPLETED (N transakcji zaimportowanych)                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Kluczowe:**
+- Endpoint `/revalidate` pozwala przewalidować transakcje **bez ponownego uploadu CSV**
+- Można mapować kategorie iteracyjnie (część na raz)
+- Response z `/revalidate` informuje co jeszcze wymaga mappingu
+
+---
+
+### User Journey - Import CSV
+
+#### Krok 1: Utworzenie CashFlow z historią
+
+(Identyczne jak w sekcji "User Journey z przykładowymi requestami")
+
+```http
+POST /cash-flow/with-history
+Content-Type: application/json
+
+{
+  "name": "Konto ING - Import CSV",
+  "description": "Import z wyciągu bankowego",
+  "bankAccount": {
+    "number": "PL12345678901234567890123456",
+    "denomination": "PLN"
+  },
+  "startPeriod": "2025-07",
+  "initialBalance": { "amount": 10000, "currency": "PLN" }
+}
+```
+
+**Response:**
+```json
+"cf-csv-123"
+```
+
+---
+
+#### Krok 2: Upload pliku CSV
+
+**Format pliku CSV:**
+```csv
+bankTransactionId,name,description,bankCategory,amount,currency,type,paidDate
+TXN-2025-07-001,July Salary,Monthly salary,Wpływy regularne,5000.00,PLN,INFLOW,2025-07-15
+TXN-2025-07-002,July Rent,Monthly rent,Mieszkanie,1500.00,PLN,OUTFLOW,2025-07-15
+TXN-2025-08-001,August Salary,Monthly salary,Wpływy regularne,5000.00,PLN,INFLOW,2025-08-15
+```
+
+**Request:**
+```http
+POST /api/v1/bank-data-ingestion/{cashFlowId}/upload
+Content-Type: multipart/form-data
+
+file: @historical-transactions.csv
+```
+
+**Response:**
+```json
+{
+  "parseSummary": {
+    "totalRows": 23,
+    "successfulRows": 23,
+    "failedRows": 0,
+    "errors": []
+  },
+  "stagingResult": {
+    "stagingSessionId": "staging-abc-123",
+    "status": "HAS_UNMAPPED_CATEGORIES",
+    "summary": {
+      "totalTransactions": 23,
+      "validTransactions": 0,
+      "invalidTransactions": 0,
+      "duplicateTransactions": 0
+    },
+    "unmappedCategories": [
+      {"bankCategory": "Wpływy regularne", "count": 8, "type": "INFLOW"},
+      {"bankCategory": "Mieszkanie", "count": 6, "type": "OUTFLOW"},
+      {"bankCategory": "Zakupy kartą", "count": 4, "type": "OUTFLOW"},
+      {"bankCategory": "Rachunki", "count": 2, "type": "OUTFLOW"},
+      {"bankCategory": "Rozrywka", "count": 2, "type": "OUTFLOW"},
+      {"bankCategory": "Transport", "count": 1, "type": "OUTFLOW"}
+    ]
+  }
+}
+```
+
+**Stan po uploadzie:**
+- Staging session utworzona i **persystowana**
+- Transakcje zapisane ze statusem `PENDING_MAPPING`
+- Lista niezmapowanych kategorii bankowych zwrócona w response
+
+---
+
+#### Krok 3: Konfiguracja mappingów kategorii
+
+**Dostępne akcje mappingu:**
+
+| Akcja | Opis |
+|-------|------|
+| `CREATE_NEW` | Utwórz nową kategorię główną |
+| `CREATE_SUBCATEGORY` | Utwórz subkategorię pod istniejącą kategorią |
+| `MAP_TO_UNCATEGORIZED` | Mapuj do systemowej kategorii "Uncategorized" |
+
+**Request:**
+```http
+POST /api/v1/bank-data-ingestion/{cashFlowId}/mappings
+Content-Type: application/json
+
+{
+  "mappings": [
+    {
+      "bankCategoryName": "Wpływy regularne",
+      "action": "CREATE_NEW",
+      "targetCategoryName": "Salary",
+      "categoryType": "INFLOW"
+    },
+    {
+      "bankCategoryName": "Mieszkanie",
+      "action": "CREATE_SUBCATEGORY",
+      "targetCategoryName": "Rent",
+      "parentCategoryName": "Housing",
+      "categoryType": "OUTFLOW"
+    },
+    {
+      "bankCategoryName": "Zakupy kartą",
+      "action": "CREATE_NEW",
+      "targetCategoryName": "Groceries",
+      "categoryType": "OUTFLOW"
+    },
+    {
+      "bankCategoryName": "Rachunki",
+      "action": "CREATE_SUBCATEGORY",
+      "targetCategoryName": "Utilities",
+      "parentCategoryName": "Housing",
+      "categoryType": "OUTFLOW"
+    },
+    {
+      "bankCategoryName": "Rozrywka",
+      "action": "CREATE_NEW",
+      "targetCategoryName": "Entertainment",
+      "categoryType": "OUTFLOW"
+    },
+    {
+      "bankCategoryName": "Transport",
+      "action": "MAP_TO_UNCATEGORIZED",
+      "categoryType": "OUTFLOW"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "cashFlowId": "cf-csv-123",
+  "mappingsConfigured": 6,
+  "mappings": [
+    {"bankCategoryName": "Wpływy regularne", "targetCategoryName": "Salary", "status": "CREATED"},
+    {"bankCategoryName": "Mieszkanie", "targetCategoryName": "Rent", "parentCategoryName": "Housing", "status": "CREATED"},
+    {"bankCategoryName": "Zakupy kartą", "targetCategoryName": "Groceries", "status": "CREATED"},
+    {"bankCategoryName": "Rachunki", "targetCategoryName": "Utilities", "parentCategoryName": "Housing", "status": "CREATED"},
+    {"bankCategoryName": "Rozrywka", "targetCategoryName": "Entertainment", "status": "CREATED"},
+    {"bankCategoryName": "Transport", "targetCategoryName": "Uncategorized", "status": "MAPPED_TO_UNCATEGORIZED"}
+  ]
+}
+```
+
+---
+
+#### Krok 4: Revalidate staging (przewalidowanie transakcji)
+
+**Request:**
+```http
+POST /api/v1/bank-data-ingestion/{cashFlowId}/staging/{stagingSessionId}/revalidate
+```
+
+**Response:**
+```json
+{
+  "stagingSessionId": "staging-abc-123",
+  "status": "SUCCESS",
+  "summary": {
+    "totalTransactions": 23,
+    "revalidatedCount": 23,
+    "stillPendingCount": 0,
+    "validCount": 23,
+    "invalidCount": 0,
+    "duplicateCount": 0
+  },
+  "stillUnmappedCategories": []
+}
+```
+
+**Kluczowe pola response:**
+- `stillPendingCount: 0` → wszystkie transakcje zmapowane
+- `stillUnmappedCategories: []` → brak kategorii wymagających mappingu
+- `validCount: 23` → wszystkie transakcje gotowe do importu
+
+---
+
+#### Krok 5: Podgląd staging preview
+
+**Request:**
+```http
+GET /api/v1/bank-data-ingestion/{cashFlowId}/staging/{stagingSessionId}
+```
+
+**Response:**
+```json
+{
+  "stagingSessionId": "staging-abc-123",
+  "status": "READY_FOR_IMPORT",
+  "summary": {
+    "totalTransactions": 23,
+    "validTransactions": 23,
+    "invalidTransactions": 0,
+    "duplicateTransactions": 0
+  },
+  "categoryBreakdown": [
+    {"targetCategory": "Salary", "transactionCount": 8, "totalAmount": 35600.0, "type": "INFLOW"},
+    {"targetCategory": "Rent", "transactionCount": 6, "totalAmount": 9000.0, "type": "OUTFLOW"},
+    {"targetCategory": "Groceries", "transactionCount": 4, "totalAmount": 880.0, "type": "OUTFLOW"},
+    {"targetCategory": "Utilities", "transactionCount": 2, "totalAmount": 300.0, "type": "OUTFLOW"},
+    {"targetCategory": "Entertainment", "transactionCount": 2, "totalAmount": 550.0, "type": "OUTFLOW"},
+    {"targetCategory": "Uncategorized", "transactionCount": 1, "totalAmount": 120.0, "type": "OUTFLOW"}
+  ],
+  "monthlyBreakdown": [
+    {"month": "2025-07", "inflowTotal": 5000.0, "outflowTotal": 1750.0, "transactionCount": 3},
+    {"month": "2025-08", "inflowTotal": 5000.0, "outflowTotal": 1830.0, "transactionCount": 4},
+    {"month": "2025-09", "inflowTotal": 7000.0, "outflowTotal": 1700.0, "transactionCount": 4},
+    {"month": "2025-10", "inflowTotal": 5200.0, "outflowTotal": 1900.0, "transactionCount": 4},
+    {"month": "2025-11", "inflowTotal": 5200.0, "outflowTotal": 1620.0, "transactionCount": 3},
+    {"month": "2025-12", "inflowTotal": 8200.0, "outflowTotal": 2050.0, "transactionCount": 5}
+  ],
+  "categoriesToCreate": [
+    {"name": "Salary", "parent": null, "type": "INFLOW"},
+    {"name": "Housing", "parent": null, "type": "OUTFLOW"},
+    {"name": "Rent", "parent": "Housing", "type": "OUTFLOW"},
+    {"name": "Utilities", "parent": "Housing", "type": "OUTFLOW"},
+    {"name": "Groceries", "parent": null, "type": "OUTFLOW"},
+    {"name": "Entertainment", "parent": null, "type": "OUTFLOW"}
+  ]
+}
+```
+
+---
+
+#### Krok 6: Start importu
+
+**Request:**
+```http
+POST /api/v1/bank-data-ingestion/{cashFlowId}/import
+Content-Type: application/json
+
+{
+  "stagingSessionId": "staging-abc-123"
+}
+```
+
+**Response:**
+```json
+{
+  "jobId": "job-xyz-789",
+  "cashFlowId": "cf-csv-123",
+  "stagingSessionId": "staging-abc-123",
+  "status": "COMPLETED",
+  "input": {
+    "totalTransactions": 23,
+    "validTransactions": 23,
+    "duplicateTransactions": 0,
+    "categoriesToCreate": 6
+  },
+  "progress": {
+    "percentage": 100,
+    "phases": [
+      {"name": "CREATING_CATEGORIES", "status": "COMPLETED", "processed": 6, "total": 6, "durationMs": 163},
+      {"name": "IMPORTING_TRANSACTIONS", "status": "COMPLETED", "processed": 23, "total": 23, "durationMs": 326}
+    ]
+  },
+  "result": {
+    "categoriesCreated": ["Salary", "Housing", "Rent", "Utilities", "Groceries", "Entertainment"],
+    "transactionsImported": 23,
+    "transactionsFailed": 0,
+    "errors": []
+  },
+  "canRollback": true
+}
+```
+
+**Fazy importu:**
+1. `CREATING_CATEGORIES` - tworzenie kategorii zdefiniowanych w mappingach
+2. `IMPORTING_TRANSACTIONS` - import transakcji jako `HistoricalCashChangeImportedEvent`
+
+---
+
+#### Krok 7: Attestacja i przejście do OPEN
+
+(Identyczne jak w sekcji "User Journey z przykładowymi requestami")
+
+```http
+POST /cash-flow/{cashFlowId}/attest-historical-import
+Content-Type: application/json
+
+{
+  "confirmedBalance": { "amount": 34750.00, "currency": "PLN" },
+  "forceAttestation": false,
+  "createAdjustment": false
+}
+```
+
+---
+
+### Diagram stanów Staging Session
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│               Staging Session State Machine                                │
+│                                                                            │
+│                                                                            │
+│   ┌─────────────────────┐                                                 │
+│   │    (nie istnieje)   │                                                 │
+│   └─────────────────────┘                                                 │
+│              │                                                             │
+│              │ POST /upload                                                │
+│              ▼                                                             │
+│   ┌─────────────────────┐     POST /mappings +      ┌─────────────────┐   │
+│   │  HAS_UNMAPPED_      │     POST /revalidate      │  READY_FOR_     │   │
+│   │  CATEGORIES         │ ─────────────────────────▶│  IMPORT         │   │
+│   └─────────────────────┘     (gdy wszystkie        └─────────────────┘   │
+│              │                 zmapowane)                   │              │
+│              │                                              │              │
+│              │ POST /mappings                               │ POST /import │
+│              │ (częściowe)                                  ▼              │
+│              │                                    ┌─────────────────┐     │
+│              └──────────────────────────────────▶│  IMPORT_IN_     │     │
+│                      pozostaje w                 │  PROGRESS       │     │
+│                      HAS_UNMAPPED_CATEGORIES     └─────────────────┘     │
+│                                                          │               │
+│                                                          │ (zakończony)  │
+│                                                          ▼               │
+│                                                 ┌─────────────────┐      │
+│                                                 │  IMPORT_        │      │
+│                                                 │  COMPLETED      │      │
+│                                                 └─────────────────┘      │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Obsługa błędów Bank Data Ingestion
+
+| Wyjątek | Kiedy | HTTP Status | Rozwiązanie |
+|---------|-------|-------------|-------------|
+| `StagingSessionNotFoundException` | Staging session nie istnieje | 404 | Sprawdź stagingSessionId |
+| `StagingNotReadyForImportException` | Import gdy status != READY_FOR_IMPORT | 400 | Skonfiguruj brakujące mappingi |
+| `CashFlowNotInSetupModeException` | Upload/Import gdy CashFlow nie w SETUP | 400 | CashFlow musi być w statusie SETUP |
+| `InvalidCsvFormatException` | Błędny format pliku CSV | 400 | Popraw plik CSV |
+| `DuplicateBankTransactionIdException` | Duplikat bankTransactionId w pliku | 400 | Usuń duplikaty z CSV |
+
+---
+
+### API Endpoints - Bank Data Ingestion
+
+| Method | Endpoint | Opis |
+|--------|----------|------|
+| POST | `/api/v1/bank-data-ingestion/{cashFlowId}/upload` | Upload pliku CSV |
+| POST | `/api/v1/bank-data-ingestion/{cashFlowId}/mappings` | Konfiguracja mappingów |
+| GET | `/api/v1/bank-data-ingestion/{cashFlowId}/staging/{sid}` | Podgląd staging session |
+| POST | `/api/v1/bank-data-ingestion/{cashFlowId}/staging/{sid}/revalidate` | Revalidate transakcji |
+| POST | `/api/v1/bank-data-ingestion/{cashFlowId}/import` | Start importu |
+| GET | `/api/v1/bank-data-ingestion/{cashFlowId}/import/{jobId}` | Status importu |
 
 ---
 
@@ -1417,3 +1883,7 @@ Transakcja została pomyślnie dodana do kategorii "Fuel", mimo że kategoria na
 | 2026-01-07 | Dodanie sekcji o wersjonowaniu kategorii (VID-90) |
 | 2026-01-07 | Dodanie sekcji o forceArchiveChildren z przykładami TRUE/FALSE |
 | 2026-01-07 | Dodanie diagramów stanu CashFlow i Forecasts po operacjach na kategoriach |
+| 2026-01-25 | Dodanie sekcji "Bank Data Ingestion (Import CSV)" z pełnym workflow |
+| 2026-01-25 | Dodanie diagramu "Pętla mapowania" dla iteracyjnego procesu mappingów |
+| 2026-01-25 | Dodanie opisu endpointu `/revalidate` i statusów staging session |
+| 2026-01-25 | Dodanie tabeli porównawczej: Manual Import vs CSV Import |
