@@ -60,4 +60,8 @@ public record StagedTransaction(
     public boolean isInvalid() {
         return validation.status() == ValidationStatus.INVALID;
     }
+
+    public boolean isPendingMapping() {
+        return validation.status() == ValidationStatus.PENDING_MAPPING;
+    }
 }

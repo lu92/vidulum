@@ -553,4 +553,31 @@ public class BankDataIngestionDto {
         private int invalidTransactions;
         private int duplicateTransactions;
     }
+
+    // ============ Revalidate Staging DTOs ============
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RevalidateStagingResponse {
+        private String stagingSessionId;
+        private String cashFlowId;
+        private String status;
+        private RevalidationSummaryJson summary;
+        private List<String> stillUnmappedCategories;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RevalidationSummaryJson {
+        private int totalTransactions;
+        private int revalidatedCount;
+        private int stillPendingCount;
+        private int validCount;
+        private int invalidCount;
+        private int duplicateCount;
+    }
 }

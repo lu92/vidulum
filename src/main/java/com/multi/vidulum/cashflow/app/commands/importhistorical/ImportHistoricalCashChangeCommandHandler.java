@@ -75,7 +75,10 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
         log.info("Historical cash change [{}] imported to CashFlow [{}] for period [{}]",
                 cashChangeId.id(), command.cashFlowId().id(), targetPeriod);
 
-        cashFlowEventEmitter.emit(
+        // Use emitWithKey to ensure event ordering within the same CashFlow
+        // Critical for import: CategoryCreatedEvent must be processed before HistoricalCashChangeImportedEvent
+        cashFlowEventEmitter.emitWithKey(
+                command.cashFlowId(),
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.HistoricalCashChangeImportedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))

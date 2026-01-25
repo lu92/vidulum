@@ -66,7 +66,9 @@ public class CreateCategoryCommandHandler implements CommandHandler<CreateCatego
 
         domainCashFlowRepository.save(cashFlow);
 
-        cashFlowEventEmitter.emit(
+        // Use emitWithKey to ensure event ordering within the same CashFlow
+        cashFlowEventEmitter.emitWithKey(
+                command.cashFlowId(),
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CategoryCreatedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))

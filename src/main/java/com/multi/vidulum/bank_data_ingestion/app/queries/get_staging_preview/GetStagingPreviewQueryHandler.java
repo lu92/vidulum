@@ -95,17 +95,19 @@ public class GetStagingPreviewQueryHandler
         int valid = (int) stagedTransactions.stream().filter(StagedTransaction::isValid).count();
         int invalid = (int) stagedTransactions.stream().filter(StagedTransaction::isInvalid).count();
         int duplicates = (int) stagedTransactions.stream().filter(StagedTransaction::isDuplicate).count();
+        int pendingMapping = (int) stagedTransactions.stream().filter(StagedTransaction::isPendingMapping).count();
 
         GetStagingPreviewResult.StagingSummary summary =
                 new GetStagingPreviewResult.StagingSummary(total, valid, invalid, duplicates);
 
-        // Build transaction previews
+        // Build transaction previews (only for transactions with mappedData)
         List<GetStagingPreviewResult.StagedTransactionPreview> transactionPreviews =
                 stagedTransactions.stream()
+                        .filter(st -> st.mappedData() != null)
                         .map(this::toTransactionPreview)
                         .toList();
 
-        // Build category breakdown
+        // Build category breakdown (only for valid transactions)
         List<GetStagingPreviewResult.CategoryBreakdown> categoryBreakdown =
                 buildCategoryBreakdown(stagedTransactions, snapshot);
 
@@ -113,14 +115,19 @@ public class GetStagingPreviewQueryHandler
         List<GetStagingPreviewResult.CategoryToCreate> categoriesToCreate =
                 buildCategoriesToCreate(stagedTransactions, snapshot, mappingMap);
 
-        // Build monthly breakdown
+        // Build monthly breakdown (only for valid transactions)
         List<GetStagingPreviewResult.MonthlyBreakdown> monthlyBreakdown =
                 buildMonthlyBreakdown(stagedTransactions);
 
         // Determine status
-        GetStagingPreviewResult.StagingStatus status = invalid > 0
-                ? GetStagingPreviewResult.StagingStatus.HAS_VALIDATION_ERRORS
-                : GetStagingPreviewResult.StagingStatus.READY_FOR_IMPORT;
+        GetStagingPreviewResult.StagingStatus status;
+        if (pendingMapping > 0) {
+            status = GetStagingPreviewResult.StagingStatus.HAS_UNMAPPED_CATEGORIES;
+        } else if (invalid > 0) {
+            status = GetStagingPreviewResult.StagingStatus.HAS_VALIDATION_ERRORS;
+        } else {
+            status = GetStagingPreviewResult.StagingStatus.READY_FOR_IMPORT;
+        }
 
         return new GetStagingPreviewResult(
                 query.stagingSessionId(),

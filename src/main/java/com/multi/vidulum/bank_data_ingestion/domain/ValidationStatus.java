@@ -17,5 +17,11 @@ public enum ValidationStatus {
     /**
      * Transaction is a duplicate of an existing transaction.
      */
-    DUPLICATE
+    DUPLICATE,
+
+    /**
+     * Transaction is pending category mapping configuration.
+     * Will be revalidated when mappings are configured.
+     */
+    PENDING_MAPPING
 }

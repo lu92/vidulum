@@ -50,7 +50,9 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
         CashFlow savedCashFlow = domainCashFlowRepository.save(cashFlow);
         log.info("Cash flow with history [{}] has been created in SETUP mode!", savedCashFlow.getSnapshot());
 
-        cashFlowEventEmitter.emit(
+        // Use emitWithKey to ensure event ordering within the same CashFlow
+        cashFlowEventEmitter.emitWithKey(
+                event.cashFlowId(),
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashFlowWithHistoryCreatedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
