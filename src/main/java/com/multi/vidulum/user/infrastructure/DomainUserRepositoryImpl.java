@@ -35,6 +35,11 @@ public class DomainUserRepositoryImpl implements DomainUserRepository {
     }
 
     @Override
+    public boolean existsByEmail(String email) {
+        return userMongoRepository.existsByEmail(email);
+    }
+
+    @Override
     public Optional<User> findByUsername(String username) {
         return userMongoRepository.findByUsername(username)
                 .map(UserEntity::toSnapshot)

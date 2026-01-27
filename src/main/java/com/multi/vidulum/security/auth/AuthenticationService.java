@@ -30,8 +30,8 @@ public class AuthenticationService {
 
     public AuthenticationResponse register(RegisterRequest request) {
 
-        if (userRepository.existsByUsername(request.getEmail())) {
-            throw new IllegalArgumentException("Used email is already taken");
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new EmailAlreadyTakenException(request.getEmail());
         }
 
         User user = User.builder()
