@@ -21,6 +21,7 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
     Quantity quantity;
     Price price;
     Fee fee;
+    ExchangeRate exchangeCurrencyRate;
     Money localValue; // value expressed in local currency [reference to price's currency]
     Money value; // value expressed in original currency of portfolio
     Money totalValue; // value + totalFee
@@ -43,6 +44,7 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
                         fee.exchangeCurrencyFee(),
                         fee.transactionFee(),
                         fee.totalFee()),
+                exchangeCurrencyRate,
                 localValue,
                 value,
                 totalValue,
@@ -65,6 +67,7 @@ public class Trade implements Aggregate<TradeId, TradeSnapshot> {
                         snapshot.getFee().exchangeCurrencyFee(),
                         snapshot.getFee().transactionFee(),
                         snapshot.getFee().totalFee()))
+                .exchangeCurrencyRate(snapshot.getExchangeCurrencyRate())
                 .localValue(snapshot.getLocalValue())
                 .value(snapshot.getValue())
                 .totalValue(snapshot.getTotalValue())
