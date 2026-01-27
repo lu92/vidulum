@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface DomainUserRepository extends DomainRepository<UserId, User> {
     boolean existsByUsername(String username);
 
-    Optional<User> findByUsername(String username);
+    boolean existsByEmail(String email);
 
+    Optional<User> findByUsername(String username);
 }
