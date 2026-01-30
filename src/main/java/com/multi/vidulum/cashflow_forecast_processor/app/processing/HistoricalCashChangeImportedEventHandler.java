@@ -5,6 +5,7 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
@@ -16,14 +17,96 @@ import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.PA
  * Adds historical transactions to IMPORT_PENDING months.
  * Historical transactions are added directly as PAID since they represent past confirmed transactions.
  */
+@Slf4j
 @Component
 @AllArgsConstructor
 public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHandler<CashFlowEvent.HistoricalCashChangeImportedEvent> {
 
     private final CashFlowForecastStatementRepository statementRepository;
 
+    /**
+     * WORKAROUND: Retry configuration for race condition between CategoryCreatedEvent and HistoricalCashChangeImportedEvent.
+     *
+     * When importing historical transactions, the CategoryCreatedEvent and HistoricalCashChangeImportedEvent
+     * are sent to Kafka in order, but may be processed by different consumers or with slight delays.
+     * This causes a race condition where HistoricalCashChangeImportedEvent may be processed before
+     * the category exists in the read model (forecast_statement).
+     *
+     * This retry mechanism waits for the category to appear in the read model before processing.
+     * A proper fix would require ensuring event ordering at the architecture level (e.g., saga pattern,
+     * single consumer, or including category data directly in the transaction event).
+     */
+    private static final int MAX_RETRIES = 10;
+    private static final long INITIAL_BACKOFF_MS = 100;
+
     @Override
     public void handle(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
+        // WORKAROUND: Retry the entire operation with backoff to handle race condition
+        // where CategoryCreatedEvent may not yet be processed when HistoricalCashChangeImportedEvent arrives
+        handleWithRetry(event);
+    }
+
+    /**
+     * WORKAROUND: Wraps the entire handle logic with retry mechanism.
+     * This handles race condition where category may not exist yet in the read model.
+     */
+    private void handleWithRetry(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
+        long backoffMs = INITIAL_BACKOFF_MS;
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                doHandle(event);
+                return; // Success - exit retry loop
+            } catch (IllegalStateException e) {
+                // Check if this is a "category not found" error - these are retriable
+                if (e.getMessage() != null && e.getMessage().contains("Cannot find cash-category")) {
+                    lastException = e;
+                    if (attempt < MAX_RETRIES) {
+                        log.warn("WORKAROUND: Category [{}] not found for cashflow [{}], retry {}/{} after {}ms. Error: {}",
+                                event.categoryName(), event.cashFlowId(), attempt, MAX_RETRIES, backoffMs, e.getMessage());
+                        try {
+                            Thread.sleep(backoffMs);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("Interrupted while waiting for category to appear", ie);
+                        }
+                        backoffMs = Math.min(backoffMs * 2, 2000); // Exponential backoff, max 2 seconds
+                    }
+                } else {
+                    // Not a retriable error - rethrow immediately
+                    throw e;
+                }
+            } catch (CashFlowDoesNotExistsException e) {
+                // CashFlow/Statement not found - also retriable
+                lastException = e;
+                if (attempt < MAX_RETRIES) {
+                    log.warn("WORKAROUND: Statement not found for cashflow [{}], retry {}/{} after {}ms",
+                            event.cashFlowId(), attempt, MAX_RETRIES, backoffMs);
+                    try {
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted while waiting for statement to appear", ie);
+                    }
+                    backoffMs = Math.min(backoffMs * 2, 2000);
+                }
+            }
+        }
+
+        // All retries exhausted - throw the last exception
+        log.error("WORKAROUND: All {} retries exhausted for category [{}] in cashflow [{}]",
+                MAX_RETRIES, event.categoryName(), event.cashFlowId());
+        if (lastException instanceof RuntimeException) {
+            throw (RuntimeException) lastException;
+        }
+        throw new RuntimeException("Failed after " + MAX_RETRIES + " retries", lastException);
+    }
+
+    /**
+     * Original handle logic extracted to separate method for retry wrapper.
+     */
+    private void doHandle(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
@@ -89,4 +172,5 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
         updateSyncMetadata(statement, event);
         statementRepository.save(statement);
     }
+
 }
