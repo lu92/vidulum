@@ -387,6 +387,27 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
+     * Revalidates a staging session after mappings have been configured.
+     * Updates transactions that were PENDING_MAPPING to have proper mapped data.
+     */
+    public BankDataIngestionDto.RevalidateStagingResponse revalidateStaging(String cashFlowId, String stagingSessionId) {
+        ResponseEntity<BankDataIngestionDto.RevalidateStagingResponse> response = restTemplate.exchange(
+                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging/" + stagingSessionId + "/revalidate",
+                HttpMethod.POST,
+                null,
+                BankDataIngestionDto.RevalidateStagingResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        BankDataIngestionDto.RevalidateStagingResponse body = response.getBody();
+        log.info("Revalidated staging session {} for CashFlow {}: status={}, revalidated={}, stillPending={}",
+                stagingSessionId, cashFlowId, body.getStatus(),
+                body.getSummary().getRevalidatedCount(),
+                body.getSummary().getStillPendingCount());
+        return body;
+    }
+
+    /**
      * Uploads a CSV file from classpath resources and stages transactions.
      * The CSV file must be in BankCsvRow format.
      *
