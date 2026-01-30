@@ -25,6 +25,7 @@ public enum ErrorCode {
     CASHFLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "CashFlow not found"),
     CASHFLOW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Access to CashFlow denied"),
     CASHFLOW_INVALID_STATE(HttpStatus.BAD_REQUEST, "Operation not allowed in current state"),
+    CASHFLOW_BALANCE_MISMATCH(HttpStatus.CONFLICT, "Balance mismatch during attestation"),
 
     // Bank Data Ingestion
     INGESTION_STAGING_NOT_FOUND(HttpStatus.NOT_FOUND, "Staging session not found"),

@@ -49,6 +49,7 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
         if (!isZeroDifference && !command.forceAttestation() && !command.createAdjustment()) {
             throw new BalanceMismatchException(
                     command.cashFlowId(),
+                    snapshot.name(),
                     confirmedBalance,
                     calculatedBalance,
                     difference

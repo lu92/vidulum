@@ -9,15 +9,17 @@ import com.multi.vidulum.common.Money;
 public class BalanceMismatchException extends RuntimeException {
 
     private final CashFlowId cashFlowId;
+    private final Name cashFlowName;
     private final Money confirmedBalance;
     private final Money calculatedBalance;
     private final Money difference;
 
-    public BalanceMismatchException(CashFlowId cashFlowId, Money confirmedBalance, Money calculatedBalance, Money difference) {
-        super(String.format("Balance mismatch for CashFlow [%s]. Confirmed: [%s], Calculated: [%s], Difference: [%s]. " +
-                        "Use forceActivation=true to activate anyway.",
-                cashFlowId.id(), confirmedBalance, calculatedBalance, difference));
+    public BalanceMismatchException(CashFlowId cashFlowId, Name cashFlowName, Money confirmedBalance, Money calculatedBalance, Money difference) {
+        super(String.format("Balance mismatch for CashFlow '%s' [%s]. Confirmed: [%s], Calculated: [%s], Difference: [%s]. " +
+                        "Use forceAttestation=true or createAdjustment=true to proceed.",
+                cashFlowName.name(), cashFlowId.id(), confirmedBalance, calculatedBalance, difference));
         this.cashFlowId = cashFlowId;
+        this.cashFlowName = cashFlowName;
         this.confirmedBalance = confirmedBalance;
         this.calculatedBalance = calculatedBalance;
         this.difference = difference;
@@ -25,6 +27,10 @@ public class BalanceMismatchException extends RuntimeException {
 
     public CashFlowId getCashFlowId() {
         return cashFlowId;
+    }
+
+    public Name getCashFlowName() {
+        return cashFlowName;
     }
 
     public Money getConfirmedBalance() {
