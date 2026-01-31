@@ -1,5 +1,6 @@
 package com.multi.vidulum.security.config;
 
+import com.multi.vidulum.cashflow.domain.BalanceMismatchException;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.FieldError;
@@ -57,6 +58,13 @@ public class ErrorHttpHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleJsonParse(HttpMessageNotReadableException ex) {
         ApiError error = ApiError.of(ErrorCode.VALIDATION_INVALID_JSON);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(BalanceMismatchException.class)
+    public ResponseEntity<ApiError> handleBalanceMismatch(BalanceMismatchException ex) {
+        log.warn("Balance mismatch for CashFlow [{}]: {}", ex.getCashFlowId().id(), ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CASHFLOW_BALANCE_MISMATCH, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
