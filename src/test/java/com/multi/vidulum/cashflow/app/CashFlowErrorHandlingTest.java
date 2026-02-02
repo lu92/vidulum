@@ -7,10 +7,7 @@ import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -37,6 +34,8 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
+import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
+import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -196,6 +195,568 @@ class CashFlowErrorHandlingTest {
             assertThat(response.getBody().getCashFlowId()).isEqualTo(cashFlowId);
 
             log.info("Attestation succeeded with correct balance: cashFlowId={}", cashFlowId);
+        }
+    }
+
+    // ============ Resources Not Found (404) ============
+
+    @Nested
+    @DisplayName("Resources Not Found (404)")
+    class ResourcesNotFound {
+
+        @Test
+        @DisplayName("Should return 404 NOT_FOUND with CASHFLOW_NOT_FOUND when CashFlow does not exist")
+        void shouldReturn404WhenCashFlowNotFound() {
+            // given
+            String nonExistentCashFlowId = UUID.randomUUID().toString();
+
+            // when
+            ResponseEntity<ApiError> response = actor.getCashFlowExpectingError(nonExistentCashFlowId);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(404);
+            assertThat(error.code()).isEqualTo("CASHFLOW_NOT_FOUND");
+            assertThat(error.message()).contains(nonExistentCashFlowId);
+            assertThat(error.fieldErrors()).isNull();
+            assertThat(error.timestamp()).isNotNull();
+
+            log.info("CashFlow not found correctly returned 404: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 404 NOT_FOUND with CASHCHANGE_NOT_FOUND when CashChange does not exist")
+        void shouldReturn404WhenCashChangeNotFound() {
+            // given - create CashFlow first
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            String nonExistentCashChangeId = UUID.randomUUID().toString();
+
+            // when - try to confirm non-existent cash change
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, nonExistentCashChangeId);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(404);
+            assertThat(error.code()).isEqualTo("CASHCHANGE_NOT_FOUND");
+            assertThat(error.message()).contains(nonExistentCashChangeId);
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("CashChange not found correctly returned 404: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 404 NOT_FOUND with CATEGORY_NOT_FOUND when archiving non-existent category")
+        void shouldReturn404WhenCategoryNotFoundOnArchive() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to archive non-existent category
+            ResponseEntity<ApiError> response = actor.archiveCategoryExpectingError(
+                    cashFlowId, "NonExistentCategory", INFLOW, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(404);
+            assertThat(error.code()).isEqualTo("CATEGORY_NOT_FOUND");
+            assertThat(error.message()).contains("NonExistentCategory");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Category not found correctly returned 404: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 404 NOT_FOUND with BUDGETING_NOT_FOUND when updating non-existent budgeting")
+        void shouldReturn404WhenBudgetingNotFound() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to update budgeting that was never set
+            ResponseEntity<ApiError> response = actor.updateBudgetingExpectingError(
+                    cashFlowId, "Uncategorized", INFLOW, Money.of(500, "USD"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(404);
+            assertThat(error.code()).isEqualTo("BUDGETING_NOT_FOUND");
+            assertThat(error.message()).contains("Uncategorized");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Budgeting not found correctly returned 404: code={}", error.code());
+        }
+    }
+
+    // ============ Conflict Errors (409) ============
+
+    @Nested
+    @DisplayName("Conflict Errors (409)")
+    class ConflictErrors {
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT with CATEGORY_ALREADY_EXISTS when creating duplicate category")
+        void shouldReturn409WhenCategoryAlreadyExists() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.createCategory(cashFlowId, "MyCategory", INFLOW);
+
+            // when - try to create same category again
+            ResponseEntity<ApiError> response = actor.createCategoryExpectingError(
+                    cashFlowId, "MyCategory", INFLOW, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("CATEGORY_ALREADY_EXISTS");
+            assertThat(error.message()).contains("MyCategory");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Category already exists correctly returned 409: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT with BUDGETING_ALREADY_EXISTS when setting duplicate budgeting")
+        void shouldReturn409WhenBudgetingAlreadyExists() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.setBudgeting(cashFlowId, "Uncategorized", INFLOW, Money.of(1000, "USD"));
+
+            // when - try to set budgeting again
+            ResponseEntity<ApiError> response = actor.setBudgetingExpectingError(
+                    cashFlowId, "Uncategorized", INFLOW, Money.of(2000, "USD"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("BUDGETING_ALREADY_EXISTS");
+            assertThat(error.message()).contains("Uncategorized");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Budgeting already exists correctly returned 409: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT with CATEGORY_UNARCHIVE_CONFLICT when unarchiving with active duplicate")
+        void shouldReturn409WhenCannotUnarchiveCategory() {
+            // given - create category, archive it, create new one with same name
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.createCategory(cashFlowId, "TestCategory", OUTFLOW);
+            actor.archiveCategory(cashFlowId, "TestCategory", OUTFLOW, false);
+            actor.createCategory(cashFlowId, "TestCategory", OUTFLOW); // Create new one with same name
+
+            // when - try to unarchive the old one
+            ResponseEntity<ApiError> response = actor.unarchiveCategoryExpectingError(
+                    cashFlowId, "TestCategory", OUTFLOW);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("CATEGORY_UNARCHIVE_CONFLICT");
+            assertThat(error.message()).contains("TestCategory");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Cannot unarchive category correctly returned 409: code={}", error.code());
+        }
+    }
+
+    // ============ Invalid CashFlow State (400) ============
+
+    @Nested
+    @DisplayName("Invalid CashFlow State (400)")
+    class InvalidCashFlowState {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when appending expected cash change in SETUP mode")
+        void shouldReturn400WhenAppendExpectedInSetupMode() {
+            // given - create CashFlow with history (SETUP mode)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when
+            ResponseEntity<ApiError> response = actor.appendExpectedCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Test", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP");
+            assertThat(error.message()).contains("SETUP mode");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Operation not allowed in SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when appending paid cash change in SETUP mode")
+        void shouldReturn400WhenAppendPaidInSetupMode() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when
+            ResponseEntity<ApiError> response = actor.appendPaidCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Test", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                    ZonedDateTime.parse("2022-01-01T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP");
+
+            log.info("Append paid not allowed in SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when editing cash change in SETUP mode")
+        void shouldReturn400WhenEditInSetupMode() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, "fake-id", "New Name", "New Description",
+                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP");
+
+            log.info("Edit not allowed in SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when confirming cash change in SETUP mode")
+        void shouldReturn400WhenConfirmInSetupMode() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, "fake-id");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP");
+
+            log.info("Confirm not allowed in SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when importing to non-SETUP mode CashFlow")
+        void shouldReturn400WhenImportNotAllowedInNonSetupMode() {
+            // given - create standard CashFlow (OPEN mode)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
+
+            // when - try to import historical transaction
+            ResponseEntity<ApiError> response = actor.importHistoricalTransactionExpectingError(
+                    cashFlowId, "Uncategorized", "Historical", "Desc",
+                    Money.of(500, "USD"), INFLOW,
+                    ZonedDateTime.parse("2021-06-15T00:00:00Z"),
+                    ZonedDateTime.parse("2021-06-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_IMPORT_NOT_ALLOWED");
+            assertThat(error.message()).contains("SETUP mode");
+
+            log.info("Import not allowed in non-SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when attesting non-SETUP mode CashFlow")
+        void shouldReturn400WhenAttestationNotAllowedInNonSetupMode() {
+            // given - create standard CashFlow (OPEN mode)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
+
+            // when - try to attest
+            ResponseEntity<ApiError> response = actor.attestHistoricalImportExpectingError(
+                    cashFlowId, Money.of(1000, "USD"), false, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_ATTESTATION_NOT_ALLOWED");
+
+            log.info("Attestation not allowed in non-SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when rolling back non-SETUP mode CashFlow")
+        void shouldReturn400WhenRollbackNotAllowedInNonSetupMode() {
+            // given - create standard CashFlow (OPEN mode)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
+
+            // when - try to rollback
+            ResponseEntity<ApiError> response = actor.rollbackImportExpectingError(cashFlowId);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_ROLLBACK_NOT_ALLOWED");
+
+            log.info("Rollback not allowed in non-SETUP mode correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when confirming already confirmed cash change")
+        void shouldReturn400WhenCashChangeNotPending() {
+            // given - create CashFlow and add+confirm a cash change
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // Note: FixedClockConfig sets clock to 2022-01-01, so we use dates in January 2022
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Test Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            actor.confirmCashChange(cashFlowId, cashChangeId);
+
+            // when - try to confirm again
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, cashChangeId);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHCHANGE_NOT_PENDING");
+
+            log.info("CashChange not pending correctly returned 400: code={}", error.code());
+        }
+    }
+
+    // ============ Date Validation (400) ============
+
+    @Nested
+    @DisplayName("Date Validation (400)")
+    class DateValidation {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when paid date is in future")
+        void shouldReturn400WhenPaidDateInFuture() {
+            // given - FixedClockConfig sets clock to 2022-01-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to add paid cash change with future date
+            ResponseEntity<ApiError> response = actor.appendPaidCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Future Payment", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z"),
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z")); // Future!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("PAID_DATE_IN_FUTURE");
+            assertThat(error.message()).contains("2022-02-15");
+
+            log.info("Paid date in future correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when paid date not in active period")
+        void shouldReturn400WhenPaidDateNotInActivePeriod() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to add paid cash change with date in December 2021 (past month)
+            ResponseEntity<ApiError> response = actor.appendPaidCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Past Payment", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2021-12-15T00:00:00Z"),
+                    ZonedDateTime.parse("2021-12-15T00:00:00Z")); // December 2021
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("PAID_DATE_OUTSIDE_ACTIVE_PERIOD");
+            assertThat(error.message()).contains("2021-12");
+
+            log.info("Paid date outside active period correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when start period is in future")
+        void shouldReturn400WhenStartPeriodInFuture() {
+            // given - FixedClockConfig sets clock to 2022-01-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+
+            // when - try to create CashFlow with future start period
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    userId, "Future CashFlow", "2023-06", Money.of(1000, "USD"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("START_PERIOD_IN_FUTURE");
+            assertThat(error.message()).contains("2023-06");
+
+            log.info("Start period in future correctly returned 400: code={}", error.code());
+        }
+
+        // Note: Test for IMPORT_DATE_IN_FUTURE is not included because:
+        // The validation order in ImportHistoricalCashChangeCommandHandler checks:
+        // 1. ImportDateOutsideSetupPeriodException (paidDate must be before activePeriod)
+        // 2. ImportDateInFutureException (paidDate must not be after now)
+        //
+        // Since activePeriod equals the current month (from FixedClockConfig: 2022-01),
+        // any future date will always fail validation 1 before reaching validation 2.
+        // The IMPORT_DATE_IN_FUTURE error can only occur when activePeriod is in the future,
+        // which is not a valid scenario (you can't have activePeriod > now).
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when import date is before start period")
+        void shouldReturn400WhenImportDateBeforeStartPeriod() {
+            // given - start period is 2021-09
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when - try to import with date before start period (August 2021)
+            ResponseEntity<ApiError> response = actor.importHistoricalTransactionExpectingError(
+                    cashFlowId, "Uncategorized", "Old Import", "Description",
+                    Money.of(500, "USD"), INFLOW,
+                    ZonedDateTime.parse("2021-08-15T00:00:00Z"),
+                    ZonedDateTime.parse("2021-08-15T00:00:00Z")); // Before start!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("IMPORT_DATE_BEFORE_START");
+            assertThat(error.message()).contains("2021-08");
+
+            log.info("Import date before start correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when import date is in active or future period")
+        void shouldReturn400WhenImportDateOutsideSetupPeriod() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
+
+            // when - try to import with date in active period (January 2022)
+            ResponseEntity<ApiError> response = actor.importHistoricalTransactionExpectingError(
+                    cashFlowId, "Uncategorized", "Active Period Import", "Description",
+                    Money.of(500, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                    ZonedDateTime.parse("2022-01-01T00:00:00Z")); // Active period!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("IMPORT_DATE_OUTSIDE_SETUP_PERIOD");
+
+            log.info("Import date outside setup period correctly returned 400: code={}", error.code());
+        }
+    }
+
+    // ============ Category Operations (400) ============
+
+    @Nested
+    @DisplayName("Category Operations (400)")
+    class CategoryOperations {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when adding cash change to archived category")
+        void shouldReturn400WhenCategoryIsArchived() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
+            actor.archiveCategory(cashFlowId, "ArchivedCategory", INFLOW, false);
+
+            // when - try to add cash change to archived category
+            ResponseEntity<ApiError> response = actor.appendExpectedCashChangeExpectingError(
+                    cashFlowId, "ArchivedCategory", "Test", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CATEGORY_IS_ARCHIVED");
+            assertThat(error.message()).contains("ArchivedCategory");
+
+            log.info("Category is archived correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when archiving system category")
+        void shouldReturn400WhenCannotArchiveSystemCategory() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to archive system category "Uncategorized"
+            ResponseEntity<ApiError> response = actor.archiveCategoryExpectingError(
+                    cashFlowId, "Uncategorized", INFLOW, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CANNOT_ARCHIVE_SYSTEM_CATEGORY");
+            assertThat(error.message()).contains("Uncategorized");
+
+            log.info("Cannot archive system category correctly returned 400: code={}", error.code());
         }
     }
 }

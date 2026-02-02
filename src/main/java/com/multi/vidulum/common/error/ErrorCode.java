@@ -21,11 +21,38 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Request validation failed"),
     VALIDATION_INVALID_JSON(HttpStatus.BAD_REQUEST, "Invalid JSON format"),
 
-    // CashFlow
+    // CashFlow - Resources
     CASHFLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "CashFlow not found"),
+    CASHCHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CashChange not found"),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Category not found"),
+    BUDGETING_NOT_FOUND(HttpStatus.NOT_FOUND, "Budgeting not found"),
+
+    // CashFlow - Conflicts
     CASHFLOW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Access to CashFlow denied"),
-    CASHFLOW_INVALID_STATE(HttpStatus.BAD_REQUEST, "Operation not allowed in current state"),
     CASHFLOW_BALANCE_MISMATCH(HttpStatus.CONFLICT, "Balance mismatch during attestation"),
+    CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT, "Category already exists"),
+    BUDGETING_ALREADY_EXISTS(HttpStatus.CONFLICT, "Budgeting already exists"),
+    CATEGORY_UNARCHIVE_CONFLICT(HttpStatus.CONFLICT, "Cannot unarchive - active category exists"),
+
+    // CashFlow - Invalid State
+    CASHFLOW_INVALID_STATE(HttpStatus.BAD_REQUEST, "Operation not allowed in current state"),
+    CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP(HttpStatus.BAD_REQUEST, "Operation not allowed in SETUP mode"),
+    CASHFLOW_IMPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Import only allowed in SETUP mode"),
+    CASHFLOW_ATTESTATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Attestation only allowed in SETUP mode"),
+    CASHFLOW_ROLLBACK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Rollback only allowed in SETUP mode"),
+    CASHCHANGE_NOT_PENDING(HttpStatus.BAD_REQUEST, "CashChange is not in PENDING status"),
+
+    // CashFlow - Date Validation
+    PAID_DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Paid date cannot be in the future"),
+    PAID_DATE_OUTSIDE_ACTIVE_PERIOD(HttpStatus.BAD_REQUEST, "Paid date must be in active period"),
+    START_PERIOD_IN_FUTURE(HttpStatus.BAD_REQUEST, "Start period cannot be in the future"),
+    IMPORT_DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Import date cannot be in the future"),
+    IMPORT_DATE_BEFORE_START(HttpStatus.BAD_REQUEST, "Import date before start period"),
+    IMPORT_DATE_OUTSIDE_SETUP_PERIOD(HttpStatus.BAD_REQUEST, "Import date outside setup period"),
+
+    // CashFlow - Categories
+    CATEGORY_IS_ARCHIVED(HttpStatus.BAD_REQUEST, "Category is archived"),
+    CANNOT_ARCHIVE_SYSTEM_CATEGORY(HttpStatus.BAD_REQUEST, "Cannot archive system category"),
 
     // Bank Data Ingestion
     INGESTION_STAGING_NOT_FOUND(HttpStatus.NOT_FOUND, "Staging session not found"),
