@@ -759,4 +759,234 @@ class CashFlowErrorHandlingTest {
             log.info("Cannot archive system category correctly returned 400: code={}", error.code());
         }
     }
+
+    // ============ Field Validation (400) ============
+
+    @Nested
+    @DisplayName("Field Validation (400)")
+    class FieldValidation {
+
+        // --- /confirm endpoint ---
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when confirm with null cashFlowId")
+        void shouldReturn400WhenConfirmWithNullCashFlowId() {
+            // when
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(null, "some-cash-change-id");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("cashFlowId") && fe.message().contains("required"));
+
+            log.info("Confirm validation error correctly returned 400: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when confirm with blank cashFlowId")
+        void shouldReturn400WhenConfirmWithBlankCashFlowId() {
+            // when
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError("", "some-cash-change-id");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe -> fe.field().equals("cashFlowId"));
+
+            log.info("Confirm validation error for blank cashFlowId: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when confirm with null cashChangeId")
+        void shouldReturn400WhenConfirmWithNullCashChangeId() {
+            // when
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError("some-cashflow-id", null);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("cashChangeId") && fe.message().contains("required"));
+
+            log.info("Confirm validation error for null cashChangeId: fieldErrors={}", error.fieldErrors());
+        }
+
+        // --- /edit endpoint ---
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when edit with null cashFlowId")
+        void shouldReturn400WhenEditWithNullCashFlowId() {
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    null, "cash-change-id", "Name", "Description",
+                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe -> fe.field().equals("cashFlowId"));
+
+            log.info("Edit validation error for null cashFlowId: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when edit with null name")
+        void shouldReturn400WhenEditWithNullName() {
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    "cashflow-id", "cash-change-id", null, "Description",
+                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("name") && fe.message().contains("required"));
+
+            log.info("Edit validation error for null name: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when edit with null money")
+        void shouldReturn400WhenEditWithNullMoney() {
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    "cashflow-id", "cash-change-id", "Name", "Description",
+                    null, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("money") && fe.message().contains("required"));
+
+            log.info("Edit validation error for null money: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when edit with null dueDate")
+        void shouldReturn400WhenEditWithNullDueDate() {
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    "cashflow-id", "cash-change-id", "Name", "Description",
+                    Money.of(100, "USD"), null);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("dueDate") && fe.message().contains("required"));
+
+            log.info("Edit validation error for null dueDate: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when edit with description exceeding 500 characters")
+        void shouldReturn400WhenEditWithDescriptionTooLong() {
+            // given
+            String longDescription = "x".repeat(501);
+
+            // when
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    "cashflow-id", "cash-change-id", "Name", longDescription,
+                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("description") && fe.message().contains("500"));
+
+            log.info("Edit validation error for description too long: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should accept edit with null description (optional field)")
+        void shouldAcceptEditWithNullDescription() {
+            // given - create CashFlow and cash change first
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Original Name", "Original Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - edit with null description (should be accepted)
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, cashChangeId, "New Name", null,
+                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+
+            // then - should NOT be a validation error (null description is allowed)
+            // Note: This might return 200 OK or other business error, but NOT VALIDATION_ERROR for description
+            if (response.getStatusCode() == HttpStatus.BAD_REQUEST && response.getBody() != null) {
+                ApiError error = response.getBody();
+                // If there's a validation error, it should NOT be about description
+                if ("VALIDATION_ERROR".equals(error.code()) && error.fieldErrors() != null) {
+                    assertThat(error.fieldErrors()).noneMatch(fe -> fe.field().equals("description"));
+                }
+            }
+
+            log.info("Edit with null description handled correctly");
+        }
+
+        // --- /reject endpoint ---
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when reject with null cashFlowId")
+        void shouldReturn400WhenRejectWithNullCashFlowId() {
+            // when
+            ResponseEntity<ApiError> response = actor.rejectCashChangeExpectingError(null, "cash-change-id", "Some reason");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe -> fe.field().equals("cashFlowId"));
+
+            log.info("Reject validation error for null cashFlowId: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when reject with null reason")
+        void shouldReturn400WhenRejectWithNullReason() {
+            // when
+            ResponseEntity<ApiError> response = actor.rejectCashChangeExpectingError("cashflow-id", "cash-change-id", null);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("reason") && fe.message().contains("required"));
+
+            log.info("Reject validation error for null reason: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when reject with blank reason")
+        void shouldReturn400WhenRejectWithBlankReason() {
+            // when
+            ResponseEntity<ApiError> response = actor.rejectCashChangeExpectingError("cashflow-id", "cash-change-id", "   ");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).anyMatch(fe -> fe.field().equals("reason"));
+
+            log.info("Reject validation error for blank reason: fieldErrors={}", error.fieldErrors());
+        }
+    }
 }
