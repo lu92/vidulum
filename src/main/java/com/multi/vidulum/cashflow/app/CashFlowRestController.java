@@ -25,6 +25,7 @@ import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -241,7 +242,7 @@ public class CashFlowRestController {
     }
 
     @PostMapping("/confirm")
-    public void confirm(@RequestBody CashFlowDto.ConfirmCashChangeJson request) {
+    public void confirm(@Valid @RequestBody CashFlowDto.ConfirmCashChangeJson request) {
         commandGateway.send(
                 new ConfirmCashChangeCommand(
                         new CashFlowId(request.getCashFlowId()),
@@ -250,7 +251,7 @@ public class CashFlowRestController {
     }
 
     @PostMapping("/edit")
-    public void edit(@RequestBody CashFlowDto.EditCashChangeJson request) {
+    public void edit(@Valid @RequestBody CashFlowDto.EditCashChangeJson request) {
         commandGateway.send(
                 new EditCashChangeCommand(
                         new CashFlowId(request.getCashFlowId()),
@@ -264,7 +265,7 @@ public class CashFlowRestController {
     }
 
     @PostMapping("/reject")
-    public void reject(@RequestBody CashFlowDto.RejectCashChangeJson request) {
+    public void reject(@Valid @RequestBody CashFlowDto.RejectCashChangeJson request) {
         commandGateway.send(
                 new RejectCashChangeCommand(
                         new CashFlowId(request.getCashFlowId()),

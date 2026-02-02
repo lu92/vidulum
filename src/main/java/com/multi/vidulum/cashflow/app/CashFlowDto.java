@@ -2,6 +2,9 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Money;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -138,26 +141,45 @@ public final class CashFlowDto {
     @Data
     @Builder
     public static class ConfirmCashChangeJson {
+        @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
+
+        @NotBlank(message = "CashChange ID is required")
         private String cashChangeId;
     }
 
     @Data
     @Builder
     public static class EditCashChangeJson {
+        @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
+
+        @NotBlank(message = "CashChange ID is required")
         private String cashChangeId;
+
+        @NotBlank(message = "Name is required")
         private String name;
+
+        @Size(max = 500, message = "Description cannot exceed 500 characters")
         private String description;
+
+        @NotNull(message = "Money is required")
         private Money money;
+
+        @NotNull(message = "Due date is required")
         private ZonedDateTime dueDate;
     }
 
     @Data
     @Builder
     public static class RejectCashChangeJson {
+        @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
+
+        @NotBlank(message = "CashChange ID is required")
         private String cashChangeId;
+
+        @NotBlank(message = "Reason is required")
         private String reason;
     }
 
