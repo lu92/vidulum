@@ -148,6 +148,16 @@ public final class CashFlowDto {
         private String cashChangeId;
     }
 
+    /**
+     * DTO for editing a CashChange.
+     * <p>
+     * <b>Full State Update Pattern:</b> Client always sends the complete current state of the CashChange,
+     * including category. Even if the category hasn't changed, the current value must be provided.
+     * This ensures the server always receives a consistent, complete representation of the entity.
+     * <p>
+     * Category must be of the same type (INFLOW/OUTFLOW) as the original transaction.
+     * Only non-archived categories are allowed.
+     */
     @Data
     @Builder
     public static class EditCashChangeJson {
@@ -165,6 +175,9 @@ public final class CashFlowDto {
 
         @NotNull(message = "Money is required")
         private Money money;
+
+        @NotBlank(message = "Category is required")
+        private String category;
 
         @NotNull(message = "Due date is required")
         private ZonedDateTime dueDate;

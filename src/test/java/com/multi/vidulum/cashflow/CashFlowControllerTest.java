@@ -435,6 +435,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .name("cash-change name edited")
                         .description("cash-change description edited")
                         .money(Money.of(200, "USD"))
+                        .category("Uncategorized")
                         .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
                         .build()
         );

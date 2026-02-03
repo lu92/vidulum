@@ -1089,13 +1089,14 @@ class DualBudgetActor {
         );
     }
 
-    void editCashChange(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description, Money money, ZonedDateTime dueDate) {
+    void editCashChange(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description, Money money, CategoryName categoryName, ZonedDateTime dueDate) {
         commandGateway.send(new EditCashChangeCommand(
                 cashFlowId,
                 cashChangeId,
                 name,
                 description,
                 money,
+                categoryName,
                 dueDate
         ));
     }

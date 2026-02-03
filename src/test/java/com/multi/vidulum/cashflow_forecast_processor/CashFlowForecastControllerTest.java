@@ -403,6 +403,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .name("Monthly Salary Updated")
                         .description("January salary updated")
                         .money(Money.of(4500, "USD"))
+                        .category("Salary")
                         .dueDate(ZonedDateTime.parse("2022-01-16T00:00:00Z"))
                         .build()
         );

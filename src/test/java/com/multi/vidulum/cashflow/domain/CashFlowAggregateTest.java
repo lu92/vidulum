@@ -602,6 +602,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 new Name("name edited"),
                 new Description("description edited"),
                 Money.of(500, "USD"),
+                new CategoryName("Uncategorized"),  // Keep same category
                 ZonedDateTime.parse("2021-08-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
         );
@@ -686,6 +687,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 new Name("name edited"),
                                 new Description("description edited"),
                                 Money.of(500, "USD"),
+                                new CategoryName("Uncategorized"),  // Keep same category
                                 ZonedDateTime.parse("2021-08-01T00:00:00Z"),
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z")
                         )

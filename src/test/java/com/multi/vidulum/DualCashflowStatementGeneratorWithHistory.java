@@ -244,6 +244,10 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         YearMonth finalBusinessLastPeriod = businessLastPeriod;
         await().atMost(30, SECONDS).until(() -> cashChangeInStatusHasBeenProcessed(businessCashFlowId, finalBusinessLastPeriod, finalBusinessLastCashChangeId, finalBusinessLastPaymentStatus));
 
+        // === PHASE 3.5: Edit CashChanges (test edit scenarios) ===
+        log.info("=== PHASE 3.5: Editing CashChanges ===");
+        editCashChangesPhase(homeCashFlowId, businessCashFlowId, activePeriod, homeLastCashChangeId, businessLastCashChangeId);
+
         // === PHASE 4: Demonstrate archiving a category created AFTER attestation ===
         log.info("=== PHASE 4: Archiving category created after attestation ===");
         archiveCategoryCreatedAfterAttestation(homeCashFlowId, activePeriod);
@@ -1589,5 +1593,111 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         log.info("  - Child '{}' ACTIVE with 3 transactions ($165)", fuelCategoryName);
         log.info("  - Child '{}' ACTIVE with 1 transaction ($15)", parkingCategoryName);
         log.info("  - Subcategories remain usable for new transactions even after parent is archived");
+    }
+
+    /**
+     * PHASE 3.5: Edit CashChanges to test various edit scenarios:
+     * 1. Simple edit (change name, description, money) - same category, same month
+     * 2. Category change - move transaction to different category in same month
+     * 3. Month change - change dueDate to move transaction to different month
+     */
+    private void editCashChangesPhase(CashFlowId homeCashFlowId, CashFlowId businessCashFlowId,
+                                       YearMonth activePeriod, CashChangeId homeLastPendingId,
+                                       CashChangeId businessLastPendingId) {
+        log.info("Starting edit phase for pending transactions");
+
+        // Find a PENDING transaction in a future month to edit
+        // The last transaction from PHASE 3 should be PENDING (from non-attested months)
+        YearMonth futurePeriod = activePeriod.plusMonths(FUTURE_MONTHS); // Last month has PENDING transactions
+
+        // === Scenario 1: Simple edit - change name and money, keep same category ===
+        log.info("Scenario 1: Simple edit (name, money) on Home Budget");
+        actor.editCashChange(
+                homeCashFlowId,
+                homeLastPendingId,
+                new Name("Edited Transaction - Simple"),
+                new Description("This transaction was edited - simple case"),
+                Money.of(999, "USD"),
+                new CategoryName("Streaming"),  // Keep same category
+                futurePeriod.atDay(15).atStartOfDay(ZoneOffset.UTC)  // Keep same month
+        );
+
+        // === Scenario 2: Category change - move to different category ===
+        // Create a new transaction first, then edit to change category
+        ZonedDateTime categoryChangeDate = activePeriod.plusMonths(FUTURE_MONTHS - 1).atDay(20).atStartOfDay(ZoneOffset.UTC);
+        CashChangeId categoryChangeId = actor.appendExpectedCashChange(
+                homeCashFlowId,
+                new CategoryName("Groceries"),
+                OUTFLOW,
+                Money.of(50, "USD"),
+                categoryChangeDate,
+                categoryChangeDate
+        );
+
+        log.info("Scenario 2: Category change - moving transaction from 'Groceries' to 'Rent'");
+        actor.editCashChange(
+                homeCashFlowId,
+                categoryChangeId,
+                new Name("Edited Transaction - Category Change"),
+                new Description("This transaction was moved from Groceries to Rent"),
+                Money.of(55, "USD"),
+                new CategoryName("Rent"),  // Change category from Groceries to Rent
+                categoryChangeDate  // Keep same date
+        );
+
+        // === Scenario 3: Month change - change dueDate to move transaction to different month ===
+        YearMonth originalMonth = activePeriod.plusMonths(FUTURE_MONTHS - 2);
+        ZonedDateTime originalMonthDate = originalMonth.atDay(10).atStartOfDay(ZoneOffset.UTC);
+        CashChangeId monthChangeId = actor.appendExpectedCashChange(
+                businessCashFlowId,
+                new CategoryName("Office Supplies"),
+                OUTFLOW,
+                Money.of(100, "USD"),
+                originalMonthDate,
+                originalMonthDate
+        );
+
+        YearMonth targetMonth = activePeriod.plusMonths(FUTURE_MONTHS - 1);
+        ZonedDateTime newMonthDate = targetMonth.atDay(25).atStartOfDay(ZoneOffset.UTC);
+
+        log.info("Scenario 3: Month change - moving transaction from {} to {}",
+                originalMonth, targetMonth);
+        actor.editCashChange(
+                businessCashFlowId,
+                monthChangeId,
+                new Name("Edited Transaction - Month Change"),
+                new Description("This transaction was moved to a different month"),
+                Money.of(120, "USD"),
+                new CategoryName("Office Supplies"),  // Keep same category
+                newMonthDate  // Change to different month
+        );
+
+        // Wait for all edit events to be processed
+        await().atMost(15, SECONDS).until(() -> {
+            CashFlowForecastStatement homeStatement = statementRepository.findByCashFlowId(homeCashFlowId).orElse(null);
+            CashFlowForecastStatement businessStatement = statementRepository.findByCashFlowId(businessCashFlowId).orElse(null);
+            if (homeStatement == null || businessStatement == null) return false;
+
+            // Check that edited transactions exist with new values
+            boolean homeSimpleEditProcessed = homeStatement.locate(homeLastPendingId)
+                    .map(loc -> loc.transaction().transactionDetails().getName().name().equals("Edited Transaction - Simple"))
+                    .orElse(false);
+
+            boolean homeCategoryChangeProcessed = homeStatement.locate(categoryChangeId)
+                    .map(loc -> loc.categoryName().equals(new CategoryName("Rent")))
+                    .orElse(false);
+
+            // Month change: transaction should now be in targetMonth, not originalMonth
+            boolean businessMonthChangeProcessed = businessStatement.locate(monthChangeId)
+                    .map(loc -> loc.yearMonth().equals(targetMonth))
+                    .orElse(false);
+
+            return homeSimpleEditProcessed && homeCategoryChangeProcessed && businessMonthChangeProcessed;
+        });
+
+        log.info("Edit phase completed successfully:");
+        log.info("  - Scenario 1: Simple edit processed");
+        log.info("  - Scenario 2: Category change processed");
+        log.info("  - Scenario 3: Month change processed");
     }
 }

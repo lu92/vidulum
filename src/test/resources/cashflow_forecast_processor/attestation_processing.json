@@ -181,11 +181,11 @@
           "currency": "USD"
         },
         "end": {
-          "amount": 384.0,
+          "amount": 264.0,
           "currency": "USD"
         },
         "netChange": {
-          "amount": 295.0,
+          "amount": 175.0,
           "currency": "USD"
         },
         "inflowStats": {
@@ -194,7 +194,7 @@
             "currency": "USD"
           },
           "expected": {
-            "amount": 120.0,
+            "amount": 200.0,
             "currency": "USD"
           },
           "gapToForecast": {
@@ -229,23 +229,7 @@
           "groupedTransactions": {
             "transactions": {
               "FORECAST": [],
-              "EXPECTED": [
-                {
-                  "cashChangeId": {
-                    "id": "42e63a73-ef81-4811-bdeb-e87d3f21da33"
-                  },
-                  "name": {
-                    "name": "cash change name 3 edited"
-                  },
-                  "money": {
-                    "amount": 120.0,
-                    "currency": "USD"
-                  },
-                  "created": "2021-06-03T06:30:00Z",
-                  "dueDate": "2021-08-12T00:00:00Z",
-                  "endDate": null
-                }
-              ],
+              "EXPECTED": [],
               "PAID": []
             }
           },
@@ -356,7 +340,7 @@
       "period": "2021-08",
       "cashFlowStats": {
         "start": {
-          "amount": 384.0,
+          "amount": 264.0,
           "currency": "USD"
         },
         "end": {
@@ -364,7 +348,7 @@
           "currency": "USD"
         },
         "netChange": {
-          "amount": 0,
+          "amount": 120.0,
           "currency": "USD"
         },
         "inflowStats": {
@@ -373,7 +357,7 @@
             "currency": "USD"
           },
           "expected": {
-            "amount": 0,
+            "amount": 120.0,
             "currency": "USD"
           },
           "gapToForecast": {
@@ -408,7 +392,23 @@
           "groupedTransactions": {
             "transactions": {
               "FORECAST": [],
-              "EXPECTED": [],
+              "EXPECTED": [
+                {
+                  "cashChangeId": {
+                    "id": "42e63a73-ef81-4811-bdeb-e87d3f21da33"
+                  },
+                  "name": {
+                    "name": "cash change name 3 edited"
+                  },
+                  "money": {
+                    "amount": 120.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-03T06:30:00Z",
+                  "dueDate": "2021-08-12T00:00:00Z",
+                  "endDate": null
+                }
+              ],
               "PAID": []
             }
           },

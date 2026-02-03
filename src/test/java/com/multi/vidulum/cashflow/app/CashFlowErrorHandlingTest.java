@@ -452,7 +452,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     cashFlowId, "fake-id", "New Name", "New Description",
-                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+                    Money.of(200, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -827,7 +827,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     null, "cash-change-id", "Name", "Description",
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -844,7 +844,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", null, "Description",
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -862,7 +862,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", "Description",
-                    null, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    null, "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -880,7 +880,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", "Description",
-                    Money.of(100, "USD"), null);
+                    Money.of(100, "USD"), "Uncategorized", null);
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -901,7 +901,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", longDescription,
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -926,7 +926,7 @@ class CashFlowErrorHandlingTest {
             // when - edit with null description (should be accepted)
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     cashFlowId, cashChangeId, "New Name", null,
-                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+                    Money.of(200, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
 
             // then - should NOT be a validation error (null description is allowed)
             // Note: This might return 200 OK or other business error, but NOT VALIDATION_ERROR for description

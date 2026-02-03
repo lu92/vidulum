@@ -288,13 +288,15 @@ public class CashFlowHttpActor {
      */
     public ResponseEntity<ApiError> editCashChangeExpectingError(String cashFlowId, String cashChangeId,
                                                                   String name, String description,
-                                                                  Money money, ZonedDateTime dueDate) {
+                                                                  Money money, String category,
+                                                                  ZonedDateTime dueDate) {
         CashFlowDto.EditCashChangeJson request = CashFlowDto.EditCashChangeJson.builder()
                 .cashFlowId(cashFlowId)
                 .cashChangeId(cashChangeId)
                 .name(name)
                 .description(description)
                 .money(money)
+                .category(category)
                 .dueDate(dueDate)
                 .build();
 

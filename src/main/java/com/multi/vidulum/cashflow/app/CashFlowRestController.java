@@ -259,6 +259,7 @@ public class CashFlowRestController {
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
+                        new CategoryName(request.getCategory()),
                         request.getDueDate()
                 )
         );
