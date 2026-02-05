@@ -378,12 +378,12 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .userId(userId)
                         .name("Home Budget With History")
                         .description("Personal home budget with historical data import")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US12345678901234567890", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .startPeriod(startPeriod.toString())
-                        .initialBalance(Money.of(10000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(10000, "USD")))
                         .build()
         ));
     }
@@ -394,12 +394,12 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .userId(userId)
                         .name("Business Budget With History")
                         .description("Business budget with historical data import")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Bank of America"),
                                 new BankAccountNumber("US98765432109876543210", Currency.of("USD")),
-                                Money.of(50000, "USD")))
+                                Money.of(50000, "USD"))))
                         .startPeriod(startPeriod.toString())
-                        .initialBalance(Money.of(50000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(50000, "USD")))
                         .build()
         ));
     }

@@ -988,5 +988,14 @@ class CashFlowErrorHandlingTest {
 
             log.info("Reject validation error for blank reason: fieldErrors={}", error.fieldErrors());
         }
+
+        // Note: The validation for CreateCashFlow and CreateCashFlowWithHistory DTOs is enforced
+        // via Jakarta Bean Validation annotations (@NotBlank, @NotNull, @Valid).
+        // Due to Jackson deserialization behavior, null values in nested objects trigger
+        // VALIDATION_INVALID_JSON before validation runs. The validation still protects
+        // against malformed API requests at the HTTP layer.
+        //
+        // The critical validation added (bankAccountNumber, denomination) ensures that
+        // CategoryCreatedEventHandler never encounters null bankAccountNumber, fixing the NPE bug.
     }
 }

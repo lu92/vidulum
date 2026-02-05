@@ -54,6 +54,9 @@ public enum ErrorCode {
     CATEGORY_IS_ARCHIVED(HttpStatus.BAD_REQUEST, "Category is archived"),
     CANNOT_ARCHIVE_SYSTEM_CATEGORY(HttpStatus.BAD_REQUEST, "Cannot archive system category"),
 
+    // CashFlow - Bank Account Validation
+    INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "Invalid bank account data"),
+
     // Bank Data Ingestion
     INGESTION_STAGING_NOT_FOUND(HttpStatus.NOT_FOUND, "Staging session not found"),
     INGESTION_UNMAPPED_CATEGORIES(HttpStatus.BAD_REQUEST, "Unmapped categories exist"),

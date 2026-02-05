@@ -1551,13 +1551,13 @@ public class BankDataIngestionControllerTest {
                         .userId("test-user-123")
                         .name("Test CashFlow")
                         .description("CashFlow for testing category mappings")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),
                                 new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
                                 Money.zero("PLN")
-                        ))
+                        )))
                         .startPeriod("2021-07")
-                        .initialBalance(Money.of(10000.0, "PLN"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(10000.0, "PLN")))
                         .build()
         );
 

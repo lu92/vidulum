@@ -745,10 +745,10 @@ class HomeBudgetActor {
                         .userId("home-budget-user")
                         .name("Home Budget")
                         .description("Comprehensive home budget with multiple categories")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US12345678901234567890", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .build()
         ));
     }

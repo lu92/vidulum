@@ -1027,10 +1027,10 @@ class DualBudgetActor {
                         .userId(userId)
                         .name("Home Budget")
                         .description("Personal home budget with multiple categories")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US12345678901234567890", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .build()
         ));
     }
@@ -1041,10 +1041,10 @@ class DualBudgetActor {
                         .userId(userId)
                         .name("Business Budget")
                         .description("Business budget with revenue and expenses tracking")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Bank of America"),
                                 new BankAccountNumber("US98765432109876543210", Currency.of("USD")),
-                                Money.of(50000, "USD")))
+                                Money.of(50000, "USD"))))
                         .build()
         ));
     }
