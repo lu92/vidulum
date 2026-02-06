@@ -116,7 +116,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -153,7 +153,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -333,7 +333,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -377,7 +377,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(CONFIRMED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
                                 ))
@@ -424,7 +424,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -436,7 +436,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description edited")
                         .money(Money.of(200, "USD"))
                         .category("Uncategorized")
-                        .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-11T00:00:00Z"))
                         .build()
         );
 
@@ -473,7 +473,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-11T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -521,7 +521,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -566,7 +566,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(REJECTED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -623,7 +623,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -660,7 +660,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("test category")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -734,7 +734,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Bank fee")
                         .money(Money.of(67, "USD"))
                         .type(OUTFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -778,7 +778,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Bank fees")
                                                 .status(CONFIRMED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
 
@@ -880,7 +880,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("January salary")
                         .money(Money.of(5000, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -917,7 +917,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Payment from client ABC")
                         .money(Money.of(2500, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-15T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
         );
 
@@ -929,7 +929,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Monthly office rent")
                         .money(Money.of(800, "USD"))
                         .type(OUTFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-05T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
                         .build()
         );
 

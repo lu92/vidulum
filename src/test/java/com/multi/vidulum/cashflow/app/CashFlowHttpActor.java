@@ -583,6 +583,33 @@ public class CashFlowHttpActor {
     }
 
     /**
+     * Edits cash change via HTTP.
+     */
+    public void editCashChange(String cashFlowId, String cashChangeId, String name,
+                               String description, Money money, String category,
+                               ZonedDateTime dueDate) {
+        CashFlowDto.EditCashChangeJson request = CashFlowDto.EditCashChangeJson.builder()
+                .cashFlowId(cashFlowId)
+                .cashChangeId(cashChangeId)
+                .name(name)
+                .description(description)
+                .money(money)
+                .category(category)
+                .dueDate(dueDate)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/edit",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                Void.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.debug("Edited cash change via HTTP: cashFlowId={}, cashChangeId={}", cashFlowId, cashChangeId);
+    }
+
+    /**
      * Confirms cash change via HTTP.
      */
     public void confirmCashChange(String cashFlowId, String cashChangeId) {

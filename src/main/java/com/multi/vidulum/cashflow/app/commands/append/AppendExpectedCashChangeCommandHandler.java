@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +46,9 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
             }
             // No category at all - will be handled by domain layer
         }
+
+        // Validate: dueDate must be within allowed range (activePeriod to activePeriod + 11 months)
+        validateDueDateRange(command.dueDate(), cashFlow.getSnapshot().activePeriod());
 
         CashFlowEvent.ExpectedCashChangeAppendedEvent event = new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 command.cashFlowId(),
@@ -103,5 +108,22 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
             }
         }
         return null;
+    }
+
+    /**
+     * Validates that dueDate is within allowed range.
+     * Allowed range: activePeriod (current month) to activePeriod + 11 months (forecasted period).
+     *
+     * @param dueDate      the due date to validate
+     * @param activePeriod the current active period
+     * @throws DueDateOutsideAllowedRangeException if dueDate is outside allowed range
+     */
+    private void validateDueDateRange(ZonedDateTime dueDate, YearMonth activePeriod) {
+        YearMonth dueDateMonth = YearMonth.from(dueDate);
+        YearMonth maxAllowedMonth = activePeriod.plusMonths(11);
+
+        if (dueDateMonth.isBefore(activePeriod) || dueDateMonth.isAfter(maxAllowedMonth)) {
+            throw new DueDateOutsideAllowedRangeException(dueDate, activePeriod);
+        }
     }
 }

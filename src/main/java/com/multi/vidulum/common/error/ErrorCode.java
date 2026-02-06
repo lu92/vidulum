@@ -49,6 +49,7 @@ public enum ErrorCode {
     IMPORT_DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Import date cannot be in the future"),
     IMPORT_DATE_BEFORE_START(HttpStatus.BAD_REQUEST, "Import date before start period"),
     IMPORT_DATE_OUTSIDE_SETUP_PERIOD(HttpStatus.BAD_REQUEST, "Import date outside setup period"),
+    DUE_DATE_OUTSIDE_ALLOWED_RANGE(HttpStatus.BAD_REQUEST, "Due date outside allowed range"),
 
     // CashFlow - Categories
     CATEGORY_IS_ARCHIVED(HttpStatus.BAD_REQUEST, "Category is archived"),
