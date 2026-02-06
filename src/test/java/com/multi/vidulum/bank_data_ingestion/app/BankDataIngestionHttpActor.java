@@ -53,13 +53,13 @@ public class BankDataIngestionHttpActor {
                 .userId(userId)
                 .name(name)
                 .description("CashFlow for HTTP integration testing")
-                .bankAccount(new BankAccount(
+                .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                         new BankName("Test Bank"),
                         new BankAccountNumber("PL12345678901234567890123456", Currency.of(initialBalance.getCurrency())),
                         Money.zero(initialBalance.getCurrency())
-                ))
+                )))
                 .startPeriod(startPeriod.toString())
-                .initialBalance(initialBalance)
+                .initialBalance(CashFlowDto.MoneyJson.from(initialBalance))
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(

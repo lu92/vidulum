@@ -417,6 +417,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     cashChange.setName(event.name());
                     cashChange.setDescription(event.description());
                     cashChange.setMoney(event.money());
+                    cashChange.setCategoryName(event.categoryName());
                     cashChange.setDueDate(event.dueDate());
                 }));
         add(event);

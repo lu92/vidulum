@@ -210,6 +210,13 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    @ExceptionHandler(DueDateOutsideAllowedRangeException.class)
+    public ResponseEntity<ApiError> handleDueDateOutsideAllowedRange(DueDateOutsideAllowedRangeException ex) {
+        log.debug("Due date outside allowed range: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.DUE_DATE_OUTSIDE_ALLOWED_RANGE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ CashFlow - Category Operations (400) ============
 
     @ExceptionHandler(CategoryIsArchivedException.class)

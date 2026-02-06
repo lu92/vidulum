@@ -81,6 +81,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Name("cash change name 2 edited"),
                         new Description("cash change description 2 edited"),
                         Money.of(120, "USD"),
+                        new CategoryName("Uncategorized"),  // Keep same category
                         ZonedDateTime.parse("2021-08-12T00:00:00Z"),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
@@ -166,6 +167,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Name("cash change name 2 edited"),
                         new Description("cash change description 2 edited"),
                         Money.of(130, "USD"),
+                        new CategoryName("Uncategorized"),  // Keep same category
                         ZonedDateTime.parse("2021-08-12T00:00:00Z"),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
@@ -327,6 +329,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Name("cash change name 3 edited"),
                         new Description("cash change description 3 edited"),
                         Money.of(120, "USD"),
+                        new CategoryName("Uncategorized"),  // Keep same category
                         ZonedDateTime.parse("2021-08-12T00:00:00Z"),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )

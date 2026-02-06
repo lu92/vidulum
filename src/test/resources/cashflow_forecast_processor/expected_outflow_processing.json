@@ -118,6 +118,97 @@
           "currency": "USD"
         },
         "end": {
+          "amount": -111.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "PAID": [],
+              "EXPECTED": [],
+              "FORECAST": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "PAID": [],
+              "EXPECTED": [],
+              "FORECAST": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null
+    },
+    "2021-08": {
+      "period": "2021-08",
+      "cashFlowStats": {
+        "start": {
+          "amount": -111.0,
+          "currency": "USD"
+        },
+        "end": {
           "amount": -241.0,
           "currency": "USD"
         },
@@ -210,97 +301,6 @@
           },
           "totalPaidValue": {
             "amount": 130.0,
-            "currency": "USD"
-          }
-        }
-      ],
-      "status": "FORECASTED",
-      "attestation": null
-    },
-    "2021-08": {
-      "period": "2021-08",
-      "cashFlowStats": {
-        "start": {
-          "amount": -241.0,
-          "currency": "USD"
-        },
-        "end": {
-          "amount": -241.0,
-          "currency": "USD"
-        },
-        "netChange": {
-          "amount": 0,
-          "currency": "USD"
-        },
-        "inflowStats": {
-          "actual": {
-            "amount": 0,
-            "currency": "USD"
-          },
-          "expected": {
-            "amount": 0,
-            "currency": "USD"
-          },
-          "gapToForecast": {
-            "amount": 0,
-            "currency": "USD"
-          }
-        },
-        "outflowStats": {
-          "actual": {
-            "amount": 0,
-            "currency": "USD"
-          },
-          "expected": {
-            "amount": 0,
-            "currency": "USD"
-          },
-          "gapToForecast": {
-            "amount": 0,
-            "currency": "USD"
-          }
-        }
-      },
-      "categorizedInFlows": [
-        {
-          "categoryName": {
-            "name": "Uncategorized"
-          },
-          "category": {
-            "category": "Uncategorized"
-          },
-          "subCategories": [],
-          "groupedTransactions": {
-            "transactions": {
-              "PAID": [],
-              "EXPECTED": [],
-              "FORECAST": []
-            }
-          },
-          "totalPaidValue": {
-            "amount": 0,
-            "currency": "USD"
-          }
-        }
-      ],
-      "categorizedOutFlows": [
-        {
-          "categoryName": {
-            "name": "Uncategorized"
-          },
-          "category": {
-            "category": "Uncategorized"
-          },
-          "subCategories": [],
-          "groupedTransactions": {
-            "transactions": {
-              "PAID": [],
-              "EXPECTED": [],
-              "FORECAST": []
-            }
-          },
-          "totalPaidValue": {
-            "amount": 0,
             "currency": "USD"
           }
         }

@@ -1,14 +1,18 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -18,11 +22,144 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateCashFlowJson {
+        @NotBlank(message = "userId is required")
         private String userId;
+
+        @NotBlank(message = "name is required")
         private String name;
+
         private String description;
-        private BankAccount bankAccount;
+
+        @NotNull(message = "bankAccount is required")
+        @Valid
+        private BankAccountJson bankAccount;
+
+        public BankAccount toBankAccount() {
+            if (bankAccount == null) return null;
+            return bankAccount.toDomain();
+        }
+    }
+
+    /**
+     * DTO for bank account with validation.
+     * Used in request DTOs to validate bank account structure.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BankAccountJson {
+        /** Optional bank name (e.g., "Chase Bank") */
+        private String bankName;
+
+        @NotNull(message = "bankAccount.bankAccountNumber is required")
+        @Valid
+        private BankAccountNumberJson bankAccountNumber;
+
+        private MoneyJson balance;
+
+        public BankAccount toDomain() {
+            return new BankAccount(
+                    bankName != null ? new BankName(bankName) : null,
+                    bankAccountNumber != null ? bankAccountNumber.toDomain() : null,
+                    balance != null ? balance.toDomain() : null
+            );
+        }
+
+        /**
+         * Creates BankAccountJson from domain BankAccount.
+         * Useful for tests.
+         */
+        public static BankAccountJson from(BankAccount bankAccount) {
+            if (bankAccount == null) return null;
+            return BankAccountJson.builder()
+                    .bankName(bankAccount.bankName() != null ? bankAccount.bankName().name() : null)
+                    .bankAccountNumber(BankAccountNumberJson.from(bankAccount.bankAccountNumber()))
+                    .balance(bankAccount.balance() != null ? MoneyJson.from(bankAccount.balance()) : null)
+                    .build();
+        }
+    }
+
+    /**
+     * DTO for bank account number with validation.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BankAccountNumberJson {
+        @NotBlank(message = "bankAccount.bankAccountNumber.account is required")
+        private String account;
+
+        @NotNull(message = "bankAccount.bankAccountNumber.denomination is required")
+        @Valid
+        private CurrencyJson denomination;
+
+        public BankAccountNumber toDomain() {
+            return new BankAccountNumber(
+                    account,
+                    denomination != null ? denomination.toDomain() : null
+            );
+        }
+
+        public static BankAccountNumberJson from(BankAccountNumber bankAccountNumber) {
+            if (bankAccountNumber == null) return null;
+            return BankAccountNumberJson.builder()
+                    .account(bankAccountNumber.account())
+                    .denomination(CurrencyJson.from(bankAccountNumber.denomination()))
+                    .build();
+        }
+    }
+
+    /**
+     * DTO for currency with validation.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CurrencyJson {
+        @NotBlank(message = "bankAccount.bankAccountNumber.denomination.id is required")
+        private String id;
+
+        public Currency toDomain() {
+            return Currency.of(id);
+        }
+
+        public static CurrencyJson from(Currency currency) {
+            if (currency == null) return null;
+            return CurrencyJson.builder().id(currency.getId()).build();
+        }
+    }
+
+    /**
+     * DTO for money with validation.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MoneyJson {
+        @NotNull(message = "amount is required")
+        private BigDecimal amount;
+
+        @NotBlank(message = "currency is required")
+        private String currency;
+
+        public Money toDomain() {
+            return Money.of(amount, currency);
+        }
+
+        public static MoneyJson from(Money money) {
+            if (money == null) return null;
+            return MoneyJson.builder()
+                    .amount(money.getAmount())
+                    .currency(money.getCurrency())
+                    .build();
+        }
     }
 
     /**
@@ -31,15 +168,39 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateCashFlowWithHistoryJson {
+        @NotBlank(message = "userId is required")
         private String userId;
+
+        @NotBlank(message = "name is required")
         private String name;
+
         private String description;
-        private BankAccount bankAccount;
+
+        @NotNull(message = "bankAccount is required")
+        @Valid
+        private BankAccountJson bankAccount;
+
         /** The first historical month (e.g., "2024-01" for importing from January 2024) */
+        @NotBlank(message = "startPeriod is required")
         private String startPeriod;
+
         /** The balance at the start of startPeriod (opening balance) */
-        private Money initialBalance;
+        @NotNull(message = "initialBalance is required")
+        @Valid
+        private MoneyJson initialBalance;
+
+        public BankAccount toBankAccount() {
+            if (bankAccount == null) return null;
+            return bankAccount.toDomain();
+        }
+
+        public Money toInitialBalance() {
+            if (initialBalance == null) return null;
+            return initialBalance.toDomain();
+        }
     }
 
     @Data
@@ -148,6 +309,16 @@ public final class CashFlowDto {
         private String cashChangeId;
     }
 
+    /**
+     * DTO for editing a CashChange.
+     * <p>
+     * <b>Full State Update Pattern:</b> Client always sends the complete current state of the CashChange,
+     * including category. Even if the category hasn't changed, the current value must be provided.
+     * This ensures the server always receives a consistent, complete representation of the entity.
+     * <p>
+     * Category must be of the same type (INFLOW/OUTFLOW) as the original transaction.
+     * Only non-archived categories are allowed.
+     */
     @Data
     @Builder
     public static class EditCashChangeJson {
@@ -165,6 +336,9 @@ public final class CashFlowDto {
 
         @NotNull(message = "Money is required")
         private Money money;
+
+        @NotBlank(message = "Category is required")
+        private String category;
 
         @NotNull(message = "Due date is required")
         private ZonedDateTime dueDate;

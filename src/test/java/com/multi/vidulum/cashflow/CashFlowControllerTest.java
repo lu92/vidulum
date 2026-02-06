@@ -45,10 +45,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -99,10 +99,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -116,7 +116,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -153,7 +153,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -185,10 +185,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -270,10 +270,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(500, "USD")))
+                                Money.of(500, "USD"))))
                         .build()
         );
 
@@ -318,10 +318,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -333,7 +333,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -377,7 +377,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(CONFIRMED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
                                 ))
@@ -409,10 +409,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -424,7 +424,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -435,7 +435,8 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .name("cash-change name edited")
                         .description("cash-change description edited")
                         .money(Money.of(200, "USD"))
-                        .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
+                        .category("Uncategorized")
+                        .dueDate(ZonedDateTime.parse("2022-01-11T00:00:00Z"))
                         .build()
         );
 
@@ -472,7 +473,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-11T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-11T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -505,10 +506,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -520,7 +521,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -565,7 +566,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Uncategorized")
                                                 .status(REJECTED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -599,10 +600,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -622,7 +623,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("cash-change description")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -659,7 +660,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("test category")
                                                 .status(PENDING)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(null)
                                                 .build()
 
@@ -699,10 +700,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -733,7 +734,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Bank fee")
                         .money(Money.of(67, "USD"))
                         .type(OUTFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -777,7 +778,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                                                 .categoryName("Bank fees")
                                                 .status(CONFIRMED)
                                                 .created(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
-                                                .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                                                .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                                                 .endDate(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                                                 .build()
 
@@ -827,10 +828,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId(userId)
                         .name("Personal Budget")
                         .description("My personal budget")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US123456789", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .build()
         );
 
@@ -840,10 +841,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId(userId)
                         .name("Business Budget")
                         .description("My business budget")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Bank of America"),
                                 new BankAccountNumber("US987654321", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .build()
         );
 
@@ -854,10 +855,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId(otherUserId)
                         .name("Other User Budget")
                         .description("Other user budget")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Wells Fargo"),
                                 new BankAccountNumber("US111222333", Currency.of("USD")),
-                                Money.of(3000, "USD")))
+                                Money.of(3000, "USD"))))
                         .build()
         );
 
@@ -879,7 +880,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("January salary")
                         .money(Money.of(5000, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-10T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
         );
 
@@ -916,7 +917,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Payment from client ABC")
                         .money(Money.of(2500, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-15T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
         );
 
@@ -928,7 +929,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .description("Monthly office rent")
                         .money(Money.of(800, "USD"))
                         .type(OUTFLOW)
-                        .dueDate(ZonedDateTime.parse("2024-01-05T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
                         .build()
         );
 
@@ -987,10 +988,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -1039,10 +1040,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -1103,10 +1104,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -1173,10 +1174,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         );
 
@@ -1225,10 +1226,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -1256,10 +1257,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -1287,10 +1288,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -1326,10 +1327,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .build()
         );
 
@@ -1357,10 +1358,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .build()
         );
 
@@ -1388,10 +1389,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .build()
         );
 
@@ -1431,12 +1432,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1464,12 +1465,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1500,12 +1501,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1534,12 +1535,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1562,12 +1563,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1591,12 +1592,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("test cash flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1629,12 +1630,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("Cash flow with historical data support")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US12345", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-06")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1673,12 +1674,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(2000, "USD")))
+                                Money.of(2000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(500, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(500, "USD")))
                         .build()
         );
 
@@ -1723,12 +1724,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Future Start Period")
                         .description("This should fail")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2023-01")  // Future!
-                        .initialBalance(Money.of(500, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(500, "USD")))
                         .build()
         )).isInstanceOf(StartPeriodInFutureException.class);
     }
@@ -1743,12 +1744,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Current Month Start")
                         .description("No historical data")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(3000, "USD")))
+                                Money.of(3000, "USD"))))
                         .startPeriod("2022-01")  // Same as current active period
-                        .initialBalance(Money.of(3000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(3000, "USD")))
                         .build()
         );
 
@@ -1783,12 +1784,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For import testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -1834,10 +1835,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Normal Cash Flow")
                         .description("In OPEN mode")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -1864,12 +1865,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For import testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(2000, "USD")))
+                                Money.of(2000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(500, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(500, "USD")))
                         .build()
         );
 
@@ -1896,12 +1897,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For import testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(2000, "USD")))
+                                Money.of(2000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(500, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(500, "USD")))
                         .build()
         );
 
@@ -1928,12 +1929,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("Multiple imports")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2000,12 +2001,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For forecast testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2065,12 +2066,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For outflow forecast testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2130,12 +2131,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("Multiple transactions same month")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(2000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(2000, "USD")))
                         .build()
         );
 
@@ -2246,12 +2247,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For cutoff testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2283,12 +2284,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For cutoff testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2316,12 +2317,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For cutoff testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2360,12 +2361,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For cutoff testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2400,12 +2401,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For same-day testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2439,12 +2440,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For future date testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2471,12 +2472,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For future month testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2503,12 +2504,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("Multiple same-day imports")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2576,12 +2577,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For activation testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2666,12 +2667,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For balance mismatch testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2718,12 +2719,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For force activation testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2780,10 +2781,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Normal Cash Flow")
                         .description("In OPEN mode")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -2805,12 +2806,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Empty Historical Cash Flow")
                         .description("No imports")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(2000, "USD")))
+                                Money.of(2000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(2000, "USD"))  // Same as bank balance
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(2000, "USD")))  // Same as bank balance
                         .build()
         );
 
@@ -2843,12 +2844,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For status change testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2909,12 +2910,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For negative difference testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -2964,12 +2965,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For adjustment testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3033,12 +3034,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For negative adjustment testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3094,12 +3095,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For no-adjustment testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3152,12 +3153,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For importCutoffDateTime testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3192,12 +3193,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For forecast adjustment testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3265,12 +3266,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For rollback testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3336,12 +3337,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For rollback with categories")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3415,12 +3416,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("Will be attested")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3460,12 +3461,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For forecast clearing test")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3568,12 +3569,12 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("Historical Cash Flow")
                         .description("For re-import testing")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account", Currency.of("USD")),
-                                Money.of(5000, "USD")))
+                                Money.of(5000, "USD"))))
                         .startPeriod("2021-10")
-                        .initialBalance(Money.of(1000, "USD"))
+                        .initialBalance(CashFlowDto.MoneyJson.from(Money.of(1000, "USD")))
                         .build()
         );
 
@@ -3653,10 +3654,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3713,10 +3714,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3780,10 +3781,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3805,10 +3806,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3830,10 +3831,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3890,10 +3891,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3924,10 +3925,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -3970,10 +3971,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4019,10 +4020,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4082,10 +4083,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4116,10 +4117,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4172,10 +4173,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4225,10 +4226,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 
@@ -4294,10 +4295,10 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")))
+                                Money.of(1000, "USD"))))
                         .build()
         );
 

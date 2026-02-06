@@ -145,10 +145,10 @@ class Actor {
                         .userId("userId")
                         .name("cash-flow name")
                         .description("cash-flow description")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
                                 new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")))
+                                Money.of(0, "USD"))))
                         .build()
         ));
     }

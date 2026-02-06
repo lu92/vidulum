@@ -48,13 +48,13 @@ public class CashFlowRestController {
     private final Clock clock;
 
     @PostMapping
-    public String createCashFlow(@RequestBody CashFlowDto.CreateCashFlowJson request) {
+    public String createCashFlow(@Valid @RequestBody CashFlowDto.CreateCashFlowJson request) {
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowCommand(
                         new UserId(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
-                        request.getBankAccount()
+                        request.toBankAccount()
                 )
         );
 
@@ -66,37 +66,20 @@ public class CashFlowRestController {
      * The CashFlow will be created in SETUP mode, allowing import of historical transactions.
      */
     @PostMapping("/with-history")
-    public String createCashFlowWithHistory(@RequestBody CashFlowDto.CreateCashFlowWithHistoryJson request) {
-        // Validate bankAccountNumber - required for currency determination in forecast processor
-        validateBankAccountNumber(request.getBankAccount());
+    public String createCashFlowWithHistory(@Valid @RequestBody CashFlowDto.CreateCashFlowWithHistoryJson request) {
 
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowWithHistoryCommand(
                         new UserId(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
-                        request.getBankAccount(),
+                        request.toBankAccount(),
                         YearMonth.parse(request.getStartPeriod()),
-                        request.getInitialBalance()
+                        request.toInitialBalance()
                 )
         );
 
         return snapshot.cashFlowId().id();
-    }
-
-    private void validateBankAccountNumber(BankAccount bankAccount) {
-        if (bankAccount == null) {
-            throw new IllegalArgumentException("bankAccount is required");
-        }
-        if (bankAccount.bankAccountNumber() == null) {
-            throw new IllegalArgumentException("bankAccount.bankAccountNumber is required");
-        }
-        if (bankAccount.bankAccountNumber().account() == null || bankAccount.bankAccountNumber().account().isBlank()) {
-            throw new IllegalArgumentException("bankAccount.bankAccountNumber.account is required");
-        }
-        if (bankAccount.bankAccountNumber().denomination() == null) {
-            throw new IllegalArgumentException("bankAccount.bankAccountNumber.denomination is required");
-        }
     }
 
     /**
@@ -259,6 +242,7 @@ public class CashFlowRestController {
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
+                        new CategoryName(request.getCategory()),
                         request.getDueDate()
                 )
         );

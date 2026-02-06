@@ -270,6 +270,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
                             new Name("Groceries - corrected"),
                             new Description("Corrected grocery amount"),
                             Money.of(30 + random.nextInt(180), "USD"),
+                            new CategoryName("Groceries"),  // Keep same category
                             groceryDate.plusDays(1)
                     );
                 }
@@ -390,6 +391,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
                             new Name("Car Service - additional repairs"),
                             new Description("Additional issues found during service"),
                             Money.of(200 + random.nextInt(1000), "USD"),
+                            new CategoryName("Car Service"),  // Keep same category
                             serviceDate.plusDays(10)
                     );
                 }
@@ -593,6 +595,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
                             new Name("Online Course - discounted"),
                             new Description("Applied discount code"),
                             Money.of(30 + random.nextInt(150), "USD"),
+                            new CategoryName("Courses"),  // Keep same category
                             courseDate.plusDays(7)
                     );
                 }
@@ -742,10 +745,10 @@ class HomeBudgetActor {
                         .userId("home-budget-user")
                         .name("Home Budget")
                         .description("Comprehensive home budget with multiple categories")
-                        .bankAccount(new BankAccount(
+                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
                                 new BankAccountNumber("US12345678901234567890", Currency.of("USD")),
-                                Money.of(10000, "USD")))
+                                Money.of(10000, "USD"))))
                         .build()
         ));
     }
@@ -774,13 +777,14 @@ class HomeBudgetActor {
         );
     }
 
-    void editCashChange(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description, Money money, ZonedDateTime dueDate) {
+    void editCashChange(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description, Money money, CategoryName categoryName, ZonedDateTime dueDate) {
         commandGateway.send(new EditCashChangeCommand(
                 cashFlowId,
                 cashChangeId,
                 name,
                 description,
                 money,
+                categoryName,
                 dueDate
         ));
     }

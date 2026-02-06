@@ -452,7 +452,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     cashFlowId, "fake-id", "New Name", "New Description",
-                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+                    Money.of(200, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -705,6 +705,278 @@ class CashFlowErrorHandlingTest {
 
             log.info("Import date outside setup period correctly returned 400: code={}", error.code());
         }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on append")
+        void shouldReturn400WhenDueDateBeforeActivePeriodOnAppend() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to append expected cash change with dueDate in December 2021 (before active period)
+            ResponseEntity<ApiError> response = actor.appendExpectedCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Past Month Payment", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2021-12-15T00:00:00Z")); // December 2021 - before active period!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("DUE_DATE_OUTSIDE_ALLOWED_RANGE");
+            assertThat(error.message()).contains("2021-12");
+
+            log.info("DueDate before activePeriod correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when dueDate is more than 11 months ahead on append")
+        void shouldReturn400WhenDueDateTooFarInFutureOnAppend() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            // Allowed range: 2022-01 to 2022-12 (activePeriod + 11 months)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - try to append expected cash change with dueDate in January 2023 (> 11 months ahead)
+            ResponseEntity<ApiError> response = actor.appendExpectedCashChangeExpectingError(
+                    cashFlowId, "Uncategorized", "Far Future Payment", "Description",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2023-01-15T00:00:00Z")); // January 2023 - too far!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("DUE_DATE_OUTSIDE_ALLOWED_RANGE");
+            assertThat(error.message()).contains("2023-01");
+
+            log.info("DueDate too far in future correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on edit")
+        void shouldReturn400WhenDueDateBeforeActivePeriodOnEdit() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // Create a valid cash change first
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Test Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - try to edit with dueDate in December 2021 (before active period)
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, cashChangeId, "Updated Payment", "Updated Description",
+                    Money.of(150, "USD"), "Uncategorized",
+                    ZonedDateTime.parse("2021-12-15T00:00:00Z")); // December 2021 - before active period!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("DUE_DATE_OUTSIDE_ALLOWED_RANGE");
+            assertThat(error.message()).contains("2021-12");
+
+            log.info("Edit with dueDate before activePeriod correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when dueDate is more than 11 months ahead on edit")
+        void shouldReturn400WhenDueDateTooFarInFutureOnEdit() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // Create a valid cash change first
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Test Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - try to edit with dueDate in January 2023 (> 11 months ahead)
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, cashChangeId, "Updated Payment", "Updated Description",
+                    Money.of(150, "USD"), "Uncategorized",
+                    ZonedDateTime.parse("2023-01-15T00:00:00Z")); // January 2023 - too far!
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("DUE_DATE_OUTSIDE_ALLOWED_RANGE");
+            assertThat(error.message()).contains("2023-01");
+
+            log.info("Edit with dueDate too far in future correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should accept dueDate at max allowed month boundary (activePeriod + 11 months)")
+        void shouldAcceptDueDateAtMaxBoundary() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            // Max allowed month: 2022-12 (activePeriod + 11 months)
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // when - append with dueDate in December 2022 (exactly at boundary)
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Boundary Payment", "At max allowed month",
+                    Money.of(100, "USD"), INFLOW,
+                    ZonedDateTime.parse("2022-12-31T23:59:59Z")); // December 2022 - exactly at boundary
+
+            // then - should succeed
+            assertThat(cashChangeId).isNotNull().isNotEmpty();
+
+            log.info("DueDate at max boundary accepted: cashChangeId={}", cashChangeId);
+        }
+    }
+
+    // ============ Edit Operations ============
+
+    @Nested
+    @DisplayName("Edit Operations")
+    class EditOperations {
+
+        @Test
+        @DisplayName("Should successfully edit cash change to different category")
+        void shouldEditCashChangeToDifferentCategory() {
+            // given - create CashFlow with two categories
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.createCategory(cashFlowId, "Salary", INFLOW);
+            actor.createCategory(cashFlowId, "Bonus", INFLOW);
+
+            // Create cash change in "Salary" category
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Salary", "Monthly Salary", "Regular payment",
+                    Money.of(5000, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - edit to move to "Bonus" category
+            actor.editCashChange(
+                    cashFlowId, cashChangeId, "Year-end Bonus", "Performance bonus",
+                    Money.of(2000, "USD"), "Bonus", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+
+            // then - verify the change
+            CashFlowDto.CashFlowSummaryJson result = actor.getCashFlow(cashFlowId);
+            CashFlowDto.CashChangeSummaryJson editedCashChange = result.getCashChanges().get(cashChangeId);
+
+            assertThat(editedCashChange).isNotNull();
+            assertThat(editedCashChange.getCategoryName()).isEqualTo("Bonus");
+            assertThat(editedCashChange.getName()).isEqualTo("Year-end Bonus");
+            assertThat(editedCashChange.getMoney()).isEqualTo(Money.of(2000, "USD"));
+
+            log.info("Successfully edited cash change to different category: {} -> Bonus", cashChangeId);
+        }
+
+        @Test
+        @DisplayName("Should successfully edit cash change to different month within allowed range")
+        void shouldEditCashChangeToDifferentMonth() {
+            // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
+            // Allowed range: 2022-01 to 2022-12
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            // Create cash change in January
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - edit to move to June (within allowed range)
+            actor.editCashChange(
+                    cashFlowId, cashChangeId, "Payment - Rescheduled", "Moved to June",
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-06-20T00:00:00Z"));
+
+            // then - verify the change
+            CashFlowDto.CashFlowSummaryJson result = actor.getCashFlow(cashFlowId);
+            CashFlowDto.CashChangeSummaryJson editedCashChange = result.getCashChanges().get(cashChangeId);
+
+            assertThat(editedCashChange).isNotNull();
+            assertThat(editedCashChange.getDueDate()).isEqualTo(ZonedDateTime.parse("2022-06-20T00:00:00Z"));
+            assertThat(editedCashChange.getName()).isEqualTo("Payment - Rescheduled");
+
+            log.info("Successfully edited cash change to different month: {} -> 2022-06", cashChangeId);
+        }
+
+        @Test
+        @DisplayName("Should successfully edit cash change to last allowed month (activePeriod + 11)")
+        void shouldEditCashChangeToLastAllowedMonth() {
+            // given - FixedClockConfig sets clock to 2022-01-01, max allowed is 2022-12
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - edit to December 2022 (boundary)
+            actor.editCashChange(
+                    cashFlowId, cashChangeId, "December Payment", "End of year",
+                    Money.of(150, "USD"), "Uncategorized", ZonedDateTime.parse("2022-12-25T00:00:00Z"));
+
+            // then
+            CashFlowDto.CashFlowSummaryJson result = actor.getCashFlow(cashFlowId);
+            CashFlowDto.CashChangeSummaryJson editedCashChange = result.getCashChanges().get(cashChangeId);
+
+            assertThat(editedCashChange).isNotNull();
+            assertThat(editedCashChange.getDueDate()).isEqualTo(ZonedDateTime.parse("2022-12-25T00:00:00Z"));
+
+            log.info("Successfully edited cash change to last allowed month: {} -> 2022-12", cashChangeId);
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when editing cash change to archived category")
+        void shouldReturn400WhenEditingToArchivedCategory() {
+            // given - create CashFlow with one active and one archived category
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            actor.createCategory(cashFlowId, "ActiveCategory", INFLOW);
+            actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
+            actor.archiveCategory(cashFlowId, "ArchivedCategory", INFLOW, false);
+
+            // Create cash change in active category
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "ActiveCategory", "Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - try to edit to move to archived category
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, cashChangeId, "Payment", "Description",
+                    Money.of(100, "USD"), "ArchivedCategory", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CATEGORY_IS_ARCHIVED");
+            assertThat(error.message()).contains("ArchivedCategory");
+
+            log.info("Edit to archived category correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 404 NOT_FOUND when editing cash change to non-existent category")
+        void shouldReturn404WhenEditingToNonExistentCategory() {
+            // given
+            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            String cashChangeId = actor.appendExpectedCashChange(
+                    cashFlowId, "Uncategorized", "Payment", "Description",
+                    Money.of(100, "USD"), INFLOW, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // when - try to edit to non-existent category
+            ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
+                    cashFlowId, cashChangeId, "Payment", "Description",
+                    Money.of(100, "USD"), "NonExistentCategory", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(404);
+            assertThat(error.code()).isEqualTo("CATEGORY_NOT_FOUND");
+            assertThat(error.message()).contains("NonExistentCategory");
+
+            log.info("Edit to non-existent category correctly returned 404: code={}", error.code());
+        }
     }
 
     // ============ Category Operations (400) ============
@@ -827,7 +1099,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     null, "cash-change-id", "Name", "Description",
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -844,7 +1116,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", null, "Description",
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -862,7 +1134,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", "Description",
-                    null, ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    null, "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -880,7 +1152,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", "Description",
-                    Money.of(100, "USD"), null);
+                    Money.of(100, "USD"), "Uncategorized", null);
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -901,7 +1173,7 @@ class CashFlowErrorHandlingTest {
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     "cashflow-id", "cash-change-id", "Name", longDescription,
-                    Money.of(100, "USD"), ZonedDateTime.parse("2022-01-15T00:00:00Z"));
+                    Money.of(100, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -926,7 +1198,7 @@ class CashFlowErrorHandlingTest {
             // when - edit with null description (should be accepted)
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
                     cashFlowId, cashChangeId, "New Name", null,
-                    Money.of(200, "USD"), ZonedDateTime.parse("2022-01-20T00:00:00Z"));
+                    Money.of(200, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
 
             // then - should NOT be a validation error (null description is allowed)
             // Note: This might return 200 OK or other business error, but NOT VALIDATION_ERROR for description
@@ -988,5 +1260,14 @@ class CashFlowErrorHandlingTest {
 
             log.info("Reject validation error for blank reason: fieldErrors={}", error.fieldErrors());
         }
+
+        // Note: The validation for CreateCashFlow and CreateCashFlowWithHistory DTOs is enforced
+        // via Jakarta Bean Validation annotations (@NotBlank, @NotNull, @Valid).
+        // Due to Jackson deserialization behavior, null values in nested objects trigger
+        // VALIDATION_INVALID_JSON before validation runs. The validation still protects
+        // against malformed API requests at the HTTP layer.
+        //
+        // The critical validation added (bankAccountNumber, denomination) ensures that
+        // CategoryCreatedEventHandler never encounters null bankAccountNumber, fixing the NPE bug.
     }
 }

@@ -54,13 +54,22 @@ public class CashFlowHttpActor {
                 .userId(userId)
                 .name(name)
                 .description("CashFlow for HTTP integration testing")
-                .bankAccount(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of(initialBalance.getCurrency())),
-                        Money.zero(initialBalance.getCurrency())
-                ))
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account("PL12345678901234567890123456")
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(initialBalance.getCurrency())
+                                .build())
+                        .build())
                 .startPeriod(startPeriod.toString())
-                .initialBalance(initialBalance)
+                .initialBalance(CashFlowDto.MoneyJson.builder()
+                        .amount(initialBalance.getAmount())
+                        .currency(initialBalance.getCurrency())
+                        .build())
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(
@@ -210,6 +219,30 @@ public class CashFlowHttpActor {
     // ============ Error-Expecting Operations ============
 
     /**
+     * Creates a standard CashFlow expecting an error response.
+     * Allows passing custom request for validation testing.
+     */
+    public ResponseEntity<ApiError> createCashFlowExpectingError(CashFlowDto.CreateCashFlowJson request) {
+        return executeExpectingError(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
+     * Creates CashFlow with history expecting an error response.
+     * Allows passing custom request for validation testing.
+     */
+    public ResponseEntity<ApiError> createCashFlowWithHistoryExpectingError(CashFlowDto.CreateCashFlowWithHistoryJson request) {
+        return executeExpectingError(
+                baseUrl + "/cash-flow/with-history",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
      * Creates CashFlow with history expecting an error response.
      */
     public ResponseEntity<ApiError> createCashFlowWithHistoryExpectingError(String userId, String name,
@@ -218,13 +251,22 @@ public class CashFlowHttpActor {
                 .userId(userId)
                 .name(name)
                 .description("CashFlow for HTTP integration testing")
-                .bankAccount(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of(initialBalance.getCurrency())),
-                        Money.zero(initialBalance.getCurrency())
-                ))
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account("PL12345678901234567890123456")
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(initialBalance.getCurrency())
+                                .build())
+                        .build())
                 .startPeriod(startPeriod)
-                .initialBalance(initialBalance)
+                .initialBalance(CashFlowDto.MoneyJson.builder()
+                        .amount(initialBalance.getAmount())
+                        .currency(initialBalance.getCurrency())
+                        .build())
                 .build();
 
         return executeExpectingError(
@@ -288,13 +330,15 @@ public class CashFlowHttpActor {
      */
     public ResponseEntity<ApiError> editCashChangeExpectingError(String cashFlowId, String cashChangeId,
                                                                   String name, String description,
-                                                                  Money money, ZonedDateTime dueDate) {
+                                                                  Money money, String category,
+                                                                  ZonedDateTime dueDate) {
         CashFlowDto.EditCashChangeJson request = CashFlowDto.EditCashChangeJson.builder()
                 .cashFlowId(cashFlowId)
                 .cashChangeId(cashChangeId)
                 .name(name)
                 .description(description)
                 .money(money)
+                .category(category)
                 .dueDate(dueDate)
                 .build();
 
@@ -539,6 +583,33 @@ public class CashFlowHttpActor {
     }
 
     /**
+     * Edits cash change via HTTP.
+     */
+    public void editCashChange(String cashFlowId, String cashChangeId, String name,
+                               String description, Money money, String category,
+                               ZonedDateTime dueDate) {
+        CashFlowDto.EditCashChangeJson request = CashFlowDto.EditCashChangeJson.builder()
+                .cashFlowId(cashFlowId)
+                .cashChangeId(cashChangeId)
+                .name(name)
+                .description(description)
+                .money(money)
+                .category(category)
+                .dueDate(dueDate)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/edit",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                Void.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.debug("Edited cash change via HTTP: cashFlowId={}, cashChangeId={}", cashFlowId, cashChangeId);
+    }
+
+    /**
      * Confirms cash change via HTTP.
      */
     public void confirmCashChange(String cashFlowId, String cashChangeId) {
@@ -606,11 +677,17 @@ public class CashFlowHttpActor {
                 .userId(userId)
                 .name(name)
                 .description("CashFlow for HTTP integration testing")
-                .bankAccount(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of(currency)),
-                        Money.zero(currency)
-                ))
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account("PL12345678901234567890123456")
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(currency)
+                                .build())
+                        .build())
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(
