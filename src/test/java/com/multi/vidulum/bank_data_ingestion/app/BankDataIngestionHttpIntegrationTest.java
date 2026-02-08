@@ -1120,13 +1120,15 @@ public class BankDataIngestionHttpIntegrationTest {
         // Step 4: NOW TEST THE BUG FIX - Upload more transactions in OPEN mode
         // These transactions target the ACTIVE month (January 2022)
         // The bug was: import failed because monthStatuses was not populated
+        // Note: Fixed clock is set to 2022-01-01, so transaction dates must be <= 2022-01-01
+        // We use 2022-01-01 which is in the ACTIVE month (January 2022)
 
         // Create a small CSV with transactions for the ACTIVE month (2022-01)
         String activeMonthCsv = """
                 bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN-OPEN-001,January Salary,Monthly salary 2022,Wpływy regularne,5500.00,PLN,INFLOW,2022-01-10,2022-01-10,,PL12345678901234567890123456
-                TXN-OPEN-002,January Rent,Monthly rent 2022,Mieszkanie,1600.00,PLN,OUTFLOW,2022-01-15,2022-01-15,PL12345678901234567890123456,PL98765432109876543210987654
-                TXN-OPEN-003,January Groceries,Weekly shopping,Zakupy kartą,350.00,PLN,OUTFLOW,2022-01-20,2022-01-20,PL12345678901234567890123456,
+                TXN-OPEN-001,January Salary,Monthly salary 2022,Wpływy regularne,5500.00,PLN,INFLOW,2022-01-01,2022-01-01,,PL12345678901234567890123456
+                TXN-OPEN-002,January Rent,Monthly rent 2022,Mieszkanie,1600.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,PL98765432109876543210987654
+                TXN-OPEN-003,January Groceries,Weekly shopping,Zakupy kartą,350.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,
                 """;
 
         BankDataIngestionDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
