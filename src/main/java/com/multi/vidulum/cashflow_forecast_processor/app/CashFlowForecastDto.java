@@ -136,4 +136,64 @@ public final class CashFlowForecastDto {
         /** Origin of this category (SYSTEM, IMPORTED, USER_CREATED) */
         private String origin;
     }
+
+    /**
+     * Response DTO for month statuses endpoint.
+     * Used by bank-data-ingestion module to determine which months allow import.
+     */
+    @Data
+    @Builder
+    public static class MonthStatusesResponse {
+        private String cashFlowId;
+        private Map<YearMonth, ForecastMonthStatus> monthStatuses;
+    }
+
+    /**
+     * Status of a month in the forecast.
+     * Copy of CashFlowMonthlyForecast.Status for API response serialization.
+     * Kept separate to enable easy separation into a microservice if needed.
+     */
+    public enum ForecastMonthStatus {
+        /**
+         * Historical month waiting for import (before attestation).
+         * Created during createCashFlowWithHistory for months before activePeriod.
+         * Allows importHistoricalCashChange operations.
+         */
+        IMPORT_PENDING,
+
+        /**
+         * Historical month with finalized imported data (after attestation).
+         * Transitions from IMPORT_PENDING when attestHistoricalImport is called.
+         * Allows gap filling - importing missed historical transactions.
+         */
+        IMPORTED,
+
+        /**
+         * Month closed through automatic rollover (scheduled job or manual trigger).
+         * Transitions from ACTIVE at the beginning of the next month.
+         * Allows gap filling - importing missed transactions from bank statements.
+         */
+        ROLLED_OVER,
+
+        /**
+         * Month closed through manual attestation (attestMonth).
+         * Represents reconciled/finalized month data from regular usage.
+         * @deprecated Use ROLLED_OVER instead.
+         */
+        @Deprecated
+        ATTESTED,
+
+        /**
+         * Current month (the "now" month).
+         * Only one month can have ACTIVE status at a time.
+         * Allows normal operations and ongoing sync (importing from bank statements).
+         */
+        ACTIVE,
+
+        /**
+         * Future month with projected/planned transactions.
+         * Does NOT allow importing transactions (blocked by validation).
+         */
+        FORECASTED
+    }
 }

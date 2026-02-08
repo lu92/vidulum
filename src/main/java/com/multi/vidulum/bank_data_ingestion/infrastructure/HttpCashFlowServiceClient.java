@@ -79,7 +79,10 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 throw new CashFlowNotFoundException(cashFlowId);
             }
 
-            return mapToInfo(response);
+            // Fetch month statuses from CashFlowForecastProcessor
+            Map<String, String> monthStatuses = fetchMonthStatuses(cashFlowId);
+
+            return mapToInfo(response, monthStatuses);
 
         } catch (HttpClientErrorException.NotFound e) {
             throw new CashFlowNotFoundException(cashFlowId);
@@ -87,6 +90,46 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             log.error("HTTP error getting CashFlow [{}]: {} - {}", cashFlowId, e.getStatusCode(), e.getMessage());
             throw new RuntimeException("Failed to get CashFlow info: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Fetch month statuses from CashFlowForecastProcessor.
+     * Returns empty map if forecast not found (graceful degradation).
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, String> fetchMonthStatuses(String cashFlowId) {
+        try {
+            MonthStatusesResponse response = restClient.get()
+                    .uri("/cash-flow-forecast/{cashFlowId}/month-statuses", cashFlowId)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(MonthStatusesResponse.class);
+
+            if (response == null || response.monthStatuses() == null) {
+                return Map.of();
+            }
+
+            // Convert YearMonth keys (serialized as strings like "2025-02") to String map
+            Map<String, String> result = new java.util.HashMap<>();
+            for (Map.Entry<String, String> entry : response.monthStatuses().entrySet()) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("Could not fetch month statuses for CashFlow [{}]: {}. Returning empty map.",
+                    cashFlowId, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    /**
+     * Response DTO for month statuses endpoint.
+     * Matches CashFlowForecastDto.MonthStatusesResponse.
+     */
+    private record MonthStatusesResponse(
+            String cashFlowId,
+            Map<String, String> monthStatuses
+    ) {
     }
 
     @Override
@@ -263,7 +306,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
 
     // ============ Mapping Methods ============
 
-    private CashFlowInfo mapToInfo(CashFlowResponse response) {
+    private CashFlowInfo mapToInfo(CashFlowResponse response, Map<String, String> monthStatuses) {
         return new CashFlowInfo(
                 response.cashFlowId(),
                 mapStatus(response.status()),
@@ -273,7 +316,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 mapCategories(response.outflowCategories(), Type.OUTFLOW),
                 extractTransactionIds(response),
                 response.cashChanges() != null ? response.cashChanges().size() : 0,
-                mapMonthStatuses(response.monthStatuses())
+                mapMonthStatuses(monthStatuses)
         );
     }
 

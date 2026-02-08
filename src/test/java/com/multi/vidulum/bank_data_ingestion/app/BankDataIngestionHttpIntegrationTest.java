@@ -1043,4 +1043,152 @@ public class BankDataIngestionHttpIntegrationTest {
                 cashFlow.getCashChanges().size(),
                 cashFlow.getInflowCategories().size() + cashFlow.getOutflowCategories().size() - 2); // minus system Uncategorized
     }
+
+    // ============ OPEN Mode Import Tests (Post-Attestation) ============
+
+    @Test
+    @DisplayName("Should import transactions in OPEN mode after attestation via REST API")
+    void shouldImportTransactionsInOpenModeAfterAttestationViaRestApi() {
+        // given - create CashFlow with history, import some transactions, then attest
+
+        // Start period: July 2021
+        // Active period: January 2022 (fixed clock)
+        // Historical months: July 2021 - December 2021 (6 months)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-open-mode",
+                "Test CashFlow for OPEN Mode",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
+                actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW),
+                actor.mappingCreateNew("Rozrywka", "Entertainment", Type.OUTFLOW),
+                actor.mappingCreateNew("Transport", "Transportation", Type.OUTFLOW)
+        ));
+
+        // Step 1: Upload CSV in SETUP mode (import initial historical data)
+        BankDataIngestionDto.UploadCsvResponse uploadSetup = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/historical-transactions.csv"
+        );
+        assertThat(uploadSetup.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+
+        String stagingSessionId = uploadSetup.getStagingResult().getStagingSessionId();
+
+        // Step 2: Start and complete import
+        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        String jobId = importResponse.getJobId();
+
+        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
+
+        actor.finalizeImport(cashFlowId, jobId, false);
+
+        // Verify SETUP mode state
+        CashFlowDto.CashFlowSummaryJson cashFlowBefore = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlowBefore.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(cashFlowBefore.getCashChanges()).hasSize(23);
+
+        // Calculate expected balance after initial import
+        // Initial balance: 10000 PLN
+        // INFLOW: 5000 + 5000 + 5000 + 2000 + 5200 + 5200 + 5200 + 3000 = 35600
+        // OUTFLOW: 1500 + 250 + 1500 + 180 + 150 + 1500 + 200 + 1500 + 180 + 220 + 1500 + 120 + 1500 + 500 + 400 = 11200
+        // Net: 35600 - 11200 = 24400
+        // Expected balance: 10000 + 24400 = 34400
+        Money expectedBalance = Money.of(34400.0, "PLN");
+
+        // Step 3: Attest historical import - transitions to OPEN mode
+        CashFlowDto.AttestHistoricalImportResponseJson attestResponse = actor.attestHistoricalImport(
+                cashFlowId, expectedBalance, false, false);
+
+        assertThat(attestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(attestResponse.getConfirmedBalance().getAmount()).isEqualByComparingTo(expectedBalance.getAmount());
+
+        // Verify CashFlow is now in OPEN mode
+        CashFlowDto.CashFlowSummaryJson cashFlowAfterAttestation = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlowAfterAttestation.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+
+        log.info("CashFlow {} attested successfully. Status: {}", cashFlowId, cashFlowAfterAttestation.getStatus());
+
+        // Step 4: NOW TEST THE BUG FIX - Upload more transactions in OPEN mode
+        // These transactions target the ACTIVE month (January 2022)
+        // The bug was: import failed because monthStatuses was not populated
+
+        // Create a small CSV with transactions for the ACTIVE month (2022-01)
+        String activeMonthCsv = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN-OPEN-001,January Salary,Monthly salary 2022,Wpływy regularne,5500.00,PLN,INFLOW,2022-01-10,2022-01-10,,PL12345678901234567890123456
+                TXN-OPEN-002,January Rent,Monthly rent 2022,Mieszkanie,1600.00,PLN,OUTFLOW,2022-01-15,2022-01-15,PL12345678901234567890123456,PL98765432109876543210987654
+                TXN-OPEN-003,January Groceries,Weekly shopping,Zakupy kartą,350.00,PLN,OUTFLOW,2022-01-20,2022-01-20,PL12345678901234567890123456,
+                """;
+
+        BankDataIngestionDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
+                cashFlowId,
+                "open-mode-transactions.csv",
+                activeMonthCsv.getBytes()
+        );
+
+        // Verify the upload was successful (this was the bug - it would fail with "outside forecast range")
+        assertThat(uploadOpen.getParseSummary().getTotalRows()).isEqualTo(3);
+        assertThat(uploadOpen.getParseSummary().getSuccessfulRows()).isEqualTo(3);
+        assertThat(uploadOpen.getStagingResult()).isNotNull();
+
+        // Log staging result for debugging
+        log.info("OPEN mode staging result: status={}, validTransactions={}, invalidTransactions={}, unmappedCategories={}",
+                uploadOpen.getStagingResult().getStatus(),
+                uploadOpen.getStagingResult().getSummary().getValidTransactions(),
+                uploadOpen.getStagingResult().getSummary().getInvalidTransactions(),
+                uploadOpen.getStagingResult().getUnmappedCategories());
+
+        assertThat(uploadOpen.getStagingResult().getStatus())
+                .as("Expected READY_FOR_IMPORT but got %s with unmapped categories: %s, monthly breakdown: %s",
+                        uploadOpen.getStagingResult().getStatus(),
+                        uploadOpen.getStagingResult().getUnmappedCategories(),
+                        uploadOpen.getStagingResult().getMonthlyBreakdown())
+                .isEqualTo("READY_FOR_IMPORT");
+        assertThat(uploadOpen.getStagingResult().getSummary().getValidTransactions()).isEqualTo(3);
+
+        log.info("OPEN mode CSV upload successful: {} transactions staged",
+                uploadOpen.getStagingResult().getSummary().getTotalTransactions());
+
+        // Step 5: Import the OPEN mode transactions
+        String openStagingSessionId = uploadOpen.getStagingResult().getStagingSessionId();
+        BankDataIngestionDto.StartImportResponse openImportResponse = actor.startImport(cashFlowId, openStagingSessionId);
+        String openJobId = openImportResponse.getJobId();
+
+        BankDataIngestionDto.GetImportProgressResponse openProgress = actor.getImportProgress(cashFlowId, openJobId);
+        assertThat(openProgress.getResult().getTransactionsImported()).isEqualTo(3);
+        assertThat(openProgress.getResult().getTransactionsFailed()).isEqualTo(0);
+
+        actor.finalizeImport(cashFlowId, openJobId, false);
+
+        // Step 6: Verify final state
+        CashFlowDto.CashFlowSummaryJson finalCashFlow = actor.getCashFlow(cashFlowId);
+        assertThat(finalCashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(finalCashFlow.getCashChanges()).hasSize(26); // 23 + 3
+
+        // Verify the new transactions were imported
+        boolean hasJanuarySalary = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Salary".equals(tx.getName()));
+        boolean hasJanuaryRent = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Rent".equals(tx.getName()));
+        boolean hasJanuaryGroceries = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Groceries".equals(tx.getName()));
+
+        assertThat(hasJanuarySalary).as("January Salary transaction should be imported").isTrue();
+        assertThat(hasJanuaryRent).as("January Rent transaction should be imported").isTrue();
+        assertThat(hasJanuaryGroceries).as("January Groceries transaction should be imported").isTrue();
+
+        log.info("OPEN mode import test completed successfully:");
+        log.info("  - Initial import (SETUP mode): 23 transactions");
+        log.info("  - Post-attestation import (OPEN mode): 3 transactions");
+        log.info("  - Total transactions: {}", finalCashFlow.getCashChanges().size());
+    }
 }
