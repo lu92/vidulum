@@ -1191,4 +1191,108 @@ public class BankDataIngestionHttpIntegrationTest {
         log.info("  - Post-attestation import (OPEN mode): 3 transactions");
         log.info("  - Total transactions: {}", finalCashFlow.getCashChanges().size());
     }
+
+    // ============ Invalid Transactions Preview Tests ============
+
+    @Test
+    @DisplayName("Should return invalid transactions with validation errors in staging preview via REST API")
+    void shouldReturnInvalidTransactionsWithValidationErrorsInStagingPreview() {
+        // given - create CashFlow with 6 months history (2021-07 to 2021-12)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "test-user-invalid-txn",
+                "Test CashFlow for Invalid Transactions",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW)
+        ));
+
+        // when - upload CSV file with invalid transactions
+        // The CSV contains:
+        // - TXN-2021-08-001: Valid transaction (August 2021)
+        // - TXN-2021-08-002: Valid transaction (August 2021)
+        // - TXN-2020-01-001: Too old transaction (before start period 2021-07)
+        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/transactions-with-invalid.csv"
+        );
+
+        // then - verify staging result
+        assertThat(uploadResponse.getParseSummary().getTotalRows()).isEqualTo(3);
+        assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(3);
+        assertThat(uploadResponse.getStagingResult()).isNotNull();
+
+        // Log the actual staging result for debugging
+        log.info("Staging result: status={}, valid={}, invalid={}, duplicate={}",
+                uploadResponse.getStagingResult().getStatus(),
+                uploadResponse.getStagingResult().getSummary().getValidTransactions(),
+                uploadResponse.getStagingResult().getSummary().getInvalidTransactions(),
+                uploadResponse.getStagingResult().getSummary().getDuplicateTransactions());
+
+        String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
+
+        // Get staging preview - THIS IS THE KEY ASSERTION
+        // After the fix, all transactions (including invalid ones) should be returned
+        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+
+        // Log all transactions for debugging
+        for (BankDataIngestionDto.StagedTransactionPreviewJson txn : preview.getTransactions()) {
+            log.info("Transaction: bankId={}, name={}, status={}, errors={}, targetCategory={}",
+                    txn.getBankTransactionId(),
+                    txn.getName(),
+                    txn.getValidation().getStatus(),
+                    txn.getValidation().getErrors(),
+                    txn.getTargetCategory());
+        }
+
+        // Verify ALL 3 transactions are returned (not just valid ones)
+        assertThat(preview.getTransactions())
+                .as("All transactions including invalid ones should be returned in preview")
+                .hasSize(3);
+
+        // Find the invalid transaction (too old - before start period)
+        BankDataIngestionDto.StagedTransactionPreviewJson oldTxn = preview.getTransactions().stream()
+                .filter(t -> "TXN-2020-01-001".equals(t.getBankTransactionId()))
+                .findFirst()
+                .orElse(null);
+
+        // KEY TEST: After the fix, invalid transaction should be in the preview
+        // Before the fix, it would be filtered out because mappedData was null
+        assertThat(oldTxn)
+                .as("Invalid transaction (TXN-2020-01-001) should be present in preview - " +
+                        "this was the bug: transactions with null mappedData were filtered out")
+                .isNotNull();
+
+        // Verify the invalid transaction has its original data available
+        assertThat(oldTxn.getName()).isEqualTo("Too Old Transaction");
+        assertThat(oldTxn.getAmount()).isEqualTo(2000.0);
+        assertThat(oldTxn.getBankCategory()).isEqualTo("Wpływy regularne");
+
+        // Verify validation errors are present
+        assertThat(oldTxn.getValidation().getErrors())
+                .as("Invalid transaction should have validation errors explaining why it was rejected")
+                .isNotEmpty();
+
+        log.info("Invalid transaction found in preview:");
+        log.info("  - bankTransactionId: {}", oldTxn.getBankTransactionId());
+        log.info("  - name: {}", oldTxn.getName());
+        log.info("  - amount: {}", oldTxn.getAmount());
+        log.info("  - status: {}", oldTxn.getValidation().getStatus());
+        log.info("  - errors: {}", oldTxn.getValidation().getErrors());
+        log.info("  - targetCategory: {} (expected null for invalid txn)", oldTxn.getTargetCategory());
+
+        // Verify valid transactions are also present
+        long validCount = preview.getTransactions().stream()
+                .filter(t -> "VALID".equals(t.getValidation().getStatus()))
+                .count();
+
+        log.info("Summary: {} valid transactions, {} total in preview",
+                validCount, preview.getTransactions().size());
+    }
 }
