@@ -219,7 +219,12 @@ public class CashFlowMonthlyForecast {
      *
      * Normal Monthly Flow:
      *   FORECASTED → ACTIVE (when month becomes current)
-     *   ACTIVE → ATTESTED (via attestMonth - monthly close)
+     *   ACTIVE → ROLLED_OVER (via automatic rollover or manual trigger)
+     *   ACTIVE → ATTESTED (via attestMonth - DEPRECATED, use rollover instead)
+     *
+     * Gap Filling (Ongoing Sync):
+     *   IMPORTED - allows gap filling (adding missed transactions)
+     *   ROLLED_OVER - allows gap filling (adding missed transactions)
      * </pre>
      */
     public enum Status {
@@ -233,20 +238,32 @@ public class CashFlowMonthlyForecast {
         /**
          * Historical month with finalized imported data (after attestation).
          * Transitions from IMPORT_PENDING when attestHistoricalImport is called.
-         * No further imports allowed; data is considered historical/read-only.
+         * Allows gap filling - importing missed historical transactions.
          */
         IMPORTED,
 
         /**
-         * Month closed through normal monthly attestation (attestMonth).
-         * Represents reconciled/finalized month data from regular usage.
+         * Month closed through automatic rollover (scheduled job or manual trigger).
+         * Transitions from ACTIVE at the beginning of the next month.
+         * Allows gap filling - importing missed transactions from bank statements.
+         * This is the preferred way to close months (replaces ATTESTED).
          */
+        ROLLED_OVER,
+
+        /**
+         * Month closed through manual attestation (attestMonth).
+         * Represents reconciled/finalized month data from regular usage.
+         * @deprecated Use ROLLED_OVER instead. This status is kept for backward compatibility
+         *             with existing data. New months should use automatic rollover.
+         */
+        @Deprecated
         ATTESTED,
 
         /**
          * Current month (the "now" month).
          * Only one month can have ACTIVE status at a time.
          * Allows normal operations: appendCashChange, confirmCashChange, etc.
+         * Allows ongoing sync - importing transactions from bank statements.
          */
         ACTIVE,
 
@@ -254,6 +271,7 @@ public class CashFlowMonthlyForecast {
          * Future month with projected/planned transactions.
          * Created automatically for upcoming months (typically 11 months ahead).
          * Allows adding expected transactions for planning purposes.
+         * Does NOT allow importing transactions (blocked by validation).
          */
         FORECASTED
     }

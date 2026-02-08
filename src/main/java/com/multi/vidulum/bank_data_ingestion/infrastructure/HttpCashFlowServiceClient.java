@@ -240,7 +240,8 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             List<CategoryResponse> outflowCategories,
             Map<String, Object> cashChanges,
             YearMonth activePeriod,
-            YearMonth startPeriod
+            YearMonth startPeriod,
+            Map<String, String> monthStatuses
     ) {
     }
 
@@ -271,8 +272,41 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 mapCategories(response.inflowCategories(), Type.INFLOW),
                 mapCategories(response.outflowCategories(), Type.OUTFLOW),
                 extractTransactionIds(response),
-                response.cashChanges() != null ? response.cashChanges().size() : 0
+                response.cashChanges() != null ? response.cashChanges().size() : 0,
+                mapMonthStatuses(response.monthStatuses())
         );
+    }
+
+    private Map<YearMonth, CashFlowInfo.MonthStatus> mapMonthStatuses(Map<String, String> monthStatuses) {
+        if (monthStatuses == null) {
+            return Map.of();
+        }
+        Map<YearMonth, CashFlowInfo.MonthStatus> result = new java.util.HashMap<>();
+        for (Map.Entry<String, String> entry : monthStatuses.entrySet()) {
+            try {
+                YearMonth month = YearMonth.parse(entry.getKey());
+                CashFlowInfo.MonthStatus status = mapMonthStatus(entry.getValue());
+                result.put(month, status);
+            } catch (Exception e) {
+                log.warn("Failed to parse month status: {} = {}", entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+
+    private CashFlowInfo.MonthStatus mapMonthStatus(String status) {
+        if (status == null) {
+            return CashFlowInfo.MonthStatus.FORECASTED;
+        }
+        return switch (status.toUpperCase()) {
+            case "IMPORT_PENDING" -> CashFlowInfo.MonthStatus.IMPORT_PENDING;
+            case "IMPORTED" -> CashFlowInfo.MonthStatus.IMPORTED;
+            case "ROLLED_OVER" -> CashFlowInfo.MonthStatus.ROLLED_OVER;
+            case "ATTESTED" -> CashFlowInfo.MonthStatus.ATTESTED;
+            case "ACTIVE" -> CashFlowInfo.MonthStatus.ACTIVE;
+            case "FORECASTED" -> CashFlowInfo.MonthStatus.FORECASTED;
+            default -> CashFlowInfo.MonthStatus.FORECASTED;
+        };
     }
 
     private CashFlowInfo.CashFlowStatus mapStatus(String status) {

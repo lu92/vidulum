@@ -482,4 +482,48 @@ public final class CashFlowDto {
         private Money budget;
         private List<CategoryJson> subCategories;
     }
+
+    /**
+     * Response for month rollover operation.
+     * <p>
+     * Rollover transitions the current ACTIVE month to ROLLED_OVER status
+     * and the next FORECASTED month becomes ACTIVE.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RolloverMonthResponseJson {
+        /** The CashFlow that was rolled over */
+        private String cashFlowId;
+        /** The period that was rolled over (now has ROLLED_OVER status) */
+        private YearMonth rolledOverPeriod;
+        /** The new active period (now has ACTIVE status) */
+        private YearMonth newActivePeriod;
+        /** The balance at the end of the rolled over period */
+        private Money closingBalance;
+    }
+
+    /**
+     * Response for batch rollover operation (catch-up rollover).
+     * Used when multiple months need to be rolled over at once.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchRolloverResponseJson {
+        /** The CashFlow that was rolled over */
+        private String cashFlowId;
+        /** Number of months that were rolled over */
+        private int monthsRolledOver;
+        /** The first period that was rolled over */
+        private YearMonth firstRolledOverPeriod;
+        /** The last period that was rolled over */
+        private YearMonth lastRolledOverPeriod;
+        /** The new active period after all rollovers */
+        private YearMonth newActivePeriod;
+        /** The final closing balance */
+        private Money closingBalance;
+    }
 }

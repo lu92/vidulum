@@ -1828,8 +1828,8 @@ public class CashFlowControllerTest extends IntegrationTest {
     }
 
     @Test
-    void shouldRejectImportWhenCashFlowNotInSetupMode() {
-        // given - create normal CashFlow (OPEN mode, not SETUP)
+    void shouldRejectImportToForecastedMonthInOpenMode() {
+        // given - create normal CashFlow (OPEN mode, activePeriod = 2022-01)
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("userId")
@@ -1842,19 +1842,20 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .build()
         );
 
-        // when/then - trying to import historical data should fail
+        // when/then - trying to import to a FORECASTED month (future) should fail
+        // activePeriod is 2022-01, so 2022-02 is a FORECASTED month
         assertThatThrownBy(() -> cashFlowRestController.importHistoricalCashChange(
                 cashFlowId,
                 CashFlowDto.ImportHistoricalCashChangeJson.builder()
                         .category("Uncategorized")
                         .name("Test Transaction")
-                        .description("This should fail")
+                        .description("This should fail - cannot import to future month")
                         .money(Money.of(100, "USD"))
                         .type(INFLOW)
-                        .dueDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
-                        .paidDate(ZonedDateTime.parse("2021-11-15T00:00:00Z"))
+                        .dueDate(ZonedDateTime.parse("2022-02-15T00:00:00Z"))
+                        .paidDate(ZonedDateTime.parse("2022-02-15T00:00:00Z"))
                         .build()
-        )).isInstanceOf(ImportNotAllowedInNonSetupModeException.class);
+        )).isInstanceOf(ImportToForecastedMonthNotAllowedException.class);
     }
 
     @Test

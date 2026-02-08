@@ -17,6 +17,7 @@ public class CashFlowAggregateProjector {
                 case CashFlowEvent.HistoricalImportAttestedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.ImportRolledBackEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.MonthAttestedEvent event -> cashFlow.apply(event);
+                case CashFlowEvent.MonthRolledOverEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.ExpectedCashChangeAppendedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.PaidCashChangeAppendedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.CashChangeConfirmedEvent event -> cashFlow.apply(event);

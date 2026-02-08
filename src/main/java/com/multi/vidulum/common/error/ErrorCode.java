@@ -40,6 +40,8 @@ public enum ErrorCode {
     CASHFLOW_IMPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Import only allowed in SETUP mode"),
     CASHFLOW_ATTESTATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Attestation only allowed in SETUP mode"),
     CASHFLOW_ROLLBACK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Rollback only allowed in SETUP mode"),
+    CASHFLOW_CLOSED(HttpStatus.BAD_REQUEST, "CashFlow is closed and read-only"),
+    IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Cannot import to FORECASTED month"),
     CASHCHANGE_NOT_PENDING(HttpStatus.BAD_REQUEST, "CashChange is not in PENDING status"),
 
     // CashFlow - Date Validation

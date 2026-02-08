@@ -46,6 +46,9 @@ public class CashFlowEventListener {
             case "MonthAttestedEvent" -> {
                 return event.getContent().to(CashFlowEvent.MonthAttestedEvent.class);
             }
+            case "MonthRolledOverEvent" -> {
+                return event.getContent().to(CashFlowEvent.MonthRolledOverEvent.class);
+            }
             case "ExpectedCashChangeAppendedEvent" -> {
                 return event.getContent().to(CashFlowEvent.ExpectedCashChangeAppendedEvent.class);
             }

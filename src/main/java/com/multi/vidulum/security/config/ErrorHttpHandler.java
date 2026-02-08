@@ -145,6 +145,20 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    @ExceptionHandler(ImportToForecastedMonthNotAllowedException.class)
+    public ResponseEntity<ApiError> handleImportToForecastedMonth(ImportToForecastedMonthNotAllowedException ex) {
+        log.debug("Import to FORECASTED month not allowed: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(ImportNotAllowedInClosedModeException.class)
+    public ResponseEntity<ApiError> handleImportToClosedCashFlow(ImportNotAllowedInClosedModeException ex) {
+        log.debug("Import to CLOSED CashFlow not allowed: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CASHFLOW_CLOSED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     @ExceptionHandler(AttestationNotAllowedInNonSetupModeException.class)
     public ResponseEntity<ApiError> handleAttestationNotAllowed(AttestationNotAllowedInNonSetupModeException ex) {
         log.debug("Attestation not allowed: {}", ex.getMessage());

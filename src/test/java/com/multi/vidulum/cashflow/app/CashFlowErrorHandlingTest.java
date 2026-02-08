@@ -484,27 +484,27 @@ class CashFlowErrorHandlingTest {
         }
 
         @Test
-        @DisplayName("Should return 400 BAD_REQUEST when importing to non-SETUP mode CashFlow")
-        void shouldReturn400WhenImportNotAllowedInNonSetupMode() {
-            // given - create standard CashFlow (OPEN mode)
+        @DisplayName("Should return 400 BAD_REQUEST when importing to FORECASTED month in OPEN mode")
+        void shouldReturn400WhenImportToForecastedMonth() {
+            // given - create standard CashFlow (OPEN mode, activePeriod = 2022-01)
             String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
-            // when - try to import historical transaction
+            // when - try to import to a FORECASTED month (2022-02 is after activePeriod 2022-01)
             ResponseEntity<ApiError> response = actor.importHistoricalTransactionExpectingError(
-                    cashFlowId, "Uncategorized", "Historical", "Desc",
+                    cashFlowId, "Uncategorized", "Future Import", "Desc",
                     Money.of(500, "USD"), INFLOW,
-                    ZonedDateTime.parse("2021-06-15T00:00:00Z"),
-                    ZonedDateTime.parse("2021-06-15T00:00:00Z"));
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z"),
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             ApiError error = response.getBody();
             assertThat(error.status()).isEqualTo(400);
-            assertThat(error.code()).isEqualTo("CASHFLOW_IMPORT_NOT_ALLOWED");
-            assertThat(error.message()).contains("SETUP mode");
+            assertThat(error.code()).isEqualTo("IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED");
+            assertThat(error.message()).contains("FORECASTED");
 
-            log.info("Import not allowed in non-SETUP mode correctly returned 400: code={}", error.code());
+            log.info("Import to FORECASTED month correctly returned 400: code={}", error.code());
         }
 
         @Test

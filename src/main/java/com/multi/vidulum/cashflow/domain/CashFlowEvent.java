@@ -16,6 +16,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.ImportRolledBackEvent,
         CashFlowEvent.HistoricalCashChangeImportedEvent,
         CashFlowEvent.MonthAttestedEvent,
+        CashFlowEvent.MonthRolledOverEvent,
         CashFlowEvent.ExpectedCashChangeAppendedEvent,
         CashFlowEvent.PaidCashChangeAppendedEvent,
         CashFlowEvent.CashChangeConfirmedEvent,
@@ -155,11 +156,53 @@ public sealed interface CashFlowEvent extends DomainEvent
         }
     }
 
+    /**
+     * @deprecated Use {@link MonthRolledOverEvent} instead. This event is kept for backward compatibility.
+     */
+    @Deprecated
     record MonthAttestedEvent(CashFlowId cashFlowId, YearMonth period, Money currentMoney,
                               ZonedDateTime dateTime) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return dateTime;
+        }
+    }
+
+    /**
+     * Event for automatic or manual month rollover.
+     * <p>
+     * This event transitions the current ACTIVE month to ROLLED_OVER status
+     * and the next FORECASTED month becomes ACTIVE.
+     * <p>
+     * Rollover can be triggered by:
+     * <ul>
+     *   <li>Scheduled job at the beginning of each month (automatic)</li>
+     *   <li>Manual trigger via REST endpoint (for testing or catch-up)</li>
+     * </ul>
+     * <p>
+     * Unlike the deprecated {@link MonthAttestedEvent}, rollover:
+     * <ul>
+     *   <li>Does not require balance verification each time</li>
+     *   <li>Can be triggered automatically without user intervention</li>
+     *   <li>Allows gap filling to ROLLED_OVER months later</li>
+     * </ul>
+     *
+     * @param cashFlowId      unique identifier of the cash flow
+     * @param rolledOverPeriod the period that was rolled over (becomes ROLLED_OVER)
+     * @param newActivePeriod  the new active period (becomes ACTIVE)
+     * @param closingBalance   the balance at the end of the rolled over period
+     * @param rolledOverAt     timestamp when the rollover occurred
+     */
+    record MonthRolledOverEvent(
+            CashFlowId cashFlowId,
+            YearMonth rolledOverPeriod,
+            YearMonth newActivePeriod,
+            Money closingBalance,
+            ZonedDateTime rolledOverAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return rolledOverAt;
         }
     }
 

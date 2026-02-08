@@ -44,7 +44,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     public StartImportJobResult handle(StartImportJobCommand command) {
         ZonedDateTime now = ZonedDateTime.now(clock);
 
-        // Validate: CashFlow must exist and be in SETUP mode
+        // Validate: CashFlow must exist and be in SETUP or OPEN mode
         CashFlowInfo cashFlowInfo;
         try {
             cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
@@ -52,10 +52,11 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             throw new CashFlowDoesNotExistsException(command.cashFlowId());
         }
 
-        if (!cashFlowInfo.isInSetupMode()) {
+        // Allow import in both SETUP mode (historical backfill) and OPEN mode (ongoing sync/gap filling)
+        if (cashFlowInfo.isInClosedMode()) {
             throw new StagingSessionNotReadyException(
                     command.stagingSessionId(),
-                    "CashFlow is not in SETUP mode. Current status: " + cashFlowInfo.status()
+                    "CashFlow is CLOSED. No imports are allowed."
             );
         }
 
