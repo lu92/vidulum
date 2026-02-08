@@ -1496,9 +1496,388 @@ Następnego dnia:
 
 ---
 
+## Potencjalne problemy i pytania otwarte
+
+### Problem 1: Multi-CashFlow / Multi-Account
+
+**Opis:** Design zakłada 1 CashFlow = 1 konto bankowe. Co jeśli user ma:
+- Kilka kont w jednym banku?
+- Konta w różnych bankach?
+- Przelewy między własnymi kontami (internal transfers)?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy user może mieć wiele CashFlow z połączeniem bankowym?
+- [ ] Jak obsłużyć przelew między własnymi kontami (np. z konta głównego na oszczędnościowe)?
+  - Opcja A: INFLOW + OUTFLOW (podwójne liczenie)
+  - Opcja B: Ignorować internal transfers
+  - Opcja C: Specjalny typ transakcji "TRANSFER"
+
+---
+
+### Problem 2: Waluta i przewalutowania
+
+**Opis:** Brak obsługi:
+- Transakcji w obcej walucie
+- Przewalutowań (np. płatność kartą za granicą)
+- Kont walutowych
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy CashFlow będzie zawsze single-currency?
+- [ ] Co z transakcjami typu "Zapłacono 100 EUR = 430 PLN"?
+- [ ] Czy potrzebujemy `originalAmount` + `convertedAmount` + `exchangeRate`?
+
+---
+
+### Problem 3: Connection expiration / Re-authorization (PSD2)
+
+**Opis:** Połączenia PSD2 wygasają po 90 dniach (wymóg regulacyjny). Design ma `BankConnection.expiresAt`, ale:
+- Brak flow re-autoryzacji
+- Brak powiadomień przed wygaśnięciem
+- Co się dzieje gdy połączenie wygaśnie w środku miesiąca?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Jak obsłużyć wygaśnięcie połączenia?
+- [ ] Alert + link do re-autoryzacji?
+- [ ] Powiadomienie 7 dni przed wygaśnięciem?
+
+---
+
+### Problem 4: Conflict resolution przy matching
+
+**Opis:** Co jeśli:
+- Dwie transakcje bankowe pasują do jednego FORECASTED? (score 70 i 68)
+- Jedna transakcja bankowa pasuje do dwóch FORECASTED? (np. dwa czynsz-like)
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy matching jest 1:1?
+- [ ] Czy może być 1:N (jedna płatność zbiorcza = wiele expected)?
+- [ ] Jak rozwiązywać konflikty? First-match-wins? User decyduje?
+
+---
+
+### Problem 5: Rollback / Undo matching
+
+**Opis:** User zaakceptował auto-match ale się pomylił. Jak cofnąć?
+- CONFIRMED → ???
+- Brak opcji "unmatch" w designie
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy user może cofnąć dopasowanie?
+- [ ] Jakie statusy po cofnięciu?
+  - Opcja A: Bank transaction → CONFIRMED (standalone), FORECASTED → przywrócony
+  - Opcja B: Brak możliwości cofnięcia, tylko edycja
+
+---
+
+### Problem 6: Partial payments (płatności częściowe)
+
+**Opis:** Co jeśli kontrahent zapłaci częściowo?
+- EXPECTED: Faktura 5000 PLN
+- Bank: 2500 PLN (50%)
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy dopasować częściowo?
+- [ ] Zostawić resztę jako nowy EXPECTED?
+- [ ] Jak to wpływa na statystyki?
+- [ ] Czy potrzebujemy `partialPayments: List<PartialPayment>`?
+
+---
+
+### Problem 7: Alert/Notification system - brak szczegółów
+
+**Opis:** Design mówi "alert do usera", ale brakuje:
+- Gdzie są przechowywane alerty?
+- Jaki model danych?
+- Czy są read/unread?
+- Czy są batch-owane (email digest)?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy potrzebujesz pełnego Alert aggregate/entity?
+- [ ] In-app notifications tylko czy też email/push?
+- [ ] Czy alerty mają być per-CashChange czy per-User?
+
+**Propozycja modelu:**
+```java
+public class Alert {
+    private AlertId alertId;
+    private UserId userId;
+    private CashFlowId cashFlowId;
+    private CashChangeId cashChangeId;      // nullable
+    private AlertType type;                  // UNMATCHED, SUGGESTION, CONNECTION_EXPIRING, etc.
+    private AlertSeverity severity;          // INFO, WARNING, ERROR
+    private String title;
+    private String message;
+    private Map<String, String> metadata;   // np. {suggestedMatchId: "..."}
+    private boolean isRead;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime readAt;
+    private ZonedDateTime expiresAt;        // nullable
+}
+
+public enum AlertType {
+    UNMATCHED_TRANSACTION,
+    MATCHING_SUGGESTION,
+    CONNECTION_EXPIRING,
+    CONNECTION_EXPIRED,
+    SYNC_FAILED,
+    NEW_BANK_CATEGORY,
+    AI_LOW_CONFIDENCE
+}
+```
+
+---
+
+### Problem 8: RecurringRule - edge cases
+
+**Opis:** Co jeśli:
+- User edytuje regułę? Czy aktualizować już wygenerowane FORECASTED?
+- User usuwa regułę? Usunąć FORECASTED?
+- Reguła z endDate w przeszłości - co z już wygenerowanymi?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Jakie zachowanie przy edycji RecurringRule?
+  - Opcja A: Aktualizuj tylko przyszłe FORECASTED
+  - Opcja B: Aktualizuj wszystkie niezamatchowane FORECASTED
+  - Opcja C: Nie aktualizuj, user musi ręcznie
+- [ ] Jakie zachowanie przy usuwaniu RecurringRule?
+  - Opcja A: Usuń wszystkie FORECASTED z tej reguły
+  - Opcja B: Zostaw FORECASTED jako standalone (orphaned)
+  - Opcja C: Zapytaj usera
+
+---
+
+### Problem 9: Historia kategoryzacji - uczenie się
+
+**Opis:** Design mówi "historia - counterpartyAccount", ale:
+- Gdzie przechowywana jest ta historia?
+- Czy to osobna tabela/collection?
+- Jak szybko wyszukiwać?
+- Co jeśli user zmieni kategorię? Aktualizować historię?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy potrzebujesz `CategorizationHistory` entity/collection?
+- [ ] Jak indeksować dla szybkiego wyszukiwania?
+
+**Propozycja modelu:**
+```java
+public class CategorizationRule {
+    private CategorizationRuleId ruleId;
+    private CashFlowId cashFlowId;
+
+    // Matching criteria
+    private String counterpartyAccount;     // nullable - jeśli znany IBAN
+    private String descriptionPattern;      // regex lub simple pattern
+    private Type type;                      // INFLOW / OUTFLOW
+
+    // Target category
+    private CategoryName categoryName;
+
+    // Metadata
+    private int usageCount;                 // ile razy użyta
+    private Double confidence;              // 0.0-1.0
+    private CategorizationRuleSource source; // LEARNED, MANUAL, AI
+    private ZonedDateTime createdAt;
+    private ZonedDateTime lastUsedAt;
+}
+
+public enum CategorizationRuleSource {
+    LEARNED,    // Nauczona z historii transakcji
+    MANUAL,     // Stworzona ręcznie przez usera
+    AI          // Zasugerowana przez AI
+}
+```
+
+---
+
+### Problem 10: Timing i kolejność eventów
+
+**Opis:** Co jeśli:
+- Webhook przychodzi w tym samym momencie co batch sync?
+- Dwa webhooki dla tej samej transakcji?
+- Event processing fail + retry?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy potrzebujesz idempotency key dla eventów?
+- [ ] Distributed lock na `bankTransactionId`?
+- [ ] Dead letter queue dla failed events?
+
+**Propozycja:**
+```java
+// Idempotency: zapisuj processed bankTransactionIds
+public class ProcessedBankTransaction {
+    private String bankTransactionId;
+    private CashFlowId cashFlowId;
+    private CashChangeId cashChangeId;
+    private ZonedDateTime processedAt;
+    private String sourceType;  // "WEBHOOK", "BATCH_SYNC", "CSV_IMPORT"
+}
+
+// Przed przetworzeniem:
+if (processedBankTransactionRepository.existsByBankTransactionId(txId)) {
+    log.info("Transaction {} already processed, skipping", txId);
+    return;
+}
+```
+
+---
+
+### Problem 11: GDPR / Data retention
+
+**Opis:** Przechowujesz `rawBankData` (surowe dane z banku):
+- Jak długo przechowywać?
+- Czy user może zażądać usunięcia?
+- Czy to wpływa na matching history?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Jaka polityka retencji danych?
+  - rawBankData: 30 dni? 90 dni? Do momentu zamknięcia miesiąca?
+  - MatchingAudit: Zawsze? X lat?
+- [ ] Czy implementować "Right to be forgotten"?
+- [ ] Czy anonimizować stare dane zamiast usuwać?
+
+---
+
+### Problem 12: Migracja istniejących danych
+
+**Opis:** Masz już CashChange w bazie. Nowy design dodaje wiele pól (nullable). Ale:
+- Jak zmigrować istniejące dane?
+- Co ze statusami? (obecny PENDING vs nowy PENDING)
+- Czy soft close zastąpi atestację od razu?
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy to będzie big-bang migration czy stopniowe wprowadzanie?
+- [ ] Feature flags dla nowych funkcjonalności?
+- [ ] Backward compatibility z obecnym UI?
+
+**Propozycja planu migracji:**
+1. Dodaj nowe pola jako nullable
+2. Deploy z feature flags (disabled)
+3. Migruj dane w tle
+4. Włącz feature flags stopniowo
+5. Usuń stare endpointy po pełnej migracji
+
+---
+
+### Problem 13: Performance przy dużej ilości transakcji
+
+**Opis:** Reconciliation iteruje po wszystkich PENDING/FORECASTED. Przy 1000+ transakcji/miesiąc może być wolne.
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy potrzebujesz indeksów na `counterpartyAccount`, `dueDate`, `status`?
+- [ ] Czy reconciliation ma być synchroniczne czy async (queue)?
+- [ ] Batch size dla przetwarzania?
+
+**Propozycja indeksów:**
+```javascript
+// MongoDB
+db.cashChanges.createIndex({
+    cashFlowId: 1,
+    status: 1,
+    "dueDate": 1
+})
+
+db.cashChanges.createIndex({
+    cashFlowId: 1,
+    counterpartyAccount: 1
+})
+
+db.cashChanges.createIndex({
+    bankTransactionId: 1
+}, { unique: true, sparse: true })
+```
+
+---
+
+### Problem 14: Soft Close - co z "otwartymi" miesiącami?
+
+**Opis:** Soft close zamyka miesiąc automatycznie 1-go. Ale:
+- User jest na urlopie i nie rozwiązał UNMATCHED
+- User chce edytować historię (3 miesiące wstecz)
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Czy CLOSED miesiące są w pełni read-only?
+- [ ] Czy user może "otworzyć" zamknięty miesiąc?
+- [ ] Jak długo można edytować historię?
+
+**Propozycja:**
+- CLOSED miesiące: edycja dozwolona ale z pełnym audit trail
+- Brak możliwości dodawania nowych transakcji do CLOSED
+- Możliwość zmiany kategorii, dopasowania, statusu (z logowaniem)
+
+---
+
+### Problem 15: Brak domain eventów dla nowych operacji
+
+**Opis:** Dodajesz nowe operacje ale brak eventów:
+
+**Brakujące eventy:**
+- [ ] `CashChangeMatchedEvent` - gdy transakcja została dopasowana
+- [ ] `CashChangeUnmatchedEvent` - gdy cofnięto dopasowanie
+- [ ] `CashChangeWrittenOffEvent` - gdy oznaczono jako stracone
+- [ ] `CashChangeCategorizedEvent` - gdy zmieniono kategorię
+- [ ] `RecurringRuleCreatedEvent`
+- [ ] `RecurringRuleUpdatedEvent`
+- [ ] `RecurringRuleDeletedEvent`
+- [ ] `BankConnectionEstablishedEvent`
+- [ ] `BankConnectionExpiredEvent`
+- [ ] `BankSyncCompletedEvent`
+- [ ] `AlertCreatedEvent`
+
+**Pytania do rozstrzygnięcia:**
+- [ ] Które eventy są potrzebne dla CQRS/event sourcing?
+- [ ] Czy eventy mają być publikowane na Kafkę?
+
+---
+
+## Kluczowe pytania wymagające odpowiedzi
+
+Przed kontynuacją implementacji potrzebne są decyzje:
+
+### Architektura
+
+| # | Pytanie | Opcje | Decyzja |
+|---|---------|-------|---------|
+| 1 | **Multi-account:** Czy user może mieć wiele połączonych kont bankowych? | Tak / Nie / Przyszłość | ❓ |
+| 2 | **Waluta:** Czy obsługujesz tylko PLN czy też inne waluty? | PLN only / Multi-currency | ❓ |
+| 3 | **Internal transfers:** Jak obsługiwać przelewy między własnymi kontami? | Ignore / Track as TRANSFER / INFLOW+OUTFLOW | ❓ |
+
+### Reconciliation
+
+| # | Pytanie | Opcje | Decyzja |
+|---|---------|-------|---------|
+| 4 | **Partial payments:** Co z częściowymi płatnościami? | Nie obsługuj / Partial match / Split transaction | ❓ |
+| 5 | **Undo matching:** Czy user może cofnąć automatyczne dopasowanie? | Tak / Nie | ❓ |
+| 6 | **Conflict resolution:** Jak rozwiązywać konflikty (2 transakcje pasują do 1)? | First-match / User decides / Best score | ❓ |
+
+### RecurringRule
+
+| # | Pytanie | Opcje | Decyzja |
+|---|---------|-------|---------|
+| 7 | **Edit rule:** Co dzieje się z FORECASTED gdy edytujesz regułę? | Update all / Update future only / No update | ❓ |
+| 8 | **Delete rule:** Co z FORECASTED gdy usuwasz regułę? | Delete all / Keep as orphans / Ask user | ❓ |
+
+### Data & History
+
+| # | Pytanie | Opcje | Decyzja |
+|---|---------|-------|---------|
+| 9 | **Closed months:** Czy można edytować zamknięte miesiące? | Yes with audit / Limited / Read-only | ❓ |
+| 10 | **Data retention:** Jak długo przechowywać rawBankData? | 30 dni / 90 dni / Forever / Until month close | ❓ |
+
+### System
+
+| # | Pytanie | Opcje | Decyzja |
+|---|---------|-------|---------|
+| 11 | **Alert system:** Czy potrzebujesz pełnego systemu powiadomień? | In-app only / In-app + email / Full (+ push) | ❓ |
+| 12 | **Migration:** Jak planujesz migrację istniejących danych? | Big-bang / Gradual with flags / New users only | ❓ |
+
+---
+
 ## Changelog
 
 | Data | Zmiany |
 |------|--------|
 | 2026-02-07 | Utworzenie dokumentu |
+| 2026-02-07 | Dodano pełną listę polskich banków dla Tink i GoCardless |
+| 2026-02-07 | Dodano szczegółowe API rate limits |
+| 2026-02-07 | Dodano sekcję "Potencjalne problemy i pytania otwarte" |
 
