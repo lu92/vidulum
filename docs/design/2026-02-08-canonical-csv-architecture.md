@@ -18,6 +18,9 @@
 7. [Integracja z Ongoing Sync](#7-integracja-z-ongoing-sync)
 8. [Zalety i kompromisy](#8-zalety-i-kompromisy)
 9. [Plan implementacji](#9-plan-implementacji)
+10. [Smart Category Suggestion](#10-smart-category-suggestion)
+11. [Podsumowanie wszystkich PRów](#11-podsumowanie-wszystkich-prów)
+12. [Otwarte pytania](#12-otwarte-pytania)
 
 ---
 
@@ -990,6 +993,850 @@ PR-A (Canonical Format)
 | PR-C | 🟡 Średni | Claude/GPT API key |
 | PR-D | 🟡 Średni | Kontomatik/Salt Edge konto |
 | PR-E | 🟡 Średni | PR-D |
+
+---
+
+## 10. Smart Category Suggestion
+
+### 10.1 Cel
+
+Wykorzystanie istniejących mappingów kategorii do automatycznego sugerowania kategorii dla nowych transakcji. System uczy się z wyborów użytkownika i z czasem staje się coraz bardziej precyzyjny.
+
+### 10.2 Istniejący system mappingów
+
+**CategoryMapping** (persisted in MongoDB):
+```java
+public record CategoryMapping(
+    MappingId mappingId,
+    CashFlowId cashFlowId,
+    String bankCategoryName,           // np. "Zakupy kartą"
+    CategoryName targetCategoryName,   // np. "Groceries"
+    CategoryName parentCategoryName,   // opcjonalnie dla subcategories
+    Type categoryType,                 // INFLOW / OUTFLOW
+    MappingAction action,              // CREATE_NEW, CREATE_SUBCATEGORY, MAP_TO_UNCATEGORIZED
+    ZonedDateTime createdAt,
+    ZonedDateTime updatedAt
+) {}
+```
+
+**Aktualne użycie:**
+- Przy staging transakcji, user mapuje bank categories → system categories
+- Mappingi są zapisywane per CashFlow
+- Przy kolejnym imporcie, istniejące mappingi są automatycznie aplikowane
+
+### 10.3 Rozszerzenie: Smart Category Suggestion
+
+#### Poziomy sugestii (confidence levels)
+
+| Poziom | Confidence | Źródło | Akcja |
+|--------|------------|--------|-------|
+| **Exact Match** | 1.0 | Dokładne dopasowanie bankCategory | Auto-apply |
+| **Fuzzy Match** | 0.90-0.99 | Podobna nazwa (Levenshtein, substring) | Auto-apply z review |
+| **MCC Match** | 0.80-0.89 | Merchant Category Code | Sugestia do potwierdzenia |
+| **AI Suggestion** | 0.70-0.79 | AI z kontekstem user mappings | Sugestia do potwierdzenia |
+| **No Match** | < 0.70 | Brak dopasowania | Wymaga manual mapping |
+
+#### Flow sugestii
+
+```
+Nowa transakcja z bankCategory "Biedronka Kraków"
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     SMART CATEGORY SUGGESTER                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. EXACT MATCH                                                     │
+│     ├─► Szukaj: bankCategory == "Biedronka Kraków"                 │
+│     └─► Wynik: brak                                                 │
+│                                                                     │
+│  2. FUZZY MATCH                                                     │
+│     ├─► Istniejące mappingi:                                        │
+│     │   - "Biedronka Warszawa" → Groceries                          │
+│     │   - "Biedronka" → Groceries                                   │
+│     │   - "Lidl" → Groceries                                        │
+│     ├─► Similarity("Biedronka Kraków", "Biedronka Warszawa") = 0.85 │
+│     ├─► Similarity("Biedronka Kraków", "Biedronka") = 0.92          │
+│     └─► Wynik: Groceries (confidence: 0.92)                         │
+│                                                                     │
+│  3. MCC MATCH (if fuzzy < 0.80)                                     │
+│     ├─► MCC: 5411 (Grocery Stores, Supermarkets)                    │
+│     ├─► MCC Pattern: 5411 → Groceries                               │
+│     └─► Wynik: Groceries (confidence: 0.85)                         │
+│                                                                     │
+│  4. AI SUGGESTION (if MCC < 0.70)                                   │
+│     ├─► Context: user's existing category mappings                  │
+│     ├─► Prompt: "Given user categories: [...], suggest for: ..."    │
+│     └─► Wynik: AI suggested category (confidence: 0.75)             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+CategorySuggestion {
+    suggestedCategory: "Groceries",
+    confidence: 0.92,
+    source: FUZZY_MATCH,
+    matchedPattern: "Biedronka",
+    autoApply: true  // confidence >= 0.90
+}
+```
+
+### 10.4 Rozszerzony model CategoryMapping
+
+```java
+/**
+ * Extended CategoryMapping with pattern matching capabilities.
+ */
+public record CategoryMapping(
+    MappingId mappingId,
+    CashFlowId cashFlowId,
+
+    // Existing fields
+    String bankCategoryName,
+    CategoryName targetCategoryName,
+    CategoryName parentCategoryName,
+    Type categoryType,
+    MappingAction action,
+
+    // NEW: Pattern matching
+    String matchPattern,              // Regex pattern, np. "Biedronka.*"
+    String merchantCategoryCode,      // MCC code, np. "5411"
+
+    // NEW: Learning metadata
+    double confidence,                // Current confidence score
+    MappingSource source,             // How was this mapping created
+    int usageCount,                   // How many times used
+
+    ZonedDateTime createdAt,
+    ZonedDateTime updatedAt
+) {}
+
+public enum MappingSource {
+    USER_EXPLICIT,        // User explicitly mapped
+    USER_CONFIRMED,       // System suggested, user confirmed
+    AUTO_LEARNED,         // System auto-learned from patterns
+    SYSTEM_DEFAULT        // Default MCC-based mapping
+}
+```
+
+### 10.5 MerchantPattern entity
+
+```java
+/**
+ * Learned pattern for merchant recognition.
+ * Shared across users for common merchants like "Biedronka", "Żabka", etc.
+ */
+public record MerchantPattern(
+    MerchantPatternId patternId,
+    String normalizedName,            // "biedronka" (lowercase, no location)
+    String displayName,               // "Biedronka"
+    List<String> aliases,             // ["jeronimo martins", "biedronka*"]
+    String merchantCategoryCode,      // "5411"
+    CategoryName suggestedCategory,   // "Groceries" (default)
+    int globalUsageCount,             // Used for ranking suggestions
+    ZonedDateTime updatedAt
+) {}
+```
+
+### 10.6 Smart Category Suggester Service
+
+```java
+package com.multi.vidulum.bank_data_ingestion.app;
+
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+
+@Slf4j
+@Service
+@AllArgsConstructor
+public class SmartCategorySuggester {
+
+    private final CategoryMappingRepository mappingRepository;
+    private final MerchantPatternRepository merchantPatternRepository;
+    private final AiCategorySuggestionService aiService;
+
+    private static final double AUTO_APPLY_THRESHOLD = 0.90;
+    private static final double SUGGESTION_THRESHOLD = 0.70;
+
+    /**
+     * Suggest category for a transaction based on multiple matching strategies.
+     */
+    public CategorySuggestion suggest(
+            CashFlowId cashFlowId,
+            String bankCategory,
+            String merchantName,
+            String mcc,
+            Type type
+    ) {
+        // 1. Exact match
+        Optional<CategorySuggestion> exactMatch = tryExactMatch(cashFlowId, bankCategory, type);
+        if (exactMatch.isPresent()) {
+            return exactMatch.get();
+        }
+
+        // 2. Fuzzy match on existing mappings
+        Optional<CategorySuggestion> fuzzyMatch = tryFuzzyMatch(cashFlowId, bankCategory, merchantName, type);
+        if (fuzzyMatch.isPresent() && fuzzyMatch.get().confidence() >= SUGGESTION_THRESHOLD) {
+            return fuzzyMatch.get();
+        }
+
+        // 3. MCC-based match
+        Optional<CategorySuggestion> mccMatch = tryMccMatch(cashFlowId, mcc, type);
+        if (mccMatch.isPresent() && mccMatch.get().confidence() >= SUGGESTION_THRESHOLD) {
+            return mccMatch.get();
+        }
+
+        // 4. AI suggestion with user context
+        Optional<CategorySuggestion> aiSuggestion = tryAiSuggestion(cashFlowId, bankCategory, merchantName, type);
+        if (aiSuggestion.isPresent() && aiSuggestion.get().confidence() >= SUGGESTION_THRESHOLD) {
+            return aiSuggestion.get();
+        }
+
+        // 5. No match - requires manual mapping
+        return CategorySuggestion.noMatch(bankCategory);
+    }
+
+    private Optional<CategorySuggestion> tryExactMatch(CashFlowId cashFlowId, String bankCategory, Type type) {
+        return mappingRepository.findByCashFlowIdAndBankCategoryNameAndCategoryType(
+                cashFlowId, bankCategory, type
+            )
+            .map(mapping -> new CategorySuggestion(
+                mapping.targetCategoryName(),
+                1.0,
+                SuggestionSource.EXACT_MATCH,
+                bankCategory,
+                true  // auto-apply
+            ));
+    }
+
+    private Optional<CategorySuggestion> tryFuzzyMatch(
+            CashFlowId cashFlowId, String bankCategory, String merchantName, Type type) {
+
+        List<CategoryMapping> userMappings = mappingRepository.findByCashFlowIdAndCategoryType(cashFlowId, type);
+
+        String searchText = normalizeForMatching(bankCategory + " " + merchantName);
+
+        return userMappings.stream()
+            .map(mapping -> {
+                double similarity = calculateSimilarity(
+                    normalizeForMatching(mapping.bankCategoryName()),
+                    searchText
+                );
+                return new ScoredMapping(mapping, similarity);
+            })
+            .filter(sm -> sm.score() >= 0.70)
+            .max(Comparator.comparingDouble(ScoredMapping::score))
+            .map(sm -> new CategorySuggestion(
+                sm.mapping().targetCategoryName(),
+                sm.score(),
+                SuggestionSource.FUZZY_MATCH,
+                sm.mapping().bankCategoryName(),
+                sm.score() >= AUTO_APPLY_THRESHOLD
+            ));
+    }
+
+    private Optional<CategorySuggestion> tryMccMatch(CashFlowId cashFlowId, String mcc, Type type) {
+        if (mcc == null || mcc.isBlank()) {
+            return Optional.empty();
+        }
+
+        // First check user's own MCC mappings
+        Optional<CategoryMapping> userMccMapping = mappingRepository
+            .findByCashFlowIdAndMerchantCategoryCode(cashFlowId, mcc);
+        if (userMccMapping.isPresent()) {
+            return Optional.of(new CategorySuggestion(
+                userMccMapping.get().targetCategoryName(),
+                0.88,
+                SuggestionSource.MCC_USER_MAPPING,
+                "MCC: " + mcc,
+                false  // needs confirmation
+            ));
+        }
+
+        // Fall back to global merchant patterns
+        return merchantPatternRepository.findByMerchantCategoryCode(mcc)
+            .map(pattern -> new CategorySuggestion(
+                pattern.suggestedCategory(),
+                0.80,
+                SuggestionSource.MCC_GLOBAL_PATTERN,
+                "MCC: " + mcc + " (" + pattern.displayName() + ")",
+                false
+            ));
+    }
+
+    private Optional<CategorySuggestion> tryAiSuggestion(
+            CashFlowId cashFlowId, String bankCategory, String merchantName, Type type) {
+
+        // Get user's category list for context
+        List<CategoryMapping> userMappings = mappingRepository.findByCashFlowId(cashFlowId);
+        List<String> userCategories = userMappings.stream()
+            .map(m -> m.targetCategoryName().name())
+            .distinct()
+            .toList();
+
+        if (userCategories.isEmpty()) {
+            return Optional.empty();  // No context for AI
+        }
+
+        return aiService.suggestCategory(
+            bankCategory,
+            merchantName,
+            type,
+            userCategories
+        );
+    }
+
+    private String normalizeForMatching(String text) {
+        if (text == null) return "";
+        return text.toLowerCase()
+            .replaceAll("[^a-ząćęłńóśźżA-ZĄĆĘŁŃÓŚŹŻ0-9\\s]", "")
+            .replaceAll("\\s+", " ")
+            .trim();
+    }
+
+    private double calculateSimilarity(String s1, String s2) {
+        // Combination of:
+        // 1. Substring match (s1 contains s2 or vice versa)
+        // 2. Levenshtein distance
+        // 3. Common word ratio
+
+        if (s1.contains(s2) || s2.contains(s1)) {
+            return 0.95;  // Strong substring match
+        }
+
+        double levenshtein = 1.0 - (double) levenshteinDistance(s1, s2) / Math.max(s1.length(), s2.length());
+        double wordRatio = commonWordRatio(s1, s2);
+
+        return (levenshtein * 0.6) + (wordRatio * 0.4);
+    }
+
+    // ... helper methods for Levenshtein distance and word comparison
+
+    private record ScoredMapping(CategoryMapping mapping, double score) {}
+}
+```
+
+### 10.7 CategorySuggestion record
+
+```java
+public record CategorySuggestion(
+    CategoryName suggestedCategory,
+    double confidence,
+    SuggestionSource source,
+    String matchedPattern,
+    boolean autoApply
+) {
+    public static CategorySuggestion noMatch(String bankCategory) {
+        return new CategorySuggestion(null, 0.0, SuggestionSource.NO_MATCH, bankCategory, false);
+    }
+
+    public boolean requiresUserConfirmation() {
+        return !autoApply && suggestedCategory != null;
+    }
+
+    public boolean requiresManualMapping() {
+        return suggestedCategory == null;
+    }
+}
+
+public enum SuggestionSource {
+    EXACT_MATCH,           // Dokładne dopasowanie
+    FUZZY_MATCH,           // Podobna nazwa (substring, Levenshtein)
+    MCC_USER_MAPPING,      // User's MCC-based mapping
+    MCC_GLOBAL_PATTERN,    // Global MCC pattern
+    AI_SUGGESTION,         // AI with user context
+    NO_MATCH               // No suggestion available
+}
+```
+
+### 10.8 Auto-learning mechanism
+
+```java
+/**
+ * Service that learns from user confirmations to improve future suggestions.
+ */
+@Service
+@AllArgsConstructor
+public class CategoryMappingLearner {
+
+    private final CategoryMappingRepository mappingRepository;
+    private final MerchantPatternRepository merchantPatternRepository;
+
+    /**
+     * Called when user confirms a category suggestion.
+     * Updates mapping confidence and usage count.
+     */
+    public void learnFromConfirmation(
+            CashFlowId cashFlowId,
+            String bankCategory,
+            String merchantName,
+            CategoryName confirmedCategory,
+            SuggestionSource originalSource
+    ) {
+        // 1. Update or create explicit mapping
+        CategoryMapping existingMapping = mappingRepository
+            .findByCashFlowIdAndBankCategoryNameAndCategoryType(
+                cashFlowId, bankCategory, confirmedCategory.type())
+            .orElse(null);
+
+        if (existingMapping != null) {
+            // Update existing mapping
+            mappingRepository.save(existingMapping
+                .withUsageCount(existingMapping.usageCount() + 1)
+                .withConfidence(Math.min(1.0, existingMapping.confidence() + 0.05))
+                .withUpdatedAt(ZonedDateTime.now()));
+        } else {
+            // Create new mapping from confirmation
+            mappingRepository.save(new CategoryMapping(
+                MappingId.generate(),
+                cashFlowId,
+                bankCategory,
+                confirmedCategory,
+                null,
+                confirmedCategory.type(),
+                MappingAction.MAP_TO_EXISTING,
+                extractPattern(bankCategory, merchantName),  // Auto-generate pattern
+                null,  // MCC will be added if available
+                0.80,  // Initial confidence
+                MappingSource.USER_CONFIRMED,
+                1,
+                ZonedDateTime.now(),
+                ZonedDateTime.now()
+            ));
+        }
+
+        // 2. Update global merchant pattern if applicable
+        String normalizedMerchant = normalizeMerchantName(merchantName);
+        if (normalizedMerchant != null) {
+            merchantPatternRepository.incrementUsageCount(normalizedMerchant);
+        }
+    }
+
+    /**
+     * Called when user rejects a suggestion and provides different category.
+     * Decreases confidence of the original suggestion.
+     */
+    public void learnFromRejection(
+            CashFlowId cashFlowId,
+            String bankCategory,
+            CategoryName rejectedCategory,
+            CategoryName actualCategory
+    ) {
+        // Decrease confidence of wrong mapping
+        mappingRepository.findByCashFlowIdAndBankCategoryNameAndCategoryType(
+                cashFlowId, bankCategory, rejectedCategory.type())
+            .ifPresent(mapping -> {
+                double newConfidence = Math.max(0.5, mapping.confidence() - 0.15);
+                mappingRepository.save(mapping
+                    .withConfidence(newConfidence)
+                    .withUpdatedAt(ZonedDateTime.now()));
+            });
+
+        // Create/update correct mapping
+        learnFromConfirmation(cashFlowId, bankCategory, null, actualCategory, SuggestionSource.USER_CONFIRMED);
+    }
+
+    private String extractPattern(String bankCategory, String merchantName) {
+        // Extract common pattern, e.g., "Biedronka*" from "Biedronka Kraków"
+        if (merchantName != null && !merchantName.isBlank()) {
+            String normalized = normalizeMerchantName(merchantName);
+            if (normalized != null) {
+                return normalized + ".*";
+            }
+        }
+        return bankCategory;
+    }
+
+    private String normalizeMerchantName(String merchantName) {
+        if (merchantName == null || merchantName.isBlank()) {
+            return null;
+        }
+        // Remove location suffix, e.g., "Biedronka Kraków" → "Biedronka"
+        return merchantName
+            .replaceAll("\\s+(Warszawa|Kraków|Gdańsk|Wrocław|Poznań|Łódź|ul\\.|al\\.).*", "")
+            .trim()
+            .toLowerCase();
+    }
+}
+```
+
+### 10.9 MCC Code Database
+
+```java
+/**
+ * Common MCC codes and their default category mappings.
+ * Used as fallback when user doesn't have specific mapping.
+ */
+public class MccCodeDatabase {
+
+    private static final Map<String, MccCategory> MCC_CATEGORIES = Map.ofEntries(
+        // Groceries
+        entry("5411", new MccCategory("Grocery Stores, Supermarkets", "Groceries", Type.OUTFLOW)),
+        entry("5422", new MccCategory("Freezer and Locker Meat Provisioners", "Groceries", Type.OUTFLOW)),
+        entry("5441", new MccCategory("Candy, Nut, Confectionery Stores", "Groceries", Type.OUTFLOW)),
+        entry("5451", new MccCategory("Dairy Products Stores", "Groceries", Type.OUTFLOW)),
+        entry("5462", new MccCategory("Bakeries", "Groceries", Type.OUTFLOW)),
+
+        // Restaurants
+        entry("5812", new MccCategory("Eating Places, Restaurants", "Dining", Type.OUTFLOW)),
+        entry("5813", new MccCategory("Drinking Places (Bars, Taverns)", "Dining", Type.OUTFLOW)),
+        entry("5814", new MccCategory("Fast Food Restaurants", "Dining", Type.OUTFLOW)),
+
+        // Transportation
+        entry("4111", new MccCategory("Local/Suburban Transit", "Transport", Type.OUTFLOW)),
+        entry("4121", new MccCategory("Taxicabs/Limousines", "Transport", Type.OUTFLOW)),
+        entry("4131", new MccCategory("Bus Lines", "Transport", Type.OUTFLOW)),
+        entry("5541", new MccCategory("Service Stations", "Transport", Type.OUTFLOW)),
+        entry("5542", new MccCategory("Automated Fuel Dispensers", "Transport", Type.OUTFLOW)),
+
+        // Utilities
+        entry("4814", new MccCategory("Telecommunication Services", "Utilities", Type.OUTFLOW)),
+        entry("4816", new MccCategory("Computer Network/Information Services", "Utilities", Type.OUTFLOW)),
+        entry("4900", new MccCategory("Utilities - Electric, Gas, Sanitary, Water", "Utilities", Type.OUTFLOW)),
+
+        // Entertainment
+        entry("5815", new MccCategory("Digital Goods: Media, Books, Movies, Music", "Entertainment", Type.OUTFLOW)),
+        entry("5816", new MccCategory("Digital Goods: Games", "Entertainment", Type.OUTFLOW)),
+        entry("7832", new MccCategory("Motion Picture Theaters", "Entertainment", Type.OUTFLOW)),
+        entry("7841", new MccCategory("Video Rental Stores", "Entertainment", Type.OUTFLOW)),
+
+        // Healthcare
+        entry("5912", new MccCategory("Drug Stores and Pharmacies", "Healthcare", Type.OUTFLOW)),
+        entry("8011", new MccCategory("Doctors", "Healthcare", Type.OUTFLOW)),
+        entry("8021", new MccCategory("Dentists, Orthodontists", "Healthcare", Type.OUTFLOW)),
+        entry("8099", new MccCategory("Health Practitioners", "Healthcare", Type.OUTFLOW)),
+
+        // Shopping
+        entry("5311", new MccCategory("Department Stores", "Shopping", Type.OUTFLOW)),
+        entry("5651", new MccCategory("Family Clothing Stores", "Shopping", Type.OUTFLOW)),
+        entry("5691", new MccCategory("Men's/Women's Clothing Stores", "Shopping", Type.OUTFLOW)),
+        entry("5732", new MccCategory("Electronics Stores", "Shopping", Type.OUTFLOW)),
+        entry("5942", new MccCategory("Book Stores", "Shopping", Type.OUTFLOW)),
+
+        // Income (INFLOW)
+        entry("6012", new MccCategory("Financial Institutions – Merchandise and Services", "Banking", Type.INFLOW)),
+        entry("6051", new MccCategory("Non-Financial Institutions – Foreign Currency, Money Orders", "Banking", Type.INFLOW))
+    );
+
+    public static Optional<MccCategory> lookup(String mcc) {
+        return Optional.ofNullable(MCC_CATEGORIES.get(mcc));
+    }
+
+    public record MccCategory(String description, String suggestedCategory, Type type) {}
+}
+```
+
+### 10.10 Integracja z Staging Flow
+
+```java
+// W StageTransactionsCommandHandler
+
+private StagedTransaction createStagedTransaction(
+        CashFlowId cashFlowId,
+        BankTransaction transaction,
+        CashFlowInfo cashFlowInfo
+) {
+    // Get category suggestion
+    CategorySuggestion suggestion = smartCategorySuggester.suggest(
+        cashFlowId,
+        transaction.bankCategory(),
+        transaction.merchantName(),
+        transaction.mcc(),
+        transaction.type()
+    );
+
+    MappedTransactionData mappedData;
+    ValidationStatus validationStatus;
+
+    if (suggestion.autoApply()) {
+        // High confidence - auto-apply category
+        mappedData = new MappedTransactionData(
+            transaction.description(),
+            transaction.amount(),
+            transaction.type(),
+            suggestion.suggestedCategory(),
+            suggestion.source().name()
+        );
+        validationStatus = ValidationStatus.VALID;
+
+    } else if (suggestion.requiresUserConfirmation()) {
+        // Medium confidence - suggest but require confirmation
+        mappedData = new MappedTransactionData(
+            transaction.description(),
+            transaction.amount(),
+            transaction.type(),
+            suggestion.suggestedCategory(),  // Pre-fill suggestion
+            suggestion.source().name()
+        );
+        validationStatus = ValidationStatus.PENDING_CONFIRMATION;
+
+    } else {
+        // Low confidence - requires manual mapping
+        mappedData = new MappedTransactionData(
+            transaction.description(),
+            transaction.amount(),
+            transaction.type(),
+            null,  // No category
+            "NO_MATCH"
+        );
+        validationStatus = ValidationStatus.PENDING_MAPPING;
+    }
+
+    return StagedTransaction.create(
+        cashFlowId,
+        stagingSessionId,
+        new OriginalTransactionData(/* ... */),
+        mappedData,
+        new TransactionValidation(validationStatus, suggestion),
+        now,
+        ttlHours
+    );
+}
+```
+
+### 10.11 REST API dla sugestii
+
+```java
+@RestController
+@RequestMapping("/api/v1/bank-data-ingestion/{cashFlowId}/suggestions")
+@AllArgsConstructor
+public class CategorySuggestionController {
+
+    private final SmartCategorySuggester suggester;
+    private final CategoryMappingLearner learner;
+
+    /**
+     * Get category suggestion for a single transaction.
+     */
+    @PostMapping("/suggest")
+    public CategorySuggestionResponse suggest(
+            @PathVariable UUID cashFlowId,
+            @RequestBody SuggestionRequest request
+    ) {
+        CategorySuggestion suggestion = suggester.suggest(
+            CashFlowId.of(cashFlowId),
+            request.bankCategory(),
+            request.merchantName(),
+            request.mcc(),
+            request.type()
+        );
+
+        return new CategorySuggestionResponse(
+            suggestion.suggestedCategory() != null ? suggestion.suggestedCategory().name() : null,
+            suggestion.confidence(),
+            suggestion.source().name(),
+            suggestion.matchedPattern(),
+            suggestion.autoApply(),
+            suggestion.requiresUserConfirmation(),
+            suggestion.requiresManualMapping()
+        );
+    }
+
+    /**
+     * Confirm a category suggestion (for learning).
+     */
+    @PostMapping("/confirm")
+    public ResponseEntity<Void> confirmSuggestion(
+            @PathVariable UUID cashFlowId,
+            @RequestBody ConfirmationRequest request
+    ) {
+        learner.learnFromConfirmation(
+            CashFlowId.of(cashFlowId),
+            request.bankCategory(),
+            request.merchantName(),
+            new CategoryName(request.confirmedCategory()),
+            SuggestionSource.valueOf(request.originalSource())
+        );
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Reject a suggestion and provide correct category.
+     */
+    @PostMapping("/reject")
+    public ResponseEntity<Void> rejectSuggestion(
+            @PathVariable UUID cashFlowId,
+            @RequestBody RejectionRequest request
+    ) {
+        learner.learnFromRejection(
+            CashFlowId.of(cashFlowId),
+            request.bankCategory(),
+            new CategoryName(request.rejectedCategory()),
+            new CategoryName(request.actualCategory())
+        );
+        return ResponseEntity.ok().build();
+    }
+}
+
+record SuggestionRequest(String bankCategory, String merchantName, String mcc, Type type) {}
+record ConfirmationRequest(String bankCategory, String merchantName, String confirmedCategory, String originalSource) {}
+record RejectionRequest(String bankCategory, String rejectedCategory, String actualCategory) {}
+```
+
+### 10.12 Plan implementacji Smart Category Suggestion
+
+#### PR-F: Core Smart Suggester
+
+**Pliki do utworzenia:**
+- `SmartCategorySuggester.java` - main service
+- `CategorySuggestion.java` - result record
+- `SuggestionSource.java` - enum
+
+**Zmiany:**
+- `CategoryMapping.java` - dodać nowe pola (matchPattern, mcc, confidence, source, usageCount)
+- `CategoryMappingRepository.java` - nowe query methods
+
+#### PR-G: MCC Database & Patterns
+
+**Pliki do utworzenia:**
+- `MccCodeDatabase.java` - static MCC mappings
+- `MerchantPattern.java` - entity
+- `MerchantPatternRepository.java`
+
+**Dane:**
+- Seed data dla common MCC codes
+- Seed data dla common Polish merchants (Biedronka, Żabka, Lidl, etc.)
+
+#### PR-H: Learning Mechanism
+
+**Pliki do utworzenia:**
+- `CategoryMappingLearner.java`
+- `MappingSource.java` - enum
+
+**Zmiany:**
+- `CategoryMapping.java` - support for learning metadata
+- REST endpoints for confirmation/rejection
+
+#### PR-I: AI Suggestion Integration
+
+**Pliki do utworzenia:**
+- `AiCategorySuggestionService.java`
+
+**Zależności:** Claude/GPT API
+
+#### PR-J: Staging Integration
+
+**Zmiany:**
+- `StageTransactionsCommandHandler.java` - integrate smart suggester
+- `StagedTransaction.java` - add suggestion metadata
+- `TransactionValidation.java` - new PENDING_CONFIRMATION status
+
+### Diagram zależności (pełny)
+
+```
+PR-A (Canonical Format)
+  │
+  └──► PR-B (Adapter Interface)
+         │
+         ├──► PR-C (AI Bank CSV Adapter)
+         │
+         └──► PR-D (Open Banking Adapters)
+                │
+                └──► PR-E (Automatic Sync)
+
+PR-F (Smart Suggester) ─────────────────────────────┐
+  │                                                 │
+  ├──► PR-G (MCC Database)                         │
+  │                                                 │
+  ├──► PR-H (Learning Mechanism)                   │
+  │      │                                          │
+  │      └──► PR-I (AI Suggestion)                 │
+  │                                                 │
+  └──► PR-J (Staging Integration) ◄─────────────────┘
+```
+
+### 10.13 Przykład użycia (end-to-end)
+
+```
+Dzień 1: Pierwszy import
+─────────────────────────
+User wgrywa CSV z banku:
+- "Biedronka Warszawa" - brak mappingu → PENDING_MAPPING
+- "Lidl Kraków" - brak mappingu → PENDING_MAPPING
+- "Netflix" - brak mappingu → PENDING_MAPPING
+
+User ręcznie mapuje:
+- "Biedronka Warszawa" → Groceries (saved with pattern "Biedronka.*")
+- "Lidl Kraków" → Groceries
+- "Netflix" → Entertainment
+
+Dzień 30: Drugi import
+──────────────────────
+Nowe transakcje:
+- "Biedronka Kraków" → FUZZY_MATCH (0.92) → Groceries → AUTO-APPLY ✓
+- "Biedronka" → EXACT_MATCH (1.0) → Groceries → AUTO-APPLY ✓
+- "Lidl Wrocław" → FUZZY_MATCH (0.88) → Groceries → PENDING_CONFIRMATION
+- "Spotify" → MCC_MATCH (0.80, MCC: 5815) → Entertainment → PENDING_CONFIRMATION
+- "Restauracja u Pawła" → AI_SUGGESTION (0.75) → Dining → PENDING_CONFIRMATION
+- "Przelew od Jana" → NO_MATCH → PENDING_MAPPING
+
+User potwierdza sugestie → system uczy się.
+
+Dzień 60: Trzeci import
+───────────────────────
+- "Biedronka Mokotów" → AUTO-APPLY (learned pattern) ✓
+- "Lidl Poznań" → AUTO-APPLY (confidence increased) ✓
+- "Spotify" → AUTO-APPLY (user confirmed before) ✓
+- "Tidal" → FUZZY_MATCH with Spotify → Entertainment → PENDING_CONFIRMATION
+
+System staje się coraz inteligentniejszy!
+```
+
+---
+
+## 11. Podsumowanie wszystkich PRów
+
+### Tabela PRów
+
+| PR | Nazwa | Priorytet | Zależności | Opis |
+|----|-------|-----------|------------|------|
+| **PR-A** | Canonical CSV Format | 🔴 Wysoki | Brak | CanonicalCsvFormat, validation, constants |
+| **PR-B** | Adapter Interface | 🔴 Wysoki | PR-A | BankDataAdapter interface, ManualCsvAdapter |
+| **PR-C** | AI Bank CSV Adapter | 🟡 Średni | PR-B, Claude/GPT API | AiBankCsvAdapter, BankFormatDetector |
+| **PR-D** | Open Banking Adapters | 🟡 Średni | PR-B, Kontomatik API | KontomatikAdapter, SaltEdgeAdapter |
+| **PR-E** | Automatic Sync | 🟡 Średni | PR-D | OpenBankingSyncScheduler, BankConnection |
+| **PR-F** | Smart Suggester Core | 🟡 Średni | Brak | SmartCategorySuggester, CategorySuggestion |
+| **PR-G** | MCC Database | 🟢 Niski | PR-F | MccCodeDatabase, MerchantPattern |
+| **PR-H** | Learning Mechanism | 🟡 Średni | PR-F | CategoryMappingLearner, confirmation flow |
+| **PR-I** | AI Suggestion | 🟢 Niski | PR-H, Claude/GPT API | AiCategorySuggestionService |
+| **PR-J** | Staging Integration | 🔴 Wysoki | PR-F, PR-H | Integrate smart suggester into staging |
+
+### Ścieżki implementacji
+
+**Ścieżka 1: Canonical CSV (podstawa)**
+```
+PR-A → PR-B → PR-C → PR-D → PR-E
+```
+
+**Ścieżka 2: Smart Categorization (niezależna)**
+```
+PR-F → PR-G
+      → PR-H → PR-I
+      → PR-J
+```
+
+### Rekomendowana kolejność
+
+1. **Faza 1** (2 tygodnie): PR-A, PR-B, PR-F
+2. **Faza 2** (2 tygodnie): PR-G, PR-H, PR-J
+3. **Faza 3** (2 tygodnie): PR-C, PR-D
+4. **Faza 4** (1 tydzień): PR-E, PR-I
+
+---
+
+## 12. Otwarte pytania
+
+1. **AI provider**: Claude czy GPT dla transformacji CSV i sugestii kategorii?
+2. **MCC database source**: Własna baza czy zewnętrzny provider (np. Visa, Mastercard)?
+3. **Confidence thresholds**: Czy 0.90 dla auto-apply jest odpowiednie? Testować z userami.
+4. **Global patterns**: Czy dzielić learned patterns między userami (privacy concerns)?
+5. **Rate limiting**: Jak często można wywoływać AI dla sugestii (cost control)?
+6. **Offline support**: Czy MCC database powinna działać offline?
 
 ---
 
