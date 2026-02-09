@@ -941,7 +941,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         );
 
         // when
-        List<CashFlowDto.CashFlowDetailJson> cashFlowDetails = cashFlowRestController.getDetailsOfCashFlowViaUser(userId);
+        List<CashFlowDto.CashFlowDetailJson> cashFlowDetails = cashFlowRestController.getCashFlows(userId);
 
         // then
         assertThat(cashFlowDetails).hasSize(2);
@@ -976,7 +976,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .noneMatch(detail -> detail.getCashFlowId().equals(cashFlowId3));
 
         // Verify empty result for non-existent user
-        List<CashFlowDto.CashFlowDetailJson> emptyResult = cashFlowRestController.getDetailsOfCashFlowViaUser("non-existent-user");
+        List<CashFlowDto.CashFlowDetailJson> emptyResult = cashFlowRestController.getCashFlows("non-existent-user");
         assertThat(emptyResult).isEmpty();
     }
 

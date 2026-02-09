@@ -261,8 +261,8 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         log.info("Generated home cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(homeCashFlowId).get()).content());
         log.info("Generated business cashflow statement: {}", JsonContent.asJson(statementRepository.findByCashFlowId(businessCashFlowId).get()).content());
 
-        // Verify via /viaUser/{userId} endpoint
-        List<CashFlowDto.CashFlowDetailJson> userCashFlows = cashFlowRestController.getDetailsOfCashFlowViaUser(USER_ID);
+        // Verify via /cash-flow?owner={ownerUsername} endpoint
+        List<CashFlowDto.CashFlowDetailJson> userCashFlows = cashFlowRestController.getCashFlows(USER_ID);
 
         assertThat(userCashFlows).hasSize(2);
         assertThat(userCashFlows)
@@ -280,7 +280,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                     assertThat(detail.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
                 });
 
-        log.info("Successfully verified 2 cashflows for user {} via /viaUser endpoint", USER_ID);
+        log.info("Successfully verified 2 cashflows for user {} via /cash-flow?owner endpoint", USER_ID);
 
         // Verify forecast statements
         CashFlowForecastDto.CashFlowForecastStatementJson homeForecastStatement =

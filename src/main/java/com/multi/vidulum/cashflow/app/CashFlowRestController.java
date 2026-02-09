@@ -270,10 +270,10 @@ public class CashFlowRestController {
         return mapper.mapCashFlow(snapshot);
     }
 
-    @GetMapping("/viaUser/{userId}")
-    public List<CashFlowDto.CashFlowDetailJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
+    @GetMapping
+    public List<CashFlowDto.CashFlowDetailJson> getCashFlows(@RequestParam("owner") String ownerUsername) {
         List<CashFlowSnapshot> snapshots = queryGateway.send(
-                new GetDetailsOfCashFlowViaUserQuery(new UserId(userId))
+                new GetDetailsOfCashFlowViaUserQuery(new UserId(ownerUsername))
         );
 
         return snapshots.stream()
