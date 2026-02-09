@@ -115,7 +115,7 @@ public class CashFlowRestController {
     @PostMapping("/{cashFlowId}/attest-historical-import")
     public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
+            @Valid @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
 
         // Get CashFlow before attestation to calculate the balance
         CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))

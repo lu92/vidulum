@@ -252,6 +252,7 @@ public final class CashFlowDto {
     @Builder
     public static class AttestHistoricalImportJson {
         /** The user-confirmed current balance (for validation against calculated balance) */
+        @NotNull(message = "confirmedBalance is required")
         private Money confirmedBalance;
         /** If true, attest even if confirmed balance differs from calculated balance */
         private boolean forceAttestation;
