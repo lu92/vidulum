@@ -82,9 +82,9 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         await().until(() -> statementRepository.findByCashFlowId(homeCashFlowId).isPresent());
         await().until(() -> statementRepository.findByCashFlowId(businessCashFlowId).isPresent());
 
-        // Setup categories for both cashflows
-        setupHomeBudgetCategories(homeCashFlowId);
-        setupBusinessBudgetCategories(businessCashFlowId);
+        // Setup categories for both cashflows (using forImport mode allowed in SETUP)
+        setupHomeBudgetCategoriesForImport(homeCashFlowId);
+        setupBusinessBudgetCategoriesForImport(businessCashFlowId);
 
         Random random = new Random(42); // Fixed seed for reproducibility
 
@@ -679,6 +679,123 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
         actor.setBudgeting(cashFlowId, new CategoryName("Cloud Services"), OUTFLOW, Money.of(1000, "USD"));
 
         log.info("Business budget categories created with budgeting");
+    }
+
+    /**
+     * Setup home budget categories in SETUP mode (import operation).
+     * Uses addCategoryForImport which is allowed in SETUP mode.
+     */
+    private void setupHomeBudgetCategoriesForImport(CashFlowId cashFlowId) {
+        // INFLOW categories
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Income"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Income"), new CategoryName("Salary"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Income"), new CategoryName("Bonus"), INFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Other Income"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Income"), new CategoryName("Refunds"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Income"), new CategoryName("Gifts"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Income"), new CategoryName("Sales"), INFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Investments"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Investments"), new CategoryName("Dividends"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Investments"), new CategoryName("Interest"), INFLOW);
+
+        // OUTFLOW categories
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Housing"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Housing"), new CategoryName("Rent"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Housing"), new CategoryName("Utilities"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Utilities"), new CategoryName("Electricity"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Utilities"), new CategoryName("Gas"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Utilities"), new CategoryName("Internet"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Food"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Food"), new CategoryName("Groceries"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Food"), new CategoryName("Restaurants"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Food"), new CategoryName("Food Delivery"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Transportation"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Transportation"), new CategoryName("Fuel"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Transportation"), new CategoryName("Car Insurance"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Transportation"), new CategoryName("Car Service"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Transportation"), new CategoryName("Public Transit"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Health"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Health"), new CategoryName("Medicine"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Health"), new CategoryName("Doctor Visits"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Health"), new CategoryName("Gym"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Entertainment"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Entertainment"), new CategoryName("Streaming"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Entertainment"), new CategoryName("Cinema"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Entertainment"), new CategoryName("Games"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Entertainment"), new CategoryName("Books"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Education"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Education"), new CategoryName("Courses"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Education"), new CategoryName("Subscriptions"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Clothing"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Clothing"), new CategoryName("Apparel"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Clothing"), new CategoryName("Footwear"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Savings"), OUTFLOW);
+
+        log.info("Home budget categories created for import (SETUP mode)");
+    }
+
+    /**
+     * Setup business budget categories in SETUP mode (import operation).
+     * Uses addCategoryForImport which is allowed in SETUP mode.
+     */
+    private void setupBusinessBudgetCategoriesForImport(CashFlowId cashFlowId) {
+        // INFLOW categories
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Revenue"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Revenue"), new CategoryName("Product Sales"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Revenue"), new CategoryName("Service Revenue"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Revenue"), new CategoryName("Consulting Fees"), INFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Other Revenue"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Revenue"), new CategoryName("Interest Income"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Revenue"), new CategoryName("Royalties"), INFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Other Revenue"), new CategoryName("Grants"), INFLOW);
+
+        // OUTFLOW categories
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Operating Expenses"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Operating Expenses"), new CategoryName("Office Rent"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Operating Expenses"), new CategoryName("Office Utilities"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Operating Expenses"), new CategoryName("Office Supplies"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Operating Expenses"), new CategoryName("Equipment"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Payroll"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Payroll"), new CategoryName("Salaries"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Payroll"), new CategoryName("Contractor Payments"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Payroll"), new CategoryName("Benefits"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Marketing"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Marketing"), new CategoryName("Advertising"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Marketing"), new CategoryName("Social Media"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Marketing"), new CategoryName("Events"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Marketing"), new CategoryName("PR"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Technology"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Technology"), new CategoryName("Software Subscriptions"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Technology"), new CategoryName("Cloud Services"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Technology"), new CategoryName("IT Support"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Technology"), new CategoryName("Hardware"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Professional Services"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Professional Services"), new CategoryName("Legal Fees"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Professional Services"), new CategoryName("Accounting"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Professional Services"), new CategoryName("Insurance"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Travel"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Travel"), new CategoryName("Business Trips"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Travel"), new CategoryName("Accommodation"), OUTFLOW);
+        actor.addCategoryForImport(cashFlowId, new CategoryName("Travel"), new CategoryName("Meals"), OUTFLOW);
+
+        actor.addCategoryForImport(cashFlowId, CategoryName.NOT_DEFINED, new CategoryName("Taxes"), OUTFLOW);
+
+        log.info("Business budget categories created for import (SETUP mode)");
     }
 
     private record TransactionResult(CashChangeId lastCashChangeId, PaymentStatus lastPaymentStatus) {}

@@ -425,6 +425,14 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
         CashChangeId lastCashChangeId = null;
         PaymentStatus lastPaymentStatus = PaymentStatus.EXPECTED;
 
+        // PAID transactions require paidDate not in the future
+        // For current month (clock = 2022-01-01), we can only use day 1
+        // For future months, we cannot create PAID transactions at all
+        YearMonth clockPeriod = YearMonth.now(clock);
+        boolean isCurrentMonth = currentPeriod.equals(clockPeriod);
+        boolean isFutureMonth = currentPeriod.isAfter(clockPeriod);
+        boolean canCreatePaidTransactions = !isFutureMonth;
+
         // Salary - almost always present
         if (random.nextDouble() < 0.95) {
             ZonedDateTime salaryDate = currentPeriod.atDay(10).atStartOfDay(ZoneOffset.UTC);
@@ -586,61 +594,66 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // === PAID CASH CHANGES (already confirmed transactions) ===
         // These represent transactions that were already paid, no need to confirm
+        // Only create PAID transactions for current or past periods
+        // For current month, use day 1 only (clock is at start of month)
+        if (canCreatePaidTransactions) {
+            int maxDay = isCurrentMonth ? 1 : 27;
 
-        // Food Delivery - multiple paid transactions
-        int foodDeliveryCount = 2 + random.nextInt(5);
-        for (int i = 0; i < foodDeliveryCount; i++) {
-            ZonedDateTime deliveryDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId deliveryId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Food Delivery"), OUTFLOW,
-                    Money.of(15 + random.nextInt(50), "USD"), deliveryDate, deliveryDate, deliveryDate);
-            lastCashChangeId = deliveryId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Food Delivery - multiple paid transactions
+            int foodDeliveryCount = 2 + random.nextInt(5);
+            for (int i = 0; i < foodDeliveryCount; i++) {
+                ZonedDateTime deliveryDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId deliveryId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Food Delivery"), OUTFLOW,
+                        Money.of(15 + random.nextInt(50), "USD"), deliveryDate, deliveryDate, deliveryDate);
+                lastCashChangeId = deliveryId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Refunds - occasional paid inflow
-        if (random.nextDouble() < 0.3) {
-            ZonedDateTime refundDate = currentPeriod.atDay(5 + random.nextInt(20)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId refundId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Refunds"), INFLOW,
-                    Money.of(20 + random.nextInt(100), "USD"), refundDate, refundDate, refundDate);
-            lastCashChangeId = refundId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Refunds - occasional paid inflow
+            if (random.nextDouble() < 0.3) {
+                ZonedDateTime refundDate = currentPeriod.atDay(maxDay == 1 ? 1 : Math.min(5 + random.nextInt(20), maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId refundId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Refunds"), INFLOW,
+                        Money.of(20 + random.nextInt(100), "USD"), refundDate, refundDate, refundDate);
+                lastCashChangeId = refundId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Medicine - occasional paid transaction
-        if (random.nextDouble() < 0.4) {
-            ZonedDateTime medicineDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId medicineId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Medicine"), OUTFLOW,
-                    Money.of(10 + random.nextInt(80), "USD"), medicineDate, medicineDate, medicineDate);
-            lastCashChangeId = medicineId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Medicine - occasional paid transaction
+            if (random.nextDouble() < 0.4) {
+                ZonedDateTime medicineDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId medicineId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Medicine"), OUTFLOW,
+                        Money.of(10 + random.nextInt(80), "USD"), medicineDate, medicineDate, medicineDate);
+                lastCashChangeId = medicineId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Public Transit - multiple small paid transactions
-        int transitCount = random.nextInt(10);
-        for (int i = 0; i < transitCount; i++) {
-            ZonedDateTime transitDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId transitId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Public Transit"), OUTFLOW,
-                    Money.of(2 + random.nextInt(10), "USD"), transitDate, transitDate, transitDate);
-            lastCashChangeId = transitId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Public Transit - multiple small paid transactions
+            int transitCount = random.nextInt(10);
+            for (int i = 0; i < transitCount; i++) {
+                ZonedDateTime transitDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId transitId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Public Transit"), OUTFLOW,
+                        Money.of(2 + random.nextInt(10), "USD"), transitDate, transitDate, transitDate);
+                lastCashChangeId = transitId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Cinema - occasional entertainment
-        if (random.nextDouble() < 0.25) {
-            ZonedDateTime cinemaDate = currentPeriod.atDay(10 + random.nextInt(15)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId cinemaId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Cinema"), OUTFLOW,
-                    Money.of(15 + random.nextInt(30), "USD"), cinemaDate, cinemaDate, cinemaDate);
-            lastCashChangeId = cinemaId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Cinema - occasional entertainment
+            if (random.nextDouble() < 0.25) {
+                ZonedDateTime cinemaDate = currentPeriod.atDay(maxDay == 1 ? 1 : Math.min(10 + random.nextInt(15), maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId cinemaId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Cinema"), OUTFLOW,
+                        Money.of(15 + random.nextInt(30), "USD"), cinemaDate, cinemaDate, cinemaDate);
+                lastCashChangeId = cinemaId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Books - occasional purchase
-        if (random.nextDouble() < 0.2) {
-            ZonedDateTime bookDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId bookId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Books"), OUTFLOW,
-                    Money.of(10 + random.nextInt(40), "USD"), bookDate, bookDate, bookDate);
-            lastCashChangeId = bookId;
-            lastPaymentStatus = PaymentStatus.PAID;
+            // Books - occasional purchase
+            if (random.nextDouble() < 0.2) {
+                ZonedDateTime bookDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId bookId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Books"), OUTFLOW,
+                        Money.of(10 + random.nextInt(40), "USD"), bookDate, bookDate, bookDate);
+                lastCashChangeId = bookId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
         }
 
         return new TransactionResult(lastCashChangeId, lastPaymentStatus);
@@ -649,6 +662,14 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
     private TransactionResult generateBusinessBudgetTransactions(CashFlowId cashFlowId, YearMonth currentPeriod, boolean isAttestedMonth, Random random) {
         CashChangeId lastCashChangeId = null;
         PaymentStatus lastPaymentStatus = PaymentStatus.EXPECTED;
+
+        // PAID transactions require paidDate not in the future
+        // For current month (clock = 2022-01-01), we can only use day 1
+        // For future months, we cannot create PAID transactions at all
+        YearMonth clockPeriod = YearMonth.now(clock);
+        boolean isCurrentMonth = currentPeriod.equals(clockPeriod);
+        boolean isFutureMonth = currentPeriod.isAfter(clockPeriod);
+        boolean canCreatePaidTransactions = !isFutureMonth;
 
         // Product Sales - multiple per month
         int productSalesCount = 3 + random.nextInt(10);
@@ -895,88 +916,93 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
 
         // === PAID CASH CHANGES (already confirmed transactions) ===
         // These represent transactions that were already paid, no need to confirm
+        // Only create PAID transactions for current or past periods
+        // For current month, use day 1 only (clock is at start of month)
+        if (canCreatePaidTransactions) {
+            int maxDay = isCurrentMonth ? 1 : 27;
 
-        // Equipment purchases - occasional paid transactions
-        if (random.nextDouble() < 0.35) {
-            ZonedDateTime equipmentDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId equipmentId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Equipment"), OUTFLOW,
-                    Money.of(200 + random.nextInt(2000), "USD"), equipmentDate, equipmentDate, equipmentDate);
-            lastCashChangeId = equipmentId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Equipment purchases - occasional paid transactions
+            if (random.nextDouble() < 0.35) {
+                ZonedDateTime equipmentDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId equipmentId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Equipment"), OUTFLOW,
+                        Money.of(200 + random.nextInt(2000), "USD"), equipmentDate, equipmentDate, equipmentDate);
+                lastCashChangeId = equipmentId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Hardware - occasional paid transactions
-        if (random.nextDouble() < 0.25) {
-            ZonedDateTime hardwareDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId hardwareId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Hardware"), OUTFLOW,
-                    Money.of(100 + random.nextInt(1500), "USD"), hardwareDate, hardwareDate, hardwareDate);
-            lastCashChangeId = hardwareId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Hardware - occasional paid transactions
+            if (random.nextDouble() < 0.25) {
+                ZonedDateTime hardwareDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId hardwareId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Hardware"), OUTFLOW,
+                        Money.of(100 + random.nextInt(1500), "USD"), hardwareDate, hardwareDate, hardwareDate);
+                lastCashChangeId = hardwareId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // IT Support - multiple paid transactions
-        int itSupportCount = random.nextInt(4);
-        for (int i = 0; i < itSupportCount; i++) {
-            ZonedDateTime itDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId itId = actor.appendPaidCashChange(cashFlowId, new CategoryName("IT Support"), OUTFLOW,
-                    Money.of(50 + random.nextInt(500), "USD"), itDate, itDate, itDate);
-            lastCashChangeId = itId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // IT Support - multiple paid transactions
+            int itSupportCount = random.nextInt(4);
+            for (int i = 0; i < itSupportCount; i++) {
+                ZonedDateTime itDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId itId = actor.appendPaidCashChange(cashFlowId, new CategoryName("IT Support"), OUTFLOW,
+                        Money.of(50 + random.nextInt(500), "USD"), itDate, itDate, itDate);
+                lastCashChangeId = itId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Events - occasional paid outflow
-        if (random.nextDouble() < 0.2) {
-            ZonedDateTime eventDate = currentPeriod.atDay(5 + random.nextInt(20)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId eventId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Events"), OUTFLOW,
-                    Money.of(500 + random.nextInt(3000), "USD"), eventDate, eventDate, eventDate);
-            lastCashChangeId = eventId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Events - occasional paid outflow
+            if (random.nextDouble() < 0.2) {
+                ZonedDateTime eventDate = currentPeriod.atDay(maxDay == 1 ? 1 : Math.min(5 + random.nextInt(20), maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId eventId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Events"), OUTFLOW,
+                        Money.of(500 + random.nextInt(3000), "USD"), eventDate, eventDate, eventDate);
+                lastCashChangeId = eventId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Benefits - paid monthly
-        if (random.nextDouble() < 0.7) {
-            ZonedDateTime benefitsDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId benefitsId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Benefits"), OUTFLOW,
-                    Money.of(1000 + random.nextInt(3000), "USD"), benefitsDate, benefitsDate, benefitsDate);
-            lastCashChangeId = benefitsId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Benefits - paid monthly (always day 1)
+            if (random.nextDouble() < 0.7) {
+                ZonedDateTime benefitsDate = currentPeriod.atDay(1).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId benefitsId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Benefits"), OUTFLOW,
+                        Money.of(1000 + random.nextInt(3000), "USD"), benefitsDate, benefitsDate, benefitsDate);
+                lastCashChangeId = benefitsId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Royalties - occasional paid inflow
-        if (random.nextDouble() < 0.15) {
-            ZonedDateTime royaltiesDate = currentPeriod.atDay(10 + random.nextInt(15)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId royaltiesId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Royalties"), INFLOW,
-                    Money.of(100 + random.nextInt(2000), "USD"), royaltiesDate, royaltiesDate, royaltiesDate);
-            lastCashChangeId = royaltiesId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Royalties - occasional paid inflow
+            if (random.nextDouble() < 0.15) {
+                ZonedDateTime royaltiesDate = currentPeriod.atDay(maxDay == 1 ? 1 : Math.min(10 + random.nextInt(15), maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId royaltiesId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Royalties"), INFLOW,
+                        Money.of(100 + random.nextInt(2000), "USD"), royaltiesDate, royaltiesDate, royaltiesDate);
+                lastCashChangeId = royaltiesId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Accommodation (during trips)
-        if (random.nextDouble() < 0.2) {
-            ZonedDateTime accomDate = currentPeriod.atDay(5 + random.nextInt(20)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId accomId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Accommodation"), OUTFLOW,
-                    Money.of(100 + random.nextInt(500), "USD"), accomDate, accomDate, accomDate);
-            lastCashChangeId = accomId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Accommodation (during trips)
+            if (random.nextDouble() < 0.2) {
+                ZonedDateTime accomDate = currentPeriod.atDay(maxDay == 1 ? 1 : Math.min(5 + random.nextInt(20), maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId accomId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Accommodation"), OUTFLOW,
+                        Money.of(100 + random.nextInt(500), "USD"), accomDate, accomDate, accomDate);
+                lastCashChangeId = accomId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // Meals - multiple small paid transactions
-        int mealsCount = 3 + random.nextInt(8);
-        for (int i = 0; i < mealsCount; i++) {
-            ZonedDateTime mealDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId mealId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Meals"), OUTFLOW,
-                    Money.of(15 + random.nextInt(80), "USD"), mealDate, mealDate, mealDate);
-            lastCashChangeId = mealId;
-            lastPaymentStatus = PaymentStatus.PAID;
-        }
+            // Meals - multiple small paid transactions
+            int mealsCount = 3 + random.nextInt(8);
+            for (int i = 0; i < mealsCount; i++) {
+                ZonedDateTime mealDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId mealId = actor.appendPaidCashChange(cashFlowId, new CategoryName("Meals"), OUTFLOW,
+                        Money.of(15 + random.nextInt(80), "USD"), mealDate, mealDate, mealDate);
+                lastCashChangeId = mealId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
 
-        // PR - occasional paid outflow
-        if (random.nextDouble() < 0.15) {
-            ZonedDateTime prDate = currentPeriod.atDay(1 + random.nextInt(27)).atStartOfDay(ZoneOffset.UTC);
-            CashChangeId prId = actor.appendPaidCashChange(cashFlowId, new CategoryName("PR"), OUTFLOW,
-                    Money.of(300 + random.nextInt(2000), "USD"), prDate, prDate, prDate);
-            lastCashChangeId = prId;
-            lastPaymentStatus = PaymentStatus.PAID;
+            // PR - occasional paid outflow
+            if (random.nextDouble() < 0.15) {
+                ZonedDateTime prDate = currentPeriod.atDay(maxDay == 1 ? 1 : 1 + random.nextInt(maxDay)).atStartOfDay(ZoneOffset.UTC);
+                CashChangeId prId = actor.appendPaidCashChange(cashFlowId, new CategoryName("PR"), OUTFLOW,
+                        Money.of(300 + random.nextInt(2000), "USD"), prDate, prDate, prDate);
+                lastCashChangeId = prId;
+                lastPaymentStatus = PaymentStatus.PAID;
+            }
         }
 
         return new TransactionResult(lastCashChangeId, lastPaymentStatus);
@@ -1109,6 +1135,18 @@ class DualBudgetActor {
 
     void addCategory(CashFlowId cashFlowId, CategoryName parentCategoryName, CategoryName categoryName, Type type) {
         commandGateway.send(new CreateCategoryCommand(
+                cashFlowId,
+                parentCategoryName,
+                categoryName,
+                type
+        ));
+    }
+
+    /**
+     * Add category during import operation (allowed in SETUP mode).
+     */
+    void addCategoryForImport(CashFlowId cashFlowId, CategoryName parentCategoryName, CategoryName categoryName, Type type) {
+        commandGateway.send(CreateCategoryCommand.forImport(
                 cashFlowId,
                 parentCategoryName,
                 categoryName,

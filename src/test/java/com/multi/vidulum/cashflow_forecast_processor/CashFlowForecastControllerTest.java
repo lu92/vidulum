@@ -204,6 +204,14 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                                 .contains(CashFlowEvent.BudgetingSetEvent.class.getSimpleName()))
                         .orElse(false));
 
+        // Wait for statement to be updated with budgeting in MongoDB
+        Awaitility.await().until(
+                () -> statementRepository.findByCashFlowId(new CashFlowId(cashFlowId))
+                        .map(statement -> statement.getCategoryStructure().outflowCategoryStructure().stream()
+                                .anyMatch(node -> "Groceries".equals(node.getCategoryName().name()) &&
+                                        node.getBudgeting() != null))
+                        .orElse(false));
+
         // when
         CashFlowForecastDto.CashFlowForecastStatementJson forecastStatement =
                 cashFlowForecastRestController.getForecastStatement(cashFlowId);

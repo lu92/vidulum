@@ -200,4 +200,19 @@ class Actor {
                 type
         ));
     }
+
+    /**
+     * Add category during import operation (allowed in SETUP mode).
+     */
+    public void addCategoryForImport(CashFlowId cashFlowId,
+                                      CategoryName parentCategoryName,
+                                      CategoryName categoryName,
+                                      Type type) {
+        commandGateway.send(CreateCategoryCommand.forImport(
+                cashFlowId,
+                parentCategoryName,
+                categoryName,
+                type
+        ));
+    }
 }
