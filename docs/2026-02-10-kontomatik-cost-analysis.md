@@ -1,16 +1,77 @@
-# Analiza kosztów Kontomatik dla Vidulum
+# Analiza kosztów Open Banking dla Vidulum
 
 **Data:** 2026-02-10
 **Status:** Analiza kosztowa
+**Aktualizacja:** GoCardless/Nordigen zamknięty dla nowych klientów (2025)
 
 ---
 
-## Cennik Kontomatik
+## Porównanie providerów Open Banking (Polska, 2026)
+
+| Provider | Status | Stałe/konto | Per import/user | Koszt 1 konta/msc | Polskie banki |
+|----------|--------|-------------|-----------------|-------------------|---------------|
+| **Kontomatik** | Dostępny | 2 zł | 0.50 zł | **13 zł** (22 imp.) | Bardzo dobre |
+| **GoCardless/Nordigen** | ZAMKNIĘTY | - | - | - | - |
+| **Tink (Visa)** | Dostępny | €0.50/user | 0 zł | **~2.20 zł** | Dobre (PKO, mBank, Pekao+) |
+| **Yapily** | Dostępny | Custom | Custom | **?? zł** (kontakt) | Dobre (25M kont) |
+| **Salt Edge** | Dostępny | Custom | Custom | **?? zł** (kontakt) | 5000+ banków |
+| **Enable Banking** | Dostępny | Custom | Custom | **?? zł** (kontakt) | 2500+ ASPSPs |
+
+### Źródła:
+- [GoCardless zamknięty dla nowych klientów](https://forum.invoiceninja.com/t/gocardless-nordigen-service-no-longer-available-alternative-needed/22576)
+- [Tink Pricing](https://tink.com/pricing/) - €0.50/user/miesiąc
+- [Yapily Pricing](https://www.yapily.com/pricing) - darmowy sandbox, płatne produkcja
+- [Salt Edge Coverage](https://www.saltedge.com/products/account_information/coverage)
+- [Enable Banking](https://enablebanking.com)
+- [Open Banking Poland](https://www.openbankingtracker.com/country/poland)
+
+### Ważne: GoCardless/Nordigen niedostępny!
+
+GoCardless (który przejął Nordigen) **nie przyjmuje już nowych klientów** od 2025 roku.
+Mollie przejmuje GoCardless za €1.05 mld - transakcja zamknie się w połowie 2026.
+Darmowa opcja Open Banking **już nie istnieje** dla nowych użytkowników.
+
+---
+
+## Realistyczne opcje dla Vidulum
+
+### Opcja 1: Kontomatik (aktualnie analizowany)
 
 | Pozycja | Koszt |
 |---------|-------|
 | Połączenie z kontem (stałe/miesiąc) | **2 PLN** |
 | Każdy import transakcji | **0.50 PLN** |
+
+### Opcja 2: Tink (Visa) - najtańsza alternatywa
+
+| Pozycja | Koszt |
+|---------|-------|
+| Per user/miesiąc | **€0.50 (~2.20 PLN)** |
+| Per import | **0 zł** (unlimited w ramach €0.50) |
+
+**Porównanie Tink vs Kontomatik:**
+
+| Scenariusz | Kontomatik | Tink | Oszczędność |
+|------------|------------|------|-------------|
+| 1 konto, 22 imp./msc | 13 zł | 2.20 zł | **83% taniej** |
+| 5 kont, 110 imp./msc | 65 zł | 11 zł | **83% taniej** |
+| 10 kont, 220 imp./msc | 130 zł | 22 zł | **83% taniej** |
+
+**UWAGA:** Tink wymaga kontaktu z sales dla nowych klientów. Cena €0.50 może być tylko dla istniejących.
+
+### Opcja 3: On-demand import (user klika przycisk)
+
+Niezależnie od providera, model on-demand drastycznie redukuje koszty:
+
+| Model | Importy/msc | Kontomatik | Tink |
+|-------|-------------|------------|------|
+| Scheduled (Pn-Pt) | 22 | 13 zł | 2.20 zł |
+| **On-demand (8 logowań)** | 8 | **6 zł** | **2.20 zł** |
+| On-demand (4 logowania) | 4 | **4 zł** | **2.20 zł** |
+
+---
+
+## Cennik Kontomatik (szczegóły)
 
 ---
 
@@ -196,21 +257,85 @@ Oszczędność: 7x taniej (system prompt nie powtarzany)
 
 ---
 
-## Porównanie z konkurencją (GoCardless)
+## Porównanie providerów (zaktualizowane 2026)
 
-| Aspekt | Kontomatik | GoCardless |
-|--------|------------|------------|
-| Stałe/konto | 2 zł/msc | 0 zł |
-| Import | 0.50 zł | 0 zł (AIS free) |
-| Koszt 1 konta/msc | **17 zł** | **0 zł** |
-| Polskie banki | Bardzo dobre | Dobre |
-| Limit requestów | Brak | 4-10/dzień |
-| Jakość danych | Świetna | Dobra |
+| Aspekt | Kontomatik | Tink | GoCardless |
+|--------|------------|------|------------|
+| Status | **Dostępny** | **Dostępny** | **ZAMKNIĘTY** |
+| Stałe/konto | 2 zł/msc | €0.50/user | - |
+| Import | 0.50 zł | 0 zł (w cenie) | - |
+| Koszt 1 konta/msc (scheduled) | **13 zł** | **~2.20 zł** | - |
+| Koszt 1 konta/msc (on-demand) | **6 zł** | **~2.20 zł** | - |
+| Polskie banki | Bardzo dobre | Dobre | - |
+| Limit requestów | Brak | Unlimited | - |
 
-**Rekomendacja:**
-1. **Development/MVP:** GoCardless (darmowy)
-2. **Produkcja PL:** Kontomatik (lepsze pokrycie polskich banków)
-3. **Hybrid:** GoCardless jako fallback, Kontomatik jako primary
+**Rekomendacja (2026):**
+1. **Negocjuj z Tink** - 6x tańszy niż Kontomatik (€0.50 vs 13 zł)
+2. **Kontomatik on-demand** - jeśli Tink niedostępny, użyj modelu "user klika"
+3. **Yapily/Salt Edge** - zapytaj o pricing, mogą być konkurencyjni
+
+---
+
+## Model On-Demand (user klika przycisk)
+
+### Dlaczego on-demand?
+
+| Model | Importy/msc | Koszt Kontomatik | Koszt Tink |
+|-------|-------------|------------------|------------|
+| Scheduled Pn-Pt | 22 | 13 zł | 2.20 zł |
+| **On-demand (8x)** | 8 | **6 zł** | **2.20 zł** |
+| On-demand (4x) | 4 | **4 zł** | **2.20 zł** |
+
+**Oszczędność Kontomatik:** 54% (13 zł → 6 zł)
+
+### Jak działa on-demand UX:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  User loguje się → Dashboard                                │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Ostatnia synchronizacja: 2 dni temu                │   │
+│  │                                                     │   │
+│  │  [🔄 Synchronizuj z bankiem]                        │   │
+│  └─────────────────────────────────────────────────────┘   │
+│         │                                                   │
+│         ▼ (klik)                                            │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  🔄 Synchronizuję dane z banku...                   │   │
+│  │  ████████████░░░░░░░░  45%                          │   │
+│  │                                                     │   │
+│  │  • Pobieranie transakcji... ✓                       │   │
+│  │  • Kategoryzacja AI...                              │   │
+│  └─────────────────────────────────────────────────────┘   │
+│         │                                                   │
+│         ▼ (30-90 sek)                                       │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  ✅ Zsynchronizowano! 12 nowych transakcji          │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Warianty modelu:
+
+| Tier | Model | Opis |
+|------|-------|------|
+| Free | CSV only | 0 zł kosztu |
+| Starter | On-demand (manual) | User klika przycisk |
+| Pro | On-demand + auto on login | Sync przy logowaniu |
+| Enterprise | Scheduled + on-demand | Codziennie rano + manual |
+
+### Zalety on-demand:
+
+1. **54% tańszy** (Kontomatik: 6 zł vs 13 zł)
+2. **Dane real-time** - user dostaje najświeższe dane
+3. **Brak marnowania** - import tylko gdy potrzebny
+4. **Lepszy UX** - user widzi progress i kontroluje
+
+### Wady on-demand:
+
+1. **Czekanie 30-90 sek** - akceptowalne z progress barem
+2. **Dashboard nie gotowy od razu** - cache ostatni wynik
 
 ---
 
@@ -278,17 +403,51 @@ Przy skali 100+ kont miesięcznie, negocjuj:
 
 ---
 
-## Podsumowanie
+## Podsumowanie i rekomendacje
+
+### Koszty per model (1 konto):
+
+| Model | Kontomatik | Tink |
+|-------|------------|------|
+| Scheduled 7 dni | 17 zł | 2.20 zł |
+| Scheduled Pn-Pt | 13 zł | 2.20 zł |
+| **On-demand (8x/msc)** | **6 zł** | **2.20 zł** |
+
+### Rekomendacja strategiczna:
+
+1. **Negocjuj z Tink** - €0.50/user to 6x taniej niż Kontomatik scheduled
+2. **Jeśli Kontomatik - użyj on-demand** - 54% oszczędności
+3. **Skip weekendów** - dodatkowe 24% oszczędności przy scheduled
+4. **Zapytaj Yapily/Salt Edge** - mogą mieć lepszą ofertę
+
+### Model on-demand - kluczowe metryki:
 
 | Metryka | Wartość |
 |---------|---------|
-| Koszt Kontomatik per konto | **13 zł/msc** (Pn-Pt, skip weekendów) |
-| Oszczędność vs 7 dni/tydzień | **24% (4 zł/konto)** |
-| Minimalna cena opłacalna (consumer) | **29 zł/msc** |
-| Minimalna cena opłacalna (SMB) | **99 zł/msc** |
-| Sweet spot marży | **60-70%** przy 199+ zł/msc |
-| Rekomendowany harmonogram | **Pn-Pt 6:00, skip Sob-Nd** |
+| Koszt Kontomatik on-demand | **6 zł/konto/msc** (8 importów) |
+| Koszt Tink | **~2.20 zł/konto/msc** (unlimited) |
+| Czas synchronizacji | **30-90 sekund** |
+| Oszczędność vs scheduled | **54%** (Kontomatik) |
 
-**Skip weekendów to łatwa optymalizacja - banki i tak nie księgują.**
-Kontomatik jest opłacalny dla wszystkich tierów przy tej strategii.
-Rozważ "weekend sync" jako opcję premium (+4 zł/msc) dla e-commerce/Express Elixir heavy users.
+### Finalna rekomendacja:
+
+```
+Tier         Model              Provider      Koszt/konto
+─────────────────────────────────────────────────────────
+Free         CSV only           -             0 zł
+Starter      On-demand          Tink/Kontom.  2-6 zł
+Pro          On-demand+login    Tink/Kontom.  2-6 zł
+Business     Scheduled Pn-Pt    Tink          ~2.20 zł
+Enterprise   Scheduled+manual   Tink          ~2.20 zł
+```
+
+**Model on-demand z Tink to optymalne rozwiązanie:**
+- Najtańszy (€0.50/user)
+- Unlimited importów w cenie
+- Dobre pokrycie polskich banków
+- User dostaje real-time dane
+
+**Jeśli Tink niedostępny - Kontomatik on-demand:**
+- 6 zł/konto vs 13 zł scheduled
+- User klika przycisk gdy chce świeże dane
+- Akceptowalne 30-90 sek czekania z progress barem
