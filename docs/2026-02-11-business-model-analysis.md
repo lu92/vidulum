@@ -442,3 +442,204 @@ Faza 3 (EU):     Enable Banking dla reszty EU
 - [ ] Multi-company
 - [ ] White-label
 - [ ] SSO/SAML
+
+---
+
+## Podatki w B2B - strategia
+
+### Czy musisz budować moduł podatkowy?
+
+| Pytanie | Odpowiedź |
+|---------|-----------|
+| Czy firmy tego oczekują? | 🔶 Częściowo |
+| Czy to blocker dla B2B? | ❌ NIE |
+| Czy to skomplikowane? | ✅ BARDZO |
+| Czy konkurencja to ma? | 🔶 Niektórzy |
+
+### Co firmy robią z podatkami:
+
+| Rozmiar firmy | Kto robi podatki | Czego potrzebują od Ciebie |
+|---------------|------------------|---------------------------|
+| **Mikro (JDG)** | Sam właściciel lub księgowa | Eksport danych do JPK/Excel |
+| **Mała (do 10 os.)** | Biuro rachunkowe | Eksport danych |
+| **Średnia (10-50)** | Księgowość wewnętrzna + system ERP | API / integracja |
+| **Duża (50+)** | Dział finansowy + SAP/Oracle | Nie użyją Twojej apki do podatków |
+
+**Wniosek:** Firmy NIE oczekują, że Twoja apka zrobi im deklaracje VAT. Oczekują **eksportu danych** do ich systemu księgowego.
+
+### Co możesz zrobić (proste):
+
+| Funkcja | Trudność | Wartość B2B |
+|---------|----------|-------------|
+| **Eksport do Excel/CSV** | ✅ Łatwe | Wysoka |
+| **Kategorie zgodne z planem kont** | ✅ Łatwe | Wysoka |
+| **Oznaczenie VAT (23%, 8%, 0%, ZW)** | 🔶 Średnie | Średnia |
+| **Eksport JPK-ready** | 🔶 Średnie | Średnia (tylko PL) |
+| **Integracja z systemami księgowymi** | 🔴 Trudne | Wysoka |
+
+### Czego NIE robić:
+
+| ❌ Funkcja | Dlaczego |
+|-----------|----------|
+| Generowanie deklaracji VAT | Za skomplikowane, różne kraje |
+| Obliczanie podatku dochodowego | Każda firma ma inną sytuację |
+| CIT/PIT kalkulacje | Wymaga wiedzy księgowej |
+| Pełna księgowość | To nie jest Twój produkt |
+
+### Rekomendacja: "Tax-friendly" nie "Tax software"
+
+```
+Twoja apka:
+├── Śledzi cash flow (przychody/wydatki)
+├── Kategoryzuje transakcje
+├── Eksportuje dane w formacie dla księgowej
+└── NIE robi deklaracji podatkowych
+
+Księgowa/Biuro rachunkowe:
+├── Importuje dane z Twojej apki
+├── Robi faktyczną księgowość
+└── Składa deklaracje
+```
+
+### Minimum dla B2B (podatki):
+
+| Funkcja | Priorytet | Opis |
+|---------|-----------|------|
+| **Eksport Excel z kategoriami** | 🔴 Must | Księgowa może zaimportować |
+| **Custom kategorie** | 🔴 Must | Firma dopasuje do planu kont |
+| **Pole "VAT rate"** | 🟡 Should | Opcjonalne oznaczenie stawki |
+| **Pole "Kontrahent"** | 🟡 Should | Kto zapłacił/komu płacono |
+| **Pole "Nr faktury"** | 🟡 Should | Powiązanie z dokumentem |
+
+### Integracje z systemami księgowymi (później - Faza 3):
+
+| System | Rynek | Trudność | Priorytet |
+|--------|-------|----------|-----------|
+| **wFirma** | PL | 🔶 Średnia | 🟡 |
+| **inFakt** | PL | 🔶 Średnia | 🟡 |
+| **Fakturownia** | PL | 🔶 Średnia | 🟡 |
+| **DATEV** | DE | 🔴 Trudna | 🟢 (dla ekspansji DE) |
+| **Xero** | Global | 🔶 Średnia | 🟢 |
+| **QuickBooks** | Global | 🔶 Średnia | 🟢 |
+
+### Podsumowanie podatki:
+
+| Pytanie | Odpowiedź |
+|---------|-----------|
+| Czy budować moduł podatkowy? | ❌ NIE teraz |
+| Co zrobić zamiast tego? | ✅ Dobry eksport danych |
+| Kiedy integracje księgowe? | 🟢 Faza 3 (Enterprise) |
+| Czy to blocker dla B2B MVP? | ❌ NIE |
+
+**Firmy kupią Twój produkt na cash flow forecasting + Open Banking. Podatki robi im księgowa - Ty tylko dajesz dane.**
+
+---
+
+## Cash Flow Statement - czy warto produkować dokument?
+
+### Co to jest Cash Flow Statement?
+
+Oficjalny raport finansowy pokazujący przepływy pieniężne w 3 kategoriach:
+
+```
+1. Działalność operacyjna (Operating)
+   - Przychody ze sprzedaży
+   - Koszty operacyjne
+   - Pensje, czynsz, materiały
+
+2. Działalność inwestycyjna (Investing)
+   - Zakup/sprzedaż sprzętu
+   - Inwestycje w inne firmy
+
+3. Działalność finansowa (Financing)
+   - Kredyty (zaciągnięcie/spłata)
+   - Dywidendy
+   - Emisja akcji
+```
+
+### Kto tego potrzebuje?
+
+| Klient | Potrzebuje? | Dlaczego |
+|--------|-------------|----------|
+| **Osoba prywatna (B2C)** | ❌ NIE | Nie wie co to, nie potrzebuje |
+| **Mikro firma (JDG)** | 🔶 Może | Prostsza wersja wystarczy |
+| **Mała firma** | ✅ TAK | Bank/inwestor może wymagać |
+| **Średnia firma** | ✅ TAK | Zarząd chce widzieć, compliance |
+| **Startup szukający funding** | ✅ **BARDZO** | Inwestor ZAWSZE pyta o cash flow |
+| **Biuro rachunkowe** | ✅ TAK | Robi to dla klientów |
+
+### Wartość biznesowa:
+
+| Korzyść | Opis |
+|---------|------|
+| **Differentiator** | Konkurencja (budżetówki) tego NIE ma |
+| **B2B upsell** | "Chcesz raport dla banku? → Business tier" |
+| **Profesjonalizm** | Pokazuje że to poważne narzędzie |
+| **Sticky users** | Firma przyzwyczaja się do Twoich raportów |
+
+### Poziomy raportu:
+
+| Poziom | Co zawiera | Trudność | Dla kogo |
+|--------|------------|----------|----------|
+| **Basic** | Przychody vs Wydatki per miesiąc | ✅ Łatwe | B2C, mikro |
+| **Standard** | + Podział na kategorie, trend | 🔶 Średnie | Mała firma |
+| **Professional** | + Operating/Investing/Financing | 🔶 Średnie | Średnia firma, startup |
+| **Auditable** | + Porównanie YoY, notes, zgodność z MSSF | 🔴 Trudne | Enterprise |
+
+### Roadmap Cash Flow Statement:
+
+| Faza | Co budować | Priorytet |
+|------|------------|-----------|
+| **MVP** | Basic: Przychody vs Wydatki (PDF/Excel) | 🔴 Must |
+| **B2B** | Standard: + kategorie, trend 3-6 msc | 🟡 Should |
+| **Enterprise** | Professional: Operating/Investing/Financing | 🟢 Nice |
+
+### Przykład raportu (Standard):
+
+```
+═══════════════════════════════════════════════════
+         CASH FLOW STATEMENT
+         Firma XYZ Sp. z o.o.
+         Styczeń - Marzec 2026
+═══════════════════════════════════════════════════
+
+SALDO POCZĄTKOWE (1 sty 2026):     50,000 PLN
+
+WPŁYWY (INFLOWS):
+  Przychody ze sprzedaży           +120,000 PLN
+  Zwroty podatku                    +5,000 PLN
+  Inne wpływy                       +2,000 PLN
+  ─────────────────────────────────────────────
+  SUMA WPŁYWÓW:                   +127,000 PLN
+
+WYPŁYWY (OUTFLOWS):
+  Wynagrodzenia                    -45,000 PLN
+  Czynsz i media                   -12,000 PLN
+  Marketing                         -8,000 PLN
+  Materiały                        -15,000 PLN
+  Podatki                          -10,000 PLN
+  Inne koszty                       -5,000 PLN
+  ─────────────────────────────────────────────
+  SUMA WYPŁYWÓW:                   -95,000 PLN
+
+═══════════════════════════════════════════════════
+PRZEPŁYW NETTO:                    +32,000 PLN
+SALDO KOŃCOWE (31 mar 2026):       82,000 PLN
+═══════════════════════════════════════════════════
+
+PROGNOZA (następne 3 msc):
+  Kwiecień:    +10,000 PLN  →  92,000 PLN
+  Maj:         +12,000 PLN  → 104,000 PLN
+  Czerwiec:     +8,000 PLN  → 112,000 PLN
+```
+
+### Podsumowanie Cash Flow Statement:
+
+| Pytanie | Odpowiedź |
+|---------|-----------|
+| Czy warto budować Cash Flow Statement? | ✅ **TAK** |
+| Czy to blocker dla MVP? | ❌ NIE (Basic wystarczy) |
+| Czy zwiększa wartość B2B? | ✅ **TAK, znacząco** |
+| Kiedy budować Professional? | 🟢 Faza 2-3 |
+
+**Cash Flow Statement to Twój CORE PRODUCT - zdecydowanie warto. Ale zacznij od Basic, rozbudowuj stopniowo.**
