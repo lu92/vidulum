@@ -53,7 +53,7 @@ public class CashFlowRestController {
     public String createCashFlow(@Valid @RequestBody CashFlowDto.CreateCashFlowJson request) {
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowCommand(
-                        new UserId(request.getUserId()),
+                        UserId.of(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.toBankAccount()
@@ -72,7 +72,7 @@ public class CashFlowRestController {
 
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowWithHistoryCommand(
-                        new UserId(request.getUserId()),
+                        UserId.of(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.toBankAccount(),
@@ -273,7 +273,7 @@ public class CashFlowRestController {
     @GetMapping
     public List<CashFlowDto.CashFlowDetailJson> getCashFlows(@RequestParam("owner") String ownerUsername) {
         List<CashFlowSnapshot> snapshots = queryGateway.send(
-                new GetDetailsOfCashFlowViaUserQuery(new UserId(ownerUsername))
+                new GetDetailsOfCashFlowViaUserQuery(UserId.of(ownerUsername))
         );
 
         return snapshots.stream()
