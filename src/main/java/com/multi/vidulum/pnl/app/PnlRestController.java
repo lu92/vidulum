@@ -21,7 +21,7 @@ public class PnlRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
 
-    @GetMapping("/pnl/{userId}")
+    @GetMapping("/pnl/userId={userId}")
     public PnlDto.PnlHistoryJson getPnlHistory(@PathVariable("userId") String userId) {
         GetPnlHistoryQuery query = GetPnlHistoryQuery.builder()
                 .userId(UserId.of(userId))

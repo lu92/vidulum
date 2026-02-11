@@ -53,7 +53,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
     private static final int HISTORICAL_MONTHS = 6;
     private static final int FUTURE_MONTHS = 12;
     private static final int ATTESTED_MONTHS_OFFSET = 6;
-    private static final String USER_ID = "dual-budget-with-history-user";
+    private static final String USER_ID = "U10000002";
 
     @Test
     public void generateDualCashflowsWithHistory() {

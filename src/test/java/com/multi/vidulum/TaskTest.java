@@ -20,13 +20,13 @@ public class TaskTest extends IntegrationTest {
         TaskDto.TaskSummaryJson taskCreationSummary = taskRestController.create(
                 TaskDto.CreateTaskJson.builder()
                         .name("task-1")
-                        .userId("lu92")
+                        .userId("U10000010")
                         .description("task-1 description")
                         .build()
         );
         assertThat(taskCreationSummary).isEqualToIgnoringGivenFields(
                 TaskDto.TaskSummaryJson.builder()
-                        .userId("lu92")
+                        .userId("U10000010")
                         .name("task-1")
                         .description("task-1 description")
                         .comments(List.of())
@@ -46,7 +46,7 @@ public class TaskTest extends IntegrationTest {
         assertThat(taskClosureSummary).isEqualTo(
                 TaskDto.TaskSummaryJson.builder()
                         .taskId(taskCreationSummary.getTaskId())
-                        .userId("lu92")
+                        .userId("U10000010")
                         .name("task-1")
                         .description("task-1 description")
                         .comments(List.of(TaskDto.CommentJson.builder().message("some comment").created(_01_01_2022).build()))
@@ -57,7 +57,7 @@ public class TaskTest extends IntegrationTest {
         assertThat(taskRestController.getTask(taskCreationSummary.getTaskId())).isEqualTo(
                 TaskDto.TaskSummaryJson.builder()
                         .taskId(taskCreationSummary.getTaskId())
-                        .userId("lu92")
+                        .userId("U10000010")
                         .name("task-1")
                         .description("task-1 description")
                         .comments(List.of(TaskDto.CommentJson.builder().message("some comment").created(_01_01_2022).build()))
@@ -73,7 +73,7 @@ public class TaskTest extends IntegrationTest {
         TaskDto.TaskSummaryJson taskCreation1 = taskRestController.create(
                 TaskDto.CreateTaskJson.builder()
                         .name("task-1")
-                        .userId("lu92")
+                        .userId("U10000010")
                         .description("task-1 description")
                         .build()
         );
@@ -81,7 +81,7 @@ public class TaskTest extends IntegrationTest {
         TaskDto.TaskSummaryJson taskCreation2 = taskRestController.create(
                 TaskDto.CreateTaskJson.builder()
                         .name("task-2")
-                        .userId("lu92")
+                        .userId("U10000010")
                         .description("task-2 description")
                         .build()
         );
@@ -89,7 +89,7 @@ public class TaskTest extends IntegrationTest {
         TaskDto.TaskSummaryJson taskCreation3 = taskRestController.create(
                 TaskDto.CreateTaskJson.builder()
                         .name("task-3")
-                        .userId("lu92")
+                        .userId("U10000010")
                         .description("task-3 description")
                         .build()
         );
@@ -97,7 +97,7 @@ public class TaskTest extends IntegrationTest {
         TaskDto.TaskSummaryJson taskCreation4 = taskRestController.create(
                 TaskDto.CreateTaskJson.builder()
                         .name("task-4")
-                        .userId("lu92")
+                        .userId("U10000010")
                         .description("task-4 description")
                         .build()
         );

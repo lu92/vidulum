@@ -92,7 +92,7 @@ public class PortfolioEntity {
 
         return new PortfolioSnapshot(
                 PortfolioId.of(portfolioId),
-                UserId.of(userId),
+                new UserId(userId),
                 name,
                 Broker.of(broker),
                 assetSnapshots,

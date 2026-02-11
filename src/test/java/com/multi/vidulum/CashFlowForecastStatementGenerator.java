@@ -142,7 +142,7 @@ class Actor {
     CashFlowId createCashFlow() {
         return new CashFlowId(cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000011")
                         .name("cash-flow name")
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(

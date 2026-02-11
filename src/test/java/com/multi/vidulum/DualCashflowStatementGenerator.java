@@ -55,7 +55,7 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
     private static final int MIN_MONTHS = 30;
     private static final int MAX_MONTHS = 36;
     private static final int ATTESTED_MONTHS_OFFSET = 6;
-    private static final String USER_ID = "dual-budget-user";
+    private static final String USER_ID = "U10000004";
 
     @Test
     public void generateDualCashflows() {

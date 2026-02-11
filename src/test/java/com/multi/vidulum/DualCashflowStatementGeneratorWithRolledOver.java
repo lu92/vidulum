@@ -45,7 +45,7 @@ public class DualCashflowStatementGeneratorWithRolledOver extends IntegrationTes
     @Autowired
     private Clock clock;
 
-    private static final String USER_ID = "rollover-demo-user";
+    private static final String USER_ID = "U10000003";
     private static final int HISTORICAL_MONTHS = 3;
     private static final int MONTHS_TO_ROLLOVER = 2;
 

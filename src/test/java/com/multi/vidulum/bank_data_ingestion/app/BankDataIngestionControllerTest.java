@@ -1548,7 +1548,7 @@ public class BankDataIngestionControllerTest {
     private String createCashFlowWithHistory() {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("test-user-123")
+                        .userId("U10000013")
                         .name("Test CashFlow")
                         .description("CashFlow for testing category mappings")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(

@@ -58,7 +58,7 @@ public class TaskEntity {
                 .toList();
         return new TaskSnapshot(
                 TaskId.of(taskId),
-                UserId.of(userId),
+                new UserId(userId),
                 name,
                 description,
                 commentSnapshots,

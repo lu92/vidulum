@@ -33,7 +33,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Test Cash Flow")
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -84,7 +84,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Test Cash Flow with transactions")
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -166,7 +166,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Budgeted Cash Flow")
                         .description("Cash flow with budgeting")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -242,7 +242,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Cash Flow with confirmed transaction")
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -310,7 +310,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Checksum Sync Test")
                         .description("Testing checksum synchronization")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -371,7 +371,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Multi-op Checksum Test")
                         .description("Testing checksum after multiple operations")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -461,7 +461,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given - FixedClockConfig sets clock to 2022-01-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Cash Flow with paid transaction")
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -524,7 +524,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given - FixedClockConfig sets clock to 2022-01-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Mixed Cash Flow")
                         .description("Cash flow with expected and paid transactions")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -610,7 +610,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given - FixedClockConfig sets clock to 2022-01-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Cash Flow with paid outflow")
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -670,7 +670,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         // given - FixedClockConfig sets clock to 2022-01-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000012")
                         .name("Paid Checksum Test")
                         .description("Testing checksum after paid cash change")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(

@@ -40,7 +40,7 @@ public class UserRestController {
         return mapUserToSummary(user);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/userId={userId}")
     public UserDto.UserSummaryJson getUser(@PathVariable("userId") String userId) {
         GetUserQuery query = GetUserQuery.builder().userId(UserId.of(userId)).build();
         User user = queryGateway.send(query);
@@ -60,7 +60,7 @@ public class UserRestController {
         return mapUserToSummary(user);
     }
 
-    @PutMapping("/user/{userId}")
+    @PutMapping("/user/userId={userId}")
     public void activateUser(@PathVariable("userId") String userId) {
         ActivateUserCommand command = ActivateUserCommand.builder().userId(UserId.of(userId)).build();
         commandGateway.send(command);

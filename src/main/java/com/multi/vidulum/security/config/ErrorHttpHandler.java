@@ -3,6 +3,7 @@ package com.multi.vidulum.security.config;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.InvalidUserIdFormatException;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.FieldError;
@@ -59,6 +60,15 @@ public class ErrorHttpHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleJsonParse(HttpMessageNotReadableException ex) {
         ApiError error = ApiError.of(ErrorCode.VALIDATION_INVALID_JSON);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ ID Format Validation (400) ============
+
+    @ExceptionHandler(InvalidUserIdFormatException.class)
+    public ResponseEntity<ApiError> handleInvalidUserIdFormat(InvalidUserIdFormatException ex) {
+        log.debug("Invalid User ID format: {}", ex.getProvidedId());
+        ApiError error = ApiError.of(ErrorCode.INVALID_USER_ID_FORMAT, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

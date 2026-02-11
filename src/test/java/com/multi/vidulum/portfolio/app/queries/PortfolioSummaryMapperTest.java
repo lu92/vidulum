@@ -38,7 +38,7 @@ class PortfolioSummaryMapperTest {
     private static final AggregatedPortfolio AGGREGATED_PORTFOLIO;
     private static final Broker BROKER = Broker.of("broker");
     private static final Currency USD = Currency.of("USD");
-    private static final UserId USER_ID = UserId.of("user");
+    private static final UserId USER_ID = new UserId("U10000001");
 
     static {
         PORTFOLIO = new PortfolioFactory().empty(

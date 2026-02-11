@@ -69,7 +69,7 @@ public class TradeEntity {
 
         return TradeSnapshot.builder()
                 .tradeId(TradeId.of(tradeId))
-                .userId(UserId.of(userId))
+                .userId(new UserId(userId))
                 .portfolioId(PortfolioId.of(portfolioId))
                 .originTradeId(OriginTradeId.of(originTradeId))
                 .subName(SubName.of(subName))

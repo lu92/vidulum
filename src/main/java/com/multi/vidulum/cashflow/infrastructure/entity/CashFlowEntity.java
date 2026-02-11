@@ -95,7 +95,7 @@ public class CashFlowEntity {
 
         return new CashFlowSnapshot(
                 new CashFlowId(cashFlowId),
-                UserId.of(userId),
+                new UserId(userId),
                 new Name(name),
                 new Description(description),
                 bankAccount,

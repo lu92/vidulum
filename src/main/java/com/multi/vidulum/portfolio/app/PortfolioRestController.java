@@ -88,7 +88,7 @@ public class PortfolioRestController {
         return portfolioSummaryMapper.map(portfolio, Currency.of(currency));
     }
 
-    @GetMapping("/aggregated-portfolio/{userId}/{currency}")
+    @GetMapping("/aggregated-portfolio/userId={userId}/{currency}")
     public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable("userId") String userId, @PathVariable String currency) {
         GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
                 .userId(UserId.of(userId))

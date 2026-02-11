@@ -43,7 +43,7 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Autowired
     private Clock clock;
 
-    private static final String TEST_USER = "rollover-test-user";
+    private static final String TEST_USER = "U10000001";
 
     @Test
     void shouldRolloverMonthAndTransitionToRolledOverStatus() {

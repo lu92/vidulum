@@ -46,7 +46,7 @@ public class TradeRestController {
         commandGateway.send(command);
     }
 
-    @GetMapping("/trades/{userId}/{portfolioId}")
+    @GetMapping("/trades/userId={userId}/{portfolioId}")
     public List<TradingDto.TradeSummaryJson> getAllTrades(@PathVariable("userId") String userId, @PathVariable("portfolioId") String portfolioId) {
         GetAllTradesForUserQuery query = GetAllTradesForUserQuery.builder()
                 .userId(UserId.of(userId))

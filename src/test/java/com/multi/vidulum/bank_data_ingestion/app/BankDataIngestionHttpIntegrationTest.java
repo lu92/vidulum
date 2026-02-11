@@ -174,7 +174,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth activePeriod = YearMonth.of(2022, 1);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -186,7 +186,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // then - validate whole object with all fields
         // Only ignore cashFlowId (generated), lastMessageChecksum (internal), importCutoffDateTime (not set)
         assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(cashFlow.getUserId()).isEqualTo("test-user-123");
+        assertThat(cashFlow.getUserId()).isEqualTo("U10000006");
         assertThat(cashFlow.getName()).isEqualTo("Test CashFlow");
         assertThat(cashFlow.getDescription()).isEqualTo("CashFlow for HTTP integration testing");
         assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
@@ -239,7 +239,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateCategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -280,7 +280,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateSubcategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -325,7 +325,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -627,7 +627,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldConfigureAndRetrieveMappingsViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -685,7 +685,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -735,7 +735,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -761,7 +761,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -831,7 +831,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -877,7 +877,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -941,7 +941,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -1057,7 +1057,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-open-mode",
+                "U10000007",
                 "Test CashFlow for OPEN Mode",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -1203,7 +1203,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-invalid-txn",
+                "U10000008",
                 "Test CashFlow for Invalid Transactions",
                 startPeriod,
                 Money.of(10000.0, "PLN")

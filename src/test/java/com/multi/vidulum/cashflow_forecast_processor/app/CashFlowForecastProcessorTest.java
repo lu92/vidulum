@@ -30,7 +30,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -116,7 +116,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -205,7 +205,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -356,7 +356,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -450,7 +450,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -584,7 +584,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -652,7 +652,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -720,7 +720,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -791,7 +791,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -856,7 +856,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for rollback test"),
                         new BankAccount(
@@ -947,7 +947,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for category rollback test"),
                         new BankAccount(
@@ -1041,7 +1041,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
         emit(
                 new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for re-import test"),
                         new BankAccount(
