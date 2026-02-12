@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +31,8 @@ import static org.awaitility.Awaitility.await;
  */
 @Slf4j
 public class RolloverMonthIntegrationTest extends IntegrationTest {
+
+    private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 
     @Autowired
     private CashFlowRestController cashFlowRestController;
@@ -44,6 +47,10 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     private Clock clock;
 
     private static final String TEST_USER = "U10000001";
+
+    private String uniqueCashFlowName() {
+        return "RolloverCF-" + NAME_COUNTER.incrementAndGet();
+    }
 
     @Test
     void shouldRolloverMonthAndTransitionToRolledOverStatus() {
@@ -230,7 +237,7 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId(TEST_USER)
-                        .name("Rollover Test CashFlow")
+                        .name(uniqueCashFlowName())
                         .description("Test CashFlow for rollover")
                         .bankAccount(CashFlowDto.BankAccountJson.builder()
                                 .bankName("Test Bank")

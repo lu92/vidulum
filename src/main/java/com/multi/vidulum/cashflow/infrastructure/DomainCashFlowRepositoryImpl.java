@@ -88,4 +88,9 @@ public class DomainCashFlowRepositoryImpl implements DomainCashFlowRepository {
                 .map(CashFlow::from)
                 .toList();
     }
+
+    @Override
+    public boolean existsByUserIdAndName(UserId userId, String name) {
+        return cashFlowMongoRepository.existsByUserIdAndName(userId.getId(), name);
+    }
 }

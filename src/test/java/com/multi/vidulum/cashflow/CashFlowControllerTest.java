@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
@@ -34,16 +35,35 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CashFlowControllerTest extends IntegrationTest {
 
+    private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
+
     @Autowired
     private CashFlowRestController cashFlowRestController;
+
+    private String uniqueCashFlowName() {
+        return "CashFlow-" + NAME_COUNTER.incrementAndGet();
+    }
+
+    private String uniqueHistoricalName() {
+        return "Historical-" + NAME_COUNTER.incrementAndGet();
+    }
+
+    private String uniqueTestCashFlowName() {
+        return "TestCash-" + NAME_COUNTER.incrementAndGet();
+    }
+
+    private String uniqueNormalCashFlowName() {
+        return "NormalCF-" + NAME_COUNTER.incrementAndGet();
+    }
 
     @Test
     void shouldCreateAndGetCashFlow() {
         // given
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -65,7 +85,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -94,10 +114,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChange() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -133,7 +154,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -180,10 +201,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendPaidCashChange() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -219,7 +241,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -268,7 +290,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -313,10 +335,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldConfirmCashChange() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -357,7 +380,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -404,10 +427,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldEditCashChange() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -453,7 +477,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -501,10 +525,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldRejectCashChange() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -546,7 +571,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -595,10 +620,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChangeToNewCategory() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -640,7 +666,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -695,10 +721,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChangeToSubCategory() {
         // when
+        String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -758,7 +785,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
                                 .userId("U10000009")
-                                .name("cash-flow name")
+                                .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
                                         new BankName("bank"),
@@ -986,7 +1013,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1038,7 +1065,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1102,7 +1129,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1172,7 +1199,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1224,7 +1251,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1255,7 +1282,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1286,7 +1313,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1325,7 +1352,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1356,7 +1383,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1387,7 +1414,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1430,7 +1457,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1463,7 +1490,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1499,7 +1526,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1533,7 +1560,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1561,7 +1588,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1590,7 +1617,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("test cash flow")
+                        .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1624,11 +1651,13 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldCreateCashFlowWithHistoryInSetupStatus() {
         // given - FixedClockConfig sets clock to 2022-01-01, so startPeriod 2021-06 is in the past
+        String cashFlowName = uniqueHistoricalName();
+
         // when
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(cashFlowName)
                         .description("Cash flow with historical data support")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Chase Bank"),
@@ -1644,7 +1673,7 @@ public class CashFlowControllerTest extends IntegrationTest {
 
         assertThat(result.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(result.getUserId()).isEqualTo("U10000009");
-        assertThat(result.getName()).isEqualTo("Historical Cash Flow");
+        assertThat(result.getName()).isEqualTo(cashFlowName);
         assertThat(result.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
         assertThat(result.getBankAccount().balance()).isEqualTo(Money.of(5000, "USD"));
 
@@ -1672,7 +1701,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1782,7 +1811,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1833,7 +1862,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("Normal Cash Flow")
+                        .name(uniqueNormalCashFlowName())
                         .description("In OPEN mode")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1864,7 +1893,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1896,7 +1925,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -1928,7 +1957,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("Multiple imports")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2000,7 +2029,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For forecast testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2065,7 +2094,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For outflow forecast testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2130,7 +2159,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("Multiple transactions same month")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2246,7 +2275,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2283,7 +2312,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2316,7 +2345,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2360,7 +2389,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2400,7 +2429,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For same-day testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2439,7 +2468,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For future date testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2471,7 +2500,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For future month testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2503,7 +2532,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("Multiple same-day imports")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2576,7 +2605,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For activation testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2666,7 +2695,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For balance mismatch testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2718,7 +2747,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For force activation testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2780,7 +2809,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("Normal Cash Flow")
+                        .name(uniqueNormalCashFlowName())
                         .description("In OPEN mode")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2843,7 +2872,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For status change testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2909,7 +2938,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For negative difference testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -2964,7 +2993,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3033,7 +3062,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For negative adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3094,7 +3123,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For no-adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3152,7 +3181,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For importCutoffDateTime testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3192,7 +3221,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For forecast adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3265,7 +3294,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For rollback testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3336,7 +3365,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For rollback with categories")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3415,7 +3444,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("Will be attested")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3460,7 +3489,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For forecast clearing test")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3568,7 +3597,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
                         .userId("U10000009")
-                        .name("Historical Cash Flow")
+                        .name(uniqueHistoricalName())
                         .description("For re-import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3653,7 +3682,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3713,7 +3742,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3780,7 +3809,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3805,7 +3834,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3830,7 +3859,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3890,7 +3919,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3924,7 +3953,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -3970,7 +3999,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4019,7 +4048,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4082,7 +4111,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4116,7 +4145,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4172,7 +4201,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4225,7 +4254,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),
@@ -4294,7 +4323,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000009")
-                        .name("cash-flow name")
+                        .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("bank"),

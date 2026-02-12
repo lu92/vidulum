@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
 import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
@@ -22,11 +23,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CashFlowForecastControllerTest extends IntegrationTest {
 
+    private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
+
     @Autowired
     private CashFlowRestController cashFlowRestController;
 
     @Autowired
     private CashFlowForecastRestController cashFlowForecastRestController;
+
+    private String uniqueCashFlowName() {
+        return "ForecastCF-" + NAME_COUNTER.incrementAndGet();
+    }
 
     @Test
     void shouldGetForecastStatementForCashFlow() {
@@ -34,7 +41,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000012")
-                        .name("Test Cash Flow")
+                        .name(uniqueCashFlowName())
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),
@@ -85,7 +92,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000012")
-                        .name("Test Cash Flow with transactions")
+                        .name(uniqueCashFlowName())
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),
@@ -243,7 +250,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000012")
-                        .name("Cash Flow with confirmed transaction")
+                        .name(uniqueCashFlowName())
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),
@@ -462,7 +469,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000012")
-                        .name("Cash Flow with paid transaction")
+                        .name(uniqueCashFlowName())
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),
@@ -611,7 +618,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId("U10000012")
-                        .name("Cash Flow with paid outflow")
+                        .name(uniqueCashFlowName())
                         .description("Test description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
                                 new BankName("Test Bank"),

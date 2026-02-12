@@ -108,7 +108,7 @@ class CashFlowErrorHandlingTest {
         void shouldReturn409ConflictWhenBalanceMismatch() {
             // given - create CashFlow with history
             String userId = TestIds.nextUserId().getId();
-            String cashFlowName = "Test Balance Mismatch CashFlow";
+            String cashFlowName = "Balance Mismatch Test";
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "USD");
 
@@ -161,7 +161,7 @@ class CashFlowErrorHandlingTest {
         void shouldReturn200OkWhenBalanceMatches() {
             // given - create CashFlow with history
             String userId = TestIds.nextUserId().getId();
-            String cashFlowName = "Test Successful Attestation CashFlow";
+            String cashFlowName = "Attestation Test Flow";
             YearMonth startPeriod = YearMonth.of(2021, 10);
             Money initialBalance = Money.of(500, "PLN");
 
@@ -307,6 +307,106 @@ class CashFlowErrorHandlingTest {
     @Nested
     @DisplayName("Conflict Errors (409)")
     class ConflictErrors {
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT with CASHFLOW_NAME_ALREADY_EXISTS when creating CashFlow with duplicate name")
+        void shouldReturn409WhenCashFlowNameAlreadyExists() {
+            // given - create first CashFlow
+            String userId = TestIds.nextUserId().getId();
+            String duplicateName = "Duplicate Budget Name";
+            actor.createCashFlow(userId, duplicateName, "USD");
+
+            // when - try to create another CashFlow with the same name for the same user
+            ResponseEntity<ApiError> response = actor.createCashFlowExpectingError(userId, duplicateName, "USD");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("CASHFLOW_NAME_ALREADY_EXISTS");
+            assertThat(error.message()).contains(duplicateName);
+            assertThat(error.message()).contains(userId);
+            assertThat(error.fieldErrors()).isNull();
+            assertThat(error.timestamp()).isNotNull();
+
+            log.info("CashFlow name already exists correctly returned 409: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT with CASHFLOW_NAME_ALREADY_EXISTS when creating CashFlow with history with duplicate name")
+        void shouldReturn409WhenCashFlowWithHistoryNameAlreadyExists() {
+            // given - create first CashFlow with history
+            String userId = TestIds.nextUserId().getId();
+            String duplicateName = "Duplicate History Budget";
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            Money initialBalance = Money.of(1000, "PLN");
+
+            actor.createCashFlowWithHistory(userId, duplicateName, startPeriod, initialBalance);
+
+            // when - try to create another CashFlow with history with the same name for the same user
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    userId, duplicateName, startPeriod.toString(), initialBalance);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("CASHFLOW_NAME_ALREADY_EXISTS");
+            assertThat(error.message()).contains(duplicateName);
+            assertThat(error.message()).contains(userId);
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("CashFlow with history name already exists correctly returned 409: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 409 CONFLICT when standard CashFlow exists and creating CashFlow with history with same name")
+        void shouldReturn409WhenMixingCashFlowTypes() {
+            // given - create standard CashFlow
+            String userId = TestIds.nextUserId().getId();
+            String duplicateName = "Mixed Type Budget";
+            actor.createCashFlow(userId, duplicateName, "EUR");
+
+            // when - try to create CashFlow with history with the same name
+            YearMonth startPeriod = YearMonth.of(2021, 10);
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    userId, duplicateName, startPeriod.toString(), Money.of(500, "EUR"));
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(409);
+            assertThat(error.code()).isEqualTo("CASHFLOW_NAME_ALREADY_EXISTS");
+            assertThat(error.message()).contains(duplicateName);
+
+            log.info("Mixed type CashFlow name conflict correctly returned 409: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should allow same CashFlow name for different users")
+        void shouldAllowSameCashFlowNameForDifferentUsers() {
+            // given - create CashFlow for first user
+            String userId1 = TestIds.nextUserId().getId();
+            String userId2 = TestIds.nextUserId().getId();
+            String sameName = "Family Budget";
+
+            actor.createCashFlow(userId1, sameName, "USD");
+
+            // when - create CashFlow with same name for different user
+            String cashFlowId = actor.createCashFlow(userId2, sameName, "USD");
+
+            // then - should succeed (different users can have same CashFlow name)
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Same CashFlow name allowed for different users: user1={}, user2={}, name={}",
+                    userId1, userId2, sameName);
+        }
 
         @Test
         @DisplayName("Should return 409 CONFLICT with CATEGORY_ALREADY_EXISTS when creating duplicate category")
@@ -1039,6 +1139,146 @@ class CashFlowErrorHandlingTest {
     @Nested
     @DisplayName("Field Validation (400)")
     class FieldValidation {
+
+        // --- CashFlow name validation ---
+
+        @Test
+        @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow name is too short (less than 5 characters)")
+        void shouldReturn400WhenCashFlowNameTooShort() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String shortName = "Test"; // 4 characters - too short
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowExpectingError(userId, shortName, "USD");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("name") && fe.message().contains("5") && fe.message().contains("30"));
+
+            log.info("CashFlow name too short correctly returned 400: code={}, fieldErrors={}",
+                    error.code(), error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow name is too long (more than 30 characters)")
+        void shouldReturn400WhenCashFlowNameTooLong() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String longName = "A".repeat(31); // 31 characters - too long
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowExpectingError(userId, longName, "USD");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("name") && fe.message().contains("5") && fe.message().contains("30"));
+
+            log.info("CashFlow name too long correctly returned 400: code={}, fieldErrors={}",
+                    error.code(), error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow with history name is too short")
+        void shouldReturn400WhenCashFlowWithHistoryNameTooShort() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String shortName = "Ab"; // 2 characters - too short
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            Money initialBalance = Money.of(1000, "PLN");
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    userId, shortName, startPeriod.toString(), initialBalance);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("name") && fe.message().contains("5") && fe.message().contains("30"));
+
+            log.info("CashFlow with history name too short correctly returned 400: code={}, fieldErrors={}",
+                    error.code(), error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow with history name is too long")
+        void shouldReturn400WhenCashFlowWithHistoryNameTooLong() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String longName = "Very Long CashFlow Name That Exceeds Limit"; // > 30 characters
+            YearMonth startPeriod = YearMonth.of(2021, 9);
+            Money initialBalance = Money.of(1000, "EUR");
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    userId, longName, startPeriod.toString(), initialBalance);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("name") && fe.message().contains("5") && fe.message().contains("30"));
+
+            log.info("CashFlow with history name too long correctly returned 400: code={}, fieldErrors={}",
+                    error.code(), error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should accept CashFlow name at minimum length (5 characters)")
+        void shouldAcceptCashFlowNameAtMinLength() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String minLengthName = "Budge"; // Exactly 5 characters
+
+            // when
+            String cashFlowId = actor.createCashFlow(userId, minLengthName, "USD");
+
+            // then - should succeed
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("CashFlow name at min length accepted: name={}, cashFlowId={}", minLengthName, cashFlowId);
+        }
+
+        @Test
+        @DisplayName("Should accept CashFlow name at maximum length (30 characters)")
+        void shouldAcceptCashFlowNameAtMaxLength() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String maxLengthName = "A".repeat(30); // Exactly 30 characters
+
+            // when
+            String cashFlowId = actor.createCashFlow(userId, maxLengthName, "USD");
+
+            // then - should succeed
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("CashFlow name at max length accepted: length={}, cashFlowId={}", maxLengthName.length(), cashFlowId);
+        }
 
         // --- /confirm endpoint ---
 

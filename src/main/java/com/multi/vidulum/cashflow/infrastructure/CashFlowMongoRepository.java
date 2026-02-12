@@ -24,4 +24,13 @@ public interface CashFlowMongoRepository extends MongoRepository<CashFlowEntity,
      */
     @Query("{ 'status': ?0, 'activePeriod': { $lt: ?1 } }")
     List<CashFlowEntity> findByStatusAndActivePeriodBefore(CashFlow.CashFlowStatus status, String targetPeriod);
+
+    /**
+     * Checks if a CashFlow with the given name already exists for the specified user.
+     *
+     * @param userId the user ID
+     * @param name the CashFlow name
+     * @return true if a CashFlow with this name exists for this user, false otherwise
+     */
+    boolean existsByUserIdAndName(String userId, String name);
 }

@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCatego
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.InvalidUserIdFormatException;
+import com.multi.vidulum.cashflow.domain.CashFlowNameAlreadyExistsException;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.FieldError;
@@ -117,6 +118,13 @@ public class ErrorHttpHandler {
     }
 
     // ============ CashFlow - Conflicts (409) ============
+
+    @ExceptionHandler(CashFlowNameAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleCashFlowNameAlreadyExists(CashFlowNameAlreadyExistsException ex) {
+        log.debug("CashFlow name already exists: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CASHFLOW_NAME_ALREADY_EXISTS, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
 
     @ExceptionHandler(CategoryAlreadyExistsException.class)
     public ResponseEntity<ApiError> handleCategoryAlreadyExists(CategoryAlreadyExistsException ex) {

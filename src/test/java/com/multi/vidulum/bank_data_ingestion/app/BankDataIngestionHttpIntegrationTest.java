@@ -52,6 +52,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -81,6 +82,12 @@ public class BankDataIngestionHttpIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
+
+    private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
+
+    private String uniqueCashFlowName() {
+        return "Ingestion-" + NAME_COUNTER.incrementAndGet();
+    }
 
     /**
      * Test security configuration that disables authentication for HTTP integration tests.
@@ -172,10 +179,11 @@ public class BankDataIngestionHttpIntegrationTest {
         // given
         YearMonth startPeriod = YearMonth.of(2021, 7);
         YearMonth activePeriod = YearMonth.of(2022, 1);
+        String cashFlowName = uniqueCashFlowName();
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                cashFlowName,
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -187,7 +195,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // Only ignore cashFlowId (generated), lastMessageChecksum (internal), importCutoffDateTime (not set)
         assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(cashFlow.getUserId()).isEqualTo("U10000006");
-        assertThat(cashFlow.getName()).isEqualTo("Test CashFlow");
+        assertThat(cashFlow.getName()).isEqualTo(cashFlowName);
         assertThat(cashFlow.getDescription()).isEqualTo("CashFlow for HTTP integration testing");
         assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
         assertThat(cashFlow.getStartPeriod()).isEqualTo(startPeriod);
@@ -240,7 +248,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
         );
@@ -281,7 +289,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
         );
@@ -326,7 +334,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -628,7 +636,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
         );
@@ -686,7 +694,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -736,7 +744,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -762,7 +770,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -832,7 +840,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -878,7 +886,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -942,7 +950,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000006",
-                "Test CashFlow",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );
@@ -1204,7 +1212,7 @@ public class BankDataIngestionHttpIntegrationTest {
 
         String cashFlowId = actor.createCashFlowWithHistory(
                 "U10000008",
-                "Test CashFlow for Invalid Transactions",
+                uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
         );

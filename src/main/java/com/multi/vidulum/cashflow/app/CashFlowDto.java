@@ -29,6 +29,7 @@ public final class CashFlowDto {
         private String userId;
 
         @NotBlank(message = "name is required")
+        @Size(min = 5, max = 30, message = "CashFlow name must be between 5 and 30 characters")
         private String name;
 
         private String description;
@@ -175,6 +176,7 @@ public final class CashFlowDto {
         private String userId;
 
         @NotBlank(message = "name is required")
+        @Size(min = 5, max = 30, message = "CashFlow name must be between 5 and 30 characters")
         private String name;
 
         private String description;
