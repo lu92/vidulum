@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
@@ -56,13 +57,18 @@ public class CashFlowControllerTest extends IntegrationTest {
         return "NormalCF-" + NAME_COUNTER.incrementAndGet();
     }
 
+    private String uniqueUserId() {
+        return TestIds.nextUserId().getId();
+    }
+
     @Test
     void shouldCreateAndGetCashFlow() {
         // given
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -84,7 +90,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -114,10 +120,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChange() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -153,7 +160,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -201,10 +208,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendPaidCashChange() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -240,7 +248,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -287,9 +295,10 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendPaidCashChangeForOutflow() {
         // when
+        String userId = uniqueUserId();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -335,10 +344,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldConfirmCashChange() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -379,7 +389,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -427,10 +437,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldEditCashChange() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -476,7 +487,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -525,10 +536,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldRejectCashChange() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -570,7 +582,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -620,10 +632,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChangeToNewCategory() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -665,7 +678,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -721,10 +734,11 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldAppendCashChangeToSubCategory() {
         // when
+        String userId = uniqueUserId();
         String cashFlowName = uniqueCashFlowName();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -784,7 +798,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .isEqualTo(
                         CashFlowDto.CashFlowSummaryJson.builder()
                                 .cashFlowId(cashFlowId)
-                                .userId("U10000009")
+                                .userId(userId)
                                 .name(cashFlowName)
                                 .description("cash-flow description")
                                 .bankAccount(new BankAccount(
@@ -847,7 +861,7 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldGetCashFlowsDetailsByUserId() {
         // given
-        String userId = "U10000014";
+        String userId = uniqueUserId();
 
         // Create first cash flow for user
         String cashFlowId1 = cashFlowRestController.createCashFlow(
@@ -876,7 +890,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         );
 
         // Create cash flow for different user (should not be returned)
-        String otherUserId = "U10000015";
+        String otherUserId = uniqueUserId();
         String cashFlowId3 = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId(otherUserId)
@@ -1010,9 +1024,10 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldSetBudgetingForCategory() {
         // given
+        String userId = uniqueUserId();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1062,9 +1077,10 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldUpdateBudgetingForCategory() {
         // given
+        String userId = uniqueUserId();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1126,9 +1142,10 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldRemoveBudgetingFromCategory() {
         // given
+        String userId = uniqueUserId();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1196,9 +1213,10 @@ public class CashFlowControllerTest extends IntegrationTest {
     @Test
     void shouldSetBudgetingForInflowCategory() {
         // given
+        String userId = uniqueUserId();
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1247,10 +1265,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectPaidCashChangeWhenPaidDateInFuture() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01T00:00:00Z
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1278,10 +1297,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectPaidCashChangeWhenPaidDateNotInActivePeriod() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1309,10 +1329,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptPaidCashChangeInActivePeriod() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1348,10 +1369,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectPaidCashChangeOutflowWhenPaidDateInFuture() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01T00:00:00Z
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1379,10 +1401,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectPaidCashChangeOutflowWhenPaidDateNotInActivePeriod() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1410,10 +1433,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptPaidCashChangeOutflowInActivePeriod() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1453,10 +1477,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAppendExpectedCashChangeWhenCashFlowInSetupMode() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1486,10 +1511,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAppendPaidCashChangeWhenCashFlowInSetupMode() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1520,12 +1546,13 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectEditCashChangeWhenCashFlowInSetupMode() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         // Note: In SETUP mode we can't add cash changes via normal flow,
         // so we test with a fake cashChangeId
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1541,7 +1568,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThatThrownBy(() -> cashFlowRestController.edit(
                 CashFlowDto.EditCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
-                        .cashChangeId("fake-cash-change-id")
+                        .cashChangeId(TestIds.nonExistentCashChangeId())
                         .name("Updated name")
                         .description("Updated description")
                         .money(Money.of(200, "USD"))
@@ -1554,12 +1581,13 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectConfirmCashChangeWhenCashFlowInSetupMode() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         // Note: In SETUP mode we can't add cash changes via normal flow,
         // so we test with a fake cashChangeId
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1575,7 +1603,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         assertThatThrownBy(() -> cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
                         .cashFlowId(cashFlowId)
-                        .cashChangeId("fake-cash-change-id")
+                        .cashChangeId(TestIds.nonExistentCashChangeId())
                         .build()
         )).isInstanceOf(OperationNotAllowedInSetupModeException.class)
                 .hasMessageContaining("confirmCashChange")
@@ -1584,10 +1612,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectCreateCategoryWhenCashFlowInSetupMode() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1613,10 +1642,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAllowCreateCategoryWhenCashFlowInSetupModeWithImportFlag() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (starts in SETUP mode)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueTestCashFlowName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1650,13 +1680,14 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldCreateCashFlowWithHistoryInSetupStatus() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01, so startPeriod 2021-06 is in the past
         String cashFlowName = uniqueHistoricalName();
 
         // when
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(cashFlowName)
                         .description("Cash flow with historical data support")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1672,7 +1703,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
 
         assertThat(result.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(result.getUserId()).isEqualTo("U10000009");
+        assertThat(result.getUserId()).isEqualTo(userId);
         assertThat(result.getName()).isEqualTo(cashFlowName);
         assertThat(result.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
         assertThat(result.getBankAccount().balance()).isEqualTo(Money.of(5000, "USD"));
@@ -1689,6 +1720,7 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldCreateMonthlyForecastsWithCorrectStatusesForHistoricalCashFlow() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01
         // startPeriod: 2021-10 (historical)
         // activePeriod: 2022-01 (current)
@@ -1700,7 +1732,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         // when
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1744,13 +1776,14 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectCashFlowWithHistoryWhenStartPeriodIsInFuture() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01
         // Trying to create with startPeriod 2023-01 (future) should fail
 
         // when/then
         assertThatThrownBy(() -> cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name("Future Start Period")
                         .description("This should fail")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1765,12 +1798,13 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldCreateCashFlowWithHistoryStartingFromCurrentMonth() {
+        String userId = uniqueUserId();
         // given - FixedClockConfig sets clock to 2022-01-01
         // startPeriod same as activePeriod (2022-01) - edge case, no historical months
         // when
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name("Current Month Start")
                         .description("No historical data")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1807,10 +1841,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldImportHistoricalCashChangeToSetupPendingMonth() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1858,10 +1893,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportToForecastedMonthInOpenMode() {
+        String userId = uniqueUserId();
         // given - create normal CashFlow (OPEN mode, activePeriod = 2022-01)
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueNormalCashFlowName())
                         .description("In OPEN mode")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1889,10 +1925,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsInActiveOrFuturePeriod() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01, activePeriod = 2022-01)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1921,10 +1958,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsBeforeStartPeriod() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history starting from 2021-10
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -1953,10 +1991,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldImportMultipleHistoricalTransactionsToDifferentMonths() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("Multiple imports")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2025,10 +2064,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldUpdateForecastWhenImportingHistoricalInflow() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For forecast testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2090,10 +2130,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldUpdateForecastWhenImportingHistoricalOutflow() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For outflow forecast testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2155,10 +2196,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldUpdateForecastWithMultipleHistoricalTransactionsInSameMonth() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("Multiple transactions same month")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2270,11 +2312,12 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsInTheFuture() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         // Use startPeriod that includes December 2021 so we can test future dates within that month
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2308,10 +2351,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsOneHourInTheFuture() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2341,10 +2385,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptImportWhenPaidDateIsExactlyNow() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2385,10 +2430,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptImportWhenPaidDateIsOneSecondBeforeNow() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For cutoff testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2424,11 +2470,12 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptImportWhenPaidDateIsEarlierInTheSameDay() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         // Simulating: user starts Vidulum at midnight, imports transaction from morning of Dec 31
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For same-day testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2464,10 +2511,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsTomorrowMorning() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For future date testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2496,10 +2544,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectImportWhenPaidDateIsNextMonth() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (clock is 2022-01-01T00:00:00Z)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For future month testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2528,10 +2577,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAcceptMultipleImportsFromDifferentTimesOnSameHistoricalDay() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("Multiple same-day imports")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2600,11 +2650,12 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAttestHistoricalImportWhenBalancesMatch() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history starting from 2021-10 (clock is 2022-01-01)
         // initialBalance = 1000 USD
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For activation testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2691,10 +2742,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAttestationWhenBalancesMismatchAndNotForced() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For balance mismatch testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2743,10 +2795,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldForceAttestationWhenBalancesMismatch() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For force activation testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2805,10 +2858,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectAttestationWhenCashFlowNotInSetupMode() {
+        String userId = uniqueUserId();
         // given - create normal CashFlow (OPEN mode, not SETUP)
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueNormalCashFlowName())
                         .description("In OPEN mode")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2830,10 +2884,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAttestHistoricalImportWithNoImportedTransactions() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history but don't import any transactions
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name("Empty Historical Cash Flow")
                         .description("No imports")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2868,10 +2923,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldChangeImportPendingToImportedAfterAttestation() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history (Oct 2021 - Dec 2021 are IMPORT_PENDING)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For status change testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2934,10 +2990,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAttestHistoricalImportWithNegativeBalanceDifference() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For negative difference testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -2989,10 +3046,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldCreateAdjustmentTransactionWhenBalanceDiffersAndCreateAdjustmentIsTrue() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3058,10 +3116,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldCreateNegativeAdjustmentTransactionWhenConfirmedBalanceIsLower() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For negative adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3119,10 +3178,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotCreateAdjustmentWhenBalancesMatch() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For no-adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3177,10 +3237,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldSetImportCutoffDateTimeAfterAttestation() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For importCutoffDateTime testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3217,10 +3278,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAddAdjustmentToActiveMonthInForecast() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For forecast adjustment testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3290,10 +3352,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRollbackImportAndClearAllTransactions() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history and import some transactions
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For rollback testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3361,10 +3424,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRollbackImportAndClearCategoriesWhenRequested() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history and add custom categories
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For rollback with categories")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3440,10 +3504,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldRejectRollbackOnNonSetupCashFlow() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history and attest it (making it OPEN)
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("Will be attested")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3485,10 +3550,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldClearForecastTransactionsAfterRollback() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history and import transactions
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For forecast clearing test")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3593,10 +3659,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAllowReImportAfterRollback() {
+        String userId = uniqueUserId();
         // given - create CashFlow with history and import some transactions
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueHistoricalName())
                         .description("For re-import testing")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3678,10 +3745,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldArchiveUserCreatedCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow and add a user category
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3738,10 +3806,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldUnarchiveCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow, add a category, and archive it
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3805,10 +3874,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowArchivingSystemCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow (has system "Uncategorized" category)
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3830,10 +3900,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowArchivingNonExistentCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3855,10 +3926,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void archivedCategoryShouldRemainVisibleInExistingTransactions() {
+        String userId = uniqueUserId();
         // given - create cashflow and add a category with a transaction
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3915,10 +3987,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldPreserveOriginFieldOnSystemCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3949,10 +4022,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowAddingExpectedCashChangeToArchivedCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category and archive it
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -3995,10 +4069,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowAddingPaidCashChangeToArchivedCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category and archive it
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4044,10 +4119,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAllowAddingCashChangeToUnarchivedCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category, archive it, then unarchive it
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4107,10 +4183,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowCreatingCategoryWithSameNameAsActiveCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4141,10 +4218,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldAllowCreatingCategoryWithSameNameAsArchivedCategory() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category and archive it
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4197,10 +4275,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotAllowUnarchivingWhenActiveCategoryWithSameNameExists() {
+        String userId = uniqueUserId();
         // given - create cashflow with a category, archive it, create new one with same name
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4250,10 +4329,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldArchiveSubcategoriesWhenForceArchiveChildrenIsTrue() {
+        String userId = uniqueUserId();
         // given - create cashflow with parent category and subcategories
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -4319,10 +4399,11 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Test
     void shouldNotArchiveSubcategoriesWhenForceArchiveChildrenIsFalse() {
+        String userId = uniqueUserId();
         // given - create cashflow with parent category and subcategories
         String cashFlowId = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000009")
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(

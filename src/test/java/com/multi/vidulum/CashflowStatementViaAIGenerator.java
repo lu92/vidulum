@@ -758,7 +758,7 @@ class HomeBudgetActor {
                 new AppendExpectedCashChangeCommand(
                         cashFlowId,
                         category,
-                        new CashChangeId(CashChangeId.generate().id()),
+                        TestIds.nextCashChangeId(),
                         new Name("Transaction: " + category.name()),
                         new Description("Auto-generated transaction in category " + category.name()),
                         money,

@@ -99,7 +99,7 @@ public class CashFlowHttpActor {
                 .build();
 
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category?isImport=true",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category?isImport=true",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 Void.class
@@ -127,7 +127,7 @@ public class CashFlowHttpActor {
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/import-historical",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/import-historical",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 String.class
@@ -155,7 +155,7 @@ public class CashFlowHttpActor {
                 .build();
 
         return restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/attest-historical-import",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/attest-historical-import",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 CashFlowDto.AttestHistoricalImportResponseJson.class
@@ -180,7 +180,7 @@ public class CashFlowHttpActor {
 
         try {
             ResponseEntity<ApiError> response = rawRestTemplate.exchange(
-                    baseUrl + "/cash-flow/" + cashFlowId + "/attest-historical-import",
+                    baseUrl + "/cash-flow/cf=" + cashFlowId + "/attest-historical-import",
                     HttpMethod.POST,
                     entity,
                     ApiError.class
@@ -197,7 +197,7 @@ public class CashFlowHttpActor {
      */
     public CashFlowDto.CashFlowSummaryJson getCashFlow(String cashFlowId) {
         ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.getForEntity(
-                baseUrl + "/cash-flow/" + cashFlowId,
+                baseUrl + "/cash-flow/cf=" + cashFlowId,
                 CashFlowDto.CashFlowSummaryJson.class
         );
 
@@ -210,7 +210,7 @@ public class CashFlowHttpActor {
      */
     public ResponseEntity<ApiError> getCashFlowExpectingError(String cashFlowId) {
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId,
+                baseUrl + "/cash-flow/cf=" + cashFlowId,
                 HttpMethod.GET,
                 null
         );
@@ -393,7 +393,7 @@ public class CashFlowHttpActor {
                 .build();
 
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category?isImport=" + isImport,
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category?isImport=" + isImport,
                 HttpMethod.POST,
                 request
         );
@@ -411,7 +411,7 @@ public class CashFlowHttpActor {
                 .build();
 
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category/archive",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category/archive",
                 HttpMethod.POST,
                 request
         );
@@ -428,7 +428,7 @@ public class CashFlowHttpActor {
                 .build();
 
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category/unarchive",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category/unarchive",
                 HttpMethod.POST,
                 request
         );
@@ -508,7 +508,7 @@ public class CashFlowHttpActor {
                 .build();
 
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId + "/import-historical",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/import-historical",
                 HttpMethod.POST,
                 request
         );
@@ -520,7 +520,7 @@ public class CashFlowHttpActor {
      */
     public ResponseEntity<ApiError> rollbackImportExpectingError(String cashFlowId) {
         return executeExpectingError(
-                baseUrl + "/cash-flow/" + cashFlowId + "/import",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/import",
                 HttpMethod.DELETE,
                 null
         );
@@ -639,7 +639,7 @@ public class CashFlowHttpActor {
                 .build();
 
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category/archive",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category/archive",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 Void.class

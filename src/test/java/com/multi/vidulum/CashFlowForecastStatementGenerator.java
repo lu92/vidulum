@@ -70,7 +70,7 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
                 OUTFLOW, List.of(new CategoryName("Uncategorized"), new CategoryName("Category3"))
         );
 
-        CashChangeId lastCashChangeId = CashChangeId.generate();
+        CashChangeId lastCashChangeId = TestIds.nextCashChangeId();
         CashChangeStatus statusOfLastCashChange = CashChangeStatus.PENDING;
         YearMonth processingPeriod = YearMonth.now(clock);
         for (int i = 0; i < 12+NUMBER_OF_ATTESTED_MONTHS; i++) {
@@ -158,7 +158,7 @@ class Actor {
                 new AppendExpectedCashChangeCommand(
                         cashFlowId,
                         category,
-                        new CashChangeId(CashChangeId.generate().id()),
+                        TestIds.nextCashChangeId(),
                         new Name("cash-change name"),
                         new Description("cash-change description"),
                         money,

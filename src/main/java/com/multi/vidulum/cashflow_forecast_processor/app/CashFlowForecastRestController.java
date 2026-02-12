@@ -20,10 +20,10 @@ public class CashFlowForecastRestController {
     private final CashFlowForecastStatementRepository statementRepository;
     private final CashFlowForecastMapper mapper;
 
-    @GetMapping("/{cashFlowId}")
+    @GetMapping("/cf={cashFlowId}")
     public CashFlowForecastDto.CashFlowForecastStatementJson getForecastStatement(
             @PathVariable("cashFlowId") String cashFlowId) {
-        CashFlowId id = new CashFlowId(cashFlowId);
+        CashFlowId id = CashFlowId.of(cashFlowId);
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(id)
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(id));
         return mapper.map(statement);
@@ -36,9 +36,9 @@ public class CashFlowForecastRestController {
      * @param cashFlowId the CashFlow identifier
      * @return response with cashFlowId and map of YearMonth to ForecastMonthStatus
      */
-    @GetMapping("/{cashFlowId}/month-statuses")
+    @GetMapping("/cf={cashFlowId}/month-statuses")
     public CashFlowForecastDto.MonthStatusesResponse getMonthStatuses(@PathVariable("cashFlowId") String cashFlowId) {
-        CashFlowId id = new CashFlowId(cashFlowId);
+        CashFlowId id = CashFlowId.of(cashFlowId);
         Map<YearMonth, CashFlowForecastDto.ForecastMonthStatus> monthStatuses = statementRepository.findByCashFlowId(id)
                 .map(this::extractMonthStatuses)
                 .orElse(Map.of());

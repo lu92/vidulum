@@ -58,7 +58,7 @@ public class CashChangeEntity {
         ZonedDateTime endDateTime = endDate != null ? ZonedDateTime.ofInstant(endDate.toInstant(), ZoneOffset.UTC) : null;
 
         return new CashChangeSnapshot(
-                new CashChangeId(cashChangeId),
+                CashChangeId.of(cashChangeId),
                 new Name(name),
                 new Description(description),
                 money,

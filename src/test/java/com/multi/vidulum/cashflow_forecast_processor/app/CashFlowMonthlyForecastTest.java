@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Name;
@@ -158,7 +159,7 @@ class CashFlowMonthlyForecastTest {
         GroupedTransactions groupedTransactions = createGroupedTransactions();
         for (double amount : amounts) {
             TransactionDetails transaction = TransactionDetails.builder()
-                    .cashChangeId(new CashChangeId(CashChangeId.generate().id()))
+                    .cashChangeId(TestIds.nextCashChangeId())
                     .name(new Name("Transaction"))
                     .money(Money.of(amount, "USD"))
                     .created(ZonedDateTime.now())
@@ -193,7 +194,7 @@ class CashFlowMonthlyForecastTest {
         GroupedTransactions groupedTransactions = createGroupedTransactions();
         for (double amount : amounts) {
             TransactionDetails transaction = TransactionDetails.builder()
-                    .cashChangeId(new CashChangeId(CashChangeId.generate().id()))
+                    .cashChangeId(TestIds.nextCashChangeId())
                     .name(new Name("Transaction"))
                     .money(Money.of(amount, "USD"))
                     .created(ZonedDateTime.now())

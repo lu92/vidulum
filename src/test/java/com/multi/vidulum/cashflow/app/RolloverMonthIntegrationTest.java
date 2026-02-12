@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthCommand;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
@@ -46,19 +47,22 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Autowired
     private Clock clock;
 
-    private static final String TEST_USER = "U10000001";
-
     private String uniqueCashFlowName() {
         return "RolloverCF-" + NAME_COUNTER.incrementAndGet();
+    }
+
+    private String uniqueUserId() {
+        return TestIds.nextUserId().getId();
     }
 
     @Test
     void shouldRolloverMonthAndTransitionToRolledOverStatus() {
         // Given: CashFlow with history in OPEN mode
+        String userId = uniqueUserId();
         YearMonth activePeriod = YearMonth.now(clock); // 2022-01 based on FixedClockConfig
         YearMonth startPeriod = activePeriod.minusMonths(3);
 
-        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod);
+        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod, userId);
         CashFlowId cfId = new CashFlowId(cashFlowId);
 
         // Wait for forecast to be created
@@ -109,12 +113,13 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Test
     void shouldFailRolloverForSetupModeCashFlow() {
         // Given: CashFlow in SETUP mode (not yet activated)
+        String userId = uniqueUserId();
         YearMonth startPeriod = YearMonth.now(clock).minusMonths(3);
 
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId(TEST_USER)
-                        .name("Setup Mode CashFlow")
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
                         .description("Test")
                         .bankAccount(CashFlowDto.BankAccountJson.builder()
                                 .bankName("Test Bank")
@@ -139,10 +144,11 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Test
     void shouldPerformMultipleRolloversSequentially() {
         // Given: CashFlow in OPEN mode
+        String userId = uniqueUserId();
         YearMonth activePeriod = YearMonth.now(clock);
         YearMonth startPeriod = activePeriod.minusMonths(3);
 
-        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod);
+        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod, userId);
         CashFlowId cfId = new CashFlowId(cashFlowId);
 
         await().atMost(10, SECONDS).until(() ->
@@ -193,11 +199,12 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Test
     void shouldPerformBatchRolloverCatchUp() {
         // Given: CashFlow in OPEN mode
+        String userId = uniqueUserId();
         YearMonth activePeriod = YearMonth.now(clock);
         YearMonth startPeriod = activePeriod.minusMonths(3);
         YearMonth targetPeriod = activePeriod.plusMonths(3);
 
-        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod);
+        String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod, userId);
         CashFlowId cfId = new CashFlowId(cashFlowId);
 
         await().atMost(10, SECONDS).until(() ->
@@ -232,11 +239,11 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     /**
      * Helper method to create a CashFlow with history and activate it.
      */
-    private String createCashFlowWithHistoryAndActivate(YearMonth startPeriod) {
+    private String createCashFlowWithHistoryAndActivate(YearMonth startPeriod, String userId) {
         // Create CashFlow with history
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId(TEST_USER)
+                        .userId(userId)
                         .name(uniqueCashFlowName())
                         .description("Test CashFlow for rollover")
                         .bankAccount(CashFlowDto.BankAccountJson.builder()

@@ -94,8 +94,8 @@ public class CashFlowEntity {
                         Function.identity()));
 
         return new CashFlowSnapshot(
-                new CashFlowId(cashFlowId),
-                new UserId(userId),
+                CashFlowId.of(cashFlowId),
+                UserId.of(userId),
                 new Name(name),
                 new Description(description),
                 bankAccount,

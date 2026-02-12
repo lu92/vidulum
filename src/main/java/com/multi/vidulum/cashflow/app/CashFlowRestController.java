@@ -22,6 +22,7 @@ import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Reason;
 import com.multi.vidulum.common.UserId;
@@ -47,6 +48,7 @@ public class CashFlowRestController {
     private final QueryGateway queryGateway;
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowSummaryMapper mapper;
+    private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
 
     @PostMapping
@@ -88,13 +90,13 @@ public class CashFlowRestController {
      * Import a historical cash change to a CashFlow in SETUP mode.
      * The transaction will be added to the appropriate historical month based on paidDate.
      */
-    @PostMapping("/{cashFlowId}/import-historical")
+    @PostMapping("/cf={cashFlowId}/import-historical")
     public String importHistoricalCashChange(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.ImportHistoricalCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
                 new ImportHistoricalCashChangeCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategory()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
@@ -112,19 +114,20 @@ public class CashFlowRestController {
      * This marks the end of the historical import process.
      * All IMPORT_PENDING months will be changed to IMPORTED.
      */
-    @PostMapping("/{cashFlowId}/attest-historical-import")
+    @PostMapping("/cf={cashFlowId}/attest-historical-import")
     public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @Valid @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
 
         // Get CashFlow before attestation to calculate the balance
-        CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(new CashFlowId(cashFlowId)));
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
+        CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(cfId)
+                .orElseThrow(() -> new CashFlowDoesNotExistsException(cfId));
         Money calculatedBalance = cashFlowBeforeAttestation.calculateCurrentBalance();
 
         CashFlowSnapshot snapshot = commandGateway.send(
                 new AttestHistoricalImportCommand(
-                        new CashFlowId(cashFlowId),
+                        cfId,
                         request.getConfirmedBalance(),
                         request.isForceAttestation(),
                         request.isCreateAdjustment()
@@ -164,7 +167,7 @@ public class CashFlowRestController {
      * This allows the user to start the import process fresh if mistakes were made.
      * The CashFlow remains in SETUP mode after rollback.
      */
-    @DeleteMapping("/{cashFlowId}/import")
+    @DeleteMapping("/cf={cashFlowId}/import")
     public CashFlowDto.RollbackImportResponseJson rollbackImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody(required = false) CashFlowDto.RollbackImportJson request) {
@@ -173,7 +176,7 @@ public class CashFlowRestController {
 
         CashFlowSnapshot snapshot = commandGateway.send(
                 new RollbackImportCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         deleteCategories
                 )
         );
@@ -193,9 +196,9 @@ public class CashFlowRestController {
     public String appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
                 new AppendExpectedCashChangeCommand(
-                        new CashFlowId(request.getCashFlowId()),
+                        CashFlowId.of(request.getCashFlowId()),
                         new CategoryName(request.getCategory()),
-                        new CashChangeId(CashChangeId.generate().id()),
+                        businessIdGenerator.generateCashChangeId(),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
@@ -211,9 +214,9 @@ public class CashFlowRestController {
     public String appendPaidCashChange(@RequestBody CashFlowDto.AppendPaidCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
                 new AppendPaidCashChangeCommand(
-                        new CashFlowId(request.getCashFlowId()),
+                        CashFlowId.of(request.getCashFlowId()),
                         new CategoryName(request.getCategory()),
-                        new CashChangeId(CashChangeId.generate().id()),
+                        businessIdGenerator.generateCashChangeId(),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
@@ -230,8 +233,8 @@ public class CashFlowRestController {
     public void confirm(@Valid @RequestBody CashFlowDto.ConfirmCashChangeJson request) {
         commandGateway.send(
                 new ConfirmCashChangeCommand(
-                        new CashFlowId(request.getCashFlowId()),
-                        new CashChangeId(request.getCashChangeId()),
+                        CashFlowId.of(request.getCashFlowId()),
+                        CashChangeId.of(request.getCashChangeId()),
                         ZonedDateTime.now(clock)));
     }
 
@@ -239,8 +242,8 @@ public class CashFlowRestController {
     public void edit(@Valid @RequestBody CashFlowDto.EditCashChangeJson request) {
         commandGateway.send(
                 new EditCashChangeCommand(
-                        new CashFlowId(request.getCashFlowId()),
-                        new CashChangeId(request.getCashChangeId()),
+                        CashFlowId.of(request.getCashFlowId()),
+                        CashChangeId.of(request.getCashChangeId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.getMoney(),
@@ -254,17 +257,17 @@ public class CashFlowRestController {
     public void reject(@Valid @RequestBody CashFlowDto.RejectCashChangeJson request) {
         commandGateway.send(
                 new RejectCashChangeCommand(
-                        new CashFlowId(request.getCashFlowId()),
-                        new CashChangeId(request.getCashChangeId()),
+                        CashFlowId.of(request.getCashFlowId()),
+                        CashChangeId.of(request.getCashChangeId()),
                         new Reason(request.getReason())
                 )
         );
     }
 
-    @GetMapping("/{cashFlowId}")
+    @GetMapping("/cf={cashFlowId}")
     public CashFlowDto.CashFlowSummaryJson getCashFlow(@PathVariable("cashFlowId") String cashFlowId) {
         CashFlowSnapshot snapshot = queryGateway.send(
-                new GetCashFlowQuery(new CashFlowId(cashFlowId))
+                new GetCashFlowQuery(CashFlowId.of(cashFlowId))
         );
 
         return mapper.mapCashFlow(snapshot);
@@ -285,7 +288,7 @@ public class CashFlowRestController {
      * REST endpoint for category creation.
      * Use isImport=true query parameter when creating categories during bank data import (allowed in SETUP mode).
      */
-    @PostMapping("/{cashFlowId}/category")
+    @PostMapping("/cf={cashFlowId}/category")
     public void createCategoryEndpoint(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.CreateCategoryJson request,
@@ -298,14 +301,15 @@ public class CashFlowRestController {
      * In SETUP mode, only import operations (isImport=true) can create categories.
      */
     public void createCategory(String cashFlowId, CashFlowDto.CreateCategoryJson request, boolean isImport) {
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
         CreateCategoryCommand command = isImport
                 ? CreateCategoryCommand.forImport(
-                        new CashFlowId(cashFlowId),
+                        cfId,
                         ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
                         new CategoryName(request.getCategory()),
                         request.getType())
                 : new CreateCategoryCommand(
-                        new CashFlowId(cashFlowId),
+                        cfId,
                         ofNullable(request.getParentCategoryName()).map(CategoryName::new).orElse(CategoryName.NOT_DEFINED),
                         new CategoryName(request.getCategory()),
                         request.getType());
@@ -324,7 +328,7 @@ public class CashFlowRestController {
     public void setBudgeting(@RequestBody CashFlowDto.SetBudgetingJson request) {
         commandGateway.send(
                 new SetBudgetingCommand(
-                        new CashFlowId(request.getCashFlowId()),
+                        CashFlowId.of(request.getCashFlowId()),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType(),
                         request.getBudget()
@@ -336,7 +340,7 @@ public class CashFlowRestController {
     public void updateBudgeting(@RequestBody CashFlowDto.UpdateBudgetingJson request) {
         commandGateway.send(
                 new UpdateBudgetingCommand(
-                        new CashFlowId(request.getCashFlowId()),
+                        CashFlowId.of(request.getCashFlowId()),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType(),
                         request.getNewBudget()
@@ -348,7 +352,7 @@ public class CashFlowRestController {
     public void removeBudgeting(@RequestBody CashFlowDto.RemoveBudgetingJson request) {
         commandGateway.send(
                 new RemoveBudgetingCommand(
-                        new CashFlowId(request.getCashFlowId()),
+                        CashFlowId.of(request.getCashFlowId()),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType()
                 )
@@ -359,13 +363,13 @@ public class CashFlowRestController {
      * Archive a category, hiding it from new transaction creation.
      * Archived categories remain visible in historical transactions that used them.
      */
-    @PostMapping("/{cashFlowId}/category/archive")
+    @PostMapping("/cf={cashFlowId}/category/archive")
     public void archiveCategory(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.ArchiveCategoryJson request) {
         commandGateway.send(
                 new ArchiveCategoryCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType(),
                         request.isForceArchiveChildren()
@@ -376,13 +380,13 @@ public class CashFlowRestController {
     /**
      * Unarchive a category, making it available for new transaction creation again.
      */
-    @PostMapping("/{cashFlowId}/category/unarchive")
+    @PostMapping("/cf={cashFlowId}/category/unarchive")
     public void unarchiveCategory(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.UnarchiveCategoryJson request) {
         commandGateway.send(
                 new UnarchiveCategoryCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategoryName()),
                         request.getCategoryType()
                 )
@@ -408,13 +412,13 @@ public class CashFlowRestController {
      * @param cashFlowId the CashFlow to rollover
      * @return rollover result with old and new active periods
      */
-    @PostMapping("/{cashFlowId}/rollover")
+    @PostMapping("/cf={cashFlowId}/rollover")
     public CashFlowDto.RolloverMonthResponseJson rolloverMonth(
             @PathVariable("cashFlowId") String cashFlowId) {
 
         RolloverMonthResult result = commandGateway.send(
                 new RolloverMonthCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         ZonedDateTime.now(clock)
                 )
         );
@@ -440,12 +444,12 @@ public class CashFlowRestController {
      * @param targetPeriod the target period that should become ACTIVE (format: yyyy-MM)
      * @return batch rollover result
      */
-    @PostMapping("/{cashFlowId}/rollover/to/{targetPeriod}")
+    @PostMapping("/cf={cashFlowId}/rollover/to/{targetPeriod}")
     public CashFlowDto.BatchRolloverResponseJson rolloverMonthsTo(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("targetPeriod") String targetPeriod) {
 
-        CashFlowId cfId = new CashFlowId(cashFlowId);
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
         YearMonth target = YearMonth.parse(targetPeriod);
         ZonedDateTime now = ZonedDateTime.now(clock);
 

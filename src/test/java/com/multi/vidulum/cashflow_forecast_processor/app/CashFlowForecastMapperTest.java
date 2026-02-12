@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
@@ -31,7 +32,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapCashFlowForecastStatement() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-cash-flow-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 1);
         ZonedDateTime now = ZonedDateTime.parse("2022-01-15T10:00:00Z");
         Checksum checksum = new Checksum("abc123checksum");
@@ -95,7 +96,7 @@ class CashFlowForecastMapperTest {
         CashFlowForecastDto.CashFlowForecastStatementJson result = mapper.map(statement);
 
         // then
-        assertThat(result.getCashFlowId()).isEqualTo("test-cash-flow-id");
+        assertThat(result.getCashFlowId()).isEqualTo(cashFlowId.id());
         assertThat(result.getBankAccountNumber().account()).isEqualTo("US123456789");
         assertThat(result.getBankAccountNumber().denomination()).isEqualTo(Currency.of("USD"));
         assertThat(result.getLastModification()).isEqualTo(now);
@@ -126,7 +127,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapCashFlowStatsCorrectly() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 3);
         ZonedDateTime now = ZonedDateTime.parse("2022-03-01T00:00:00Z");
 
@@ -205,8 +206,8 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapTransactionDetailsCorrectly() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
-        CashChangeId cashChangeId = new CashChangeId("change-123");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         YearMonth period = YearMonth.of(2022, 2);
         ZonedDateTime now = ZonedDateTime.parse("2022-02-15T10:00:00Z");
         ZonedDateTime dueDate = ZonedDateTime.parse("2022-02-20T00:00:00Z");
@@ -274,7 +275,7 @@ class CashFlowForecastMapperTest {
         assertThat(expectedTransactions).hasSize(1);
 
         CashFlowForecastDto.TransactionDetailsJson transactionJson = expectedTransactions.get(0);
-        assertThat(transactionJson.getCashChangeId()).isEqualTo("change-123");
+        assertThat(transactionJson.getCashChangeId()).isEqualTo(cashChangeId.id());
         assertThat(transactionJson.getName()).isEqualTo("Monthly Salary");
         assertThat(transactionJson.getMoney()).isEqualTo(Money.of(5000, "USD"));
         assertThat(transactionJson.getCreated()).isEqualTo(now);
@@ -285,7 +286,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapBudgetingCorrectly() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 4);
         ZonedDateTime now = ZonedDateTime.parse("2022-04-01T00:00:00Z");
         ZonedDateTime budgetCreated = ZonedDateTime.parse("2022-03-15T10:00:00Z");
@@ -360,7 +361,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapAttestationCorrectly() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 1);
         ZonedDateTime now = ZonedDateTime.parse("2022-02-01T00:00:00Z");
         ZonedDateTime attestationDateTime = ZonedDateTime.parse("2022-01-31T23:59:59Z");
@@ -425,7 +426,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldMapSubCategoriesCorrectly() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 5);
         ZonedDateTime now = ZonedDateTime.parse("2022-05-01T00:00:00Z");
 
@@ -502,7 +503,7 @@ class CashFlowForecastMapperTest {
     @Test
     void shouldHandleNullChecksumGracefully() {
         // given
-        CashFlowId cashFlowId = new CashFlowId("test-id");
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         YearMonth period = YearMonth.of(2022, 1);
         ZonedDateTime now = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 

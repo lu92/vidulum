@@ -21,6 +21,8 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Request validation failed"),
     VALIDATION_INVALID_JSON(HttpStatus.BAD_REQUEST, "Invalid JSON format"),
     INVALID_USER_ID_FORMAT(HttpStatus.BAD_REQUEST, "Invalid User ID format. Expected: UXXXXXXXX"),
+    INVALID_CASHFLOW_ID_FORMAT(HttpStatus.BAD_REQUEST, "Invalid CashFlow ID format. Expected: CFXXXXXXXX"),
+    INVALID_CASHCHANGE_ID_FORMAT(HttpStatus.BAD_REQUEST, "Invalid CashChange ID format. Expected: CCXXXXXXXXXX"),
 
     // CashFlow - Resources
     CASHFLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "CashFlow not found"),

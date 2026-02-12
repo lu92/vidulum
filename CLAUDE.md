@@ -155,6 +155,35 @@ When writing integration tests, follow these rules:
 - **Kafka**: Broker `kafka:9092`, consumer group `group-id`
 - **Docker**: `docker-compose-final.yml` for local development
 
+## Docker Rebuild (Full Restart)
+
+When the user asks to "restart Docker" or "rebuild Docker image", perform a **full clean rebuild**:
+
+```bash
+# 1. Package the application (create JAR)
+./mvnw package -DskipTests
+
+# 2. Build fresh Docker image
+# IMPORTANT: Always use vidulum-app:latest (NOT vidulum:latest)
+docker build -t vidulum-app:latest .
+
+# 3. Stop and remove all containers
+docker-compose -f docker-compose-final.yml down
+
+# 4. Start fresh from scratch
+docker-compose -f docker-compose-final.yml up -d
+```
+
+**IMPORTANT - Docker Image Naming:**
+- Always build with tag `vidulum-app:latest`
+- NEVER use `vidulum:latest` - this is an old deprecated name
+- The `docker-compose-final.yml` expects `vidulum-app:latest`
+
+This ensures:
+- New Docker image is built with latest code changes
+- All containers (MongoDB, Kafka, app) are stopped and removed
+- Fresh containers are started with clean state
+
 ## Sound Notification
 
 After completing long-running operations (tests, builds, compilations), play a notification sound to alert the user:

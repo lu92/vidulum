@@ -50,7 +50,7 @@ import java.util.List;
  */
 @AllArgsConstructor
 @RestController
-@RequestMapping("/api/v1/bank-data-ingestion/{cashFlowId}")
+@RequestMapping("/api/v1/bank-data-ingestion/cf={cashFlowId}")
 public class BankDataIngestionRestController {
 
     private final CommandGateway commandGateway;
@@ -71,7 +71,7 @@ public class BankDataIngestionRestController {
 
         ConfigureCategoryMappingResult result = commandGateway.send(
                 new ConfigureCategoryMappingCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         mappingConfigs
                 )
         );
@@ -87,7 +87,7 @@ public class BankDataIngestionRestController {
             @PathVariable("cashFlowId") String cashFlowId) {
 
         GetCategoryMappingsResult result = queryGateway.send(
-                new GetCategoryMappingsQuery(new CashFlowId(cashFlowId))
+                new GetCategoryMappingsQuery(CashFlowId.of(cashFlowId))
         );
 
         return toGetMappingsResponse(result);
@@ -103,7 +103,7 @@ public class BankDataIngestionRestController {
 
         DeleteCategoryMappingResult result = commandGateway.send(
                 new DeleteCategoryMappingCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         MappingId.of(mappingId)
                 )
         );
@@ -123,7 +123,7 @@ public class BankDataIngestionRestController {
             @PathVariable("cashFlowId") String cashFlowId) {
 
         DeleteAllCategoryMappingsResult result = commandGateway.send(
-                new DeleteAllCategoryMappingsCommand(new CashFlowId(cashFlowId))
+                new DeleteAllCategoryMappingsCommand(CashFlowId.of(cashFlowId))
         );
 
         return BankDataIngestionDto.DeleteAllMappingsResponse.builder()
@@ -216,7 +216,7 @@ public class BankDataIngestionRestController {
             @PathVariable("cashFlowId") String cashFlowId) {
 
         ListStagingSessionsResult result = queryGateway.send(
-                new ListStagingSessionsQuery(new CashFlowId(cashFlowId))
+                new ListStagingSessionsQuery(CashFlowId.of(cashFlowId))
         );
 
         return toListStagingSessionsResponse(result);
@@ -237,7 +237,7 @@ public class BankDataIngestionRestController {
 
         StageTransactionsResult result = commandGateway.send(
                 new StageTransactionsCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         transactions
                 )
         );
@@ -255,7 +255,7 @@ public class BankDataIngestionRestController {
 
         GetStagingPreviewResult result = queryGateway.send(
                 new GetStagingPreviewQuery(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         StagingSessionId.of(stagingSessionId)
                 )
         );
@@ -273,7 +273,7 @@ public class BankDataIngestionRestController {
 
         DeleteStagingSessionResult result = commandGateway.send(
                 new DeleteStagingSessionCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         StagingSessionId.of(stagingSessionId)
                 )
         );
@@ -297,7 +297,7 @@ public class BankDataIngestionRestController {
 
         RevalidateStagingResult result = commandGateway.send(
                 new RevalidateStagingCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         StagingSessionId.of(stagingSessionId)
                 )
         );
@@ -316,7 +316,7 @@ public class BankDataIngestionRestController {
 
         UploadCsvResult result = commandGateway.send(
                 new UploadCsvCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         file
                 )
         );
@@ -601,7 +601,7 @@ public class BankDataIngestionRestController {
 
         StartImportJobResult result = commandGateway.send(
                 new StartImportJobCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         StagingSessionId.of(request.getStagingSessionId())
                 )
         );
@@ -619,7 +619,7 @@ public class BankDataIngestionRestController {
 
         GetImportProgressResult result = queryGateway.send(
                 new GetImportProgressQuery(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         ImportJobId.of(jobId)
                 )
         );
@@ -637,7 +637,7 @@ public class BankDataIngestionRestController {
 
         RollbackImportJobResult result = commandGateway.send(
                 new RollbackImportJobCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         ImportJobId.of(jobId)
                 )
         );
@@ -656,7 +656,7 @@ public class BankDataIngestionRestController {
 
         FinalizeImportJobResult result = commandGateway.send(
                 new FinalizeImportJobCommand(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         ImportJobId.of(jobId),
                         request.isDeleteMappings()
                 )
@@ -679,7 +679,7 @@ public class BankDataIngestionRestController {
 
         ListImportJobsResult result = queryGateway.send(
                 new ListImportJobsQuery(
-                        new CashFlowId(cashFlowId),
+                        CashFlowId.of(cashFlowId),
                         statusFilters
                 )
         );

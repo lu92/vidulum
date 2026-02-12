@@ -1,6 +1,6 @@
 {
   "cashFlowId": {
-    "id": "4015b06b-21e1-4037-ab5a-3ca9e4bde75a"
+    "id": "CF10000001"
   },
   "forecasts": {
     "2021-06": {
@@ -89,7 +89,7 @@
                   "PAID": [
                     {
                       "cashChangeId": {
-                        "id": "cbf35c45-de07-48d4-bf51-f5c3f27c8320"
+                    "id": "CC1000000001"
                       },
                       "name": {
                         "name": "Main product purchase"
@@ -118,7 +118,7 @@
               "PAID": [
                 {
                   "cashChangeId": {
-                    "id": "bd3bb5a4-3db8-487b-92f5-c4d9066b7cd3"
+                    "id": "CC1000000001"
                   },
                   "name": {
                     "name": "Sales purchase"
@@ -184,7 +184,7 @@
                   "PAID": [
                     {
                       "cashChangeId": {
-                        "id": "053a98a4-c9ce-4cec-bf4a-36f90ed5e629"
+                    "id": "CC1000000001"
                       },
                       "name": {
                         "name": "Morgan Stanley fee"

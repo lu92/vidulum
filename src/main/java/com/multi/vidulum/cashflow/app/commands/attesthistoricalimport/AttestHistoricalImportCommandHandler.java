@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.attesthistoricalimport;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
@@ -21,6 +22,7 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
+    private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
 
     @Override
@@ -59,7 +61,7 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
         // Determine if we should create an adjustment transaction
         CashChangeId adjustmentCashChangeId = null;
         if (!isZeroDifference && command.createAdjustment()) {
-            adjustmentCashChangeId = CashChangeId.generate();
+            adjustmentCashChangeId = businessIdGenerator.generateCashChangeId();
         }
 
         CashFlowEvent.HistoricalImportAttestedEvent event = new CashFlowEvent.HistoricalImportAttestedEvent(

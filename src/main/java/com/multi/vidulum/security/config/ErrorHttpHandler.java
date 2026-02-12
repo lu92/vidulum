@@ -3,6 +3,8 @@ package com.multi.vidulum.security.config;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.InvalidCashChangeIdFormatException;
+import com.multi.vidulum.cashflow.domain.InvalidCashFlowIdFormatException;
 import com.multi.vidulum.common.InvalidUserIdFormatException;
 import com.multi.vidulum.cashflow.domain.CashFlowNameAlreadyExistsException;
 import com.multi.vidulum.common.error.ApiError;
@@ -70,6 +72,20 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleInvalidUserIdFormat(InvalidUserIdFormatException ex) {
         log.debug("Invalid User ID format: {}", ex.getProvidedId());
         ApiError error = ApiError.of(ErrorCode.INVALID_USER_ID_FORMAT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(InvalidCashFlowIdFormatException.class)
+    public ResponseEntity<ApiError> handleInvalidCashFlowIdFormat(InvalidCashFlowIdFormatException ex) {
+        log.debug("Invalid CashFlow ID format: {}", ex.getProvidedId());
+        ApiError error = ApiError.of(ErrorCode.INVALID_CASHFLOW_ID_FORMAT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(InvalidCashChangeIdFormatException.class)
+    public ResponseEntity<ApiError> handleInvalidCashChangeIdFormat(InvalidCashChangeIdFormatException ex) {
+        log.debug("Invalid CashChange ID format: {}", ex.getProvidedId());
+        ApiError error = ApiError.of(ErrorCode.INVALID_CASHCHANGE_ID_FORMAT, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

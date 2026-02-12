@@ -210,7 +210,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 404 NOT_FOUND with CASHFLOW_NOT_FOUND when CashFlow does not exist")
         void shouldReturn404WhenCashFlowNotFound() {
             // given
-            String nonExistentCashFlowId = UUID.randomUUID().toString();
+            String nonExistentCashFlowId = TestIds.nonExistentCashFlowId();
 
             // when
             ResponseEntity<ApiError> response = actor.getCashFlowExpectingError(nonExistentCashFlowId);
@@ -235,7 +235,7 @@ class CashFlowErrorHandlingTest {
             // given - create CashFlow first
             String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
-            String nonExistentCashChangeId = UUID.randomUUID().toString();
+            String nonExistentCashChangeId = TestIds.nonExistentCashChangeId();
 
             // when - try to confirm non-existent cash change
             ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, nonExistentCashChangeId);
@@ -553,7 +553,7 @@ class CashFlowErrorHandlingTest {
 
             // when
             ResponseEntity<ApiError> response = actor.editCashChangeExpectingError(
-                    cashFlowId, "fake-id", "New Name", "New Description",
+                    cashFlowId, TestIds.nonExistentCashChangeId(), "New Name", "New Description",
                     Money.of(200, "USD"), "Uncategorized", ZonedDateTime.parse("2022-01-20T00:00:00Z"));
 
             // then
@@ -574,7 +574,7 @@ class CashFlowErrorHandlingTest {
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
             // when
-            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, "fake-id");
+            ResponseEntity<ApiError> response = actor.confirmCashChangeExpectingError(cashFlowId, TestIds.nonExistentCashChangeId());
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
