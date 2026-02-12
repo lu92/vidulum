@@ -160,15 +160,24 @@ When writing integration tests, follow these rules:
 When the user asks to "restart Docker" or "rebuild Docker image", perform a **full clean rebuild**:
 
 ```bash
-# 1. Build fresh Docker image
+# 1. Package the application (create JAR)
+./mvnw package -DskipTests
+
+# 2. Build fresh Docker image
+# IMPORTANT: Always use vidulum-app:latest (NOT vidulum:latest)
 docker build -t vidulum-app:latest .
 
-# 2. Stop and remove all containers
+# 3. Stop and remove all containers
 docker-compose -f docker-compose-final.yml down
 
-# 3. Start fresh from scratch
+# 4. Start fresh from scratch
 docker-compose -f docker-compose-final.yml up -d
 ```
+
+**IMPORTANT - Docker Image Naming:**
+- Always build with tag `vidulum-app:latest`
+- NEVER use `vidulum:latest` - this is an old deprecated name
+- The `docker-compose-final.yml` expects `vidulum-app:latest`
 
 This ensures:
 - New Docker image is built with latest code changes
