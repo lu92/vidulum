@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
@@ -149,7 +150,7 @@ class CashFlowForecastStatementTest {
 
     private CashFlowForecastStatement createStatement(Map<YearMonth, CashFlowMonthlyForecast> forecasts) {
         return new CashFlowForecastStatement(
-                new CashFlowId("test-cashflow-id"),
+                TestIds.nextCashFlowId(),
                 forecasts,
                 new BankAccountNumber("test-account", Currency.of("USD")),
                 new CurrentCategoryStructure(new ArrayList<>(), new ArrayList<>(), ZonedDateTime.now()),
@@ -191,7 +192,7 @@ class CashFlowForecastStatementTest {
         GroupedTransactions groupedTransactions = createGroupedTransactions();
         if (amount > 0) {
             TransactionDetails transaction = TransactionDetails.builder()
-                    .cashChangeId(new CashChangeId(CashChangeId.generate().id()))
+                    .cashChangeId(TestIds.nextCashChangeId())
                     .name(new Name("Transaction"))
                     .money(Money.of(amount, "USD"))
                     .created(ZonedDateTime.now())

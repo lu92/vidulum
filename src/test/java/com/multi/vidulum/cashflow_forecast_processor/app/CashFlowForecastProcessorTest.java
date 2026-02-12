@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.ContentReader;
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.common.*;
@@ -23,9 +24,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processInflows() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -109,9 +110,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processOutflows() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -195,12 +196,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldAttestMonth() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
-        CashChangeId thirdCashChangeId = CashChangeId.generate();
-        CashChangeId forthCashChangeId = CashChangeId.generate();
-        CashChangeId fifthCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId thirdCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId forthCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId fifthCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -349,9 +350,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldCreateNewCategory() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -442,10 +443,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldAppendCashChangeToSubCategory() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
-        CashChangeId thirdCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId thirdCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -577,9 +578,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processPaidInflows() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId paidCashChangeId1 = CashChangeId.generate();
-        CashChangeId paidCashChangeId2 = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId paidCashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId paidCashChangeId2 = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -645,9 +646,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processPaidOutflows() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId paidCashChangeId1 = CashChangeId.generate();
-        CashChangeId paidCashChangeId2 = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId paidCashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId paidCashChangeId2 = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -713,9 +714,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processMixedExpectedAndPaidCashChanges() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId expectedCashChangeId = CashChangeId.generate();
-        CashChangeId paidCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId expectedCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId paidCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -785,8 +786,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void processPaidCashChangeWithCustomCategory() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId paidCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId paidCashChangeId = TestIds.nextCashChangeId();
 
         emit(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -848,9 +849,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldRollbackImportAndClearTransactionsFromImportPendingMonths() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId historicalCashChangeId1 = CashChangeId.generate();
-        CashChangeId historicalCashChangeId2 = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId historicalCashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId historicalCashChangeId2 = TestIds.nextCashChangeId();
 
         // Create CashFlow with history (SETUP mode)
         emit(
@@ -940,8 +941,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldRollbackImportAndClearCategoriesWhenRequested() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId historicalCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId historicalCashChangeId = TestIds.nextCashChangeId();
 
         // Create CashFlow with history
         emit(
@@ -1033,9 +1034,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
 
     @Test
     public void shouldAllowReImportAfterRollback() {
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId historicalCashChangeId1 = CashChangeId.generate();
-        CashChangeId historicalCashChangeId2 = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId historicalCashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId historicalCashChangeId2 = TestIds.nextCashChangeId();
 
         // Create CashFlow with history
         emit(

@@ -1,6 +1,6 @@
 {
   "cashFlowId": {
-    "id": "e523e0ec-6d40-4565-a52b-ab64c9f8f302"
+    "id": "CF10000001"
   },
   "forecasts": {
     "2021-06": {
@@ -62,7 +62,7 @@
               "PAID": [
                 {
                   "cashChangeId": {
-                    "id": "16ede051-d461-404c-ba1c-50aa12e163a9"
+                    "id": "CC1000000001"
                   },
                   "name": {
                     "name": "cash change name"
@@ -260,7 +260,7 @@
               "PAID": [
                 {
                   "cashChangeId": {
-                    "id": "98b58859-a176-4892-b767-cfbef58aef61"
+                    "id": "CC1000000001"
                   },
                   "name": {
                     "name": "cash change name 2 edited"

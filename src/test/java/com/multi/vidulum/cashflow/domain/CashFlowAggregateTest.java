@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.*;
@@ -39,8 +40,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldSaveNewlyCreatedCashChange() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
@@ -133,8 +134,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldSavePaidCashChangeWithConfirmedStatus() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
@@ -235,8 +236,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldSavePaidCashChangeOutflowAndDecreaseBalance() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
@@ -290,10 +291,10 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldHandleMultiplePaidCashChanges() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId inflowId = CashChangeId.generate();
-        CashChangeId outflow1Id = CashChangeId.generate();
-        CashChangeId outflow2Id = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId inflowId = TestIds.nextCashChangeId();
+        CashChangeId outflow1Id = TestIds.nextCashChangeId();
+        CashChangeId outflow2Id = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -379,9 +380,9 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldConfirmCashChange() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId firstCashChangeId = CashChangeId.generate();
-        CashChangeId secondCashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId firstCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId secondCashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -547,7 +548,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //    @Test
 //    void doubleConfirmation_exceptionIsExpected() {
 //        // given
-//        CashChangeId cashChangeId = CashChangeId.generate();
+//        CashChangeId cashChangeId = TestIds.nextCashChangeId();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
 //                new UserId("U10000001"),
@@ -569,8 +570,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldEditCashChangeTest() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
@@ -698,7 +699,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //    @Test
 //    void modificationOnConfirmedCashChange_exceptionIsExpected() {
 //        // given
-//        CashChangeId cashChangeId = CashChangeId.generate();
+//        CashChangeId cashChangeId = TestIds.nextCashChangeId();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
 //                new UserId("U10000001"),
@@ -724,8 +725,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldRejectCashChangeTest() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
 
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -845,7 +846,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //    @Test
 //    void rejectionOnAlreadyRejectedCashChange_exceptionExpected() {
 //        // given
-//        CashChangeId cashChangeId = CashChangeId.generate();
+//        CashChangeId cashChangeId = TestIds.nextCashChangeId();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
 //                new UserId("U10000001"),
@@ -867,7 +868,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldAttestMonth() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -953,7 +954,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldSetBudgetingAndTrackUncommittedEvents() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -1013,7 +1014,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldUpdateBudgetingAndTrackUncommittedEvents() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -1083,7 +1084,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldRemoveBudgetingAndTrackUncommittedEvents() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -1151,7 +1152,7 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldProjectBudgetingEventsCorrectly() {
         // given
-        CashFlowId cashFlowId = CashFlowId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
@@ -1221,8 +1222,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldRejectPaidCashChangeWhenPaidDateNotInActivePeriod() {
         // given - CashFlow created in June 2021, so active period is 2021-06
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -1261,8 +1262,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldRejectPaidCashChangeWhenPaidDateInPastAttestedPeriod() {
         // given - CashFlow created in June, then attested to July
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -1309,8 +1310,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldAcceptPaidCashChangeWhenPaidDateInActivePeriod() {
         // given - CashFlow created in June 2021, active period is 2021-06
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -1355,8 +1356,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldRejectPaidCashChangeOutflowWhenPaidDateNotInActivePeriod() {
         // given - CashFlow created in June 2021, so active period is 2021-06
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
@@ -1395,8 +1396,8 @@ class CashFlowAggregateTest extends IntegrationTest {
     @Test
     void shouldAcceptPaidCashChangeOutflowWhenPaidDateInActivePeriod() {
         // given - CashFlow created in June 2021, active period is 2021-06
-        CashFlowId cashFlowId = CashFlowId.generate();
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
         CashFlow cashFlow = new CashFlow();
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(

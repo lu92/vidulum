@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.create;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -20,7 +21,7 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
-
+    private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
 
     @Override
@@ -32,7 +33,7 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
 
         CashFlow cashFlow  = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent event = new CashFlowEvent.CashFlowCreatedEvent(
-                CashFlowId.generate(),
+                businessIdGenerator.generateCashFlowId(),
                 command.userId(),
                 command.name(),
                 command.description(),

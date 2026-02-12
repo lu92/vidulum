@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.infrastructure;
 
+import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
@@ -45,7 +46,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldSaveAndRetrieveSimpleForecastStatement() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createSimpleForecastStatement(cashFlowId);
 
@@ -68,7 +69,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldSaveAndRetrieveForecastStatementWithNestedCategories() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createForecastStatementWithNestedCategories(cashFlowId);
 
@@ -116,7 +117,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldSaveAndRetrieveForecastStatementWithTransactions() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createForecastStatementWithTransactions(cashFlowId);
 
@@ -150,7 +151,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldSaveAndRetrieveForecastStatementWithCategoryStructure() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createForecastStatementWithCategoryStructure(cashFlowId);
 
@@ -183,7 +184,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldUpdateExistingForecastStatement() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createSimpleForecastStatement(cashFlowId);
         repository.save(statement);
@@ -213,7 +214,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldReturnEmptyForNonExistentCashFlowId() {
         // given
-        CashFlowId nonExistentId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId nonExistentId = TestIds.nextCashFlowId();
 
         // when
         Optional<CashFlowForecastStatement> result = repository.findByCashFlowId(nonExistentId);
@@ -225,7 +226,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldPersistAttestation() {
         // given
-        CashFlowId cashFlowId = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement = createForecastStatementWithAttestation(cashFlowId);
 
@@ -248,8 +249,8 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
     @Test
     void shouldPersistMultipleForecastStatements() {
         // given
-        CashFlowId cashFlowId1 = new CashFlowId(UUID.randomUUID().toString());
-        CashFlowId cashFlowId2 = new CashFlowId(UUID.randomUUID().toString());
+        CashFlowId cashFlowId1 = TestIds.nextCashFlowId();
+        CashFlowId cashFlowId2 = TestIds.nextCashFlowId();
 
         CashFlowForecastStatement statement1 = createSimpleForecastStatement(cashFlowId1);
         CashFlowForecastStatement statement2 = createSimpleForecastStatement(cashFlowId2);
@@ -383,7 +384,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
 
         // Create transactions
         TransactionDetails paidTransaction = TransactionDetails.builder()
-                .cashChangeId(new CashChangeId(UUID.randomUUID().toString()))
+                .cashChangeId(TestIds.nextCashChangeId())
                 .name(new Name("January Salary"))
                 .money(Money.of(15000, TEST_CURRENCY))
                 .created(FIXED_NOW)
@@ -391,7 +392,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
                 .build();
 
         TransactionDetails expectedTransaction = TransactionDetails.builder()
-                .cashChangeId(new CashChangeId(UUID.randomUUID().toString()))
+                .cashChangeId(TestIds.nextCashChangeId())
                 .name(new Name("February Salary"))
                 .money(Money.of(15000, TEST_CURRENCY))
                 .created(FIXED_NOW)

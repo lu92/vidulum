@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.importhistorical;
 
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -21,6 +22,7 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
+    private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
 
     @Override
@@ -68,7 +70,7 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
         if (command.paidDate().isAfter(now)) {
             throw new ImportDateInFutureException(command.paidDate(), now);
         }
-        CashChangeId cashChangeId = CashChangeId.generate();
+        CashChangeId cashChangeId = businessIdGenerator.generateCashChangeId();
 
         CashFlowEvent.HistoricalCashChangeImportedEvent event = new CashFlowEvent.HistoricalCashChangeImportedEvent(
                 command.cashFlowId(),
