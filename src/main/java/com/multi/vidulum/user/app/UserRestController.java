@@ -8,7 +8,6 @@ import com.multi.vidulum.security.config.JwtService;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.user.app.commands.activate.ActivateUserCommand;
-import com.multi.vidulum.user.app.commands.create.CreateUserCommand;
 import com.multi.vidulum.user.app.commands.portfolio.register.RegisterPortfolioCommand;
 import com.multi.vidulum.user.app.queries.GetUserByUsernameQuery;
 import com.multi.vidulum.user.app.queries.GetUserQuery;
@@ -26,19 +25,6 @@ public class UserRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final JwtService jwtService;
-
-    @PostMapping("/user")
-    public UserDto.UserSummaryJson createUser(@RequestBody UserDto.CreateUserJson request) {
-        CreateUserCommand command = CreateUserCommand.builder()
-                .username(request.getUsername())
-                .password(request.getPassword())
-                .email(request.getEmail())
-                .build();
-
-        User user = commandGateway.send(command);
-
-        return mapUserToSummary(user);
-    }
 
     @GetMapping("/user/userId={userId}")
     public UserDto.UserSummaryJson getUser(@PathVariable("userId") String userId) {

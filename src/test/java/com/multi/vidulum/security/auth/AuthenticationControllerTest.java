@@ -4,7 +4,6 @@ import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.FieldError;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
-import com.multi.vidulum.security.Role;
 import com.multi.vidulum.security.token.TokenRepository;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.user.infrastructure.UserMongoRepository;
@@ -29,7 +28,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -93,15 +91,16 @@ class AuthenticationControllerTest {
 
             // when
             ResponseEntity<AuthenticationResponse> response = actor.register(
-                    username, email, "password123", Role.USER);
+                    username, email, "password123");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getUserId()).startsWith("U");
             assertThat(response.getBody().getAccessToken()).isNotBlank();
             assertThat(response.getBody().getRefreshToken()).isNotBlank();
 
-            log.info("User registered successfully: username={}", username);
+            log.info("User registered successfully: username={}, userId={}", username, response.getBody().getUserId());
         }
     }
 
@@ -123,7 +122,7 @@ class AuthenticationControllerTest {
             assertThat(response.getBody().message()).isEqualTo("Request validation failed");
             assertThat(response.getBody().fieldErrors()).isNotNull();
             assertThat(response.getBody().fieldErrors()).extracting(FieldError::field)
-                    .containsExactlyInAnyOrder("username", "email", "password", "role");
+                    .containsExactlyInAnyOrder("username", "email", "password");
 
             log.info("Empty request rejected with {} field errors", response.getBody().fieldErrors().size());
         }
@@ -134,8 +133,7 @@ class AuthenticationControllerTest {
             // when
             ResponseEntity<ApiError> response = actor.registerWithRawJson(Map.of(
                     "email", "test@example.com",
-                    "password", "password123",
-                    "role", "USER"
+                    "password", "password123"
             ));
 
             // then
@@ -150,7 +148,7 @@ class AuthenticationControllerTest {
         void shouldRejectRegistrationWithUsernameTooShort() {
             // when
             ResponseEntity<ApiError> response = actor.registerExpectingError(
-                    "ab", "test@example.com", "password123", Role.USER);
+                    "ab", "test@example.com", "password123");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -165,7 +163,7 @@ class AuthenticationControllerTest {
         void shouldRejectRegistrationWithInvalidUsernameCharacters() {
             // when
             ResponseEntity<ApiError> response = actor.registerExpectingError(
-                    "user@name!", "test@example.com", "password123", Role.USER);
+                    "user@name!", "test@example.com", "password123");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -181,8 +179,7 @@ class AuthenticationControllerTest {
             // when
             ResponseEntity<ApiError> response = actor.registerWithRawJson(Map.of(
                     "username", "testuser123",
-                    "password", "password123",
-                    "role", "USER"
+                    "password", "password123"
             ));
 
             // then
@@ -197,7 +194,7 @@ class AuthenticationControllerTest {
         void shouldRejectRegistrationWithInvalidEmailFormat() {
             // when
             ResponseEntity<ApiError> response = actor.registerExpectingError(
-                    "testuser123", "invalid-email", "password123", Role.USER);
+                    "testuser123", "invalid-email", "password123");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -212,8 +209,7 @@ class AuthenticationControllerTest {
             // when
             ResponseEntity<ApiError> response = actor.registerWithRawJson(Map.of(
                     "username", "testuser123",
-                    "email", "test@example.com",
-                    "role", "USER"
+                    "email", "test@example.com"
             ));
 
             // then
@@ -228,7 +224,7 @@ class AuthenticationControllerTest {
         void shouldRejectRegistrationWithPasswordTooShort() {
             // when
             ResponseEntity<ApiError> response = actor.registerExpectingError(
-                    "testuser123", "test@example.com", "short", Role.USER);
+                    "testuser123", "test@example.com", "short");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -236,23 +232,6 @@ class AuthenticationControllerTest {
             assertThat(response.getBody().fieldErrors())
                     .anyMatch(e -> "password".equals(e.field()) &&
                             e.message().contains("between 8 and 100 characters"));
-        }
-
-        @Test
-        @DisplayName("Should reject registration without role")
-        void shouldRejectRegistrationWithoutRole() {
-            // when
-            ResponseEntity<ApiError> response = actor.registerWithRawJson(Map.of(
-                    "username", "testuser123",
-                    "email", "test@example.com",
-                    "password", "password123"
-            ));
-
-            // then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(response.getBody().code()).isEqualTo("VALIDATION_ERROR");
-            assertThat(response.getBody().fieldErrors())
-                    .anyMatch(e -> "role".equals(e.field()) && "Role is required".equals(e.message()));
         }
     }
 
@@ -265,11 +244,11 @@ class AuthenticationControllerTest {
         void shouldRejectRegistrationWithExistingEmail() {
             // given - first registration
             String email = "duplicate_" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
-            actor.register("firstuser123", email, "password123", Role.USER);
+            actor.register("firstuser123", email, "password123");
 
             // when - second registration with same email
             ResponseEntity<ApiError> response = actor.registerExpectingError(
-                    "seconduser12", email, "password456", Role.USER);
+                    "seconduser12", email, "password456");
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -294,7 +273,7 @@ class AuthenticationControllerTest {
             String username = "authuser_" + UUID.randomUUID().toString().substring(0, 8);
             String email = username + "@test.com";
             String password = "password123";
-            actor.register(username, email, password, Role.USER);
+            actor.register(username, email, password);
 
             // when
             ResponseEntity<AuthenticationResponse> response = actor.authenticate(username, password);
@@ -302,6 +281,7 @@ class AuthenticationControllerTest {
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getUserId()).startsWith("U");
             assertThat(response.getBody().getAccessToken()).isNotBlank();
             assertThat(response.getBody().getRefreshToken()).isNotBlank();
 

@@ -1,4 +1,4 @@
-package com.multi.vidulum.user.app.commands.create;
+package com.multi.vidulum.user.app.commands.register;
 
 import com.multi.vidulum.shared.cqrs.commands.Command;
 import lombok.Builder;
@@ -6,8 +6,8 @@ import lombok.Value;
 
 @Value
 @Builder
-public class CreateUserCommand implements Command {
+public class RegisterUserCommand implements Command {
     String username;
-    String password;
+    String hashedPassword;
     String email;
 }

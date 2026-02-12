@@ -63,7 +63,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -436,7 +436,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -631,7 +631,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -1346,7 +1346,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());

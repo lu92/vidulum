@@ -5,6 +5,8 @@ import com.multi.vidulum.security.config.JwtService;
 import com.multi.vidulum.security.token.Token;
 import com.multi.vidulum.security.token.TokenRepository;
 import com.multi.vidulum.security.token.TokenType;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.user.app.commands.register.RegisterUserCommand;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.LinkedList;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final CommandGateway commandGateway;
 
     public AuthenticationResponse register(RegisterRequest request) {
 
@@ -34,20 +36,19 @@ public class AuthenticationService {
             throw new EmailAlreadyTakenException(request.getEmail());
         }
 
-        User user = User.builder()
+        RegisterUserCommand command = RegisterUserCommand.builder()
                 .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .hashedPassword(passwordEncoder.encode(request.getPassword()))
                 .email(request.getEmail())
-                .isActive(true)
-                .portfolios(new LinkedList<>())
-                .role(request.getRole())
                 .build();
 
-        var savedUser = userRepository.save(user);
-        var jwtToken = jwtService.generateToken(user);
-        var refreshToken = jwtService.generateRefreshToken(user);
+        User savedUser = commandGateway.send(command);
+
+        var jwtToken = jwtService.generateToken(savedUser);
+        var refreshToken = jwtService.generateRefreshToken(savedUser);
         saveUserToken(savedUser, jwtToken);
         return AuthenticationResponse.builder()
+                .userId(savedUser.getUserId().getId())
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
                 .build();
@@ -67,6 +68,7 @@ public class AuthenticationService {
         revokeAllUserTokens(user);
         saveUserToken(user, jwtToken);
         return AuthenticationResponse.builder()
+                .userId(user.getUserId().getId())
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
                 .build();
@@ -113,6 +115,7 @@ public class AuthenticationService {
                 revokeAllUserTokens(user);
                 saveUserToken(user, accessToken);
                 var authResponse = AuthenticationResponse.builder()
+                        .userId(user.getUserId().getId())
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
                         .build();

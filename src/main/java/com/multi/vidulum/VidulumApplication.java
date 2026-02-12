@@ -29,8 +29,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import java.time.Clock;
 import java.util.List;
 
-import static com.multi.vidulum.security.Role.ADMIN;
-import static com.multi.vidulum.security.Role.MANAGER;
 
 @SpringBootApplication
 public class VidulumApplication {
@@ -70,16 +68,14 @@ public class VidulumApplication {
             var admin = RegisterRequest.builder()
                     .username("Admin")
                     .email("admin@mail.com")
-                    .password("password")
-                    .role(ADMIN)
+                    .password("password12")
                     .build();
             System.out.println("Admin token: " + service.register(admin).getAccessToken());
 
             var manager = RegisterRequest.builder()
                     .username("Manager")
                     .email("manager@mail.com")
-                    .password("password")
-                    .role(MANAGER)
+                    .password("password12")
                     .build();
             System.out.println("Manager token: " + service.register(manager).getAccessToken());
         };
