@@ -90,7 +90,7 @@ public class CashFlowRestController {
      * Import a historical cash change to a CashFlow in SETUP mode.
      * The transaction will be added to the appropriate historical month based on paidDate.
      */
-    @PostMapping("/{cashFlowId}/import-historical")
+    @PostMapping("/cf={cashFlowId}/import-historical")
     public String importHistoricalCashChange(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.ImportHistoricalCashChangeJson request) {
@@ -114,7 +114,7 @@ public class CashFlowRestController {
      * This marks the end of the historical import process.
      * All IMPORT_PENDING months will be changed to IMPORTED.
      */
-    @PostMapping("/{cashFlowId}/attest-historical-import")
+    @PostMapping("/cf={cashFlowId}/attest-historical-import")
     public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @Valid @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
@@ -167,7 +167,7 @@ public class CashFlowRestController {
      * This allows the user to start the import process fresh if mistakes were made.
      * The CashFlow remains in SETUP mode after rollback.
      */
-    @DeleteMapping("/{cashFlowId}/import")
+    @DeleteMapping("/cf={cashFlowId}/import")
     public CashFlowDto.RollbackImportResponseJson rollbackImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody(required = false) CashFlowDto.RollbackImportJson request) {
@@ -264,7 +264,7 @@ public class CashFlowRestController {
         );
     }
 
-    @GetMapping("/{cashFlowId}")
+    @GetMapping("/cf={cashFlowId}")
     public CashFlowDto.CashFlowSummaryJson getCashFlow(@PathVariable("cashFlowId") String cashFlowId) {
         CashFlowSnapshot snapshot = queryGateway.send(
                 new GetCashFlowQuery(CashFlowId.of(cashFlowId))
@@ -288,7 +288,7 @@ public class CashFlowRestController {
      * REST endpoint for category creation.
      * Use isImport=true query parameter when creating categories during bank data import (allowed in SETUP mode).
      */
-    @PostMapping("/{cashFlowId}/category")
+    @PostMapping("/cf={cashFlowId}/category")
     public void createCategoryEndpoint(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.CreateCategoryJson request,
@@ -363,7 +363,7 @@ public class CashFlowRestController {
      * Archive a category, hiding it from new transaction creation.
      * Archived categories remain visible in historical transactions that used them.
      */
-    @PostMapping("/{cashFlowId}/category/archive")
+    @PostMapping("/cf={cashFlowId}/category/archive")
     public void archiveCategory(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.ArchiveCategoryJson request) {
@@ -380,7 +380,7 @@ public class CashFlowRestController {
     /**
      * Unarchive a category, making it available for new transaction creation again.
      */
-    @PostMapping("/{cashFlowId}/category/unarchive")
+    @PostMapping("/cf={cashFlowId}/category/unarchive")
     public void unarchiveCategory(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestBody CashFlowDto.UnarchiveCategoryJson request) {
@@ -412,7 +412,7 @@ public class CashFlowRestController {
      * @param cashFlowId the CashFlow to rollover
      * @return rollover result with old and new active periods
      */
-    @PostMapping("/{cashFlowId}/rollover")
+    @PostMapping("/cf={cashFlowId}/rollover")
     public CashFlowDto.RolloverMonthResponseJson rolloverMonth(
             @PathVariable("cashFlowId") String cashFlowId) {
 
@@ -444,7 +444,7 @@ public class CashFlowRestController {
      * @param targetPeriod the target period that should become ACTIVE (format: yyyy-MM)
      * @return batch rollover result
      */
-    @PostMapping("/{cashFlowId}/rollover/to/{targetPeriod}")
+    @PostMapping("/cf={cashFlowId}/rollover/to/{targetPeriod}")
     public CashFlowDto.BatchRolloverResponseJson rolloverMonthsTo(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("targetPeriod") String targetPeriod) {

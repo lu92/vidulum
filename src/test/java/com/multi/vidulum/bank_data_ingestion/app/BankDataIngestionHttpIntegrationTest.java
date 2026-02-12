@@ -62,11 +62,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * This test verifies the HTTP REST API contracts that HttpCashFlowServiceClient
  * would use in a microservice architecture:
- * 1. GET /cash-flow/{id} - get CashFlow info
- * 2. POST /cash-flow/{id}/category - create category
- * 3. POST /cash-flow/{id}/import-historical - import transaction
- * 4. POST /api/v1/bank-data-ingestion/{id}/stage - stage transactions
- * 5. POST /api/v1/bank-data-ingestion/{id}/import - start import
+ * 1. GET /cash-flow/cf={id} - get CashFlow info
+ * 2. POST /cash-flow/cf={id}/category - create category
+ * 3. POST /cash-flow/cf={id}/import-historical - import transaction
+ * 4. POST /api/v1/bank-data-ingestion/cf={id}/stage - stage transactions
+ * 5. POST /api/v1/bank-data-ingestion/cf={id}/import - start import
  *
  * Uses BankDataIngestionHttpActor for cleaner test code following the DualBudgetActor pattern.
  */
@@ -174,7 +174,7 @@ public class BankDataIngestionHttpIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should get CashFlow info via REST API - verifies GET /cash-flow/{id}")
+    @DisplayName("Should get CashFlow info via REST API - verifies GET /cash-flow/cf={id}")
     void shouldGetCashFlowInfoViaRestApi() {
         // given
         YearMonth startPeriod = YearMonth.of(2021, 7);
@@ -243,7 +243,7 @@ public class BankDataIngestionHttpIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should create category via REST API - verifies POST /cash-flow/{id}/category")
+    @DisplayName("Should create category via REST API - verifies POST /cash-flow/cf={id}/category")
     void shouldCreateCategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(

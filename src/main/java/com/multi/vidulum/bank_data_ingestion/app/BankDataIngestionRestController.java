@@ -50,7 +50,7 @@ import java.util.List;
  */
 @AllArgsConstructor
 @RestController
-@RequestMapping("/api/v1/bank-data-ingestion/{cashFlowId}")
+@RequestMapping("/api/v1/bank-data-ingestion/cf={cashFlowId}")
 public class BankDataIngestionRestController {
 
     private final CommandGateway commandGateway;

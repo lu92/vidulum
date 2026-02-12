@@ -33,7 +33,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
     @Override
     public CashFlowInfo getCashFlowInfo(String cashFlowId) {
         ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.getForEntity(
-                baseUrl + "/cash-flow/" + cashFlowId,
+                baseUrl + "/cash-flow/cf=" + cashFlowId,
                 CashFlowDto.CashFlowSummaryJson.class
         );
 
@@ -53,7 +53,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
     public boolean exists(String cashFlowId) {
         try {
             ResponseEntity<Map> response = restTemplate.getForEntity(
-                    baseUrl + "/cash-flow/" + cashFlowId,
+                    baseUrl + "/cash-flow/cf=" + cashFlowId,
                     Map.class
             );
             return response.getStatusCode().is2xxSuccessful();
@@ -74,7 +74,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category",
                 HttpMethod.POST,
                 new HttpEntity<>(request, headers),
                 Void.class
@@ -108,7 +108,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/import-historical",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/import-historical",
                 HttpMethod.POST,
                 new HttpEntity<>(httpRequest, headers),
                 String.class

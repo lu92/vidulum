@@ -83,7 +83,7 @@ public class BankDataIngestionHttpActor {
      */
     public CashFlowDto.CashFlowSummaryJson getCashFlow(String cashFlowId) {
         ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.getForEntity(
-                baseUrl + "/cash-flow/" + cashFlowId,
+                baseUrl + "/cash-flow/cf=" + cashFlowId,
                 CashFlowDto.CashFlowSummaryJson.class
         );
 
@@ -96,7 +96,7 @@ public class BankDataIngestionHttpActor {
      */
     public Map<String, Object> getCashFlowAsMap(String cashFlowId) {
         ResponseEntity<Map> response = restTemplate.getForEntity(
-                baseUrl + "/cash-flow/" + cashFlowId,
+                baseUrl + "/cash-flow/cf=" + cashFlowId,
                 Map.class
         );
 
@@ -124,7 +124,7 @@ public class BankDataIngestionHttpActor {
 
         // Use isImport=true to allow category creation in SETUP mode
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/category?isImport=true",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category?isImport=true",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 Void.class
@@ -148,7 +148,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<CashFlowDto.AttestHistoricalImportResponseJson> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/attest-historical-import",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/attest-historical-import",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 CashFlowDto.AttestHistoricalImportResponseJson.class
@@ -179,7 +179,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(
-                baseUrl + "/cash-flow/" + cashFlowId + "/import-historical",
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/import-historical",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 String.class
@@ -205,7 +205,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<BankDataIngestionDto.ConfigureMappingsResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/mappings",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 BankDataIngestionDto.ConfigureMappingsResponse.class
@@ -259,7 +259,7 @@ public class BankDataIngestionHttpActor {
      */
     public BankDataIngestionDto.GetMappingsResponse getMappings(String cashFlowId) {
         ResponseEntity<BankDataIngestionDto.GetMappingsResponse> response = restTemplate.getForEntity(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/mappings",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 BankDataIngestionDto.GetMappingsResponse.class
         );
 
@@ -273,7 +273,7 @@ public class BankDataIngestionHttpActor {
      */
     public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(String cashFlowId) {
         ResponseEntity<BankDataIngestionDto.ListStagingSessionsResponse> response = restTemplate.getForEntity(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging",
                 BankDataIngestionDto.ListStagingSessionsResponse.class
         );
 
@@ -296,7 +296,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<BankDataIngestionDto.StageTransactionsResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 BankDataIngestionDto.StageTransactionsResponse.class
@@ -337,7 +337,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<BankDataIngestionDto.StartImportResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/import",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 BankDataIngestionDto.StartImportResponse.class
@@ -355,7 +355,7 @@ public class BankDataIngestionHttpActor {
      */
     public BankDataIngestionDto.GetImportProgressResponse getImportProgress(String cashFlowId, String jobId) {
         ResponseEntity<BankDataIngestionDto.GetImportProgressResponse> response = restTemplate.getForEntity(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/import/" + jobId,
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId,
                 BankDataIngestionDto.GetImportProgressResponse.class
         );
 
@@ -373,7 +373,7 @@ public class BankDataIngestionHttpActor {
                 .build();
 
         ResponseEntity<BankDataIngestionDto.FinalizeImportResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/import/" + jobId + "/finalize",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId + "/finalize",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
                 BankDataIngestionDto.FinalizeImportResponse.class
@@ -389,7 +389,7 @@ public class BankDataIngestionHttpActor {
      */
     public BankDataIngestionDto.GetStagingPreviewResponse getStagingPreview(String cashFlowId, String stagingSessionId) {
         ResponseEntity<BankDataIngestionDto.GetStagingPreviewResponse> response = restTemplate.getForEntity(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging/" + stagingSessionId,
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
                 BankDataIngestionDto.GetStagingPreviewResponse.class
         );
 
@@ -402,7 +402,7 @@ public class BankDataIngestionHttpActor {
      */
     public void deleteStagingSession(String cashFlowId, String stagingSessionId) {
         ResponseEntity<Void> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging/" + stagingSessionId,
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
                 HttpMethod.DELETE,
                 null,
                 Void.class
@@ -418,7 +418,7 @@ public class BankDataIngestionHttpActor {
      */
     public BankDataIngestionDto.RevalidateStagingResponse revalidateStaging(String cashFlowId, String stagingSessionId) {
         ResponseEntity<BankDataIngestionDto.RevalidateStagingResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/staging/" + stagingSessionId + "/revalidate",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId + "/revalidate",
                 HttpMethod.POST,
                 null,
                 BankDataIngestionDto.RevalidateStagingResponse.class
@@ -465,7 +465,7 @@ public class BankDataIngestionHttpActor {
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
         ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/upload",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload",
                 HttpMethod.POST,
                 requestEntity,
                 BankDataIngestionDto.UploadCsvResponse.class
@@ -502,7 +502,7 @@ public class BankDataIngestionHttpActor {
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
         ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
-                baseUrl + "/api/v1/bank-data-ingestion/" + cashFlowId + "/upload",
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload",
                 HttpMethod.POST,
                 requestEntity,
                 BankDataIngestionDto.UploadCsvResponse.class
