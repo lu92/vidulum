@@ -20,4 +20,13 @@ public interface DomainCashFlowRepository extends DomainRepository<CashFlowId, C
      * @return list of CashFlows needing rollover
      */
     List<CashFlow> findOpenCashFlowsNeedingRollover(YearMonth targetPeriod);
+
+    /**
+     * Checks if a CashFlow with the given name already exists for the specified user.
+     *
+     * @param userId the user ID
+     * @param name the CashFlow name
+     * @return true if a CashFlow with this name exists for this user, false otherwise
+     */
+    boolean existsByUserIdAndName(UserId userId, String name);
 }

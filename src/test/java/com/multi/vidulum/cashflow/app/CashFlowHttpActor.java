@@ -670,6 +670,34 @@ public class CashFlowHttpActor {
     }
 
     /**
+     * Creates a standard CashFlow expecting an error response.
+     */
+    public ResponseEntity<ApiError> createCashFlowExpectingError(String userId, String name, String currency) {
+        CashFlowDto.CreateCashFlowJson request = CashFlowDto.CreateCashFlowJson.builder()
+                .userId(userId)
+                .name(name)
+                .description("CashFlow for HTTP integration testing")
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account("PL12345678901234567890123456")
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(currency)
+                                .build())
+                        .build())
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
      * Creates a standard CashFlow (not with history) via HTTP.
      */
     public String createCashFlow(String userId, String name, String currency) {

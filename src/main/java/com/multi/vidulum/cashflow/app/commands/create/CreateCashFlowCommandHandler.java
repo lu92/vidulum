@@ -25,6 +25,11 @@ public class CreateCashFlowCommandHandler implements CommandHandler<CreateCashFl
 
     @Override
     public CashFlowSnapshot handle(CreateCashFlowCommand command) {
+        // Validate uniqueness of CashFlow name for this user
+        if (domainCashFlowRepository.existsByUserIdAndName(command.userId(), command.name().name())) {
+            throw new CashFlowNameAlreadyExistsException(command.name().name(), command.userId());
+        }
+
         CashFlow cashFlow  = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent event = new CashFlowEvent.CashFlowCreatedEvent(
                 CashFlowId.generate(),

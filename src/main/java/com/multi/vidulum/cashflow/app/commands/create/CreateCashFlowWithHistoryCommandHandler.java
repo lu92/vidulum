@@ -28,6 +28,11 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
         ZonedDateTime now = ZonedDateTime.now(clock);
         YearMonth activePeriod = YearMonth.from(now);
 
+        // Validate uniqueness of CashFlow name for this user
+        if (domainCashFlowRepository.existsByUserIdAndName(command.userId(), command.name().name())) {
+            throw new CashFlowNameAlreadyExistsException(command.name().name(), command.userId());
+        }
+
         // Validate: startPeriod must be before or equal to activePeriod
         if (command.startPeriod().isAfter(activePeriod)) {
             throw new StartPeriodInFutureException(command.startPeriod(), activePeriod);

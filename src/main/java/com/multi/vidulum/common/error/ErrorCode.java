@@ -31,6 +31,7 @@ public enum ErrorCode {
     // CashFlow - Conflicts
     CASHFLOW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Access to CashFlow denied"),
     CASHFLOW_BALANCE_MISMATCH(HttpStatus.CONFLICT, "Balance mismatch during attestation"),
+    CASHFLOW_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "CashFlow with this name already exists"),
     CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT, "Category already exists"),
     BUDGETING_ALREADY_EXISTS(HttpStatus.CONFLICT, "Budgeting already exists"),
     CATEGORY_UNARCHIVE_CONFLICT(HttpStatus.CONFLICT, "Cannot unarchive - active category exists"),
