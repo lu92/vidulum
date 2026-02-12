@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
 
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -144,6 +145,10 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
             case CLOSED -> CashFlowInfo.CashFlowStatus.CLOSED;
         };
 
+        // Generate simplified month statuses for tests
+        Map<YearMonth, CashFlowInfo.MonthStatus> monthStatuses = generateMonthStatuses(
+                summary.getStartPeriod(), summary.getActivePeriod(), summary.getStatus());
+
         return new CashFlowInfo(
                 summary.getCashFlowId(),
                 status,
@@ -152,8 +157,50 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
                 inflowCategories,
                 outflowCategories,
                 existingTransactionIds,
-                summary.getCashChanges() != null ? summary.getCashChanges().size() : 0
+                summary.getCashChanges() != null ? summary.getCashChanges().size() : 0,
+                monthStatuses
         );
+    }
+
+    private Map<YearMonth, CashFlowInfo.MonthStatus> generateMonthStatuses(
+            YearMonth startPeriod, YearMonth activePeriod,
+            com.multi.vidulum.cashflow.domain.CashFlow.CashFlowStatus domainStatus) {
+
+        Map<YearMonth, CashFlowInfo.MonthStatus> statuses = new HashMap<>();
+
+        if (startPeriod == null) {
+            startPeriod = activePeriod;
+        }
+
+        YearMonth endPeriod = activePeriod.plusMonths(12);
+        YearMonth current = startPeriod;
+
+        while (!current.isAfter(endPeriod)) {
+            CashFlowInfo.MonthStatus monthStatus;
+
+            if (domainStatus == com.multi.vidulum.cashflow.domain.CashFlow.CashFlowStatus.SETUP) {
+                if (current.isBefore(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.IMPORT_PENDING;
+                } else if (current.equals(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
+                } else {
+                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
+                }
+            } else {
+                if (current.isBefore(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.ROLLED_OVER;
+                } else if (current.equals(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
+                } else {
+                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
+                }
+            }
+
+            statuses.put(current, monthStatus);
+            current = current.plusMonths(1);
+        }
+
+        return statuses;
     }
 
     private List<CashFlowInfo.CategoryInfo> mapCategories(

@@ -29,28 +29,42 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
-
-        // Validation 1: CashFlow must be in SETUP mode
-        if (snapshot.status() != CashFlow.CashFlowStatus.SETUP) {
-            throw new ImportNotAllowedInNonSetupModeException(command.cashFlowId(), snapshot.status());
-        }
-
-        // Validation 2: paidDate must be in a historical month (before activePeriod)
         YearMonth targetPeriod = YearMonth.from(command.paidDate());
         YearMonth activePeriod = snapshot.activePeriod();
-        if (!targetPeriod.isBefore(activePeriod)) {
-            throw new ImportDateOutsideSetupPeriodException(command.paidDate(), targetPeriod, activePeriod);
+        YearMonth startPeriod = snapshot.startPeriod();
+        ZonedDateTime now = ZonedDateTime.now(clock);
+
+        // Validation based on CashFlow status
+        switch (snapshot.status()) {
+            case SETUP -> {
+                // SETUP mode: historical import before activation
+                // paidDate must be in a historical month (before activePeriod)
+                if (!targetPeriod.isBefore(activePeriod)) {
+                    throw new ImportDateOutsideSetupPeriodException(command.paidDate(), targetPeriod, activePeriod);
+                }
+            }
+            case OPEN -> {
+                // OPEN mode: ongoing sync or gap filling
+                // Can import to: ACTIVE, ROLLED_OVER, IMPORTED months
+                // Cannot import to: FORECASTED months
+                if (targetPeriod.isAfter(activePeriod)) {
+                    throw new ImportToForecastedMonthNotAllowedException(command.cashFlowId(), targetPeriod, activePeriod);
+                }
+                // Note: For production, we would check month status from forecast processor
+                // Here we allow import to any month that is not in the future (relative to activePeriod)
+            }
+            case CLOSED -> {
+                // CLOSED mode: no imports allowed
+                throw new ImportNotAllowedInClosedModeException(command.cashFlowId());
+            }
         }
 
-        // Validation 3: paidDate must be >= startPeriod (month must exist in IMPORT_PENDING)
-        YearMonth startPeriod = snapshot.startPeriod();
+        // Validation: paidDate must be >= startPeriod
         if (targetPeriod.isBefore(startPeriod)) {
             throw new ImportDateBeforeStartPeriodException(command.paidDate(), targetPeriod, startPeriod);
         }
 
-        ZonedDateTime now = ZonedDateTime.now(clock);
-
-        // Validation 4: paidDate must not be in the future (can only import past transactions)
+        // Validation: paidDate must not be in the future
         if (command.paidDate().isAfter(now)) {
             throw new ImportDateInFutureException(command.paidDate(), now);
         }

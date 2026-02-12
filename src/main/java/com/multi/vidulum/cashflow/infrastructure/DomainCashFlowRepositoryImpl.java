@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,4 +79,13 @@ public class DomainCashFlowRepositoryImpl implements DomainCashFlowRepository {
                 .toList();
     }
 
+    @Override
+    public List<CashFlow> findOpenCashFlowsNeedingRollover(YearMonth targetPeriod) {
+        return cashFlowMongoRepository
+                .findByStatusAndActivePeriodBefore(CashFlow.CashFlowStatus.OPEN, targetPeriod.toString())
+                .stream()
+                .map(CashFlowEntity::toSnapshot)
+                .map(CashFlow::from)
+                .toList();
+    }
 }

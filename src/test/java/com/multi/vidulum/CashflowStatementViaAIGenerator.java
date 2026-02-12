@@ -742,7 +742,7 @@ class HomeBudgetActor {
     CashFlowId createCashFlow() {
         return new CashFlowId(cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("home-budget-user")
+                        .userId("U10000005")
                         .name("Home Budget")
                         .description("Comprehensive home budget with multiple categories")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(

@@ -430,6 +430,10 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         add(event);
     }
 
+    /**
+     * @deprecated Use {@link #apply(CashFlowEvent.MonthRolledOverEvent)} instead.
+     */
+    @Deprecated
     public void apply(CashFlowEvent.MonthAttestedEvent event) {
         if (!activePeriod.plusMonths(1).equals(event.period())) {
             throw new IllegalArgumentException("Active period [%s] and requested attestation period: [%s] - invalid period!".formatted(activePeriod, event.period()));
@@ -437,6 +441,35 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
         activePeriod = event.period();
         bankAccount = bankAccount.withUpdatedBalance(event.currentMoney());
+        add(event);
+    }
+
+    /**
+     * Applies a month rollover event, transitioning from one month to the next.
+     * <p>
+     * This method:
+     * <ul>
+     *   <li>Updates activePeriod to the new active period</li>
+     *   <li>Updates bank account balance to the closing balance</li>
+     * </ul>
+     * <p>
+     * Note: The actual status changes (ACTIVE → ROLLED_OVER, FORECASTED → ACTIVE)
+     * are handled by the {@code MonthRolledOverEventHandler} in the forecast processor.
+     */
+    public void apply(CashFlowEvent.MonthRolledOverEvent event) {
+        if (!activePeriod.equals(event.rolledOverPeriod())) {
+            throw new IllegalArgumentException(
+                    "Active period [%s] does not match rolled over period: [%s]"
+                            .formatted(activePeriod, event.rolledOverPeriod()));
+        }
+        if (!activePeriod.plusMonths(1).equals(event.newActivePeriod())) {
+            throw new IllegalArgumentException(
+                    "New active period [%s] must be exactly one month after current active period [%s]"
+                            .formatted(event.newActivePeriod(), activePeriod));
+        }
+
+        activePeriod = event.newActivePeriod();
+        bankAccount = bankAccount.withUpdatedBalance(event.closingBalance());
         add(event);
     }
 

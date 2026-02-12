@@ -55,7 +55,7 @@ public class DegiroSimulationTest extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
         userRestController.activateUser(createdUserJson.getUserId());
         UserDto.PortfolioRegistrationSummaryJson registeredPortfolio = registerPortfolio("XYZ", "DEGIRO", createdUserJson.getUserId(), "EUR");
 

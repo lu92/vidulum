@@ -53,6 +53,6 @@ public class UserEntity {
         List<PortfolioId> portfolioIds = portfolios.stream()
                 .map(PortfolioId::of)
                 .collect(Collectors.toList());
-        return new UserSnapshot(UserId.of(id), username, password, email, role, isActive, portfolioIds);
+        return new UserSnapshot(new UserId(id), username, password, email, role, isActive, portfolioIds);
     }
 }

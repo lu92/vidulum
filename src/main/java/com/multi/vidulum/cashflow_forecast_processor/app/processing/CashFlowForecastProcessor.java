@@ -22,6 +22,7 @@ public class CashFlowForecastProcessor {
     private final HistoricalImportAttestedEventHandler historicalImportAttestedEventHandler;
     private final ImportRolledBackEventHandler importRolledBackEventHandler;
     private final MonthAttestedEventHandler monthAttestedEventHandler;
+    private final MonthRolledOverEventHandler monthRolledOverEventHandler;
     private final ExpectedCashChangeAppendedEventHandler expectedCashChangeAppendedEventHandler;
     private final PaidCashChangeAppendedEventHandler paidCashChangeAppendedEventHandler;
     private final CashChangeConfirmedEventHandler cashChangeConfirmedEventHandler;
@@ -47,6 +48,7 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.HistoricalImportAttestedEvent event -> historicalImportAttestedEventHandler.handle(event);
             case CashFlowEvent.ImportRolledBackEvent event -> importRolledBackEventHandler.handle(event);
             case CashFlowEvent.MonthAttestedEvent event -> monthAttestedEventHandler.handle(event);
+            case CashFlowEvent.MonthRolledOverEvent event -> monthRolledOverEventHandler.handle(event);
             case CashFlowEvent.ExpectedCashChangeAppendedEvent event -> expectedCashChangeAppendedEventHandler.handle(event);
             case CashFlowEvent.PaidCashChangeAppendedEvent event -> paidCashChangeAppendedEventHandler.handle(event);
             case CashFlowEvent.CashChangeConfirmedEvent event -> cashChangeConfirmedEventHandler.handle(event);

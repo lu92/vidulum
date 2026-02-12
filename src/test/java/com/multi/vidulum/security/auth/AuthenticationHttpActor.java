@@ -1,7 +1,6 @@
 package com.multi.vidulum.security.auth;
 
 import com.multi.vidulum.common.error.ApiError;
-import com.multi.vidulum.security.Role;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,12 +35,11 @@ public class AuthenticationHttpActor {
         return new RestTemplate(factory);
     }
 
-    public ResponseEntity<AuthenticationResponse> register(String username, String email, String password, Role role) {
+    public ResponseEntity<AuthenticationResponse> register(String username, String email, String password) {
         RegisterRequest request = RegisterRequest.builder()
                 .username(username)
                 .email(email)
                 .password(password)
-                .role(role)
                 .build();
 
         return restTemplate.postForEntity(
@@ -51,12 +49,11 @@ public class AuthenticationHttpActor {
         );
     }
 
-    public ResponseEntity<ApiError> registerExpectingError(String username, String email, String password, Role role) {
+    public ResponseEntity<ApiError> registerExpectingError(String username, String email, String password) {
         RegisterRequest request = RegisterRequest.builder()
                 .username(username)
                 .email(email)
                 .password(password)
-                .role(role)
                 .build();
 
         return restTemplate.postForEntity(

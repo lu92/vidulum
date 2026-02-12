@@ -187,26 +187,48 @@ public class StageTransactionsCommandHandler
             return TransactionValidation.duplicate(txn.bankTransactionId());
         }
 
-        // CashFlow must be in SETUP mode for historical import
-        if (!cashFlowInfo.isInSetupMode()) {
-            errors.add("CashFlow is not in SETUP mode");
-        }
-
-        // paidDate validation for historical import
+        // Get paid period and validate based on CashFlow mode
         YearMonth paidPeriod = YearMonth.from(txn.paidDate());
         YearMonth activePeriod = cashFlowInfo.activePeriod();
         YearMonth startPeriod = cashFlowInfo.startPeriod();
 
-        if (!paidPeriod.isBefore(activePeriod)) {
-            errors.add(String.format("paidDate %s is not before activePeriod %s",
-                    paidPeriod, activePeriod));
+        // Validate based on CashFlow status
+        if (cashFlowInfo.isInSetupMode()) {
+            // SETUP mode: historical import only (before activePeriod)
+            if (!paidPeriod.isBefore(activePeriod)) {
+                errors.add(String.format("In SETUP mode, paidDate %s must be before activePeriod %s",
+                        paidPeriod, activePeriod));
+            }
+        } else if (cashFlowInfo.isInOpenMode()) {
+            // OPEN mode: ongoing sync - validate based on month status
+            if (!cashFlowInfo.isMonthImportAllowed(paidPeriod)) {
+                CashFlowInfo.MonthStatus monthStatus = cashFlowInfo.getMonthStatus(paidPeriod);
+                if (monthStatus == CashFlowInfo.MonthStatus.FORECASTED) {
+                    errors.add(String.format("Cannot import to FORECASTED month %s. Only past and current months are allowed.",
+                            paidPeriod));
+                } else if (monthStatus == CashFlowInfo.MonthStatus.ATTESTED) {
+                    errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
+                            paidPeriod));
+                } else if (monthStatus == null) {
+                    errors.add(String.format("Month %s is outside the CashFlow forecast range (start: %s).",
+                            paidPeriod, startPeriod));
+                } else {
+                    errors.add(String.format("Month %s has status %s which does not allow import.",
+                            paidPeriod, monthStatus));
+                }
+            }
+        } else if (cashFlowInfo.isInClosedMode()) {
+            // CLOSED mode: no imports allowed
+            errors.add("CashFlow is CLOSED, no imports are allowed");
         }
 
+        // Validate startPeriod boundary
         if (paidPeriod.isBefore(startPeriod)) {
             errors.add(String.format("paidDate %s is before startPeriod %s",
                     paidPeriod, startPeriod));
         }
 
+        // Validate future dates
         if (txn.paidDate().isAfter(now)) {
             errors.add("paidDate cannot be in the future");
         }

@@ -20,6 +20,7 @@ public enum ErrorCode {
     // Validation
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Request validation failed"),
     VALIDATION_INVALID_JSON(HttpStatus.BAD_REQUEST, "Invalid JSON format"),
+    INVALID_USER_ID_FORMAT(HttpStatus.BAD_REQUEST, "Invalid User ID format. Expected: UXXXXXXXX"),
 
     // CashFlow - Resources
     CASHFLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "CashFlow not found"),
@@ -40,6 +41,8 @@ public enum ErrorCode {
     CASHFLOW_IMPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Import only allowed in SETUP mode"),
     CASHFLOW_ATTESTATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Attestation only allowed in SETUP mode"),
     CASHFLOW_ROLLBACK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Rollback only allowed in SETUP mode"),
+    CASHFLOW_CLOSED(HttpStatus.BAD_REQUEST, "CashFlow is closed and read-only"),
+    IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Cannot import to FORECASTED month"),
     CASHCHANGE_NOT_PENDING(HttpStatus.BAD_REQUEST, "CashChange is not in PENDING status"),
 
     // CashFlow - Date Validation

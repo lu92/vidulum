@@ -145,7 +145,7 @@ public class PnlHistoryEntity {
 
         return new PnlHistorySnapshot(
                 PnlId.of(id),
-                UserId.of(userId),
+                new UserId(userId),
                 pnlStatementSnapshots
         );
     }

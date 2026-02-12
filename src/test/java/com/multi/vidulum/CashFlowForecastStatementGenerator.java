@@ -142,7 +142,7 @@ class Actor {
     CashFlowId createCashFlow() {
         return new CashFlowId(cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("userId")
+                        .userId("U10000011")
                         .name("cash-flow name")
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
@@ -194,6 +194,21 @@ class Actor {
                             CategoryName categoryName,
                             Type type) {
         commandGateway.send(new CreateCategoryCommand(
+                cashFlowId,
+                parentCategoryName,
+                categoryName,
+                type
+        ));
+    }
+
+    /**
+     * Add category during import operation (allowed in SETUP mode).
+     */
+    public void addCategoryForImport(CashFlowId cashFlowId,
+                                      CategoryName parentCategoryName,
+                                      CategoryName categoryName,
+                                      Type type) {
+        commandGateway.send(CreateCategoryCommand.forImport(
                 cashFlowId,
                 parentCategoryName,
                 categoryName,

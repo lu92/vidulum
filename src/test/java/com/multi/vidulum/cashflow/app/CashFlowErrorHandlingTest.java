@@ -30,6 +30,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import com.multi.vidulum.TestIds;
+
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -105,7 +107,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 409 CONFLICT with CASHFLOW_BALANCE_MISMATCH error when balance does not match")
         void shouldReturn409ConflictWhenBalanceMismatch() {
             // given - create CashFlow with history
-            String userId = "errortest_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowName = "Test Balance Mismatch CashFlow";
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "USD");
@@ -158,7 +160,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 200 OK when attestation succeeds with correct balance")
         void shouldReturn200OkWhenBalanceMatches() {
             // given - create CashFlow with history
-            String userId = "successtest_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowName = "Test Successful Attestation CashFlow";
             YearMonth startPeriod = YearMonth.of(2021, 10);
             Money initialBalance = Money.of(500, "PLN");
@@ -231,7 +233,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 404 NOT_FOUND with CASHCHANGE_NOT_FOUND when CashChange does not exist")
         void shouldReturn404WhenCashChangeNotFound() {
             // given - create CashFlow first
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String nonExistentCashChangeId = UUID.randomUUID().toString();
 
@@ -255,7 +257,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 404 NOT_FOUND with CATEGORY_NOT_FOUND when archiving non-existent category")
         void shouldReturn404WhenCategoryNotFoundOnArchive() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to archive non-existent category
@@ -279,7 +281,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 404 NOT_FOUND with BUDGETING_NOT_FOUND when updating non-existent budgeting")
         void shouldReturn404WhenBudgetingNotFound() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to update budgeting that was never set
@@ -310,7 +312,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 409 CONFLICT with CATEGORY_ALREADY_EXISTS when creating duplicate category")
         void shouldReturn409WhenCategoryAlreadyExists() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "MyCategory", INFLOW);
 
@@ -335,7 +337,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 409 CONFLICT with BUDGETING_ALREADY_EXISTS when setting duplicate budgeting")
         void shouldReturn409WhenBudgetingAlreadyExists() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.setBudgeting(cashFlowId, "Uncategorized", INFLOW, Money.of(1000, "USD"));
 
@@ -360,7 +362,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 409 CONFLICT with CATEGORY_UNARCHIVE_CONFLICT when unarchiving with active duplicate")
         void shouldReturn409WhenCannotUnarchiveCategory() {
             // given - create category, archive it, create new one with same name
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "TestCategory", OUTFLOW);
             actor.archiveCategory(cashFlowId, "TestCategory", OUTFLOW, false);
@@ -394,7 +396,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when appending expected cash change in SETUP mode")
         void shouldReturn400WhenAppendExpectedInSetupMode() {
             // given - create CashFlow with history (SETUP mode)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -421,7 +423,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when appending paid cash change in SETUP mode")
         void shouldReturn400WhenAppendPaidInSetupMode() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -445,7 +447,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when editing cash change in SETUP mode")
         void shouldReturn400WhenEditInSetupMode() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -467,7 +469,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when confirming cash change in SETUP mode")
         void shouldReturn400WhenConfirmInSetupMode() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -484,34 +486,34 @@ class CashFlowErrorHandlingTest {
         }
 
         @Test
-        @DisplayName("Should return 400 BAD_REQUEST when importing to non-SETUP mode CashFlow")
-        void shouldReturn400WhenImportNotAllowedInNonSetupMode() {
-            // given - create standard CashFlow (OPEN mode)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+        @DisplayName("Should return 400 BAD_REQUEST when importing to FORECASTED month in OPEN mode")
+        void shouldReturn400WhenImportToForecastedMonth() {
+            // given - create standard CashFlow (OPEN mode, activePeriod = 2022-01)
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
-            // when - try to import historical transaction
+            // when - try to import to a FORECASTED month (2022-02 is after activePeriod 2022-01)
             ResponseEntity<ApiError> response = actor.importHistoricalTransactionExpectingError(
-                    cashFlowId, "Uncategorized", "Historical", "Desc",
+                    cashFlowId, "Uncategorized", "Future Import", "Desc",
                     Money.of(500, "USD"), INFLOW,
-                    ZonedDateTime.parse("2021-06-15T00:00:00Z"),
-                    ZonedDateTime.parse("2021-06-15T00:00:00Z"));
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z"),
+                    ZonedDateTime.parse("2022-02-15T00:00:00Z"));
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             ApiError error = response.getBody();
             assertThat(error.status()).isEqualTo(400);
-            assertThat(error.code()).isEqualTo("CASHFLOW_IMPORT_NOT_ALLOWED");
-            assertThat(error.message()).contains("SETUP mode");
+            assertThat(error.code()).isEqualTo("IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED");
+            assertThat(error.message()).contains("FORECASTED");
 
-            log.info("Import not allowed in non-SETUP mode correctly returned 400: code={}", error.code());
+            log.info("Import to FORECASTED month correctly returned 400: code={}", error.code());
         }
 
         @Test
         @DisplayName("Should return 400 BAD_REQUEST when attesting non-SETUP mode CashFlow")
         void shouldReturn400WhenAttestationNotAllowedInNonSetupMode() {
             // given - create standard CashFlow (OPEN mode)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
             // when - try to attest
@@ -531,7 +533,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when rolling back non-SETUP mode CashFlow")
         void shouldReturn400WhenRollbackNotAllowedInNonSetupMode() {
             // given - create standard CashFlow (OPEN mode)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
             // when - try to rollback
@@ -550,7 +552,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when confirming already confirmed cash change")
         void shouldReturn400WhenCashChangeNotPending() {
             // given - create CashFlow and add+confirm a cash change
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Note: FixedClockConfig sets clock to 2022-01-01, so we use dates in January 2022
@@ -583,7 +585,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when paid date is in future")
         void shouldReturn400WhenPaidDateInFuture() {
             // given - FixedClockConfig sets clock to 2022-01-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to add paid cash change with future date
@@ -607,7 +609,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when paid date not in active period")
         void shouldReturn400WhenPaidDateNotInActivePeriod() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to add paid cash change with date in December 2021 (past month)
@@ -631,7 +633,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when start period is in future")
         void shouldReturn400WhenStartPeriodInFuture() {
             // given - FixedClockConfig sets clock to 2022-01-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
 
             // when - try to create CashFlow with future start period
             ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
@@ -661,7 +663,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when import date is before start period")
         void shouldReturn400WhenImportDateBeforeStartPeriod() {
             // given - start period is 2021-09
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -686,7 +688,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when import date is in active or future period")
         void shouldReturn400WhenImportDateOutsideSetupPeriod() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -710,7 +712,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on append")
         void shouldReturn400WhenDueDateBeforeActivePeriodOnAppend() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to append expected cash change with dueDate in December 2021 (before active period)
@@ -734,7 +736,7 @@ class CashFlowErrorHandlingTest {
         void shouldReturn400WhenDueDateTooFarInFutureOnAppend() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Allowed range: 2022-01 to 2022-12 (activePeriod + 11 months)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to append expected cash change with dueDate in January 2023 (> 11 months ahead)
@@ -757,7 +759,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on edit")
         void shouldReturn400WhenDueDateBeforeActivePeriodOnEdit() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create a valid cash change first
@@ -785,7 +787,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is more than 11 months ahead on edit")
         void shouldReturn400WhenDueDateTooFarInFutureOnEdit() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create a valid cash change first
@@ -814,7 +816,7 @@ class CashFlowErrorHandlingTest {
         void shouldAcceptDueDateAtMaxBoundary() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Max allowed month: 2022-12 (activePeriod + 11 months)
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - append with dueDate in December 2022 (exactly at boundary)
@@ -840,7 +842,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should successfully edit cash change to different category")
         void shouldEditCashChangeToDifferentCategory() {
             // given - create CashFlow with two categories
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "Salary", INFLOW);
             actor.createCategory(cashFlowId, "Bonus", INFLOW);
@@ -872,7 +874,7 @@ class CashFlowErrorHandlingTest {
         void shouldEditCashChangeToDifferentMonth() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Allowed range: 2022-01 to 2022-12
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create cash change in January
@@ -900,7 +902,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should successfully edit cash change to last allowed month (activePeriod + 11)")
         void shouldEditCashChangeToLastAllowedMonth() {
             // given - FixedClockConfig sets clock to 2022-01-01, max allowed is 2022-12
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             String cashChangeId = actor.appendExpectedCashChange(
@@ -926,7 +928,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when editing cash change to archived category")
         void shouldReturn400WhenEditingToArchivedCategory() {
             // given - create CashFlow with one active and one archived category
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "ActiveCategory", INFLOW);
             actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
@@ -956,7 +958,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 404 NOT_FOUND when editing cash change to non-existent category")
         void shouldReturn404WhenEditingToNonExistentCategory() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             String cashChangeId = actor.appendExpectedCashChange(
@@ -989,7 +991,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when adding cash change to archived category")
         void shouldReturn400WhenCategoryIsArchived() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
             actor.archiveCategory(cashFlowId, "ArchivedCategory", INFLOW, false);
@@ -1014,7 +1016,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should return 400 BAD_REQUEST when archiving system category")
         void shouldReturn400WhenCannotArchiveSystemCategory() {
             // given
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to archive system category "Uncategorized"
@@ -1189,7 +1191,7 @@ class CashFlowErrorHandlingTest {
         @DisplayName("Should accept edit with null description (optional field)")
         void shouldAcceptEditWithNullDescription() {
             // given - create CashFlow and cash change first
-            String userId = "test_" + UUID.randomUUID().toString().substring(0, 8);
+            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String cashChangeId = actor.appendExpectedCashChange(
                     cashFlowId, "Uncategorized", "Original Name", "Original Description",
@@ -1269,5 +1271,99 @@ class CashFlowErrorHandlingTest {
         //
         // The critical validation added (bankAccountNumber, denomination) ensures that
         // CategoryCreatedEventHandler never encounters null bankAccountNumber, fixing the NPE bug.
+    }
+
+    // ============ UserId Format Validation (400) ============
+
+    @Nested
+    @DisplayName("UserId Format Validation (400)")
+    class UserIdFormatValidation {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with INVALID_USER_ID_FORMAT when userId has wrong format")
+        void shouldReturn400WhenUserIdHasWrongFormat() {
+            // given - invalid userId (not matching UXXXXXXXX pattern)
+            String invalidUserId = "invalid-user-id";
+            String cashFlowName = "Test CashFlow";
+            YearMonth startPeriod = YearMonth.of(2022, 1);
+            Money initialBalance = Money.of(1000, "USD");
+
+            // when - try to create CashFlow with invalid userId
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    invalidUserId,
+                    cashFlowName,
+                    startPeriod.toString(),
+                    initialBalance
+            );
+
+            // then - should return 400 BAD_REQUEST with INVALID_USER_ID_FORMAT error
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("INVALID_USER_ID_FORMAT");
+            assertThat(error.message()).contains(invalidUserId);
+            assertThat(error.message()).contains("UXXXXXXXX");
+            assertThat(error.fieldErrors()).isNull();
+            assertThat(error.timestamp()).isNotNull();
+
+            log.info("Invalid userId correctly returned 400: code={}, message={}",
+                    error.code(), error.message());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when userId is UUID format (legacy)")
+        void shouldReturn400WhenUserIdIsUuidFormat() {
+            // given - UUID format userId (legacy format - no longer valid)
+            String uuidUserId = UUID.randomUUID().toString();
+            String cashFlowName = "Test CashFlow";
+            YearMonth startPeriod = YearMonth.of(2022, 1);
+            Money initialBalance = Money.of(1000, "PLN");
+
+            // when - try to create CashFlow with UUID userId
+            ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
+                    uuidUserId,
+                    cashFlowName,
+                    startPeriod.toString(),
+                    initialBalance
+            );
+
+            // then - should return 400 BAD_REQUEST with INVALID_USER_ID_FORMAT error
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("INVALID_USER_ID_FORMAT");
+            assertThat(error.message()).contains(uuidUserId);
+            assertThat(error.message()).contains("UXXXXXXXX");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("UUID userId correctly rejected with 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should accept valid userId format (UXXXXXXXX)")
+        void shouldAcceptValidUserIdFormat() {
+            // given - valid userId format
+            String validUserId = TestIds.nextUserId().getId();
+            String cashFlowName = "Test CashFlow";
+            YearMonth startPeriod = YearMonth.of(2022, 1);
+            Money initialBalance = Money.of(1000, "EUR");
+
+            // when - create CashFlow with valid userId
+            String cashFlowId = actor.createCashFlowWithHistory(
+                    validUserId,
+                    cashFlowName,
+                    startPeriod,
+                    initialBalance
+            );
+
+            // then - should succeed
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Valid userId accepted: userId={}, cashFlowId={}", validUserId, cashFlowId);
+        }
     }
 }

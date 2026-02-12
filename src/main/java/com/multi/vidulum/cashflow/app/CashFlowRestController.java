@@ -6,6 +6,8 @@ import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHist
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
+import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthCommand;
+import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.set.SetBudgetingCommand;
 import com.multi.vidulum.cashflow.app.commands.budgeting.update.UpdateBudgetingCommand;
@@ -51,7 +53,7 @@ public class CashFlowRestController {
     public String createCashFlow(@Valid @RequestBody CashFlowDto.CreateCashFlowJson request) {
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowCommand(
-                        new UserId(request.getUserId()),
+                        UserId.of(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.toBankAccount()
@@ -70,7 +72,7 @@ public class CashFlowRestController {
 
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowWithHistoryCommand(
-                        new UserId(request.getUserId()),
+                        UserId.of(request.getUserId()),
                         new Name(request.getName()),
                         new Description(request.getDescription()),
                         request.toBankAccount(),
@@ -113,7 +115,7 @@ public class CashFlowRestController {
     @PostMapping("/{cashFlowId}/attest-historical-import")
     public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
+            @Valid @RequestBody CashFlowDto.AttestHistoricalImportJson request) {
 
         // Get CashFlow before attestation to calculate the balance
         CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(new CashFlowId(cashFlowId))
@@ -268,10 +270,10 @@ public class CashFlowRestController {
         return mapper.mapCashFlow(snapshot);
     }
 
-    @GetMapping("/viaUser/{userId}")
-    public List<CashFlowDto.CashFlowDetailJson> getDetailsOfCashFlowViaUser(@PathVariable("userId") String userId) {
+    @GetMapping
+    public List<CashFlowDto.CashFlowDetailJson> getCashFlows(@RequestParam("owner") String ownerUsername) {
         List<CashFlowSnapshot> snapshots = queryGateway.send(
-                new GetDetailsOfCashFlowViaUserQuery(new UserId(userId))
+                new GetDetailsOfCashFlowViaUserQuery(UserId.of(ownerUsername))
         );
 
         return snapshots.stream()
@@ -385,6 +387,101 @@ public class CashFlowRestController {
                         request.getCategoryType()
                 )
         );
+    }
+
+    /**
+     * Manually trigger a month rollover.
+     * <p>
+     * This endpoint transitions the current ACTIVE month to ROLLED_OVER status
+     * and the next FORECASTED month becomes ACTIVE.
+     * <p>
+     * Use cases:
+     * <ul>
+     *   <li>Testing - verify rollover behavior before scheduled job runs</li>
+     *   <li>Catch-up - if scheduled job was missed, manually trigger rollover</li>
+     *   <li>Power users - explicit control over month transitions</li>
+     * </ul>
+     * <p>
+     * The closing balance is automatically calculated from the current bank account balance.
+     * ROLLED_OVER months allow gap filling - importing missed transactions from bank statements.
+     *
+     * @param cashFlowId the CashFlow to rollover
+     * @return rollover result with old and new active periods
+     */
+    @PostMapping("/{cashFlowId}/rollover")
+    public CashFlowDto.RolloverMonthResponseJson rolloverMonth(
+            @PathVariable("cashFlowId") String cashFlowId) {
+
+        RolloverMonthResult result = commandGateway.send(
+                new RolloverMonthCommand(
+                        new CashFlowId(cashFlowId),
+                        ZonedDateTime.now(clock)
+                )
+        );
+
+        return CashFlowDto.RolloverMonthResponseJson.builder()
+                .cashFlowId(result.cashFlowId().id())
+                .rolledOverPeriod(result.rolledOverPeriod())
+                .newActivePeriod(result.newActivePeriod())
+                .closingBalance(result.closingBalance())
+                .build();
+    }
+
+    /**
+     * Manually trigger multiple month rollovers (catch-up).
+     * <p>
+     * This endpoint is useful when the scheduled job was missed for multiple months.
+     * It will rollover all months from the current active period up to (but not including) the target period.
+     * <p>
+     * Example: If current active period is 2025-10 and target is 2026-02,
+     * it will rollover 2025-10, 2025-11, 2025-12, 2026-01, making 2026-02 the new active period.
+     *
+     * @param cashFlowId   the CashFlow to rollover
+     * @param targetPeriod the target period that should become ACTIVE (format: yyyy-MM)
+     * @return batch rollover result
+     */
+    @PostMapping("/{cashFlowId}/rollover/to/{targetPeriod}")
+    public CashFlowDto.BatchRolloverResponseJson rolloverMonthsTo(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("targetPeriod") String targetPeriod) {
+
+        CashFlowId cfId = new CashFlowId(cashFlowId);
+        YearMonth target = YearMonth.parse(targetPeriod);
+        ZonedDateTime now = ZonedDateTime.now(clock);
+
+        // Get current active period
+        CashFlow cashFlow = domainCashFlowRepository.findById(cfId)
+                .orElseThrow(() -> new CashFlowDoesNotExistsException(cfId));
+        YearMonth firstPeriod = cashFlow.getSnapshot().activePeriod();
+
+        if (!target.isAfter(firstPeriod)) {
+            throw new IllegalArgumentException(
+                    "Target period [" + target + "] must be after current active period [" + firstPeriod + "]");
+        }
+
+        int monthsRolledOver = 0;
+        YearMonth lastRolledOver = firstPeriod;
+        RolloverMonthResult lastResult = null;
+
+        // Rollover each month until we reach the target
+        YearMonth current = firstPeriod;
+        while (current.isBefore(target)) {
+            lastResult = commandGateway.send(
+                    new RolloverMonthCommand(cfId, now)
+            );
+            lastRolledOver = lastResult.rolledOverPeriod();
+            monthsRolledOver++;
+            current = current.plusMonths(1);
+        }
+
+        return CashFlowDto.BatchRolloverResponseJson.builder()
+                .cashFlowId(cashFlowId)
+                .monthsRolledOver(monthsRolledOver)
+                .firstRolledOverPeriod(firstPeriod)
+                .lastRolledOverPeriod(lastRolledOver)
+                .newActivePeriod(lastResult != null ? lastResult.newActivePeriod() : firstPeriod)
+                .closingBalance(lastResult != null ? lastResult.closingBalance() : null)
+                .build();
     }
 
 }

@@ -55,7 +55,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret12", "lu92@email.com");
 
         activateUser(createdUser.getUserId());
 
@@ -167,7 +167,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret12", "lu92@email.com");
 
         activateUser(createdUser.getUserId());
 
@@ -295,7 +295,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret12", "lu92@email.com");
 
         activateUser(createdUser.getUserId());
 
@@ -516,7 +516,7 @@ class LockingAssetsTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUser = createUser("lu92", "secret12", "lu92@email.com");
 
         activateUser(createdUser.getUserId());
 

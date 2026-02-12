@@ -25,6 +25,9 @@ import com.multi.vidulum.task.TaskRestController;
 import com.multi.vidulum.task.infrastructure.TaskMongoRepository;
 import com.multi.vidulum.trading.app.OrderRestController;
 import com.multi.vidulum.trading.app.TradeRestController;
+import com.multi.vidulum.security.auth.AuthenticationController;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.infrastructure.OrderMongoRepository;
@@ -86,6 +89,9 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected UserRestController userRestController;
+
+    @Autowired
+    protected AuthenticationController authenticationController;
 
     @Autowired
     protected PortfolioRestController portfolioRestController;
@@ -170,12 +176,25 @@ public abstract class IntegrationTest {
             .build();
 
     protected UserDto.UserSummaryJson createUser(String username, String password, String email) {
-        return userRestController.createUser(
-                UserDto.CreateUserJson.builder()
-                        .username(username)
-                        .password(password)
-                        .email(email)
-                        .build());
+        // Generate unique email to avoid conflicts between tests
+        String uniqueEmail = UUID.randomUUID().toString().substring(0, 8) + "_" + email;
+        String uniqueUsername = username + "_" + UUID.randomUUID().toString().substring(0, 8);
+
+        RegisterRequest registerRequest = RegisterRequest.builder()
+                .username(uniqueUsername)
+                .password(password)
+                .email(uniqueEmail)
+                .build();
+
+        AuthenticationResponse response = authenticationController.register(registerRequest).getBody();
+
+        return UserDto.UserSummaryJson.builder()
+                .userId(response.getUserId())
+                .username(uniqueUsername)
+                .email(uniqueEmail)
+                .isActive(true)
+                .portolioIds(java.util.Collections.emptyList())
+                .build();
     }
 
     protected void activateUser(String userId) {

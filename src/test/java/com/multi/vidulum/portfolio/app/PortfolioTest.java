@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Slf4j
 class PortfolioTest extends IntegrationTest {
 
-    private static final UserId USER_ID = UserId.of("User");
+    private static final UserId USER_ID = new UserId("U10000001");
     private static final Broker BROKER = Broker.of("Broker");
     private static final Currency USD = Currency.of("USD");
     private static final Currency EUR = Currency.of("EUR");

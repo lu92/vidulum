@@ -136,6 +136,32 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
+     * Attests historical import - transitions CashFlow from SETUP to OPEN mode.
+     * This is required before imports can be performed on ACTIVE/ROLLED_OVER months.
+     */
+    public CashFlowDto.AttestHistoricalImportResponseJson attestHistoricalImport(
+            String cashFlowId, Money confirmedBalance, boolean forceAttestation, boolean createAdjustment) {
+        CashFlowDto.AttestHistoricalImportJson request = CashFlowDto.AttestHistoricalImportJson.builder()
+                .confirmedBalance(confirmedBalance)
+                .forceAttestation(forceAttestation)
+                .createAdjustment(createAdjustment)
+                .build();
+
+        ResponseEntity<CashFlowDto.AttestHistoricalImportResponseJson> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/" + cashFlowId + "/attest-historical-import",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                CashFlowDto.AttestHistoricalImportResponseJson.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        CashFlowDto.AttestHistoricalImportResponseJson body = response.getBody();
+        log.info("Attested historical import for CashFlow {}: status={}, calculatedBalance={}, confirmedBalance={}",
+                cashFlowId, body.getStatus(), body.getCalculatedBalance(), body.getConfirmedBalance());
+        return body;
+    }
+
+    /**
      * Imports a historical transaction via HTTP.
      * Returns the created CashChangeId.
      */

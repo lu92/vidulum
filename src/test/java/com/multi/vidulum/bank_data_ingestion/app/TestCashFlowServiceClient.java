@@ -11,11 +11,9 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 
+import java.time.YearMonth;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Test implementation of CashFlowServiceClient that uses QueryGateway and CommandGateway.
@@ -103,6 +101,9 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
             case CLOSED -> CashFlowInfo.CashFlowStatus.CLOSED;
         };
 
+        // Build month statuses (simplified - for tests we generate based on periods)
+        Map<YearMonth, CashFlowInfo.MonthStatus> monthStatuses = generateMonthStatuses(snapshot);
+
         return new CashFlowInfo(
                 snapshot.cashFlowId().id(),
                 status,
@@ -111,8 +112,59 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
                 inflowCategories,
                 outflowCategories,
                 existingTransactionIds,
-                snapshot.cashChanges().size()
+                snapshot.cashChanges().size(),
+                monthStatuses
         );
+    }
+
+    /**
+     * Generate month statuses based on CashFlow snapshot.
+     * This is a simplified version - in production, month statuses come from forecast processor.
+     */
+    private Map<YearMonth, CashFlowInfo.MonthStatus> generateMonthStatuses(CashFlowSnapshot snapshot) {
+        Map<YearMonth, CashFlowInfo.MonthStatus> statuses = new HashMap<>();
+
+        YearMonth startPeriod = snapshot.startPeriod();
+        YearMonth activePeriod = snapshot.activePeriod();
+
+        if (startPeriod == null) {
+            startPeriod = activePeriod;
+        }
+
+        // Generate statuses for months from startPeriod to activePeriod + 12 months
+        YearMonth endPeriod = activePeriod.plusMonths(12);
+        YearMonth current = startPeriod;
+
+        while (!current.isAfter(endPeriod)) {
+            CashFlowInfo.MonthStatus monthStatus;
+
+            if (snapshot.status() == CashFlow.CashFlowStatus.SETUP) {
+                // In SETUP mode
+                if (current.isBefore(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.IMPORT_PENDING;
+                } else if (current.equals(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
+                } else {
+                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
+                }
+            } else {
+                // In OPEN mode
+                if (current.isBefore(activePeriod)) {
+                    // Could be IMPORTED, ROLLED_OVER, or ATTESTED depending on history
+                    // For test purposes, assume ROLLED_OVER for past months
+                    monthStatus = CashFlowInfo.MonthStatus.ROLLED_OVER;
+                } else if (current.equals(activePeriod)) {
+                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
+                } else {
+                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
+                }
+            }
+
+            statuses.put(current, monthStatus);
+            current = current.plusMonths(1);
+        }
+
+        return statuses;
     }
 
     private List<CashFlowInfo.CategoryInfo> mapCategories(List<Category> categories, Type type) {

@@ -44,7 +44,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -82,7 +82,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -138,7 +138,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -184,7 +184,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -240,7 +240,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlow cashFlow = new CashFlow();
         CashFlowEvent.CashFlowCreatedEvent createdEvent = new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -298,7 +298,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -386,7 +386,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -448,7 +448,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -498,7 +498,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -550,7 +550,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //        CashChangeId cashChangeId = CashChangeId.generate();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
-//                UserId.of("user"),
+//                new UserId("U10000001"),
 //                new Name("name"),
 //                new Description("desc"),
 //                Money.of(100, "USD"),
@@ -574,7 +574,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -623,7 +623,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -661,7 +661,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .containsExactly(
                         new CashFlowEvent.CashFlowCreatedEvent(
                                 cashFlowId,
-                                UserId.of("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -701,7 +701,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //        CashChangeId cashChangeId = CashChangeId.generate();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
-//                UserId.of("user"),
+//                new UserId("U10000001"),
 //                new Name("name"),
 //                new Description("desc"),
 //                Money.of(100, "USD"),
@@ -730,7 +730,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         CashFlow cashFlow = new CashFlow();
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -775,7 +775,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -813,7 +813,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .contains(
                         new CashFlowEvent.CashFlowCreatedEvent(
                                 cashFlowId,
-                                UserId.of("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -848,7 +848,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 //        CashChangeId cashChangeId = CashChangeId.generate();
 //        CashChange cashChange = cashChangeFactory.empty(
 //                cashChangeId,
-//                UserId.of("user"),
+//                new UserId("U10000001"),
 //                new Name("name"),
 //                new Description("description"),
 //                Money.of(100, "USD"),
@@ -872,7 +872,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -904,7 +904,7 @@ class CashFlowAggregateTest extends IntegrationTest {
                 .isEqualTo(
                         new CashFlowSnapshot(
                                 cashFlowId,
-                                new UserId("user"),
+                                new UserId("U10000001"),
                                 new Name("name"),
                                 new Description("description"),
                                 new BankAccount(
@@ -928,7 +928,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -958,7 +958,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -1018,7 +1018,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -1088,7 +1088,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -1156,7 +1156,7 @@ class CashFlowAggregateTest extends IntegrationTest {
         cashFlow.apply(
                 new CashFlowEvent.CashFlowCreatedEvent(
                         cashFlowId,
-                        UserId.of("user"),
+                        new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
                         new BankAccount(
@@ -1227,7 +1227,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -1267,7 +1267,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -1315,7 +1315,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -1361,7 +1361,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(
@@ -1401,7 +1401,7 @@ class CashFlowAggregateTest extends IntegrationTest {
 
         cashFlow.apply(new CashFlowEvent.CashFlowCreatedEvent(
                 cashFlowId,
-                UserId.of("user"),
+                new UserId("U10000001"),
                 new Name("name"),
                 new Description("description"),
                 new BankAccount(

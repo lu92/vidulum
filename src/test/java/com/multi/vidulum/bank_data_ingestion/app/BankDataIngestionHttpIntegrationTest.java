@@ -174,7 +174,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth activePeriod = YearMonth.of(2022, 1);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -186,7 +186,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // then - validate whole object with all fields
         // Only ignore cashFlowId (generated), lastMessageChecksum (internal), importCutoffDateTime (not set)
         assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(cashFlow.getUserId()).isEqualTo("test-user-123");
+        assertThat(cashFlow.getUserId()).isEqualTo("U10000006");
         assertThat(cashFlow.getName()).isEqualTo("Test CashFlow");
         assertThat(cashFlow.getDescription()).isEqualTo("CashFlow for HTTP integration testing");
         assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
@@ -239,7 +239,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateCategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -280,7 +280,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateSubcategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -325,7 +325,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -627,7 +627,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldConfigureAndRetrieveMappingsViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -685,7 +685,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -735,7 +735,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -761,7 +761,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -831,7 +831,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -877,7 +877,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -941,7 +941,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "test-user-123",
+                "U10000006",
                 "Test CashFlow",
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -1042,5 +1042,259 @@ public class BankDataIngestionHttpIntegrationTest {
         log.info("Full revalidation import flow completed: {} transactions imported with {} categories",
                 cashFlow.getCashChanges().size(),
                 cashFlow.getInflowCategories().size() + cashFlow.getOutflowCategories().size() - 2); // minus system Uncategorized
+    }
+
+    // ============ OPEN Mode Import Tests (Post-Attestation) ============
+
+    @Test
+    @DisplayName("Should import transactions in OPEN mode after attestation via REST API")
+    void shouldImportTransactionsInOpenModeAfterAttestationViaRestApi() {
+        // given - create CashFlow with history, import some transactions, then attest
+
+        // Start period: July 2021
+        // Active period: January 2022 (fixed clock)
+        // Historical months: July 2021 - December 2021 (6 months)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "U10000007",
+                "Test CashFlow for OPEN Mode",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
+                actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
+                actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW),
+                actor.mappingCreateNew("Rozrywka", "Entertainment", Type.OUTFLOW),
+                actor.mappingCreateNew("Transport", "Transportation", Type.OUTFLOW)
+        ));
+
+        // Step 1: Upload CSV in SETUP mode (import initial historical data)
+        BankDataIngestionDto.UploadCsvResponse uploadSetup = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/historical-transactions.csv"
+        );
+        assertThat(uploadSetup.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
+
+        String stagingSessionId = uploadSetup.getStagingResult().getStagingSessionId();
+
+        // Step 2: Start and complete import
+        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        String jobId = importResponse.getJobId();
+
+        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
+
+        actor.finalizeImport(cashFlowId, jobId, false);
+
+        // Verify SETUP mode state
+        CashFlowDto.CashFlowSummaryJson cashFlowBefore = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlowBefore.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
+        assertThat(cashFlowBefore.getCashChanges()).hasSize(23);
+
+        // Calculate expected balance after initial import
+        // Initial balance: 10000 PLN
+        // INFLOW: 5000 + 5000 + 5000 + 2000 + 5200 + 5200 + 5200 + 3000 = 35600
+        // OUTFLOW: 1500 + 250 + 1500 + 180 + 150 + 1500 + 200 + 1500 + 180 + 220 + 1500 + 120 + 1500 + 500 + 400 = 11200
+        // Net: 35600 - 11200 = 24400
+        // Expected balance: 10000 + 24400 = 34400
+        Money expectedBalance = Money.of(34400.0, "PLN");
+
+        // Step 3: Attest historical import - transitions to OPEN mode
+        CashFlowDto.AttestHistoricalImportResponseJson attestResponse = actor.attestHistoricalImport(
+                cashFlowId, expectedBalance, false, false);
+
+        assertThat(attestResponse.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(attestResponse.getConfirmedBalance().getAmount()).isEqualByComparingTo(expectedBalance.getAmount());
+
+        // Verify CashFlow is now in OPEN mode
+        CashFlowDto.CashFlowSummaryJson cashFlowAfterAttestation = actor.getCashFlow(cashFlowId);
+        assertThat(cashFlowAfterAttestation.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+
+        log.info("CashFlow {} attested successfully. Status: {}", cashFlowId, cashFlowAfterAttestation.getStatus());
+
+        // Step 4: NOW TEST THE BUG FIX - Upload more transactions in OPEN mode
+        // These transactions target the ACTIVE month (January 2022)
+        // The bug was: import failed because monthStatuses was not populated
+        // Note: Fixed clock is set to 2022-01-01, so transaction dates must be <= 2022-01-01
+        // We use 2022-01-01 which is in the ACTIVE month (January 2022)
+
+        // Create a small CSV with transactions for the ACTIVE month (2022-01)
+        String activeMonthCsv = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN-OPEN-001,January Salary,Monthly salary 2022,Wpływy regularne,5500.00,PLN,INFLOW,2022-01-01,2022-01-01,,PL12345678901234567890123456
+                TXN-OPEN-002,January Rent,Monthly rent 2022,Mieszkanie,1600.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,PL98765432109876543210987654
+                TXN-OPEN-003,January Groceries,Weekly shopping,Zakupy kartą,350.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,
+                """;
+
+        BankDataIngestionDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
+                cashFlowId,
+                "open-mode-transactions.csv",
+                activeMonthCsv.getBytes()
+        );
+
+        // Verify the upload was successful (this was the bug - it would fail with "outside forecast range")
+        assertThat(uploadOpen.getParseSummary().getTotalRows()).isEqualTo(3);
+        assertThat(uploadOpen.getParseSummary().getSuccessfulRows()).isEqualTo(3);
+        assertThat(uploadOpen.getStagingResult()).isNotNull();
+
+        // Log staging result for debugging
+        log.info("OPEN mode staging result: status={}, validTransactions={}, invalidTransactions={}, unmappedCategories={}",
+                uploadOpen.getStagingResult().getStatus(),
+                uploadOpen.getStagingResult().getSummary().getValidTransactions(),
+                uploadOpen.getStagingResult().getSummary().getInvalidTransactions(),
+                uploadOpen.getStagingResult().getUnmappedCategories());
+
+        assertThat(uploadOpen.getStagingResult().getStatus())
+                .as("Expected READY_FOR_IMPORT but got %s with unmapped categories: %s, monthly breakdown: %s",
+                        uploadOpen.getStagingResult().getStatus(),
+                        uploadOpen.getStagingResult().getUnmappedCategories(),
+                        uploadOpen.getStagingResult().getMonthlyBreakdown())
+                .isEqualTo("READY_FOR_IMPORT");
+        assertThat(uploadOpen.getStagingResult().getSummary().getValidTransactions()).isEqualTo(3);
+
+        log.info("OPEN mode CSV upload successful: {} transactions staged",
+                uploadOpen.getStagingResult().getSummary().getTotalTransactions());
+
+        // Step 5: Import the OPEN mode transactions
+        String openStagingSessionId = uploadOpen.getStagingResult().getStagingSessionId();
+        BankDataIngestionDto.StartImportResponse openImportResponse = actor.startImport(cashFlowId, openStagingSessionId);
+        String openJobId = openImportResponse.getJobId();
+
+        BankDataIngestionDto.GetImportProgressResponse openProgress = actor.getImportProgress(cashFlowId, openJobId);
+        assertThat(openProgress.getResult().getTransactionsImported()).isEqualTo(3);
+        assertThat(openProgress.getResult().getTransactionsFailed()).isEqualTo(0);
+
+        actor.finalizeImport(cashFlowId, openJobId, false);
+
+        // Step 6: Verify final state
+        CashFlowDto.CashFlowSummaryJson finalCashFlow = actor.getCashFlow(cashFlowId);
+        assertThat(finalCashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.OPEN);
+        assertThat(finalCashFlow.getCashChanges()).hasSize(26); // 23 + 3
+
+        // Verify the new transactions were imported
+        boolean hasJanuarySalary = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Salary".equals(tx.getName()));
+        boolean hasJanuaryRent = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Rent".equals(tx.getName()));
+        boolean hasJanuaryGroceries = finalCashFlow.getCashChanges().values().stream()
+                .anyMatch(tx -> "January Groceries".equals(tx.getName()));
+
+        assertThat(hasJanuarySalary).as("January Salary transaction should be imported").isTrue();
+        assertThat(hasJanuaryRent).as("January Rent transaction should be imported").isTrue();
+        assertThat(hasJanuaryGroceries).as("January Groceries transaction should be imported").isTrue();
+
+        log.info("OPEN mode import test completed successfully:");
+        log.info("  - Initial import (SETUP mode): 23 transactions");
+        log.info("  - Post-attestation import (OPEN mode): 3 transactions");
+        log.info("  - Total transactions: {}", finalCashFlow.getCashChanges().size());
+    }
+
+    // ============ Invalid Transactions Preview Tests ============
+
+    @Test
+    @DisplayName("Should return invalid transactions with validation errors in staging preview via REST API")
+    void shouldReturnInvalidTransactionsWithValidationErrorsInStagingPreview() {
+        // given - create CashFlow with 6 months history (2021-07 to 2021-12)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                "U10000008",
+                "Test CashFlow for Invalid Transactions",
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Configure mappings
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
+                actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW)
+        ));
+
+        // when - upload CSV file with invalid transactions
+        // The CSV contains:
+        // - TXN-2021-08-001: Valid transaction (August 2021)
+        // - TXN-2021-08-002: Valid transaction (August 2021)
+        // - TXN-2020-01-001: Too old transaction (before start period 2021-07)
+        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+                cashFlowId,
+                "bank-data-ingestion/transactions-with-invalid.csv"
+        );
+
+        // then - verify staging result
+        assertThat(uploadResponse.getParseSummary().getTotalRows()).isEqualTo(3);
+        assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(3);
+        assertThat(uploadResponse.getStagingResult()).isNotNull();
+
+        // Log the actual staging result for debugging
+        log.info("Staging result: status={}, valid={}, invalid={}, duplicate={}",
+                uploadResponse.getStagingResult().getStatus(),
+                uploadResponse.getStagingResult().getSummary().getValidTransactions(),
+                uploadResponse.getStagingResult().getSummary().getInvalidTransactions(),
+                uploadResponse.getStagingResult().getSummary().getDuplicateTransactions());
+
+        String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
+
+        // Get staging preview - THIS IS THE KEY ASSERTION
+        // After the fix, all transactions (including invalid ones) should be returned
+        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+
+        // Log all transactions for debugging
+        for (BankDataIngestionDto.StagedTransactionPreviewJson txn : preview.getTransactions()) {
+            log.info("Transaction: bankId={}, name={}, status={}, errors={}, targetCategory={}",
+                    txn.getBankTransactionId(),
+                    txn.getName(),
+                    txn.getValidation().getStatus(),
+                    txn.getValidation().getErrors(),
+                    txn.getTargetCategory());
+        }
+
+        // Verify ALL 3 transactions are returned (not just valid ones)
+        assertThat(preview.getTransactions())
+                .as("All transactions including invalid ones should be returned in preview")
+                .hasSize(3);
+
+        // Find the invalid transaction (too old - before start period)
+        BankDataIngestionDto.StagedTransactionPreviewJson oldTxn = preview.getTransactions().stream()
+                .filter(t -> "TXN-2020-01-001".equals(t.getBankTransactionId()))
+                .findFirst()
+                .orElse(null);
+
+        // KEY TEST: After the fix, invalid transaction should be in the preview
+        // Before the fix, it would be filtered out because mappedData was null
+        assertThat(oldTxn)
+                .as("Invalid transaction (TXN-2020-01-001) should be present in preview - " +
+                        "this was the bug: transactions with null mappedData were filtered out")
+                .isNotNull();
+
+        // Verify the invalid transaction has its original data available
+        assertThat(oldTxn.getName()).isEqualTo("Too Old Transaction");
+        assertThat(oldTxn.getAmount()).isEqualTo(2000.0);
+        assertThat(oldTxn.getBankCategory()).isEqualTo("Wpływy regularne");
+
+        // Verify validation errors are present
+        assertThat(oldTxn.getValidation().getErrors())
+                .as("Invalid transaction should have validation errors explaining why it was rejected")
+                .isNotEmpty();
+
+        log.info("Invalid transaction found in preview:");
+        log.info("  - bankTransactionId: {}", oldTxn.getBankTransactionId());
+        log.info("  - name: {}", oldTxn.getName());
+        log.info("  - amount: {}", oldTxn.getAmount());
+        log.info("  - status: {}", oldTxn.getValidation().getStatus());
+        log.info("  - errors: {}", oldTxn.getValidation().getErrors());
+        log.info("  - targetCategory: {} (expected null for invalid txn)", oldTxn.getTargetCategory());
+
+        // Verify valid transactions are also present
+        long validCount = preview.getTransactions().stream()
+                .filter(t -> "VALID".equals(t.getValidation().getStatus()))
+                .count();
+
+        log.info("Summary: {} valid transactions, {} total in preview",
+                validCount, preview.getTransactions().size());
     }
 }

@@ -100,10 +100,9 @@ public class GetStagingPreviewQueryHandler
         GetStagingPreviewResult.StagingSummary summary =
                 new GetStagingPreviewResult.StagingSummary(total, valid, invalid, duplicates);
 
-        // Build transaction previews (only for transactions with mappedData)
+        // Build transaction previews (all transactions, including invalid ones)
         List<GetStagingPreviewResult.StagedTransactionPreview> transactionPreviews =
                 stagedTransactions.stream()
-                        .filter(st -> st.mappedData() != null)
                         .map(this::toTransactionPreview)
                         .toList();
 
@@ -143,18 +142,21 @@ public class GetStagingPreviewQueryHandler
     }
 
     private GetStagingPreviewResult.StagedTransactionPreview toTransactionPreview(StagedTransaction st) {
+        // For invalid transactions, mappedData may be null - use originalData as fallback
+        boolean hasMappedData = st.mappedData() != null;
+
         return new GetStagingPreviewResult.StagedTransactionPreview(
                 st.stagedTransactionId().id(),
                 st.originalData().bankTransactionId(),
                 st.originalData().name(),
                 st.originalData().description(),
                 st.originalData().bankCategory(),
-                st.mappedData().categoryName().name(),
-                st.mappedData().parentCategoryName() != null
+                hasMappedData ? st.mappedData().categoryName().name() : null,
+                hasMappedData && st.mappedData().parentCategoryName() != null
                         ? st.mappedData().parentCategoryName().name() : null,
-                st.mappedData().money(),
-                st.mappedData().type(),
-                st.mappedData().paidDate(),
+                hasMappedData ? st.mappedData().money() : st.originalData().money(),
+                hasMappedData ? st.mappedData().type() : st.originalData().type(),
+                hasMappedData ? st.mappedData().paidDate() : st.originalData().paidDate(),
                 new GetStagingPreviewResult.ValidationResult(
                         st.validation().status().name(),
                         st.validation().errors(),

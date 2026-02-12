@@ -63,7 +63,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -436,7 +436,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -631,7 +631,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -1346,7 +1346,7 @@ class VidulumApplicationTests extends IntegrationTest {
             }
         });
 
-        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret", "lu92@email.com");
+        UserDto.UserSummaryJson createdUserJson = createUser("lu92", "secret12", "lu92@email.com");
 
         Awaitility.await().atMost(5, SECONDS).until(() -> {
             UserId existingUserId = UserId.of(createdUserJson.getUserId());
@@ -1745,7 +1745,7 @@ class VidulumApplicationTests extends IntegrationTest {
     public void test() {
         PnlHistory aggregate = PnlHistory.builder()
                 .pnlId(null)
-                .userId(UserId.of("12345"))
+                .userId(new UserId("U12345678"))
                 .pnlStatements(List.of(
                         PnlStatement.builder()
                                 .investedBalance(Money.of(100, "USD"))
@@ -1830,7 +1830,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .build();
 
         PnlHistory persistedPnlHistory = pnlRepository.save(aggregate);
-        Optional<PnlHistory> byUser = pnlRepository.findByUser(UserId.of("12345"));
+        Optional<PnlHistory> byUser = pnlRepository.findByUser(new UserId("U12345678"));
 
         System.out.println(persistedPnlHistory);
     }
