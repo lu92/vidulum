@@ -214,6 +214,15 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    // ============ CashFlow - Bank Account Validation (400) ============
+
+    @ExceptionHandler(InvalidBankAccountNumberException.class)
+    public ResponseEntity<ApiError> handleInvalidBankAccount(InvalidBankAccountNumberException ex) {
+        log.debug("Invalid bank account: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.INVALID_BANK_ACCOUNT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ CashFlow - Date Validation (400) ============
 
     @ExceptionHandler(PaidDateInFutureException.class)

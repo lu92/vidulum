@@ -1129,7 +1129,9 @@
     }
   },
   "bankAccountNumber": {
-    "account": "account number",
+    "iban": {
+      "value": "GB29NWBK60161331926819"
+    },
     "denomination": {
       "id": "USD"
     }

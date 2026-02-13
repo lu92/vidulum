@@ -152,7 +152,7 @@ class CashFlowForecastStatementTest {
         return new CashFlowForecastStatement(
                 TestIds.nextCashFlowId(),
                 forecasts,
-                new BankAccountNumber("test-account", Currency.of("USD")),
+                BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")),
                 new CurrentCategoryStructure(new ArrayList<>(), new ArrayList<>(), ZonedDateTime.now()),
                 null,
                 null

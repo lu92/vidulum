@@ -1551,10 +1551,12 @@ public class BankDataIngestionControllerTest {
                         .userId("U10000013")
                         .name("Test CashFlow")
                         .description("CashFlow for testing category mappings")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
-                                Money.zero("PLN")
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "PL61109010140000071219812874",
+                                Currency.of("PLN"),
+                                Money.zero("PLN"),
+                                null
                         )))
                         .startPeriod("2021-07")
                         .initialBalance(CashFlowDto.MoneyJson.from(Money.of(10000.0, "PLN")))

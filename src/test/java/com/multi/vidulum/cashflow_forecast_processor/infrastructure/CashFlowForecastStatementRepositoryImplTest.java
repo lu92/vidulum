@@ -60,7 +60,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         CashFlowForecastStatement result = retrieved.get();
 
         assertThat(result.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(result.getBankAccountNumber().account()).isEqualTo("PL12345678901234567890123456");
+        assertThat(result.getBankAccountNumber().iban().value()).isEqualTo("PL61109010140000071219812874");
         assertThat(result.getBankAccountNumber().denomination().getId()).isEqualTo(TEST_CURRENCY);
         assertThat(result.getLastMessageChecksum().checksum()).isEqualTo("test-checksum-123");
         assertThat(result.getForecasts()).hasSize(3);
@@ -282,7 +282,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         return CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
                 .forecasts(forecasts)
-                .bankAccountNumber(new BankAccountNumber("PL12345678901234567890123456", Currency.of(TEST_CURRENCY)))
+                .bankAccountNumber(BankAccountNumber.fromIban("PL61109010140000071219812874", Currency.of(TEST_CURRENCY)))
                 .categoryStructure(createSimpleCategoryStructure())
                 .lastModification(FIXED_NOW)
                 .lastMessageChecksum(new Checksum("test-checksum-123"))
@@ -372,7 +372,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         return CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
                 .forecasts(forecasts)
-                .bankAccountNumber(new BankAccountNumber("PL12345678901234567890123456", Currency.of(TEST_CURRENCY)))
+                .bankAccountNumber(BankAccountNumber.fromIban("PL61109010140000071219812874", Currency.of(TEST_CURRENCY)))
                 .categoryStructure(createSimpleCategoryStructure())
                 .lastModification(FIXED_NOW)
                 .lastMessageChecksum(new Checksum("test-checksum-nested"))
@@ -429,7 +429,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         return CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
                 .forecasts(forecasts)
-                .bankAccountNumber(new BankAccountNumber("PL12345678901234567890123456", Currency.of(TEST_CURRENCY)))
+                .bankAccountNumber(BankAccountNumber.fromIban("PL61109010140000071219812874", Currency.of(TEST_CURRENCY)))
                 .categoryStructure(createSimpleCategoryStructure())
                 .lastModification(FIXED_NOW)
                 .lastMessageChecksum(new Checksum("test-checksum-transactions"))
@@ -465,7 +465,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         return CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
                 .forecasts(forecasts)
-                .bankAccountNumber(new BankAccountNumber("PL12345678901234567890123456", Currency.of(TEST_CURRENCY)))
+                .bankAccountNumber(BankAccountNumber.fromIban("PL61109010140000071219812874", Currency.of(TEST_CURRENCY)))
                 .categoryStructure(categoryStructure)
                 .lastModification(FIXED_NOW)
                 .lastMessageChecksum(new Checksum("test-checksum-structure"))
@@ -497,7 +497,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         return CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
                 .forecasts(forecasts)
-                .bankAccountNumber(new BankAccountNumber("PL12345678901234567890123456", Currency.of(TEST_CURRENCY)))
+                .bankAccountNumber(BankAccountNumber.fromIban("PL61109010140000071219812874", Currency.of(TEST_CURRENCY)))
                 .categoryStructure(createSimpleCategoryStructure())
                 .lastModification(FIXED_NOW)
                 .lastMessageChecksum(new Checksum("test-checksum-attestation"))

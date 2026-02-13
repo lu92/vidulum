@@ -378,10 +378,12 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .userId(userId)
                         .name("Home Budget With History")
                         .description("Personal home budget with historical data import")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Chase Bank"),
-                                new BankAccountNumber("US12345678901234567890", Currency.of("USD")),
-                                Money.of(10000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Chase Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(10000, "USD"),
+                                null)))
                         .startPeriod(startPeriod.toString())
                         .initialBalance(CashFlowDto.MoneyJson.from(Money.of(10000, "USD")))
                         .build()
@@ -394,10 +396,12 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .userId(userId)
                         .name("Business Budget With History")
                         .description("Business budget with historical data import")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Bank of America"),
-                                new BankAccountNumber("US98765432109876543210", Currency.of("USD")),
-                                Money.of(50000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Bank of America",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(50000, "USD"),
+                                null)))
                         .startPeriod(startPeriod.toString())
                         .initialBalance(CashFlowDto.MoneyJson.from(Money.of(50000, "USD")))
                         .build()

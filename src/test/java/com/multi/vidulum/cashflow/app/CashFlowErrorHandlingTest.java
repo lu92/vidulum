@@ -1606,4 +1606,185 @@ class CashFlowErrorHandlingTest {
             log.info("Valid userId accepted: userId={}, cashFlowId={}", validUserId, cashFlowId);
         }
     }
+
+    // ============ IBAN/SWIFT Validation (400) ============
+
+    @Nested
+    @DisplayName("IBAN/SWIFT Validation (400)")
+    class IbanSwiftValidation {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when IBAN has invalid format")
+        void shouldReturn400WhenIbanFormatInvalid() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String invalidIban = "INVALID_IBAN";
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithInvalidIban(
+                    userId, "Test CashFlow", invalidIban, "USD");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("INVALID_BANK_ACCOUNT");
+            assertThat(error.message()).contains("Unsupported IBAN country code");
+            assertThat(error.fieldErrors()).isNull();
+
+            log.info("Invalid IBAN format correctly returned 400: code={}, message={}",
+                    error.code(), error.message());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when IBAN has invalid checksum")
+        void shouldReturn400WhenIbanChecksumInvalid() {
+            // given - valid format but wrong checksum (last digit changed)
+            String userId = TestIds.nextUserId().getId();
+            String invalidIban = "PL61109010140000071219812875"; // Wrong checksum
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithInvalidIban(
+                    userId, "Test CashFlow", invalidIban, "PLN");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("INVALID_BANK_ACCOUNT");
+            assertThat(error.message()).contains("check digits");
+
+            log.info("Invalid IBAN checksum correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when IBAN is too short")
+        void shouldReturn400WhenIbanTooShort() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String shortIban = "PL12";
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithInvalidIban(
+                    userId, "Test CashFlow", shortIban, "PLN");
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ApiError error = response.getBody();
+            assertThat(error.code()).isEqualTo("INVALID_BANK_ACCOUNT");
+            assertThat(error.message()).contains("format");
+
+            log.info("Too short IBAN correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST when SWIFT/BIC is invalid")
+        void shouldReturn400WhenSwiftBicInvalid() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String validIban = "DE89370400440532013000";
+            String invalidBic = "INVALID";
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCashFlowWithInvalidSwift(
+                    userId, "Test CashFlow", validIban, invalidBic);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("INVALID_BANK_ACCOUNT");
+            assertThat(error.message()).contains("BIC/SWIFT");
+            assertThat(error.message()).contains("format");
+
+            log.info("Invalid SWIFT/BIC correctly returned 400: code={}", error.code());
+        }
+
+        @Test
+        @DisplayName("Should accept valid Polish IBAN")
+        void shouldAcceptValidPolishIban() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String validIban = "PL61109010140000071219812874";
+
+            // when
+            String cashFlowId = actor.createCashFlowWithIban(userId, "Polish Budget", validIban, "PLN");
+
+            // then
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Valid Polish IBAN accepted: cashFlowId={}", cashFlowId);
+        }
+
+        @Test
+        @DisplayName("Should accept valid German IBAN")
+        void shouldAcceptValidGermanIban() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String validIban = "DE89370400440532013000";
+
+            // when
+            String cashFlowId = actor.createCashFlowWithIban(userId, "German Budget", validIban, "EUR");
+
+            // then
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Valid German IBAN accepted: cashFlowId={}", cashFlowId);
+        }
+
+        @Test
+        @DisplayName("Should accept valid IBAN with spaces (normalization)")
+        void shouldAcceptIbanWithSpaces() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String ibanWithSpaces = "PL 61 1090 1014 0000 0712 1981 2874";
+
+            // when
+            String cashFlowId = actor.createCashFlowWithIban(userId, "Spaced IBAN", ibanWithSpaces, "PLN");
+
+            // then
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("IBAN with spaces accepted (normalized): cashFlowId={}", cashFlowId);
+        }
+
+        @Test
+        @DisplayName("Should accept valid IBAN with SWIFT/BIC")
+        void shouldAcceptValidIbanWithSwift() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String validIban = "PL61109010140000071219812874";
+            String validBic = "BPKOPLPW";
+
+            // when
+            String cashFlowId = actor.createCashFlowWithSwift(userId, "PKO BP Account", validIban, validBic);
+
+            // then
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Valid IBAN with SWIFT/BIC accepted: cashFlowId={}", cashFlowId);
+        }
+
+        @Test
+        @DisplayName("Should accept valid IBAN without SWIFT/BIC (optional)")
+        void shouldAcceptValidIbanWithoutSwift() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String validIban = "GB29NWBK60161331926819";
+
+            // when
+            String cashFlowId = actor.createCashFlowWithIban(userId, "UK Account", validIban, "GBP");
+
+            // then
+            assertThat(cashFlowId).isNotNull().isNotEmpty();
+
+            log.info("Valid IBAN without SWIFT accepted: cashFlowId={}", cashFlowId);
+        }
+    }
 }

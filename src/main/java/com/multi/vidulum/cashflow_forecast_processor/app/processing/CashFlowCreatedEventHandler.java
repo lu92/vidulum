@@ -41,7 +41,7 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                     .category(new Category("Uncategorized"))
                                     .subCategories(List.of())
                                     .groupedTransactions(new GroupedTransactions())
-                                    .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                    .totalPaidValue(Money.zero(event.bankAccount().bankAccountNumber().denomination().getId()))
                                     .build()
                     );
 
@@ -52,14 +52,18 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                                     .category(new Category("Uncategorized"))
                                     .subCategories(List.of())
                                     .groupedTransactions(new GroupedTransactions())
-                                    .totalPaidValue(Money.zero(event.bankAccount().balance().getCurrency()))
+                                    .totalPaidValue(Money.zero(event.bankAccount().bankAccountNumber().denomination().getId()))
                                     .build()
 
                     );
 
+                    Money initialBalance = event.bankAccount().balance() != null
+                        ? event.bankAccount().balance()
+                        : Money.zero(event.bankAccount().bankAccountNumber().denomination().getId());
+
                     return new CashFlowMonthlyForecast(
                             yearMonth,
-                            CashFlowStats.justBalance(event.bankAccount().balance()),
+                            CashFlowStats.justBalance(initialBalance),
                             categorizedInflows,
                             categorizedOutflows,
                             CashFlowMonthlyForecast.Status.FORECASTED,

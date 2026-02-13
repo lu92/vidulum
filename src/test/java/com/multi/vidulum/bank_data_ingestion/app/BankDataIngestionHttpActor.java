@@ -53,10 +53,12 @@ public class BankDataIngestionHttpActor {
                 .userId(userId)
                 .name(name)
                 .description("CashFlow for HTTP integration testing")
-                .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of(initialBalance.getCurrency())),
-                        Money.zero(initialBalance.getCurrency())
+                .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                        "Test Bank",
+                        "PL61109010140000071219812874",
+                        Currency.of(initialBalance.getCurrency()),
+                        Money.zero(initialBalance.getCurrency()),
+                        null
                 )))
                 .startPeriod(startPeriod.toString())
                 .initialBalance(CashFlowDto.MoneyJson.from(initialBalance))
