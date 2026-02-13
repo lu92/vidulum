@@ -88,11 +88,11 @@ class HttpCashFlowServiceClientIntegrationTest {
     }
 
     @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:4.4.6"))
+    static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:8.0"))
             .withExposedPorts(27017);
 
     @Container
-    static KafkaContainer kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"))
+    static KafkaContainer kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"))
             .withExposedPorts(9093);
 
     @DynamicPropertySource
