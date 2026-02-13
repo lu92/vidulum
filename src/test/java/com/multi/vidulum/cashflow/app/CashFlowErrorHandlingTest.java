@@ -78,7 +78,7 @@ class CashFlowErrorHandlingTest {
             new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
 
     @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
+    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
 
     @LocalServerPort
     private int port;

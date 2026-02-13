@@ -1,9 +1,9 @@
 services:
   # ============================================
-  # MongoDB 7.0 - Stable (Testcontainers use 4.4.6 due to mongo shell dependency)
+  # MongoDB 8.0 - Latest Stable (matches Testcontainers 1.19.7+ with mongosh support)
   # ============================================
   mongodb:
-    image: mongo:7.0
+    image: mongo:8.0
     container_name: "mongodb"
     ports:
       - "27017:27017"
