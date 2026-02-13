@@ -1,63 +1,108 @@
 services:
+  # ============================================
+  # MongoDB 7.0 - Stable (Testcontainers use 4.4.6 due to mongo shell dependency)
+  # ============================================
   mongodb:
-    image: mongo:latest
+    image: mongo:7.0
     container_name: "mongodb"
     ports:
-      - 27017:27017
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    command: ["--replSet", "rs0", "--bind_ip_all"]
 
-  zookeeper:
-    image: wurstmeister/zookeeper
-    container_name: "zookeeper"
-    ports:
-      - "2181:2181"
+  # ============================================
+  # Kafka 7.8.1 (KRaft Mode) - NO Zookeeper!
+  # ============================================
   kafka:
-    image: wurstmeister/kafka
+    image: confluentinc/cp-kafka:7.8.1
     container_name: "kafka"
     ports:
       - "9092:9092"
+      - "9093:9093"
     environment:
-#      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1 # in case of local deployment
-      KAFKA_ADVERTISED_HOST_NAME: kafka # in case of container's mode deployment
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
-    depends_on:
-      - zookeeper
+      # KRaft Mode Configuration (NO Zookeeper!)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
 
+      # Listeners
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Cluster ID (fixed for consistency)
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+      # Log dirs
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+      # Replication factors (single node setup)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Auto create topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+
+      # JMX Monitoring
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  # ============================================
+  # Kafdrop - Kafka UI
+  # ============================================
   kafdrop:
-    image: obsidiandynamics/kafdrop
+    image: obsidiandynamics/kafdrop:latest
+    container_name: "kafdrop"
     restart: "no"
     ports:
       - "9000:9000"
     environment:
-      KAFKA_BROKERCONNECT: "kafka:9092"
+      KAFKA_BROKERCONNECT: kafka:9092
+      JVM_OPTS: "-Xms32M -Xmx64M"
     depends_on:
       - kafka
 
+  # ============================================
+  # Vidulum Application
+  # ============================================
   vidulum-app:
     image: vidulum-app:latest
     container_name: "vidulum-app"
     ports:
-      - 9090:8080
+      - "9090:8080"
     environment:
       SPRING_DATA_MONGODB_HOST: mongodb
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    links:
-      - kafka
-      - mongodb
     depends_on:
       - kafka
-      - kafdrop
+      - mongodb
 
+  # ============================================
+  # WebSocket Gateway
+  # ============================================
   websocket-gateway:
     image: vidulum-websocket-gateway:latest
     container_name: "websocket-gateway"
     ports:
-      - 8081:8081
+      - "8081:8081"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    links:
-      - kafka
     depends_on:
       - kafka
       - vidulum-app
+
+# ============================================
+# Persistent Volumes
+# ============================================
+volumes:
+  mongodb_data:
+    driver: local
+  kafka_data:
+    driver: local

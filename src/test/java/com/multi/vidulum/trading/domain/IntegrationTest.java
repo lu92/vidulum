@@ -70,7 +70,7 @@ public abstract class IntegrationTest {
 
     @Container
     public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"));
+            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
     @Container
     protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.4.6");
 
