@@ -108,13 +108,13 @@ public class CashFlowForecastStatementEntity {
                 return null;
             }
             return BankAccountNumberEntity.builder()
-                    .account(bankAccountNumber.account())
+                    .account(bankAccountNumber.iban().value())
                     .denomination(bankAccountNumber.denomination().getId())
                     .build();
         }
 
         public BankAccountNumber toDomain() {
-            return new BankAccountNumber(
+            return BankAccountNumber.fromIban(
                     account,
                     new com.multi.vidulum.common.Currency(denomination)
             );

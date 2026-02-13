@@ -206,10 +206,12 @@ public class BankDataIngestionHttpIntegrationTest {
         // Validate bank account using recursive comparison
         assertThat(cashFlow.getBankAccount())
                 .usingRecursiveComparison()
-                .isEqualTo(new BankAccount(
-                        new BankName("Test Bank"),
-                        new BankAccountNumber("PL12345678901234567890123456", Currency.of("PLN")),
-                        Money.zero("PLN")
+                .isEqualTo(BankAccount.fromIban(
+                        "Test Bank",
+                        "PL61109010140000071219812874",
+                        Currency.of("PLN"),
+                        Money.zero("PLN"),
+                        null
                 ));
 
         // Validate system-created "Uncategorized" categories

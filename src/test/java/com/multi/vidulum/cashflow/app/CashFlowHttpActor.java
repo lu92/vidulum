@@ -57,7 +57,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL12345678901234567890123456")
+                                .account("PL94345678901234567890123456")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -254,7 +254,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL12345678901234567890123456")
+                                .account("PL94345678901234567890123456")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -680,7 +680,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL12345678901234567890123456")
+                                .account("PL94345678901234567890123456")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -708,7 +708,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL12345678901234567890123456")
+                                .account("PL94345678901234567890123456")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -756,5 +756,129 @@ public class CashFlowHttpActor {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
+    }
+
+    // ============ IBAN/SWIFT Validation Helper Methods ============
+
+    /**
+     * Creates CashFlow with custom IBAN for validation testing.
+     */
+    public String createCashFlowWithIban(String userId, String name, String iban, String currency) {
+        CashFlowDto.CreateCashFlowJson request = CashFlowDto.CreateCashFlowJson.builder()
+                .userId(userId)
+                .name(name)
+                .description("IBAN validation test")
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account(iban)
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(currency)
+                                .build())
+                        .build())
+                .build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    /**
+     * Creates CashFlow with invalid IBAN expecting error response.
+     */
+    public ResponseEntity<ApiError> createCashFlowWithInvalidIban(String userId, String name, String iban, String currency) {
+        CashFlowDto.CreateCashFlowJson request = CashFlowDto.CreateCashFlowJson.builder()
+                .userId(userId)
+                .name(name)
+                .description("IBAN validation test")
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account(iban)
+                                .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency(currency)
+                                .build())
+                        .build())
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
+     * Creates CashFlow with IBAN and SWIFT/BIC for validation testing (expects success).
+     */
+    public String createCashFlowWithSwift(String userId, String name, String iban, String swiftBic) {
+        CashFlowDto.CreateCashFlowJson request = CashFlowDto.CreateCashFlowJson.builder()
+                .userId(userId)
+                .name(name)
+                .description("SWIFT/BIC validation test")
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account(iban)
+                                .denomination(CashFlowDto.CurrencyJson.builder().id("PLN").build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency("PLN")
+                                .build())
+                        .swiftBic(swiftBic)
+                        .build())
+                .build();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    /**
+     * Creates CashFlow with IBAN and SWIFT/BIC expecting validation error.
+     */
+    public ResponseEntity<ApiError> createCashFlowWithInvalidSwift(String userId, String name, String iban, String swiftBic) {
+        CashFlowDto.CreateCashFlowJson request = CashFlowDto.CreateCashFlowJson.builder()
+                .userId(userId)
+                .name(name)
+                .description("SWIFT/BIC validation test")
+                .bankAccount(CashFlowDto.BankAccountJson.builder()
+                        .bankName("Test Bank")
+                        .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
+                                .account(iban)
+                                .denomination(CashFlowDto.CurrencyJson.builder().id("PLN").build())
+                                .build())
+                        .balance(CashFlowDto.MoneyJson.builder()
+                                .amount(java.math.BigDecimal.ZERO)
+                                .currency("PLN")
+                                .build())
+                        .swiftBic(swiftBic)
+                        .build())
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/cash-flow",
+                HttpMethod.POST,
+                request
+        );
     }
 }

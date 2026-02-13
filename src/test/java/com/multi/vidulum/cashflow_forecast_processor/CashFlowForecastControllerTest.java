@@ -43,10 +43,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name(uniqueCashFlowName())
                         .description("Test description")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US123456789", Currency.of("USD")),
-                                Money.of(1000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -65,7 +67,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
 
         // then
         assertThat(forecastStatement.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(forecastStatement.getBankAccountNumber().account()).isEqualTo("US123456789");
+        assertThat(forecastStatement.getBankAccountNumber().iban().value()).isEqualTo("GB29NWBK60161331926819");
         assertThat(forecastStatement.getBankAccountNumber().denomination()).isEqualTo(Currency.of("USD"));
         assertThat(forecastStatement.getForecasts()).isNotEmpty();
         assertThat(forecastStatement.getCategoryStructure()).isNotNull();
@@ -94,10 +96,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name(uniqueCashFlowName())
                         .description("Test description")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US987654321", Currency.of("USD")),
-                                Money.of(5000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(5000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -176,10 +180,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name("Budgeted Cash Flow")
                         .description("Cash flow with budgeting")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Budget Bank"),
-                                new BankAccountNumber("US111222333", Currency.of("USD")),
-                                Money.of(2000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Budget Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(2000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -252,10 +258,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name(uniqueCashFlowName())
                         .description("Test description")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US444555666", Currency.of("USD")),
-                                Money.of(1000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -320,10 +328,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name("Checksum Sync Test")
                         .description("Testing checksum synchronization")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Sync Bank"),
-                                new BankAccountNumber("US777888999", Currency.of("USD")),
-                                Money.of(3000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Sync Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(3000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -381,10 +391,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name("Multi-op Checksum Test")
                         .description("Testing checksum after multiple operations")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Multi Bank"),
-                                new BankAccountNumber("US111333555", Currency.of("USD")),
-                                Money.of(5000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Multi Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(5000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -471,10 +483,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name(uniqueCashFlowName())
                         .description("Test description")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US888999000", Currency.of("USD")),
-                                Money.of(2000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(2000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -534,10 +548,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name("Mixed Cash Flow")
                         .description("Cash flow with expected and paid transactions")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US222333444", Currency.of("USD")),
-                                Money.of(5000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(5000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -620,10 +636,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name(uniqueCashFlowName())
                         .description("Test description")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("US555666777", Currency.of("USD")),
-                                Money.of(10000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(10000, "USD"),
+                                null)))
                         .build()
         );
 
@@ -680,10 +698,12 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .userId("U10000012")
                         .name("Paid Checksum Test")
                         .description("Testing checksum after paid cash change")
-                        .bankAccount(CashFlowDto.BankAccountJson.from(new BankAccount(
-                                new BankName("Sync Bank"),
-                                new BankAccountNumber("US999888777", Currency.of("USD")),
-                                Money.of(3000, "USD"))))
+                        .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
+                                "Sync Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(3000, "USD"),
+                                null)))
                         .build()
         );
 

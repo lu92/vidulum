@@ -34,10 +34,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(0, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -120,10 +122,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(0, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -209,10 +213,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(0, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -360,10 +366,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(0, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -454,10 +462,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(0, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(0, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -588,10 +598,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -656,10 +668,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(2000, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(2000, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -724,10 +738,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -795,10 +811,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("name"),
                         new Description("description"),
-                        new BankAccount(
-                                new BankName("bank"),
-                                new BankAccountNumber("account number", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -860,10 +878,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for rollback test"),
-                        new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("PL123", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         YearMonth.parse("2021-01"),
                         YearMonth.parse("2021-06"),
                         Money.of(1000, "USD"),
@@ -951,10 +971,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for category rollback test"),
-                        new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("PL123", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         YearMonth.parse("2021-01"),
                         YearMonth.parse("2021-06"),
                         Money.of(1000, "USD"),
@@ -1045,10 +1067,12 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new UserId("U10000001"),
                         new Name("Test CashFlow"),
                         new Description("CashFlow for re-import test"),
-                        new BankAccount(
-                                new BankName("Test Bank"),
-                                new BankAccountNumber("PL123", Currency.of("USD")),
-                                Money.of(1000, "USD")),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
                         YearMonth.parse("2021-01"),
                         YearMonth.parse("2021-06"),
                         Money.of(1000, "USD"),

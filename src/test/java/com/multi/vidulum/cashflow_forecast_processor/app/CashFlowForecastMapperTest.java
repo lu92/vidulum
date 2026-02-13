@@ -39,7 +39,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123456789", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Salary"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Rent"), new LinkedList<>())),
@@ -97,7 +97,7 @@ class CashFlowForecastMapperTest {
 
         // then
         assertThat(result.getCashFlowId()).isEqualTo(cashFlowId.id());
-        assertThat(result.getBankAccountNumber().account()).isEqualTo("US123456789");
+        assertThat(result.getBankAccountNumber().iban().value()).isEqualTo("GB29NWBK60161331926819");
         assertThat(result.getBankAccountNumber().denomination()).isEqualTo(Currency.of("USD"));
         assertThat(result.getLastModification()).isEqualTo(now);
         assertThat(result.getLastMessageChecksum()).isEqualTo("abc123checksum");
@@ -149,7 +149,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US999", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
@@ -226,7 +226,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Salary"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
@@ -300,7 +300,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Groceries"), new LinkedList<>(), budgeting)),
@@ -374,7 +374,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
@@ -453,7 +453,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
                         List.of(overheadCostsNode),
@@ -509,7 +509,7 @@ class CashFlowForecastMapperTest {
 
         CashFlowForecastStatement statement = CashFlowForecastStatement.builder()
                 .cashFlowId(cashFlowId)
-                .bankAccountNumber(new BankAccountNumber("US123", Currency.of("USD")))
+                .bankAccountNumber(BankAccountNumber.fromIban("GB29NWBK60161331926819", Currency.of("USD")))
                 .categoryStructure(new CurrentCategoryStructure(
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),
                         List.of(new CategoryNode(null, new CategoryName("Uncategorized"), new LinkedList<>())),

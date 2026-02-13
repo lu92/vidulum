@@ -62,17 +62,32 @@ public final class CashFlowDto {
 
         private MoneyJson balance;
 
+        /** Optional SWIFT/BIC code (e.g., "BPKOPLPW") - validated if provided */
+        private String swiftBic;
+
+        /** Read-only: Country code extracted from IBAN (e.g., "PL") */
+        private String countryCode;
+
+        /** Read-only: Bank code extracted from IBAN (e.g., "10901014") */
+        private String bankCode;
+
+        /** Read-only: Branch code extracted from IBAN (null for Poland) */
+        private String branchCode;
+
         public BankAccount toDomain() {
-            return new BankAccount(
-                    bankName != null ? new BankName(bankName) : null,
-                    bankAccountNumber != null ? bankAccountNumber.toDomain() : null,
-                    balance != null ? balance.toDomain() : null
+            return BankAccount.fromIban(
+                    bankName,
+                    bankAccountNumber != null ? bankAccountNumber.account : null,
+                    bankAccountNumber != null && bankAccountNumber.denomination != null ?
+                        bankAccountNumber.denomination.toDomain() : null,
+                    balance != null ? balance.toDomain() : null,
+                    swiftBic
             );
         }
 
         /**
          * Creates BankAccountJson from domain BankAccount.
-         * Useful for tests.
+         * Useful for tests and response mapping.
          */
         public static BankAccountJson from(BankAccount bankAccount) {
             if (bankAccount == null) return null;
@@ -80,12 +95,16 @@ public final class CashFlowDto {
                     .bankName(bankAccount.bankName() != null ? bankAccount.bankName().name() : null)
                     .bankAccountNumber(BankAccountNumberJson.from(bankAccount.bankAccountNumber()))
                     .balance(bankAccount.balance() != null ? MoneyJson.from(bankAccount.balance()) : null)
+                    .swiftBic(bankAccount.swiftBic() != null ? bankAccount.swiftBic().value() : null)
+                    .countryCode(bankAccount.countryCode() != null ? bankAccount.countryCode().code() : null)
+                    .bankCode(bankAccount.bankCode() != null ? bankAccount.bankCode().code() : null)
+                    .branchCode(bankAccount.branchCode() != null ? bankAccount.branchCode().code() : null)
                     .build();
         }
     }
 
     /**
-     * DTO for bank account number with validation.
+     * DTO for bank account number with IBAN validation.
      */
     @Data
     @Builder
@@ -93,14 +112,14 @@ public final class CashFlowDto {
     @AllArgsConstructor
     public static class BankAccountNumberJson {
         @NotBlank(message = "bankAccount.bankAccountNumber.account is required")
-        private String account;
+        private String account;  // IBAN string (validated on toDomain())
 
         @NotNull(message = "bankAccount.bankAccountNumber.denomination is required")
         @Valid
         private CurrencyJson denomination;
 
         public BankAccountNumber toDomain() {
-            return new BankAccountNumber(
+            return BankAccountNumber.fromIban(
                     account,
                     denomination != null ? denomination.toDomain() : null
             );
@@ -109,7 +128,7 @@ public final class CashFlowDto {
         public static BankAccountNumberJson from(BankAccountNumber bankAccountNumber) {
             if (bankAccountNumber == null) return null;
             return BankAccountNumberJson.builder()
-                    .account(bankAccountNumber.account())
+                    .account(bankAccountNumber.fetchRawIban())
                     .denomination(CurrencyJson.from(bankAccountNumber.denomination()))
                     .build();
         }
