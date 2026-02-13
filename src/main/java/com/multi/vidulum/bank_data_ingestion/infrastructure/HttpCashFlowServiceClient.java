@@ -70,7 +70,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     public CashFlowInfo getCashFlowInfo(String cashFlowId) {
         try {
             CashFlowResponse response = restClient.get()
-                    .uri("/cash-flow/{cashFlowId}", cashFlowId)
+                    .uri("/cash-flow/cf={cashFlowId}", cashFlowId)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(CashFlowResponse.class);
@@ -100,7 +100,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     private Map<String, String> fetchMonthStatuses(String cashFlowId) {
         try {
             MonthStatusesResponse response = restClient.get()
-                    .uri("/cash-flow-forecast/{cashFlowId}/month-statuses", cashFlowId)
+                    .uri("/cash-flow-forecast/cf={cashFlowId}/month-statuses", cashFlowId)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(MonthStatusesResponse.class);
@@ -153,7 +153,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
 
             // Use isImport=true to allow category creation in SETUP mode during import
             restClient.post()
-                    .uri("/cash-flow/{cashFlowId}/category?isImport=true", cashFlowId)
+                    .uri("/cash-flow/cf={cashFlowId}/category?isImport=true", cashFlowId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
@@ -186,7 +186,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             );
 
             String cashChangeId = restClient.post()
-                    .uri("/cash-flow/{cashFlowId}/import-historical", cashFlowId)
+                    .uri("/cash-flow/cf={cashFlowId}/import-historical", cashFlowId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(httpRequest)
                     .retrieve()
@@ -215,7 +215,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             RollbackRequest request = new RollbackRequest(deleteCategories);
 
             restClient.method(org.springframework.http.HttpMethod.DELETE)
-                    .uri("/cash-flow/{cashFlowId}/import", cashFlowId)
+                    .uri("/cash-flow/cf={cashFlowId}/import", cashFlowId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
