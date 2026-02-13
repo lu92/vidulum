@@ -66,8 +66,9 @@ class CashFlowErrorHandlingTest {
         @Order(1)
         public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
             http
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(req -> req.anyRequest().permitAll());
+                    .securityMatcher("/**")
+                    .authorizeHttpRequests(req -> req.anyRequest().permitAll())
+                    .csrf(AbstractHttpConfigurer::disable);
             return http.build();
         }
     }
