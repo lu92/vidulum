@@ -10,6 +10,18 @@ services:
     volumes:
       - mongodb_data:/data/db
     command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "
+        try { rs.status(); }
+        catch(e) {
+          rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]});
+        }
+        " || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ============================================
   # Kafka 7.8.1 (KRaft Mode) - NO Zookeeper!
@@ -84,19 +96,19 @@ services:
       - mongodb
 
   # ============================================
-  # WebSocket Gateway
+  # WebSocket Gateway (commented out - image not built yet)
   # ============================================
-  websocket-gateway:
-    image: vidulum-websocket-gateway:latest
-    container_name: "websocket-gateway"
-    ports:
-      - "8081:8081"
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    depends_on:
-      - kafka
-      - vidulum-app
+  #websocket-gateway:
+  #  image: vidulum-websocket-gateway:latest
+  #  container_name: "websocket-gateway"
+  #  ports:
+  #    - "8081:8081"
+  #  environment:
+  #    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  #    JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  #  depends_on:
+  #    - kafka
+  #    - vidulum-app
 
 # ============================================
 # Persistent Volumes
