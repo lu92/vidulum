@@ -40,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 )
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
-@DirtiesContext
 class AuthenticationControllerTest {
 
     @Container

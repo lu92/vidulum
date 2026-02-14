@@ -67,7 +67,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = FixedClockConfig.class)
 @Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
 @Testcontainers
-@DirtiesContext
 public class BankDataIngestionControllerTest {
 
     @org.springframework.boot.test.context.TestConfiguration
