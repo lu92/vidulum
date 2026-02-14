@@ -65,7 +65,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         HttpCashFlowServiceClientIntegrationTest.TestSecurityConfig.class
 })
 @Testcontainers
-@DirtiesContext
 class HttpCashFlowServiceClientIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);

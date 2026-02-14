@@ -65,20 +65,32 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @SpringBootTest(classes = FixedClockConfig.class)
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @Testcontainers
-@DirtiesContext
 public abstract class IntegrationTest {
 
-    @Container
-    public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
-    @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
+    // Shared reusable containers - started once and reused across all tests
+    protected static final MongoDBContainer mongoDBContainer;
+    protected static final KafkaContainer kafka;
+
+    static {
+        // Initialize shared MongoDB container
+        mongoDBContainer = new MongoDBContainer("mongo:8.0")
+                .withReuse(true);
+        mongoDBContainer.start();
+
+        // Initialize shared Kafka container
+        kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"))
+                .withReuse(true);
+        kafka.start();
+
+        log.info("Shared Testcontainers started - MongoDB: {}, Kafka: {}",
+                mongoDBContainer.getReplicaSetUrl(), kafka.getBootstrapServers());
+    }
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 
     @Autowired

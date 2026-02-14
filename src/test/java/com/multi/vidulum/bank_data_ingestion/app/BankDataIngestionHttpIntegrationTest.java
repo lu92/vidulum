@@ -77,7 +77,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 )
 @Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class, BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
 @Testcontainers
-@DirtiesContext
 public class BankDataIngestionHttpIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
