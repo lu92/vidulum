@@ -24,6 +24,13 @@ import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Tests for CashFlow aggregate event sourcing and projection.
+ *
+ * <p>Note: This test class extends IntegrationTest which uses shared Testcontainers
+ * with parallel test execution. Each test uses unique IDs from TestIds (atomic counters)
+ * so no cleanup is needed between tests - each CashFlow has its own unique ID.
+ */
 class CashFlowAggregateTest extends IntegrationTest {
 
     @Autowired

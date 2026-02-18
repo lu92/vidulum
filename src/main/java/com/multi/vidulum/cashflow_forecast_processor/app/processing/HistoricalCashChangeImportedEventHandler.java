@@ -94,13 +94,22 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
             }
         }
 
-        // All retries exhausted - throw the last exception
-        log.error("WORKAROUND: All {} retries exhausted for category [{}] in cashflow [{}]",
-                MAX_RETRIES, event.categoryName(), event.cashFlowId());
-        if (lastException instanceof RuntimeException) {
-            throw (RuntimeException) lastException;
+        // All retries exhausted - log error and skip message to prevent consumer blocking.
+        // Throwing exception here would cause Kafka to retry the same message infinitely,
+        // blocking all subsequent messages. Skipping allows the consumer to continue.
+        // TODO: Implement Dead Letter Queue (DLQ) - see docs/TODO-kafka-dead-letter-queue.md
+        if (lastException instanceof CashFlowDoesNotExistsException) {
+            log.error("Skipping event - CashFlow [{}] does not exist after {} retries. " +
+                    "Event: HistoricalCashChangeImportedEvent for category [{}]. " +
+                    "This indicates data inconsistency requiring investigation.",
+                    event.cashFlowId(), MAX_RETRIES, event.categoryName());
+            return;
         }
-        throw new RuntimeException("Failed after " + MAX_RETRIES + " retries", lastException);
+
+        log.error("Skipping event - All {} retries exhausted for category [{}] in cashflow [{}]. " +
+                "Error: {}. This indicates data inconsistency requiring investigation.",
+                MAX_RETRIES, event.categoryName(), event.cashFlowId(),
+                lastException != null ? lastException.getMessage() : "unknown");
     }
 
     /**

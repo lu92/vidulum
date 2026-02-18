@@ -7,6 +7,7 @@ import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
+import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -65,7 +66,7 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
         String cashFlowId = createCashFlowWithHistoryAndActivate(startPeriod, userId);
         CashFlowId cfId = new CashFlowId(cashFlowId);
 
-        // Wait for forecast to be created
+        // Wait for forecast statement to be created (the event was already processed in helper method)
         await().atMost(10, SECONDS).until(() ->
                 statementRepository.findByCashFlowId(cfId).isPresent());
 
@@ -262,7 +263,12 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
 
         // Wait for CashFlowWithHistoryCreatedEvent to be processed before attesting
         await().atMost(10, SECONDS).until(() ->
-                statementRepository.findByCashFlowId(cfId).isPresent());
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.CashFlowWithHistoryCreatedEvent.class.getSimpleName()))
+                        .orElse(false));
 
         Money initialBalance = Money.of(5000, "USD");
 
@@ -274,6 +280,15 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
                         .forceAttestation(false)
                         .build()
         );
+
+        // Wait for HistoricalImportAttestedEvent to be processed
+        await().atMost(10, SECONDS).until(() ->
+                cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
+                        .map(entity -> entity.getEvents().stream()
+                                .map(CashFlowForecastEntity.Processing::type)
+                                .toList()
+                                .contains(CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName()))
+                        .orElse(false));
 
         // Verify CashFlow is in OPEN mode
         CashFlow cashFlow = domainCashFlowRepository.findById(cfId).orElseThrow();

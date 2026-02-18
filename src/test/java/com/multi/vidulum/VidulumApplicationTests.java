@@ -320,9 +320,10 @@ class VidulumApplicationTests extends IntegrationTest {
                                 .pctProfit(0)
                                 .build());
 
+        String originOrderId3 = uniqueOriginOrderId("Y");
         TradingDto.OrderSummaryJson placedOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(originOrderId3)
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
@@ -356,7 +357,7 @@ class VidulumApplicationTests extends IntegrationTest {
         assertThat(orderExecutionSummaryJson).isEqualTo(
                 TradingDto.OrderExecutionSummaryJson.builder()
                         .originTradeId("origin trade-id-Y")
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(originOrderId3)
                         .symbol("BTC/USD")
                         .type(OrderType.OCO)
                         .side(SELL)

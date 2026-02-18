@@ -68,7 +68,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(uniqueOriginOrderId("Y"))
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
@@ -180,7 +180,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(uniqueOriginOrderId("Y"))
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
@@ -347,7 +347,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         TradingDto.OrderSummaryJson placedOrderSummary1 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(uniqueOriginOrderId("Y"))
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")
@@ -369,7 +369,7 @@ class LockingAssetsTests extends IntegrationTest {
 
         TradingDto.OrderSummaryJson placedOrderSummary2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
-                        .originOrderId("origin order-id-Y")
+                        .originOrderId(uniqueOriginOrderId("Y"))
                         .portfolioId(registeredPortfolio.getPortfolioId())
                         .broker(registeredPortfolio.getBroker())
                         .symbol("BTC/USD")

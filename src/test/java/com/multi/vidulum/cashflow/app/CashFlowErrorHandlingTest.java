@@ -1,34 +1,13 @@
 package com.multi.vidulum.cashflow.app;
 
+import com.multi.vidulum.AbstractHttpIntegrationTest;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
-import com.multi.vidulum.config.FixedClockConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import com.multi.vidulum.TestIds;
 
@@ -48,49 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * New error handling tests should be added to this class in future pull requests.
  */
 @Slf4j
-@SpringBootTest(
-        classes = {FixedClockConfig.class, CashFlowErrorHandlingTest.TestSecurityConfig.class},
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
-@Testcontainers
-class CashFlowErrorHandlingTest {
-
-    /**
-     * Test security configuration that disables authentication for HTTP integration tests.
-     */
-    @TestConfiguration
-    static class TestSecurityConfig {
-        @Bean
-        @Order(1)
-        public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
-            http
-                    .securityMatcher("/**")
-                    .authorizeHttpRequests(req -> req.anyRequest().permitAll())
-                    .csrf(AbstractHttpConfigurer::disable);
-            return http.build();
-        }
-    }
-
-    @Container
-    public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
-
-    @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
-
-    @LocalServerPort
-    private int port;
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
-    }
-
-    @Autowired
-    private TestRestTemplate restTemplate;
+class CashFlowErrorHandlingTest extends AbstractHttpIntegrationTest {
 
     private CashFlowHttpActor actor;
 

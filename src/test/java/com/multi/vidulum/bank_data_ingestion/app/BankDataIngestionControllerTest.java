@@ -44,8 +44,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
@@ -66,7 +64,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 @SpringBootTest(classes = FixedClockConfig.class)
 @Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
-@Testcontainers
 public class BankDataIngestionControllerTest {
 
     @org.springframework.boot.test.context.TestConfiguration
@@ -79,18 +76,26 @@ public class BankDataIngestionControllerTest {
         }
     }
 
-    @Container
-    public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
+    // Shared containers - started manually without @Container to avoid premature shutdown
+    protected static final MongoDBContainer mongoDBContainer;
+    protected static final KafkaContainer kafka;
 
-    @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
+    static {
+        mongoDBContainer = new MongoDBContainer("mongo:8.0");
+        mongoDBContainer.start();
+
+        kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
+        kafka.start();
+
+        log.info("Testcontainers started - MongoDB: {}, Kafka: {}",
+                mongoDBContainer.getReplicaSetUrl(), kafka.getBootstrapServers());
+    }
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
         // Disable the HttpCashFlowServiceClient - tests use direct controller injection
         registry.add("vidulum.cashflow-service.enabled", () -> "false");
     }
@@ -1116,7 +1121,7 @@ public class BankDataIngestionControllerTest {
                         1,  // totalTransactions
                         1,  // validTransactions
                         1,  // categoriesToCreate - using CREATE_NEW
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
 
         // Verify ImportProgressEvents - with CREATE_NEW we get two progress events
@@ -1134,7 +1139,7 @@ public class BankDataIngestionControllerTest {
                         1,    // processed
                         1,    // total
                         100,  // percent
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
 
         // Second: IMPORTING_TRANSACTIONS phase
@@ -1146,7 +1151,7 @@ public class BankDataIngestionControllerTest {
                         1,    // processed
                         1,    // total
                         100,  // percent
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
 
         // Verify ImportJobCompletedEvent - full object assertion
@@ -1161,7 +1166,7 @@ public class BankDataIngestionControllerTest {
                         1,  // transactionsImported
                         0,  // transactionsFailed
                         0L, // durationMs - ignored
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
     }
 
@@ -1210,7 +1215,7 @@ public class BankDataIngestionControllerTest {
                         1,  // transactionsDeleted
                         0,  // categoriesDeleted
                         0L, // rollbackDurationMs - ignored
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
     }
 
@@ -1261,7 +1266,7 @@ public class BankDataIngestionControllerTest {
                         cashFlowId,
                         1,  // stagedTransactionsDeleted
                         0,  // mappingsDeleted (deleteMappings=false)
-                        ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")
+                        ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));
     }
 
