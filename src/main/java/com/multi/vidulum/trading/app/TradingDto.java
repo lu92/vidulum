@@ -1,8 +1,10 @@
 package com.multi.vidulum.trading.app;
 
 import com.multi.vidulum.common.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 
@@ -10,6 +12,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class TradeExecutedJson {
         private String originTradeId;
         private String portfolioId;
@@ -26,6 +30,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Fee {
         private Money exchangeCurrencyFee;
         private Money transactionFee;
@@ -33,6 +39,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class TradeSummaryJson {
         private String tradeId;
         private String userId;
@@ -48,6 +56,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PlaceOrderJson {
         private String originOrderId;
         private String portfolioId;
@@ -64,6 +74,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ExecuteOrderJson {
         private String originOrderId;
         private String originTradeId;
@@ -76,6 +88,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class OrderExecutionSummaryJson {
         private String originOrderId;
         private String originTradeId;
@@ -88,6 +102,8 @@ public class TradingDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class OrderSummaryJson {
         private String orderId;
         private String originOrderId;

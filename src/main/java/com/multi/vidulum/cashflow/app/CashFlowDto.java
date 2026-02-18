@@ -226,6 +226,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AppendExpectedCashChangeJson {
         private String cashFlowId;
         private String category;
@@ -238,6 +240,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AppendPaidCashChangeJson {
         private String cashFlowId;
         private String category;
@@ -255,6 +259,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ImportHistoricalCashChangeJson {
         private String category;
         private String name;
@@ -271,6 +277,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AttestHistoricalImportJson {
         /** The user-confirmed current balance (for validation against calculated balance) */
         @NotNull(message = "confirmedBalance is required")
@@ -286,6 +294,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AttestHistoricalImportResponseJson {
         private String cashFlowId;
         private Money confirmedBalance;
@@ -303,6 +313,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RollbackImportJson {
         /** If true, also delete all custom categories (except Uncategorized) */
         private boolean deleteCategories;
@@ -313,6 +325,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RollbackImportResponseJson {
         private String cashFlowId;
         private int deletedTransactionsCount;
@@ -323,6 +337,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ConfirmCashChangeJson {
         @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
@@ -343,6 +359,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class EditCashChangeJson {
         @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
@@ -368,6 +386,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RejectCashChangeJson {
         @NotBlank(message = "CashFlow ID is required")
         private String cashFlowId;
@@ -381,6 +401,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashFlowSummaryJson {
         private String cashFlowId;
         private String userId;
@@ -401,6 +423,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashFlowDetailJson {
         private String cashFlowId;
         private String userId;
@@ -432,6 +456,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateCategoryJson {
         private String parentCategoryName; //optional
         private String category;
@@ -440,6 +466,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class SetBudgetingJson {
         private String cashFlowId;
         private String categoryName;
@@ -449,6 +477,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UpdateBudgetingJson {
         private String cashFlowId;
         private String categoryName;
@@ -458,6 +488,8 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RemoveBudgetingJson {
         private String cashFlowId;
         private String categoryName;
@@ -469,6 +501,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ArchiveCategoryJson {
         private String categoryName;
         private Type categoryType;
@@ -484,6 +518,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UnarchiveCategoryJson {
         private String categoryName;
         private Type categoryType;
@@ -494,6 +530,8 @@ public final class CashFlowDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CategoryJson {
         private String categoryName;
         private boolean isModifiable;

@@ -171,7 +171,7 @@ public class BankDataIngestionDto {
         private double totalAmount;
         private String currency;
         private Type type;
-        private boolean isNewCategory;
+        private Boolean isNewCategory;
     }
 
     @Data
@@ -390,7 +390,7 @@ public class BankDataIngestionDto {
         private double totalAmount;
         private String currency;
         private Type type;
-        private boolean isNewCategory;
+        private Boolean isNewCategory;
     }
 
     @Data

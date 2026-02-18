@@ -9,7 +9,7 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;

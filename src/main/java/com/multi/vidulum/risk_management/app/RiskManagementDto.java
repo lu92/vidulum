@@ -4,8 +4,10 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.risk_management.domain.RagStatus;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -14,6 +16,8 @@ public final class RiskManagementDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RiskManagementStatementJson {
         private String portfolioId;
         private String userId;
@@ -31,6 +35,8 @@ public final class RiskManagementDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AssetRiskManagementStatementJson {
         private String ticker;
         private Quantity quantity;
@@ -46,6 +52,8 @@ public final class RiskManagementDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class StopLossJson {
         private String symbol;
         private String originOrderId;

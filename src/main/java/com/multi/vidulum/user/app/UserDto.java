@@ -1,7 +1,9 @@
 package com.multi.vidulum.user.app;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -9,6 +11,8 @@ public class UserDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UserSummaryJson {
         private String userId;
         private String username;
@@ -19,6 +23,8 @@ public class UserDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RegisterPortfolioJson {
         private String userId;
         private String name;
@@ -28,6 +34,8 @@ public class UserDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PortfolioRegistrationSummaryJson {
         private String userId;
         private String name;
