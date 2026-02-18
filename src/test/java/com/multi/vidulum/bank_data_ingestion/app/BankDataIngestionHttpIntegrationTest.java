@@ -32,10 +32,10 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.Order;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.annotation.DirtiesContext;
@@ -43,8 +43,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.YearMonth;
@@ -73,14 +71,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 @SpringBootTest(
         classes = FixedClockConfig.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            // Disable main SecurityConfiguration to prevent filter chain conflicts
+            "app.security.enabled=false"
+        }
 )
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class, BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
-@Testcontainers
+@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class})
 public class BankDataIngestionHttpIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
-    private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
+    private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 
@@ -89,12 +90,14 @@ public class BankDataIngestionHttpIntegrationTest {
     }
 
     /**
-     * Test security configuration that disables authentication for HTTP integration tests.
+     * Test security configuration that completely replaces the main SecurityConfiguration.
+     * Required for Spring Security 6.3+ which doesn't allow multiple filter chains
+     * matching "any request".
      */
     @TestConfiguration
+    @EnableWebSecurity
     static class TestSecurityConfig {
         @Bean
-        @Order(1)
         public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
             http
                     .csrf(AbstractHttpConfigurer::disable)
@@ -103,12 +106,21 @@ public class BankDataIngestionHttpIntegrationTest {
         }
     }
 
-    @Container
-    public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
+    // Shared reusable containers - started once and reused across all tests
+    protected static final MongoDBContainer mongoDBContainer;
+    protected static final KafkaContainer kafka;
 
-    @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
+    static {
+        // Initialize shared MongoDB container
+        mongoDBContainer = new MongoDBContainer("mongo:8.0")
+                .withReuse(true);
+        mongoDBContainer.start();
+
+        // Initialize shared Kafka container
+        kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"))
+                .withReuse(true);
+        kafka.start();
+    }
 
     @LocalServerPort
     private int port;
@@ -371,8 +383,8 @@ public class BankDataIngestionHttpIntegrationTest {
         // when - import transactions across different months and categories
 
         // === July 2021 (startPeriod) ===
-        ZonedDateTime july15 = ZonedDateTime.parse("2021-07-15T10:00:00Z[UTC]");
-        ZonedDateTime july25 = ZonedDateTime.parse("2021-07-25T14:00:00Z[UTC]");
+        ZonedDateTime july15 = ZonedDateTime.of(2021, 7, 15, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime july25 = ZonedDateTime.of(2021, 7, 25, 14, 0, 0, 0, ZoneOffset.UTC);
 
         String salaryJuly = actor.importHistoricalTransaction(cashFlowId, "Salary", "July Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, july15, july15);
@@ -382,9 +394,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Biedronka shopping", Money.of(250.0, "PLN"), Type.OUTFLOW, july25, july25);
 
         // === August 2021 ===
-        ZonedDateTime aug10 = ZonedDateTime.parse("2021-08-10T09:00:00Z[UTC]");
-        ZonedDateTime aug15 = ZonedDateTime.parse("2021-08-15T12:00:00Z[UTC]");
-        ZonedDateTime aug20 = ZonedDateTime.parse("2021-08-20T18:00:00Z[UTC]");
+        ZonedDateTime aug10 = ZonedDateTime.of(2021, 8, 10, 9, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime aug15 = ZonedDateTime.of(2021, 8, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime aug20 = ZonedDateTime.of(2021, 8, 20, 18, 0, 0, 0, ZoneOffset.UTC);
 
         String salaryAug = actor.importHistoricalTransaction(cashFlowId, "Salary", "August Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, aug10, aug10);
@@ -396,9 +408,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Restaurant visit", Money.of(150.0, "PLN"), Type.OUTFLOW, aug20, aug20);
 
         // === September 2021 ===
-        ZonedDateTime sep5 = ZonedDateTime.parse("2021-09-05T11:00:00Z[UTC]");
-        ZonedDateTime sep15 = ZonedDateTime.parse("2021-09-15T10:00:00Z[UTC]");
-        ZonedDateTime sep28 = ZonedDateTime.parse("2021-09-28T16:00:00Z[UTC]");
+        ZonedDateTime sep5 = ZonedDateTime.of(2021, 9, 5, 11, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime sep15 = ZonedDateTime.of(2021, 9, 15, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime sep28 = ZonedDateTime.of(2021, 9, 28, 16, 0, 0, 0, ZoneOffset.UTC);
 
         String salarySep = actor.importHistoricalTransaction(cashFlowId, "Salary", "September Salary",
                 "Monthly salary payment", Money.of(5000.0, "PLN"), Type.INFLOW, sep5, sep5);
@@ -410,8 +422,8 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Orlen gas station", Money.of(200.0, "PLN"), Type.OUTFLOW, sep15, sep15);
 
         // === October 2021 ===
-        ZonedDateTime oct10 = ZonedDateTime.parse("2021-10-10T10:00:00Z[UTC]");
-        ZonedDateTime oct25 = ZonedDateTime.parse("2021-10-25T14:00:00Z[UTC]");
+        ZonedDateTime oct10 = ZonedDateTime.of(2021, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime oct25 = ZonedDateTime.of(2021, 10, 25, 14, 0, 0, 0, ZoneOffset.UTC);
 
         String salaryOct = actor.importHistoricalTransaction(cashFlowId, "Salary", "October Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, oct10, oct10);
@@ -423,9 +435,9 @@ public class BankDataIngestionHttpIntegrationTest {
                 "Carrefour shopping", Money.of(220.0, "PLN"), Type.OUTFLOW, oct25, oct25);
 
         // === November 2021 ===
-        ZonedDateTime nov5 = ZonedDateTime.parse("2021-11-05T09:00:00Z[UTC]");
-        ZonedDateTime nov15 = ZonedDateTime.parse("2021-11-15T12:00:00Z[UTC]");
-        ZonedDateTime nov20 = ZonedDateTime.parse("2021-11-20T15:00:00Z[UTC]");
+        ZonedDateTime nov5 = ZonedDateTime.of(2021, 11, 5, 9, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime nov15 = ZonedDateTime.of(2021, 11, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime nov20 = ZonedDateTime.of(2021, 11, 20, 15, 0, 0, 0, ZoneOffset.UTC);
 
         String salaryNov = actor.importHistoricalTransaction(cashFlowId, "Salary", "November Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, nov5, nov5);
@@ -435,10 +447,10 @@ public class BankDataIngestionHttpIntegrationTest {
                 "PGNiG gas", Money.of(120.0, "PLN"), Type.OUTFLOW, nov20, nov20);
 
         // === December 2021 (last historical month before activePeriod 2022-01) ===
-        ZonedDateTime dec10 = ZonedDateTime.parse("2021-12-10T10:00:00Z[UTC]");
-        ZonedDateTime dec15 = ZonedDateTime.parse("2021-12-15T12:00:00Z[UTC]");
-        ZonedDateTime dec24 = ZonedDateTime.parse("2021-12-24T11:00:00Z[UTC]");
-        ZonedDateTime dec28 = ZonedDateTime.parse("2021-12-28T14:00:00Z[UTC]");
+        ZonedDateTime dec10 = ZonedDateTime.of(2021, 12, 10, 10, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec15 = ZonedDateTime.of(2021, 12, 15, 12, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec24 = ZonedDateTime.of(2021, 12, 24, 11, 0, 0, 0, ZoneOffset.UTC);
+        ZonedDateTime dec28 = ZonedDateTime.of(2021, 12, 28, 14, 0, 0, 0, ZoneOffset.UTC);
 
         String salaryDec = actor.importHistoricalTransaction(cashFlowId, "Salary", "December Salary",
                 "Monthly salary payment", Money.of(5200.0, "PLN"), Type.INFLOW, dec10, dec10);

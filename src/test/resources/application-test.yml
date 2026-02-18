@@ -1,0 +1,26 @@
+# Test-specific configuration for Spring Boot 3.5.2+
+# This helps with graceful shutdown when using Testcontainers
+
+spring:
+  lifecycle:
+    # Reduce the graceful shutdown timeout for tests
+    timeout-per-shutdown-phase: 5s
+  kafka:
+    listener:
+      # Prevent long waits during container shutdown
+      immediate-stop: true
+    consumer:
+      # Reduce poll timeout for faster test teardown
+      properties:
+        max.poll.interval.ms: 10000
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+    producer:
+      properties:
+        # Reduce timeouts for faster test teardown
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        linger.ms: 0
+
+server:
+  shutdown: graceful

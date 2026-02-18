@@ -32,8 +32,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.YearMonth;
@@ -64,7 +62,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         TradingAppConfig.class,
         HttpCashFlowServiceClientIntegrationTest.TestSecurityConfig.class
 })
-@Testcontainers
 class HttpCashFlowServiceClientIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
@@ -86,13 +83,20 @@ class HttpCashFlowServiceClientIntegrationTest {
         }
     }
 
-    @Container
-    static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:8.0"))
-            .withExposedPorts(27017);
+    // Shared containers - started manually without @Container to avoid premature shutdown
+    protected static final MongoDBContainer mongoDBContainer;
+    protected static final KafkaContainer kafkaContainer;
 
-    @Container
-    static KafkaContainer kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"))
-            .withExposedPorts(9093);
+    static {
+        mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
+        mongoDBContainer.start();
+
+        kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
+        kafkaContainer.start();
+
+        log.info("Testcontainers started - MongoDB: {}, Kafka: {}",
+                mongoDBContainer.getReplicaSetUrl(), kafkaContainer.getBootstrapServers());
+    }
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {

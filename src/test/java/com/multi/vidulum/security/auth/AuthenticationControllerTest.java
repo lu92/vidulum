@@ -1,11 +1,9 @@
 package com.multi.vidulum.security.auth;
 
+import com.multi.vidulum.AbstractHttpIntegrationTest;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.FieldError;
-import com.multi.vidulum.config.FixedClockConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.security.token.TokenRepository;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import com.multi.vidulum.user.infrastructure.UserMongoRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,20 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.Map;
 import java.util.UUID;
@@ -34,33 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(
-        classes = FixedClockConfig.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
-@Testcontainers
-class AuthenticationControllerTest {
-
-    @Container
-    public static KafkaContainer kafka =
-            new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
-
-    @Container
-    protected static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0");
-
-    @LocalServerPort
-    private int port;
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
-    }
-
-    @Autowired
-    private TestRestTemplate restTemplate;
+class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
 
     @Autowired
     private UserMongoRepository userMongoRepository;
