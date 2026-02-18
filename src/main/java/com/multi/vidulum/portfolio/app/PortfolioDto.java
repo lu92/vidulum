@@ -1,9 +1,11 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateEmptyPortfolioJson {
         private String name;
         private String userId;
@@ -21,6 +25,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PortfolioSummaryJson {
         private String portfolioId;
         private String userId;
@@ -36,6 +42,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     @EqualsAndHashCode
     public static class AssetSummaryJson {
         private String ticker;
@@ -55,6 +63,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AssetLockJson {
         private String orderId;
         private Quantity quantity;
@@ -62,6 +72,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class DepositMoneyJson {
         private String portfolioId;
         private Money money;
@@ -69,6 +81,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class WithdrawMoneyJson {
         private String portfolioId;
         private Money money;
@@ -76,6 +90,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class LockAssetJson {
         private String portfolioId;
         private String ticker;
@@ -84,6 +100,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UnlockAssetJson {
         private String portfolioId;
         private String ticker;
@@ -92,6 +110,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AggregatedPortfolioSummaryJson {
         private String userId;
         private Map<String, List<AssetSummaryJson>> segmentedAssets;
@@ -104,6 +124,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class OpenedPositionsJson {
         private String portfolioId;
         private List<PositionSummaryJson> positions;
@@ -111,6 +133,8 @@ public class PortfolioDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PositionSummaryJson {
         String symbol;
         Price targetPrice;

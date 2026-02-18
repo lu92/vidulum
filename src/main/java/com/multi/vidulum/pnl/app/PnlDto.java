@@ -4,8 +4,10 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Side;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -14,6 +16,8 @@ public class PnlDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class MakePnlSnapshotJson {
         private String userId;
         private ZonedDateTime from;
@@ -22,6 +26,8 @@ public class PnlDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PnlHistoryJson {
         String pnlId;
         String userId;
@@ -30,6 +36,8 @@ public class PnlDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PnlStatementJson {
         private Money investedBalance;
         private Money currentValue;
@@ -41,6 +49,8 @@ public class PnlDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PnlPortfolioStatementJson {
         private String portfolioId;
         private Money investedBalance;
@@ -52,6 +62,8 @@ public class PnlDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PnlTradeDetailsJson {
         private String tradeId;
         private String originTradeId;

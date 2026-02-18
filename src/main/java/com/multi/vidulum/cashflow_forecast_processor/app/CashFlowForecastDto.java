@@ -2,8 +2,10 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.Money;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
@@ -15,6 +17,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashFlowForecastStatementJson {
         private String cashFlowId;
         private Map<String, CashFlowMonthlyForecastJson> forecasts;
@@ -26,6 +30,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashFlowMonthlyForecastJson {
         private String period;
         private CashFlowStatsJson cashFlowStats;
@@ -37,6 +43,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashFlowStatsJson {
         private Money start;
         private Money end;
@@ -47,6 +55,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashSummaryJson {
         private Money actual;
         private Money expected;
@@ -59,6 +69,8 @@ public final class CashFlowForecastDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CashCategoryJson {
         private String categoryName;
         private String category;
@@ -78,12 +90,16 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class GroupedTransactionsJson {
         private Map<String, List<TransactionDetailsJson>> transactions;
     }
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class TransactionDetailsJson {
         private String cashChangeId;
         private String name;
@@ -95,6 +111,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class BudgetingJson {
         private Money budget;
         private ZonedDateTime created;
@@ -103,6 +121,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AttestationJson {
         private Money bankAccountBalance;
         private String type;
@@ -111,6 +131,8 @@ public final class CashFlowForecastDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CurrentCategoryStructureJson {
         private List<CategoryNodeJson> inflowCategoryStructure;
         private List<CategoryNodeJson> outflowCategoryStructure;
@@ -123,6 +145,8 @@ public final class CashFlowForecastDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CategoryNodeJson {
         private String categoryName;
         private List<CategoryNodeJson> nodes;
@@ -143,6 +167,8 @@ public final class CashFlowForecastDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class MonthStatusesResponse {
         private String cashFlowId;
         private Map<YearMonth, ForecastMonthStatus> monthStatuses;
