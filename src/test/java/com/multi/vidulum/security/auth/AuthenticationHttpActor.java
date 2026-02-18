@@ -1,13 +1,12 @@
 package com.multi.vidulum.security.auth;
 
 import com.multi.vidulum.common.error.ApiError;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,9 +29,8 @@ public class AuthenticationHttpActor {
     }
 
     private RestTemplate createRawRestTemplate() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setOutputStreaming(false);
-        return new RestTemplate(factory);
+        // SimpleClientHttpRequestFactory no longer has setOutputStreaming in Spring 7
+        return new RestTemplate();
     }
 
     public ResponseEntity<AuthenticationResponse> register(String username, String email, String password) {

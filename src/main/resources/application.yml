@@ -7,12 +7,12 @@ management:
 spring:
   main:
     allow-bean-definition-overriding: true
-  data:
-    mongodb:
-      database: testDB
-      host: mongodb
-#      host: localhost
-      port: 27017
+  # Spring Boot 4.0: spring.data.mongodb -> spring.mongodb (top-level properties)
+  mongodb:
+    database: testDB
+    host: mongodb
+#    host: localhost
+    port: 27017
   kafka:
     bootstrap-servers: kafka:9092
 #    bootstrap-servers: 127.0.0.1:9092
@@ -22,8 +22,9 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   jackson:
-    serialization:
-      write_dates_as_timestamps: false
+    # In Jackson 3 (Spring Boot 4.0), WRITE_DATES_AS_TIMESTAMPS is false by default
+    # so we don't need to configure it explicitly
+    use-jackson2-defaults: false
 
 application:
   security:

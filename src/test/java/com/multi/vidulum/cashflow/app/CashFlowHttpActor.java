@@ -8,9 +8,8 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -38,9 +37,8 @@ public class CashFlowHttpActor {
     }
 
     private RestTemplate createRawRestTemplate() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setOutputStreaming(false);
-        return new RestTemplate(factory);
+        // SimpleClientHttpRequestFactory no longer has setOutputStreaming in Spring 7
+        return new RestTemplate();
     }
 
     // ============ CashFlow Operations ============
