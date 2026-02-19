@@ -62,6 +62,7 @@ public class ErrorHttpHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleJsonParse(HttpMessageNotReadableException ex) {
+        log.error("JSON parse error: {}", ex.getMessage(), ex);
         ApiError error = ApiError.of(ErrorCode.VALIDATION_INVALID_JSON);
         return ResponseEntity.status(error.httpStatus()).body(error);
     }

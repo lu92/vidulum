@@ -284,9 +284,11 @@ public final class CashFlowDto {
         @NotNull(message = "confirmedBalance is required")
         private Money confirmedBalance;
         /** If true, attest even if confirmed balance differs from calculated balance */
-        private boolean forceAttestation;
+        @NotNull(message = "forceAttestation is required")
+        private Boolean forceAttestation;
         /** If true and balance differs, create an adjustment transaction to reconcile the difference */
-        private boolean createAdjustment;
+        @NotNull(message = "createAdjustment is required")
+        private Boolean createAdjustment;
     }
 
     /**
