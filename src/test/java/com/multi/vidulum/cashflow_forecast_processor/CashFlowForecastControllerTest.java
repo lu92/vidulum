@@ -131,16 +131,19 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .build()
         );
 
-        // Wait for all events to be processed
+        // Wait for all events to be processed (1 CashFlowCreated + 2 ExpectedCashChangeAppended)
         Awaitility.await().until(
                 () -> cashFlowForecastMongoRepository.findByCashFlowId(cashFlowId)
-                        .map(entity -> entity.getEvents().stream()
-                                .map(CashFlowForecastEntity.Processing::type)
-                                .toList()
-                                .containsAll(List.of(
-                                        CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName(),
-                                        CashFlowEvent.ExpectedCashChangeAppendedEvent.class.getSimpleName()
-                                )))
+                        .map(entity -> {
+                            List<String> eventTypes = entity.getEvents().stream()
+                                    .map(CashFlowForecastEntity.Processing::type)
+                                    .toList();
+                            long appendedCount = eventTypes.stream()
+                                    .filter(t -> t.equals(CashFlowEvent.ExpectedCashChangeAppendedEvent.class.getSimpleName()))
+                                    .count();
+                            return eventTypes.contains(CashFlowEvent.CashFlowCreatedEvent.class.getSimpleName())
+                                    && appendedCount >= 2;
+                        })
                         .orElse(false));
 
         // when

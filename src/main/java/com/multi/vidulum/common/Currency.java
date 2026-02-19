@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Currency {
-    private String Id;
+    private String id;
 
     public static Currency of(String id) {
         return new Currency(id);

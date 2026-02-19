@@ -125,19 +125,22 @@ public class CashFlowRestController {
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(cfId));
         Money calculatedBalance = cashFlowBeforeAttestation.calculateCurrentBalance();
 
+        boolean createAdjustment = Boolean.TRUE.equals(request.getCreateAdjustment());
+        boolean forceAttestation = Boolean.TRUE.equals(request.getForceAttestation());
+
         CashFlowSnapshot snapshot = commandGateway.send(
                 new AttestHistoricalImportCommand(
                         cfId,
                         request.getConfirmedBalance(),
-                        request.isForceAttestation(),
-                        request.isCreateAdjustment()
+                        forceAttestation,
+                        createAdjustment
                 )
         );
 
         Money confirmedBalance = request.getConfirmedBalance();
         Money difference = confirmedBalance.minus(calculatedBalance);
         boolean isZeroDifference = difference.getAmount().compareTo(java.math.BigDecimal.ZERO) == 0;
-        boolean adjustmentCreated = !isZeroDifference && request.isCreateAdjustment();
+        boolean adjustmentCreated = !isZeroDifference && createAdjustment;
 
         // Find adjustment cash change ID if created
         String adjustmentCashChangeId = null;
@@ -155,7 +158,7 @@ public class CashFlowRestController {
                 .confirmedBalance(confirmedBalance)
                 .calculatedBalance(calculatedBalance)
                 .difference(difference)
-                .forced(request.isForceAttestation() && !isZeroDifference && !request.isCreateAdjustment())
+                .forced(forceAttestation && !isZeroDifference && !createAdjustment)
                 .adjustmentCreated(adjustmentCreated)
                 .adjustmentCashChangeId(adjustmentCashChangeId)
                 .status(snapshot.status())

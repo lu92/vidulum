@@ -1,5 +1,6 @@
 package com.multi.vidulum.common;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,6 +14,7 @@ import java.util.Objects;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Money {
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER_FLOAT)
     private BigDecimal amount;
     private String currency;
 
