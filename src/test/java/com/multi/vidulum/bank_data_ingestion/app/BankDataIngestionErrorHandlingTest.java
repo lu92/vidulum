@@ -43,7 +43,6 @@ class BankDataIngestionErrorHandlingTest extends AbstractHttpIntegrationTest {
     class NotFoundTests {
 
         @Test
-        @Disabled("Staging preview endpoint returns 200 with status=NOT_FOUND in body instead of HTTP 404 - by design for frontend handling")
         @DisplayName("Should return 404 NOT_FOUND with INGESTION_STAGING_NOT_FOUND when staging session does not exist")
         void shouldReturn404WhenStagingSessionNotFound() {
             // given
