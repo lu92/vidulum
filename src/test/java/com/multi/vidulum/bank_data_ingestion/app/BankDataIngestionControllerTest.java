@@ -54,6 +54,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionNotFoundException;
 
 /**
  * Integration tests for BankDataIngestion module.
@@ -597,20 +599,17 @@ public class BankDataIngestionControllerTest {
     }
 
     @Test
-    @DisplayName("Should return NOT_FOUND for non-existent staging session")
-    void shouldReturnNotFoundForNonExistentSession() {
+    @DisplayName("Should throw StagingSessionNotFoundException for non-existent staging session")
+    void shouldThrowExceptionForNonExistentSession() {
         // given: create a CashFlow
         String cashFlowId = createCashFlowWithHistory();
 
-        // when: get staging preview for non-existent session
-        BankDataIngestionDto.GetStagingPreviewResponse response = bankDataIngestionRestController.getStagingPreview(cashFlowId, "non-existent-session-id");
+        // when/then: get staging preview for non-existent session should throw exception
+        assertThatThrownBy(() -> bankDataIngestionRestController.getStagingPreview(cashFlowId, "non-existent-session-id"))
+                .isInstanceOf(StagingSessionNotFoundException.class)
+                .hasMessageContaining("non-existent-session-id");
 
-        log.info("Get staging preview (not found) response - status: {}", response.getStatus());
-
-        // then: verify NOT_FOUND status
-        assertThat(response.getStatus()).isEqualTo("NOT_FOUND");
-        assertThat(response.getSummary().getTotalTransactions()).isEqualTo(0);
-        assertThat(response.getTransactions()).isEmpty();
+        log.info("Staging preview for non-existent session correctly threw StagingSessionNotFoundException");
     }
 
     @Test
@@ -658,9 +657,11 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getDeletedCount()).isEqualTo(2);
         assertThat(response.getStagingSessionId()).isEqualTo(stagingSessionId);
 
-        // verify session is gone
-        BankDataIngestionDto.GetStagingPreviewResponse previewResponse = bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
-        assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
+        // verify session is gone - should throw StagingSessionNotFoundException
+        String finalStagingSessionId = stagingSessionId;
+        assertThatThrownBy(() -> bankDataIngestionRestController.getStagingPreview(cashFlowId, finalStagingSessionId))
+                .isInstanceOf(StagingSessionNotFoundException.class)
+                .hasMessageContaining(finalStagingSessionId);
     }
 
     @Test
@@ -872,9 +873,11 @@ public class BankDataIngestionControllerTest {
         assertThat(finalizeResponse.getCleanup().getMappingsDeleted()).isEqualTo(0);
         assertThat(finalizeResponse.getFinalSummary().getTransactionsImported()).isGreaterThan(0);
 
-        // verify staging session is deleted
-        BankDataIngestionDto.GetStagingPreviewResponse previewResponse = bankDataIngestionRestController.getStagingPreview(cashFlowId, stagingSessionId);
-        assertThat(previewResponse.getStatus()).isEqualTo("NOT_FOUND");
+        // verify staging session is deleted - should throw StagingSessionNotFoundException
+        String finalStagingSessionId = stagingSessionId;
+        assertThatThrownBy(() -> bankDataIngestionRestController.getStagingPreview(cashFlowId, finalStagingSessionId))
+                .isInstanceOf(StagingSessionNotFoundException.class)
+                .hasMessageContaining(finalStagingSessionId);
     }
 
     @Test

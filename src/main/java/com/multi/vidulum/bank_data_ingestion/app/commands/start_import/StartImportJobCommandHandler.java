@@ -82,6 +82,17 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             );
         }
 
+        // Check if any transactions are pending mapping - cannot start import with unmapped categories
+        long pendingMappingCount = stagedTransactions.stream()
+                .filter(StagedTransaction::isPendingMapping)
+                .count();
+        if (pendingMappingCount > 0) {
+            throw new StagingSessionNotReadyException(
+                    command.stagingSessionId(),
+                    String.format("Staging session has %d transactions with unmapped categories. Configure mappings before starting import.", pendingMappingCount)
+            );
+        }
+
         // Calculate input statistics
         List<StagedTransaction> validTransactions = stagedTransactions.stream()
                 .filter(StagedTransaction::isValid)

@@ -756,6 +756,44 @@ public class CashFlowHttpActor {
         return headers;
     }
 
+    // ============ Rollover Operations ============
+
+    /**
+     * Triggers a manual month rollover for a CashFlow.
+     */
+    public CashFlowDto.RolloverMonthResponseJson rolloverMonth(String cashFlowId) {
+        ResponseEntity<CashFlowDto.RolloverMonthResponseJson> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/rollover",
+                HttpMethod.POST,
+                new HttpEntity<>(jsonHeaders()),
+                CashFlowDto.RolloverMonthResponseJson.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        CashFlowDto.RolloverMonthResponseJson result = response.getBody();
+        log.info("Rollover completed: cashFlowId={}, rolledOverPeriod={}, newPeriod={}",
+                cashFlowId, result.getRolledOverPeriod(), result.getNewActivePeriod());
+        return result;
+    }
+
+    /**
+     * Triggers a manual month rollover expecting an error response.
+     */
+    public ResponseEntity<ApiError> rolloverMonthExpectingError(String cashFlowId) {
+        try {
+            ResponseEntity<ApiError> response = rawRestTemplate.exchange(
+                    baseUrl + "/cash-flow/cf=" + cashFlowId + "/rollover",
+                    HttpMethod.POST,
+                    new HttpEntity<>(jsonHeaders()),
+                    ApiError.class
+            );
+            return response;
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(e.getResponseBodyAs(ApiError.class));
+        }
+    }
+
     // ============ IBAN/SWIFT Validation Helper Methods ============
 
     /**

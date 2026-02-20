@@ -33,7 +33,7 @@ public class GetStagingPreviewQueryHandler
 
         if (stagedTransactions.isEmpty()) {
             log.warn("No staged transactions found for session [{}]", query.stagingSessionId().id());
-            return createNotFoundResult(query);
+            throw new StagingSessionNotFoundException(query.stagingSessionId());
         }
 
         // Check if session has expired (based on first transaction)
@@ -53,20 +53,6 @@ public class GetStagingPreviewQueryHandler
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
         return buildResult(query, stagedTransactions, snapshot, mappingMap, expiresAt);
-    }
-
-    private GetStagingPreviewResult createNotFoundResult(GetStagingPreviewQuery query) {
-        return new GetStagingPreviewResult(
-                query.stagingSessionId(),
-                query.cashFlowId(),
-                GetStagingPreviewResult.StagingStatus.NOT_FOUND,
-                null,
-                new GetStagingPreviewResult.StagingSummary(0, 0, 0, 0),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
     }
 
     private GetStagingPreviewResult createExpiredResult(GetStagingPreviewQuery query, ZonedDateTime expiresAt) {

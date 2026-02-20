@@ -64,10 +64,23 @@ public enum ErrorCode {
     // CashFlow - Bank Account Validation
     INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "Invalid bank account data"),
 
-    // Bank Data Ingestion
+    // Bank Data Ingestion - Resources Not Found
     INGESTION_STAGING_NOT_FOUND(HttpStatus.NOT_FOUND, "Staging session not found"),
+    INGESTION_IMPORT_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "Import job not found"),
+    INGESTION_MAPPING_NOT_FOUND(HttpStatus.NOT_FOUND, "Category mapping not found"),
+
+    // Bank Data Ingestion - Validation Errors
     INGESTION_UNMAPPED_CATEGORIES(HttpStatus.BAD_REQUEST, "Unmapped categories exist"),
     INGESTION_INVALID_CSV(HttpStatus.BAD_REQUEST, "Invalid CSV format"),
+    INGESTION_SESSION_NOT_READY(HttpStatus.BAD_REQUEST, "Staging session not ready for import"),
+    INGESTION_JOB_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "Import job not completed"),
+    INGESTION_ROLLBACK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Rollback not allowed for this import job"),
+
+    // Bank Data Ingestion - Conflicts
+    INGESTION_JOB_ALREADY_EXISTS(HttpStatus.CONFLICT, "Import job already exists for this staging session"),
+
+    // CashFlow - Rollover
+    CASHFLOW_ROLLOVER_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Month rollover not allowed"),
 
     // Internal
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred"),

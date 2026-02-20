@@ -27,8 +27,7 @@ public record GetStagingPreviewResult(
         READY_FOR_IMPORT,
         HAS_UNMAPPED_CATEGORIES,
         HAS_VALIDATION_ERRORS,
-        EXPIRED,
-        NOT_FOUND
+        EXPIRED
     }
 
     public record StagingSummary(

@@ -1,7 +1,11 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +16,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.annotation.Order;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
@@ -39,7 +44,8 @@ import org.testcontainers.utility.DockerImageName;
  */
 @Slf4j
 @SpringBootTest(
-        classes = {FixedClockConfig.class, AbstractHttpIntegrationTest.TestSecurityConfig.class},
+        classes = {FixedClockConfig.class, AbstractHttpIntegrationTest.TestSecurityConfig.class,
+                AbstractHttpIntegrationTest.TestCashFlowServiceClientConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
@@ -77,11 +83,23 @@ public abstract class AbstractHttpIntegrationTest {
         }
     }
 
+    @TestConfiguration
+    public static class TestCashFlowServiceClientConfig {
+        @Bean
+        public CashFlowServiceClient cashFlowServiceClient(
+                QueryGateway queryGateway,
+                @Lazy CommandGateway commandGateway) {
+            return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
+    }
+
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        // Disable HTTP client for CashFlowServiceClient - use direct repository access instead
+        registry.add("vidulum.cashflow-service.enabled", () -> "false");
     }
 
     @LocalServerPort
