@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.domain.BankName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.error.ApiError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.core.io.ClassPathResource;
@@ -526,6 +527,119 @@ public class BankDataIngestionHttpActor {
                 ? fileName.substring(fileName.lastIndexOf('/') + 1)
                 : fileName);
         return fileHeaders;
+    }
+
+    // ============ Error-Expecting Operations ============
+
+    /**
+     * Gets staging preview expecting an error response.
+     */
+    public ResponseEntity<ApiError> getStagingPreviewExpectingError(String cashFlowId, String stagingSessionId) {
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
+                HttpMethod.GET,
+                null
+        );
+    }
+
+    /**
+     * Gets import progress expecting an error response.
+     */
+    public ResponseEntity<ApiError> getImportProgressExpectingError(String cashFlowId, String jobId) {
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId,
+                HttpMethod.GET,
+                null
+        );
+    }
+
+    /**
+     * Deletes mapping expecting an error response.
+     */
+    public ResponseEntity<ApiError> deleteMappingExpectingError(String cashFlowId, String mappingId) {
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings/" + mappingId,
+                HttpMethod.DELETE,
+                null
+        );
+    }
+
+    /**
+     * Starts import expecting an error response.
+     */
+    public ResponseEntity<ApiError> startImportExpectingError(String cashFlowId, String stagingSessionId) {
+        BankDataIngestionDto.StartImportRequest request = BankDataIngestionDto.StartImportRequest.builder()
+                .stagingSessionId(stagingSessionId)
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
+     * Finalizes import expecting an error response.
+     */
+    public ResponseEntity<ApiError> finalizeImportExpectingError(String cashFlowId, String jobId, boolean deleteMappings) {
+        BankDataIngestionDto.FinalizeImportRequest request = BankDataIngestionDto.FinalizeImportRequest.builder()
+                .deleteMappings(deleteMappings)
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId + "/finalize",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
+     * Rollback import expecting an error response.
+     */
+    public ResponseEntity<ApiError> rollbackImportExpectingError(String cashFlowId, String jobId) {
+        return executeExpectingError(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId + "/rollback",
+                HttpMethod.POST,
+                null
+        );
+    }
+
+    /**
+     * Uploads CSV expecting an error response.
+     */
+    public ResponseEntity<ApiError> uploadCsvExpectingError(String cashFlowId, String fileName, byte[] csvContent) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new org.springframework.http.HttpEntity<>(
+                csvContent,
+                createFileHeaders(fileName)
+        ));
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        // Use TestRestTemplate which has proper Jackson configuration for Spring Boot 4
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload",
+                HttpMethod.POST,
+                requestEntity,
+                ApiError.class
+        );
+    }
+
+    private <T> ResponseEntity<ApiError> executeExpectingError(String url, HttpMethod method, T body) {
+        HttpEntity<T> entity = body != null ? new HttpEntity<>(body, jsonHeaders()) : new HttpEntity<>(jsonHeaders());
+
+        // Use TestRestTemplate which has proper Jackson configuration for Spring Boot 4
+        ResponseEntity<ApiError> response = restTemplate.exchange(
+                url,
+                method,
+                entity,
+                ApiError.class
+        );
+        return response;
     }
 
     // ============ Helper Methods ============

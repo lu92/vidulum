@@ -1,5 +1,7 @@
 package com.multi.vidulum.security.config;
 
+import com.multi.vidulum.bank_data_ingestion.app.CsvParserService;
+import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
@@ -288,6 +290,84 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleCannotArchiveSystemCategory(CannotArchiveSystemCategoryException ex) {
         log.debug("Cannot archive system category: {}", ex.getMessage());
         ApiError error = ApiError.of(ErrorCode.CANNOT_ARCHIVE_SYSTEM_CATEGORY, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ CashFlow - Rollover (400) ============
+
+    @ExceptionHandler(RolloverNotAllowedException.class)
+    public ResponseEntity<ApiError> handleRolloverNotAllowed(RolloverNotAllowedException ex) {
+        log.debug("Rollover not allowed for CashFlow [{}]: {}", ex.getCashFlowId().id(), ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CASHFLOW_ROLLOVER_NOT_ALLOWED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Bank Data Ingestion - Resources Not Found (404) ============
+
+    @ExceptionHandler(StagingSessionNotFoundException.class)
+    public ResponseEntity<ApiError> handleStagingSessionNotFound(StagingSessionNotFoundException ex) {
+        log.debug("Staging session not found: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_STAGING_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(ImportJobNotFoundException.class)
+    public ResponseEntity<ApiError> handleImportJobNotFound(ImportJobNotFoundException ex) {
+        log.debug("Import job not found: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_IMPORT_JOB_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CategoryMappingNotFoundException.class)
+    public ResponseEntity<ApiError> handleCategoryMappingNotFound(CategoryMappingNotFoundException ex) {
+        log.debug("Category mapping not found: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_MAPPING_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Bank Data Ingestion - Validation Errors (400) ============
+
+    @ExceptionHandler(UnmappedCategoriesException.class)
+    public ResponseEntity<ApiError> handleUnmappedCategories(UnmappedCategoriesException ex) {
+        log.debug("Unmapped categories: {}", ex.getUnmappedCategories());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_UNMAPPED_CATEGORIES, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(StagingSessionNotReadyException.class)
+    public ResponseEntity<ApiError> handleStagingSessionNotReady(StagingSessionNotReadyException ex) {
+        log.debug("Staging session not ready [{}]: {}", ex.getStagingSessionId().id(), ex.getReason());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_SESSION_NOT_READY, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(ImportJobNotCompletedException.class)
+    public ResponseEntity<ApiError> handleImportJobNotCompleted(ImportJobNotCompletedException ex) {
+        log.debug("Import job not completed [{}]: status={}", ex.getJobId().id(), ex.getCurrentStatus());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_JOB_NOT_COMPLETED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CsvParserService.CsvParseException.class)
+    public ResponseEntity<ApiError> handleCsvParseException(CsvParserService.CsvParseException ex) {
+        log.debug("CSV parse error: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_INVALID_CSV, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(RollbackNotAllowedException.class)
+    public ResponseEntity<ApiError> handleIngestionRollbackNotAllowed(RollbackNotAllowedException ex) {
+        log.debug("Rollback not allowed [{}]: {}", ex.getJobId().id(), ex.getReason());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_ROLLBACK_NOT_ALLOWED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Bank Data Ingestion - Conflicts (409) ============
+
+    @ExceptionHandler(ImportJobAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleImportJobAlreadyExists(ImportJobAlreadyExistsException ex) {
+        log.debug("Import job already exists for staging session: {}", ex.getStagingSessionId().id());
+        ApiError error = ApiError.of(ErrorCode.INGESTION_JOB_ALREADY_EXISTS, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

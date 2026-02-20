@@ -1724,4 +1724,43 @@ class CashFlowErrorHandlingTest extends AbstractHttpIntegrationTest {
             log.info("Valid IBAN without SWIFT accepted: cashFlowId={}", cashFlowId);
         }
     }
+
+    // ============ Month Rollover Errors (400) ============
+
+    @Nested
+    @DisplayName("400 BAD_REQUEST - Month Rollover Errors")
+    class MonthRolloverErrors {
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with CASHFLOW_ROLLOVER_NOT_ALLOWED when CashFlow is in SETUP mode")
+        void shouldReturn400WhenRolloverOnSetupModeCashFlow() {
+            // given - create CashFlow with history (will be in SETUP mode)
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlowWithHistory(
+                    userId,
+                    "Setup Mode CashFlow",
+                    YearMonth.of(2021, 6),
+                    Money.of(1000.0, "PLN")
+            );
+
+            // when - try to rollover while in SETUP mode
+            ResponseEntity<ApiError> response = actor.rolloverMonthExpectingError(cashFlowId);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("CASHFLOW_ROLLOVER_NOT_ALLOWED");
+            assertThat(error.message())
+                    .as("Error message should explain that CashFlow must be in OPEN status")
+                    .containsIgnoringCase("OPEN");
+            assertThat(error.fieldErrors()).isNull();
+            assertThat(error.timestamp()).isNotNull();
+
+            log.info("Rollover on SETUP mode CashFlow: cashFlowId={}, message={}",
+                    cashFlowId, error.message());
+        }
+    }
 }
