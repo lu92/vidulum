@@ -1,0 +1,162 @@
+# ============================================
+# Docker Compose for Dokploy deployment
+# ============================================
+#
+# This file is designed for Dokploy's Compose deployment.
+# All services use environment variables for configuration.
+#
+# Required environment variables in Dokploy:
+# - MONGODB_DATABASE (default: vidulum)
+# - JWT_SECRET_KEY (required - generate secure 64+ char key)
+# - KAFDROP_USERNAME (default: admin)
+# - KAFDROP_PASSWORD (required for Kafdrop Basic Auth)
+#
+# ============================================
+
+services:
+  # ============================================
+  # MongoDB 8.0 with Replica Set
+  # ============================================
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "
+        try { rs.status(); }
+        catch(e) {
+          rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]});
+        }
+        " || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - vidulum-network
+
+  # ============================================
+  # Kafka 7.8.1 (KRaft Mode - NO Zookeeper)
+  # ============================================
+  kafka:
+    image: confluentinc/cp-kafka:7.8.1
+    restart: unless-stopped
+    environment:
+      # KRaft Mode Configuration
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # Listeners
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Cluster ID (fixed for consistency)
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+      # Log dirs
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+      # Replication factors (single node)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Auto create topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - vidulum-network
+
+  # ============================================
+  # Kafdrop - Kafka Web UI (with Basic Auth)
+  # ============================================
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+      JVM_OPTS: "-Xms32M -Xmx128M"
+      # Basic Auth for public access
+      KAFDROP_SECURITY_ENABLED: "true"
+      KAFDROP_SECURITY_AUTH_TYPE: "basic"
+      KAFDROP_SECURITY_BASIC_AUTH_USERNAME: ${KAFDROP_USERNAME:-admin}
+      KAFDROP_SECURITY_BASIC_AUTH_PASSWORD: ${KAFDROP_PASSWORD:-CHANGE_ME_IN_DOKPLOY}
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - vidulum-network
+
+  # ============================================
+  # Vidulum Backend Application
+  # ============================================
+  vidulum-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dokploy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # MongoDB Configuration
+      SPRING_MONGODB_HOST: mongodb
+      SPRING_MONGODB_PORT: 27017
+      SPRING_MONGODB_DATABASE: ${MONGODB_DATABASE:-vidulum}
+
+      # Kafka Configuration
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      # JWT Security (IMPORTANT: Set this in Dokploy!)
+      APPLICATION_SECURITY_JWT_SECRET_KEY: ${JWT_SECRET_KEY:-CHANGE_ME_IN_PRODUCTION_USE_64_CHAR_HEX_KEY}
+      APPLICATION_SECURITY_JWT_EXPIRATION: 86400000
+      APPLICATION_SECURITY_JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+
+      # Internal service URL (for bank-data-ingestion module)
+      VIDULUM_CASHFLOW_SERVICE_BASE_URL: http://localhost:8080
+
+      # JVM Options for container
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 --enable-preview"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - vidulum-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  vidulum-network:
+    driver: bridge
+
+# ============================================
+# Persistent Volumes
+# ============================================
+volumes:
+  mongodb_data:
+    driver: local
+  kafka_data:
+    driver: local
