@@ -482,3 +482,96 @@ Run tests:
 ```bash
 ./mvnw test -Dtest=AuthenticationControllerTest
 ```
+
+## Security Assessment
+
+### Current Implementation Strengths
+
+| Aspect | Rating | Description |
+|--------|--------|-------------|
+| Architecture | 9/10 | Dual-token system with server-side validation |
+| Error Handling | 9/10 | Consistent error codes and proper HTTP status |
+| Testing | 9/10 | 27 integration tests covering all scenarios |
+| Audit Logging | 9/10 | Comprehensive logging for compliance |
+| Token Security | 8/10 | JTI claims, rotation, immediate revocation |
+
+### Known Limitations & Future Improvements
+
+#### 1. Rate Limiting (Not Implemented)
+Currently, there is no protection against brute-force attacks on `/authenticate` and `/register` endpoints.
+
+**Recommendation:** Implement rate limiting using Bucket4j or Redis-based solution.
+
+```java
+// Example implementation with Bucket4j
+@PostMapping("/authenticate")
+@RateLimited(requests = 5, per = Duration.ofMinutes(1))
+public ResponseEntity<AuthenticationResponse> authenticate(...)
+```
+
+#### 2. Token Cleanup (Not Implemented)
+Revoked tokens are marked but never deleted from MongoDB, which may lead to database growth over time.
+
+**Recommendation:** Add a scheduled job to clean up old tokens:
+
+```java
+@Scheduled(cron = "0 0 2 * * ?") // Daily at 2 AM
+public void cleanupExpiredTokens() {
+    Instant threshold = Instant.now().minus(30, ChronoUnit.DAYS);
+    tokenRepository.deleteByCreatedAtBeforeAndRevokedTrue(threshold);
+}
+```
+
+#### 3. Token Cache (Not Implemented)
+Every request requires a MongoDB query to validate token status. This may become a bottleneck under high load.
+
+**Recommendation:** Implement a cache layer for revoked tokens:
+
+```java
+@Cacheable(value = "revokedTokens", key = "#tokenId")
+public boolean isTokenRevoked(String tokenId) {
+    return tokenRepository.findById(tokenId)
+        .map(Token::isRevoked)
+        .orElse(true);
+}
+```
+
+#### 4. Password Policy (Basic)
+Current validation only enforces length (8-100 characters). No requirements for complexity.
+
+**Recommendation:** Add password complexity rules:
+
+```java
+@Pattern(
+    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+    message = "Password must contain uppercase, lowercase, digit, and special character"
+)
+private String password;
+```
+
+#### 5. Refresh Token Handling
+Refresh token is passed in Authorization header (same as access token). Some implementations use a separate mechanism.
+
+**Alternative approaches:**
+- Dedicated `X-Refresh-Token` header
+- Request body parameter
+- HttpOnly cookie (for web clients)
+
+### Scalability Recommendations
+
+For high-traffic deployments, consider:
+
+1. **Redis for token blacklist** - In-memory cache for revoked token IDs
+2. **Separate authentication service** - Microservice architecture
+3. **JWT key rotation** - Periodic rotation of signing keys
+4. **Connection pooling** - Optimize MongoDB connections
+
+### Overall Assessment
+
+**Production Readiness: 8/10**
+
+The current implementation is solid for small-to-medium scale applications. For enterprise deployments with high security requirements, implement the recommendations above, particularly:
+
+1. Rate limiting (critical for security)
+2. Token cleanup job (critical for operations)
+3. Redis cache (important for scalability)
