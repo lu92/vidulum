@@ -258,6 +258,7 @@ When creating new documentation:
 | `docs/BANK_DATA_INGESTION_GUIDE.md` | Bank import API guide |
 | `docs/bank-data-ingestion-pipeline.md` | Import pipeline architecture |
 | `docs/historical-import-user-guide.md` | User guide for CSV import |
+| `docs/PERFORMANCE_TESTING_GUIDE.md` | Load testing tools, VPS sizing, monitoring |
 
 ### Features Backlog (NOT IMPLEMENTED)
 Files in `docs/features-backlog/` - these are designs waiting for implementation:
