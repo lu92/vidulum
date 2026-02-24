@@ -28,7 +28,7 @@ Note: Java 21 with preview features is required (`--enable-preview` is configure
 
 ## Architecture Overview
 
-Vidulum is a multi-portfolio financial application built with Spring Boot 3.2.4, MongoDB, and Kafka. It follows **Domain-Driven Design (DDD)** and **CQRS** (Command Query Responsibility Segregation) patterns.
+Vidulum is a multi-portfolio financial application built with Spring Boot 4.0.0, MongoDB, and Kafka. It follows **Domain-Driven Design (DDD)** and **CQRS** (Command Query Responsibility Segregation) patterns.
 
 ### Package Structure
 
@@ -196,3 +196,39 @@ Use this after:
 - Running tests (`./mvnw test`)
 - Building the project (`./mvnw clean compile`, `./mvnw package`)
 - Any operation taking more than 20 seconds
+
+## Documentation Overview
+
+The repository contains markdown documentation organized by purpose:
+
+### Current Documentation (reference)
+- `AUTHENTICATION.md` - JWT authentication system with dual-token (access + refresh), security assessment
+- `README.md` - Main project readme
+- `README-DOCKER.md` - Docker deployment instructions
+- `CHANGELOG.md` - Version history and changes
+- `ARCHITECTURE.md` - System architecture overview
+- `TODO.md` - General backlog items
+- `docs/dual-budget-system-architecture.md` - Dual budget system design
+- `docs/cashflow-import-update-implementation.md` - Bank data import workflow
+
+### Design Documents (NOT YET IMPLEMENTED)
+These are feature designs waiting for implementation:
+
+- `docs/VID-130-logout-token-cleanup.md` - Scheduled cleanup of expired tokens
+- `docs/VID-131-rate-limiting.md` - API rate limiting implementation
+- `docs/VID-132-password-policy.md` - Password complexity requirements
+- `docs/cash-flow-monthly-budget-planning.md` - Monthly budget planning feature
+- `docs/cash-flow-statistics-by-category.md` - Category-based statistics
+- `docs/cashflow-transaction-deletion.md` - Transaction deletion workflow
+- `docs/cashflow-recurrence-system.md` - Recurring transactions
+- `docs/bank-account-management.md` - Multi-account management
+- `docs/transaction-transfer-between-accounts.md` - Inter-account transfers
+
+### Business Analysis
+- `docs/business-analysis/dual-cashflow-requirements.md`
+- `docs/business-analysis/bank-statement-import.md`
+- `docs/business-analysis/bank-data-ingestion-module.md`
+- `docs/business-analysis/monthly-cashflow-view-analysis.md`
+
+### Priority TODO
+- `docs/TODO-priority.md` - Prioritized task list for next implementation phases
