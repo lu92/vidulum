@@ -1,6 +1,5 @@
 package com.multi.vidulum.security.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.security.config.JwtService;
 import com.multi.vidulum.security.token.Token;
 import com.multi.vidulum.security.token.TokenRepository;
@@ -9,17 +8,17 @@ import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.user.app.commands.register.RegisterUserCommand;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.time.Instant;
+import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -31,7 +30,6 @@ public class AuthenticationService {
     private final CommandGateway commandGateway;
 
     public AuthenticationResponse register(RegisterRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyTakenException(request.getEmail());
         }
@@ -46,7 +44,13 @@ public class AuthenticationService {
 
         var jwtToken = jwtService.generateToken(savedUser);
         var refreshToken = jwtService.generateRefreshToken(savedUser);
-        saveUserToken(savedUser, jwtToken);
+
+        saveUserToken(savedUser, jwtToken, TokenType.BEARER);
+        saveUserToken(savedUser, refreshToken, TokenType.REFRESH);
+
+        log.info("User registered: userId={}, username={}",
+                savedUser.getUserId().getId(), savedUser.getUsername());
+
         return AuthenticationResponse.builder()
                 .userId(savedUser.getUserId().getId())
                 .accessToken(jwtToken)
@@ -61,12 +65,20 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
+
         var user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow();
+
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
-        revokeAllUserTokens(user);
-        saveUserToken(user, jwtToken);
+
+        revokeAllUserTokens(user.getUserId().getId());
+        saveUserToken(user, jwtToken, TokenType.BEARER);
+        saveUserToken(user, refreshToken, TokenType.REFRESH);
+
+        log.info("User authenticated: userId={}, username={}",
+                user.getUserId().getId(), user.getUsername());
+
         return AuthenticationResponse.builder()
                 .userId(user.getUserId().getId())
                 .accessToken(jwtToken)
@@ -74,53 +86,155 @@ public class AuthenticationService {
                 .build();
     }
 
-    private void saveUserToken(User user, String jwtToken) {
-        var token = Token.builder()
+    /**
+     * Logout user - revokes all tokens for the user.
+     *
+     * @param accessToken the access token from Authorization header
+     * @return LogoutResponse with user info
+     * @throws TokenNotFoundException if token not found in database
+     * @throws TokenAlreadyRevokedException if token already revoked
+     */
+    public LogoutResponse logout(String accessToken) {
+        var storedToken = tokenRepository.findByToken(accessToken)
+                .orElseThrow(() -> new TokenNotFoundException(accessToken));
+
+        if (storedToken.isRevoked() || storedToken.isExpired()) {
+            throw new TokenAlreadyRevokedException(storedToken.getId());
+        }
+
+        String userId = storedToken.getUserId();
+        int revokedCount = revokeAllUserTokens(userId);
+
+        log.info("User logged out: userId={}, revokedTokens={}", userId, revokedCount);
+
+        return LogoutResponse.success(userId);
+    }
+
+    /**
+     * Logout from all devices - revokes all tokens for the user.
+     *
+     * @param accessToken the access token from Authorization header
+     * @return LogoutAllResponse with count of revoked sessions
+     */
+    public LogoutAllResponse logoutAllDevices(String accessToken) {
+        var storedToken = tokenRepository.findByToken(accessToken)
+                .orElseThrow(() -> new TokenNotFoundException(accessToken));
+
+        if (storedToken.isRevoked() || storedToken.isExpired()) {
+            throw new TokenAlreadyRevokedException(storedToken.getId());
+        }
+
+        String userId = storedToken.getUserId();
+        int revokedCount = revokeAllUserTokens(userId);
+
+        log.warn("User logged out from ALL devices: userId={}, revokedTokens={}",
+                userId, revokedCount);
+
+        return LogoutAllResponse.success(userId, revokedCount);
+    }
+
+    /**
+     * Refresh access token using refresh token.
+     * Implements token rotation - old tokens are revoked, new ones are issued.
+     */
+    public AuthenticationResponse refreshToken(String refreshToken) {
+        // Validate refresh token exists in database
+        var storedRefreshToken = tokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new TokenNotFoundException(refreshToken));
+
+        // Check if token is revoked
+        if (storedRefreshToken.isRevoked() || storedRefreshToken.isExpired()) {
+            throw new TokenAlreadyRevokedException(storedRefreshToken.getId());
+        }
+
+        // Verify it's a refresh token
+        if (storedRefreshToken.getTokenType() != TokenType.REFRESH) {
+            throw new InvalidTokenException("Expected refresh token, got access token");
+        }
+
+        // Extract username and validate JWT
+        String username = jwtService.extractUsername(refreshToken);
+        if (username == null) {
+            throw new InvalidTokenException("Cannot extract username from token");
+        }
+
+        var user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new InvalidTokenException("User not found"));
+
+        // Validate JWT signature and expiration
+        if (!jwtService.isTokenValid(refreshToken, user.getUsername())) {
+            throw new RefreshTokenExpiredException();
+        }
+
+        // Token rotation - generate new tokens
+        var newAccessToken = jwtService.generateToken(user);
+        var newRefreshToken = jwtService.generateRefreshToken(user);
+
+        // Revoke all old tokens
+        revokeAllUserTokens(user.getUserId().getId());
+
+        // Save new tokens
+        saveUserToken(user, newAccessToken, TokenType.BEARER);
+        saveUserToken(user, newRefreshToken, TokenType.REFRESH);
+
+        log.info("Token refreshed: userId={}, username={}",
+                user.getUserId().getId(), user.getUsername());
+
+        return AuthenticationResponse.builder()
                 .userId(user.getUserId().getId())
-                .token(jwtToken)
-                .tokenType(TokenType.BEARER)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
+    }
+
+
+    private void saveUserToken(User user, String token, TokenType tokenType) {
+        var tokenEntity = Token.builder()
+                .userId(user.getUserId().getId())
+                .token(token)
+                .tokenType(tokenType)
                 .expired(false)
                 .revoked(false)
+                .createdAt(Instant.now())
                 .build();
-        tokenRepository.save(token);
+        tokenRepository.save(tokenEntity);
     }
 
-    private void revokeAllUserTokens(User user) {
-        var validUserTokens = tokenRepository.findByUserId(user.getUserId().getId());
-        if (validUserTokens.isEmpty())
-            return;
-        validUserTokens.forEach(token -> {
-            token.setExpired(true);
-            token.setRevoked(true);
-        });
-        tokenRepository.saveAll(validUserTokens);
-    }
-
-    public void refreshToken(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws IOException {
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return;
+    /**
+     * Revokes all tokens for a user.
+     *
+     * @param userId the user ID
+     * @return number of tokens revoked
+     */
+    private int revokeAllUserTokens(String userId) {
+        List<Token> allUserTokens = tokenRepository.findByUserId(userId);
+        if (allUserTokens.isEmpty()) {
+            return 0;
         }
-        String refreshToken = authHeader.substring(7);
-        String username = jwtService.extractUsername(refreshToken);
-        if (username != null) {
-            var user = this.userRepository.findByUsername(username)
-                    .orElseThrow();
 
-            if (jwtService.isTokenValid(refreshToken, user.getUsername())) {
-                var accessToken = jwtService.generateToken(user);
-                revokeAllUserTokens(user);
-                saveUserToken(user, accessToken);
-                var authResponse = AuthenticationResponse.builder()
-                        .userId(user.getUserId().getId())
-                        .accessToken(accessToken)
-                        .refreshToken(refreshToken)
-                        .build();
-                new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
+        int revokedCount = 0;
+        for (Token token : allUserTokens) {
+            if (!token.isRevoked()) {
+                token.setExpired(true);
+                token.setRevoked(true);
+                revokedCount++;
             }
         }
+        tokenRepository.saveAll(allUserTokens);
+        return revokedCount;
+    }
+
+    /**
+     * Extract token from Authorization header.
+     *
+     * @param authHeader the Authorization header value
+     * @return the token string
+     * @throws MissingAuthorizationHeaderException if header is missing or invalid
+     */
+    public String extractTokenFromHeader(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new MissingAuthorizationHeaderException();
+        }
+        return authHeader.substring(7);
     }
 }

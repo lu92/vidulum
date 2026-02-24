@@ -3,6 +3,7 @@ package com.multi.vidulum.security.auth;
 import com.multi.vidulum.AbstractHttpIntegrationTest;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.FieldError;
+import com.multi.vidulum.security.token.Token;
 import com.multi.vidulum.security.token.TokenRepository;
 import com.multi.vidulum.user.infrastructure.UserMongoRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,9 +34,10 @@ class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        actor = new AuthenticationHttpActor(restTemplate, port);
+        // Clean up in correct order: tokens first, then users
         tokenRepository.deleteAll();
         userMongoRepository.deleteAll();
+        actor = new AuthenticationHttpActor(restTemplate, port);
     }
 
     @Nested
@@ -58,6 +61,10 @@ class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
             assertThat(response.getBody().getUserId()).startsWith("U");
             assertThat(response.getBody().getAccessToken()).isNotBlank();
             assertThat(response.getBody().getRefreshToken()).isNotBlank();
+
+            // Verify both tokens are stored in database
+            List<Token> tokens = tokenRepository.findByUserId(response.getBody().getUserId());
+            assertThat(tokens).hasSize(2);
 
             log.info("User registered successfully: username={}, userId={}", username, response.getBody().getUserId());
         }
@@ -246,6 +253,26 @@ class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
 
             log.info("User authenticated successfully: username={}", username);
         }
+
+        @Test
+        @DisplayName("Should revoke old tokens on new authentication")
+        void shouldRevokeOldTokensOnNewAuthentication() {
+            // given
+            String username = "revoketest_" + UUID.randomUUID().toString().substring(0, 8);
+            String email = username + "@test.com";
+            String password = "password123";
+            AuthenticationResponse firstLogin = actor.register(username, email, password).getBody();
+            String oldAccessToken = firstLogin.getAccessToken();
+
+            // when - authenticate again
+            actor.authenticate(username, password);
+
+            // then - old token should be revoked
+            Token oldToken = tokenRepository.findByToken(oldAccessToken).orElse(null);
+            assertThat(oldToken).isNotNull();
+            assertThat(oldToken.isRevoked()).isTrue();
+            assertThat(oldToken.isExpired()).isTrue();
+        }
     }
 
     @Nested
@@ -277,10 +304,271 @@ class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
             ResponseEntity<String> response = actor.authenticateExpectingErrorRaw(
                     "nonexistent_user", "wrongpassword");
 
-            // then - Our ErrorHttpHandler returns 401 UNAUTHORIZED for BadCredentialsException
+            // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
             log.info("Invalid credentials rejected with status: {}", response.getStatusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("Logout - Success")
+    class LogoutSuccess {
+
+        @Test
+        @DisplayName("Should logout successfully with valid access token")
+        void shouldLogoutSuccessfully() {
+            // given
+            String username = "logoutuser_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+
+            // when
+            ResponseEntity<LogoutResponse> response = actor.logout(authResponse.getAccessToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().message()).isEqualTo("Successfully logged out");
+            assertThat(response.getBody().userId()).isEqualTo(authResponse.getUserId());
+
+            // Verify token is revoked in database
+            Token storedToken = tokenRepository.findByToken(authResponse.getAccessToken()).orElse(null);
+            assertThat(storedToken).isNotNull();
+            assertThat(storedToken.isRevoked()).isTrue();
+            assertThat(storedToken.isExpired()).isTrue();
+
+            log.info("User logged out successfully: userId={}", authResponse.getUserId());
+        }
+
+        @Test
+        @DisplayName("Should revoke all user tokens on logout (including refresh token)")
+        void shouldRevokeAllTokensOnLogout() {
+            // given
+            String username = "logoutall_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+
+            // when
+            actor.logout(authResponse.getAccessToken());
+
+            // then - both access and refresh tokens should be revoked
+            List<Token> userTokens = tokenRepository.findByUserId(authResponse.getUserId());
+            assertThat(userTokens).allMatch(Token::isRevoked);
+            assertThat(userTokens).allMatch(Token::isExpired);
+        }
+
+        @Test
+        @DisplayName("Should not be able to use access token after logout")
+        void shouldNotBeAbleToUseAccessTokenAfterLogout() {
+            // given
+            String username = "logoutaccess_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+            actor.logout(authResponse.getAccessToken());
+
+            // when - verify the access token is marked as revoked in DB
+            Token revokedToken = tokenRepository.findByToken(authResponse.getAccessToken()).orElse(null);
+
+            // then
+            assertThat(revokedToken).isNotNull();
+            assertThat(revokedToken.isRevoked()).isTrue();
+            assertThat(revokedToken.isExpired()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should not be able to refresh token after logout")
+        void shouldNotBeAbleToRefreshAfterLogout() {
+            // given
+            String username = "logoutrefresh_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+            actor.logout(authResponse.getAccessToken());
+
+            // when - try to refresh
+            ResponseEntity<ApiError> response = actor.refreshTokenExpectingError(authResponse.getRefreshToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_TOKEN_REVOKED");
+        }
+    }
+
+    @Nested
+    @DisplayName("Logout - Validation Errors")
+    class LogoutValidation {
+
+        @Test
+        @DisplayName("Should reject logout without Authorization header")
+        void shouldRejectLogoutWithoutAuthHeader() {
+            // when
+            ResponseEntity<ApiError> response = actor.logoutWithoutToken();
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_MISSING_TOKEN");
+        }
+    }
+
+    @Nested
+    @DisplayName("Logout - Business Errors")
+    class LogoutBusinessErrors {
+
+        @Test
+        @DisplayName("Should reject logout with already revoked token")
+        void shouldRejectLogoutWithRevokedToken() {
+            // given
+            String username = "revokedlogout_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+
+            // First logout
+            actor.logout(authResponse.getAccessToken());
+
+            // when - try to logout again with same token
+            ResponseEntity<ApiError> response = actor.logoutExpectingError(authResponse.getAccessToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_TOKEN_REVOKED");
+        }
+    }
+
+    @Nested
+    @DisplayName("Logout All Devices")
+    class LogoutAllDevices {
+
+        @Test
+        @DisplayName("Should logout from all devices")
+        void shouldLogoutFromAllDevices() {
+            // given
+            String username = "multidevice_" + UUID.randomUUID().toString().substring(0, 8);
+            String email = username + "@test.com";
+            String password = "password123";
+
+            actor.register(username, email, password);
+            AuthenticationResponse lastLogin = actor.authenticate(username, password).getBody();
+
+            // when
+            ResponseEntity<LogoutAllResponse> response = actor.logoutAll(lastLogin.getAccessToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().revokedSessionsCount()).isGreaterThanOrEqualTo(2);
+
+            // All tokens should be revoked
+            List<Token> allTokens = tokenRepository.findByUserId(lastLogin.getUserId());
+            assertThat(allTokens).allMatch(Token::isRevoked);
+
+            log.info("Logged out from all devices: userId={}, revokedSessions={}",
+                    lastLogin.getUserId(), response.getBody().revokedSessionsCount());
+        }
+    }
+
+    @Nested
+    @DisplayName("Refresh Token - Success")
+    class RefreshTokenSuccess {
+
+        @Test
+        @DisplayName("Should refresh access token successfully")
+        void shouldRefreshAccessToken() {
+            // given
+            String username = "refresh_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+            String oldAccessToken = authResponse.getAccessToken();
+
+            // when
+            ResponseEntity<AuthenticationResponse> response = actor.refreshToken(authResponse.getRefreshToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getAccessToken()).isNotBlank();
+            assertThat(response.getBody().getAccessToken()).isNotEqualTo(oldAccessToken);
+            assertThat(response.getBody().getRefreshToken()).isNotBlank();
+
+            log.info("Token refreshed successfully for user: {}", username);
+        }
+
+        @Test
+        @DisplayName("Should rotate refresh token on refresh")
+        void shouldRotateRefreshToken() {
+            // given
+            String username = "rotate_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+            String oldRefreshToken = authResponse.getRefreshToken();
+
+            // when
+            ResponseEntity<AuthenticationResponse> response = actor.refreshToken(authResponse.getRefreshToken());
+
+            // then - new refresh token should be different
+            assertThat(response.getBody().getRefreshToken()).isNotEqualTo(oldRefreshToken);
+
+            // Old refresh token should be revoked
+            Token oldToken = tokenRepository.findByToken(oldRefreshToken).orElse(null);
+            assertThat(oldToken).isNotNull();
+            assertThat(oldToken.isRevoked()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should revoke old access token after refresh")
+        void shouldRevokeOldAccessTokenAfterRefresh() {
+            // given
+            String username = "revokeold_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+            String oldAccessToken = authResponse.getAccessToken();
+
+            // when
+            actor.refreshToken(authResponse.getRefreshToken());
+
+            // then - old access token should be revoked
+            Token oldToken = tokenRepository.findByToken(oldAccessToken).orElse(null);
+            assertThat(oldToken).isNotNull();
+            assertThat(oldToken.isRevoked()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Refresh Token - Errors")
+    class RefreshTokenErrors {
+
+        @Test
+        @DisplayName("Should reject refresh with access token instead of refresh token")
+        void shouldRejectRefreshWithAccessToken() {
+            // given
+            String username = "wrongtoken_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+
+            // when - try to use access token for refresh
+            ResponseEntity<ApiError> response = actor.refreshTokenExpectingError(authResponse.getAccessToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_TOKEN_INVALID");
+        }
+
+        @Test
+        @DisplayName("Should reject refresh without Authorization header")
+        void shouldRejectRefreshWithoutAuthHeader() {
+            // when
+            ResponseEntity<ApiError> response = actor.refreshTokenWithoutHeader();
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_MISSING_TOKEN");
+        }
+
+        @Test
+        @DisplayName("Should reject refresh with revoked refresh token")
+        void shouldRejectRefreshWithRevokedToken() {
+            // given
+            String username = "revokedrefresh_" + UUID.randomUUID().toString().substring(0, 8);
+            AuthenticationResponse authResponse = actor.register(username, username + "@test.com", "password123").getBody();
+
+            // Logout (revokes all tokens including refresh)
+            actor.logout(authResponse.getAccessToken());
+
+            // when - try to use revoked refresh token
+            ResponseEntity<ApiError> response = actor.refreshTokenExpectingError(authResponse.getRefreshToken());
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().code()).isEqualTo("AUTH_TOKEN_REVOKED");
         }
     }
 }

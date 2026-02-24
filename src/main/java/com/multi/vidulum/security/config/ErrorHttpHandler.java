@@ -12,6 +12,7 @@ import com.multi.vidulum.cashflow.domain.CashFlowNameAlreadyExistsException;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.FieldError;
+import com.multi.vidulum.security.auth.*;
 import com.multi.vidulum.security.auth.EmailAlreadyTakenException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -59,6 +60,41 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleAuthenticationException(AuthenticationException ex) {
         log.debug("Authentication exception", ex);
         ApiError error = ApiError.of(ErrorCode.AUTH_INVALID_CREDENTIALS);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidToken(InvalidTokenException ex) {
+        log.debug("Invalid token: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.AUTH_TOKEN_INVALID, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(TokenNotFoundException.class)
+    public ResponseEntity<ApiError> handleTokenNotFound(TokenNotFoundException ex) {
+        log.debug("Token not found: {}", ex.getTokenPrefix());
+        ApiError error = ApiError.of(ErrorCode.AUTH_TOKEN_NOT_FOUND);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(TokenAlreadyRevokedException.class)
+    public ResponseEntity<ApiError> handleTokenRevoked(TokenAlreadyRevokedException ex) {
+        log.debug("Token already revoked: {}", ex.getTokenId());
+        ApiError error = ApiError.of(ErrorCode.AUTH_TOKEN_REVOKED);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(RefreshTokenExpiredException.class)
+    public ResponseEntity<ApiError> handleRefreshTokenExpired(RefreshTokenExpiredException ex) {
+        log.debug("Refresh token expired");
+        ApiError error = ApiError.of(ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(MissingAuthorizationHeaderException.class)
+    public ResponseEntity<ApiError> handleMissingAuthHeader(MissingAuthorizationHeaderException ex) {
+        log.debug("Missing authorization header: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.AUTH_MISSING_TOKEN);
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
