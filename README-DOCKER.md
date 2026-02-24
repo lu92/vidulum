@@ -104,7 +104,7 @@ curl -X GET http://localhost:9090/user \
   "userId": "695926267bd92300ad1eafcf",
   "username": "testuser",
   "email": "testuser@example.com",
-  "portolioIds": [],
+  "portfolioIds": [],
   "active": true
 }
 ```

@@ -79,7 +79,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .username(persistedUser.getUsername())
                 .email(persistedUser.getEmail())
                 .isActive(true)
-                .portolioIds(List.of())
+                .portfolioIds(List.of())
                 .build();
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
@@ -453,7 +453,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .username(persistedUser.getUsername())
                 .email(persistedUser.getEmail())
                 .isActive(true)
-                .portolioIds(List.of())
+                .portfolioIds(List.of())
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
@@ -648,7 +648,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .username(persistedUser.getUsername())
                 .email(persistedUser.getEmail())
                 .isActive(true)
-                .portolioIds(List.of())
+                .portfolioIds(List.of())
                 .build();
         assertThat(persistedUser).isEqualTo(expectedUserSummary);
 
@@ -1363,7 +1363,7 @@ class VidulumApplicationTests extends IntegrationTest {
                 .username(persistedUser.getUsername())
                 .email(persistedUser.getEmail())
                 .isActive(true)
-                .portolioIds(List.of())
+                .portfolioIds(List.of())
                 .build();
 
         assertThat(persistedUser).isEqualTo(expectedUserSummary);

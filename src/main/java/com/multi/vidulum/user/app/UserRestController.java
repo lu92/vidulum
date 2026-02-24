@@ -77,7 +77,7 @@ public class UserRestController {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .isActive(user.isActive())
-                .portolioIds(user.getPortfolios().stream().map(PortfolioId::getId).collect(Collectors.toList()))
+                .portfolioIds(user.getPortfolios().stream().map(PortfolioId::getId).collect(Collectors.toList()))
                 .build();
     }
 }
