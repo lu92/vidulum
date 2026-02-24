@@ -28,7 +28,7 @@ Note: Java 21 with preview features is required (`--enable-preview` is configure
 
 ## Architecture Overview
 
-Vidulum is a multi-portfolio financial application built with Spring Boot 3.2.4, MongoDB, and Kafka. It follows **Domain-Driven Design (DDD)** and **CQRS** (Command Query Responsibility Segregation) patterns.
+Vidulum is a multi-portfolio financial application built with Spring Boot 4.0.0, MongoDB, and Kafka. It follows **Domain-Driven Design (DDD)** and **CQRS** (Command Query Responsibility Segregation) patterns.
 
 ### Package Structure
 
@@ -196,3 +196,90 @@ Use this after:
 - Running tests (`./mvnw test`)
 - Building the project (`./mvnw clean compile`, `./mvnw package`)
 - Any operation taking more than 20 seconds
+
+## Infrastructure Versions & Support Dates
+
+| Component | Version | Support Until | Notes |
+|-----------|---------|---------------|-------|
+| **Java** | 21 LTS | Sep 2031 (extended) | Free NFTC license until Sep 2026 |
+| **Spring Boot** | 4.0.0 | ~Nov 2027 | Active development |
+| **MongoDB** | 8.0 | Oct 2029 | 5-year extended lifecycle |
+| **Kafka (Confluent)** | 7.8.1 | Dec 2026 (standard) | Platinum until Dec 2027 |
+| **Testcontainers** | 1.20.4 | Active | Follows container versions |
+
+### Docker Images Used
+```yaml
+# docker-compose-final.yml
+mongo:8.0                      # MongoDB with replica set
+confluentinc/cp-kafka:7.8.1    # Kafka in KRaft mode (no Zookeeper)
+obsidiandynamics/kafdrop:latest # Kafka UI
+vidulum-app:latest             # Application image
+```
+
+## Documentation Structure & Guidelines
+
+### Folder Organization
+```
+docs/
+├── business-analysis/     # Business requirements, cost analysis, market research
+├── features-backlog/      # Designs for UNIMPLEMENTED features (TODO)
+├── design/                # UI mockups, visual assets
+├── evidence/              # Test reports, validation evidence (can be cleaned)
+└── manual-testing/        # Manual test scripts (can be cleaned)
+```
+
+### Documentation Guidelines
+When creating new documentation:
+
+1. **Current/Reference docs** → Place in project root or `docs/` root
+   - README, CHANGELOG, ARCHITECTURE, API guides
+
+2. **Feature designs (not yet implemented)** → `docs/features-backlog/`
+   - Use naming: `VID-XXX-feature-name.md` or `YYYY-MM-DD-feature-name.md`
+   - These are TODO items waiting for implementation
+
+3. **Business analysis** → `docs/business-analysis/`
+   - Market research, cost analysis, requirements gathering
+
+4. **Evidence/Reports** → `docs/evidence/`
+   - Test reports, migration validations, manual test results
+   - This folder can be periodically cleaned
+
+5. **UI Mockups** → `docs/design/`
+   - HTML mockups, wireframes, visual designs
+
+### Current Documentation
+| File | Description |
+|------|-------------|
+| `AUTHENTICATION.md` | JWT dual-token system, security assessment |
+| `README.md` | Project overview |
+| `README-DOCKER.md` | Docker deployment instructions |
+| `CHANGELOG.md` | Version history |
+| `docs/BANK_DATA_INGESTION_GUIDE.md` | Bank import API guide |
+| `docs/bank-data-ingestion-pipeline.md` | Import pipeline architecture |
+| `docs/historical-import-user-guide.md` | User guide for CSV import |
+| `docs/PERFORMANCE_TESTING_GUIDE.md` | Load testing tools, VPS sizing, monitoring |
+
+### Features Backlog (NOT IMPLEMENTED)
+Files in `docs/features-backlog/` - these are designs waiting for implementation:
+
+| File | Feature | Priority |
+|------|---------|----------|
+| `TODO-integration-tests-with-jwt-authentication.md` | Add JWT to all integration tests | High |
+| `TODO-kafka-dead-letter-queue.md` | Dead letter queue for failed events | Medium |
+| `VID-103-maven-multi-module-migration.md` | Split into Maven modules | Low |
+| `AI_CATEGORIZATION_PLAN.md` | AI-powered transaction categorization | Medium |
+| `AI_USE_CASES.md` | AI use cases overview | Medium |
+| `2026-02-07-intelligent-cashflow-reconciliation.md` | Smart reconciliation | Medium |
+| `2026-02-08-canonical-csv-architecture.md` | Unified CSV format | Low |
+| `2026-02-08-month-rollover-ongoing-sync-design.md` | Month rollover sync | Medium |
+| `2026-02-14-business-analysis-alerts-cashchange-lifecycle.md` | Alerts system | Medium |
+| `2026-02-14-recurring-rule-engine-design.md` | Recurring transactions | High |
+
+### Business Analysis
+Files in `docs/business-analysis/`:
+- Open Banking providers comparison
+- Kontomatik cost analysis
+- B2B market analysis
+- Business model analysis
+- Bank integration design
