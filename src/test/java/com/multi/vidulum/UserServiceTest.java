@@ -40,7 +40,7 @@ class UserServiceTest extends IntegrationTest {
                 .username(username)
                 .email(email)
                 .isActive(true)
-                .portolioIds(List.of())
+                .portfolioIds(List.of())
                 .build();
 
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);
@@ -79,7 +79,7 @@ class UserServiceTest extends IntegrationTest {
                 .username(username)
                 .email(email)
                 .isActive(true)
-                .portolioIds(List.of(portfolioRegistrationSummaryJson.getPortfolioId()))
+                .portfolioIds(List.of(portfolioRegistrationSummaryJson.getPortfolioId()))
                 .build();
 
         Assertions.assertThat(persistedUser).isEqualTo(expectedUserSummary);

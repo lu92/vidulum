@@ -218,7 +218,7 @@ public abstract class IntegrationTest {
                 .username(uniqueUsername)
                 .email(uniqueEmail)
                 .isActive(true)
-                .portolioIds(java.util.Collections.emptyList())
+                .portfolioIds(java.util.Collections.emptyList())
                 .build();
     }
 

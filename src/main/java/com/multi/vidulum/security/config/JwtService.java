@@ -48,6 +48,7 @@ public class JwtService {
     private String buildToken(Map<String, Object> extraClaims, User user, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(user.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))

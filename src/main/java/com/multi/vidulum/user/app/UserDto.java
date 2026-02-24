@@ -18,7 +18,7 @@ public class UserDto {
         private String username;
         private String email;
         private boolean isActive;
-        private List<String> portolioIds;
+        private List<String> portfolioIds;
     }
 
     @Data

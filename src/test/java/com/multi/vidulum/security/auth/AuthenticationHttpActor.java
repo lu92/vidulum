@@ -7,8 +7,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
@@ -19,19 +17,14 @@ import java.util.Map;
 public class AuthenticationHttpActor {
 
     private final TestRestTemplate restTemplate;
-    private final RestTemplate rawRestTemplate;
     private final String baseUrl;
 
     public AuthenticationHttpActor(TestRestTemplate restTemplate, int port) {
         this.restTemplate = restTemplate;
         this.baseUrl = "http://localhost:" + port;
-        this.rawRestTemplate = createRawRestTemplate();
     }
 
-    private RestTemplate createRawRestTemplate() {
-        // SimpleClientHttpRequestFactory no longer has setOutputStreaming in Spring 7
-        return new RestTemplate();
-    }
+    // ==================== REGISTRATION ====================
 
     public ResponseEntity<AuthenticationResponse> register(String username, String email, String password) {
         RegisterRequest request = RegisterRequest.builder()
@@ -74,6 +67,8 @@ public class AuthenticationHttpActor {
         );
     }
 
+    // ==================== AUTHENTICATION ====================
+
     public ResponseEntity<AuthenticationResponse> authenticate(String username, String password) {
         AuthenticationRequest request = AuthenticationRequest.builder()
                 .username(username)
@@ -97,18 +92,12 @@ public class AuthenticationHttpActor {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<AuthenticationRequest> entity = new HttpEntity<>(request, headers);
 
-        try {
-            ResponseEntity<ApiError> response = rawRestTemplate.exchange(
-                    baseUrl + "/api/v1/auth/authenticate",
-                    HttpMethod.POST,
-                    entity,
-                    ApiError.class
-            );
-            return response;
-        } catch (HttpClientErrorException e) {
-            return ResponseEntity.status(e.getStatusCode())
-                    .body(e.getResponseBodyAs(ApiError.class));
-        }
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/authenticate",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
     }
 
     public ResponseEntity<ApiError> authenticateWithRawJson(Map<String, Object> jsonBody) {
@@ -134,16 +123,132 @@ public class AuthenticationHttpActor {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<AuthenticationRequest> entity = new HttpEntity<>(request, headers);
 
-        try {
-            return rawRestTemplate.exchange(
-                    baseUrl + "/api/v1/auth/authenticate",
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
-        } catch (HttpClientErrorException e) {
-            return ResponseEntity.status(e.getStatusCode())
-                    .body(e.getResponseBodyAsString());
-        }
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/authenticate",
+                HttpMethod.POST,
+                entity,
+                String.class
+        );
+    }
+
+    // ==================== LOGOUT ====================
+
+    public ResponseEntity<LogoutResponse> logout(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/logout",
+                HttpMethod.POST,
+                entity,
+                LogoutResponse.class
+        );
+    }
+
+    public ResponseEntity<ApiError> logoutExpectingError(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/logout",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
+    }
+
+    public ResponseEntity<ApiError> logoutWithoutToken() {
+        HttpEntity<Void> entity = new HttpEntity<>(new HttpHeaders());
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/logout",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
+    }
+
+    // ==================== LOGOUT ALL ====================
+
+    public ResponseEntity<LogoutAllResponse> logoutAll(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/logout-all",
+                HttpMethod.POST,
+                entity,
+                LogoutAllResponse.class
+        );
+    }
+
+    public ResponseEntity<ApiError> logoutAllExpectingError(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/logout-all",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
+    }
+
+    // ==================== REFRESH TOKEN ====================
+
+    public ResponseEntity<AuthenticationResponse> refreshToken(String refreshToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(refreshToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/refresh-token",
+                HttpMethod.POST,
+                entity,
+                AuthenticationResponse.class
+        );
+    }
+
+    public ResponseEntity<ApiError> refreshTokenExpectingError(String refreshToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(refreshToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/refresh-token",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
+    }
+
+    public ResponseEntity<ApiError> refreshTokenWithoutHeader() {
+        HttpEntity<Void> entity = new HttpEntity<>(new HttpHeaders());
+
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/auth/refresh-token",
+                HttpMethod.POST,
+                entity,
+                ApiError.class
+        );
+    }
+
+    // ==================== PROTECTED RESOURCE ====================
+
+    public ResponseEntity<String> getProtectedResource(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        return restTemplate.exchange(
+                baseUrl + "/cash-flow",
+                HttpMethod.GET,
+                entity,
+                String.class
+        );
     }
 }

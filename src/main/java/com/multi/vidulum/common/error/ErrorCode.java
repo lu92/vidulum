@@ -16,6 +16,10 @@ public enum ErrorCode {
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Token has expired"),
     AUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Token is invalid"),
     AUTH_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Access denied"),
+    AUTH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Token not found"),
+    AUTH_TOKEN_REVOKED(HttpStatus.UNAUTHORIZED, "Token has been revoked"),
+    AUTH_REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Refresh token expired"),
+    AUTH_MISSING_TOKEN(HttpStatus.BAD_REQUEST, "Authorization header is missing or invalid"),
 
     // Validation
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Request validation failed"),
