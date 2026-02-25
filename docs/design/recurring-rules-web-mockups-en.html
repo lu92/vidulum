@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recurring Rules - Web Mockups (EN)</title>
+    <style>
+        :root {
+            --primary: #1976D2;
+            --primary-dark: #1565C0;
+            --primary-light: #BBDEFB;
+            --success: #4CAF50;
+            --success-light: #E8F5E9;
+            --warning: #FFA000;
+            --warning-light: #FFF3E0;
+            --error: #D32F2F;
+            --error-light: #FFEBEE;
+            --gray-100: #F5F5F5;
+            --gray-200: #EEEEEE;
+            --gray-300: #E0E0E0;
+            --gray-500: #9E9E9E;
+            --gray-700: #616161;
+            --gray-900: #212121;
+            --white: #FFFFFF;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px;
+            margin-bottom: 24px;
+        }
+
+        h2 {
+            font-size: 20px;
+            color: var(--gray-700);
+            margin-top: 40px;
+        }
+
+        /* Mockup Frame */
+        .mockup-frame {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            margin: 24px 0;
+            overflow: hidden;
+        }
+
+        .mockup-header {
+            background: var(--gray-100);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mockup-title {
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .mockup-content {
+            padding: 24px;
+        }
+
+        /* App Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .app-header h3 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-100);
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: var(--gray-200);
+            color: var(--gray-700);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-chip:hover {
+            background: var(--gray-300);
+        }
+
+        .filter-chip.active {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .search-input {
+            padding: 8px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 20px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        /* Rule Card */
+        .rule-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: box-shadow 0.2s;
+        }
+
+        .rule-card:hover {
+            box-shadow: var(--shadow);
+        }
+
+        .rule-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .rule-info {
+            flex: 1;
+        }
+
+        .rule-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .rule-details {
+            color: var(--gray-500);
+            font-size: 14px;
+        }
+
+        .rule-meta {
+            text-align: right;
+        }
+
+        .rule-amount {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--gray-900);
+        }
+
+        .rule-next {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        /* Status Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-active {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .badge-paused {
+            background: var(--warning-light);
+            color: var(--warning);
+        }
+
+        .badge-ended {
+            background: var(--gray-200);
+            color: var(--gray-500);
+        }
+
+        /* Actions Menu */
+        .actions-menu {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .actions-menu:hover {
+            background: var(--gray-100);
+        }
+
+        /* Summary Bar */
+        .summary-bar {
+            background: var(--gray-100);
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .summary-item {
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        .summary-item strong {
+            color: var(--gray-900);
+        }
+
+        /* Modal */
+        .modal {
+            background: var(--white);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--gray-500);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Section */
+        .form-section {
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 16px;
+        }
+
+        /* Radio Group */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-option:hover {
+            background: var(--gray-100);
+        }
+
+        .radio-option.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .radio-dot {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .radio-option.selected .radio-dot {
+            border-color: var(--primary);
+        }
+
+        .radio-option.selected .radio-dot::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        /* Preview Box */
+        .preview-box {
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-content {
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        /* Change Preview */
+        .change-preview {
+            background: var(--warning-light);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+
+        .change-preview-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .change-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+
+        .change-old {
+            text-decoration: line-through;
+            color: var(--gray-500);
+        }
+
+        .change-new {
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+
+        /* Alert Card */
+        .alert-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .alert-card.warning {
+            background: var(--warning-light);
+            border: 1px solid var(--warning);
+        }
+
+        .alert-card.info {
+            background: var(--primary-light);
+            border: 1px solid var(--primary);
+        }
+
+        .alert-icon {
+            font-size: 24px;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .alert-text {
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .dashboard-card {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard-card-title {
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-bottom: 8px;
+        }
+
+        .dashboard-card-value {
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .dashboard-card-value.positive {
+            color: var(--success);
+        }
+
+        .dashboard-card-value.negative {
+            color: var(--error);
+        }
+
+        /* Upcoming List */
+        .upcoming-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .upcoming-item:last-child {
+            border-bottom: none;
+        }
+
+        .upcoming-date {
+            font-size: 12px;
+            color: var(--gray-500);
+            width: 80px;
+        }
+
+        .upcoming-name {
+            flex: 1;
+        }
+
+        .upcoming-amount {
+            font-weight: 500;
+        }
+
+        .upcoming-amount.inflow {
+            color: var(--success);
+        }
+
+        .upcoming-amount.outflow {
+            color: var(--error);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--gray-500);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--gray-700);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Screen selector */
+        .screen-selector {
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            z-index: 100;
+            padding: 16px;
+            margin: -20px -20px 20px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .screen-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .screen-btn {
+            padding: 8px 16px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .screen-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .screen-btn.active {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+        }
+
+        /* Screen container */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Scheduled Changes */
+        .scheduled-change {
+            background: var(--gray-100);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scheduled-change-info {
+            flex: 1;
+        }
+
+        .scheduled-change-date {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .scheduled-change-amount {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .scheduled-change-reason {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .scheduled-change-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            background: var(--gray-100);
+        }
+
+        /* Amount History */
+        .history-item {
+            border-left: 2px solid var(--primary);
+            padding-left: 16px;
+            margin-left: 8px;
+            padding-bottom: 20px;
+            position: relative;
+        }
+
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+
+        .history-change {
+            font-weight: 500;
+        }
+
+        .history-reason {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .history-user {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recurring Rules - Web Mockups (English)</h1>
+
+        <div class="screen-selector">
+            <div class="screen-list">
+                <button class="screen-btn active" onclick="showScreen('list')">Rules List</button>
+                <button class="screen-btn" onclick="showScreen('empty')">Empty State</button>
+                <button class="screen-btn" onclick="showScreen('create')">Create Rule</button>
+                <button class="screen-btn" onclick="showScreen('edit')">Edit (Amount Change)</button>
+                <button class="screen-btn" onclick="showScreen('detail')">Rule Details</button>
+                <button class="screen-btn" onclick="showScreen('scheduled')">Scheduled Change</button>
+                <button class="screen-btn" onclick="showScreen('mismatch')">Mismatch Resolution</button>
+                <button class="screen-btn" onclick="showScreen('dashboard')">Dashboard</button>
+                <button class="screen-btn" onclick="showScreen('suggestions')">AI Suggestions</button>
+                <button class="screen-btn" onclick="showScreen('history')">Amount History</button>
+            </div>
+        </div>
+
+        <!-- Screen: Rules List -->
+        <div id="screen-list" class="screen active">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Recurring Rules List</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="app-header">
+                        <h3>Recurring Rules</h3>
+                        <button class="btn btn-primary">+ New Rule</button>
+                    </div>
+
+                    <div class="filters">
+                        <span class="filter-chip active">All</span>
+                        <span class="filter-chip">Expenses</span>
+                        <span class="filter-chip">Income</span>
+                        <input type="text" class="search-input" placeholder="Search...">
+                    </div>
+
+                    <div class="rule-card">
+                        <div class="rule-icon">🏠</div>
+                        <div class="rule-info">
+                            <div class="rule-name">Rent</div>
+                            <div class="rule-details">Housing • 10th of each month</div>
+                        </div>
+                        <div class="rule-meta">
+                            <span class="badge badge-active">Active</span>
+                            <div class="rule-amount">$2,000</div>
+                            <div class="rule-next">Next: Mar 10, 2026</div>
+                        </div>
+                        <div class="actions-menu">⋮</div>
+                    </div>
+
+                    <div class="rule-card">
+                        <div class="rule-icon">📺</div>
+                        <div class="rule-info">
+                            <div class="rule-name">Netflix</div>
+                            <div class="rule-details">Entertainment • 15th of each month</div>
+                        </div>
+                        <div class="rule-meta">
+                            <span class="badge badge-active">Active</span>
+                            <div class="rule-amount">$19.99</div>
+                            <div class="rule-next">Next: Mar 15, 2026</div>
+                        </div>
+                        <div class="actions-menu">⋮</div>
+                    </div>
+
+                    <div class="rule-card">
+                        <div class="rule-icon">👶</div>
+                        <div class="rule-info">
+                            <div class="rule-name">Daycare</div>
+                            <div class="rule-details">Children • 5th of month (Sep-Jun)</div>
+                        </div>
+                        <div class="rule-meta">
+                            <span class="badge badge-paused">Paused</span>
+                            <div class="rule-amount">$800</div>
+                            <div class="rule-next">Paused since: Jul 1</div>
+                        </div>
+                        <div class="actions-menu">⋮</div>
+                    </div>
+
+                    <div class="rule-card">
+                        <div class="rule-icon">💰</div>
+                        <div class="rule-info">
+                            <div class="rule-name">Salary</div>
+                            <div class="rule-details">Income • Last day of month</div>
+                        </div>
+                        <div class="rule-meta">
+                            <span class="badge badge-active">Active</span>
+                            <div class="rule-amount" style="color: var(--success)">+$8,500</div>
+                            <div class="rule-next">Next: Feb 28, 2026</div>
+                        </div>
+                        <div class="actions-menu">⋮</div>
+                    </div>
+
+                    <div class="summary-bar">
+                        <span class="summary-item"><strong>4</strong> rules</span>
+                        <span class="summary-item">Expenses: <strong>~$2,820/mo</strong></span>
+                        <span class="summary-item">Income: <strong>~$8,500/mo</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Empty State -->
+        <div id="screen-empty" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Rules List - Empty State</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="app-header">
+                        <h3>Recurring Rules</h3>
+                        <button class="btn btn-primary">+ New Rule</button>
+                    </div>
+
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <h3>No rules yet</h3>
+                        <p>Recurring rules automatically generate expected transactions based on a schedule.</p>
+                        <p style="margin-top: 8px; color: var(--gray-500)">Examples: rent, Netflix, salary, daycare</p>
+                        <button class="btn btn-primary" style="margin-top: 24px">+ Add Your First Rule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Create Rule -->
+        <div id="screen-create" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Rule Creation Form</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>New Recurring Rule</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-section">
+                                <div class="form-section-title">Basic Information</div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Name *</label>
+                                    <input type="text" class="form-input" placeholder="e.g., Rent, Netflix, Salary" value="Rent">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Description (optional)</label>
+                                    <input type="text" class="form-input" placeholder="Additional information" value="Monthly apartment rent at 123 Main St">
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Type *</label>
+                                        <div class="radio-group" style="flex-direction: row; gap: 16px;">
+                                            <label class="radio-option" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Income</span>
+                                            </label>
+                                            <label class="radio-option selected" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Expense</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Category *</label>
+                                        <select class="form-input">
+                                            <option>Housing</option>
+                                            <option>Entertainment</option>
+                                            <option>Transportation</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Amount *</label>
+                                        <input type="text" class="form-input" value="2000.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Currency</label>
+                                        <select class="form-input">
+                                            <option>USD</option>
+                                            <option>EUR</option>
+                                            <option>GBP</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox">
+                                    <span style="font-size: 14px;">Amount is estimated (e.g., utility bills)</span>
+                                </label>
+                            </div>
+
+                            <div class="form-section">
+                                <div class="form-section-title">Schedule</div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Frequency *</label>
+                                    <select class="form-input">
+                                        <option>Monthly</option>
+                                        <option>Weekly</option>
+                                        <option>Yearly</option>
+                                        <option>Every X days</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Day of Month *</label>
+                                    <select class="form-input">
+                                        <option>10</option>
+                                    </select>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 8px;">
+                                        <input type="checkbox">
+                                        <span style="font-size: 14px;">Last day of month</span>
+                                    </label>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Date *</label>
+                                        <input type="date" class="form-input" value="2026-03-10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" class="form-input" placeholder="None">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-title">📊 Preview</div>
+                                <div class="preview-content">
+                                    <p><strong>12 transactions</strong> will be generated</p>
+                                    <p style="margin-top: 8px;">First: Mar 10, 2026 • Last: Feb 10, 2027</p>
+                                    <p>Annual total: <strong>$24,000</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Create Rule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Edit (Amount Change) -->
+        <div id="screen-edit" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Edit Rule - Update Scope Selection</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>Review Changes: Rent</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin-bottom: 16px;">You are making the following changes:</p>
+
+                            <div class="change-preview">
+                                <div class="change-preview-title">Amount</div>
+                                <div class="change-item">
+                                    <span>Was:</span>
+                                    <span class="change-old">$2,000</span>
+                                </div>
+                                <div class="change-item">
+                                    <span>Will be:</span>
+                                    <span class="change-new">$2,100 (+$100 / +5%)</span>
+                                </div>
+                            </div>
+
+                            <p style="font-weight: 600; margin-bottom: 16px;">How should the amount change be applied?</p>
+
+                            <div class="radio-group">
+                                <label class="radio-option selected">
+                                    <span class="radio-dot"></span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500;">Future transactions only</div>
+                                        <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                            8 transactions will be updated (from April 2026)
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--gray-500);">
+                                            2 past transactions will remain unchanged
+                                        </div>
+                                    </div>
+                                    <span class="badge badge-active">Recommended</span>
+                                </label>
+
+                                <label class="radio-option">
+                                    <span class="radio-dot"></span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500;">All unrealized transactions</div>
+                                        <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                            10 transactions will be updated (including March)
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="preview-box" style="margin-top: 24px;">
+                                <div class="preview-title">📊 Impact</div>
+                                <div class="preview-content">
+                                    <p>Annual impact: <strong>+$1,200</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Apply Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Rule Details -->
+        <div id="screen-detail" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Rule Details</span>
+                </div>
+                <div class="mockup-content">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                        <button class="btn btn-outline">← Back</button>
+                        <h3 style="margin: 0;">Rent</h3>
+                        <span class="badge badge-active">Active</span>
+                        <div style="flex: 1;"></div>
+                        <button class="btn btn-secondary">Edit</button>
+                        <button class="btn btn-outline">⋮</button>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Amount</div>
+                            <div class="dashboard-card-value">$2,000</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Frequency</div>
+                            <div class="dashboard-card-value" style="font-size: 20px;">10th of each month</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Category</div>
+                            <div class="dashboard-card-value" style="font-size: 20px;">🏠 Housing</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Generated</div>
+                            <div class="dashboard-card-value">12 transactions</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0;">Scheduled Changes</h3>
+                            <button class="btn btn-outline">+ Schedule Change</button>
+                        </div>
+
+                        <div class="scheduled-change">
+                            <div class="scheduled-change-info">
+                                <div class="scheduled-change-date">From January 1, 2027</div>
+                                <div class="scheduled-change-amount">$2,200 <span style="color: var(--success); font-size: 14px;">(+$200)</span></div>
+                                <div class="scheduled-change-reason">Rent increase per landlord notice dated Nov 15, 2026</div>
+                            </div>
+                            <div class="scheduled-change-actions">
+                                <button class="icon-btn">✏️</button>
+                                <button class="icon-btn">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px;">
+                        <h3>Upcoming Transactions</h3>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">Mar 10, 2026</span>
+                            <span class="upcoming-name">Rent</span>
+                            <span class="upcoming-amount outflow">-$2,000</span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">Apr 10, 2026</span>
+                            <span class="upcoming-name">Rent</span>
+                            <span class="upcoming-amount outflow">-$2,000</span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">May 10, 2026</span>
+                            <span class="upcoming-name">Rent</span>
+                            <span class="upcoming-amount outflow">-$2,000</span>
+                        </div>
+                        <button class="btn btn-outline" style="margin-top: 16px;">View All →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Scheduled Change -->
+        <div id="screen-scheduled" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Schedule Amount Change</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>Schedule Amount Change</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin-bottom: 20px;">Rule: <strong>Rent</strong></p>
+                            <p style="margin-bottom: 20px;">Current amount: <strong>$2,000</strong></p>
+
+                            <div class="form-group">
+                                <label class="form-label">New Amount *</label>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="text" class="form-input" style="width: 150px;" value="2200.00">
+                                    <span>USD</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Effective From *</label>
+                                <input type="date" class="form-input" value="2027-01-01" style="width: 200px;">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Reason (optional)</label>
+                                <input type="text" class="form-input" placeholder="e.g., Rent increase per lease agreement" value="Rent increase per landlord notice dated Nov 15, 2026">
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-title">📊 Impact Preview</div>
+                                <div class="preview-content">
+                                    <p><strong>12 transactions</strong> will be updated (Jan-Dec 2027)</p>
+                                    <p style="margin-top: 8px;">Amount change: $2,000 → $2,200 <span style="color: var(--success);">(+$200 / +10%)</span></p>
+                                    <p>Annual impact: <strong>+$2,400</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Schedule Change</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Mismatch Resolution -->
+        <div id="screen-mismatch" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Transaction Mismatch Resolution</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>Resolve Transaction Mismatch</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert-card warning">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-content">
+                                    <div class="alert-title">Netflix · March 15, 2026</div>
+                                    <div class="alert-text">
+                                        Expected: <strong>$19.99</strong> → Received: <strong>$22.99</strong>
+                                        <span style="color: var(--error);">(+$3 / +15%)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p style="font-weight: 600; margin: 24px 0 16px;">How do you want to resolve this mismatch?</p>
+
+                            <div class="radio-group">
+                                <label class="radio-option selected">
+                                    <span class="radio-dot"></span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500;">Update rule to $22.99</div>
+                                        <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                            This and all future transactions will be $22.99
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--gray-500);">
+                                            11 transactions will be updated
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--gray-500);">
+                                            Annual impact: +$36
+                                        </div>
+                                    </div>
+                                    <span class="badge badge-active">Recommended</span>
+                                </label>
+
+                                <label class="radio-option">
+                                    <span class="radio-dot"></span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500;">Accept this transaction only</div>
+                                        <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                            Rule will remain $19.99
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--gray-500);">
+                                            Use when this is a one-time difference (e.g., promo, error)
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="radio-option">
+                                    <span class="radio-dot"></span>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500;">Schedule change from this date</div>
+                                        <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                            From Mar 15, 2026: $22.99
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--gray-500);">
+                                            Previous transactions will remain $19.99
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Dashboard -->
+        <div id="screen-dashboard" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Recurring Rules Dashboard</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="app-header">
+                        <h3>Recurring Rules</h3>
+                    </div>
+
+                    <div class="tabs">
+                        <span class="tab active">Dashboard</span>
+                        <span class="tab">Rules List</span>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Active Rules</div>
+                            <div class="dashboard-card-value">8</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Monthly Expenses</div>
+                            <div class="dashboard-card-value negative">-$4,250</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Monthly Income</div>
+                            <div class="dashboard-card-value positive">+$8,500</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-title">Net Balance</div>
+                            <div class="dashboard-card-value positive">+$4,250</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px;">
+                        <h3>Needs Attention</h3>
+
+                        <div class="alert-card warning">
+                            <div class="alert-icon">⚠️</div>
+                            <div class="alert-content">
+                                <div class="alert-title">1 mismatch to resolve</div>
+                                <div class="alert-text">Netflix: $22.99 (expected $19.99)</div>
+                            </div>
+                            <button class="btn btn-outline">Resolve</button>
+                        </div>
+
+                        <div class="alert-card info">
+                            <div class="alert-icon">💡</div>
+                            <div class="alert-content">
+                                <div class="alert-title">3 suggested rules</div>
+                                <div class="alert-text">New patterns detected in your transactions</div>
+                            </div>
+                            <button class="btn btn-outline">View</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px;">
+                        <h3>Upcoming Transactions (7 days)</h3>
+
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">Feb 28</span>
+                            <span class="upcoming-name">💰 Salary</span>
+                            <span class="upcoming-amount inflow">+$8,500</span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">Mar 1</span>
+                            <span class="upcoming-name">🏋️ Gym Membership</span>
+                            <span class="upcoming-amount outflow">-$50</span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date">Mar 5</span>
+                            <span class="upcoming-name">👶 Daycare</span>
+                            <span class="upcoming-amount outflow">-$800</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: AI Suggestions -->
+        <div id="screen-suggestions" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">AI Suggestions</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="app-header">
+                        <h3>💡 Suggested Rules</h3>
+                    </div>
+
+                    <p style="margin-bottom: 24px; color: var(--gray-600);">Based on your transaction history, we detected potential rules:</p>
+
+                    <div class="rule-card" style="border-left: 4px solid var(--primary);">
+                        <div class="rule-icon">📺</div>
+                        <div class="rule-info">
+                            <div class="rule-name">NETFLIX</div>
+                            <div class="rule-details">
+                                Detected: 6 transactions, ~$19.99<br>
+                                15th of each month<br>
+                                Suggested category: Entertainment
+                            </div>
+                        </div>
+                        <div class="rule-meta">
+                            <div style="margin-bottom: 8px;">
+                                <span class="badge" style="background: var(--primary-light); color: var(--primary);">95% confidence</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%;">Create</button>
+                            <button class="btn btn-outline" style="width: 100%; margin-top: 8px;">Dismiss</button>
+                        </div>
+                    </div>
+
+                    <div class="rule-card" style="border-left: 4px solid var(--primary);">
+                        <div class="rule-icon">🏋️</div>
+                        <div class="rule-info">
+                            <div class="rule-name">PLANET FITNESS</div>
+                            <div class="rule-details">
+                                Detected: 4 transactions, ~$25<br>
+                                1st of each month<br>
+                                Suggested category: Health & Fitness
+                            </div>
+                        </div>
+                        <div class="rule-meta">
+                            <div style="margin-bottom: 8px;">
+                                <span class="badge" style="background: var(--primary-light); color: var(--primary);">85% confidence</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%;">Create</button>
+                            <button class="btn btn-outline" style="width: 100%; margin-top: 8px;">Dismiss</button>
+                        </div>
+                    </div>
+
+                    <div class="rule-card" style="border-left: 4px solid var(--gray-300);">
+                        <div class="rule-icon">💳</div>
+                        <div class="rule-info">
+                            <div class="rule-name">AMAZON PRIME</div>
+                            <div class="rule-details">
+                                Detected: 3 transactions, ~$14.99<br>
+                                10th of each month<br>
+                                Suggested category: Shopping
+                            </div>
+                        </div>
+                        <div class="rule-meta">
+                            <div style="margin-bottom: 8px;">
+                                <span class="badge" style="background: var(--gray-200); color: var(--gray-600);">70% confidence</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%;">Create</button>
+                            <button class="btn btn-outline" style="width: 100%; margin-top: 8px;">Dismiss</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px; display: flex; gap: 16px;">
+                        <button class="btn btn-secondary">Dismiss All</button>
+                        <button class="btn btn-outline">Scan Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Amount History -->
+        <div id="screen-history" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Amount Change History</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>Amount History · Rent</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="history-item">
+                                <div class="history-date">📅 January 1, 2027 · Scheduled Change</div>
+                                <div class="history-change">
+                                    $2,000 → $2,200
+                                    <span style="color: var(--success);">(+$200 / +10%)</span>
+                                </div>
+                                <div class="history-reason">Reason: Rent increase per landlord notice dated Nov 15, 2026</div>
+                                <div class="history-user">Changed by: john.doe@email.com · Feb 25, 2026, 3:30 PM</div>
+                                <span class="badge badge-paused" style="margin-top: 8px;">⏳ Scheduled</span>
+                            </div>
+
+                            <div class="history-item">
+                                <div class="history-date">📅 March 1, 2026 · Rule Created</div>
+                                <div class="history-change">
+                                    Initial amount: <strong>$2,000</strong>
+                                </div>
+                                <div class="history-user">Changed by: john.doe@email.com · Feb 25, 2026, 2:30 PM</div>
+                                <span class="badge badge-active" style="margin-top: 8px;">✓ Active</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-outline">Export History (CSV)</button>
+                            <button class="btn btn-secondary">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Show selected screen
+            document.getElementById('screen-' + screenId).classList.add('active');
+
+            // Update buttons
+            document.querySelectorAll('.screen-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
