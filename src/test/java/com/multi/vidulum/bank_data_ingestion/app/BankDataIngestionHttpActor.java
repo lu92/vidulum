@@ -37,10 +37,22 @@ public class BankDataIngestionHttpActor {
 
     private final TestRestTemplate restTemplate;
     private final String baseUrl;
+    private String jwtToken;
 
     public BankDataIngestionHttpActor(TestRestTemplate restTemplate, int port) {
         this.restTemplate = restTemplate;
         this.baseUrl = "http://localhost:" + port;
+    }
+
+    /**
+     * Sets the JWT token for authenticated requests.
+     * All subsequent requests will include Authorization: Bearer header.
+     *
+     * @param token the JWT access token
+     */
+    public void setJwtToken(String token) {
+        this.jwtToken = token;
+        log.debug("JWT token set for BankDataIngestionHttpActor");
     }
 
     // ============ CashFlow Operations ============
@@ -85,8 +97,10 @@ public class BankDataIngestionHttpActor {
      * Gets CashFlow info via HTTP.
      */
     public CashFlowDto.CashFlowSummaryJson getCashFlow(String cashFlowId) {
-        ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.getForEntity(
+        ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.exchange(
                 baseUrl + "/cash-flow/cf=" + cashFlowId,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 CashFlowDto.CashFlowSummaryJson.class
         );
 
@@ -98,8 +112,10 @@ public class BankDataIngestionHttpActor {
      * Gets CashFlow info as a raw Map (useful when avoiding serialization issues).
      */
     public Map<String, Object> getCashFlowAsMap(String cashFlowId) {
-        ResponseEntity<Map> response = restTemplate.getForEntity(
+        ResponseEntity<Map> response = restTemplate.exchange(
                 baseUrl + "/cash-flow/cf=" + cashFlowId,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 Map.class
         );
 
@@ -261,8 +277,10 @@ public class BankDataIngestionHttpActor {
      * Gets category mappings for a CashFlow.
      */
     public BankDataIngestionDto.GetMappingsResponse getMappings(String cashFlowId) {
-        ResponseEntity<BankDataIngestionDto.GetMappingsResponse> response = restTemplate.getForEntity(
+        ResponseEntity<BankDataIngestionDto.GetMappingsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 BankDataIngestionDto.GetMappingsResponse.class
         );
 
@@ -275,8 +293,10 @@ public class BankDataIngestionHttpActor {
      * Allows users to return to unfinished imports.
      */
     public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(String cashFlowId) {
-        ResponseEntity<BankDataIngestionDto.ListStagingSessionsResponse> response = restTemplate.getForEntity(
+        ResponseEntity<BankDataIngestionDto.ListStagingSessionsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging",
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 BankDataIngestionDto.ListStagingSessionsResponse.class
         );
 
@@ -357,8 +377,10 @@ public class BankDataIngestionHttpActor {
      * Gets import job progress.
      */
     public BankDataIngestionDto.GetImportProgressResponse getImportProgress(String cashFlowId, String jobId) {
-        ResponseEntity<BankDataIngestionDto.GetImportProgressResponse> response = restTemplate.getForEntity(
+        ResponseEntity<BankDataIngestionDto.GetImportProgressResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 BankDataIngestionDto.GetImportProgressResponse.class
         );
 
@@ -391,8 +413,10 @@ public class BankDataIngestionHttpActor {
      * Gets staging preview.
      */
     public BankDataIngestionDto.GetStagingPreviewResponse getStagingPreview(String cashFlowId, String stagingSessionId) {
-        ResponseEntity<BankDataIngestionDto.GetStagingPreviewResponse> response = restTemplate.getForEntity(
+        ResponseEntity<BankDataIngestionDto.GetStagingPreviewResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 BankDataIngestionDto.GetStagingPreviewResponse.class
         );
 
@@ -407,7 +431,7 @@ public class BankDataIngestionHttpActor {
         ResponseEntity<Void> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
                 HttpMethod.DELETE,
-                null,
+                new HttpEntity<>(jsonHeaders()),
                 Void.class
         );
 
@@ -423,7 +447,7 @@ public class BankDataIngestionHttpActor {
         ResponseEntity<BankDataIngestionDto.RevalidateStagingResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId + "/revalidate",
                 HttpMethod.POST,
-                null,
+                new HttpEntity<>(jsonHeaders()),
                 BankDataIngestionDto.RevalidateStagingResponse.class
         );
 
@@ -458,6 +482,9 @@ public class BankDataIngestionHttpActor {
         // Build multipart request
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        if (jwtToken != null) {
+            headers.setBearerAuth(jwtToken);
+        }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new org.springframework.http.HttpEntity<>(
@@ -495,6 +522,9 @@ public class BankDataIngestionHttpActor {
     public BankDataIngestionDto.UploadCsvResponse uploadCsvContent(String cashFlowId, String fileName, byte[] csvContent) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        if (jwtToken != null) {
+            headers.setBearerAuth(jwtToken);
+        }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new org.springframework.http.HttpEntity<>(
@@ -611,6 +641,9 @@ public class BankDataIngestionHttpActor {
     public ResponseEntity<ApiError> uploadCsvExpectingError(String cashFlowId, String fileName, byte[] csvContent) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        if (jwtToken != null) {
+            headers.setBearerAuth(jwtToken);
+        }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new org.springframework.http.HttpEntity<>(
@@ -647,6 +680,9 @@ public class BankDataIngestionHttpActor {
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (jwtToken != null) {
+            headers.setBearerAuth(jwtToken);
+        }
         return headers;
     }
 }

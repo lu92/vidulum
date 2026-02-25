@@ -1,13 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
-import com.multi.vidulum.cashflow.domain.BankName;
 import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Category;
@@ -18,33 +17,17 @@ import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.config.FixedClockConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
-import com.multi.vidulum.trading.app.TradingAppConfig;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
-import org.springframework.kafka.test.utils.ContainerTestUtils;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.context.annotation.Lazy;
 
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -57,7 +40,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration test verifying REST API communication between bank-data-ingestion
- * and cashflow-service endpoints.
+ * and cashflow-service endpoints WITH JWT AUTHENTICATION ENABLED.
+ *
+ * This test extends AuthenticatedHttpIntegrationTest to verify security is working:
+ * - All requests include JWT Bearer token
+ * - Endpoints properly validate authentication
  *
  * This test verifies the HTTP REST API contracts that HttpCashFlowServiceClient
  * would use in a microservice architecture:
@@ -70,17 +57,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Uses BankDataIngestionHttpActor for cleaner test code following the DualBudgetActor pattern.
  */
 @Slf4j
-@SpringBootTest(
-        classes = FixedClockConfig.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {
-            // Disable main SecurityConfiguration to prevent filter chain conflicts
-            "app.security.enabled=false"
-        }
-)
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class, BankDataIngestionHttpIntegrationTest.TestSecurityConfig.class})
-@AutoConfigureTestRestTemplate
-public class BankDataIngestionHttpIntegrationTest {
+@Import({BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
+public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
@@ -92,51 +70,6 @@ public class BankDataIngestionHttpIntegrationTest {
     }
 
     /**
-     * Test security configuration that completely replaces the main SecurityConfiguration.
-     * Required for Spring Security 6.3+ which doesn't allow multiple filter chains
-     * matching "any request".
-     */
-    @TestConfiguration
-    @EnableWebSecurity
-    static class TestSecurityConfig {
-        @Bean
-        public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
-            http
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(req -> req.anyRequest().permitAll());
-            return http.build();
-        }
-    }
-
-    // Shared reusable containers - started once and reused across all tests
-    protected static final MongoDBContainer mongoDBContainer;
-    protected static final KafkaContainer kafka;
-
-    static {
-        // Initialize shared MongoDB container
-        mongoDBContainer = new MongoDBContainer("mongo:8.0")
-                .withReuse(true);
-        mongoDBContainer.start();
-
-        // Initialize shared Kafka container
-        kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"))
-                .withReuse(true);
-        kafka.start();
-    }
-
-    @LocalServerPort
-    private int port;
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("spring.kafka.bootstrap-servers", () -> kafka.getBootstrapServers());
-        // Disable HttpCashFlowServiceClient - we'll provide a test implementation
-        registry.add("vidulum.cashflow-service.enabled", () -> "false");
-    }
-
-    /**
      * Test configuration that provides CashFlowServiceClient using direct gateway calls.
      * Uses @Lazy on CommandGateway to break circular dependency.
      */
@@ -144,17 +77,11 @@ public class BankDataIngestionHttpIntegrationTest {
     static class TestCashFlowServiceClientConfig {
         @Bean
         public CashFlowServiceClient cashFlowServiceClient(
-                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
-                @org.springframework.context.annotation.Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
+                QueryGateway queryGateway,
+                @Lazy CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
     }
-
-    @Autowired
-    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
-
-    @Autowired
-    private TestRestTemplate restTemplate;
 
     @Autowired
     private CashFlowMongoRepository cashFlowMongoRepository;
@@ -175,15 +102,19 @@ public class BankDataIngestionHttpIntegrationTest {
 
     @BeforeEach
     public void beforeTest() {
-        kafkaListenerEndpointRegistry.getListenerContainers().forEach(
-                messageListenerContainer -> ContainerTestUtils.waitForAssignment(messageListenerContainer, 1));
+        waitForKafkaListeners();
         categoryMappingMongoRepository.deleteAll();
         stagedTransactionMongoRepository.deleteAll();
         importJobMongoRepository.deleteAll();
         cashFlowMongoRepository.deleteAll();
         cashFlowForecastMongoRepository.deleteAll();
 
+        // Register and authenticate to get JWT token
+        registerAndAuthenticate();
+
+        // Create actor with JWT token
         actor = new BankDataIngestionHttpActor(restTemplate, port);
+        actor.setJwtToken(accessToken);
     }
 
     @Test
@@ -195,7 +126,7 @@ public class BankDataIngestionHttpIntegrationTest {
         String cashFlowName = uniqueCashFlowName();
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 cashFlowName,
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -207,7 +138,7 @@ public class BankDataIngestionHttpIntegrationTest {
         // then - validate whole object with all fields
         // Only ignore cashFlowId (generated), lastMessageChecksum (internal), importCutoffDateTime (not set)
         assertThat(cashFlow.getCashFlowId()).isEqualTo(cashFlowId);
-        assertThat(cashFlow.getUserId()).isEqualTo("U10000006");
+        assertThat(cashFlow.getUserId()).isEqualTo(userId);
         assertThat(cashFlow.getName()).isEqualTo(cashFlowName);
         assertThat(cashFlow.getDescription()).isEqualTo("CashFlow for HTTP integration testing");
         assertThat(cashFlow.getStatus()).isEqualTo(CashFlow.CashFlowStatus.SETUP);
@@ -262,7 +193,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateCategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -303,7 +234,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldCreateSubcategoryViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -348,7 +279,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -650,7 +581,7 @@ public class BankDataIngestionHttpIntegrationTest {
     void shouldConfigureAndRetrieveMappingsViaRestApi() {
         // given
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 YearMonth.of(2021, 7),
                 Money.of(10000.0, "PLN")
@@ -708,7 +639,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -758,7 +689,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -784,7 +715,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -854,7 +785,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -900,7 +831,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")
@@ -964,7 +895,7 @@ public class BankDataIngestionHttpIntegrationTest {
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
-                "U10000006",
+                userId,
                 uniqueCashFlowName(),
                 startPeriod,
                 Money.of(10000.0, "PLN")

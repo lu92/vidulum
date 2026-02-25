@@ -29,11 +29,23 @@ public class CashFlowHttpActor {
     private final TestRestTemplate restTemplate;
     private final RestTemplate rawRestTemplate;
     private final String baseUrl;
+    private String jwtToken;
 
     public CashFlowHttpActor(TestRestTemplate restTemplate, int port) {
         this.restTemplate = restTemplate;
         this.baseUrl = "http://localhost:" + port;
         this.rawRestTemplate = createRawRestTemplate();
+    }
+
+    /**
+     * Sets the JWT token for authenticated requests.
+     * All subsequent requests will include Authorization: Bearer header.
+     *
+     * @param token the JWT access token
+     */
+    public void setJwtToken(String token) {
+        this.jwtToken = token;
+        log.debug("JWT token set for CashFlowHttpActor");
     }
 
     private RestTemplate createRawRestTemplate() {
@@ -55,7 +67,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL94345678901234567890123456")
+                                .account("PL61109010140000071219812874")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -194,8 +206,10 @@ public class CashFlowHttpActor {
      * Gets CashFlow summary via HTTP.
      */
     public CashFlowDto.CashFlowSummaryJson getCashFlow(String cashFlowId) {
-        ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.getForEntity(
+        ResponseEntity<CashFlowDto.CashFlowSummaryJson> response = restTemplate.exchange(
                 baseUrl + "/cash-flow/cf=" + cashFlowId,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
                 CashFlowDto.CashFlowSummaryJson.class
         );
 
@@ -252,7 +266,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL94345678901234567890123456")
+                                .account("PL61109010140000071219812874")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(initialBalance.getCurrency()).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -678,7 +692,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL94345678901234567890123456")
+                                .account("PL61109010140000071219812874")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -706,7 +720,7 @@ public class CashFlowHttpActor {
                 .bankAccount(CashFlowDto.BankAccountJson.builder()
                         .bankName("Test Bank")
                         .bankAccountNumber(CashFlowDto.BankAccountNumberJson.builder()
-                                .account("PL94345678901234567890123456")
+                                .account("PL61109010140000071219812874")
                                 .denomination(CashFlowDto.CurrencyJson.builder().id(currency).build())
                                 .build())
                         .balance(CashFlowDto.MoneyJson.builder()
@@ -753,6 +767,9 @@ public class CashFlowHttpActor {
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (jwtToken != null) {
+            headers.setBearerAuth(jwtToken);
+        }
         return headers;
     }
 
