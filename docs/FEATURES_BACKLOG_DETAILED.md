@@ -6,7 +6,7 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 
 ## Spis treści
 
-1. [TODO: Integration Tests with JWT Authentication](#1-todo-integration-tests-with-jwt-authentication)
+1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
 2. [Kafka Dead Letter Queue (DLQ)](#2-kafka-dead-letter-queue-dlq)
 3. [Recurring Rule Engine](#3-recurring-rule-engine)
 4. [AI Categorization](#4-ai-categorization)
@@ -18,73 +18,61 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 
 ---
 
-## 1. TODO: Integration Tests with JWT Authentication
+## 1. ✅ DONE: Integration Tests with JWT Authentication
 
 **Plik:** `docs/features-backlog/TODO-integration-tests-with-jwt-authentication.md`
 **Priorytet:** WYSOKI
 **Szacowany czas:** 4-6 godzin
+**Status:** ✅ **UKOŃCZONE** (2026-02-25)
 
-### Problem
+### Co zostało zrobione
 
-Obecne testy HTTP **wyłączają security całkowicie** i nie testują autentykacji JWT. Oznacza to że testy nie weryfikują:
-- Czy walidacja JWT działa poprawnie
-- Czy endpointy odrzucają requesty bez tokena (401 Unauthorized)
-- Czy endpointy odrzucają requesty z nieprawidłowym/wygasłym tokenem
-- Czy role-based authorization działa (403 Forbidden)
-- Czy `JwtAuthenticationFilter` przetwarza requesty poprawnie
-
-### Dowód na problem
-
-Podczas upgrade'u Spring Boot 3.5.2 znaleziono bug w `JwtService.java`:
-```java
-// BUG - zawsze zwracał true dla poprawnego formatu tokena
-return (extractedUsername.equals(extractedUsername)) && !isTokenExpired(token);
-
-// POPRAWNE
-return (extractedUsername.equals(username)) && !isTokenExpired(token);
-```
-
-Ten bug byłby wykryty gdyby testy używały JWT authentication.
-
-### Co trzeba zrobić
-
-1. **Utworzyć `AuthenticatedHttpIntegrationTest`** - nowa klasa bazowa z włączoną security
-   - Helper method do rejestracji i autentykacji
-   - Przechowywanie tokenów dla kolejnych requestów
+1. **Utworzono `AuthenticatedHttpIntegrationTest`** - nowa klasa bazowa z włączoną security
+   - Helper method `registerAndAuthenticate()` do rejestracji i autentykacji
+   - Przechowywanie tokenów (`accessToken`, `refreshToken`, `userId`)
    - Metody `authenticatedHeaders()` i `unauthenticatedHeaders()`
 
-2. **Zaktualizować klasy `*HttpActor`** - dodać `setJwtToken()` method
-   - `CashFlowHttpActor`
-   - `BankDataIngestionHttpActor`
-   - inne aktory HTTP
+2. **Zaktualizowano klasy `*HttpActor`** - dodano `setJwtToken()` method
+   - ✅ `CashFlowHttpActor`
+   - ✅ `BankDataIngestionHttpActor`
 
-3. **Dodać testy security** - dedykowane testy dla 401/403
-   - Test 401 bez tokena
-   - Test 401 z nieprawidłowym tokenem
-   - Test 401 z wygasłym tokenem
-   - Test 403 bez wymaganej roli
+3. **Dodano testy security** - `CashFlowSecurityTest`
+   - ✅ Test 403 bez tokena
+   - ✅ Test 403 z nieprawidłowym tokenem
+   - ✅ Test 403 z malformed tokenem
+   - ✅ Test POST bez tokena
+   - ✅ Testy publicznych endpointów (register, authenticate)
 
-4. **Migracja istniejących testów** - jeden po drugim
-   - `CashFlowErrorHandlingTest`
-   - `BankDataIngestionHttpIntegrationTest`
-   - `HttpCashFlowServiceClientIntegrationTest`
+4. **Migracja istniejących testów** - wszystkie zmigrowne
+   - ✅ `CashFlowErrorHandlingTest`
+   - ✅ `BankDataIngestionHttpIntegrationTest`
+   - ✅ `BankDataIngestionErrorHandlingTest`
+   - ✅ `HttpCashFlowServiceClientIntegrationTest`
+   - ✅ `AuthenticationControllerTest`
 
-5. **Cleanup** - usunąć stary kod wyłączający security
-   - `TestSecurityConfig`
-   - `app.security.enabled=false`
+5. **Cleanup** - usunięto stary kod
+   - ✅ Usunięto `AbstractHttpIntegrationTest`
+   - ✅ Usunięto `TestSecurityConfig` z testów
 
-### Korzyści
+### Zmiana w kodzie produkcyjnym
 
-- Testy bliższe produkcji (te same filtry security, ta sama walidacja JWT)
-- Wykrywanie bugów security wcześnie
-- Testowanie autoryzacji (role-based access control)
-- Większa pewność przy deploymentach
+Dodano `setJwtToken()` do `HttpCashFlowServiceClient.java` - pozwala na testowanie klienta HTTP bez kontekstu request (używane tylko w testach, w produkcji token jest propagowany przez `RequestContextHolder`).
 
-### Ryzyka
+### Testy
 
-- Wolniejsze testy (każdy test musi się zalogować)
-- Więcej kodu setup
-- Token expiration w długich testach
+- 385 testów przechodzi
+- 0 failures, 0 errors
+- 3 skipped (z @Disabled)
+
+### Manualne testy
+
+Wykonano pełny flow manualny na Docker:
+- ✅ Rejestracja użytkownika z JWT
+- ✅ Tworzenie CashFlow z historią
+- ✅ Upload CSV
+- ✅ Konfiguracja mapowań kategorii
+- ✅ Import transakcji
+- ✅ Weryfikacja danych
 
 ---
 
@@ -689,14 +677,14 @@ TX002,2026-01-31,Salary,8000.00,PLN,INFLOW,Income,Employer ABC
 
 ## Priorytetyzacja
 
-| Priorytet | Feature | Uzasadnienie |
-|-----------|---------|--------------|
-| 🔴 WYSOKI | JWT Integration Tests | Bezpieczeństwo, już znaleziono bug |
-| 🔴 WYSOKI | Month Rollover | Blokuje użytkowników po aktywacji |
-| 🔴 WYSOKI | Recurring Rules | Core feature dla prognozowania |
-| 🟡 ŚREDNI | Kafka DLQ | Stabilność produkcji |
-| 🟡 ŚREDNI | AI Categorization | UX improvement |
-| 🟡 ŚREDNI | Alerts | Proactive notifications |
-| 🟡 ŚREDNI | Reconciliation | Automatyzacja |
-| 🟢 NISKI | Maven Multi-Module | Refactoring |
-| 🟢 NISKI | Canonical CSV | Nice to have |
+| Priorytet | Feature | Uzasadnienie | Status |
+|-----------|---------|--------------|--------|
+| ✅ DONE | JWT Integration Tests | Bezpieczeństwo, już znaleziono bug | **UKOŃCZONE 2026-02-25** |
+| 🔴 WYSOKI | Month Rollover | Blokuje użytkowników po aktywacji | TODO |
+| 🔴 WYSOKI | Recurring Rules | Core feature dla prognozowania | TODO |
+| 🟡 ŚREDNI | Kafka DLQ | Stabilność produkcji | TODO |
+| 🟡 ŚREDNI | AI Categorization | UX improvement | TODO |
+| 🟡 ŚREDNI | Alerts | Proactive notifications | TODO |
+| 🟡 ŚREDNI | Reconciliation | Automatyzacja | TODO |
+| 🟢 NISKI | Maven Multi-Module | Refactoring | TODO |
+| 🟢 NISKI | Canonical CSV | Nice to have | TODO |
