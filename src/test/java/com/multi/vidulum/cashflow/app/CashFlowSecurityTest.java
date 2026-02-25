@@ -22,12 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Security tests for CashFlow endpoints.
  *
  * These tests verify that:
- * - Unauthenticated requests return 401 Unauthorized
- * - Invalid JWT tokens return 401 Unauthorized
+ * - Unauthenticated requests return 403 Forbidden
+ * - Invalid JWT tokens return 403 Forbidden
  * - Authenticated requests succeed
  *
  * This test class extends AuthenticatedHttpIntegrationTest which has
- * security ENABLED (unlike AbstractHttpIntegrationTest which disables it).
+ * security ENABLED (real JWT authentication).
  */
 @Slf4j
 class CashFlowSecurityTest extends AuthenticatedHttpIntegrationTest {

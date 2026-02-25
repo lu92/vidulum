@@ -1,39 +1,15 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
+import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.config.FixedClockConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.Order;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
-import org.springframework.kafka.test.utils.ContainerTestUtils;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.YearMonth;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,19 +28,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>
  * Uses existing test infrastructure (@SpringBootTest + Testcontainers) instead of WireMock
  * to test the real HTTP stack.
+ *
+ * This test class extends AuthenticatedHttpIntegrationTest which has
+ * security ENABLED (real JWT authentication).
  */
 @Slf4j
-@SpringBootTest(
-        classes = FixedClockConfig.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
-@Import({
-        PortfolioAppConfig.class,
-        TradingAppConfig.class,
-        HttpCashFlowServiceClientIntegrationTest.TestSecurityConfig.class
-})
-@AutoConfigureTestRestTemplate
-class HttpCashFlowServiceClientIntegrationTest {
+class HttpCashFlowServiceClientIntegrationTest extends AuthenticatedHttpIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 
@@ -72,72 +41,29 @@ class HttpCashFlowServiceClientIntegrationTest {
         return "HttpClient-" + NAME_COUNTER.incrementAndGet();
     }
 
-    @TestConfiguration
-    static class TestSecurityConfig {
-        @Bean
-        @Order(1)
-        public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
-            http
-                    .securityMatcher("/**")
-                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .csrf(AbstractHttpConfigurer::disable);
-            return http.build();
-        }
-    }
-
-    // Shared containers - started manually without @Container to avoid premature shutdown
-    protected static final MongoDBContainer mongoDBContainer;
-    protected static final KafkaContainer kafkaContainer;
-
-    static {
-        mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
-        mongoDBContainer.start();
-
-        kafkaContainer = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.8.1"));
-        kafkaContainer.start();
-
-        log.info("Testcontainers started - MongoDB: {}, Kafka: {}",
-                mongoDBContainer.getReplicaSetUrl(), kafkaContainer.getBootstrapServers());
-    }
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("spring.kafka.bootstrap-servers", kafkaContainer::getBootstrapServers);
-    }
-
-    @Autowired
-    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
-    @LocalServerPort
-    private int port;
-
     private HttpCashFlowServiceClient httpClient;
     private CashFlowHttpActor actor;
 
     @BeforeEach
     void setUp() {
-        // Wait for Kafka listeners to be ready
-        kafkaListenerEndpointRegistry.getListenerContainers().forEach(container ->
-                ContainerTestUtils.waitForAssignment(container, 1));
+        // Register and authenticate to get valid JWT tokens
+        registerAndAuthenticate();
 
         // Create HttpCashFlowServiceClient instance pointing to embedded server
         String baseUrl = "http://localhost:" + port;
         RestClient.Builder builder = RestClient.builder();
         httpClient = new HttpCashFlowServiceClient(builder, baseUrl);
+        httpClient.setJwtToken(accessToken);
 
-        // Create actor for test setup
+        // Create actor for test setup with JWT token
         actor = new CashFlowHttpActor(restTemplate, port);
+        actor.setJwtToken(accessToken);
     }
 
     @Test
     @DisplayName("Should get CashFlow info with correct URL (cf= prefix)")
     void shouldGetCashFlowInfoWithCorrectUrl() {
         // Given: Create CashFlow with IBAN via REST API
-        String userId = "U10001234";
         String cashFlowId = actor.createCashFlowWithIban(
                 userId,
                 uniqueCashFlowName(),
@@ -181,7 +107,6 @@ class HttpCashFlowServiceClientIntegrationTest {
     @DisplayName("Should propagate banking model correctly (IBAN, country code, bank code)")
     void shouldPropagateBankingModelCorrectly() {
         // Given: Create CashFlow with Polish IBAN
-        String userId = "U10001235";
         String cashFlowId = actor.createCashFlowWithSwift(
                 userId,
                 uniqueCashFlowName(),
@@ -206,7 +131,6 @@ class HttpCashFlowServiceClientIntegrationTest {
     @DisplayName("Should verify CashFlow exists")
     void shouldVerifyCashFlowExists() {
         // Given: Create CashFlow
-        String userId = "U10001236";
         String cashFlowId = actor.createCashFlowWithIban(
                 userId,
                 uniqueCashFlowName(),
@@ -233,7 +157,6 @@ class HttpCashFlowServiceClientIntegrationTest {
     @DisplayName("Should create category via HTTP client")
     void shouldCreateCategoryViaHttpClient() {
         // Given: Create CashFlow
-        String userId = "U10001237";
         String cashFlowId = actor.createCashFlow(
                 userId,
                 uniqueCashFlowName(),
@@ -256,7 +179,6 @@ class HttpCashFlowServiceClientIntegrationTest {
     @DisplayName("Should handle category already exists error")
     void shouldHandleCategoryAlreadyExistsError() {
         // Given: Create CashFlow with category
-        String userId = "U10001238";
         String cashFlowId = actor.createCashFlow(
                 userId,
                 uniqueCashFlowName(),
@@ -280,7 +202,6 @@ class HttpCashFlowServiceClientIntegrationTest {
         // Given: Create CashFlow with history (SETUP mode)
         // Using FixedClockConfig: current date is 2022-01-01
         // startPeriod must be in the past (before 2022-01)
-        String userId = "U10001239";
         String cashFlowId = actor.createCashFlowWithHistory(
                 userId,
                 uniqueCashFlowName(),

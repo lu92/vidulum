@@ -1,7 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
-import com.multi.vidulum.AbstractHttpIntegrationTest;
-import com.multi.vidulum.TestIds;
+import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
@@ -22,18 +21,24 @@ import static org.assertj.core.api.Assertions.assertThat;
  * and well-formatted ApiError responses.
  *
  * Pattern follows CashFlowErrorHandlingTest for consistency.
+ *
+ * This test class extends AuthenticatedHttpIntegrationTest which has
+ * security ENABLED (real JWT authentication).
  */
 @Slf4j
 @DisplayName("Bank Data Ingestion - Error Handling")
-class BankDataIngestionErrorHandlingTest extends AbstractHttpIntegrationTest {
+class BankDataIngestionErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
 
     private BankDataIngestionHttpActor actor;
-    private String userId;
 
     @BeforeEach
     void setUp() {
+        // Register and authenticate to get valid JWT tokens
+        registerAndAuthenticate();
+
+        // Create authenticated actor
         actor = new BankDataIngestionHttpActor(restTemplate, port);
-        userId = TestIds.nextUserId().getId();
+        actor.setJwtToken(accessToken);
     }
 
     // ============ 404 NOT_FOUND Tests ============

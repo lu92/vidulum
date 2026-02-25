@@ -33,13 +33,14 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
 
     private final RestClient restClient;
     private final String baseUrl;
+    private String staticAuthToken;
 
     public HttpCashFlowServiceClient(RestClient.Builder restClientBuilder, String baseUrl) {
         this.baseUrl = baseUrl;
         this.restClient = restClientBuilder
                 .baseUrl(baseUrl)
                 .requestInterceptor((request, body, execution) -> {
-                    // Propagate Authorization header from incoming request
+                    // Propagate Authorization header from incoming request or use static token
                     String authHeader = getAuthorizationHeader();
                     if (authHeader != null) {
                         request.getHeaders().add("Authorization", authHeader);
@@ -51,9 +52,27 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     /**
-     * Extract Authorization header from current HTTP request context.
+     * Sets a static JWT token for testing purposes.
+     * When set, this token will be used instead of extracting from request context.
+     *
+     * @param token the JWT access token (without "Bearer " prefix)
+     */
+    public void setJwtToken(String token) {
+        this.staticAuthToken = "Bearer " + token;
+        log.debug("Static JWT token set for HttpCashFlowServiceClient");
+    }
+
+    /**
+     * Extract Authorization header from current HTTP request context,
+     * or return static token if set (for testing).
      */
     private String getAuthorizationHeader() {
+        // First check for static token (testing)
+        if (staticAuthToken != null) {
+            return staticAuthToken;
+        }
+
+        // Otherwise try to extract from request context
         try {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
