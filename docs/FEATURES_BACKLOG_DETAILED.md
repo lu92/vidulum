@@ -7,10 +7,10 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 ## Spis treści
 
 1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
-2. [Kafka Dead Letter Queue (DLQ)](#2-kafka-dead-letter-queue-dlq)
-3. [Recurring Rule Engine](#3-recurring-rule-engine)
-4. [AI Categorization](#4-ai-categorization)
-5. [Month Rollover & Ongoing Sync](#5-month-rollover--ongoing-sync)
+2. [✅ DONE: Month Rollover & Ongoing Sync](#2--done-month-rollover--ongoing-sync)
+3. [Kafka Dead Letter Queue (DLQ)](#3-kafka-dead-letter-queue-dlq)
+4. [Recurring Rule Engine](#4-recurring-rule-engine)
+5. [AI Categorization](#5-ai-categorization)
 6. [Intelligent Reconciliation](#6-intelligent-reconciliation)
 7. [Alerts & CashChange Lifecycle](#7-alerts--cashchange-lifecycle)
 8. [Maven Multi-Module Migration](#8-maven-multi-module-migration)
@@ -76,7 +76,76 @@ Wykonano pełny flow manualny na Docker:
 
 ---
 
-## 2. Kafka Dead Letter Queue (DLQ)
+## 2. ✅ DONE: Month Rollover & Ongoing Sync
+
+**Plik:** `docs/features-backlog/2026-02-08-month-rollover-ongoing-sync-design.md`
+**Priorytet:** WYSOKI
+**Szacowany czas:** 30-40 godzin
+**Status:** ✅ **UKOŃCZONE** (2026-02-25)
+
+### Co zostało zrobione
+
+Cała funkcjonalność Month Rollover & Ongoing Sync jest już zaimplementowana w kodzie produkcyjnym i przetestowana.
+
+#### Zaimplementowane komponenty
+
+1. **MonthlyRolloverScheduler** (`src/main/java/com/multi/vidulum/cashflow/app/MonthlyRolloverScheduler.java`)
+   - Scheduled job uruchamiany 1. dnia każdego miesiąca o 02:00 UTC
+   - Cron: `${vidulum.rollover.cron:0 0 2 1 * *}`
+   - Obsługuje catch-up rollover (wielomiesięczny)
+   - Rollover wszystkich OPEN CashFlow
+
+2. **RolloverMonthCommand & Handler**
+   - `RolloverMonthCommand` - komenda rollover
+   - `RolloverMonthCommandHandler` - walidacja OPEN status, emit event
+
+3. **MonthRolledOverEvent**
+   - Nowy event dla automatycznego rollover
+   - Obsługiwany przez Kafka event handlers
+
+4. **ROLLED_OVER status**
+   - Nowy status miesiąca pozwalający na Gap Filling
+   - Różnica vs ATTESTED: zezwala na import transakcji
+
+5. **Gap Filling**
+   - Import do miesięcy ROLLED_OVER
+   - Obsługiwany przez `BankDataIngestionService`
+
+6. **Ongoing Sync**
+   - Import w trybie OPEN do miesięcy ACTIVE i ROLLED_OVER
+
+### Testy integracyjne
+
+| Test | Plik | Opis |
+|------|------|------|
+| `shouldRolloverMonthAndTransitionToRolledOverStatus` | `RolloverMonthIntegrationTest.java` | Podstawowy rollover |
+| `shouldFailRolloverForSetupModeCashFlow` | `RolloverMonthIntegrationTest.java` | Walidacja SETUP mode |
+| `shouldPerformMultipleRolloversSequentially` | `RolloverMonthIntegrationTest.java` | Sekwencyjne rollovery |
+| `shouldPerformBatchRolloverCatchUp` | `RolloverMonthIntegrationTest.java` | Catch-up (wiele miesięcy) |
+| `shouldImportTransactionsInOpenModeAfterAttestationViaRestApi` | `BankDataIngestionHttpIntegrationTest.java` | Ongoing Sync przez REST |
+| `generateCashflowWithRolloverAndGapFilling` | `DualCashflowStatementGeneratorWithRolledOver.java` | Full E2E: SETUP→OPEN→Rollover→Gap Filling |
+
+### Manualne testy (2026-02-25)
+
+Wykonano pełny flow manualny na Docker:
+- ✅ Rejestracja użytkownika z JWT
+- ✅ Tworzenie CashFlow z historią (SETUP mode, start: 2025-10)
+- ✅ Upload CSV z 8 transakcjami historycznymi
+- ✅ Konfiguracja mapowań kategorii
+- ✅ Import historycznych transakcji
+- ✅ Atestacja (SETUP → OPEN)
+- ✅ Rollover miesiąca (2026-02 → 2026-03)
+- ✅ Gap Filling - import do ROLLED_OVER miesiąca (2026-02)
+- ✅ Ongoing Sync - import do ACTIVE miesiąca (2026-03)
+- ✅ Walidacja dat przyszłych (prawidłowe odrzucenie)
+
+### Podsumowanie
+
+Funkcjonalność jest kompletna i produkcyjnie gotowa. Wszystkie komponenty z design document zostały zaimplementowane zgodnie ze specyfikacją.
+
+---
+
+## 3. Kafka Dead Letter Queue (DLQ)
 
 **Plik:** `docs/features-backlog/TODO-kafka-dead-letter-queue.md`
 **Priorytet:** ŚREDNI
@@ -168,7 +237,7 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 
 ---
 
-## 3. Recurring Rule Engine
+## 4. Recurring Rule Engine
 
 **Plik:** `docs/features-backlog/2026-02-14-recurring-rule-engine-design.md`
 **Priorytet:** WYSOKI
@@ -270,7 +339,7 @@ public void generateRecurringTransactions() {
 
 ---
 
-## 4. AI Categorization
+## 5. AI Categorization
 
 **Plik:** `docs/features-backlog/AI_CATEGORIZATION_PLAN.md`
 **Priorytet:** ŚREDNI
@@ -372,82 +441,6 @@ com.multi.vidulum.ai_categorization/
 | Claude | claude-3-haiku | ~$0.50 |
 | OpenAI | gpt-4o-mini | ~$0.30 |
 | Ollama | llama3.2 | $0 (lokalnie) |
-
----
-
-## 5. Month Rollover & Ongoing Sync
-
-**Plik:** `docs/features-backlog/2026-02-08-month-rollover-ongoing-sync-design.md`
-**Priorytet:** WYSOKI
-**Szacowany czas:** 30-40 godzin
-
-### Problem
-
-Obecnie system pozwala tylko na **jednorazowy import** CSV podczas trybu SETUP. Po aktywacji CashFlow (przejście do OPEN) nie ma możliwości wgrywania kolejnych plików CSV.
-
-### Nowe możliwości
-
-| Funkcja | Obecny stan | Nowy stan |
-|---------|-------------|-----------|
-| Import CSV | Tylko w SETUP mode | SETUP + OPEN mode |
-| Przejście miesiąca | Manualna atestacja | Automatyczny rollover (scheduled) |
-| Import do przeszłych miesięcy | Niemożliwy | Gap Filling |
-| Weryfikacja salda | Przy każdej atestacji | Raz na miesiąc |
-
-### Dwa tryby wgrywania danych
-
-| Tryb | Nazwa | Kiedy |
-|------|-------|-------|
-| **Historical Backfill** | Import historyczny | SETUP mode, przed aktywacją |
-| **Ongoing Sync** | Bieżące uzupełnianie | OPEN mode, po aktywacji |
-
-### Statusy miesięcy
-
-```
-┌─────────┐    ┌──────────┐    ┌─────────────┐    ┌──────────┐
-│ FUTURE  │───▶│  ACTIVE  │───▶│ ROLLED_OVER │───▶│ ATTESTED │
-└─────────┘    └──────────┘    └─────────────┘    └──────────┘
-                    │                  │
-                    │                  │
-                    └───── Gap Filling ┘
-```
-
-| Status | Opis | Można importować? |
-|--------|------|-------------------|
-| `FUTURE` | Miesiąc jeszcze nie nadszedł | Nie |
-| `ACTIVE` | Bieżący miesiąc | Tak |
-| `ROLLED_OVER` | Automatycznie zamknięty | Tak (Gap Filling) |
-| `ATTESTED` | Manualnie zatwierdzony | Nie |
-
-### Month Rollover Scheduler
-
-```java
-@Scheduled(cron = "0 0 0 1 * *")  // 1. dnia każdego miesiąca o 00:00
-public void rolloverMonth() {
-    // 1. Znajdź wszystkie CashFlow w statusie OPEN
-    // 2. Dla każdego: zamknij aktywny miesiąc (ACTIVE → ROLLED_OVER)
-    // 3. Otwórz nowy miesiąc (nowy ACTIVE)
-    // 4. Wyślij event MonthRolledOverEvent
-}
-```
-
-### Balance Verification
-
-Weryfikacja salda wymagana raz na miesiąc przy pierwszym imporcie:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ Upload CSV do miesiąca ACTIVE (np. 2026-02)             │
-├─────────────────────────────────────────────────────────┤
-│ Czy to pierwszy import w tym miesiącu?                  │
-├───────────────┬─────────────────────────────────────────┤
-│ TAK           │ NIE                                     │
-│ ▼             │ ▼                                       │
-│ Wymagana      │ Brak wymagania                          │
-│ weryfikacja   │ (already verified)                      │
-│ salda         │                                         │
-└───────────────┴─────────────────────────────────────────┘
-```
 
 ---
 
@@ -680,7 +673,7 @@ TX002,2026-01-31,Salary,8000.00,PLN,INFLOW,Income,Employer ABC
 | Priorytet | Feature | Uzasadnienie | Status |
 |-----------|---------|--------------|--------|
 | ✅ DONE | JWT Integration Tests | Bezpieczeństwo, już znaleziono bug | **UKOŃCZONE 2026-02-25** |
-| 🔴 WYSOKI | Month Rollover | Blokuje użytkowników po aktywacji | TODO |
+| ✅ DONE | Month Rollover & Ongoing Sync | Blokuje użytkowników po aktywacji | **UKOŃCZONE 2026-02-25** |
 | 🔴 WYSOKI | Recurring Rules | Core feature dla prognozowania | TODO |
 | 🟡 ŚREDNI | Kafka DLQ | Stabilność produkcji | TODO |
 | 🟡 ŚREDNI | AI Categorization | UX improvement | TODO |

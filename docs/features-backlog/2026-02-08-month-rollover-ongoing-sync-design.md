@@ -1,8 +1,50 @@
 # Month Rollover & Ongoing Sync - Design Document
 
 **Data utworzenia:** 2026-02-08
-**Status:** Do implementacji
+**Status:** ✅ **ZAIMPLEMENTOWANE** (2026-02-25)
 **Autor:** Claude Code + User
+
+---
+
+## ✅ STATUS IMPLEMENTACJI
+
+**Wszystkie funkcje opisane w tym dokumencie zostały zaimplementowane i przetestowane.**
+
+### Zaimplementowane komponenty
+
+| Komponent | Lokalizacja | Status |
+|-----------|-------------|--------|
+| `MonthlyRolloverScheduler` | `src/main/java/com/multi/vidulum/cashflow/app/MonthlyRolloverScheduler.java` | ✅ |
+| `RolloverMonthCommand` | `src/main/java/com/multi/vidulum/cashflow/app/commands/rollover/RolloverMonthCommand.java` | ✅ |
+| `RolloverMonthCommandHandler` | `src/main/java/com/multi/vidulum/cashflow/app/commands/rollover/RolloverMonthCommandHandler.java` | ✅ |
+| `MonthRolledOverEvent` | `src/main/java/com/multi/vidulum/cashflow/domain/CashFlowEvent.java` | ✅ |
+| `MonthRolledOverEventHandler` | `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/MonthRolledOverEventHandler.java` | ✅ |
+| `ROLLED_OVER` status | `CashFlowMonthlyForecast.Status` | ✅ |
+| Gap Filling (import to ROLLED_OVER) | `BankDataIngestionService` | ✅ |
+| Ongoing Sync (OPEN mode import) | `BankDataIngestionService` | ✅ |
+
+### Testy
+
+| Test | Plik | Status |
+|------|------|--------|
+| `shouldRolloverMonthAndTransitionToRolledOverStatus` | `RolloverMonthIntegrationTest.java` | ✅ |
+| `shouldFailRolloverForSetupModeCashFlow` | `RolloverMonthIntegrationTest.java` | ✅ |
+| `shouldPerformMultipleRolloversSequentially` | `RolloverMonthIntegrationTest.java` | ✅ |
+| `shouldPerformBatchRolloverCatchUp` | `RolloverMonthIntegrationTest.java` | ✅ |
+| `shouldImportTransactionsInOpenModeAfterAttestationViaRestApi` | `BankDataIngestionHttpIntegrationTest.java` | ✅ |
+| `generateCashflowWithRolloverAndGapFilling` | `DualCashflowStatementGeneratorWithRolledOver.java` | ✅ |
+
+### Manualna walidacja (2026-02-25)
+
+Pełny flow przetestowany na Docker:
+1. ✅ Rejestracja użytkownika z JWT
+2. ✅ Tworzenie CashFlow z historią (SETUP mode)
+3. ✅ Import historycznych transakcji
+4. ✅ Atestacja (SETUP → OPEN)
+5. ✅ Rollover miesiąca (ACTIVE → ROLLED_OVER)
+6. ✅ Gap Filling - import do ROLLED_OVER miesiąca
+7. ✅ Ongoing Sync - import do ACTIVE miesiąca
+8. ✅ Walidacja dat przyszłych (prawidłowe odrzucenie)
 
 ---
 
