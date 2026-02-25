@@ -1,6 +1,6 @@
 package com.multi.vidulum.security.auth;
 
-import com.multi.vidulum.AbstractHttpIntegrationTest;
+import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.FieldError;
 import com.multi.vidulum.security.token.Token;
@@ -21,8 +21,18 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests for authentication endpoints (/api/v1/auth/*).
+ *
+ * These are PUBLIC endpoints - they don't require JWT authentication.
+ * This test extends AuthenticatedHttpIntegrationTest but does NOT call
+ * registerAndAuthenticate() because it tests the registration/login flow itself.
+ *
+ * Security is ENABLED to verify that public endpoints work correctly
+ * without authentication.
+ */
 @Slf4j
-class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
+class AuthenticationControllerTest extends AuthenticatedHttpIntegrationTest {
 
     @Autowired
     private UserMongoRepository userMongoRepository;
@@ -37,6 +47,7 @@ class AuthenticationControllerTest extends AbstractHttpIntegrationTest {
         // Clean up in correct order: tokens first, then users
         tokenRepository.deleteAll();
         userMongoRepository.deleteAll();
+        // Don't call registerAndAuthenticate() - we're testing auth endpoints themselves
         actor = new AuthenticationHttpActor(restTemplate, port);
     }
 
