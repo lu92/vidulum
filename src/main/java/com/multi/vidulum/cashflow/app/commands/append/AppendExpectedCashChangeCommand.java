@@ -15,6 +15,7 @@ public record AppendExpectedCashChangeCommand(
         Money money,
         Type type,
         ZonedDateTime created,
-        ZonedDateTime dueDate
+        ZonedDateTime dueDate,
+        String sourceRuleId
 ) implements Command {
 }

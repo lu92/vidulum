@@ -70,6 +70,7 @@ public class CashFlowSummaryMapper {
                 .created(snapshot.created())
                 .dueDate(snapshot.dueDate())
                 .endDate(snapshot.endDate())
+                .sourceRuleId(snapshot.sourceRuleId())
                 .build();
     }
 }

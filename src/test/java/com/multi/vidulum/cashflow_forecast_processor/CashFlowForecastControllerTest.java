@@ -116,7 +116,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // Add an outflow cash change
         String outflowCashChangeId = cashFlowRestController.appendExpectedCashChange(
@@ -129,7 +129,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // Wait for all events to be processed (1 CashFlowCreated + 2 ExpectedCashChangeAppended)
         Awaitility.await().until(
@@ -281,7 +281,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -351,7 +351,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // Confirm the cash change
         cashFlowRestController.confirm(
@@ -423,7 +423,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // Edit the cash change
         cashFlowRestController.edit(
@@ -571,7 +571,7 @@ public class CashFlowForecastControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // Add a paid cash change
         // Note: paidDate must be <= current time (2022-01-01 from FixedClockConfig)

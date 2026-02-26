@@ -89,7 +89,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                 INFLOW,
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                 new CategoryName("Uncategorized"),
-                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                null // sourceRuleId
         );
         cashFlow.apply(appendedEvent);
 
@@ -130,7 +131,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 PENDING,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                                                null
+                                                null, // endDate
+                                                null  // sourceRuleId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -226,7 +228,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 CONFIRMED,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
-                                                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+                                                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                                                null // sourceRuleId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -418,7 +421,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                 INFLOW,
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                 new CategoryName("Uncategorized"),
-                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                null // sourceRuleId
         ));
 
         cashFlow.apply(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -430,7 +434,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                 OUTFLOW,
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                 new CategoryName("Uncategorized"),
-                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                null // sourceRuleId
         ));
 
         cashFlow.apply(new CashFlowEvent.CashChangeConfirmedEvent(
@@ -478,7 +483,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 CONFIRMED,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                                                ZonedDateTime.parse("2021-07-10T06:30:00Z")
+                                                ZonedDateTime.parse("2021-07-10T06:30:00Z"),
+                                                null // sourceRuleId
                                         ),
                                         secondCashChangeId,
                                         new CashChangeSnapshot(
@@ -491,7 +497,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 CONFIRMED,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                                                ZonedDateTime.parse("2021-07-10T06:30:00Z")
+                                                ZonedDateTime.parse("2021-07-10T06:30:00Z"),
+                                                null // sourceRuleId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -523,7 +530,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                        null // sourceRuleId
                 ),
                 new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                         cashFlowId,
@@ -534,7 +542,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                        null // sourceRuleId
                 ),
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
@@ -597,8 +606,9 @@ class CashFlowAggregateTest extends IntegrationTest {
                 INFLOW,
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                 new CategoryName("Uncategorized"),
-                ZonedDateTime.parse("2021-07-01T06:30:00Z"))
-        );
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                null // sourceRuleId
+        ));
 
         CashFlowEvent.CashChangeEditedEvent lastEvent = new CashFlowEvent.CashChangeEditedEvent(
                 cashFlowId,
@@ -649,7 +659,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 PENDING,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-08-01T00:00:00Z"),
-                                                null
+                                                null, // endDate
+                                                null  // sourceRuleId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -687,7 +698,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 INFLOW,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 new CategoryName("Uncategorized"),
-                                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                null // sourceRuleId
                         ),
                         new CashFlowEvent.CashChangeEditedEvent(
                                 cashFlowId,
@@ -754,7 +766,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                 INFLOW,
                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                 new CategoryName("Uncategorized"),
-                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                null // sourceRuleId
         ));
 
         CashFlowEvent.CashChangeRejectedEvent lastEvent = new CashFlowEvent.CashChangeRejectedEvent(
@@ -802,7 +815,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                                 REJECTED,
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
-                                                null
+                                                null, // endDate
+                                                null  // sourceRuleId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -840,7 +854,8 @@ class CashFlowAggregateTest extends IntegrationTest {
                                 INFLOW,
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 new CategoryName("Uncategorized"),
-                                ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                                ZonedDateTime.parse("2021-07-01T06:30:00Z"),
+                                null // sourceRuleId
                         ),
                         new CashFlowEvent.CashChangeRejectedEvent(
                                 cashFlowId,

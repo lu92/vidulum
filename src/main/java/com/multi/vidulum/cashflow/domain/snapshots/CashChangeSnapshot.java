@@ -15,5 +15,6 @@ public record CashChangeSnapshot(
         CashChangeStatus status,
         ZonedDateTime created,
         ZonedDateTime dueDate,
-        ZonedDateTime endDate) {
+        ZonedDateTime endDate,
+        String sourceRuleId) {
 }

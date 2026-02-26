@@ -236,6 +236,15 @@ public final class CashFlowDto {
         private Money money;
         private Type type;
         private ZonedDateTime dueDate;
+        private String sourceRuleId;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AppendExpectedCashChangeResponse {
+        private String cashChangeId;
     }
 
     @Data
@@ -442,6 +451,7 @@ public final class CashFlowDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
     @AllArgsConstructor
     public static class CashChangeSummaryJson {
         private String cashChangeId;
@@ -454,6 +464,7 @@ public final class CashFlowDto {
         private ZonedDateTime created;
         private ZonedDateTime dueDate;
         private ZonedDateTime endDate;
+        private String sourceRuleId;
     }
 
     @Data

@@ -27,6 +27,7 @@ public class CashChangeEntity {
     private Date created;
     private Date dueDate;
     private Date endDate;
+    private String sourceRuleId;
 
     public static CashChangeEntity fromSnapshot(CashChangeSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.cashChangeId())
@@ -48,6 +49,7 @@ public class CashChangeEntity {
                 .created(createdDate)
                 .dueDate(dueDate)
                 .endDate(endDate)
+                .sourceRuleId(snapshot.sourceRuleId())
                 .build();
     }
 
@@ -67,7 +69,8 @@ public class CashChangeEntity {
                 status,
                 createdDateTime,
                 dueDateTime,
-                endDateTime
+                endDateTime,
+                sourceRuleId
         );
     }
 }

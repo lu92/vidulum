@@ -208,7 +208,7 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     record ExpectedCashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
                                    Money money, Type type, ZonedDateTime created, CategoryName categoryName,
-                                   ZonedDateTime dueDate) implements CashFlowEvent {
+                                   ZonedDateTime dueDate, String sourceRuleId) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return created;

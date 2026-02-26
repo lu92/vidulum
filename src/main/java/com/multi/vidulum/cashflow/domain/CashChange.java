@@ -25,6 +25,7 @@ public class CashChange {
     private ZonedDateTime created;
     private ZonedDateTime dueDate;
     private ZonedDateTime endDate;
+    private String sourceRuleId;
 
     public CashChangeSnapshot getSnapshot() {
         return new CashChangeSnapshot(
@@ -37,7 +38,8 @@ public class CashChange {
                 status,
                 created,
                 dueDate,
-                endDate
+                endDate,
+                sourceRuleId
         );
     }
 
@@ -53,6 +55,7 @@ public class CashChange {
                 .created(snapshot.created())
                 .dueDate(snapshot.dueDate())
                 .endDate(snapshot.endDate())
+                .sourceRuleId(snapshot.sourceRuleId())
                 .build();
     }
 

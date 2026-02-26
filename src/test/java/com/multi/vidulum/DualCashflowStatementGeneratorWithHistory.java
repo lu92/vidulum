@@ -1141,7 +1141,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(firstPaymentDate)
                         .build()
-        );
+        ).getCashChangeId();
 
         log.info("Adding gym payment for month 2 (expected): {}", postAttestationPeriod.plusMonths(1));
         String secondPaymentId = cashFlowRestController.appendExpectedCashChange(
@@ -1154,7 +1154,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(secondPaymentDate)
                         .build()
-        );
+        ).getCashChangeId();
 
         log.info("Adding gym payment for month 3 (expected): {}", postAttestationPeriod.plusMonths(2));
         String thirdPaymentId = cashFlowRestController.appendExpectedCashChange(
@@ -1167,7 +1167,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(thirdPaymentDate)
                         .build()
-        );
+        ).getCashChangeId();
 
         // Wait for the last payment to be processed
         await().atMost(10, SECONDS).until(() ->
@@ -1266,7 +1266,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(payment1Date)
                         .build()
-        );
+        ).getCashChangeId();
         log.info("Added Netflix payment (v1) for {}: {}", postAttestationPeriod, payment1Id);
 
         ZonedDateTime payment2Date = postAttestationPeriod.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC);
@@ -1280,7 +1280,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(payment2Date)
                         .build()
-        );
+        ).getCashChangeId();
         log.info("Added Netflix payment (v1) for {}: {}", postAttestationPeriod.plusMonths(1), payment2Id);
 
         // Wait for transactions
@@ -1342,7 +1342,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(disneyPayment1Date)
                         .build()
-        );
+        ).getCashChangeId();
         log.info("Added Disney+ payment (v2) for {}: {}", postAttestationPeriod.plusMonths(2), disneyPayment1Id);
 
         ZonedDateTime disneyPayment2Date = postAttestationPeriod.plusMonths(3).atDay(5).atStartOfDay(ZoneOffset.UTC);
@@ -1356,7 +1356,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(disneyPayment2Date)
                         .build()
-        );
+        ).getCashChangeId();
         log.info("Added Disney+ payment (v2) for {}: {}", postAttestationPeriod.plusMonths(3), disneyPayment2Id);
 
         // Wait for Disney+ transactions
@@ -1698,7 +1698,7 @@ public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(newFuelDate)
                         .build()
-        );
+        ).getCashChangeId();
         log.info("Successfully added NEW transaction to active '{}' after parent archived: {}", fuelCategoryName, newFuelPaymentId);
 
         // Wait for new transaction

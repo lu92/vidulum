@@ -196,7 +196,7 @@ public class CashFlowRestController {
     }
 
     @PostMapping("/expected-cash-change")
-    public String appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
+    public CashFlowDto.AppendExpectedCashChangeResponse appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
                 new AppendExpectedCashChangeCommand(
                         CashFlowId.of(request.getCashFlowId()),
@@ -207,10 +207,11 @@ public class CashFlowRestController {
                         request.getMoney(),
                         request.getType(),
                         ZonedDateTime.now(clock),
-                        request.getDueDate()
+                        request.getDueDate(),
+                        request.getSourceRuleId()
                 )
         );
-        return cashChangeId.id();
+        return new CashFlowDto.AppendExpectedCashChangeResponse(cashChangeId.id());
     }
 
     @PostMapping("/paid-cash-change")

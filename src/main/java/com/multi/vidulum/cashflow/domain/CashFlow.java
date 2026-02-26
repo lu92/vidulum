@@ -107,18 +107,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     @Override
     public CashFlowSnapshot getSnapshot() {
         Map<CashChangeId, CashChangeSnapshot> cashChangeSnapshotMap = cashChanges.values().stream()
-                .map(cashChange -> new CashChangeSnapshot(
-                        cashChange.getCashChangeId(),
-                        cashChange.getName(),
-                        cashChange.getDescription(),
-                        cashChange.getMoney(),
-                        cashChange.getType(),
-                        cashChange.getCategoryName(),
-                        cashChange.getStatus(),
-                        cashChange.getCreated(),
-                        cashChange.getDueDate(),
-                        cashChange.getEndDate()
-                )).collect(
+                .map(CashChange::getSnapshot)
+                .collect(
                         Collectors.toUnmodifiableMap(
                                 CashChangeSnapshot::cashChangeId,
                                 Function.identity()
@@ -248,7 +238,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.PENDING,
                 event.created(),
                 event.dueDate(),
-                null
+                null,
+                event.sourceRuleId()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
         add(event);
@@ -271,7 +262,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.CONFIRMED,
                 event.created(),
                 event.dueDate(),
-                event.paidDate()
+                event.paidDate(),
+                null
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -301,7 +293,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.CONFIRMED,
                 event.importedAt(),
                 event.dueDate(),
-                event.paidDate()
+                event.paidDate(),
+                null
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -334,7 +327,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     CashChangeStatus.CONFIRMED,
                     event.attestedAt(),
                     event.attestedAt(),
-                    event.attestedAt()
+                    event.attestedAt(),
+                    null
             );
             cashChanges.put(adjustmentCashChange.getCashChangeId(), adjustmentCashChange);
         }

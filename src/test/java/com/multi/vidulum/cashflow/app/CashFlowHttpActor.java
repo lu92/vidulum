@@ -555,15 +555,15 @@ public class CashFlowHttpActor {
                 .dueDate(dueDate)
                 .build();
 
-        ResponseEntity<String> response = restTemplate.exchange(
+        ResponseEntity<CashFlowDto.AppendExpectedCashChangeResponse> response = restTemplate.exchange(
                 baseUrl + "/cash-flow/expected-cash-change",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                String.class
+                CashFlowDto.AppendExpectedCashChangeResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return response.getBody();
+        return response.getBody().getCashChangeId();
     }
 
     /**

@@ -164,7 +164,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
@@ -381,7 +381,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -473,7 +473,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.edit(
                 CashFlowDto.EditCashChangeJson.builder()
@@ -571,7 +571,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.reject(
                 CashFlowDto.RejectCashChangeJson.builder()
@@ -674,7 +674,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
@@ -786,7 +786,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -925,7 +925,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -962,7 +962,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         String cashChangeId3 = cashFlowRestController.appendExpectedCashChange(
                 CashFlowDto.AppendExpectedCashChangeJson.builder()
@@ -974,7 +974,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -4031,7 +4031,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then - cash change should be created
         assertThat(cashChangeId).isNotNull();
