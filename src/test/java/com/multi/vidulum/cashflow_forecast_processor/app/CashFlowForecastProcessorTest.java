@@ -1297,6 +1297,339 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 });
     }
 
+    /**
+     * Test that ExpectedCashChangeDeletedEvent removes a single transaction from forecast.
+     */
+    @Test
+    public void shouldDeleteSingleExpectedCashChange() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId cashChangeId2 = TestIds.nextCashChangeId();
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-03-01T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Delete Test"),
+                new Description("Testing single delete"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Bills"),
+                OUTFLOW,
+                createdDate
+        ));
+
+        // Add two expected cash changes
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId1,
+                new Name("Rent Payment"),
+                new Description("Monthly rent"),
+                Money.of(2000, "PLN"),
+                OUTFLOW,
+                createdDate,
+                new CategoryName("Bills"),
+                ZonedDateTime.parse("2026-03-10T00:00:00Z"),
+                null
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId2,
+                new Name("Electricity Bill"),
+                new Description("Monthly electricity"),
+                Money.of(300, "PLN"),
+                OUTFLOW,
+                createdDate,
+                new CategoryName("Bills"),
+                ZonedDateTime.parse("2026-03-15T00:00:00Z"),
+                null
+        ));
+
+        // Delete the first one
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangeDeletedEvent(
+                cashFlowId,
+                cashChangeId1,
+                null, // sourceRuleId
+                ZonedDateTime.parse("2026-03-10T00:00:00Z"), // dueDate
+                Money.of(2000, "PLN"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z") // deletedAt
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast marchForecast = statement.getForecasts().get(YearMonth.parse("2026-03"));
+                    assertThat(marchForecast).isNotNull();
+
+                    CashCategory billsCategory = marchForecast.findCategoryOutflowsByCategoryName(new CategoryName("Bills")).orElseThrow();
+
+                    // Should have only one transaction left (cashChangeId2)
+                    assertThat(billsCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                            .as("Only Electricity Bill should remain")
+                            .hasSize(1);
+                    assertThat(billsCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getName().name())
+                            .isEqualTo("Electricity Bill");
+
+                    // Expected stats should show only 300 PLN
+                    CashSummary outflowStats = marchForecast.getCashFlowStats().getOutflowStats();
+                    assertThat(outflowStats.expected()).isEqualTo(Money.of(300, "PLN"));
+                });
+    }
+
+    /**
+     * Test that ExpectedCashChangesBatchDeletedEvent removes multiple transactions from forecast.
+     * Simulates Recurring Rule deletion.
+     */
+    @Test
+    public void shouldBatchDeleteExpectedCashChanges() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+        String sourceRuleId = "RR00000001";
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Batch Delete Test"),
+                new Description("Testing batch delete for recurring rules"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Salary"),
+                INFLOW,
+                createdDate
+        ));
+
+        // Add 3 expected cash changes (simulating recurring rule generation)
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                marchCashChangeId,
+                new Name("March Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                aprilCashChangeId,
+                new Name("April Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-04-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                mayCashChangeId,
+                new Name("May Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-05-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        // Batch delete (simulating recurring rule deletion)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangesBatchDeletedEvent(
+                cashFlowId,
+                sourceRuleId,
+                java.util.List.of(marchCashChangeId, aprilCashChangeId, mayCashChangeId),
+                ZonedDateTime.parse("2026-02-20T00:00:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // All months should have no expected transactions
+                    for (YearMonth month : java.util.List.of(
+                            YearMonth.parse("2026-03"),
+                            YearMonth.parse("2026-04"),
+                            YearMonth.parse("2026-05"))) {
+                        CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
+                        if (forecast != null) {
+                            forecast.findCategoryInflowsByCategoryName(new CategoryName("Salary"))
+                                    .ifPresent(cat -> assertThat(cat.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                            .as("Month %s should have no expected transactions after batch delete", month)
+                                            .isEmpty());
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Test that CashChangesBatchUpdatedEvent updates multiple transactions in forecast.
+     * Simulates Recurring Rule update.
+     */
+    @Test
+    public void shouldBatchUpdateCashChanges() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+        String sourceRuleId = "RR00000002";
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Batch Update Test"),
+                new Description("Testing batch update for recurring rules"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Salary"),
+                INFLOW,
+                createdDate
+        ));
+
+        // Add 3 expected cash changes with 5000 PLN each
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                marchCashChangeId,
+                new Name("March Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                aprilCashChangeId,
+                new Name("April Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-04-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                mayCashChangeId,
+                new Name("May Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-05-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        // Batch update - change amount to 6000 PLN and name (simulating recurring rule update with raise)
+        Map<String, Object> changes = new java.util.HashMap<>();
+        changes.put("amount", Money.of(6000, "PLN"));
+        changes.put("name", new Name("Updated Salary"));
+
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangesBatchUpdatedEvent(
+                cashFlowId,
+                sourceRuleId,
+                java.util.List.of(marchCashChangeId, aprilCashChangeId, mayCashChangeId),
+                changes,
+                ZonedDateTime.parse("2026-02-20T00:00:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify all months have updated amount and name
+                    for (YearMonth month : java.util.List.of(
+                            YearMonth.parse("2026-03"),
+                            YearMonth.parse("2026-04"),
+                            YearMonth.parse("2026-05"))) {
+                        CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
+                        assertThat(forecast)
+                                .as("Forecast for %s should exist", month)
+                                .isNotNull();
+
+                        CashCategory salaryCategory = forecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                        assertThat(salaryCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                .as("Month %s should have exactly 1 expected transaction", month)
+                                .hasSize(1);
+
+                        TransactionDetails transaction = salaryCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0);
+                        assertThat(transaction.getMoney())
+                                .as("Amount should be updated to 6000 PLN")
+                                .isEqualTo(Money.of(6000, "PLN"));
+                        assertThat(transaction.getName().name())
+                                .as("Name should be updated")
+                                .isEqualTo("Updated Salary");
+
+                        // Verify stats reflect the new amount
+                        CashSummary inflowStats = forecast.getCashFlowStats().getInflowStats();
+                        assertThat(inflowStats.expected())
+                                .as("Expected inflow should be 6000 PLN for %s", month)
+                                .isEqualTo(Money.of(6000, "PLN"));
+                    }
+                });
+    }
+
     private Checksum emit(CashFlowEvent cashFlowEvent) {
         cashFlowEventEmitter.emit(
                 CashFlowUnifiedEvent.builder()

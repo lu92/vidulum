@@ -82,6 +82,15 @@ public class CashFlowEventListener {
             case "CategoryUnarchivedEvent" -> {
                 return event.getContent().to(CashFlowEvent.CategoryUnarchivedEvent.class);
             }
+            case "ExpectedCashChangeDeletedEvent" -> {
+                return event.getContent().to(CashFlowEvent.ExpectedCashChangeDeletedEvent.class);
+            }
+            case "ExpectedCashChangesBatchDeletedEvent" -> {
+                return event.getContent().to(CashFlowEvent.ExpectedCashChangesBatchDeletedEvent.class);
+            }
+            case "CashChangesBatchUpdatedEvent" -> {
+                return event.getContent().to(CashFlowEvent.CashChangesBatchUpdatedEvent.class);
+            }
             default -> throw new IllegalStateException("Unexpected value: " + eventType);
         }
     }

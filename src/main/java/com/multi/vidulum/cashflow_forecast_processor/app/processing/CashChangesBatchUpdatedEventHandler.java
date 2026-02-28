@@ -32,8 +32,9 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
         int updatedCount = 0;
 
         // Check if category change is requested
+        // Note: After JSON serialization/deserialization, objects may be LinkedHashMap
         CategoryName newCategoryName = event.changes().containsKey("categoryName")
-                ? (CategoryName) event.changes().get("categoryName")
+                ? extractCategoryName(event.changes().get("categoryName"))
                 : null;
 
         for (CashChangeId cashChangeId : event.updatedIds()) {
@@ -51,11 +52,12 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
             PaymentStatus paymentStatus = oldTransaction.paymentStatus();
 
             // Build new transaction details
+            // Note: After JSON serialization/deserialization, objects may be LinkedHashMap
             Name newName = event.changes().containsKey("name")
-                    ? (Name) event.changes().get("name")
+                    ? extractName(event.changes().get("name"))
                     : oldDetails.getName();
             Money newMoney = event.changes().containsKey("amount")
-                    ? (Money) event.changes().get("amount")
+                    ? extractMoney(event.changes().get("amount"))
                     : oldDetails.getMoney();
 
             TransactionDetails newDetails = new TransactionDetails(
@@ -136,5 +138,60 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
                     )
             );
         }
+    }
+
+    /**
+     * Extracts Name from value that may be Name object or LinkedHashMap after JSON deserialization.
+     */
+    @SuppressWarnings("unchecked")
+    private Name extractName(Object value) {
+        if (value instanceof Name) {
+            return (Name) value;
+        }
+        if (value instanceof java.util.Map) {
+            java.util.Map<String, Object> map = (java.util.Map<String, Object>) value;
+            return new Name((String) map.get("name"));
+        }
+        throw new IllegalArgumentException("Cannot extract Name from: " + value.getClass());
+    }
+
+    /**
+     * Extracts Money from value that may be Money object or LinkedHashMap after JSON deserialization.
+     */
+    @SuppressWarnings("unchecked")
+    private Money extractMoney(Object value) {
+        if (value instanceof Money) {
+            return (Money) value;
+        }
+        if (value instanceof java.util.Map) {
+            java.util.Map<String, Object> map = (java.util.Map<String, Object>) value;
+            Object amountObj = map.get("amount");
+            java.math.BigDecimal amount;
+            if (amountObj instanceof java.math.BigDecimal) {
+                amount = (java.math.BigDecimal) amountObj;
+            } else if (amountObj instanceof Number) {
+                amount = new java.math.BigDecimal(amountObj.toString());
+            } else {
+                amount = new java.math.BigDecimal((String) amountObj);
+            }
+            String currency = (String) map.get("currency");
+            return Money.of(amount, currency);
+        }
+        throw new IllegalArgumentException("Cannot extract Money from: " + value.getClass());
+    }
+
+    /**
+     * Extracts CategoryName from value that may be CategoryName object or LinkedHashMap after JSON deserialization.
+     */
+    @SuppressWarnings("unchecked")
+    private CategoryName extractCategoryName(Object value) {
+        if (value instanceof CategoryName) {
+            return (CategoryName) value;
+        }
+        if (value instanceof java.util.Map) {
+            java.util.Map<String, Object> map = (java.util.Map<String, Object>) value;
+            return new CategoryName((String) map.get("name"));
+        }
+        throw new IllegalArgumentException("Cannot extract CategoryName from: " + value.getClass());
     }
 }
