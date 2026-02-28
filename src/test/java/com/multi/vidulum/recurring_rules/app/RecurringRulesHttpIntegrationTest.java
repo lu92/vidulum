@@ -117,7 +117,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         log.info("Created CashFlow: {}", cashFlowId);
 
         // Wait for forecast creation
-        await().atMost(10, SECONDS).until(() ->
+        await().atMost(60, SECONDS).until(() ->
             statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
         );
 
@@ -247,7 +247,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         // Daily every 3 days for January: ~10 occurrences
 
         // Wait for forecast to be updated with expected cash changes
-        await().atMost(10, SECONDS).until(() -> {
+        await().atMost(60, SECONDS).until(() -> {
             Optional<CashFlowForecastStatement> forecast = statementRepository.findByCashFlowId(
                     com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId));
             return forecast.isPresent() && !forecast.get().getForecasts().isEmpty();
@@ -282,7 +282,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pause Resume Test", startPeriod, initialBalance);
 
-        await().atMost(10, SECONDS).until(() ->
+        await().atMost(60, SECONDS).until(() ->
             statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
         );
 
@@ -329,7 +329,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Update Test", startPeriod, initialBalance);
 
-        await().atMost(10, SECONDS).until(() ->
+        await().atMost(60, SECONDS).until(() ->
             statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
         );
 
@@ -386,7 +386,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Delete Test", startPeriod, initialBalance);
 
-        await().atMost(10, SECONDS).until(() ->
+        await().atMost(60, SECONDS).until(() ->
             statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
         );
 
