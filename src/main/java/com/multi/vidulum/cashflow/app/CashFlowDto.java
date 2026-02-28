@@ -599,4 +599,85 @@ public final class CashFlowDto {
         /** The final closing balance */
         private Money closingBalance;
     }
+
+    // ========== RECURRING RULES INTEGRATION DTOs ==========
+
+    /**
+     * Request for batch delete operation.
+     * Uses explicit list of cash change IDs instead of searching by sourceRuleId,
+     * which avoids race condition issues with eventual consistency.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchDeleteCashChangesRequestJson {
+        /** The recurring rule ID (for audit/logging purposes only) */
+        private String sourceRuleId;
+        /** Explicit list of cash change IDs to delete */
+        private List<String> cashChangeIds;
+    }
+
+    /**
+     * Response for batch delete operation.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchDeleteResponseJson {
+        /** Number of cash changes successfully deleted */
+        private int deletedCount;
+        /** Number of cash changes skipped (e.g., CONFIRMED status) */
+        private int skippedCount;
+    }
+
+    /**
+     * Request for batch update operation.
+     * Uses explicit list of cash change IDs instead of searching by sourceRuleId,
+     * which avoids race condition issues with eventual consistency.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchUpdateCashChangesRequestJson {
+        /** The recurring rule ID (for audit/logging purposes only) */
+        private String sourceRuleId;
+        /** Explicit list of cash change IDs to update */
+        private List<String> cashChangeIds;
+        /** The changes to apply */
+        private CashChangeUpdatesJson updates;
+    }
+
+    /**
+     * Represents the fields that can be updated in a batch operation.
+     * All fields are optional - only non-null fields will be applied.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CashChangeUpdatesJson {
+        /** New amount (null = don't change) */
+        private Money amount;
+        /** New name (null = don't change) */
+        private String name;
+        /** New category (null = don't change) */
+        private String categoryName;
+    }
+
+    /**
+     * Response for batch update operation.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchUpdateResponseJson {
+        /** Number of cash changes successfully updated */
+        private int updatedCount;
+        /** Number of cash changes skipped (e.g., CONFIRMED status) */
+        private int skippedCount;
+    }
 }

@@ -7,6 +7,8 @@ import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
 
 public sealed interface CashFlowEvent extends DomainEvent
         permits
@@ -22,6 +24,9 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashChangeConfirmedEvent,
         CashFlowEvent.CashChangeEditedEvent,
         CashFlowEvent.CashChangeRejectedEvent,
+        CashFlowEvent.ExpectedCashChangeDeletedEvent,
+        CashFlowEvent.ExpectedCashChangesBatchDeletedEvent,
+        CashFlowEvent.CashChangesBatchUpdatedEvent,
         CashFlowEvent.CategoryCreatedEvent,
         CashFlowEvent.CategoryArchivedEvent,
         CashFlowEvent.CategoryUnarchivedEvent,
@@ -355,6 +360,75 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return removed;
+        }
+    }
+
+    /**
+     * Event emitted when a single expected (PENDING) cash change is deleted.
+     * Used primarily by Recurring Rules module when deleting individual transactions.
+     *
+     * @param cashFlowId    the CashFlow containing the cash change
+     * @param cashChangeId  the deleted cash change ID
+     * @param sourceRuleId  the recurring rule ID that created this cash change (nullable)
+     * @param dueDate       the due date of the deleted transaction
+     * @param money         the amount of the deleted transaction
+     * @param deletedAt     when the deletion occurred
+     */
+    record ExpectedCashChangeDeletedEvent(
+            CashFlowId cashFlowId,
+            CashChangeId cashChangeId,
+            String sourceRuleId,
+            ZonedDateTime dueDate,
+            Money money,
+            ZonedDateTime deletedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return deletedAt;
+        }
+    }
+
+    /**
+     * Event emitted when multiple expected (PENDING) cash changes are deleted in batch.
+     * Used primarily by Recurring Rules module when deleting a rule or changing its schedule.
+     *
+     * @param cashFlowId    the CashFlow containing the cash changes
+     * @param sourceRuleId  the recurring rule ID whose transactions were deleted
+     * @param deletedIds    list of deleted cash change IDs
+     * @param deletedAt     when the deletion occurred
+     */
+    record ExpectedCashChangesBatchDeletedEvent(
+            CashFlowId cashFlowId,
+            String sourceRuleId,
+            List<CashChangeId> deletedIds,
+            ZonedDateTime deletedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return deletedAt;
+        }
+    }
+
+    /**
+     * Event emitted when multiple cash changes are updated in batch.
+     * Used primarily by Recurring Rules module when editing rule amount/category.
+     *
+     * @param cashFlowId    the CashFlow containing the cash changes
+     * @param sourceRuleId  the recurring rule ID whose transactions were updated
+     * @param updatedIds    list of updated cash change IDs
+     * @param changes       map of field changes (fieldName -> new value)
+     * @param updatedAt     when the update occurred
+     */
+    record CashChangesBatchUpdatedEvent(
+            CashFlowId cashFlowId,
+            String sourceRuleId,
+            List<CashChangeId> updatedIds,
+            Map<String, Object> changes,
+            ZonedDateTime updatedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return updatedAt;
         }
     }
 }

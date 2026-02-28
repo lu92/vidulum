@@ -43,6 +43,28 @@ RecurringRuleService.generateExpectedCashChanges()
 
 ```
 
+### Affected Endpoints (VID-131)
+
+All endpoints that perform write operations on `CashFlow` aggregate are affected:
+
+| Endpoint | Method | Risk Level | Description |
+|----------|--------|------------|-------------|
+| `/cash-flow/expected-cash-change` | POST | **HIGH** | Creates new cash change with `sourceRuleId` |
+| `/cash-flow/cf={id}/cash-change/{ccId}` | DELETE | **MEDIUM** | Deletes single PENDING cash change |
+| `/cash-flow/cf={id}/cash-changes` | DELETE | **MEDIUM** | Batch deletes PENDING cash changes by `sourceRuleId` |
+| `/cash-flow/cf={id}/cash-changes/batch` | PATCH | **HIGH** | Batch updates PENDING cash changes |
+| `/cash-flow/cf={id}/historical-import` | POST | **MEDIUM** | Imports historical transactions |
+
+**Why DELETE operations are affected:**
+- DELETE loads aggregate snapshot, removes cash change(s), saves updated snapshot
+- If concurrent write happens between load and save, the delete may overwrite other changes
+- Example: Request A adds CC with sourceRuleId, Request B deletes different CC → B may save stale snapshot without A's changes
+
+**Why PATCH batch update is HIGH risk:**
+- Batch operations take longer to execute
+- Longer execution time = larger window for concurrent writes
+- Multiple cash changes modified = more data at risk of being overwritten
+
 ## Solution Options
 
 ### Option 1: Optimistic Locking with Retry (Recommended)
@@ -271,11 +293,29 @@ This workaround verifies that:
 
 ## Related Files
 
+### Core Implementation
+- `src/main/java/com/multi/vidulum/cashflow/app/CashFlowRestController.java` - REST endpoints
+- `src/main/java/com/multi/vidulum/cashflow/domain/CashFlow.java` - Aggregate with apply methods
+- `src/main/java/com/multi/vidulum/cashflow/domain/CashFlowEvent.java` - Event definitions
+- `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/CashFlowForecastProcessor.java` - Kafka event processor
+
+### Recurring Rules Integration
 - `src/main/java/com/multi/vidulum/recurring_rules/app/RecurringRuleService.java`
 - `src/main/java/com/multi/vidulum/recurring_rules/infrastructure/CashFlowHttpClient.java`
-- `src/main/java/com/multi/vidulum/cashflow/app/CashFlowRestController.java`
-- `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/CashFlowForecastProcessor.java`
+
+### Command Handlers (VID-131)
+- `src/main/java/com/multi/vidulum/cashflow/app/commands/delete/DeleteExpectedCashChangeCommandHandler.java`
+- `src/main/java/com/multi/vidulum/cashflow/app/commands/batchdelete/BatchDeleteExpectedCashChangesCommandHandler.java`
+- `src/main/java/com/multi/vidulum/cashflow/app/commands/batchupdate/BatchUpdateCashChangesCommandHandler.java`
+
+### Event Handlers (VID-131)
+- `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/ExpectedCashChangeDeletedEventHandler.java`
+- `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/ExpectedCashChangesBatchDeletedEventHandler.java`
+- `src/main/java/com/multi/vidulum/cashflow_forecast_processor/app/CashChangesBatchUpdatedEventHandler.java`
+
+### Tests
 - `src/test/java/com/multi/vidulum/recurring_rules/app/RecurringRulesHttpIntegrationTest.java`
+- `src/test/java/com/multi/vidulum/cashflow/app/CashFlowControllerTest.java` - Tests for VID-131 endpoints
 
 ## References
 
@@ -284,7 +324,30 @@ This workaround verifies that:
 - [MongoDB Atomic Operations](https://www.mongodb.com/docs/manual/core/write-operations-atomicity/)
 - [Event Sourcing Pattern](https://martinfowler.com/eaaDev/EventSourcing.html)
 
+## Mitigation in VID-131 Implementation
+
+The new endpoints in VID-131 include some built-in safety measures:
+
+1. **Status validation**: Only `PENDING` cash changes can be deleted/updated
+   - This limits the blast radius of race conditions
+   - `CONFIRMED` cash changes are protected
+
+2. **sourceRuleId filtering**: Batch delete uses `sourceRuleId` parameter
+   - Ensures only rule-generated cash changes are affected
+   - Reduces chance of accidentally deleting user-created entries
+
+3. **fromDate filtering**: Batch delete requires `fromDate` parameter
+   - Limits scope of deletion to future cash changes
+   - Historical data remains protected
+
+4. **Test isolation**: Integration tests use unique CashFlow per test
+   - Avoids interference between test cases
+   - Tests don't rely on `sourceRuleId` due to known race condition
+
+**Note**: These are mitigations, not solutions. The proper fix (Optimistic Locking) is still recommended.
+
 ---
 
 *Created: 2026-02-26*
+*Updated: 2026-02-28 (VID-131 - added affected endpoints and mitigation notes)*
 *Status: Workaround implemented, proper fix pending*

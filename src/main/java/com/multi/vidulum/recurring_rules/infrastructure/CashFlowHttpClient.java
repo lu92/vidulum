@@ -75,23 +75,11 @@ public class CashFlowHttpClient {
             List<Map<String, Object>> outflowCategories = (List<Map<String, Object>>) body.get("outflowCategories");
 
             List<CategoryName> inflows = inflowCategories != null
-                    ? inflowCategories.stream()
-                            .map(cat -> {
-                                @SuppressWarnings("unchecked")
-                                Map<String, String> catName = (Map<String, String>) cat.get("categoryName");
-                                return new CategoryName(catName.get("name"));
-                            })
-                            .toList()
+                    ? extractAllCategories(inflowCategories)
                     : List.of();
 
             List<CategoryName> outflows = outflowCategories != null
-                    ? outflowCategories.stream()
-                            .map(cat -> {
-                                @SuppressWarnings("unchecked")
-                                Map<String, String> catName = (Map<String, String>) cat.get("categoryName");
-                                return new CategoryName(catName.get("name"));
-                            })
-                            .toList()
+                    ? extractAllCategories(outflowCategories)
                     : List.of();
 
             return new CashFlowInfo(cashFlowId, inflows, outflows);
@@ -212,6 +200,29 @@ public class CashFlowHttpClient {
             headers.setBearerAuth(authToken);
         }
         return headers;
+    }
+
+    /**
+     * Recursively extracts all category names from the category tree structure.
+     * Each category has a "categoryName" field and optionally "nodes" containing subcategories.
+     */
+    @SuppressWarnings("unchecked")
+    private List<CategoryName> extractAllCategories(List<Map<String, Object>> categories) {
+        List<CategoryName> result = new java.util.ArrayList<>();
+        for (Map<String, Object> category : categories) {
+            // Extract current category name
+            Map<String, String> catName = (Map<String, String>) category.get("categoryName");
+            if (catName != null && catName.get("name") != null) {
+                result.add(new CategoryName(catName.get("name")));
+            }
+
+            // Recursively extract subcategories from "nodes"
+            List<Map<String, Object>> nodes = (List<Map<String, Object>>) category.get("nodes");
+            if (nodes != null && !nodes.isEmpty()) {
+                result.addAll(extractAllCategories(nodes));
+            }
+        }
+        return result;
     }
 
     public record CashFlowInfo(
