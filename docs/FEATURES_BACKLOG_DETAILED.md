@@ -9,7 +9,7 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
 2. [✅ DONE: Month Rollover & Ongoing Sync](#2--done-month-rollover--ongoing-sync)
 3. [Kafka Dead Letter Queue (DLQ)](#3-kafka-dead-letter-queue-dlq)
-4. [Recurring Rule Engine](#4-recurring-rule-engine)
+4. [✅ PARTIAL: Recurring Rule Engine](#4--partial-recurring-rule-engine)
 5. [AI Categorization](#5-ai-categorization)
 6. [Intelligent Reconciliation](#6-intelligent-reconciliation)
 7. [Alerts & CashChange Lifecycle](#7-alerts--cashchange-lifecycle)
@@ -237,94 +237,81 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 
 ---
 
-## 4. Recurring Rule Engine
+## 4. ✅ PARTIAL: Recurring Rule Engine
 
 **Plik:** `docs/features-backlog/2026-02-14-recurring-rule-engine-design.md`
+**Status analizy:** `docs/features-backlog/2026-02-28-recurring-rules-implementation-status.md`
 **Priorytet:** WYSOKI
-**Szacowany czas:** 40-60 godzin (duża funkcja)
+**Status:** ✅ **MVP ~80% UKOŃCZONE** (2026-02-28)
 
-### Cel
+### Podsumowanie stanu implementacji
 
-Stworzyć **Rule Engine** do automatycznego generowania expected CashChanges na podstawie **recurring rules** (reguł powtarzalnych transakcji).
+| Kategoria | Zaimplementowane | Brakuje |
+|-----------|------------------|---------|
+| **Core CRUD** | 100% | 0% |
+| **Basic Patterns** | 100% (4/4) | 3 dodatkowe |
+| **Seasonal Rules** | 0% | 100% |
+| **Error Handling** | ~60% | ~40% |
+| **Event Handling** | ~50% | ~50% |
+| **Edge Cases** | ~30% | ~70% |
+| **AI Features** | 0% | 100% (out of scope MVP) |
 
-### Przykłady użycia
-
-| Reguła | Opis |
-|--------|------|
-| Czynsz | 1500 PLN, co miesiąc, 10. dnia |
-| Pensja | 8000 PLN, co miesiąc, ostatni dzień roboczy |
-| Netflix | 49 PLN, co miesiąc, 15. dnia |
-| Ubezpieczenie samochodu | 1200 PLN, co rok, 1 marca |
-| Rata kredytu | 2500 PLN, co miesiąc, 5. dnia, do 2030-12-31 |
-
-### Co dostaje użytkownik (MVP)
+### ✅ Zaimplementowane (MVP Complete)
 
 | Funkcjonalność | Status |
 |----------------|--------|
-| Tworzenie reguł przez UI | ✅ MVP |
-| Auto-generowanie expected transactions | ✅ MVP |
-| Pausowanie/wznawianie reguł | ✅ MVP |
-| Edycja przyszłych vs wszystkich | ✅ MVP |
-| Wykrywanie duplikatów | ✅ MVP |
-| Różne częstotliwości (dzień/tydzień/miesiąc/rok) | ✅ MVP |
-| Pattern detection (AI) | ❌ Future |
-| Auto-matching z bankiem | ❌ Future |
-| Sugestie reguł | ❌ Future |
+| CRUD operations (Create/Read/Update/Delete) | ✅ |
+| Patterns: DAILY, WEEKLY, MONTHLY, YEARLY | ✅ |
+| Pause/Resume rules | ✅ |
+| Soft delete (status DELETED) | ✅ |
+| Auto-generation ExpectedCashChanges | ✅ |
+| Regenerate endpoint | ✅ |
+| Category validation | ✅ |
+| AmountChange support | ✅ |
+| Event sourcing (RecurringRuleEvent) | ✅ |
+| JWT authentication | ✅ |
+| Error handling | ✅ |
+| Integration tests | ✅ |
+| CashFlow Forecast integration | ✅ |
 
-### Model domenowy
+### ❌ Brakuje (v1.1 - Priorytet WYSOKI)
 
-```java
-@Aggregate
-public class RecurringRule {
-    RecurringRuleId id;
-    CashFlowId cashFlowId;
-    String name;
-    String description;
-    CategoryId categoryId;
-    Money amount;
-    CashChangeType type;  // INFLOW / OUTFLOW
+| Funkcjonalność | Opis |
+|----------------|------|
+| **activeMonths** | Reguły sezonowe (np. przedszkole IX-VI) |
+| **excludedDates** | Lista dat do pominięcia |
+| **maxOccurrences** | Limit wystąpień (np. 24 raty kredytu) |
+| **amountIsEstimate** | Flaga dla kwot przybliżonych |
+| **PauseReason enum** | MANUAL, CATEGORY_ARCHIVED, etc. |
+| **GenerationStatus** | Tracking stanu generacji |
+| **dayOfMonth = -1** | Ostatni dzień miesiąca |
 
-    // Scheduling
-    RecurrencePattern pattern;  // DAILY, WEEKLY, MONTHLY, YEARLY
-    int dayOfMonth;             // 1-31 (lub -1 = ostatni dzień)
-    DayOfWeek dayOfWeek;        // dla WEEKLY
-    int monthOfYear;            // dla YEARLY
+### ❌ Brakuje (v1.2 - Priorytet ŚREDNI)
 
-    // Lifecycle
-    LocalDate startDate;
-    LocalDate endDate;          // nullable = bez końca
-    RuleStatus status;          // ACTIVE, PAUSED, COMPLETED
+| Funkcjonalność | Opis |
+|----------------|------|
+| QUARTERLY pattern | Co kwartał |
+| EveryNDays pattern | Co N dni |
+| ONCE pattern | Jednorazowa transakcja |
+| counterpartyName/Account hints | Dla future reconciliation |
+| Category archived handling | Auto-pause przy archiwizacji |
+| CashFlowClosedEvent handling | Auto-pause przy zamknięciu CF |
+| Retry strategy | Exponential backoff |
+| Failed Generation Recovery Job | Scheduled job do retry |
 
-    // Audit
-    ZonedDateTime created;
-    ZonedDateTime lastModified;
-    LocalDate lastGeneratedUntil;  // do kiedy wygenerowano transactions
-}
-```
-
-### REST API
+### REST API (zaimplementowane)
 
 ```
-POST   /cash-flow/cf={id}/recurring-rules          # Utwórz regułę
-GET    /cash-flow/cf={id}/recurring-rules          # Lista reguł
-GET    /cash-flow/cf={id}/recurring-rules/{ruleId} # Szczegóły reguły
-PUT    /cash-flow/cf={id}/recurring-rules/{ruleId} # Edytuj regułę
-DELETE /cash-flow/cf={id}/recurring-rules/{ruleId} # Usuń regułę
-POST   /cash-flow/cf={id}/recurring-rules/{ruleId}/pause   # Wstrzymaj
-POST   /cash-flow/cf={id}/recurring-rules/{ruleId}/resume  # Wznów
-POST   /cash-flow/cf={id}/recurring-rules/generate         # Wygeneruj transakcje
-```
-
-### Scheduled Job
-
-```java
-@Scheduled(cron = "0 0 1 * * *")  // Codziennie o 01:00
-public void generateRecurringTransactions() {
-    // 1. Znajdź wszystkie aktywne reguły
-    // 2. Dla każdej reguły sprawdź czy trzeba wygenerować transakcje
-    // 3. Generuj ExpectedCashChange dla kolejnych X miesięcy
-    // 4. Aktualizuj lastGeneratedUntil
-}
+POST   /api/v1/recurring-rules                  # Utwórz regułę
+GET    /api/v1/recurring-rules/{ruleId}         # Szczegóły reguły
+GET    /api/v1/recurring-rules/cash-flow/{id}   # Lista reguł dla CashFlow
+GET    /api/v1/recurring-rules/user/{userId}    # Lista reguł użytkownika
+GET    /api/v1/recurring-rules/me               # Moje reguły
+PUT    /api/v1/recurring-rules/{ruleId}         # Edytuj regułę
+DELETE /api/v1/recurring-rules/{ruleId}         # Usuń regułę
+POST   /api/v1/recurring-rules/{ruleId}/pause   # Wstrzymaj
+POST   /api/v1/recurring-rules/{ruleId}/resume  # Wznów
+POST   /api/v1/recurring-rules/{ruleId}/regenerate # Regeneruj
 ```
 
 ### Benchmark konkurencji
@@ -335,7 +322,7 @@ public void generateRecurringTransactions() {
 | **Monarch Money** | ✅ Dobre | ✅ Świetne | ✅ Dobre (IF-THEN) |
 | **Copilot** | ⚠️ Ograniczone | ✅ Dobre | ❌ Brak |
 | **Agicap** | ✅ Świetne (B2B) | ✅ Dobre | ✅ Zaawansowane |
-| **Vidulum (cel)** | ✅ MVP | ❌ Phase 4 | ✅ MVP |
+| **Vidulum (obecny)** | ✅ MVP | ❌ Phase 4 | ✅ MVP (80%) |
 
 ---
 
@@ -674,7 +661,9 @@ TX002,2026-01-31,Salary,8000.00,PLN,INFLOW,Income,Employer ABC
 |-----------|---------|--------------|--------|
 | ✅ DONE | JWT Integration Tests | Bezpieczeństwo, już znaleziono bug | **UKOŃCZONE 2026-02-25** |
 | ✅ DONE | Month Rollover & Ongoing Sync | Blokuje użytkowników po aktywacji | **UKOŃCZONE 2026-02-25** |
-| 🔴 WYSOKI | Recurring Rules | Core feature dla prognozowania | TODO |
+| ✅ PARTIAL | Recurring Rules (MVP) | Core feature dla prognozowania | **~80% UKOŃCZONE 2026-02-28** |
+| 🔴 WYSOKI | Recurring Rules v1.1 | Seasonal rules, maxOccurrences, edge cases | TODO |
+| 🟡 ŚREDNI | Recurring Rules v1.2 | New patterns, CashFlow event handling | TODO |
 | 🟡 ŚREDNI | Kafka DLQ | Stabilność produkcji | TODO |
 | 🟡 ŚREDNI | AI Categorization | UX improvement | TODO |
 | 🟡 ŚREDNI | Alerts | Proactive notifications | TODO |
