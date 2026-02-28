@@ -291,21 +291,25 @@ public class RecurringRuleService {
         }
     }
 
-    private void clearGeneratedCashChanges(RecurringRule rule, String authToken) {
+    private void clearGeneratedCashChanges(RecurringRule rule, String authToken)
+            throws CashFlowCommunicationException {
         List<CashChangeId> toDelete = rule.getGeneratedCashChangeIds();
 
-        for (CashChangeId cashChangeId : toDelete) {
-            try {
-                cashFlowHttpClient.deleteExpectedCashChange(rule.getCashFlowId(), cashChangeId, authToken);
-                log.debug("Deleted expected cash change {}", cashChangeId.id());
-            } catch (CashFlowCommunicationException e) {
-                log.warn("Failed to delete expected cash change {}: {}", cashChangeId.id(), e.getMessage());
-            }
+        if (toDelete.isEmpty()) {
+            return;
         }
 
-        if (!toDelete.isEmpty()) {
-            rule.clearGeneratedCashChanges(toDelete, clock);
-            ruleRepository.save(rule);
-        }
+        CashFlowHttpClient.BatchDeleteResult result = cashFlowHttpClient.batchDeleteExpectedCashChanges(
+                rule.getCashFlowId(),
+                rule.getRuleId(),
+                toDelete,
+                authToken
+        );
+
+        log.info("Batch deleted {} cash changes for rule {} (skipped {} confirmed)",
+                result.deletedCount(), rule.getRuleId().id(), result.skippedCount());
+
+        rule.clearGeneratedCashChanges(toDelete, clock);
+        ruleRepository.save(rule);
     }
 }

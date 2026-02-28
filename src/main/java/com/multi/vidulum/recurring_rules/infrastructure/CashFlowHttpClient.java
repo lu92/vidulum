@@ -170,27 +170,164 @@ public class CashFlowHttpClient {
     }
 
     /**
-     * Deletes an expected cash change from the CashFlow.
+     * Batch deletes expected cash changes from the CashFlow.
+     * Only PENDING cash changes will be deleted; CONFIRMED ones are skipped.
+     *
+     * @param cashFlowId the CashFlow ID
+     * @param sourceRuleId the recurring rule ID (for reference/logging)
+     * @param cashChangeIds list of cash change IDs to delete
+     * @param authToken the auth token
+     * @return BatchDeleteResult with counts of deleted and skipped
      */
-    public void deleteExpectedCashChange(CashFlowId cashFlowId, CashChangeId cashChangeId, String authToken)
-            throws CashFlowCommunicationException {
-        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-change/" + cashChangeId.id();
+    public BatchDeleteResult batchDeleteExpectedCashChanges(
+            CashFlowId cashFlowId,
+            RecurringRuleId sourceRuleId,
+            List<CashChangeId> cashChangeIds,
+            String authToken
+    ) throws CashFlowCommunicationException {
+        if (cashChangeIds.isEmpty()) {
+            return new BatchDeleteResult(0, 0);
+        }
+
+        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-changes";
 
         try {
             HttpHeaders headers = createHeaders(authToken);
 
-            restTemplate.exchange(
+            Map<String, Object> request = new HashMap<>();
+            request.put("sourceRuleId", sourceRuleId.id());
+            request.put("cashChangeIds", cashChangeIds.stream().map(CashChangeId::id).toList());
+
+            ResponseEntity<Map> response = restTemplate.exchange(
                     url,
                     HttpMethod.DELETE,
-                    new HttpEntity<>(headers),
-                    Void.class
+                    new HttpEntity<>(request, headers),
+                    Map.class
             );
-        } catch (HttpClientErrorException.NotFound e) {
-            // Already deleted, ignore
-            log.debug("Cash change {} already deleted or not found", cashChangeId.id());
+
+            Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", "Empty response body");
+            }
+
+            int deletedCount = ((Number) body.get("deletedCount")).intValue();
+            int skippedCount = ((Number) body.get("skippedCount")).intValue();
+
+            log.info("Batch deleted {} cash changes for rule {} (skipped {})",
+                    deletedCount, sourceRuleId.id(), skippedCount);
+
+            return new BatchDeleteResult(deletedCount, skippedCount);
+        } catch (CashFlowCommunicationException e) {
+            throw e;
         } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "delete cash change " + cashChangeId.id(), e);
+            throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", e);
         }
+    }
+
+    /**
+     * Result of a batch delete operation.
+     */
+    public record BatchDeleteResult(int deletedCount, int skippedCount) {
+    }
+
+    /**
+     * Batch updates expected cash changes in the CashFlow.
+     * Only PENDING cash changes will be updated; CONFIRMED ones are skipped.
+     *
+     * @param cashFlowId the CashFlow ID
+     * @param sourceRuleId the recurring rule ID (for reference/logging)
+     * @param cashChangeIds list of cash change IDs to update
+     * @param updates the updates to apply (amount, name, categoryName - all optional)
+     * @param authToken the auth token
+     * @return BatchUpdateResult with counts of updated and skipped
+     */
+    public BatchUpdateResult batchUpdateExpectedCashChanges(
+            CashFlowId cashFlowId,
+            RecurringRuleId sourceRuleId,
+            List<CashChangeId> cashChangeIds,
+            CashChangeUpdates updates,
+            String authToken
+    ) throws CashFlowCommunicationException {
+        if (cashChangeIds.isEmpty()) {
+            return new BatchUpdateResult(0, 0);
+        }
+
+        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-changes/batch";
+
+        try {
+            HttpHeaders headers = createHeaders(authToken);
+
+            Map<String, Object> updatesMap = new HashMap<>();
+            if (updates.amount() != null) {
+                updatesMap.put("amount", Map.of(
+                        "amount", updates.amount().getAmount(),
+                        "currency", updates.amount().getCurrency()
+                ));
+            }
+            if (updates.name() != null) {
+                updatesMap.put("name", updates.name());
+            }
+            if (updates.categoryName() != null) {
+                updatesMap.put("categoryName", updates.categoryName().name());
+            }
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("sourceRuleId", sourceRuleId.id());
+            request.put("cashChangeIds", cashChangeIds.stream().map(CashChangeId::id).toList());
+            request.put("updates", updatesMap);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.PATCH,
+                    new HttpEntity<>(request, headers),
+                    Map.class
+            );
+
+            Map<String, Object> body = response.getBody();
+            if (body == null) {
+                throw new CashFlowCommunicationException(cashFlowId, "batch update cash changes", "Empty response body");
+            }
+
+            int updatedCount = ((Number) body.get("updatedCount")).intValue();
+            int skippedCount = ((Number) body.get("skippedCount")).intValue();
+
+            log.info("Batch updated {} cash changes for rule {} (skipped {})",
+                    updatedCount, sourceRuleId.id(), skippedCount);
+
+            return new BatchUpdateResult(updatedCount, skippedCount);
+        } catch (CashFlowCommunicationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CashFlowCommunicationException(cashFlowId, "batch update cash changes", e);
+        }
+    }
+
+    /**
+     * Updates to apply in a batch update operation.
+     * All fields are optional - only non-null fields will be updated.
+     */
+    public record CashChangeUpdates(
+            Money amount,
+            String name,
+            CategoryName categoryName
+    ) {
+        public static CashChangeUpdates ofAmount(Money amount) {
+            return new CashChangeUpdates(amount, null, null);
+        }
+
+        public static CashChangeUpdates ofName(String name) {
+            return new CashChangeUpdates(null, name, null);
+        }
+
+        public static CashChangeUpdates ofCategory(CategoryName categoryName) {
+            return new CashChangeUpdates(null, null, categoryName);
+        }
+    }
+
+    /**
+     * Result of a batch update operation.
+     */
+    public record BatchUpdateResult(int updatedCount, int skippedCount) {
     }
 
     private HttpHeaders createHeaders(String authToken) {
