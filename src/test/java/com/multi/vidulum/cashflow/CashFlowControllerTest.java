@@ -164,7 +164,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
@@ -381,7 +381,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -473,7 +473,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.edit(
                 CashFlowDto.EditCashChangeJson.builder()
@@ -571,7 +571,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.reject(
                 CashFlowDto.RejectCashChangeJson.builder()
@@ -674,7 +674,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then
         CashFlowDto.CashFlowSummaryJson result = cashFlowRestController.getCashFlow(cashFlowId);
@@ -786,7 +786,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -925,7 +925,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-10T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -962,7 +962,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         String cashChangeId3 = cashFlowRestController.appendExpectedCashChange(
                 CashFlowDto.AppendExpectedCashChangeJson.builder()
@@ -974,7 +974,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(OUTFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-05T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         cashFlowRestController.confirm(
                 CashFlowDto.ConfirmCashChangeJson.builder()
@@ -4031,7 +4031,7 @@ public class CashFlowControllerTest extends IntegrationTest {
                         .type(INFLOW)
                         .dueDate(ZonedDateTime.parse("2022-01-20T00:00:00Z"))
                         .build()
-        );
+        ).getCashChangeId();
 
         // then - cash change should be created
         assertThat(cashChangeId).isNotNull();
@@ -4329,5 +4329,377 @@ public class CashFlowControllerTest extends IntegrationTest {
                 .orElseThrow();
         assertThat(childCategory.isArchived()).isFalse();
         assertThat(childCategory.getValidTo()).isNull();
+    }
+
+    // ==================== RECURRING RULES INTEGRATION TESTS ====================
+
+    @Test
+    void shouldDeleteExpectedCashChange() {
+        // given - create CashFlow and add an expected cash change with sourceRuleId
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test delete expected")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        // Create expected cash change with sourceRuleId
+        CashFlowDto.AppendExpectedCashChangeResponse response = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("Recurring Payment")
+                        .description("Monthly subscription")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .sourceRuleId("RR000001")
+                        .build()
+        );
+
+        String cashChangeId = response.getCashChangeId();
+
+        // Verify cash change exists
+        CashFlowDto.CashFlowSummaryJson beforeDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(beforeDelete.getCashChanges()).containsKey(cashChangeId);
+
+        // when - delete the cash change
+        cashFlowRestController.deleteExpectedCashChange(cashFlowId, cashChangeId);
+
+        // then - verify cash change is deleted
+        CashFlowDto.CashFlowSummaryJson afterDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(afterDelete.getCashChanges()).doesNotContainKey(cashChangeId);
+    }
+
+    @Test
+    void shouldNotDeleteConfirmedCashChange() {
+        // given - create CashFlow and add an expected cash change, then confirm it
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test delete confirmed")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        // Create expected cash change
+        CashFlowDto.AppendExpectedCashChangeResponse response = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("Recurring Payment")
+                        .description("Monthly subscription")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .sourceRuleId("RR000002")
+                        .build()
+        );
+
+        String cashChangeId = response.getCashChangeId();
+
+        // Confirm the cash change
+        cashFlowRestController.confirm(
+                CashFlowDto.ConfirmCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .cashChangeId(cashChangeId)
+                        .build()
+        );
+
+        // Verify it's confirmed
+        CashFlowDto.CashFlowSummaryJson beforeDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(beforeDelete.getCashChanges().get(cashChangeId).getStatus()).isEqualTo(CONFIRMED);
+
+        // when/then - attempt to delete should throw exception
+        assertThatThrownBy(() -> cashFlowRestController.deleteExpectedCashChange(cashFlowId, cashChangeId))
+                .isInstanceOf(CashChangeIsNotOpenedException.class);
+    }
+
+    @Test
+    void shouldBatchDeleteExpectedCashChangesBySourceRuleId() {
+        // given - create CashFlow and add multiple expected cash changes with same sourceRuleId
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test batch delete")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        String sourceRuleId = "RR000003";
+
+        // Create 3 expected cash changes with same sourceRuleId
+        List<String> createdIds = new LinkedList<>();
+        for (int month = 1; month <= 3; month++) {
+            CashFlowDto.AppendExpectedCashChangeResponse response = cashFlowRestController.appendExpectedCashChange(
+                    CashFlowDto.AppendExpectedCashChangeJson.builder()
+                            .cashFlowId(cashFlowId)
+                            .name("Recurring Payment " + month)
+                            .description("Monthly subscription")
+                            .money(Money.of(100, "USD"))
+                            .category("Uncategorized")
+                            .type(OUTFLOW)
+                            .dueDate(ZonedDateTime.parse("2022-0" + month + "-15T00:00:00Z"))
+                            .sourceRuleId(sourceRuleId)
+                            .build()
+            );
+            createdIds.add(response.getCashChangeId());
+        }
+
+        // Verify all cash changes exist
+        CashFlowDto.CashFlowSummaryJson beforeDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        for (String id : createdIds) {
+            assertThat(beforeDelete.getCashChanges()).containsKey(id);
+        }
+
+        // when - batch delete using explicit list of IDs
+        CashFlowDto.BatchDeleteResponseJson result = cashFlowRestController.batchDeleteExpectedCashChanges(
+                cashFlowId,
+                CashFlowDto.BatchDeleteCashChangesRequestJson.builder()
+                        .sourceRuleId(sourceRuleId)
+                        .cashChangeIds(createdIds)
+                        .build()
+        );
+
+        // then - verify all are deleted
+        assertThat(result.getDeletedCount()).isEqualTo(3);
+        assertThat(result.getSkippedCount()).isEqualTo(0);
+
+        CashFlowDto.CashFlowSummaryJson afterDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        for (String id : createdIds) {
+            assertThat(afterDelete.getCashChanges()).doesNotContainKey(id);
+        }
+    }
+
+    @Test
+    void shouldBatchDeleteOnlySelectedIds() {
+        // given - create CashFlow and add multiple expected cash changes
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test batch delete selected ids")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        String sourceRuleId = "RR000004";
+
+        // Create 3 expected cash changes
+        CashFlowDto.AppendExpectedCashChangeResponse jan = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("January Payment")
+                        .description("Monthly subscription")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+
+        CashFlowDto.AppendExpectedCashChangeResponse feb = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("February Payment")
+                        .description("Monthly subscription")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-02-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+
+        CashFlowDto.AppendExpectedCashChangeResponse mar = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("March Payment")
+                        .description("Monthly subscription")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-03-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+
+        // when - batch delete only Feb and March (using explicit IDs)
+        CashFlowDto.BatchDeleteResponseJson result = cashFlowRestController.batchDeleteExpectedCashChanges(
+                cashFlowId,
+                CashFlowDto.BatchDeleteCashChangesRequestJson.builder()
+                        .sourceRuleId(sourceRuleId)
+                        .cashChangeIds(List.of(feb.getCashChangeId(), mar.getCashChangeId()))
+                        .build()
+        );
+
+        // then - only Feb and March should be deleted
+        assertThat(result.getDeletedCount()).isEqualTo(2);
+
+        CashFlowDto.CashFlowSummaryJson afterDelete = cashFlowRestController.getCashFlow(cashFlowId);
+        assertThat(afterDelete.getCashChanges()).containsKey(jan.getCashChangeId()); // January kept
+        assertThat(afterDelete.getCashChanges()).doesNotContainKey(feb.getCashChangeId()); // February deleted
+        assertThat(afterDelete.getCashChanges()).doesNotContainKey(mar.getCashChangeId()); // March deleted
+    }
+
+    @Test
+    void shouldBatchUpdateCashChanges() {
+        // given - create CashFlow and add multiple expected cash changes
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test batch update")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        String sourceRuleId = "RR000005";
+
+        // Create 3 expected cash changes
+        List<String> createdIds = new LinkedList<>();
+        for (int month = 1; month <= 3; month++) {
+            CashFlowDto.AppendExpectedCashChangeResponse response = cashFlowRestController.appendExpectedCashChange(
+                    CashFlowDto.AppendExpectedCashChangeJson.builder()
+                            .cashFlowId(cashFlowId)
+                            .name("Recurring Payment " + month)
+                            .description("Monthly subscription")
+                            .money(Money.of(100, "USD"))
+                            .category("Uncategorized")
+                            .type(OUTFLOW)
+                            .dueDate(ZonedDateTime.parse("2022-0" + month + "-15T00:00:00Z"))
+                            .sourceRuleId(sourceRuleId)
+                            .build()
+            );
+            createdIds.add(response.getCashChangeId());
+        }
+
+        // when - batch update amount using explicit list of IDs
+        CashFlowDto.BatchUpdateResponseJson result = cashFlowRestController.batchUpdateCashChanges(
+                cashFlowId,
+                CashFlowDto.BatchUpdateCashChangesRequestJson.builder()
+                        .sourceRuleId(sourceRuleId)
+                        .cashChangeIds(createdIds)
+                        .updates(CashFlowDto.CashChangeUpdatesJson.builder()
+                                .amount(Money.of(150, "USD"))
+                                .name("Updated Payment")
+                                .build())
+                        .build()
+        );
+
+        // then - all should be updated
+        assertThat(result.getUpdatedCount()).isEqualTo(3);
+        assertThat(result.getSkippedCount()).isEqualTo(0);
+
+        CashFlowDto.CashFlowSummaryJson afterUpdate = cashFlowRestController.getCashFlow(cashFlowId);
+        for (String id : createdIds) {
+            CashFlowDto.CashChangeSummaryJson cc = afterUpdate.getCashChanges().get(id);
+            assertThat(cc.getMoney()).isEqualTo(Money.of(150, "USD"));
+            assertThat(cc.getName()).isEqualTo("Updated Payment");
+        }
+    }
+
+    @Test
+    void shouldBatchUpdateSkipConfirmedCashChanges() {
+        // given - create CashFlow with 3 expected cash changes, confirm one
+        String userId = uniqueUserId();
+        String cashFlowId = cashFlowRestController.createCashFlow(
+                CashFlowDto.CreateCashFlowJson.builder()
+                        .userId(userId)
+                        .name(uniqueCashFlowName())
+                        .description("Test batch update skip confirmed")
+                        .bankAccount(createTestBankAccountJson("bank", "USD", 1000))
+                        .build()
+        );
+
+        String sourceRuleId = "RR000006";
+
+        // Create first cash change and confirm it
+        CashFlowDto.AppendExpectedCashChangeResponse confirmed = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("January Payment")
+                        .description("Confirmed payment")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-01-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+        cashFlowRestController.confirm(
+                CashFlowDto.ConfirmCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .cashChangeId(confirmed.getCashChangeId())
+                        .build()
+        );
+
+        // Create two more pending cash changes
+        CashFlowDto.AppendExpectedCashChangeResponse pending1 = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("February Payment")
+                        .description("Pending payment")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-02-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+
+        CashFlowDto.AppendExpectedCashChangeResponse pending2 = cashFlowRestController.appendExpectedCashChange(
+                CashFlowDto.AppendExpectedCashChangeJson.builder()
+                        .cashFlowId(cashFlowId)
+                        .name("March Payment")
+                        .description("Pending payment")
+                        .money(Money.of(100, "USD"))
+                        .category("Uncategorized")
+                        .type(OUTFLOW)
+                        .dueDate(ZonedDateTime.parse("2022-03-15T00:00:00Z"))
+                        .sourceRuleId(sourceRuleId)
+                        .build()
+        );
+
+        // when - batch update all three (confirmed will be skipped)
+        CashFlowDto.BatchUpdateResponseJson result = cashFlowRestController.batchUpdateCashChanges(
+                cashFlowId,
+                CashFlowDto.BatchUpdateCashChangesRequestJson.builder()
+                        .sourceRuleId(sourceRuleId)
+                        .cashChangeIds(List.of(
+                                confirmed.getCashChangeId(),
+                                pending1.getCashChangeId(),
+                                pending2.getCashChangeId()))
+                        .updates(CashFlowDto.CashChangeUpdatesJson.builder()
+                                .amount(Money.of(200, "USD"))
+                                .build())
+                        .build()
+        );
+
+        // then - only 2 pending should be updated, 1 confirmed skipped
+        assertThat(result.getUpdatedCount()).isEqualTo(2);
+        assertThat(result.getSkippedCount()).isEqualTo(1);
+
+        CashFlowDto.CashFlowSummaryJson afterUpdate = cashFlowRestController.getCashFlow(cashFlowId);
+
+        // Confirmed cash change should NOT be updated
+        assertThat(afterUpdate.getCashChanges().get(confirmed.getCashChangeId()).getMoney())
+                .isEqualTo(Money.of(100, "USD"));
+
+        // Pending cash changes SHOULD be updated
+        assertThat(afterUpdate.getCashChanges().get(pending1.getCashChangeId()).getMoney())
+                .isEqualTo(Money.of(200, "USD"));
+        assertThat(afterUpdate.getCashChanges().get(pending2.getCashChangeId()).getMoney())
+                .isEqualTo(Money.of(200, "USD"));
     }
 }

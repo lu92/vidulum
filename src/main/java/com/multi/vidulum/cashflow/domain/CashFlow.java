@@ -107,18 +107,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     @Override
     public CashFlowSnapshot getSnapshot() {
         Map<CashChangeId, CashChangeSnapshot> cashChangeSnapshotMap = cashChanges.values().stream()
-                .map(cashChange -> new CashChangeSnapshot(
-                        cashChange.getCashChangeId(),
-                        cashChange.getName(),
-                        cashChange.getDescription(),
-                        cashChange.getMoney(),
-                        cashChange.getType(),
-                        cashChange.getCategoryName(),
-                        cashChange.getStatus(),
-                        cashChange.getCreated(),
-                        cashChange.getDueDate(),
-                        cashChange.getEndDate()
-                )).collect(
+                .map(CashChange::getSnapshot)
+                .collect(
                         Collectors.toUnmodifiableMap(
                                 CashChangeSnapshot::cashChangeId,
                                 Function.identity()
@@ -248,7 +238,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.PENDING,
                 event.created(),
                 event.dueDate(),
-                null
+                null,
+                event.sourceRuleId()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
         add(event);
@@ -271,7 +262,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.CONFIRMED,
                 event.created(),
                 event.dueDate(),
-                event.paidDate()
+                event.paidDate(),
+                null
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -301,7 +293,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 CashChangeStatus.CONFIRMED,
                 event.importedAt(),
                 event.dueDate(),
-                event.paidDate()
+                event.paidDate(),
+                null
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -334,7 +327,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     CashChangeStatus.CONFIRMED,
                     event.attestedAt(),
                     event.attestedAt(),
-                    event.attestedAt()
+                    event.attestedAt(),
+                    null
             );
             cashChanges.put(adjustmentCashChange.getCashChangeId(), adjustmentCashChange);
         }
@@ -588,6 +582,75 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
         add(event);
     }
 
+    /**
+     * Deletes a single PENDING cash change from the CashFlow.
+     * Used primarily by Recurring Rules module when deleting individual transactions.
+     * <p>
+     * Note: Only PENDING (expected) cash changes can be deleted.
+     * CONFIRMED transactions are protected and cannot be deleted.
+     */
+    public void apply(CashFlowEvent.ExpectedCashChangeDeletedEvent event) {
+        CashChange cashChange = fetchCashChange(event.cashChangeId())
+                .orElseThrow(() -> new CashChangeDoesNotExistsException(event.cashChangeId()));
+
+        cashChange.onlyWhenIsPending(() -> {
+            cashChanges.remove(event.cashChangeId());
+        });
+        add(event);
+    }
+
+    /**
+     * Deletes multiple PENDING cash changes from the CashFlow in batch.
+     * Used primarily by Recurring Rules module when deleting a rule or changing its schedule.
+     * <p>
+     * Note: Only PENDING (expected) cash changes are deleted.
+     * CONFIRMED transactions are skipped silently.
+     */
+    public void apply(CashFlowEvent.ExpectedCashChangesBatchDeletedEvent event) {
+        for (CashChangeId cashChangeId : event.deletedIds()) {
+            fetchCashChange(cashChangeId).ifPresent(cashChange -> {
+                if (cashChange.getStatus() == CashChangeStatus.PENDING) {
+                    cashChanges.remove(cashChangeId);
+                }
+            });
+        }
+        add(event);
+    }
+
+    /**
+     * Updates multiple cash changes in batch.
+     * Used primarily by Recurring Rules module when editing rule amount/category.
+     * <p>
+     * Note: Only PENDING (expected) cash changes are updated.
+     * CONFIRMED transactions are skipped silently.
+     * <p>
+     * Supported changes:
+     * <ul>
+     *   <li>amount - the new Money amount</li>
+     *   <li>name - the new Name</li>
+     *   <li>categoryName - the new CategoryName</li>
+     * </ul>
+     */
+    public void apply(CashFlowEvent.CashChangesBatchUpdatedEvent event) {
+        for (CashChangeId cashChangeId : event.updatedIds()) {
+            fetchCashChange(cashChangeId).ifPresent(cashChange -> {
+                if (cashChange.getStatus() == CashChangeStatus.PENDING) {
+                    // Apply changes based on what's in the changes map
+                    if (event.changes().containsKey("amount")) {
+                        cashChange.setMoney((Money) event.changes().get("amount"));
+                    }
+                    if (event.changes().containsKey("name")) {
+                        cashChange.setName((Name) event.changes().get("name"));
+                    }
+                    if (event.changes().containsKey("categoryName")) {
+                        cashChange.setCategoryName((CategoryName) event.changes().get("categoryName"));
+                    }
+                }
+            });
+        }
+        add(event);
+    }
+
     private Optional<Category> findCategoryByName(CategoryName categoryName, List<Category> categories) {
         Stack<Category> stack = new Stack<>();
         categories.forEach(stack::push);
@@ -605,6 +668,34 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
 
     private Optional<CashChange> fetchCashChange(CashChangeId cashChangeId) {
         return Optional.ofNullable(cashChanges.getOrDefault(cashChangeId, null));
+    }
+
+    /**
+     * Returns a CashChange by ID if it exists and is PENDING.
+     * Used for single delete operation validation.
+     *
+     * @param cashChangeId the ID of the cash change
+     * @return Optional containing the PENDING cash change, or empty if not found or not PENDING
+     */
+    public Optional<CashChange> findPendingCashChange(CashChangeId cashChangeId) {
+        return fetchCashChange(cashChangeId)
+                .filter(cc -> cc.getStatus() == CashChangeStatus.PENDING);
+    }
+
+    /**
+     * Returns all PENDING cash changes that were created by a specific recurring rule.
+     * Used for batch delete/update operations.
+     *
+     * @param sourceRuleId the recurring rule ID
+     * @param fromDate optional - only include cash changes with dueDate >= fromDate
+     * @return list of PENDING cash changes from the specified rule
+     */
+    public List<CashChange> findPendingCashChangesBySourceRuleId(String sourceRuleId, ZonedDateTime fromDate) {
+        return cashChanges.values().stream()
+                .filter(cc -> cc.getStatus() == CashChangeStatus.PENDING)
+                .filter(cc -> sourceRuleId.equals(cc.getSourceRuleId()))
+                .filter(cc -> fromDate == null || !cc.getDueDate().isBefore(fromDate))
+                .toList();
     }
 
     private void performOn(CashChangeId cashChangeId, Consumer<CashChange> operation) {

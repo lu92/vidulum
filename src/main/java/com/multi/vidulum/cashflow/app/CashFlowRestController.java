@@ -5,6 +5,9 @@ import com.multi.vidulum.cashflow.app.commands.archive.UnarchiveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHistoricalImportCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
+import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
+import com.multi.vidulum.cashflow.app.commands.delete.DeleteExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthCommand;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
@@ -18,6 +21,8 @@ import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowWithHistoryC
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateCashChangesCommand;
+import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateResult;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
@@ -196,7 +201,7 @@ public class CashFlowRestController {
     }
 
     @PostMapping("/expected-cash-change")
-    public String appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
+    public CashFlowDto.AppendExpectedCashChangeResponse appendExpectedCashChange(@RequestBody CashFlowDto.AppendExpectedCashChangeJson request) {
         CashChangeId cashChangeId = commandGateway.send(
                 new AppendExpectedCashChangeCommand(
                         CashFlowId.of(request.getCashFlowId()),
@@ -207,10 +212,11 @@ public class CashFlowRestController {
                         request.getMoney(),
                         request.getType(),
                         ZonedDateTime.now(clock),
-                        request.getDueDate()
+                        request.getDueDate(),
+                        request.getSourceRuleId()
                 )
         );
-        return cashChangeId.id();
+        return new CashFlowDto.AppendExpectedCashChangeResponse(cashChangeId.id());
     }
 
     @PostMapping("/paid-cash-change")
@@ -488,6 +494,109 @@ public class CashFlowRestController {
                 .lastRolledOverPeriod(lastRolledOver)
                 .newActivePeriod(lastResult != null ? lastResult.newActivePeriod() : firstPeriod)
                 .closingBalance(lastResult != null ? lastResult.closingBalance() : null)
+                .build();
+    }
+
+    // ========== RECURRING RULES INTEGRATION ENDPOINTS ==========
+
+    /**
+     * Delete a single PENDING (expected) cash change.
+     * <p>
+     * Used primarily by Recurring Rules module when deleting individual transactions.
+     * Only PENDING cash changes can be deleted - CONFIRMED transactions are protected.
+     *
+     * @param cashFlowId   the CashFlow containing the cash change
+     * @param cashChangeId the cash change to delete
+     */
+    @DeleteMapping("/cf={cashFlowId}/cash-change/{cashChangeId}")
+    public void deleteExpectedCashChange(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("cashChangeId") String cashChangeId) {
+        commandGateway.send(
+                new DeleteExpectedCashChangeCommand(
+                        CashFlowId.of(cashFlowId),
+                        CashChangeId.of(cashChangeId)
+                )
+        );
+    }
+
+    /**
+     * Batch delete PENDING (expected) cash changes.
+     * <p>
+     * Used primarily by Recurring Rules module when deleting a rule or changing its schedule.
+     * Only PENDING cash changes are deleted - CONFIRMED transactions are silently skipped.
+     * <p>
+     * Uses explicit list of cash change IDs instead of searching by sourceRuleId in database,
+     * which avoids race condition issues with eventual consistency.
+     *
+     * @param cashFlowId the CashFlow containing the cash changes
+     * @param request    the batch delete request with list of cash change IDs
+     * @return batch delete result with counts
+     */
+    @DeleteMapping("/cf={cashFlowId}/cash-changes")
+    public CashFlowDto.BatchDeleteResponseJson batchDeleteExpectedCashChanges(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.BatchDeleteCashChangesRequestJson request) {
+
+        List<CashChangeId> cashChangeIds = request.getCashChangeIds() != null
+                ? request.getCashChangeIds().stream().map(CashChangeId::of).toList()
+                : List.of();
+
+        BatchDeleteResult result = commandGateway.send(
+                new BatchDeleteExpectedCashChangesCommand(
+                        CashFlowId.of(cashFlowId),
+                        request.getSourceRuleId(),
+                        cashChangeIds
+                )
+        );
+
+        return CashFlowDto.BatchDeleteResponseJson.builder()
+                .deletedCount(result.deletedCount())
+                .skippedCount(result.skippedCount())
+                .build();
+    }
+
+    /**
+     * Batch update PENDING (expected) cash changes.
+     * <p>
+     * Used primarily by Recurring Rules module when editing rule amount/category.
+     * Only PENDING cash changes are updated - CONFIRMED transactions are silently skipped.
+     * <p>
+     * Uses explicit list of cash change IDs instead of searching by sourceRuleId in database,
+     * which avoids race condition issues with eventual consistency.
+     *
+     * @param cashFlowId the CashFlow containing the cash changes
+     * @param request    the batch update request with list of cash change IDs
+     * @return batch update result with counts
+     */
+    @PatchMapping("/cf={cashFlowId}/cash-changes/batch")
+    public CashFlowDto.BatchUpdateResponseJson batchUpdateCashChanges(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.BatchUpdateCashChangesRequestJson request) {
+
+        List<CashChangeId> cashChangeIds = request.getCashChangeIds() != null
+                ? request.getCashChangeIds().stream().map(CashChangeId::of).toList()
+                : List.of();
+
+        BatchUpdateCashChangesCommand.CashChangeUpdates updates =
+                new BatchUpdateCashChangesCommand.CashChangeUpdates(
+                        request.getUpdates().getAmount(),
+                        request.getUpdates().getName() != null ? new Name(request.getUpdates().getName()) : null,
+                        request.getUpdates().getCategoryName() != null ? new CategoryName(request.getUpdates().getCategoryName()) : null
+                );
+
+        BatchUpdateResult result = commandGateway.send(
+                new BatchUpdateCashChangesCommand(
+                        CashFlowId.of(cashFlowId),
+                        request.getSourceRuleId(),
+                        cashChangeIds,
+                        updates
+                )
+        );
+
+        return CashFlowDto.BatchUpdateResponseJson.builder()
+                .updatedCount(result.updatedCount())
+                .skippedCount(result.skippedCount())
                 .build();
     }
 

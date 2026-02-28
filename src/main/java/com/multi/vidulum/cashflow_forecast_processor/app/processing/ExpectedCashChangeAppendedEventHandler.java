@@ -22,7 +22,9 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
 
-        YearMonth yearMonth = YearMonth.from(event.created());
+        // Use dueDate to determine which month the transaction belongs to
+        // (not created date, which is when the event was emitted)
+        YearMonth yearMonth = YearMonth.from(event.dueDate());
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
             // for now there is only one 'Uncategorized' category for both inflow/outflow

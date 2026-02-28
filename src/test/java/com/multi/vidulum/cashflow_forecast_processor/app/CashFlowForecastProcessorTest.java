@@ -54,14 +54,15 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
-                        ZonedDateTime.parse("2021-07-15T16:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 
         emit(
@@ -74,7 +75,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-08-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -85,7 +87,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("cash change description 2 edited"),
                         Money.of(120, "USD"),
                         new CategoryName("Uncategorized"),  // Keep same category
-                        ZonedDateTime.parse("2021-08-12T00:00:00Z"),
+                        ZonedDateTime.parse("2021-07-12T00:00:00Z"),  // dueDate in same month
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -94,7 +96,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         secondCashChangeId,
-                        ZonedDateTime.parse("2021-08-10T16:30:00Z")
+                        ZonedDateTime.parse("2021-07-10T16:30:00Z")
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -142,14 +144,15 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         firstCashChangeId,
-                        ZonedDateTime.parse("2021-07-15T16:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T16:30:00Z")
                 ));
 
         emit(
@@ -162,7 +165,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-08-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -173,7 +177,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("cash change description 2 edited"),
                         Money.of(130, "USD"),
                         new CategoryName("Uncategorized"),  // Keep same category
-                        ZonedDateTime.parse("2021-08-12T00:00:00Z"),
+                        ZonedDateTime.parse("2021-07-12T00:00:00Z"),  // dueDate in same month
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -182,7 +186,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 new CashFlowEvent.CashChangeConfirmedEvent(
                         cashFlowId,
                         secondCashChangeId,
-                        ZonedDateTime.parse("2021-08-10T16:30:00Z")
+                        ZonedDateTime.parse("2021-07-10T16:30:00Z")
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -233,7 +237,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month - will be in July after attestation
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -264,7 +269,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special category"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -277,7 +283,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -290,7 +297,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Overhead costs"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in June
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -317,7 +325,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-08-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-08-15T06:30:00Z"),  // dueDate in August
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -337,7 +346,7 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new Description("cash change description 3 edited"),
                         Money.of(120, "USD"),
                         new CategoryName("Uncategorized"),  // Keep same category
-                        ZonedDateTime.parse("2021-08-12T00:00:00Z"),
+                        ZonedDateTime.parse("2021-08-12T00:00:00Z"),  // dueDate stays in August
                         ZonedDateTime.parse("2021-06-01T06:30:00Z")
                 )
         );
@@ -406,7 +415,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Inflows"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -419,7 +429,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Outflows"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -522,7 +533,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         OUTFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Bank fees"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -535,7 +547,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Main product"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -548,7 +561,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Sales"),
-                        ZonedDateTime.parse("2021-07-01T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
+                        null // sourceRuleId
                 ));
 
         emit(
@@ -759,7 +773,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         INFLOW,
                         ZonedDateTime.parse("2021-06-05T06:30:00Z"),
                         new CategoryName("Uncategorized"),
-                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        null // sourceRuleId
                 ));
 
         // Add paid cash change (already CONFIRMED)
@@ -1133,6 +1148,485 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashCategory uncategorizedInflow = marchForecast.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
                     assertThat(uncategorizedInflow.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
                     assertThat(uncategorizedInflow.getTotalPaidValue()).isEqualTo(Money.of(750, "USD"));
+                });
+    }
+
+    /**
+     * Test that expected cash changes are assigned to the correct month based on dueDate,
+     * not created date. This is critical for Recurring Rules which create multiple
+     * transactions at once with different dueDates.
+     */
+    @Test
+    public void shouldAssignExpectedCashChangesToCorrectMonthBasedOnDueDate() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+
+        // All events created in February, but with different dueDates
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        // Create CashFlow
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        new UserId("U10000001"),
+                        new Name("Recurring Rules Test"),
+                        new Description("Testing dueDate-based month assignment"),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("PLN"),
+                                Money.of(10000, "PLN"),
+                                null),
+                        createdDate
+                )
+        );
+
+        // Create category for the transactions
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        createdDate
+                )
+        );
+
+        // Simulate Recurring Rule creating 3 expected cash changes at once
+        // All created in February, but due in March, April, May
+
+        // Transaction due in March
+        emit(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        marchCashChangeId,
+                        new Name("March Salary"),
+                        new Description("Monthly salary"),
+                        Money.of(8000, "PLN"),
+                        INFLOW,
+                        createdDate,  // created in February
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2026-03-05T00:00:00Z"),  // due in March
+                        null
+                ));
+
+        // Transaction due in April
+        emit(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        aprilCashChangeId,
+                        new Name("April Salary"),
+                        new Description("Monthly salary"),
+                        Money.of(8000, "PLN"),
+                        INFLOW,
+                        createdDate,  // created in February
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2026-04-05T00:00:00Z"),  // due in April
+                        null
+                ));
+
+        // Transaction due in May
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        mayCashChangeId,
+                        new Name("May Salary"),
+                        new Description("Monthly salary"),
+                        Money.of(8000, "PLN"),
+                        INFLOW,
+                        createdDate,  // created in February
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2026-05-05T00:00:00Z"),  // due in May
+                        null
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // February should have NO expected transactions (only created date was in Feb)
+                    CashFlowMonthlyForecast februaryForecast = statement.getForecasts().get(YearMonth.parse("2026-02"));
+                    if (februaryForecast != null) {
+                        CashCategory febSalary = februaryForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElse(null);
+                        if (febSalary != null) {
+                            assertThat(febSalary.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                    .as("February should have NO expected transactions - they should be in their dueDate months")
+                                    .isEmpty();
+                        }
+                    }
+
+                    // March should have the March transaction
+                    CashFlowMonthlyForecast marchForecast = statement.getForecasts().get(YearMonth.parse("2026-03"));
+                    assertThat(marchForecast)
+                            .as("March forecast should exist")
+                            .isNotNull();
+                    CashCategory marchSalary = marchForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                    assertThat(marchSalary.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                            .as("March should have exactly 1 expected transaction")
+                            .hasSize(1);
+                    assertThat(marchSalary.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getName().name())
+                            .isEqualTo("March Salary");
+
+                    // April should have the April transaction
+                    CashFlowMonthlyForecast aprilForecast = statement.getForecasts().get(YearMonth.parse("2026-04"));
+                    assertThat(aprilForecast)
+                            .as("April forecast should exist")
+                            .isNotNull();
+                    CashCategory aprilSalary = aprilForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                    assertThat(aprilSalary.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                            .as("April should have exactly 1 expected transaction")
+                            .hasSize(1);
+                    assertThat(aprilSalary.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getName().name())
+                            .isEqualTo("April Salary");
+
+                    // May should have the May transaction
+                    CashFlowMonthlyForecast mayForecast = statement.getForecasts().get(YearMonth.parse("2026-05"));
+                    assertThat(mayForecast)
+                            .as("May forecast should exist")
+                            .isNotNull();
+                    CashCategory maySalary = mayForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                    assertThat(maySalary.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                            .as("May should have exactly 1 expected transaction")
+                            .hasSize(1);
+                    assertThat(maySalary.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getName().name())
+                            .isEqualTo("May Salary");
+                });
+    }
+
+    /**
+     * Test that ExpectedCashChangeDeletedEvent removes a single transaction from forecast.
+     */
+    @Test
+    public void shouldDeleteSingleExpectedCashChange() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId cashChangeId2 = TestIds.nextCashChangeId();
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-03-01T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Delete Test"),
+                new Description("Testing single delete"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Bills"),
+                OUTFLOW,
+                createdDate
+        ));
+
+        // Add two expected cash changes
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId1,
+                new Name("Rent Payment"),
+                new Description("Monthly rent"),
+                Money.of(2000, "PLN"),
+                OUTFLOW,
+                createdDate,
+                new CategoryName("Bills"),
+                ZonedDateTime.parse("2026-03-10T00:00:00Z"),
+                null
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                cashChangeId2,
+                new Name("Electricity Bill"),
+                new Description("Monthly electricity"),
+                Money.of(300, "PLN"),
+                OUTFLOW,
+                createdDate,
+                new CategoryName("Bills"),
+                ZonedDateTime.parse("2026-03-15T00:00:00Z"),
+                null
+        ));
+
+        // Delete the first one
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangeDeletedEvent(
+                cashFlowId,
+                cashChangeId1,
+                null, // sourceRuleId
+                ZonedDateTime.parse("2026-03-10T00:00:00Z"), // dueDate
+                Money.of(2000, "PLN"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z") // deletedAt
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast marchForecast = statement.getForecasts().get(YearMonth.parse("2026-03"));
+                    assertThat(marchForecast).isNotNull();
+
+                    CashCategory billsCategory = marchForecast.findCategoryOutflowsByCategoryName(new CategoryName("Bills")).orElseThrow();
+
+                    // Should have only one transaction left (cashChangeId2)
+                    assertThat(billsCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                            .as("Only Electricity Bill should remain")
+                            .hasSize(1);
+                    assertThat(billsCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getName().name())
+                            .isEqualTo("Electricity Bill");
+
+                    // Expected stats should show only 300 PLN
+                    CashSummary outflowStats = marchForecast.getCashFlowStats().getOutflowStats();
+                    assertThat(outflowStats.expected()).isEqualTo(Money.of(300, "PLN"));
+                });
+    }
+
+    /**
+     * Test that ExpectedCashChangesBatchDeletedEvent removes multiple transactions from forecast.
+     * Simulates Recurring Rule deletion.
+     */
+    @Test
+    public void shouldBatchDeleteExpectedCashChanges() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+        String sourceRuleId = "RR00000001";
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Batch Delete Test"),
+                new Description("Testing batch delete for recurring rules"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Salary"),
+                INFLOW,
+                createdDate
+        ));
+
+        // Add 3 expected cash changes (simulating recurring rule generation)
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                marchCashChangeId,
+                new Name("March Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                aprilCashChangeId,
+                new Name("April Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-04-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                mayCashChangeId,
+                new Name("May Salary"),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-05-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        // Batch delete (simulating recurring rule deletion)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangesBatchDeletedEvent(
+                cashFlowId,
+                sourceRuleId,
+                java.util.List.of(marchCashChangeId, aprilCashChangeId, mayCashChangeId),
+                ZonedDateTime.parse("2026-02-20T00:00:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // All months should have no expected transactions
+                    for (YearMonth month : java.util.List.of(
+                            YearMonth.parse("2026-03"),
+                            YearMonth.parse("2026-04"),
+                            YearMonth.parse("2026-05"))) {
+                        CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
+                        if (forecast != null) {
+                            forecast.findCategoryInflowsByCategoryName(new CategoryName("Salary"))
+                                    .ifPresent(cat -> assertThat(cat.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                            .as("Month %s should have no expected transactions after batch delete", month)
+                                            .isEmpty());
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Test that CashChangesBatchUpdatedEvent updates multiple transactions in forecast.
+     * Simulates Recurring Rule update.
+     */
+    @Test
+    public void shouldBatchUpdateCashChanges() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+        String sourceRuleId = "RR00000002";
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        // Create CashFlow
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Batch Update Test"),
+                new Description("Testing batch update for recurring rules"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        // Create category
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Salary"),
+                INFLOW,
+                createdDate
+        ));
+
+        // Add 3 expected cash changes with 5000 PLN each
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                marchCashChangeId,
+                new Name("March Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-03-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                aprilCashChangeId,
+                new Name("April Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-04-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                mayCashChangeId,
+                new Name("May Salary"),
+                new Description("Monthly salary"),
+                Money.of(5000, "PLN"),
+                INFLOW,
+                createdDate,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse("2026-05-05T00:00:00Z"),
+                sourceRuleId
+        ));
+
+        // Batch update - change amount to 6000 PLN and name (simulating recurring rule update with raise)
+        Map<String, Object> changes = new java.util.HashMap<>();
+        changes.put("amount", Money.of(6000, "PLN"));
+        changes.put("name", new Name("Updated Salary"));
+
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangesBatchUpdatedEvent(
+                cashFlowId,
+                sourceRuleId,
+                java.util.List.of(marchCashChangeId, aprilCashChangeId, mayCashChangeId),
+                changes,
+                ZonedDateTime.parse("2026-02-20T00:00:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify all months have updated amount and name
+                    for (YearMonth month : java.util.List.of(
+                            YearMonth.parse("2026-03"),
+                            YearMonth.parse("2026-04"),
+                            YearMonth.parse("2026-05"))) {
+                        CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
+                        assertThat(forecast)
+                                .as("Forecast for %s should exist", month)
+                                .isNotNull();
+
+                        CashCategory salaryCategory = forecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                        assertThat(salaryCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                .as("Month %s should have exactly 1 expected transaction", month)
+                                .hasSize(1);
+
+                        TransactionDetails transaction = salaryCategory.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0);
+                        assertThat(transaction.getMoney())
+                                .as("Amount should be updated to 6000 PLN")
+                                .isEqualTo(Money.of(6000, "PLN"));
+                        assertThat(transaction.getName().name())
+                                .as("Name should be updated")
+                                .isEqualTo("Updated Salary");
+
+                        // Verify stats reflect the new amount
+                        CashSummary inflowStats = forecast.getCashFlowStats().getInflowStats();
+                        assertThat(inflowStats.expected())
+                                .as("Expected inflow should be 6000 PLN for %s", month)
+                                .isEqualTo(Money.of(6000, "PLN"));
+                    }
                 });
     }
 
