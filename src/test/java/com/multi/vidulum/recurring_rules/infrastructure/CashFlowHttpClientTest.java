@@ -57,20 +57,20 @@ class CashFlowHttpClientTest {
         // GIVEN: CashFlow response with nested categories (Health -> Medicine, Doctor)
         Map<String, Object> medicineCategory = Map.of(
                 "categoryName", Map.of("name", "Medicine"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> doctorCategory = Map.of(
                 "categoryName", Map.of("name", "Doctor"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> healthCategory = Map.of(
                 "categoryName", Map.of("name", "Health"),
-                "nodes", List.of(medicineCategory, doctorCategory)
+                "subCategories", List.of(medicineCategory, doctorCategory)
         );
 
         Map<String, Object> salaryCategory = Map.of(
                 "categoryName", Map.of("name", "Salary"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
 
         Map<String, Object> cashFlowResponse = Map.of(
@@ -107,19 +107,19 @@ class CashFlowHttpClientTest {
         // GIVEN: 3-level nested structure: Bills -> Utilities -> Electricity, Gas
         Map<String, Object> electricityCategory = Map.of(
                 "categoryName", Map.of("name", "Electricity"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> gasCategory = Map.of(
                 "categoryName", Map.of("name", "Gas"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> utilitiesCategory = Map.of(
                 "categoryName", Map.of("name", "Utilities"),
-                "nodes", List.of(electricityCategory, gasCategory)
+                "subCategories", List.of(electricityCategory, gasCategory)
         );
         Map<String, Object> billsCategory = Map.of(
                 "categoryName", Map.of("name", "Bills"),
-                "nodes", List.of(utilitiesCategory)
+                "subCategories", List.of(utilitiesCategory)
         );
 
         Map<String, Object> cashFlowResponse = Map.of(
@@ -149,11 +149,11 @@ class CashFlowHttpClientTest {
         // GIVEN: Nested category structure
         Map<String, Object> medicineCategory = Map.of(
                 "categoryName", Map.of("name", "Medicine"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> healthCategory = Map.of(
                 "categoryName", Map.of("name", "Health"),
-                "nodes", List.of(medicineCategory)
+                "subCategories", List.of(medicineCategory)
         );
 
         Map<String, Object> cashFlowResponse = Map.of(
@@ -215,19 +215,19 @@ class CashFlowHttpClientTest {
         // GIVEN: Multiple top-level categories, some with nesting, some without
         Map<String, Object> coffeeCategory = Map.of(
                 "categoryName", Map.of("name", "Coffee"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> foodCategory = Map.of(
                 "categoryName", Map.of("name", "Food"),
-                "nodes", List.of(coffeeCategory)
+                "subCategories", List.of(coffeeCategory)
         );
         Map<String, Object> transportCategory = Map.of(
                 "categoryName", Map.of("name", "Transport"),
-                "nodes", List.of()
+                "subCategories", List.of()
         );
         Map<String, Object> rentCategory = Map.of(
                 "categoryName", Map.of("name", "Rent")
-                // No nodes field
+                // No subCategories field
         );
 
         Map<String, Object> cashFlowResponse = Map.of(

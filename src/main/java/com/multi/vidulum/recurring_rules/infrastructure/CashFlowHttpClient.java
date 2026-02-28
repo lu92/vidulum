@@ -341,7 +341,7 @@ public class CashFlowHttpClient {
 
     /**
      * Recursively extracts all category names from the category tree structure.
-     * Each category has a "categoryName" field and optionally "nodes" containing subcategories.
+     * Each category has a "categoryName" field and optionally "subCategories" containing nested categories.
      */
     @SuppressWarnings("unchecked")
     private List<CategoryName> extractAllCategories(List<Map<String, Object>> categories) {
@@ -353,10 +353,10 @@ public class CashFlowHttpClient {
                 result.add(new CategoryName(catName.get("name")));
             }
 
-            // Recursively extract subcategories from "nodes"
-            List<Map<String, Object>> nodes = (List<Map<String, Object>>) category.get("nodes");
-            if (nodes != null && !nodes.isEmpty()) {
-                result.addAll(extractAllCategories(nodes));
+            // Recursively extract nested categories from "subCategories"
+            List<Map<String, Object>> subCategories = (List<Map<String, Object>>) category.get("subCategories");
+            if (subCategories != null && !subCategories.isEmpty()) {
+                result.addAll(extractAllCategories(subCategories));
             }
         }
         return result;
