@@ -17,6 +17,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -138,19 +139,21 @@ public class CashFlowHttpClient {
         try {
             HttpHeaders headers = createHeaders(authToken);
 
-            Map<String, Object> request = Map.of(
-                    "cashFlowId", cashFlowId.id(),
-                    "sourceRuleId", sourceRuleId.id(),
-                    "category", categoryName.name(),
-                    "name", name,
-                    "description", description,
-                    "money", Map.of(
-                            "amount", money.getAmount(),
-                            "currency", money.getCurrency()
-                    ),
-                    "type", type,
-                    "dueDate", dueDate.toString()
-            );
+            // Use HashMap instead of Map.of() to allow null values
+            Map<String, Object> request = new HashMap<>();
+            request.put("cashFlowId", cashFlowId.id());
+            request.put("sourceRuleId", sourceRuleId.id());
+            request.put("category", categoryName.name());
+            request.put("name", name);
+            if (description != null) {
+                request.put("description", description);
+            }
+            request.put("money", Map.of(
+                    "amount", money.getAmount(),
+                    "currency", money.getCurrency()
+            ));
+            request.put("type", type);
+            request.put("dueDate", dueDate.toString());
 
             ResponseEntity<Map> response = restTemplate.exchange(
                     url,
