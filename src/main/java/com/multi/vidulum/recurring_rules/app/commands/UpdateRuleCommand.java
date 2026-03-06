@@ -6,6 +6,8 @@ import com.multi.vidulum.recurring_rules.domain.RecurrencePattern;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 
 import java.time.LocalDate;
+import java.time.Month;
+import java.util.List;
 
 public record UpdateRuleCommand(
         String ruleId,
@@ -15,6 +17,9 @@ public record UpdateRuleCommand(
         CategoryName categoryName,
         RecurrencePattern pattern,
         LocalDate startDate,
-        LocalDate endDate
+        LocalDate endDate,
+        Integer maxOccurrences,
+        List<Month> activeMonths,
+        List<LocalDate> excludedDates
 ) implements Command {
 }

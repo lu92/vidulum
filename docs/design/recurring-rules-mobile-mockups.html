@@ -1006,10 +1006,11 @@
     <nav class="screen-nav">
         <button class="active" onclick="showScreen('list')">Lista reguł</button>
         <button onclick="showScreen('empty')">Stan pusty</button>
-        <button onclick="showScreen('wizard-1')">Wizard 1/4</button>
-        <button onclick="showScreen('wizard-2')">Wizard 2/4</button>
-        <button onclick="showScreen('wizard-3')">Wizard 3/4</button>
-        <button onclick="showScreen('wizard-4')">Wizard 4/4</button>
+        <button onclick="showScreen('wizard-1')">Wizard 1/5</button>
+        <button onclick="showScreen('wizard-2')">Wizard 2/5</button>
+        <button onclick="showScreen('wizard-3')">Wizard 3/5</button>
+        <button onclick="showScreen('wizard-4')">Wizard 4/5</button>
+        <button onclick="showScreen('wizard-5')">Wizard 5/5</button>
         <button onclick="showScreen('swipe')">Swipe Actions</button>
         <button onclick="showScreen('mismatch')">Mismatch</button>
         <button onclick="showScreen('ai-suggestion')">AI Sugestia</button>
@@ -1155,6 +1156,7 @@
                             <div class="wizard-step">2</div>
                             <div class="wizard-step">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Typ transakcji</div>
                         <div class="wizard-subtitle">Wybierz rodzaj cyklicznej transakcji</div>
@@ -1197,6 +1199,7 @@
                             <div class="wizard-step active">2</div>
                             <div class="wizard-step">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Kwota</div>
                         <div class="wizard-subtitle">Ile wynosi ta transakcja?</div>
@@ -1241,6 +1244,7 @@
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step active">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Harmonogram</div>
                         <div class="wizard-subtitle">Kiedy ma się powtarzać?</div>
@@ -1292,6 +1296,7 @@
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step active">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Kategoria</div>
                         <div class="wizard-subtitle">Do jakiej kategorii przypisać?</div>
@@ -1311,6 +1316,91 @@
                                     <div class="category-chip">🎬 Rozrywka</div>
                                     <div class="category-chip">➕ Inna...</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 16px; background: white; border-top: 1px solid var(--gray-100);">
+                        <button class="action-btn primary" style="justify-content: center;">
+                            Dalej →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Screen: Wizard Step 5 - Advanced Options -->
+                <div id="screen-wizard-5" class="screen">
+                    <div class="nav-header">
+                        <span class="back-btn">←</span>
+                        <span class="title">Nowa reguła</span>
+                        <span class="action">Pomiń</span>
+                    </div>
+                    <div class="wizard-header">
+                        <div class="wizard-progress">
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step active">5</div>
+                        </div>
+                        <div class="wizard-title">Opcje zaawansowane</div>
+                        <div class="wizard-subtitle">Opcjonalne ustawienia reguły</div>
+                    </div>
+                    <div class="content">
+                        <div class="form-section">
+                            <!-- End Condition -->
+                            <div class="form-group">
+                                <label class="form-label">Warunek zakończenia</label>
+                                <div class="segment-control">
+                                    <div class="segment-option active">Nigdy</div>
+                                    <div class="segment-option">Po N razach</div>
+                                </div>
+                            </div>
+
+                            <!-- Max Occurrences (shown when "Po N razach" is selected) -->
+                            <div class="form-group" style="opacity: 0.5;">
+                                <label class="form-label">Liczba wystąpień</label>
+                                <input type="number" class="form-input" placeholder="np. 12, 24, 36..." value="12" disabled>
+                                <div style="font-size: 12px; color: var(--gray-400); margin-top: 4px;">
+                                    Wybierz "Po N razach" aby aktywować
+                                </div>
+                            </div>
+
+                            <!-- Active Months (Seasonal) -->
+                            <div class="form-group">
+                                <label class="form-label">Aktywne miesiące (opcjonalnie)</label>
+                                <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 8px;">
+                                    Pozostaw puste aby generować co miesiąc
+                                </div>
+                                <div class="category-grid" style="grid-template-columns: repeat(4, 1fr);">
+                                    <div class="category-chip">Sty</div>
+                                    <div class="category-chip">Lut</div>
+                                    <div class="category-chip">Mar</div>
+                                    <div class="category-chip">Kwi</div>
+                                    <div class="category-chip selected">Maj</div>
+                                    <div class="category-chip selected">Cze</div>
+                                    <div class="category-chip selected">Lip</div>
+                                    <div class="category-chip selected">Sie</div>
+                                    <div class="category-chip selected">Wrz</div>
+                                    <div class="category-chip">Paź</div>
+                                    <div class="category-chip">Lis</div>
+                                    <div class="category-chip">Gru</div>
+                                </div>
+                            </div>
+
+                            <!-- Excluded Dates -->
+                            <div class="form-group">
+                                <label class="form-label">Wykluczone daty</label>
+                                <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 8px;">
+                                    Pomiń konkretne terminy
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                                    <span style="background: var(--gray-100); padding: 6px 12px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                                        2026-08-15 <span style="color: var(--gray-400); cursor: pointer;">✕</span>
+                                    </span>
+                                </div>
+                                <button class="action-btn secondary" style="padding: 12px;">
+                                    <span class="icon">➕</span>
+                                    Dodaj datę do wykluczenia
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,6 +42,9 @@ public class RecurringRuleEntity {
     private PatternEmbedded pattern;
     private LocalDate startDate;
     private LocalDate endDate;
+    private Integer maxOccurrences;
+    private List<Month> activeMonths;
+    private List<LocalDate> excludedDates;
     private RuleStatus status;
     private PauseInfoEmbedded pauseInfo;
     private List<AmountChangeEmbedded> amountChanges;
@@ -61,6 +65,9 @@ public class RecurringRuleEntity {
                 .pattern(PatternEmbedded.from(snapshot.pattern()))
                 .startDate(snapshot.startDate())
                 .endDate(snapshot.endDate())
+                .maxOccurrences(snapshot.maxOccurrences())
+                .activeMonths(snapshot.activeMonths() != null ? snapshot.activeMonths() : List.of())
+                .excludedDates(snapshot.excludedDates() != null ? snapshot.excludedDates() : List.of())
                 .status(snapshot.status())
                 .pauseInfo(snapshot.pauseInfo() != null ? PauseInfoEmbedded.from(snapshot.pauseInfo()) : null)
                 .amountChanges(snapshot.amountChanges().stream()
@@ -89,6 +96,9 @@ public class RecurringRuleEntity {
                 pattern.toPattern(),
                 startDate,
                 endDate,
+                maxOccurrences,
+                activeMonths != null ? activeMonths : List.of(),
+                excludedDates != null ? excludedDates : List.of(),
                 status,
                 pauseInfo != null ? pauseInfo.toPauseInfo() : null,
                 amountChanges.stream().map(AmountChangeEmbedded::toAmountChange).collect(Collectors.toList()),

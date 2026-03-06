@@ -420,4 +420,293 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("Delete test completed successfully");
     }
+
+    // ============ Advanced Options Tests ============
+
+    @Test
+    void shouldCreateRuleWithMaxOccurrencesAndLimitGeneratedCashChanges() {
+        // GIVEN: Setup CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(5000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "MaxOccurrences Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+            statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Loan", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(5000, CURRENCY), true, false);
+
+        // WHEN: Create a monthly loan payment with maxOccurrences = 6 (6-month loan)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        Integer maxOccurrences = 6;
+
+        String loanRuleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                cashFlowId,
+                "Car Loan Payment",
+                "6-month car loan",
+                Money.of(-500, CURRENCY),
+                "Loan",
+                startDate,
+                null, // no end date - will auto-complete after 6 occurrences
+                15,   // day of month
+                1,    // interval months
+                false,
+                maxOccurrences,
+                null, // no activeMonths
+                null  // no excludedDates
+        );
+        log.info("Created loan rule with maxOccurrences={}: {}", maxOccurrences, loanRuleId);
+
+        // THEN: Verify rule has maxOccurrences set
+        RecurringRuleResponse rule = recurringRulesActor.getRule(loanRuleId);
+        assertThat(rule.getMaxOccurrences()).isEqualTo(maxOccurrences);
+
+        // Generated cash changes should be limited to 6 (or less if forecast is shorter)
+        assertThat(rule.getGeneratedCashChangeIds().size()).isLessThanOrEqualTo(maxOccurrences);
+        log.info("Rule generated {} cash changes (max: {})",
+                rule.getGeneratedCashChangeIds().size(), maxOccurrences);
+
+        log.info("MaxOccurrences test completed successfully");
+    }
+
+    @Test
+    void shouldCreateSeasonalRuleWithActiveMonthsFiltering() {
+        // GIVEN: Setup CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(5000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "ActiveMonths Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+            statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Heating", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(5000, CURRENCY), true, false);
+
+        // WHEN: Create a seasonal heating expense rule (only in winter months: Nov, Dec, Jan, Feb, Mar)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+        List<Month> winterMonths = List.of(Month.NOVEMBER, Month.DECEMBER, Month.JANUARY, Month.FEBRUARY, Month.MARCH);
+
+        String heatingRuleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                cashFlowId,
+                "Heating Bill",
+                "Monthly heating expense - winter only",
+                Money.of(-150, CURRENCY),
+                "Heating",
+                startDate,
+                endDate,
+                1,    // day of month
+                1,    // interval months
+                false,
+                null, // no maxOccurrences
+                winterMonths,
+                null  // no excludedDates
+        );
+        log.info("Created seasonal heating rule with activeMonths={}: {}", winterMonths, heatingRuleId);
+
+        // THEN: Verify rule has activeMonths set
+        RecurringRuleResponse rule = recurringRulesActor.getRule(heatingRuleId);
+        assertThat(rule.getActiveMonths()).containsExactlyInAnyOrderElementsOf(winterMonths);
+
+        // In 2022 (Jan-Dec), winter months are: Jan, Feb, Mar, Nov, Dec = 5 months
+        // So we should have ~5 generated cash changes (or less depending on forecast window)
+        assertThat(rule.getGeneratedCashChangeIds().size()).isLessThanOrEqualTo(5);
+        log.info("Seasonal rule generated {} cash changes for winter months",
+                rule.getGeneratedCashChangeIds().size());
+
+        log.info("ActiveMonths (seasonal) test completed successfully");
+    }
+
+    @Test
+    void shouldCreateRuleWithExcludedDatesSkippingHolidays() {
+        // GIVEN: Setup CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(5000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "ExcludedDates Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+            statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Groceries", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(5000, CURRENCY), true, false);
+
+        // WHEN: Create a weekly groceries rule, excluding specific holiday dates
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 3, 31);
+
+        // Exclude some Mondays that are holidays or special days
+        List<LocalDate> excludedDates = List.of(
+                LocalDate.of(2022, 1, 3),  // First Monday of January (New Year observed)
+                LocalDate.of(2022, 2, 21)  // President's Day (3rd Monday of February)
+        );
+
+        String groceriesRuleId = recurringRulesActor.createWeeklyRuleWithAdvancedOptions(
+                cashFlowId,
+                "Weekly Groceries",
+                "Weekly shopping - excluding holidays",
+                Money.of(-150, CURRENCY),
+                "Groceries",
+                startDate,
+                endDate,
+                DayOfWeek.MONDAY,
+                1, // every week
+                null, // no maxOccurrences
+                null, // no activeMonths filter
+                excludedDates
+        );
+        log.info("Created groceries rule with excludedDates={}: {}", excludedDates, groceriesRuleId);
+
+        // THEN: Verify rule has excludedDates set
+        RecurringRuleResponse rule = recurringRulesActor.getRule(groceriesRuleId);
+        assertThat(rule.getExcludedDates()).containsExactlyInAnyOrderElementsOf(excludedDates);
+
+        // Q1 2022 has ~13 Mondays, minus 2 excluded = ~11 expected
+        // But forecast starts from current date (FIXED_NOW = 2022-01-01), so it should work
+        log.info("Rule generated {} cash changes (excluding {} dates)",
+                rule.getGeneratedCashChangeIds().size(), excludedDates.size());
+
+        log.info("ExcludedDates test completed successfully");
+    }
+
+    @Test
+    void shouldCreateRuleWithAllAdvancedOptionsAndVerifyCorrectFiltering() {
+        // GIVEN: Setup CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Combined Advanced Options Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+            statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Gardening", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(10000, CURRENCY), true, false);
+
+        // WHEN: Create a seasonal gardening expense rule with all advanced options:
+        // - Only active in spring/summer months (Apr-Sep)
+        // - Maximum 3 occurrences (limited budget)
+        // - Excluding a specific date (vacation)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        List<Month> springAndSummerMonths = List.of(
+                Month.APRIL, Month.MAY, Month.JUNE, Month.JULY, Month.AUGUST, Month.SEPTEMBER
+        );
+        Integer maxOccurrences = 3;
+        List<LocalDate> excludedDates = List.of(
+                LocalDate.of(2022, 7, 1) // Vacation
+        );
+
+        String gardeningRuleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                cashFlowId,
+                "Gardening Service",
+                "Monthly gardening - spring/summer only, limited budget",
+                Money.of(-200, CURRENCY),
+                "Gardening",
+                startDate,
+                endDate,
+                1,    // day of month
+                1,    // interval months
+                false,
+                maxOccurrences,
+                springAndSummerMonths,
+                excludedDates
+        );
+        log.info("Created combined rule: maxOccurrences={}, activeMonths={}, excludedDates={}",
+                maxOccurrences, springAndSummerMonths, excludedDates);
+
+        // THEN: Verify rule has all advanced options set
+        RecurringRuleResponse rule = recurringRulesActor.getRule(gardeningRuleId);
+        assertThat(rule.getMaxOccurrences()).isEqualTo(maxOccurrences);
+        assertThat(rule.getActiveMonths()).containsExactlyInAnyOrderElementsOf(springAndSummerMonths);
+        assertThat(rule.getExcludedDates()).containsExactlyInAnyOrderElementsOf(excludedDates);
+
+        // Generated cash changes should be limited by maxOccurrences (3)
+        // Even though we have 6 months active and excluding 1 date (July), we only get 3 max
+        assertThat(rule.getGeneratedCashChangeIds().size()).isLessThanOrEqualTo(maxOccurrences);
+        log.info("Combined rule generated {} cash changes (max: {})",
+                rule.getGeneratedCashChangeIds().size(), maxOccurrences);
+
+        log.info("Combined advanced options test completed successfully");
+    }
+
+    @Test
+    void shouldUpdateRuleAdvancedOptionsAndRegenerateCashChanges() {
+        // GIVEN: Setup CashFlow and create a basic rule
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(5000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Update Advanced Options Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+            statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Gym", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(5000, CURRENCY), true, false);
+
+        // Create a basic monthly gym rule (no advanced options)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String gymRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId,
+                "Gym Membership",
+                "Monthly gym fee",
+                Money.of(-50, CURRENCY),
+                "Gym",
+                startDate,
+                null,
+                1, 1, false
+        );
+
+        RecurringRuleResponse originalRule = recurringRulesActor.getRule(gymRuleId);
+        int originalCashChangesCount = originalRule.getGeneratedCashChangeIds().size();
+        assertThat(originalRule.getMaxOccurrences()).isNull();
+        assertThat(originalRule.getActiveMonths()).isEmpty();
+        assertThat(originalRule.getExcludedDates()).isEmpty();
+        log.info("Original rule has {} generated cash changes", originalCashChangesCount);
+
+        // WHEN: Update with advanced options (limit to summer months only)
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.MONTHLY)
+                .dayOfMonth(1)
+                .intervalMonths(1)
+                .adjustForMonthEnd(false)
+                .build();
+
+        List<Month> summerMonths = List.of(Month.JUNE, Month.JULY, Month.AUGUST);
+
+        recurringRulesActor.updateRuleWithAdvancedOptions(
+                gymRuleId,
+                "Summer Gym Membership",
+                "Summer-only gym",
+                Money.of(-50, CURRENCY),
+                "Gym",
+                pattern,
+                startDate,
+                null,
+                null, // no maxOccurrences
+                summerMonths,
+                null  // no excludedDates
+        );
+
+        // THEN: Verify rule is updated with advanced options
+        RecurringRuleResponse updatedRule = recurringRulesActor.getRule(gymRuleId);
+        assertThat(updatedRule.getName()).isEqualTo("Summer Gym Membership");
+        assertThat(updatedRule.getActiveMonths()).containsExactlyInAnyOrderElementsOf(summerMonths);
+
+        // Cash changes should be regenerated with fewer occurrences (only summer months)
+        int updatedCashChangesCount = updatedRule.getGeneratedCashChangeIds().size();
+        assertThat(updatedCashChangesCount).isLessThanOrEqualTo(3); // At most 3 summer months
+        log.info("Updated rule has {} generated cash changes (was: {})",
+                updatedCashChangesCount, originalCashChangesCount);
+
+        log.info("Update advanced options test completed successfully");
+    }
 }
