@@ -384,10 +384,22 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
 
     /**
      * Checks if the rule should auto-complete based on maxOccurrences.
-     * Returns true if maxOccurrences is set and the execution count has reached the limit.
+     * Returns true if maxOccurrences is set and the generated cash changes count has reached the limit.
      */
     public boolean shouldAutoComplete() {
-        return maxOccurrences != null && executions.size() >= maxOccurrences;
+        return maxOccurrences != null && generatedCashChangeIds.size() >= maxOccurrences;
+    }
+
+    /**
+     * Returns the number of remaining occurrences before auto-complete.
+     * Returns empty if maxOccurrences is not set.
+     */
+    public Optional<Integer> getRemainingOccurrences() {
+        if (maxOccurrences == null) {
+            return Optional.empty();
+        }
+        int remaining = maxOccurrences - generatedCashChangeIds.size();
+        return Optional.of(Math.max(0, remaining));
     }
 
     public boolean isActive() {
