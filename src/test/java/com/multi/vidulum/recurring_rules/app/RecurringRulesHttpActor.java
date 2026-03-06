@@ -132,6 +132,23 @@ public class RecurringRulesHttpActor {
     }
 
     /**
+     * Creates a monthly recurring rule with last day of month (-1).
+     */
+    public String createMonthlyRuleLastDayOfMonth(String cashFlowId, String name, String description,
+                                                   Money baseAmount, String category,
+                                                   LocalDate startDate, LocalDate endDate,
+                                                   int intervalMonths) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.MONTHLY)
+                .dayOfMonth(-1) // Last day of month
+                .intervalMonths(intervalMonths)
+                .adjustForMonthEnd(false)
+                .build();
+
+        return createRule(cashFlowId, name, description, baseAmount, category, pattern, startDate, endDate);
+    }
+
+    /**
      * Creates a yearly recurring rule.
      */
     public String createYearlyRule(String cashFlowId, String name, String description,

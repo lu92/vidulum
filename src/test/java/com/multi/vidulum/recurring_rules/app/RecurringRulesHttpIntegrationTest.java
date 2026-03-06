@@ -709,4 +709,280 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("Update advanced options test completed successfully");
     }
+
+    // ==================== LAST DAY OF MONTH TESTS ====================
+
+    @Test
+    void shouldCreateRuleWithLastDayOfMonthAndGenerateCashChangesOnCorrectDates() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Last Day Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule that executes on the last day of each month
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 6, 30);
+
+        // When: Create rule with dayOfMonth = -1 (last day)
+        String ruleId = recurringRulesActor.createMonthlyRuleLastDayOfMonth(
+                testCashFlowId,
+                "Monthly Rent",
+                "Rent due on last day of month",
+                Money.of(-1500.00, CURRENCY),
+                "Rent",
+                startDate,
+                endDate,
+                1 // intervalMonths
+        );
+
+        // Then: Rule should be created
+        assertThat(ruleId).isNotNull();
+        log.info("Created last-day-of-month rule: {}", ruleId);
+
+        // And: Verify generated cash changes
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+        assertThat(rule.getPattern().getDayOfMonth()).isEqualTo(-1);
+
+        // Should have 6 cash changes (Jan-Jun)
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(6);
+        log.info("Generated {} cash changes for last-day-of-month rule", rule.getGeneratedCashChangeIds().size());
+
+        // Verify in CashFlow that cash changes exist
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowActor.getCashFlow(testCashFlowId);
+        List<String> generatedIds = rule.getGeneratedCashChangeIds();
+
+        assertThat(generatedIds).allSatisfy(ccId -> {
+            boolean found = cashFlow.getCashChanges().containsKey(ccId);
+            assertThat(found).as("Cash change %s should exist in CashFlow", ccId).isTrue();
+        });
+
+        log.info("Last day of month test completed successfully");
+    }
+
+    @Test
+    void shouldHandleLastDayOfFebruaryCorrectly() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "February Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Utilities", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule starting in February (28 days in non-leap year 2022)
+        LocalDate startDate = LocalDate.of(2022, 2, 1);
+        LocalDate endDate = LocalDate.of(2022, 4, 30);
+
+        // When: Create rule with dayOfMonth = -1
+        String ruleId = recurringRulesActor.createMonthlyRuleLastDayOfMonth(
+                testCashFlowId,
+                "End of Month Payment",
+                "Testing February handling",
+                Money.of(-500.00, CURRENCY),
+                "Utilities",
+                startDate,
+                endDate,
+                1
+        );
+
+        // Then: Should have 3 cash changes (Feb, Mar, Apr)
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(3);
+
+        // Verify in CashFlow
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowActor.getCashFlow(testCashFlowId);
+        rule.getGeneratedCashChangeIds().forEach(ccId -> {
+            assertThat(cashFlow.getCashChanges()).containsKey(ccId);
+        });
+
+        log.info("February last day test completed - generated {} cash changes", rule.getGeneratedCashChangeIds().size());
+    }
+
+    // ==================== AUTO-COMPLETE TESTS ====================
+
+    @Test
+    void shouldAutoCompleteRuleWhenMaxOccurrencesReached() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Auto-Complete Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule with maxOccurrences = 3
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+
+        // When: Create rule with maxOccurrences = 3
+        String ruleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                testCashFlowId,
+                "3-Month Trial",
+                "Trial subscription for 3 months",
+                Money.of(-99.00, CURRENCY),
+                "Subscription",
+                startDate,
+                null, // no end date
+                15,   // dayOfMonth
+                1,    // intervalMonths
+                false,
+                3,    // maxOccurrences = 3
+                null, // no activeMonths filter
+                null  // no excludedDates
+        );
+
+        // Then: Rule should be auto-completed after generating 3 cash changes
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(3);
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.COMPLETED);
+        assertThat(rule.getRemainingOccurrences()).isEqualTo(0);
+
+        log.info("Auto-complete test passed - rule status: {}, generated: {} cash changes",
+                rule.getStatus(), rule.getGeneratedCashChangeIds().size());
+    }
+
+    @Test
+    void shouldNotAutoCompleteWhenBelowMaxOccurrences() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Below Max Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule with maxOccurrences = 10 but only 3 months in date range
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 3, 31);
+
+        // When: Create rule
+        String ruleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                testCashFlowId,
+                "Long Subscription",
+                "10-month subscription",
+                Money.of(-50.00, CURRENCY),
+                "Subscription",
+                startDate,
+                endDate,
+                1,    // dayOfMonth
+                1,    // intervalMonths
+                false,
+                10,   // maxOccurrences = 10 (but only 3 months available)
+                null,
+                null
+        );
+
+        // Then: Rule should remain ACTIVE (not completed)
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(3);
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+        assertThat(rule.getRemainingOccurrences()).isEqualTo(7); // 10 - 3 = 7
+
+        log.info("Below max occurrences test passed - status: {}, remaining: {}",
+                rule.getStatus(), rule.getRemainingOccurrences());
+    }
+
+    @Test
+    void shouldShowRemainingOccurrencesInResponse() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Remaining Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule with maxOccurrences = 6
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 3, 31);
+
+        // When: Create rule
+        String ruleId = recurringRulesActor.createMonthlyRuleWithAdvancedOptions(
+                testCashFlowId,
+                "6-Month Plan",
+                "Limited plan",
+                Money.of(-100.00, CURRENCY),
+                "Subscription",
+                startDate,
+                endDate,
+                15,
+                1,
+                false,
+                6,    // maxOccurrences = 6
+                null,
+                null
+        );
+
+        // Then: Should show correct remaining occurrences
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getMaxOccurrences()).isEqualTo(6);
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(3);
+        assertThat(rule.getRemainingOccurrences()).isEqualTo(3); // 6 - 3 = 3
+
+        log.info("Remaining occurrences test passed - max: {}, generated: {}, remaining: {}",
+                rule.getMaxOccurrences(), rule.getGeneratedCashChangeIds().size(), rule.getRemainingOccurrences());
+    }
+
+    @Test
+    void shouldShowNullRemainingOccurrencesWhenNoMaxSet() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Null Remaining Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A rule without maxOccurrences
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 3, 31);
+
+        // When: Create rule without maxOccurrences
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                testCashFlowId,
+                "Unlimited Plan",
+                "No limit",
+                Money.of(-100.00, CURRENCY),
+                "Subscription",
+                startDate,
+                endDate,
+                15,
+                1,
+                false
+        );
+
+        // Then: remainingOccurrences should be null
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getMaxOccurrences()).isNull();
+        assertThat(rule.getRemainingOccurrences()).isNull();
+
+        log.info("Null remaining occurrences test passed");
+    }
 }

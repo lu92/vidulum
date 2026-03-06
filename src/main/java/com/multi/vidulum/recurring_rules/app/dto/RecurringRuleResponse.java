@@ -35,10 +35,18 @@ public class RecurringRuleResponse {
     private RuleStatus status;
     private PauseInfoDto pauseInfo;
     private List<String> generatedCashChangeIds;
+    private Integer remainingOccurrences;
     private Instant createdAt;
     private Instant lastModifiedAt;
 
     public static RecurringRuleResponse fromSnapshot(RecurringRuleSnapshot snapshot) {
+        // Calculate remaining occurrences if maxOccurrences is set
+        Integer remainingOccurrences = null;
+        if (snapshot.maxOccurrences() != null) {
+            int remaining = snapshot.maxOccurrences() - snapshot.generatedCashChangeIds().size();
+            remainingOccurrences = Math.max(0, remaining);
+        }
+
         return RecurringRuleResponse.builder()
                 .ruleId(snapshot.ruleId().id())
                 .userId(snapshot.userId().getId())
@@ -58,6 +66,7 @@ public class RecurringRuleResponse {
                 .generatedCashChangeIds(snapshot.generatedCashChangeIds().stream()
                         .map(CashChangeId::id)
                         .toList())
+                .remainingOccurrences(remainingOccurrences)
                 .createdAt(snapshot.createdAt())
                 .lastModifiedAt(snapshot.lastModifiedAt())
                 .build();

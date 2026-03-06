@@ -304,6 +304,14 @@ public class RecurringRuleService {
             rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, clock);
             ruleRepository.save(rule);
             log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
+
+            // Check if rule should auto-complete after reaching maxOccurrences
+            if (rule.shouldAutoComplete()) {
+                rule.complete("Reached maximum occurrences (" + rule.getMaxOccurrences().orElse(0) + ")", clock);
+                ruleRepository.save(rule);
+                log.info("Rule {} auto-completed after reaching {} occurrences",
+                        rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
+            }
         }
     }
 
