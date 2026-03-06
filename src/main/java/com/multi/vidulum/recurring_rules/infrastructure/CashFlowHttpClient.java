@@ -30,7 +30,7 @@ public class CashFlowHttpClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${cashflow.service.url:http://localhost:9090}")
+    @Value("${cashflow.service.url:http://localhost:8080}")
     private String cashFlowServiceUrl;
 
     public CashFlowHttpClient(RestTemplate restTemplate) {

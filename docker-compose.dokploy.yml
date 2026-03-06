@@ -126,8 +126,11 @@ services:
       APPLICATION_SECURITY_JWT_EXPIRATION: 86400000
       APPLICATION_SECURITY_JWT_REFRESH_TOKEN_EXPIRATION: 604800000
 
-      # Internal service URL (for bank-data-ingestion module)
+      # Internal service URLs (for HTTP clients calling CashFlow API)
+      # Used by bank-data-ingestion module
       VIDULUM_CASHFLOW_SERVICE_BASE_URL: http://localhost:8080
+      # Used by recurring_rules module
+      CASHFLOW_SERVICE_URL: http://localhost:8080
 
       # JVM Options for container
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 --enable-preview"

@@ -34,6 +34,11 @@ application:
       refresh-token:
         expiration: 604800000 # 7 days
 
+# CashFlow HTTP client configuration (used by recurring_rules module)
+cashflow:
+  service:
+    url: http://localhost:8080
+
 # Bank Data Ingestion configuration
 vidulum:
   cashflow-service:
