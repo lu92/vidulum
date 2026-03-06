@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 
 @Data
@@ -28,6 +29,9 @@ public class RecurringRuleResponse {
     private PatternDto pattern;
     private LocalDate startDate;
     private LocalDate endDate;
+    private Integer maxOccurrences;
+    private List<Month> activeMonths;
+    private List<LocalDate> excludedDates;
     private RuleStatus status;
     private PauseInfoDto pauseInfo;
     private List<String> generatedCashChangeIds;
@@ -46,6 +50,9 @@ public class RecurringRuleResponse {
                 .pattern(PatternDto.fromPattern(snapshot.pattern()))
                 .startDate(snapshot.startDate())
                 .endDate(snapshot.endDate())
+                .maxOccurrences(snapshot.maxOccurrences())
+                .activeMonths(snapshot.activeMonths() != null ? snapshot.activeMonths() : List.of())
+                .excludedDates(snapshot.excludedDates() != null ? snapshot.excludedDates() : List.of())
                 .status(snapshot.status())
                 .pauseInfo(snapshot.pauseInfo() != null ? PauseInfoDto.from(snapshot.pauseInfo()) : null)
                 .generatedCashChangeIds(snapshot.generatedCashChangeIds().stream()

@@ -43,7 +43,10 @@ public class RecurringRulesController {
                 new CategoryName(request.getCategory()),
                 request.getPattern().toPattern(),
                 request.getStartDate(),
-                request.getEndDate()
+                request.getEndDate(),
+                request.getMaxOccurrences(),
+                request.getActiveMonths(),
+                request.getExcludedDates()
         );
 
         RecurringRuleId ruleId = ruleService.handle(command, authToken);
@@ -106,7 +109,10 @@ public class RecurringRulesController {
                 new CategoryName(request.getCategory()),
                 request.getPattern().toPattern(),
                 request.getStartDate(),
-                request.getEndDate()
+                request.getEndDate(),
+                request.getMaxOccurrences(),
+                request.getActiveMonths(),
+                request.getExcludedDates()
         );
 
         ruleService.handle(command, authToken);

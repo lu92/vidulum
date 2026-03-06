@@ -51,6 +51,11 @@ public class RecurringRuleService {
             throw new InvalidDateRangeException(command.startDate(), command.endDate());
         }
 
+        // Validate maxOccurrences
+        if (command.maxOccurrences() != null && command.maxOccurrences() <= 0) {
+            throw new IllegalArgumentException("maxOccurrences must be positive");
+        }
+
         // Generate ID and create rule
         long sequence = ruleRepository.generateNextSequence();
         RecurringRuleId ruleId = RecurringRuleId.generate(sequence);
@@ -66,6 +71,9 @@ public class RecurringRuleService {
                 command.pattern(),
                 command.startDate(),
                 command.endDate(),
+                command.maxOccurrences(),
+                command.activeMonths(),
+                command.excludedDates(),
                 clock
         );
 
@@ -98,6 +106,11 @@ public class RecurringRuleService {
             throw new InvalidDateRangeException(command.startDate(), command.endDate());
         }
 
+        // Validate maxOccurrences
+        if (command.maxOccurrences() != null && command.maxOccurrences() <= 0) {
+            throw new IllegalArgumentException("maxOccurrences must be positive");
+        }
+
         // Clear old expected cash changes
         clearGeneratedCashChanges(rule, authToken);
 
@@ -110,6 +123,9 @@ public class RecurringRuleService {
                 command.pattern(),
                 command.startDate(),
                 command.endDate(),
+                command.maxOccurrences(),
+                command.activeMonths(),
+                command.excludedDates(),
                 clock
         );
 

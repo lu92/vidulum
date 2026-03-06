@@ -9,6 +9,7 @@ import com.multi.vidulum.shared.ddd.EntitySnapshot;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 
 /**
@@ -25,6 +26,9 @@ public record RecurringRuleSnapshot(
         RecurrencePattern pattern,
         LocalDate startDate,
         LocalDate endDate,
+        Integer maxOccurrences,
+        List<Month> activeMonths,
+        List<LocalDate> excludedDates,
         RuleStatus status,
         PauseInfo pauseInfo,
         List<AmountChange> amountChanges,

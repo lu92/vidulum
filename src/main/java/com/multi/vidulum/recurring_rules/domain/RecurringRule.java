@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
     private RecurrencePattern pattern;
     private LocalDate startDate;
     private LocalDate endDate;
+    private Integer maxOccurrences;
+    private List<Month> activeMonths;
+    private List<LocalDate> excludedDates;
     private RuleStatus status;
     private PauseInfo pauseInfo;
     private List<AmountChange> amountChanges;
@@ -64,6 +68,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
             RecurrencePattern pattern,
             LocalDate startDate,
             LocalDate endDate,
+            Integer maxOccurrences,
+            List<Month> activeMonths,
+            List<LocalDate> excludedDates,
             Clock clock
     ) {
         RecurringRule rule = new RecurringRule();
@@ -77,6 +84,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         rule.pattern = pattern;
         rule.startDate = startDate;
         rule.endDate = endDate;
+        rule.maxOccurrences = maxOccurrences;
+        rule.activeMonths = activeMonths != null ? new ArrayList<>(activeMonths) : new ArrayList<>();
+        rule.excludedDates = excludedDates != null ? new ArrayList<>(excludedDates) : new ArrayList<>();
         rule.status = RuleStatus.ACTIVE;
         rule.pauseInfo = null;
         rule.amountChanges = new ArrayList<>();
@@ -114,6 +124,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         rule.pattern = snapshot.pattern();
         rule.startDate = snapshot.startDate();
         rule.endDate = snapshot.endDate();
+        rule.maxOccurrences = snapshot.maxOccurrences();
+        rule.activeMonths = snapshot.activeMonths() != null ? new ArrayList<>(snapshot.activeMonths()) : new ArrayList<>();
+        rule.excludedDates = snapshot.excludedDates() != null ? new ArrayList<>(snapshot.excludedDates()) : new ArrayList<>();
         rule.status = snapshot.status();
         rule.pauseInfo = snapshot.pauseInfo();
         rule.amountChanges = new ArrayList<>(snapshot.amountChanges());
@@ -137,6 +150,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
                 pattern,
                 startDate,
                 endDate,
+                maxOccurrences,
+                activeMonths != null ? List.copyOf(activeMonths) : List.of(),
+                excludedDates != null ? List.copyOf(excludedDates) : List.of(),
                 status,
                 pauseInfo,
                 List.copyOf(amountChanges),
@@ -165,6 +181,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
             RecurrencePattern pattern,
             LocalDate startDate,
             LocalDate endDate,
+            Integer maxOccurrences,
+            List<Month> activeMonths,
+            List<LocalDate> excludedDates,
             Clock clock
     ) {
         this.name = name;
@@ -174,6 +193,9 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         this.pattern = pattern;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.maxOccurrences = maxOccurrences;
+        this.activeMonths = activeMonths != null ? new ArrayList<>(activeMonths) : new ArrayList<>();
+        this.excludedDates = excludedDates != null ? new ArrayList<>(excludedDates) : new ArrayList<>();
         this.lastModifiedAt = clock.instant();
 
         emit(new RecurringRuleEvent.RuleUpdated(
@@ -320,6 +342,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
 
     /**
      * Generates all occurrence dates within the specified date range.
+     * Respects activeMonths (seasonal filtering), excludedDates, and maxOccurrences limits.
      */
     public List<LocalDate> generateOccurrences(LocalDate fromDate, LocalDate toDate) {
         List<LocalDate> occurrences = new ArrayList<>();
@@ -327,14 +350,44 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         LocalDate effectiveStart = startDate.isAfter(fromDate) ? startDate : fromDate;
         LocalDate effectiveEnd = (endDate != null && endDate.isBefore(toDate)) ? endDate : toDate;
 
+        // Count total executions so far for maxOccurrences check
+        int totalExecutions = executions.size();
+        int generatedCount = 0;
+
         LocalDate current = pattern.nextOccurrenceFrom(effectiveStart);
 
         while (!current.isAfter(effectiveEnd)) {
+            // 1. Check maxOccurrences limit
+            if (maxOccurrences != null && (totalExecutions + generatedCount) >= maxOccurrences) {
+                break;
+            }
+
+            // 2. Check activeMonths (seasonal filtering) - skip if month is not in active list
+            if (activeMonths != null && !activeMonths.isEmpty() && !activeMonths.contains(current.getMonth())) {
+                current = pattern.nextOccurrenceFrom(current.plusDays(1));
+                continue;
+            }
+
+            // 3. Check excludedDates - skip specific dates
+            if (excludedDates != null && excludedDates.contains(current)) {
+                current = pattern.nextOccurrenceFrom(current.plusDays(1));
+                continue;
+            }
+
             occurrences.add(current);
+            generatedCount++;
             current = pattern.nextOccurrenceFrom(current.plusDays(1));
         }
 
         return occurrences;
+    }
+
+    /**
+     * Checks if the rule should auto-complete based on maxOccurrences.
+     * Returns true if maxOccurrences is set and the execution count has reached the limit.
+     */
+    public boolean shouldAutoComplete() {
+        return maxOccurrences != null && executions.size() >= maxOccurrences;
     }
 
     public boolean isActive() {
@@ -361,6 +414,18 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
             return false;
         }
         if (endDate != null && date.isAfter(endDate)) {
+            return false;
+        }
+        // Check maxOccurrences limit
+        if (maxOccurrences != null && executions.size() >= maxOccurrences) {
+            return false;
+        }
+        // Check activeMonths (seasonal filtering)
+        if (activeMonths != null && !activeMonths.isEmpty() && !activeMonths.contains(date.getMonth())) {
+            return false;
+        }
+        // Check excludedDates
+        if (excludedDates != null && excludedDates.contains(date)) {
             return false;
         }
         return pattern.isValidForDate(date);
@@ -401,6 +466,18 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
 
     public Optional<LocalDate> getEndDate() {
         return Optional.ofNullable(endDate);
+    }
+
+    public Optional<Integer> getMaxOccurrences() {
+        return Optional.ofNullable(maxOccurrences);
+    }
+
+    public List<Month> getActiveMonths() {
+        return activeMonths != null ? List.copyOf(activeMonths) : List.of();
+    }
+
+    public List<LocalDate> getExcludedDates() {
+        return excludedDates != null ? List.copyOf(excludedDates) : List.of();
     }
 
     public RuleStatus getStatus() {

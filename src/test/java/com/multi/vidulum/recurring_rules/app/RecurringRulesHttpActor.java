@@ -12,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 import java.util.Map;
 
@@ -94,6 +95,43 @@ public class RecurringRulesHttpActor {
     }
 
     /**
+     * Creates a monthly recurring rule with advanced options.
+     */
+    public String createMonthlyRuleWithAdvancedOptions(String cashFlowId, String name, String description,
+                                                        Money baseAmount, String category,
+                                                        LocalDate startDate, LocalDate endDate,
+                                                        int dayOfMonth, int intervalMonths, boolean adjustForMonthEnd,
+                                                        Integer maxOccurrences, List<Month> activeMonths, List<LocalDate> excludedDates) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.MONTHLY)
+                .dayOfMonth(dayOfMonth)
+                .intervalMonths(intervalMonths)
+                .adjustForMonthEnd(adjustForMonthEnd)
+                .build();
+
+        return createRuleWithAdvancedOptions(cashFlowId, name, description, baseAmount, category, pattern,
+                startDate, endDate, maxOccurrences, activeMonths, excludedDates);
+    }
+
+    /**
+     * Creates a weekly recurring rule with advanced options.
+     */
+    public String createWeeklyRuleWithAdvancedOptions(String cashFlowId, String name, String description,
+                                                       Money baseAmount, String category,
+                                                       LocalDate startDate, LocalDate endDate,
+                                                       DayOfWeek dayOfWeek, int intervalWeeks,
+                                                       Integer maxOccurrences, List<Month> activeMonths, List<LocalDate> excludedDates) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.WEEKLY)
+                .dayOfWeek(dayOfWeek)
+                .intervalWeeks(intervalWeeks)
+                .build();
+
+        return createRuleWithAdvancedOptions(cashFlowId, name, description, baseAmount, category, pattern,
+                startDate, endDate, maxOccurrences, activeMonths, excludedDates);
+    }
+
+    /**
      * Creates a yearly recurring rule.
      */
     public String createYearlyRule(String cashFlowId, String name, String description,
@@ -124,6 +162,17 @@ public class RecurringRulesHttpActor {
     public String createRule(String cashFlowId, String name, String description,
                               Money baseAmount, String category, PatternDto pattern,
                               LocalDate startDate, LocalDate endDate) {
+        return createRuleWithAdvancedOptions(cashFlowId, name, description, baseAmount, category, pattern,
+                startDate, endDate, null, null, null);
+    }
+
+    /**
+     * Creates a recurring rule with a custom pattern and advanced options.
+     */
+    public String createRuleWithAdvancedOptions(String cashFlowId, String name, String description,
+                                                 Money baseAmount, String category, PatternDto pattern,
+                                                 LocalDate startDate, LocalDate endDate,
+                                                 Integer maxOccurrences, List<Month> activeMonths, List<LocalDate> excludedDates) {
         if (userId == null) {
             throw new IllegalStateException("userId must be set before creating a rule. Call setUserId() first.");
         }
@@ -138,6 +187,9 @@ public class RecurringRulesHttpActor {
                 .pattern(pattern)
                 .startDate(startDate)
                 .endDate(endDate)
+                .maxOccurrences(maxOccurrences)
+                .activeMonths(activeMonths)
+                .excludedDates(excludedDates)
                 .build();
 
         ResponseEntity<Map<String, String>> response = restTemplate.exchange(
@@ -228,6 +280,17 @@ public class RecurringRulesHttpActor {
     public void updateRule(String ruleId, String name, String description,
                            Money baseAmount, String category, PatternDto pattern,
                            LocalDate startDate, LocalDate endDate) {
+        updateRuleWithAdvancedOptions(ruleId, name, description, baseAmount, category, pattern,
+                startDate, endDate, null, null, null);
+    }
+
+    /**
+     * Updates a recurring rule with advanced options.
+     */
+    public void updateRuleWithAdvancedOptions(String ruleId, String name, String description,
+                                               Money baseAmount, String category, PatternDto pattern,
+                                               LocalDate startDate, LocalDate endDate,
+                                               Integer maxOccurrences, List<Month> activeMonths, List<LocalDate> excludedDates) {
         UpdateRuleRequest request = UpdateRuleRequest.builder()
                 .name(name)
                 .description(description)
@@ -236,6 +299,9 @@ public class RecurringRulesHttpActor {
                 .pattern(pattern)
                 .startDate(startDate)
                 .endDate(endDate)
+                .maxOccurrences(maxOccurrences)
+                .activeMonths(activeMonths)
+                .excludedDates(excludedDates)
                 .build();
 
         ResponseEntity<Void> response = restTemplate.exchange(

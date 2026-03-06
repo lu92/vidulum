@@ -1006,10 +1006,11 @@
     <nav class="screen-nav">
         <button class="active" onclick="showScreen('list')">Rules List</button>
         <button onclick="showScreen('empty')">Empty State</button>
-        <button onclick="showScreen('wizard-1')">Wizard 1/4</button>
-        <button onclick="showScreen('wizard-2')">Wizard 2/4</button>
-        <button onclick="showScreen('wizard-3')">Wizard 3/4</button>
-        <button onclick="showScreen('wizard-4')">Wizard 4/4</button>
+        <button onclick="showScreen('wizard-1')">Wizard 1/5</button>
+        <button onclick="showScreen('wizard-2')">Wizard 2/5</button>
+        <button onclick="showScreen('wizard-3')">Wizard 3/5</button>
+        <button onclick="showScreen('wizard-4')">Wizard 4/5</button>
+        <button onclick="showScreen('wizard-5')">Wizard 5/5</button>
         <button onclick="showScreen('swipe')">Swipe Actions</button>
         <button onclick="showScreen('mismatch')">Mismatch</button>
         <button onclick="showScreen('ai-suggestion')">AI Suggestion</button>
@@ -1155,6 +1156,7 @@
                             <div class="wizard-step">2</div>
                             <div class="wizard-step">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Transaction Type</div>
                         <div class="wizard-subtitle">Choose the type of recurring transaction</div>
@@ -1197,6 +1199,7 @@
                             <div class="wizard-step active">2</div>
                             <div class="wizard-step">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Amount</div>
                         <div class="wizard-subtitle">How much is this transaction?</div>
@@ -1241,6 +1244,7 @@
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step active">3</div>
                             <div class="wizard-step">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Schedule</div>
                         <div class="wizard-subtitle">When should it repeat?</div>
@@ -1279,7 +1283,7 @@
                     </div>
                 </div>
 
-                <!-- Screen: Wizard Step 4 -->
+                <!-- Screen: Wizard Step 4 - Category -->
                 <div id="screen-wizard-4" class="screen">
                     <div class="nav-header">
                         <span class="back-btn">←</span>
@@ -1292,6 +1296,7 @@
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step completed">✓</div>
                             <div class="wizard-step active">4</div>
+                            <div class="wizard-step">5</div>
                         </div>
                         <div class="wizard-title">Category</div>
                         <div class="wizard-subtitle">Which category to assign?</div>
@@ -1311,6 +1316,85 @@
                                     <div class="category-chip">🎬 Entertainment</div>
                                     <div class="category-chip">➕ Other...</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 16px; background: white; border-top: 1px solid var(--gray-100);">
+                        <button class="action-btn primary" style="justify-content: center;">
+                            Next →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Screen: Wizard Step 5 - Advanced Options -->
+                <div id="screen-wizard-5" class="screen">
+                    <div class="nav-header">
+                        <span class="back-btn">←</span>
+                        <span class="title">New Rule</span>
+                        <span class="action">Skip</span>
+                    </div>
+                    <div class="wizard-header">
+                        <div class="wizard-progress">
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step completed">✓</div>
+                            <div class="wizard-step active">5</div>
+                        </div>
+                        <div class="wizard-title">Advanced Options</div>
+                        <div class="wizard-subtitle">Optional: seasonal rules & limits</div>
+                    </div>
+                    <div class="content">
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label class="form-label">End Condition</label>
+                                <div class="segment-control">
+                                    <div class="segment-option active">Never</div>
+                                    <div class="segment-option">After N times</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="display: none;">
+                                <label class="form-label">Max Occurrences</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" class="form-input" style="width: 80px; text-align: center;" value="24">
+                                    <span style="color: var(--gray-500); font-size: 13px;">times</span>
+                                </div>
+                                <p style="font-size: 12px; color: var(--gray-400); margin-top: 4px;">e.g., 24 for 2-year loan</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Active Months</label>
+                                <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 8px;">Seasonal: e.g., daycare (Sep-Jun)</p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Jan</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Feb</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Mar</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Apr</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">May</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Jun</div>
+                                    <div class="day-chip" style="min-width: 40px; height: 40px; font-size: 12px;">Jul</div>
+                                    <div class="day-chip" style="min-width: 40px; height: 40px; font-size: 12px;">Aug</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Sep</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Oct</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Nov</div>
+                                    <div class="day-chip selected" style="min-width: 40px; height: 40px; font-size: 12px;">Dec</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Excluded Dates</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: var(--gray-100); border-radius: 16px; font-size: 12px;">
+                                        Dec 25 ×
+                                    </span>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: var(--gray-100); border-radius: 16px; font-size: 12px;">
+                                        Jan 1 ×
+                                    </span>
+                                </div>
+                                <button class="action-btn secondary" style="padding: 10px 16px; font-size: 13px;">
+                                    + Add date
+                                </button>
                             </div>
                         </div>
                     </div>
