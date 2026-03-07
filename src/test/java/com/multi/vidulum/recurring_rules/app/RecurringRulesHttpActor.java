@@ -164,6 +164,62 @@ public class RecurringRulesHttpActor {
         return createRule(cashFlowId, name, description, baseAmount, category, pattern, startDate, endDate);
     }
 
+    /**
+     * Creates a quarterly recurring rule.
+     *
+     * @param monthInQuarter 1 = first month of quarter (Jan, Apr, Jul, Oct),
+     *                       2 = second month (Feb, May, Aug, Nov),
+     *                       3 = third month (Mar, Jun, Sep, Dec)
+     * @param dayOfMonth day of month (1-31) or -1 for last day of month
+     */
+    public String createQuarterlyRule(String cashFlowId, String name, String description,
+                                       Money baseAmount, String category,
+                                       LocalDate startDate, LocalDate endDate,
+                                       int monthInQuarter, int dayOfMonth) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.QUARTERLY)
+                .monthInQuarter(monthInQuarter)
+                .dayOfMonth(dayOfMonth)
+                .build();
+
+        return createRule(cashFlowId, name, description, baseAmount, category, pattern, startDate, endDate);
+    }
+
+    /**
+     * Creates a one-time (once) recurring rule that executes exactly once on the target date.
+     * The rule will automatically transition to COMPLETED status after generation.
+     */
+    public String createOnceRule(String cashFlowId, String name, String description,
+                                  Money baseAmount, String category,
+                                  LocalDate targetDate) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.ONCE)
+                .targetDate(targetDate)
+                .build();
+
+        // For ONCE pattern, startDate and endDate are the same as targetDate
+        return createRule(cashFlowId, name, description, baseAmount, category, pattern, targetDate, targetDate);
+    }
+
+    /**
+     * Creates an every-N-days recurring rule.
+     *
+     * @param intervalDays number of days between occurrences (1-365)
+     * @param preferredDayOfWeek optional preferred day of week (can be null)
+     */
+    public String createEveryNDaysRule(String cashFlowId, String name, String description,
+                                        Money baseAmount, String category,
+                                        LocalDate startDate, LocalDate endDate,
+                                        int intervalDays, DayOfWeek preferredDayOfWeek) {
+        PatternDto pattern = PatternDto.builder()
+                .type(RecurrenceType.EVERY_N_DAYS)
+                .intervalDays(intervalDays)
+                .preferredDayOfWeek(preferredDayOfWeek)
+                .build();
+
+        return createRule(cashFlowId, name, description, baseAmount, category, pattern, startDate, endDate);
+    }
+
     private String userId;
 
     /**

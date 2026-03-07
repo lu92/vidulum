@@ -354,6 +354,49 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         int totalExecutions = executions.size();
         int generatedCount = 0;
 
+        // Special handling for ONCE pattern - single occurrence only
+        if (pattern instanceof OncePattern oncePattern) {
+            LocalDate targetDate = oncePattern.targetDate();
+            if (!targetDate.isBefore(effectiveStart) && !targetDate.isAfter(effectiveEnd)) {
+                if (maxOccurrences == null || totalExecutions < maxOccurrences) {
+                    if (!isExcludedOrInactive(targetDate)) {
+                        occurrences.add(targetDate);
+                    }
+                }
+            }
+            return occurrences;
+        }
+
+        // Special handling for EVERY_N_DAYS pattern - interval-based from start date
+        if (pattern instanceof EveryNDaysPattern everyNDaysPattern) {
+            LocalDate current = effectiveStart;
+
+            // Adjust to preferred day of week if set
+            if (everyNDaysPattern.hasPreferredDayOfWeek()) {
+                LocalDate adjusted = pattern.nextOccurrenceFrom(current);
+                // If adjustment moved us before effectiveStart, skip to next preferred day
+                if (adjusted.isBefore(effectiveStart)) {
+                    adjusted = adjusted.plusWeeks(1);
+                }
+                current = adjusted;
+            }
+
+            while (!current.isAfter(effectiveEnd)) {
+                if (maxOccurrences != null && (totalExecutions + generatedCount) >= maxOccurrences) {
+                    break;
+                }
+
+                if (!isExcludedOrInactive(current)) {
+                    occurrences.add(current);
+                    generatedCount++;
+                }
+
+                current = current.plusDays(everyNDaysPattern.intervalDays());
+            }
+            return occurrences;
+        }
+
+        // Standard pattern handling (DAILY, WEEKLY, MONTHLY, YEARLY, QUARTERLY)
         LocalDate current = pattern.nextOccurrenceFrom(effectiveStart);
 
         while (!current.isAfter(effectiveEnd)) {
@@ -383,10 +426,26 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
     }
 
     /**
-     * Checks if the rule should auto-complete based on maxOccurrences.
-     * Returns true if maxOccurrences is set and the generated cash changes count has reached the limit.
+     * Helper method to check if a date should be excluded (excluded dates or inactive month).
+     */
+    private boolean isExcludedOrInactive(LocalDate date) {
+        if (activeMonths != null && !activeMonths.isEmpty() && !activeMonths.contains(date.getMonth())) {
+            return true;
+        }
+        return excludedDates != null && excludedDates.contains(date);
+    }
+
+    /**
+     * Checks if the rule should auto-complete based on maxOccurrences or pattern type.
+     * Returns true if:
+     * - maxOccurrences is set and the generated cash changes count has reached the limit
+     * - pattern is ONCE and at least one cash change has been generated
      */
     public boolean shouldAutoComplete() {
+        // ONCE pattern should auto-complete after generating its single occurrence
+        if (pattern instanceof OncePattern && !generatedCashChangeIds.isEmpty()) {
+            return true;
+        }
         return maxOccurrences != null && generatedCashChangeIds.size() >= maxOccurrences;
     }
 

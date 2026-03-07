@@ -6,7 +6,8 @@ import java.time.LocalDate;
  * Sealed interface representing different recurrence patterns for recurring rules.
  */
 public sealed interface RecurrencePattern
-        permits DailyPattern, WeeklyPattern, MonthlyPattern, YearlyPattern {
+        permits DailyPattern, WeeklyPattern, MonthlyPattern, YearlyPattern,
+                QuarterlyPattern, OncePattern, EveryNDaysPattern {
 
     RecurrenceType type();
 
