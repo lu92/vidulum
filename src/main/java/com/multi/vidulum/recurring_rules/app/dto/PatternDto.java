@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 
 @Data
 @Builder
@@ -32,6 +33,15 @@ public class PatternDto {
     private Integer month;
     private Integer yearlyDayOfMonth;
 
+    // Quarterly
+    private Integer monthInQuarter;  // 1, 2, or 3
+
+    // Once
+    private LocalDate targetDate;
+
+    // EveryNDays (reuses intervalDays from Daily)
+    private DayOfWeek preferredDayOfWeek;
+
     public RecurrencePattern toPattern() {
         return switch (type) {
             case DAILY -> new DailyPattern(intervalDays != null ? intervalDays : 1);
@@ -47,6 +57,15 @@ public class PatternDto {
             case YEARLY -> new YearlyPattern(
                     month != null ? month : 1,
                     yearlyDayOfMonth != null ? yearlyDayOfMonth : 1
+            );
+            case QUARTERLY -> new QuarterlyPattern(
+                    monthInQuarter != null ? monthInQuarter : 1,
+                    dayOfMonth != null ? dayOfMonth : 1
+            );
+            case ONCE -> new OncePattern(targetDate);
+            case EVERY_N_DAYS -> new EveryNDaysPattern(
+                    intervalDays != null ? intervalDays : 1,
+                    preferredDayOfWeek
             );
         };
     }
@@ -69,6 +88,15 @@ public class PatternDto {
             case YearlyPattern yearly -> {
                 dto.setMonth(yearly.month());
                 dto.setYearlyDayOfMonth(yearly.dayOfMonth());
+            }
+            case QuarterlyPattern quarterly -> {
+                dto.setMonthInQuarter(quarterly.monthInQuarter());
+                dto.setDayOfMonth(quarterly.dayOfMonth());
+            }
+            case OncePattern once -> dto.setTargetDate(once.targetDate());
+            case EveryNDaysPattern everyNDays -> {
+                dto.setIntervalDays(everyNDays.intervalDays());
+                dto.setPreferredDayOfWeek(everyNDays.preferredDayOfWeek());
             }
         }
 

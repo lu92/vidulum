@@ -985,4 +985,251 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("Null remaining occurrences test passed");
     }
+
+    // ==================== QUARTERLY PATTERN TESTS ====================
+
+    @Test
+    void shouldCreateQuarterlyRuleAndGenerateCashChanges() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Quarterly Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Tax", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A quarterly VAT payment rule on 25th of 1st month of each quarter
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        // When: Create quarterly rule
+        String ruleId = recurringRulesActor.createQuarterlyRule(
+                testCashFlowId,
+                "Quarterly VAT Payment",
+                "VAT payment due on 25th of first month of quarter",
+                Money.of(-5000.00, CURRENCY),
+                "Tax",
+                startDate,
+                endDate,
+                1,   // monthInQuarter = 1st month (Jan, Apr, Jul, Oct)
+                25   // dayOfMonth
+        );
+
+        // Then: Rule should be created with QUARTERLY pattern
+        assertThat(ruleId).isNotNull();
+        log.info("Created quarterly rule: {}", ruleId);
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+        assertThat(rule.getPattern().getType()).isEqualTo(RecurrenceType.QUARTERLY);
+        assertThat(rule.getPattern().getMonthInQuarter()).isEqualTo(1);
+        assertThat(rule.getPattern().getDayOfMonth()).isEqualTo(25);
+
+        // Should have 4 cash changes (Jan 25, Apr 25, Jul 25, Oct 25)
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(4);
+
+        // Verify in CashFlow
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowActor.getCashFlow(testCashFlowId);
+        rule.getGeneratedCashChangeIds().forEach(ccId -> {
+            assertThat(cashFlow.getCashChanges()).containsKey(ccId);
+        });
+
+        log.info("Quarterly pattern test completed - generated {} cash changes", rule.getGeneratedCashChangeIds().size());
+    }
+
+    @Test
+    void shouldCreateQuarterlyRuleOnLastDayOfQuarterMonth() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Quarterly Last Day Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Reports", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A quarterly report rule on last day of 3rd month of each quarter (Mar, Jun, Sep, Dec)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        // When: Create quarterly rule with last day of month
+        String ruleId = recurringRulesActor.createQuarterlyRule(
+                testCashFlowId,
+                "Quarterly Report",
+                "Quarterly report due on last day of quarter",
+                Money.of(-1000.00, CURRENCY),
+                "Reports",
+                startDate,
+                endDate,
+                3,   // monthInQuarter = 3rd month (Mar, Jun, Sep, Dec)
+                -1   // dayOfMonth = last day
+        );
+
+        // Then: Rule should be created
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getType()).isEqualTo(RecurrenceType.QUARTERLY);
+        assertThat(rule.getPattern().getMonthInQuarter()).isEqualTo(3);
+        assertThat(rule.getPattern().getDayOfMonth()).isEqualTo(-1);
+
+        // Should have 4 cash changes (Mar 31, Jun 30, Sep 30, Dec 31)
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(4);
+
+        log.info("Quarterly last day test completed - generated {} cash changes", rule.getGeneratedCashChangeIds().size());
+    }
+
+    // ==================== ONCE PATTERN TESTS ====================
+
+    @Test
+    void shouldCreateOnceRuleAndAutoCompleteAfterGeneration() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(50000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Once Pattern Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Lease", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A one-time car lease buyout payment
+        LocalDate targetDate = LocalDate.of(2022, 6, 15);
+
+        // When: Create once rule
+        String ruleId = recurringRulesActor.createOnceRule(
+                testCashFlowId,
+                "Car Lease Buyout",
+                "Final payment to purchase leased car",
+                Money.of(-25000.00, CURRENCY),
+                "Lease",
+                targetDate
+        );
+
+        // Then: Rule should be created with ONCE pattern and auto-completed
+        assertThat(ruleId).isNotNull();
+        log.info("Created once rule: {}", ruleId);
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getType()).isEqualTo(RecurrenceType.ONCE);
+        assertThat(rule.getPattern().getTargetDate()).isEqualTo(targetDate);
+
+        // Should have exactly 1 cash change
+        assertThat(rule.getGeneratedCashChangeIds()).hasSize(1);
+
+        // Rule should be auto-completed (implicit maxOccurrences = 1)
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.COMPLETED);
+
+        // Verify in CashFlow
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowActor.getCashFlow(testCashFlowId);
+        String cashChangeId = rule.getGeneratedCashChangeIds().get(0);
+        assertThat(cashFlow.getCashChanges()).containsKey(cashChangeId);
+
+        log.info("Once pattern test completed - rule status: {}", rule.getStatus());
+    }
+
+    // ==================== EVERY N DAYS PATTERN TESTS ====================
+
+    @Test
+    void shouldCreateEveryNDaysRuleAndGenerateCashChanges() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "EveryNDays Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A bi-weekly payroll every 14 days
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 3, 31); // Q1 2022
+
+        // When: Create every-N-days rule (no preferred day)
+        String ruleId = recurringRulesActor.createEveryNDaysRule(
+                testCashFlowId,
+                "Bi-weekly Payroll",
+                "Salary paid every 14 days",
+                Money.of(2500.00, CURRENCY),
+                "Salary",
+                startDate,
+                endDate,
+                14,   // intervalDays
+                null  // no preferredDayOfWeek
+        );
+
+        // Then: Rule should be created with EVERY_N_DAYS pattern
+        assertThat(ruleId).isNotNull();
+        log.info("Created every-N-days rule: {}", ruleId);
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getType()).isEqualTo(RecurrenceType.EVERY_N_DAYS);
+        assertThat(rule.getPattern().getIntervalDays()).isEqualTo(14);
+        assertThat(rule.getPattern().getPreferredDayOfWeek()).isNull();
+
+        // Q1 2022 has 90 days, so ~6-7 occurrences every 14 days
+        assertThat(rule.getGeneratedCashChangeIds().size()).isGreaterThanOrEqualTo(6);
+
+        // Verify in CashFlow
+        CashFlowDto.CashFlowSummaryJson cashFlow = cashFlowActor.getCashFlow(testCashFlowId);
+        rule.getGeneratedCashChangeIds().forEach(ccId -> {
+            assertThat(cashFlow.getCashChanges()).containsKey(ccId);
+        });
+
+        log.info("EveryNDays pattern test completed - generated {} cash changes", rule.getGeneratedCashChangeIds().size());
+    }
+
+    @Test
+    void shouldCreateEveryNDaysRuleWithPreferredDayOfWeek() {
+        // Setup: Create CashFlow with categories
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+        String testCashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "EveryNDays Friday Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(testCashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(testCashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(testCashFlowId, initialBalance, false, false);
+
+        // Given: A bi-weekly payroll every 14 days, preferably on Friday
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 2, 28);
+
+        // When: Create every-N-days rule with preferred Friday
+        String ruleId = recurringRulesActor.createEveryNDaysRule(
+                testCashFlowId,
+                "Bi-weekly Friday Payroll",
+                "Salary paid every 14 days on Friday",
+                Money.of(2500.00, CURRENCY),
+                "Salary",
+                startDate,
+                endDate,
+                14,              // intervalDays
+                DayOfWeek.FRIDAY // preferredDayOfWeek
+        );
+
+        // Then: Rule should be created with preferred day
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getType()).isEqualTo(RecurrenceType.EVERY_N_DAYS);
+        assertThat(rule.getPattern().getIntervalDays()).isEqualTo(14);
+        assertThat(rule.getPattern().getPreferredDayOfWeek()).isEqualTo(DayOfWeek.FRIDAY);
+
+        // Should have generated some cash changes
+        assertThat(rule.getGeneratedCashChangeIds()).isNotEmpty();
+
+        log.info("EveryNDays with preferred Friday test completed - generated {} cash changes",
+                rule.getGeneratedCashChangeIds().size());
+    }
 }

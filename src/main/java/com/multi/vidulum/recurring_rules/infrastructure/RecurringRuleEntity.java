@@ -126,6 +126,12 @@ public class RecurringRuleEntity {
         // Yearly
         private Integer month;
         private Integer yearlyDayOfMonth;
+        // Quarterly
+        private Integer monthInQuarter;
+        // Once
+        private LocalDate targetDate;
+        // EveryNDays
+        private DayOfWeek preferredDayOfWeek;
 
         public static PatternEmbedded from(RecurrencePattern pattern) {
             PatternEmbedded.PatternEmbeddedBuilder builder = PatternEmbedded.builder()
@@ -146,6 +152,17 @@ public class RecurringRuleEntity {
                         .month(yearly.month())
                         .yearlyDayOfMonth(yearly.dayOfMonth())
                         .build();
+                case QuarterlyPattern quarterly -> builder
+                        .monthInQuarter(quarterly.monthInQuarter())
+                        .dayOfMonth(quarterly.dayOfMonth())
+                        .build();
+                case OncePattern once -> builder
+                        .targetDate(once.targetDate())
+                        .build();
+                case EveryNDaysPattern everyNDays -> builder
+                        .intervalDays(everyNDays.intervalDays())
+                        .preferredDayOfWeek(everyNDays.preferredDayOfWeek())
+                        .build();
             };
         }
 
@@ -155,6 +172,9 @@ public class RecurringRuleEntity {
                 case WEEKLY -> new WeeklyPattern(dayOfWeek, intervalWeeks);
                 case MONTHLY -> new MonthlyPattern(dayOfMonth, intervalMonths, adjustForMonthEnd != null && adjustForMonthEnd);
                 case YEARLY -> new YearlyPattern(month, yearlyDayOfMonth);
+                case QUARTERLY -> new QuarterlyPattern(monthInQuarter, dayOfMonth);
+                case ONCE -> new OncePattern(targetDate);
+                case EVERY_N_DAYS -> new EveryNDaysPattern(intervalDays, preferredDayOfWeek);
             };
         }
     }

@@ -792,6 +792,9 @@
                 <button class="screen-btn active" onclick="showScreen('list')">Rules List</button>
                 <button class="screen-btn" onclick="showScreen('empty')">Empty State</button>
                 <button class="screen-btn" onclick="showScreen('create')">Create Rule</button>
+                <button class="screen-btn" onclick="showScreen('create-quarterly')">Create Quarterly</button>
+                <button class="screen-btn" onclick="showScreen('create-once')">Create One-time</button>
+                <button class="screen-btn" onclick="showScreen('create-every-n-days')">Create Every N Days</button>
                 <button class="screen-btn" onclick="showScreen('edit')">Edit (Amount Change)</button>
                 <button class="screen-btn" onclick="showScreen('detail')">Rule Details</button>
                 <button class="screen-btn" onclick="showScreen('scheduled')">Scheduled Change</button>
@@ -985,15 +988,18 @@
 
                                 <div class="form-group">
                                     <label class="form-label">Frequency *</label>
-                                    <select class="form-input">
-                                        <option>Monthly</option>
-                                        <option>Weekly</option>
-                                        <option>Yearly</option>
-                                        <option>Every X days</option>
+                                    <select class="form-input" id="frequencySelect" onchange="updateFrequencyFields()">
+                                        <option value="monthly">Monthly</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="yearly">Yearly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="every-n-days">Every N days</option>
+                                        <option value="once">One-time</option>
                                     </select>
                                 </div>
 
-                                <div class="form-group">
+                                <!-- MONTHLY fields (default) -->
+                                <div class="form-group frequency-field" id="monthly-fields">
                                     <label class="form-label">Day of Month *</label>
                                     <select class="form-input">
                                         <option>10</option>
@@ -1004,7 +1010,76 @@
                                     </label>
                                 </div>
 
-                                <div class="form-row">
+                                <!-- QUARTERLY fields -->
+                                <div class="form-group frequency-field" id="quarterly-fields" style="display: none;">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Month in Quarter *</label>
+                                            <select class="form-input">
+                                                <option value="1">1st month (Jan, Apr, Jul, Oct)</option>
+                                                <option value="2">2nd month (Feb, May, Aug, Nov)</option>
+                                                <option value="3">3rd month (Mar, Jun, Sep, Dec)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Day of Month *</label>
+                                            <select class="form-input">
+                                                <option>25</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 8px;">
+                                        <input type="checkbox">
+                                        <span style="font-size: 14px;">Last day of month</span>
+                                    </label>
+                                    <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                        💡 Examples: VAT payment (25th of 1st month), quarterly reports (last day of 3rd month)
+                                    </p>
+                                </div>
+
+                                <!-- EVERY N DAYS fields -->
+                                <div class="form-group frequency-field" id="every-n-days-fields" style="display: none;">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Interval (days) *</label>
+                                            <input type="number" class="form-input" value="14" min="1" max="365">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Preferred Day of Week</label>
+                                            <select class="form-input">
+                                                <option value="">No preference</option>
+                                                <option>Monday</option>
+                                                <option>Tuesday</option>
+                                                <option>Wednesday</option>
+                                                <option>Thursday</option>
+                                                <option value="friday" selected>Friday</option>
+                                                <option>Saturday</option>
+                                                <option>Sunday</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                        💡 Perfect for bi-weekly payroll (every 14 days on Friday) or 28-day subscriptions
+                                    </p>
+                                </div>
+
+                                <!-- ONCE (one-time) fields -->
+                                <div class="form-group frequency-field" id="once-fields" style="display: none;">
+                                    <label class="form-label">Target Date *</label>
+                                    <input type="date" class="form-input" value="2027-06-15" style="width: 200px;">
+                                    <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                        💡 For one-time future payments: lease buyout, final loan payment, annual bonus, planned purchase
+                                    </p>
+                                    <div style="background: var(--primary-light); padding: 12px; border-radius: 6px; margin-top: 12px;">
+                                        <strong style="font-size: 13px;">Note:</strong>
+                                        <span style="font-size: 13px; color: var(--gray-700);">
+                                            Rule will auto-complete after this transaction is generated.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Start/End Date (not shown for ONCE) -->
+                                <div class="form-row" id="date-range-fields">
                                     <div class="form-group">
                                         <label class="form-label">Start Date *</label>
                                         <input type="date" class="form-input" value="2026-03-10">
@@ -1082,6 +1157,373 @@
                                     <p><strong>12 transactions</strong> will be generated</p>
                                     <p style="margin-top: 8px;">First: Mar 10, 2026 • Last: Feb 10, 2027</p>
                                     <p>Annual total: <strong>$24,000</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Create Rule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Create Quarterly Rule -->
+        <div id="screen-create-quarterly" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Create Quarterly Rule - VAT Payment Example</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>New Recurring Rule</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-section">
+                                <div class="form-section-title">Basic Information</div>
+                                <div class="form-group">
+                                    <label class="form-label">Name *</label>
+                                    <input type="text" class="form-input" value="VAT Payment">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-input" value="Quarterly VAT settlement">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Type *</label>
+                                        <div class="radio-group" style="flex-direction: row; gap: 16px;">
+                                            <label class="radio-option" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Income</span>
+                                            </label>
+                                            <label class="radio-option selected" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Expense</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Category *</label>
+                                        <select class="form-input">
+                                            <option selected>Taxes</option>
+                                            <option>Business</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Amount *</label>
+                                        <input type="text" class="form-input" value="3500.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Currency</label>
+                                        <select class="form-input">
+                                            <option>PLN</option>
+                                            <option>EUR</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" checked>
+                                    <span style="font-size: 14px;">Amount is estimated (VAT varies each quarter)</span>
+                                </label>
+                            </div>
+
+                            <div class="form-section">
+                                <div class="form-section-title">Schedule</div>
+                                <div class="form-group">
+                                    <label class="form-label">Frequency *</label>
+                                    <select class="form-input">
+                                        <option>Monthly</option>
+                                        <option>Weekly</option>
+                                        <option>Yearly</option>
+                                        <option selected>Quarterly</option>
+                                        <option>Every N days</option>
+                                        <option>One-time</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Month in Quarter *</label>
+                                        <select class="form-input">
+                                            <option value="1" selected>1st month (Jan, Apr, Jul, Oct)</option>
+                                            <option value="2">2nd month (Feb, May, Aug, Nov)</option>
+                                            <option value="3">3rd month (Mar, Jun, Sep, Dec)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Day of Month *</label>
+                                        <select class="form-input">
+                                            <option selected>25</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                    💡 VAT due by 25th of month following quarter end: Jan 25, Apr 25, Jul 25, Oct 25
+                                </p>
+
+                                <div class="form-row" style="margin-top: 16px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Date *</label>
+                                        <input type="date" class="form-input" value="2026-04-25">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" class="form-input" placeholder="None">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-title">📊 Preview</div>
+                                <div class="preview-content">
+                                    <p><strong>4 transactions</strong> will be generated per year</p>
+                                    <p style="margin-top: 8px;">Next dates: Apr 25, Jul 25, Oct 25, 2026 • Jan 25, 2027</p>
+                                    <p>Annual total: <strong>~14,000 PLN</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Create Rule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Create One-time Rule -->
+        <div id="screen-create-once" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Create One-time Rule - Lease Buyout Example</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>New Recurring Rule</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-section">
+                                <div class="form-section-title">Basic Information</div>
+                                <div class="form-group">
+                                    <label class="form-label">Name *</label>
+                                    <input type="text" class="form-input" value="Car Lease Buyout">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-input" value="Final payment to own the vehicle - Toyota Corolla">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Type *</label>
+                                        <div class="radio-group" style="flex-direction: row; gap: 16px;">
+                                            <label class="radio-option" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Income</span>
+                                            </label>
+                                            <label class="radio-option selected" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Expense</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Category *</label>
+                                        <select class="form-input">
+                                            <option selected>Transportation</option>
+                                            <option>Business</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Amount *</label>
+                                        <input type="text" class="form-input" value="25000.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Currency</label>
+                                        <select class="form-input">
+                                            <option>PLN</option>
+                                            <option>EUR</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <div class="form-section-title">Schedule</div>
+                                <div class="form-group">
+                                    <label class="form-label">Frequency *</label>
+                                    <select class="form-input">
+                                        <option>Monthly</option>
+                                        <option>Weekly</option>
+                                        <option>Yearly</option>
+                                        <option>Quarterly</option>
+                                        <option>Every N days</option>
+                                        <option selected>One-time</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Target Date *</label>
+                                    <input type="date" class="form-input" value="2027-06-15" style="width: 200px;">
+                                    <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                        💡 For one-time future payments like lease buyout, final loan payment, or planned purchase
+                                    </p>
+                                </div>
+
+                                <div style="background: var(--primary-light); padding: 12px; border-radius: 6px; margin-top: 12px;">
+                                    <strong style="font-size: 13px;">📌 Note:</strong>
+                                    <span style="font-size: 13px; color: var(--gray-700);">
+                                        This rule will automatically complete after the transaction is generated.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-title">📊 Preview</div>
+                                <div class="preview-content">
+                                    <p><strong>1 transaction</strong> will be generated</p>
+                                    <p style="margin-top: 8px;">Date: June 15, 2027</p>
+                                    <p>Amount: <strong>25,000 PLN</strong></p>
+                                    <p style="margin-top: 8px; color: var(--gray-500);">⏳ In 467 days</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Create Rule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen: Create Every N Days Rule -->
+        <div id="screen-create-every-n-days" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Create Every N Days Rule - Bi-weekly Payroll Example</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header">
+                            <h3>New Recurring Rule</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-section">
+                                <div class="form-section-title">Basic Information</div>
+                                <div class="form-group">
+                                    <label class="form-label">Name *</label>
+                                    <input type="text" class="form-input" value="Bi-weekly Salary">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <input type="text" class="form-input" value="US-style bi-weekly payroll">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Type *</label>
+                                        <div class="radio-group" style="flex-direction: row; gap: 16px;">
+                                            <label class="radio-option selected" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Income</span>
+                                            </label>
+                                            <label class="radio-option" style="flex: 1;">
+                                                <span class="radio-dot"></span>
+                                                <span>Expense</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Category *</label>
+                                        <select class="form-input">
+                                            <option selected>Salary</option>
+                                            <option>Income</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Amount *</label>
+                                        <input type="text" class="form-input" value="3200.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Currency</label>
+                                        <select class="form-input">
+                                            <option selected>USD</option>
+                                            <option>EUR</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <div class="form-section-title">Schedule</div>
+                                <div class="form-group">
+                                    <label class="form-label">Frequency *</label>
+                                    <select class="form-input">
+                                        <option>Monthly</option>
+                                        <option>Weekly</option>
+                                        <option>Yearly</option>
+                                        <option>Quarterly</option>
+                                        <option selected>Every N days</option>
+                                        <option>One-time</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Interval (days) *</label>
+                                        <input type="number" class="form-input" value="14" min="1" max="365" style="width: 100px;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Preferred Day of Week</label>
+                                        <select class="form-input">
+                                            <option value="">No preference</option>
+                                            <option>Monday</option>
+                                            <option>Tuesday</option>
+                                            <option>Wednesday</option>
+                                            <option>Thursday</option>
+                                            <option selected>Friday</option>
+                                            <option>Saturday</option>
+                                            <option>Sunday</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                                    💡 Bi-weekly payroll: every 14 days, preferring Friday for payment date
+                                </p>
+
+                                <div class="form-row" style="margin-top: 16px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Date *</label>
+                                        <input type="date" class="form-input" value="2026-03-13">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" class="form-input" placeholder="None">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-title">📊 Preview</div>
+                                <div class="preview-content">
+                                    <p><strong>26 transactions</strong> will be generated per year</p>
+                                    <p style="margin-top: 8px;">Next dates: Mar 13 (Fri), Mar 27 (Fri), Apr 10 (Fri), Apr 24 (Fri)...</p>
+                                    <p>Annual total: <strong>+$83,200</strong></p>
+                                    <p style="margin-top: 8px; color: var(--gray-500);">
+                                        📌 Note: Some months will have 3 paychecks instead of 2
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -1590,6 +2032,43 @@
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
+        }
+
+        function updateFrequencyFields() {
+            const frequency = document.getElementById('frequencySelect').value;
+
+            // Hide all frequency-specific fields
+            document.querySelectorAll('.frequency-field').forEach(field => {
+                field.style.display = 'none';
+            });
+
+            // Show/hide date range fields (not for ONCE)
+            const dateRangeFields = document.getElementById('date-range-fields');
+            if (dateRangeFields) {
+                dateRangeFields.style.display = frequency === 'once' ? 'none' : 'grid';
+            }
+
+            // Show relevant fields based on frequency
+            switch(frequency) {
+                case 'monthly':
+                    document.getElementById('monthly-fields').style.display = 'block';
+                    break;
+                case 'quarterly':
+                    document.getElementById('quarterly-fields').style.display = 'block';
+                    break;
+                case 'every-n-days':
+                    document.getElementById('every-n-days-fields').style.display = 'block';
+                    break;
+                case 'once':
+                    document.getElementById('once-fields').style.display = 'block';
+                    break;
+                case 'weekly':
+                    // Weekly fields - would need separate implementation
+                    break;
+                case 'yearly':
+                    // Yearly fields - would need separate implementation
+                    break;
+            }
         }
     </script>
 </body>
