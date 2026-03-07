@@ -542,6 +542,91 @@ public class RecurringRulesHttpActor {
         }
     }
 
+    // ============ Amount Changes Operations ============
+
+    /**
+     * Adds an amount change to a recurring rule.
+     *
+     * @param ruleId the rule ID
+     * @param amount the amount to add (positive or negative)
+     * @param type ONE_TIME or PERMANENT
+     * @param reason optional reason for the change
+     * @return the created amount change ID
+     */
+    public String addAmountChange(String ruleId, Money amount, AmountChangeType type, String reason) {
+        AddAmountChangeRequest request = AddAmountChangeRequest.builder()
+                .amount(amount)
+                .type(type)
+                .reason(reason)
+                .build();
+
+        ResponseEntity<Map<String, String>> response = restTemplate.exchange(
+                baseUrl + "/" + ruleId + "/amount-changes",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                new ParameterizedTypeReference<Map<String, String>>() {}
+        );
+
+        assertThat(response.getStatusCode())
+                .as("Expected 201 CREATED but got %s with body: %s", response.getStatusCode(), response.getBody())
+                .isEqualTo(HttpStatus.CREATED);
+
+        String changeId = response.getBody().get("amountChangeId");
+        assertThat(changeId).isNotNull().startsWith("AC");
+
+        log.info("Added amount change via HTTP: ruleId={}, changeId={}, type={}, amount={}",
+                ruleId, changeId, type, amount);
+        return changeId;
+    }
+
+    /**
+     * Gets all amount changes for a recurring rule.
+     */
+    public List<AmountChangeResponse> getAmountChanges(String ruleId) {
+        ResponseEntity<List<AmountChangeResponse>> response = restTemplate.exchange(
+                baseUrl + "/" + ruleId + "/amount-changes",
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
+                new ParameterizedTypeReference<List<AmountChangeResponse>>() {}
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    /**
+     * Removes an amount change from a recurring rule.
+     */
+    public void removeAmountChange(String ruleId, String amountChangeId) {
+        ResponseEntity<Void> response = restTemplate.exchange(
+                baseUrl + "/" + ruleId + "/amount-changes/" + amountChangeId,
+                HttpMethod.DELETE,
+                new HttpEntity<>(jsonHeaders()),
+                Void.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        log.info("Removed amount change via HTTP: ruleId={}, changeId={}", ruleId, amountChangeId);
+    }
+
+    /**
+     * Adds an amount change expecting an error response.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, String>> addAmountChangeExpectingError(String ruleId, AddAmountChangeRequest request) {
+        try {
+            return rawRestTemplate.exchange(
+                    baseUrl + "/" + ruleId + "/amount-changes",
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, String>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, String> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Helper Methods ============
 
     private HttpHeaders jsonHeaders() {

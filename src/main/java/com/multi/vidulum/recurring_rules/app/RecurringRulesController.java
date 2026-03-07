@@ -4,9 +4,12 @@ import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.dto.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;
+import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
 import com.multi.vidulum.recurring_rules.domain.exceptions.*;
+import com.multi.vidulum.user.domain.DomainUserRepository;
+import com.multi.vidulum.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,7 @@ import java.util.Map;
 public class RecurringRulesController {
 
     private final RecurringRuleService ruleService;
+    private final DomainUserRepository userRepository;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> createRule(
@@ -175,10 +179,64 @@ public class RecurringRulesController {
         return ResponseEntity.ok().build();
     }
 
+    // Amount Changes endpoints
+
+    @PostMapping("/{ruleId}/amount-changes")
+    public ResponseEntity<Map<String, String>> addAmountChange(
+            @PathVariable String ruleId,
+            @Valid @RequestBody AddAmountChangeRequest request,
+            @RequestHeader("Authorization") String authHeader
+    ) throws RecurringRuleException {
+        String authToken = extractToken(authHeader);
+
+        AddAmountChangeCommand command = new AddAmountChangeCommand(
+                ruleId,
+                request.getAmount(),
+                request.getType(),
+                request.getReason()
+        );
+
+        AmountChangeId changeId = ruleService.handle(command, authToken);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("amountChangeId", changeId.id()));
+    }
+
+    @GetMapping("/{ruleId}/amount-changes")
+    public ResponseEntity<List<AmountChangeResponse>> getAmountChanges(
+            @PathVariable String ruleId
+    ) throws RuleNotFoundException {
+        GetRuleQuery query = new GetRuleQuery(ruleId);
+        RecurringRuleSnapshot snapshot = ruleService.handle(query);
+
+        List<AmountChangeResponse> changes = snapshot.amountChanges() != null
+                ? snapshot.amountChanges().stream().map(AmountChangeResponse::from).toList()
+                : List.of();
+
+        return ResponseEntity.ok(changes);
+    }
+
+    @DeleteMapping("/{ruleId}/amount-changes/{amountChangeId}")
+    public ResponseEntity<Void> removeAmountChange(
+            @PathVariable String ruleId,
+            @PathVariable String amountChangeId,
+            @RequestHeader("Authorization") String authHeader
+    ) throws RecurringRuleException {
+        String authToken = extractToken(authHeader);
+
+        RemoveAmountChangeCommand command = new RemoveAmountChangeCommand(ruleId, amountChangeId);
+        ruleService.handle(command, authToken);
+
+        return ResponseEntity.noContent().build();
+    }
+
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            return authentication.getName();
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new IllegalStateException("User not found: " + username));
+            return user.getUserId().getId();
         }
         throw new IllegalStateException("No authenticated user found");
     }

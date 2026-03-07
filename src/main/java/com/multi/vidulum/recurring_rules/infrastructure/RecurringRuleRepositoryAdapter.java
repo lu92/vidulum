@@ -24,6 +24,7 @@ public class RecurringRuleRepositoryAdapter implements DomainRecurringRuleReposi
     private final MongoTemplate mongoTemplate;
 
     private static final String SEQUENCE_COLLECTION = "recurring_rule_sequence";
+    private static final String AMOUNT_CHANGE_SEQUENCE_COLLECTION = "amount_change_sequence";
 
     @Override
     public void save(RecurringRule rule) {
@@ -79,6 +80,17 @@ public class RecurringRuleRepositoryAdapter implements DomainRecurringRuleReposi
     public long generateNextSequence() {
         SequenceDocument counter = mongoTemplate.findAndModify(
                 query(where("_id").is(SEQUENCE_COLLECTION)),
+                new Update().inc("seq", 1),
+                options().returnNew(true).upsert(true),
+                SequenceDocument.class
+        );
+        return counter != null ? counter.getSeq() : 1;
+    }
+
+    @Override
+    public long generateNextAmountChangeSequence() {
+        SequenceDocument counter = mongoTemplate.findAndModify(
+                query(where("_id").is(AMOUNT_CHANGE_SEQUENCE_COLLECTION)),
                 new Update().inc("seq", 1),
                 options().returnNew(true).upsert(true),
                 SequenceDocument.class

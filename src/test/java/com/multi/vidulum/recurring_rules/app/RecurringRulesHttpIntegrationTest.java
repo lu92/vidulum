@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
@@ -1231,5 +1232,266 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("EveryNDays with preferred Friday test completed - generated {} cash changes",
                 rule.getGeneratedCashChangeIds().size());
+    }
+
+    // ==================== GET /me ENDPOINT TESTS ====================
+
+    @Test
+    void shouldGetMyRulesUsingUserId() {
+        // GIVEN: Setup CashFlow with a rule
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(5000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Get My Rules Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, Money.of(5000, CURRENCY), true, false);
+
+        // Create a rule
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String salaryRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Test Salary", "Monthly salary",
+                Money.of(5000, CURRENCY), "Salary",
+                startDate, null, 1, 1, false
+        );
+
+        // WHEN: Call GET /me endpoint
+        List<RecurringRuleResponse> myRules = recurringRulesActor.getMyRules();
+
+        // THEN: Should return rules for the current user
+        assertThat(myRules).isNotEmpty();
+        assertThat(myRules).anyMatch(rule -> rule.getRuleId().equals(salaryRuleId));
+
+        log.info("GET /me test completed successfully - found {} rules", myRules.size());
+    }
+
+    // ==================== AMOUNT CHANGES API TESTS ====================
+
+    @Test
+    void shouldAddPermanentAmountChangeAndRegenerateCashChanges() {
+        // GIVEN: Setup CashFlow with a rule
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Amount Change Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        // Create a monthly salary rule with base amount 5000 PLN
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 6, 30);
+        String salaryRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Salary", "Monthly salary",
+                Money.of(5000, CURRENCY), "Salary",
+                startDate, endDate, 1, 1, false
+        );
+
+        RecurringRuleResponse originalRule = recurringRulesActor.getRule(salaryRuleId);
+        assertThat(originalRule.getBaseAmount().getAmount()).isEqualByComparingTo("5000");
+        assertThat(originalRule.getAmountChanges()).isEmpty();
+
+        // WHEN: Add a PERMANENT raise of 500 PLN
+        String changeId = recurringRulesActor.addAmountChange(
+                salaryRuleId,
+                Money.of(500, CURRENCY),
+                AmountChangeType.PERMANENT,
+                "Annual raise"
+        );
+
+        // THEN: Amount change should be recorded
+        assertThat(changeId).isNotNull().startsWith("AC");
+
+        RecurringRuleResponse updatedRule = recurringRulesActor.getRule(salaryRuleId);
+        assertThat(updatedRule.getAmountChanges()).hasSize(1);
+        assertThat(updatedRule.getAmountChanges().get(0).getId()).isEqualTo(changeId);
+        assertThat(updatedRule.getAmountChanges().get(0).getAmount().getAmount()).isEqualByComparingTo("500");
+        assertThat(updatedRule.getAmountChanges().get(0).getType()).isEqualTo(AmountChangeType.PERMANENT);
+        assertThat(updatedRule.getAmountChanges().get(0).getReason()).isEqualTo("Annual raise");
+
+        // Cash changes should be regenerated (with new effective amount = 5000 + 500 = 5500)
+        assertThat(updatedRule.getGeneratedCashChangeIds()).isNotEmpty();
+
+        log.info("PERMANENT amount change test completed - added {} PLN raise", 500);
+    }
+
+    @Test
+    void shouldAddOneTimeAmountChangeAndRegenerateCashChanges() {
+        // GIVEN: Setup CashFlow with a rule
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "One-Time Change Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Utilities", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        // Create a monthly utility bill rule
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 6, 30);
+        String utilityRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Electric Bill", "Monthly electricity",
+                Money.of(-150, CURRENCY), "Utilities",
+                startDate, endDate, 15, 1, false
+        );
+
+        // WHEN: Add a ONE_TIME extra charge (e.g., winter surcharge)
+        String changeId = recurringRulesActor.addAmountChange(
+                utilityRuleId,
+                Money.of(-50, CURRENCY),
+                AmountChangeType.ONE_TIME,
+                "Winter surcharge"
+        );
+
+        // THEN: Amount change should be recorded
+        RecurringRuleResponse updatedRule = recurringRulesActor.getRule(utilityRuleId);
+        assertThat(updatedRule.getAmountChanges()).hasSize(1);
+        assertThat(updatedRule.getAmountChanges().get(0).getType()).isEqualTo(AmountChangeType.ONE_TIME);
+
+        log.info("ONE_TIME amount change test completed - added {} PLN winter surcharge", -50);
+    }
+
+    @Test
+    void shouldGetAmountChangesForRule() {
+        // GIVEN: Setup CashFlow with a rule and multiple amount changes
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Get Amount Changes Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Salary", "Monthly salary",
+                Money.of(5000, CURRENCY), "Salary",
+                startDate, null, 1, 1, false
+        );
+
+        // Add multiple amount changes
+        String changeId1 = recurringRulesActor.addAmountChange(
+                ruleId,
+                Money.of(500, CURRENCY),
+                AmountChangeType.PERMANENT,
+                "2022 Raise"
+        );
+
+        String changeId2 = recurringRulesActor.addAmountChange(
+                ruleId,
+                Money.of(1000, CURRENCY),
+                AmountChangeType.ONE_TIME,
+                "Annual bonus"
+        );
+
+        // WHEN: Get all amount changes
+        List<AmountChangeResponse> changes = recurringRulesActor.getAmountChanges(ruleId);
+
+        // THEN: Should return all changes
+        assertThat(changes).hasSize(2);
+        assertThat(changes).extracting(AmountChangeResponse::getId).containsExactlyInAnyOrder(changeId1, changeId2);
+
+        log.info("GET amount changes test completed - found {} changes", changes.size());
+    }
+
+    @Test
+    void shouldRemoveAmountChangeAndRegenerateCashChanges() {
+        // GIVEN: Setup CashFlow with a rule and an amount change
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Remove Amount Change Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Rent", "Monthly rent",
+                Money.of(-1500, CURRENCY), "Rent",
+                startDate, null, 1, 1, false
+        );
+
+        // Add an amount change
+        String changeId = recurringRulesActor.addAmountChange(
+                ruleId,
+                Money.of(-200, CURRENCY),
+                AmountChangeType.PERMANENT,
+                "Rent increase"
+        );
+
+        RecurringRuleResponse ruleWithChange = recurringRulesActor.getRule(ruleId);
+        assertThat(ruleWithChange.getAmountChanges()).hasSize(1);
+
+        // WHEN: Remove the amount change
+        recurringRulesActor.removeAmountChange(ruleId, changeId);
+
+        // THEN: Amount change should be removed
+        RecurringRuleResponse ruleAfterRemoval = recurringRulesActor.getRule(ruleId);
+        assertThat(ruleAfterRemoval.getAmountChanges()).isEmpty();
+
+        // Cash changes should be regenerated (with original base amount)
+        assertThat(ruleAfterRemoval.getGeneratedCashChangeIds()).isNotEmpty();
+
+        log.info("Remove amount change test completed");
+    }
+
+    @Test
+    void shouldIncludeAmountChangesInRuleResponse() {
+        // GIVEN: Setup CashFlow with a rule
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "AmountChanges In Response Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Salary", "Monthly salary",
+                Money.of(5000, CURRENCY), "Salary",
+                startDate, null, 1, 1, false
+        );
+
+        // Add amount changes
+        recurringRulesActor.addAmountChange(ruleId, Money.of(500, CURRENCY), AmountChangeType.PERMANENT, "Raise 1");
+        recurringRulesActor.addAmountChange(ruleId, Money.of(300, CURRENCY), AmountChangeType.PERMANENT, "Raise 2");
+
+        // WHEN: Get rule details (not just amount changes)
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+
+        // THEN: Amount changes should be included in the rule response
+        assertThat(rule.getAmountChanges()).hasSize(2);
+        assertThat(rule.getAmountChanges())
+                .extracting(AmountChangeResponse::getReason)
+                .containsExactlyInAnyOrder("Raise 1", "Raise 2");
+
+        log.info("AmountChanges in response test completed - found {} changes in rule response",
+                rule.getAmountChanges().size());
     }
 }
