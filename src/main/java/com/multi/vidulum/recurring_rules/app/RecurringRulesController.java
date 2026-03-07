@@ -7,7 +7,8 @@ import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
-import com.multi.vidulum.recurring_rules.domain.exceptions.*;
+import com.multi.vidulum.recurring_rules.domain.exceptions.RecurringRuleException;
+import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
 import jakarta.validation.Valid;
@@ -246,83 +247,5 @@ public class RecurringRulesController {
             return authHeader.substring(7);
         }
         return authHeader;
-    }
-
-    // Exception handlers
-
-    @ExceptionHandler(RuleNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleRuleNotFound(RuleNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of(
-                        "error", "RULE_NOT_FOUND",
-                        "message", ex.getMessage(),
-                        "ruleId", ex.getRuleId().id()
-                ));
-    }
-
-    @ExceptionHandler(CashFlowNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleCashFlowNotFound(CashFlowNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of(
-                        "error", "CASHFLOW_NOT_FOUND",
-                        "message", ex.getMessage(),
-                        "cashFlowId", ex.getCashFlowId().id()
-                ));
-    }
-
-    @ExceptionHandler(CategoryNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleCategoryNotFound(CategoryNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                        "error", "CATEGORY_NOT_FOUND",
-                        "message", ex.getMessage(),
-                        "cashFlowId", ex.getCashFlowId().id(),
-                        "category", ex.getCategoryName().name()
-                ));
-    }
-
-    @ExceptionHandler(InvalidRuleStateException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidRuleState(InvalidRuleStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of(
-                        "error", "INVALID_RULE_STATE",
-                        "message", ex.getMessage(),
-                        "ruleId", ex.getRuleId().id(),
-                        "currentStatus", ex.getCurrentStatus().name(),
-                        "operation", ex.getOperation()
-                ));
-    }
-
-    @ExceptionHandler(InvalidDateRangeException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidDateRange(InvalidDateRangeException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                        "error", "INVALID_DATE_RANGE",
-                        "message", ex.getMessage(),
-                        "startDate", ex.getStartDate().toString(),
-                        "endDate", ex.getEndDate().toString()
-                ));
-    }
-
-    @ExceptionHandler(CashFlowCommunicationException.class)
-    public ResponseEntity<Map<String, String>> handleCashFlowCommunication(CashFlowCommunicationException ex) {
-        log.error("CashFlow communication error: {}", ex.getMessage(), ex);
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "error", "CASHFLOW_COMMUNICATION_ERROR",
-                        "message", ex.getMessage(),
-                        "cashFlowId", ex.getCashFlowId().id(),
-                        "operation", ex.getOperation()
-                ));
-    }
-
-    @ExceptionHandler(RecurringRuleException.class)
-    public ResponseEntity<Map<String, String>> handleGenericRuleException(RecurringRuleException ex) {
-        log.error("Recurring rule error: {}", ex.getMessage(), ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                        "error", "RECURRING_RULE_ERROR",
-                        "message", ex.getMessage()
-                ));
     }
 }

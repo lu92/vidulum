@@ -23,9 +23,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.*;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 
@@ -1493,5 +1496,59 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("AmountChanges in response test completed - found {} changes in rule response",
                 rule.getAmountChanges().size());
+    }
+
+    // ==================== ERROR HANDLING TESTS ====================
+
+    @Test
+    void shouldReturn404WhenRemovingNonExistentAmountChange() {
+        // GIVEN: Setup CashFlow with a rule (no amount changes)
+        YearMonth startPeriod = YearMonth.of(2021, 10);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Error Test CashFlow", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, true, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Salary", "Monthly salary",
+                Money.of(5000, CURRENCY), "Salary",
+                startDate, null, 5, 1, false
+        );
+
+        // WHEN: Try to remove a non-existent amount change
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.removeAmountChangeExpectingError(
+                ruleId, "AC99999999"
+        );
+
+        // THEN: Should return 404 NOT_FOUND with proper error format
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("AMOUNT_CHANGE_NOT_FOUND");
+        assertThat(response.getBody()).containsKey("message");
+        assertThat(response.getBody()).containsKey("status");
+        assertThat(response.getBody().get("status")).isEqualTo(404);
+
+        log.info("404 error handling test completed successfully");
+    }
+
+    @Test
+    void shouldReturn404WhenGettingNonExistentRule() {
+        // WHEN: Try to get a non-existent rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getRuleExpectingError("RR99999999");
+
+        // THEN: Should return 404 NOT_FOUND with proper error format
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_NOT_FOUND");
+        assertThat(response.getBody()).containsKey("message");
+
+        log.info("404 rule not found error test completed successfully");
     }
 }

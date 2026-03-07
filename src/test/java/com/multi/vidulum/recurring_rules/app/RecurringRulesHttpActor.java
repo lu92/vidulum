@@ -627,6 +627,25 @@ public class RecurringRulesHttpActor {
         }
     }
 
+    /**
+     * Removes an amount change expecting an error response.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> removeAmountChangeExpectingError(String ruleId, String amountChangeId) {
+        try {
+            rawRestTemplate.exchange(
+                    baseUrl + "/" + ruleId + "/amount-changes/" + amountChangeId,
+                    HttpMethod.DELETE,
+                    new HttpEntity<>(jsonHeaders()),
+                    Void.class
+            );
+            return ResponseEntity.ok(Map.of("status", "success"));
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Helper Methods ============
 
     private HttpHeaders jsonHeaders() {
