@@ -841,16 +841,17 @@
 
         <div class="screen-selector">
             <div class="screen-list">
-                <button class="screen-btn active" onclick="showScreen('list')">Lista reguł</button>
-                <button class="screen-btn" onclick="showScreen('empty')">Lista pusta</button>
-                <button class="screen-btn" onclick="showScreen('create')">Tworzenie reguły</button>
-                <button class="screen-btn" onclick="showScreen('edit')">Edycja (zmiana kwoty)</button>
-                <button class="screen-btn" onclick="showScreen('detail')">Szczegóły reguły</button>
-                <button class="screen-btn" onclick="showScreen('scheduled')">Scheduled Change</button>
-                <button class="screen-btn" onclick="showScreen('mismatch')">Mismatch Resolution</button>
-                <button class="screen-btn" onclick="showScreen('dashboard')">Dashboard</button>
-                <button class="screen-btn" onclick="showScreen('suggestions')">AI Suggestions</button>
-                <button class="screen-btn" onclick="showScreen('history')">Amount History</button>
+                <button class="screen-btn active" onclick="showScreen('list', event)">Lista reguł</button>
+                <button class="screen-btn" onclick="showScreen('empty', event)">Lista pusta</button>
+                <button class="screen-btn" onclick="showScreen('create', event)">Tworzenie reguły</button>
+                <button class="screen-btn" onclick="showScreen('edit', event)">Edycja (zmiana kwoty)</button>
+                <button class="screen-btn" onclick="showScreen('detail', event)">Szczegóły reguły</button>
+                <button class="screen-btn" onclick="showScreen('scheduled', event)">Scheduled Change</button>
+                <button class="screen-btn" onclick="showScreen('mismatch', event)">Mismatch Resolution</button>
+                <button class="screen-btn" onclick="showScreen('dashboard', event)">Dashboard</button>
+                <button class="screen-btn" onclick="showScreen('suggestions', event)">AI Suggestions</button>
+                <button class="screen-btn" onclick="showScreen('history', event)">Amount History</button>
+                <button class="screen-btn" onclick="showScreen('delete', event)">Delete Confirmation</button>
             </div>
         </div>
 
@@ -1625,23 +1626,121 @@
                 </div>
             </div>
         </div>
+
+        <!-- Screen: Delete Confirmation -->
+        <div id="screen-delete" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Potwierdzenie usunięcia reguły</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header" style="background: #fef2f2; border-bottom: 1px solid #fecaca;">
+                            <h3 style="color: #dc2626;">⚠️ Usuń regułę: Wynagrodzenie</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert-card warning" style="margin-bottom: 24px;">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-content">
+                                    <div class="alert-title">Ta operacja jest nieodwracalna</div>
+                                    <div class="alert-text">
+                                        Po usunięciu reguły nie będzie można jej przywrócić. Rozważ wstrzymanie reguły zamiast usuwania.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box" style="background: #fef2f2; border: 1px solid #fecaca;">
+                                <div class="preview-title" style="color: #dc2626;">📊 Wpływ na prognozę</div>
+                                <div class="preview-content">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+                                        <div>
+                                            <div style="font-size: 13px; color: var(--gray-500);">Przyszłe wystąpienia</div>
+                                            <div style="font-size: 20px; font-weight: 600; color: #dc2626;">10 transakcji</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 13px; color: var(--gray-500);">Łączna kwota</div>
+                                            <div style="font-size: 20px; font-weight: 600; color: #dc2626;">-85 000 PLN</div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #fecaca;">
+                                        <div style="font-size: 13px; color: var(--gray-500);">Miesiące dotknięte</div>
+                                        <div style="font-size: 14px; font-weight: 500; margin-top: 4px;">marzec 2026 – grudzień 2026</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box" style="margin-top: 16px;">
+                                <div class="preview-title">📋 Wygenerowane transakcje</div>
+                                <div class="preview-content">
+                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+                                        <div style="text-align: center; padding: 12px; background: var(--success-light); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--success);">2</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Potwierdzone</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">zostaną zachowane</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 12px; background: var(--warning-light); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--warning);">1</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Oczekujące</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">można usunąć</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 12px; background: var(--gray-100); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--gray-700);">3</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Łącznie</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">wygenerowanych</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+                                <div style="font-weight: 600; color: #166534; margin-bottom: 8px;">💡 Alternatywy</div>
+                                <ul style="margin: 0; padding-left: 20px; color: #166534; font-size: 14px;">
+                                    <li style="margin-bottom: 4px;"><strong>Wstrzymaj regułę</strong> – zachowasz ją na przyszłość</li>
+                                    <li><strong>Ustaw datę końcową</strong> – reguła zakończy się automatycznie</li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                                    <input type="checkbox" style="margin-top: 2px;">
+                                    <span style="font-size: 14px;">Usuń również oczekujące transakcje (1 transakcja za 8 500 PLN)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="background: #fef2f2; border-top: 1px solid #fecaca;">
+                            <button class="btn btn-outline">Anuluj</button>
+                            <button class="btn btn-outline" style="color: var(--primary); border-color: var(--primary);">Wstrzymaj zamiast usuwać</button>
+                            <button class="btn" style="background: #dc2626; border-color: #dc2626;">Usuń regułę</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        function showScreen(screenId) {
+        function showScreen(screenId, event) {
             // Hide all screens
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.remove('active');
             });
 
             // Show selected screen
-            document.getElementById('screen-' + screenId).classList.add('active');
+            const targetScreen = document.getElementById('screen-' + screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            } else {
+                console.error('Screen not found: screen-' + screenId);
+            }
 
             // Update buttons
             document.querySelectorAll('.screen-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
     </script>
 </body>

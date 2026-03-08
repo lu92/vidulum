@@ -789,19 +789,20 @@
 
         <div class="screen-selector">
             <div class="screen-list">
-                <button class="screen-btn active" onclick="showScreen('list')">Rules List</button>
-                <button class="screen-btn" onclick="showScreen('empty')">Empty State</button>
-                <button class="screen-btn" onclick="showScreen('create')">Create Rule</button>
-                <button class="screen-btn" onclick="showScreen('create-quarterly')">Create Quarterly</button>
-                <button class="screen-btn" onclick="showScreen('create-once')">Create One-time</button>
-                <button class="screen-btn" onclick="showScreen('create-every-n-days')">Create Every N Days</button>
-                <button class="screen-btn" onclick="showScreen('edit')">Edit (Amount Change)</button>
-                <button class="screen-btn" onclick="showScreen('detail')">Rule Details</button>
-                <button class="screen-btn" onclick="showScreen('scheduled')">Scheduled Change</button>
-                <button class="screen-btn" onclick="showScreen('mismatch')">Mismatch Resolution</button>
-                <button class="screen-btn" onclick="showScreen('dashboard')">Dashboard</button>
-                <button class="screen-btn" onclick="showScreen('suggestions')">AI Suggestions</button>
-                <button class="screen-btn" onclick="showScreen('history')">Amount History</button>
+                <button class="screen-btn active" onclick="showScreen('list', event)">Rules List</button>
+                <button class="screen-btn" onclick="showScreen('empty', event)">Empty State</button>
+                <button class="screen-btn" onclick="showScreen('create', event)">Create Rule</button>
+                <button class="screen-btn" onclick="showScreen('create-quarterly', event)">Create Quarterly</button>
+                <button class="screen-btn" onclick="showScreen('create-once', event)">Create One-time</button>
+                <button class="screen-btn" onclick="showScreen('create-every-n-days', event)">Create Every N Days</button>
+                <button class="screen-btn" onclick="showScreen('edit', event)">Edit (Amount Change)</button>
+                <button class="screen-btn" onclick="showScreen('detail', event)">Rule Details</button>
+                <button class="screen-btn" onclick="showScreen('scheduled', event)">Scheduled Change</button>
+                <button class="screen-btn" onclick="showScreen('mismatch', event)">Mismatch Resolution</button>
+                <button class="screen-btn" onclick="showScreen('dashboard', event)">Dashboard</button>
+                <button class="screen-btn" onclick="showScreen('suggestions', event)">AI Suggestions</button>
+                <button class="screen-btn" onclick="showScreen('history', event)">Amount History</button>
+                <button class="screen-btn" onclick="showScreen('delete', event)">Delete Confirmation</button>
             </div>
         </div>
 
@@ -2014,24 +2015,122 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Delete Confirmation Modal -->
+            <div id="screen-delete" class="screen">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <span class="mockup-title">Delete Rule Confirmation</span>
+                </div>
+                <div class="mockup-content">
+                    <div class="modal" style="position: relative; max-width: 100%;">
+                        <div class="modal-header" style="background: #fef2f2; border-bottom: 1px solid #fecaca;">
+                            <h3 style="color: #dc2626;">⚠️ Delete Rule: Salary</h3>
+                            <button class="modal-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert-card warning" style="margin-bottom: 24px;">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-content">
+                                    <div class="alert-title">This action cannot be undone</div>
+                                    <div class="alert-text">
+                                        Once deleted, the rule cannot be restored. Consider pausing the rule instead of deleting.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box" style="background: #fef2f2; border: 1px solid #fecaca;">
+                                <div class="preview-title" style="color: #dc2626;">📊 Impact on Forecast</div>
+                                <div class="preview-content">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+                                        <div>
+                                            <div style="font-size: 13px; color: var(--gray-500);">Future occurrences</div>
+                                            <div style="font-size: 20px; font-weight: 600; color: #dc2626;">10 transactions</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 13px; color: var(--gray-500);">Total amount</div>
+                                            <div style="font-size: 20px; font-weight: 600; color: #dc2626;">-$21,250.00</div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #fecaca;">
+                                        <div style="font-size: 13px; color: var(--gray-500);">Affected months</div>
+                                        <div style="font-size: 14px; font-weight: 500; margin-top: 4px;">March 2026 – December 2026</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="preview-box" style="margin-top: 16px;">
+                                <div class="preview-title">📋 Generated Transactions</div>
+                                <div class="preview-content">
+                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+                                        <div style="text-align: center; padding: 12px; background: var(--success-light); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--success);">2</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Confirmed</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">will be preserved</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 12px; background: var(--warning-light); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--warning);">1</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Pending</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">can be deleted</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 12px; background: var(--gray-100); border-radius: 8px;">
+                                            <div style="font-size: 24px; font-weight: 600; color: var(--gray-700);">3</div>
+                                            <div style="font-size: 12px; color: var(--gray-600);">Total</div>
+                                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">generated</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+                                <div style="font-weight: 600; color: #166534; margin-bottom: 8px;">💡 Alternatives</div>
+                                <ul style="margin: 0; padding-left: 20px; color: #166534; font-size: 14px;">
+                                    <li style="margin-bottom: 4px;"><strong>Pause the rule</strong> – keep it for future use</li>
+                                    <li><strong>Set an end date</strong> – rule will stop automatically</li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-top: 20px;">
+                                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                                    <input type="checkbox" style="margin-top: 2px;">
+                                    <span style="font-size: 14px;">Also delete pending transactions (1 transaction for $2,125.00)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="background: #fef2f2; border-top: 1px solid #fecaca;">
+                            <button class="btn btn-outline">Cancel</button>
+                            <button class="btn btn-outline" style="color: var(--primary); border-color: var(--primary);">Pause Instead</button>
+                            <button class="btn" style="background: #dc2626; border-color: #dc2626;">Delete Rule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
         </div>
     </div>
 
     <script>
-        function showScreen(screenId) {
+        function showScreen(screenId, event) {
             // Hide all screens
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.remove('active');
             });
 
             // Show selected screen
-            document.getElementById('screen-' + screenId).classList.add('active');
+            const targetScreen = document.getElementById('screen-' + screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            } else {
+                console.error('Screen not found: screen-' + screenId);
+            }
 
             // Update buttons
             document.querySelectorAll('.screen-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
         function updateFrequencyFields() {

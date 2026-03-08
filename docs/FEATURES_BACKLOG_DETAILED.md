@@ -304,15 +304,21 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 
 ### ❌ Brakuje (v2.0 - Priorytet NISKI)
 
-| Funkcjonalność | Opis |
-|----------------|------|
-| **amountIsEstimate** | Flaga dla kwot przybliżonych |
-| **Amount Changes API** | Endpointy do dodawania/usuwania zmian kwot |
-| **GET /me fix** | Używa username zamiast userId (bug) |
-| **counterpartyName/Account** | Hints dla future reconciliation |
-| **Category archived handling** | Auto-pause przy archiwizacji kategorii |
-| **CashFlowClosedEvent handling** | Auto-pause przy zamknięciu CF |
-| **Batch operations** | Bulk create/update/delete |
+| Funkcjonalność | Opis | Priorytet |
+|----------------|------|-----------|
+| ~~**Amount Changes API**~~ | ✅ DONE - Endpointy zaimplementowane | - |
+| ~~**GET /me fix**~~ | ✅ OK - działa prawidłowo | - |
+| **GET /{ruleId}/impact-preview** | Podgląd wpływu usunięcia reguły na forecast | 🟡 Średni |
+| **deleteGeneratedTransactions** | Opcja usuwania CashChanges przy DELETE rule | 🟡 Średni |
+| **amountIsEstimate** | Flaga dla kwot przybliżonych | 🟢 Niski |
+| **counterpartyName/Account** | Hints dla future reconciliation | 🟢 Niski |
+| **executionHistory** | Historia wykonań w response | 🟢 Niski |
+| **statistics** | Statystyki reguły w response | 🟢 Niski |
+| **Category archived handling** | Auto-pause przy archiwizacji kategorii | 🟢 Niski |
+| **CashFlowClosedEvent handling** | Auto-pause przy zamknięciu CF | 🟢 Niski |
+| **Batch operations** | Bulk create/update/delete | 🟢 Niski |
+| **Pagination** | Paginacja na listach reguł | 🟢 Niski |
+| **X-Idempotency-Key** | Idempotentne requesty | 🟢 Niski |
 
 ### REST API (kompletne)
 
@@ -321,7 +327,7 @@ POST   /api/v1/recurring-rules                  # Utwórz regułę
 GET    /api/v1/recurring-rules/{ruleId}         # Szczegóły reguły
 GET    /api/v1/recurring-rules/cash-flow/{id}   # Lista reguł dla CashFlow
 GET    /api/v1/recurring-rules/user/{userId}    # Lista reguł użytkownika
-GET    /api/v1/recurring-rules/me               # Moje reguły (⚠️ bug: używa username)
+GET    /api/v1/recurring-rules/me               # Moje reguły
 PUT    /api/v1/recurring-rules/{ruleId}         # Edytuj regułę + regeneracja
 DELETE /api/v1/recurring-rules/{ruleId}         # Usuń regułę + cleanup
 POST   /api/v1/recurring-rules/{ruleId}/pause   # Wstrzymaj (z resumeDate)
