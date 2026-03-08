@@ -26,4 +26,6 @@ public interface DomainRecurringRuleRepository {
     void delete(RecurringRuleId ruleId);
 
     long generateNextSequence();
+
+    long generateNextAmountChangeSequence();
 }

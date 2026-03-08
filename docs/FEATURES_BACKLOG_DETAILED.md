@@ -9,12 +9,13 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
 2. [✅ DONE: Month Rollover & Ongoing Sync](#2--done-month-rollover--ongoing-sync)
 3. [Kafka Dead Letter Queue (DLQ)](#3-kafka-dead-letter-queue-dlq)
-4. [✅ PARTIAL: Recurring Rule Engine](#4--partial-recurring-rule-engine)
+4. [✅ DONE: Recurring Rule Engine](#4--done-recurring-rule-engine)
 5. [AI Categorization](#5-ai-categorization)
 6. [Intelligent Reconciliation](#6-intelligent-reconciliation)
 7. [Alerts & CashChange Lifecycle](#7-alerts--cashchange-lifecycle)
 8. [Maven Multi-Module Migration](#8-maven-multi-module-migration)
 9. [Canonical CSV Architecture](#9-canonical-csv-architecture)
+10. [🔴 CRITICAL: Resource Ownership Security (VID-132)](#10--critical-resource-ownership-security-vid-132)
 
 ---
 
@@ -680,6 +681,93 @@ TX002,2026-01-31,Salary,8000.00,PLN,INFLOW,Income,Employer ABC
 | 🟡 ŚREDNI | AI Categorization | UX improvement | TODO |
 | 🟡 ŚREDNI | Alerts | Proactive notifications | TODO |
 | 🟡 ŚREDNI | Reconciliation | Automatyzacja | TODO |
+| 🔴 CRITICAL | Resource Ownership Security (VID-132) | Security vulnerability - IDOR | **TODO - PRZED PRODUKCJĄ** |
 | 🟢 NISKI | Recurring Rules v2.0 | Amount Changes API, batch ops | TODO |
 | 🟢 NISKI | Maven Multi-Module | Refactoring | TODO |
 | 🟢 NISKI | Canonical CSV | Nice to have | TODO |
+
+---
+
+## 10. 🔴 CRITICAL: Resource Ownership Security (VID-132)
+
+**Plik:** `docs/features-backlog/VID-132-resource-ownership-security.md`
+**Priorytet:** 🔴 KRYTYCZNY (Security)
+**Szacowany czas:** 8-12 godzin
+**Status:** TODO - **WYMAGANE PRZED PRODUKCJĄ**
+
+### Problem
+
+Aplikacja nie weryfikuje własności zasobów. Każdy uwierzytelniony użytkownik może:
+- Odczytywać/modyfikować/usuwać RecurringRules innych użytkowników
+- Uzyskać dostęp do CashFlow innych użytkowników
+- Importować dane do CashFlow innych użytkowników
+
+Jest to podatność **IDOR (Insecure Direct Object Reference)** - jedna z OWASP Top 10.
+
+### Podatne endpointy
+
+| API | Endpointy | Podatność |
+|-----|-----------|-----------|
+| RecurringRules | GET/PUT/DELETE `/{ruleId}`, pause, resume, regenerate, amount-changes | Każdy user może operować na dowolnej regule |
+| RecurringRules | GET `/user/{userId}` | Każdy user może zobaczyć reguły innych |
+| CashFlow | GET/POST/PUT/DELETE `/cf={cashFlowId}/*` | Każdy user może operować na dowolnym CF |
+| Bank Data Ingestion | POST `/cf={cashFlowId}/*` | Każdy user może importować do dowolnego CF |
+
+### Dodatkowe problemy
+
+1. **userId w Request Body** - klient może podać dowolne userId (impersonacja)
+2. **CORS localhost** - localhost dozwolony w produkcji
+
+### Plan implementacji (7 faz)
+
+1. **Faza 1**: Infrastruktura security
+   - `ResourceOwnershipService` - weryfikacja własności
+   - `AccessDeniedException` - wyjątek 403
+   - `ErrorCode.ACCESS_DENIED`
+
+2. **Faza 2**: Naprawa RecurringRules API (11 endpointów)
+
+3. **Faza 3**: Naprawa CashFlow API
+
+4. **Faza 4**: Naprawa Bank Data Ingestion API
+
+5. **Faza 5**: Konfiguracja CORS dla produkcji
+
+6. **Faza 6**: Usunięcie userId z DTO (pobieranie z JWT)
+
+7. **Faza 7**: Testy security
+
+### Pliki do utworzenia
+
+| Plik | Opis |
+|------|------|
+| `ResourceOwnershipService.java` | Serwis weryfikacji własności |
+| `AccessDeniedException.java` | Wyjątek 403 |
+| `application-prod.yml` | Konfiguracja CORS dla produkcji |
+
+### Pliki do modyfikacji
+
+| Plik | Zmiana |
+|------|--------|
+| `ErrorCode.java` | Dodanie ACCESS_DENIED |
+| `ErrorHttpHandler.java` | Handler dla AccessDeniedException |
+| `RecurringRulesController.java` | Weryfikacja własności |
+| `CreateRuleRequest.java` | Usunięcie userId |
+| `CashFlowRestController.java` | Weryfikacja własności |
+| `CashFlowDto.java` | Usunięcie userId z CreateCashFlowJson |
+| `BankDataIngestionRestController.java` | Weryfikacja własności |
+| `SecurityConfiguration.java` | Konfiguracja CORS |
+| Testy (4 pliki) | Nowe testy security |
+
+### Oczekiwane HTTP Status Codes
+
+| Scenariusz | Status |
+|------------|--------|
+| User uzyskuje dostęp do własnego zasobu | 200 OK |
+| User uzyskuje dostęp do zasobu innego użytkownika | **403 FORBIDDEN** |
+| Zasób nie istnieje | 404 NOT_FOUND |
+| Brak/nieprawidłowy token | 401 UNAUTHORIZED |
+
+### Szczegółowa dokumentacja
+
+Pełny design z przykładami kodu: `docs/features-backlog/VID-132-resource-ownership-security.md`

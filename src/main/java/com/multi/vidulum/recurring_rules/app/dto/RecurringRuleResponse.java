@@ -34,6 +34,7 @@ public class RecurringRuleResponse {
     private List<LocalDate> excludedDates;
     private RuleStatus status;
     private PauseInfoDto pauseInfo;
+    private List<AmountChangeResponse> amountChanges;
     private List<String> generatedCashChangeIds;
     private Integer remainingOccurrences;
     private Instant createdAt;
@@ -63,6 +64,9 @@ public class RecurringRuleResponse {
                 .excludedDates(snapshot.excludedDates() != null ? snapshot.excludedDates() : List.of())
                 .status(snapshot.status())
                 .pauseInfo(snapshot.pauseInfo() != null ? PauseInfoDto.from(snapshot.pauseInfo()) : null)
+                .amountChanges(snapshot.amountChanges() != null
+                        ? snapshot.amountChanges().stream().map(AmountChangeResponse::from).toList()
+                        : List.of())
                 .generatedCashChangeIds(snapshot.generatedCashChangeIds().stream()
                         .map(CashChangeId::id)
                         .toList())

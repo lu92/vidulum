@@ -407,6 +407,64 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    // ============ Recurring Rules - Resources Not Found (404) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException.class)
+    public ResponseEntity<ApiError> handleRecurringRuleNotFound(com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException ex) {
+        log.debug("Recurring rule not found: {}", ex.getRuleId().id());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.AmountChangeNotFoundException.class)
+    public ResponseEntity<ApiError> handleAmountChangeNotFound(com.multi.vidulum.recurring_rules.domain.exceptions.AmountChangeNotFoundException ex) {
+        log.debug("Amount change not found: {} in rule {}", ex.getAmountChangeId().id(), ex.getRuleId().id());
+        ApiError error = ApiError.of(ErrorCode.AMOUNT_CHANGE_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowNotFoundException.class)
+    public ResponseEntity<ApiError> handleRecurringRuleCashFlowNotFound(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowNotFoundException ex) {
+        log.debug("CashFlow not found for recurring rule: {}", ex.getCashFlowId().id());
+        ApiError error = ApiError.of(ErrorCode.CASHFLOW_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Recurring Rules - Validation Errors (400) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDateRangeException.class)
+    public ResponseEntity<ApiError> handleRecurringRuleInvalidDateRange(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDateRangeException ex) {
+        log.debug("Invalid date range: {} to {}", ex.getStartDate(), ex.getEndDate());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_INVALID_DATE_RANGE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException.class)
+    public ResponseEntity<ApiError> handleRecurringRuleCategoryNotFound(com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException ex) {
+        log.debug("Category not found in CashFlow {}: {}", ex.getCashFlowId().id(), ex.getCategoryName().name());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_CATEGORY_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Recurring Rules - Invalid State (409) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException.class)
+    public ResponseEntity<ApiError> handleInvalidRuleState(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException ex) {
+        log.debug("Invalid rule state: rule {} in status {} cannot perform {}",
+                ex.getRuleId().id(), ex.getCurrentStatus(), ex.getOperation());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_INVALID_STATE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ Recurring Rules - Communication Errors (503) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException.class)
+    public ResponseEntity<ApiError> handleRecurringRuleCashFlowCommunication(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException ex) {
+        log.error("CashFlow communication error for recurring rule: {}", ex.getMessage(), ex);
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_CASHFLOW_COMMUNICATION_ERROR, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ General Error Handler ============
 
     @ExceptionHandler(Exception.class)

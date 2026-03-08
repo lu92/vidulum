@@ -5,6 +5,7 @@ import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.recurring_rules.domain.exceptions.AmountChangeNotFoundException;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -260,10 +261,10 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         emit(new RecurringRuleEvent.AmountChangeAdded(ruleId, amountChange, clock.instant()));
     }
 
-    public void removeAmountChange(AmountChangeId amountChangeId, Clock clock) {
+    public void removeAmountChange(AmountChangeId amountChangeId, Clock clock) throws AmountChangeNotFoundException {
         boolean removed = amountChanges.removeIf(ac -> ac.id().equals(amountChangeId));
         if (!removed) {
-            throw new IllegalArgumentException("Amount change not found: " + amountChangeId.id());
+            throw new AmountChangeNotFoundException(ruleId, amountChangeId);
         }
         this.lastModifiedAt = clock.instant();
 

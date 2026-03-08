@@ -86,6 +86,20 @@ public enum ErrorCode {
     // CashFlow - Rollover
     CASHFLOW_ROLLOVER_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Month rollover not allowed"),
 
+    // Recurring Rules - Resources Not Found
+    RECURRING_RULE_NOT_FOUND(HttpStatus.NOT_FOUND, "Recurring rule not found"),
+    AMOUNT_CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "Amount change not found"),
+
+    // Recurring Rules - Validation Errors
+    RECURRING_RULE_INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "End date must be after start date"),
+    RECURRING_RULE_CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "Category not found in CashFlow"),
+
+    // Recurring Rules - Invalid State
+    RECURRING_RULE_INVALID_STATE(HttpStatus.CONFLICT, "Operation not allowed in current rule status"),
+
+    // Recurring Rules - Communication Errors
+    RECURRING_RULE_CASHFLOW_COMMUNICATION_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "Failed to communicate with CashFlow service"),
+
     // Internal
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found");

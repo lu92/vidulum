@@ -209,6 +209,59 @@ public class RecurringRuleService {
         generateExpectedCashChanges(rule, authToken);
     }
 
+    public AmountChangeId handle(AddAmountChangeCommand command, String authToken) throws RecurringRuleException {
+        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
+        RecurringRule rule = findRuleOrThrow(ruleId);
+
+        if (rule.isDeleted()) {
+            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "add amount change");
+        }
+
+        // Generate ID
+        long sequence = ruleRepository.generateNextAmountChangeSequence();
+        AmountChangeId changeId = AmountChangeId.generate(sequence);
+
+        AmountChange amountChange = new AmountChange(
+                changeId,
+                command.amount(),
+                command.type(),
+                command.reason()
+        );
+
+        rule.addAmountChange(amountChange, clock);
+        ruleRepository.save(rule);
+
+        // Regenerate expected cash changes if rule is active
+        if (rule.isActive()) {
+            clearGeneratedCashChanges(rule, authToken);
+            generateExpectedCashChanges(rule, authToken);
+        }
+
+        log.info("Added {} amount change {} to rule {}", command.type(), changeId.id(), ruleId.id());
+        return changeId;
+    }
+
+    public void handle(RemoveAmountChangeCommand command, String authToken) throws RecurringRuleException {
+        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
+        RecurringRule rule = findRuleOrThrow(ruleId);
+
+        if (rule.isDeleted()) {
+            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "remove amount change");
+        }
+
+        AmountChangeId changeId = AmountChangeId.of(command.amountChangeId());
+        rule.removeAmountChange(changeId, clock);
+        ruleRepository.save(rule);
+
+        // Regenerate expected cash changes if rule is active
+        if (rule.isActive()) {
+            clearGeneratedCashChanges(rule, authToken);
+            generateExpectedCashChanges(rule, authToken);
+        }
+
+        log.info("Removed amount change {} from rule {}", changeId.id(), ruleId.id());
+    }
+
     // Query Handlers
 
 
