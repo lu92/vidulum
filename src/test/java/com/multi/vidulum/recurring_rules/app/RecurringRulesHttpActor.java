@@ -646,6 +646,47 @@ public class RecurringRulesHttpActor {
         }
     }
 
+    // ============ Impact Preview Operation ============
+
+    /**
+     * Gets delete impact preview for a recurring rule.
+     * Shows what will happen when the rule is deleted:
+     * - Future occurrences that will be removed
+     * - Generated transactions (pending vs confirmed)
+     * - Forecast impact (affected months)
+     * - Warnings and recommendations
+     */
+    public DeleteImpactPreviewResponse getDeleteImpactPreview(String ruleId) {
+        ResponseEntity<DeleteImpactPreviewResponse> response = restTemplate.exchange(
+                baseUrl + "/" + ruleId + "/impact-preview",
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
+                DeleteImpactPreviewResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.info("Got delete impact preview for rule: id={}", ruleId);
+        return response.getBody();
+    }
+
+    /**
+     * Gets delete impact preview expecting an error response.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, String>> getDeleteImpactPreviewExpectingError(String ruleId) {
+        try {
+            return rawRestTemplate.exchange(
+                    baseUrl + "/" + ruleId + "/impact-preview",
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, String>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, String> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Helper Methods ============
 
     private HttpHeaders jsonHeaders() {
