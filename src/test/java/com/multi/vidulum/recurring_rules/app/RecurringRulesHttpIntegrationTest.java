@@ -2046,4 +2046,223 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("Valid MONTHLY with -1 dayOfMonth test completed: {}", ruleId);
     }
+
+    // ==================== PAUSE/RESUME STATE VALIDATION TESTS ====================
+
+    @Test
+    void shouldReturn409WhenPausingAlreadyPausedRule() {
+        // GIVEN: Setup CashFlow and create a rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Double Pause Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Netflix", "Streaming subscription",
+                Money.of(-50, CURRENCY), "Subscription",
+                LocalDate.of(2022, 1, 1), null, 15, 1, false
+        );
+
+        // Pause the rule for the first time
+        recurringRulesActor.pauseRule(ruleId, LocalDate.of(2022, 6, 1), "Taking a break");
+
+        // Verify it's paused
+        RecurringRuleResponse pausedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(pausedRule.getStatus()).isEqualTo(RuleStatus.PAUSED);
+
+        // WHEN: Try to pause again
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.pauseRuleExpectingError(
+                ruleId, LocalDate.of(2022, 7, 1), "Second pause attempt"
+        );
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("pause");
+        assertThat(response.getBody().get("message")).contains("PAUSED");
+
+        log.info("409 for double pause test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenResumingActiveRule() {
+        // GIVEN: Setup CashFlow and create an ACTIVE rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Resume Active Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Gym", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Gym Membership", "Monthly gym fee",
+                Money.of(-100, CURRENCY), "Gym",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Verify it's active
+        RecurringRuleResponse activeRule = recurringRulesActor.getRule(ruleId);
+        assertThat(activeRule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+
+        // WHEN: Try to resume an active rule (invalid operation)
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.resumeRuleExpectingError(ruleId);
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("resume");
+        assertThat(response.getBody().get("message")).contains("ACTIVE");
+
+        log.info("409 for resume active rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenPausingDeletedRule() {
+        // GIVEN: Setup CashFlow and create a rule, then delete it
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pause Deleted Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Insurance", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Car Insurance", "Monthly insurance",
+                Money.of(-200, CURRENCY), "Insurance",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Delete the rule
+        recurringRulesActor.deleteRule(ruleId, "No longer needed");
+
+        // Verify it's deleted
+        RecurringRuleResponse deletedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(deletedRule.getStatus()).isEqualTo(RuleStatus.DELETED);
+
+        // WHEN: Try to pause a deleted rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.pauseRuleExpectingError(
+                ruleId, LocalDate.of(2022, 6, 1), "Trying to pause deleted"
+        );
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("pause");
+        assertThat(response.getBody().get("message")).contains("DELETED");
+
+        log.info("409 for pause deleted rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenResumingDeletedRule() {
+        // GIVEN: Setup CashFlow and create a rule, pause it, then delete it
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Resume Deleted Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Utilities", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Electricity Bill", "Monthly electricity",
+                Money.of(-150, CURRENCY), "Utilities",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Pause first
+        recurringRulesActor.pauseRule(ruleId, null, "Pausing before delete");
+
+        // Delete the paused rule
+        recurringRulesActor.deleteRule(ruleId, "No longer needed");
+
+        // Verify it's deleted
+        RecurringRuleResponse deletedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(deletedRule.getStatus()).isEqualTo(RuleStatus.DELETED);
+
+        // WHEN: Try to resume a deleted rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.resumeRuleExpectingError(ruleId);
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("resume");
+        assertThat(response.getBody().get("message")).contains("DELETED");
+
+        log.info("409 for resume deleted rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldClearPendingCashChangesWhenPausingAndRegenerateWhenResuming() {
+        // GIVEN: Setup CashFlow and create a rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pause Clear Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Rent", "Rent payment",
+                Money.of(-1000, CURRENCY), "Rent",
+                LocalDate.of(2022, 1, 1), LocalDate.of(2022, 12, 31), 1, 1, false
+        );
+
+        // Verify rule has generated cash changes
+        RecurringRuleResponse activeRule = recurringRulesActor.getRule(ruleId);
+        int initialCashChangesCount = activeRule.getGeneratedCashChangeIds().size();
+        assertThat(initialCashChangesCount).isGreaterThan(0);
+        log.info("Rule created with {} cash changes", initialCashChangesCount);
+
+        // WHEN: Pause the rule
+        recurringRulesActor.pauseRule(ruleId, LocalDate.of(2022, 6, 1), "Taking a break from rent");
+
+        // THEN: Generated cash changes should be cleared (pending ones deleted)
+        RecurringRuleResponse pausedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(pausedRule.getStatus()).isEqualTo(RuleStatus.PAUSED);
+        int afterPauseCashChangesCount = pausedRule.getGeneratedCashChangeIds().size();
+        log.info("After pause: {} cash changes remain", afterPauseCashChangesCount);
+
+        // WHEN: Resume the rule
+        recurringRulesActor.resumeRule(ruleId);
+
+        // THEN: New cash changes should be generated
+        RecurringRuleResponse resumedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(resumedRule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+        int afterResumeCashChangesCount = resumedRule.getGeneratedCashChangeIds().size();
+        assertThat(afterResumeCashChangesCount).isGreaterThan(0);
+        log.info("After resume: {} cash changes generated", afterResumeCashChangesCount);
+
+        log.info("Pause clears, resume regenerates test completed successfully");
+    }
 }

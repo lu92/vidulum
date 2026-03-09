@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -66,6 +67,14 @@ public class RecurringRuleRepositoryAdapter implements DomainRecurringRuleReposi
     @Override
     public List<RecurringRule> findActiveRulesByCashFlowId(CashFlowId cashFlowId) {
         return mongoRepository.findByCashFlowIdAndStatus(cashFlowId.id(), RuleStatus.ACTIVE).stream()
+                .map(RecurringRuleEntity::toSnapshot)
+                .map(RecurringRule::fromSnapshot)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RecurringRule> findPausedRulesWithResumeDateOnOrBefore(LocalDate date) {
+        return mongoRepository.findPausedRulesWithResumeDateOnOrBefore(date).stream()
                 .map(RecurringRuleEntity::toSnapshot)
                 .map(RecurringRule::fromSnapshot)
                 .collect(Collectors.toList());
