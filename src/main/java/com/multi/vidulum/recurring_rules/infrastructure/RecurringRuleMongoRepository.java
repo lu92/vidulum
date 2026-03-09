@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -20,4 +21,11 @@ public interface RecurringRuleMongoRepository extends MongoRepository<RecurringR
 
     @Query("{ 'status': 'ACTIVE' }")
     List<RecurringRuleEntity> findAllActiveRules();
+
+    /**
+     * Finds paused rules that have a resumeDate on or before the given date.
+     * Used by auto-resume scheduler to find rules that should be automatically resumed.
+     */
+    @Query("{ 'status': 'PAUSED', 'pauseInfo.resumeDate': { $ne: null, $lte: ?0 } }")
+    List<RecurringRuleEntity> findPausedRulesWithResumeDateOnOrBefore(LocalDate date);
 }

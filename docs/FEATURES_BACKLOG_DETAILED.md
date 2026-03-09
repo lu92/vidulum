@@ -16,6 +16,10 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 8. [Maven Multi-Module Migration](#8-maven-multi-module-migration)
 9. [Canonical CSV Architecture](#9-canonical-csv-architecture)
 10. [🔴 CRITICAL: Resource Ownership Security (VID-132)](#10--critical-resource-ownership-security-vid-132)
+11. [🔴 HIGH: Fix Pause/Resume Duplicates + Auto-Resume (VID-145)](#11--high-fix-pauseresume-duplicates--auto-resume-scheduler-vid-145)
+12. [🔴 CRITICAL: Enable Scheduling Infrastructure (VID-146)](#12--critical-enable-scheduling-infrastructure-vid-146)
+13. [🟡 MEDIUM: System Auth Token for Schedulers (VID-147)](#13--medium-system-auth-token-for-schedulers-vid-147)
+14. [🟡 MEDIUM: Recurring Rules Atomicity & Saga (VID-148)](#14--medium-recurring-rules-atomicity--saga-vid-148)
 
 ---
 
@@ -777,3 +781,286 @@ Jest to podatność **IDOR (Insecure Direct Object Reference)** - jedna z OWASP 
 ### Szczegółowa dokumentacja
 
 Pełny design z przykładami kodu: `docs/features-backlog/VID-132-resource-ownership-security.md`
+
+---
+
+## 11. 🔴 HIGH: Fix Pause/Resume Duplicates + Auto-Resume Scheduler (VID-145)
+
+**Priorytet:** 🔴 WYSOKI (Bug fix + new feature)
+**Szacowany czas:** 12-16 godzin
+**Status:** TODO
+**Zależności:** VID-146 (Enable Scheduling Infrastructure)
+
+### Problem
+
+W systemie recurring rules występuje bug z duplikatami cash changes podczas cyklu pause → resume → pause → resume:
+- **Pause** zmienia tylko status na PAUSED, ale **nie usuwa** pending cash changes
+- **Resume** generuje **nowe** cash changes bez sprawdzenia czy stare istnieją
+- **Auto-resume** - mechanizm `PauseInfo.shouldResumeOn()` istnieje w kodzie ale nie jest nigdzie wykorzystywany (brak schedulera)
+
+### Wymagana filozofia biznesowa (Opcja B)
+
+- Paused rule = brak przyszłych płatności w forecast
+- Jeśli użytkownik pauzuje regułę, to znaczy że NIE CHCE tych płatności w najbliższym czasie
+- Forecast powinien odzwierciedlać rzeczywistość
+- resumeDate to planowana intencja wznowienia, nie gwarancja
+
+### Plan implementacji
+
+#### 1. Fix Pause - usuwanie pending przy pauzie
+```java
+// RecurringRuleService.handle(PauseRuleCommand)
+clearGeneratedCashChanges(rule, authToken);  // NEW: przed zmianą statusu
+rule.pause(pauseInfo, clock);
+ruleRepository.save(rule);
+```
+
+#### 2. Fix Resume - clear + generate od nowa
+```java
+// RecurringRuleService.handle(ResumeRuleCommand)
+rule.resume(clock);
+ruleRepository.save(rule);
+clearGeneratedCashChanges(rule, authToken);    // NEW: clear pozostałe
+generateExpectedCashChanges(rule, authToken);   // generate nowe
+```
+
+#### 3. Auto-Resume Scheduler
+```java
+@Scheduled(cron = "${vidulum.recurring-rules.auto-resume.cron:0 0 3 * * *}")
+public void autoResumePausedRules() {
+    // 1. Find: status=PAUSED, resumeDate != null, resumeDate <= today
+    // 2. For each: resume + generate cash changes from resumeDate
+}
+```
+
+### Acceptance Criteria
+
+1. ✅ Pause usuwa PENDING cash changes (CONFIRMED pozostają)
+2. ✅ Resume nie tworzy duplikatów
+3. ✅ Cykl pause→resume→pause→resume działa poprawnie
+4. ✅ Auto-resume scheduler działa o zaplanowanej porze
+5. ✅ Auto-resume generuje cash changes od resumeDate
+6. ✅ Reguły bez resumeDate (indefinite) nie są auto-wznawiane
+7. ✅ Testy pokrywają wszystkie scenariusze
+
+### Testy do dodania
+
+1. `shouldClearPendingCashChangesWhenPausingRule`
+2. `shouldNotCreateDuplicatesOnPauseResumePauseResumeCycle`
+3. `shouldAutoResumeRuleOnScheduledDate`
+4. `shouldNotAutoResumeRuleBeforeScheduledDate`
+5. `shouldGenerateCashChangesFromResumeDateOnAutoResume`
+6. `shouldPreserveConfirmedCashChangesWhenPausing`
+
+---
+
+## 12. 🔴 CRITICAL: Enable Scheduling Infrastructure (VID-146)
+
+**Priorytet:** 🔴 KRYTYCZNY (Infrastructure bug)
+**Szacowany czas:** 1-2 godziny
+**Status:** TODO
+**Blokuje:** VID-145
+
+### Problem
+
+**`@EnableScheduling` brakuje w aplikacji!** Istniejący `MonthlyRolloverScheduler` prawdopodobnie NIE DZIAŁA, bo Spring Boot nie uruchamia `@Scheduled` metod bez `@EnableScheduling`.
+
+### Rozwiązanie
+
+```java
+// src/main/java/com/multi/vidulum/config/SchedulingConfig.java
+@Configuration
+@EnableScheduling
+public class SchedulingConfig {
+}
+```
+
+### Harmonogram schedulerów (UTC)
+
+| Godzina | Scheduler | Opis | Uzasadnienie |
+|---------|-----------|------|--------------|
+| **02:00** | MonthlyRolloverScheduler | Rollover CashFlow do nowego miesiąca | Istniejący, uruchamia się 1. dnia miesiąca |
+| **03:00** | RecurringRuleAutoResumeScheduler | Auto-resume paused rules | **Musi być PO rollover** - daje godzinę marginesu |
+
+**Dlaczego 03:00 a nie 02:30?**
+- Rollover może trwać dłużej dla dużej liczby CashFlows
+- Bezpieczniejszy margines
+- Prostsza konfiguracja (pełne godziny)
+- W razie problemów z rollover, auto-resume nie wygeneruje cash changes do nieistniejącego miesiąca
+
+### Konfiguracja
+
+```yaml
+# application.yml
+vidulum:
+  rollover:
+    cron: "0 0 2 1 * *"  # 02:00 UTC, 1. dzień miesiąca
+  recurring-rules:
+    auto-resume:
+      enabled: true
+      cron: "0 0 3 * * *"  # 03:00 UTC, codziennie
+```
+
+### Testy
+
+1. Zweryfikować że `MonthlyRolloverScheduler` zaczyna działać po dodaniu `@EnableScheduling`
+2. Test że scheduler uruchamia się zgodnie z cronem (unit test z mockiem Clock)
+
+---
+
+## 13. 🟡 MEDIUM: System Auth Token for Schedulers (VID-147)
+
+**Priorytet:** 🟡 ŚREDNI
+**Szacowany czas:** 4-6 godzin
+**Status:** TODO
+**Zależności:** VID-145 (wymaga tokenu dla komunikacji z CashFlow service)
+
+### Problem
+
+Schedulery (`MonthlyRolloverScheduler`, `RecurringRuleAutoResumeScheduler`) muszą komunikować się z CashFlow service przez HTTP. Obecnie wszystkie endpointy wymagają JWT tokenu użytkownika, ale schedulery działają bez kontekstu użytkownika.
+
+### Opcje rozwiązania
+
+| Opcja | Opis | Zalety | Wady |
+|-------|------|--------|------|
+| **A) Service Account** | Stałe konto systemowe z tokenem | Proste, audytowalne | Token może wygasnąć |
+| **B) Internal Token** | Specjalny token bez expiry | Bezobsługowe | Security risk jeśli wycieknie |
+| **C) Direct Domain Access** | Scheduler używa `DomainCashFlowRepository` bezpośrednio | Brak HTTP overhead | Łamie architekturę (coupling) |
+| **D) Machine-to-Machine JWT** | Token generowany przy starcie aplikacji | Standardowe rozwiązanie | Wymaga refresh logic |
+
+### Rekomendacja: Opcja D - Machine-to-Machine JWT
+
+```java
+@Component
+@RequiredArgsConstructor
+public class SystemTokenProvider {
+
+    private final JwtService jwtService;
+    private final Clock clock;
+
+    private static final String SYSTEM_SUBJECT = "SYSTEM_SCHEDULER";
+    private static final Duration TOKEN_VALIDITY = Duration.ofHours(25); // > 24h cron interval
+
+    private volatile String cachedToken;
+    private volatile Instant tokenExpiry;
+
+    public String getSystemToken() {
+        if (cachedToken == null || Instant.now(clock).isAfter(tokenExpiry.minus(Duration.ofMinutes(5)))) {
+            refreshToken();
+        }
+        return cachedToken;
+    }
+
+    private synchronized void refreshToken() {
+        cachedToken = jwtService.generateSystemToken(SYSTEM_SUBJECT, TOKEN_VALIDITY);
+        tokenExpiry = Instant.now(clock).plus(TOKEN_VALIDITY);
+    }
+}
+```
+
+### Zmiany w JwtService
+
+```java
+public String generateSystemToken(String subject, Duration validity) {
+    return Jwts.builder()
+            .subject(subject)
+            .claim("type", "SYSTEM")  // marker dla system tokens
+            .issuedAt(Date.from(Instant.now(clock)))
+            .expiration(Date.from(Instant.now(clock).plus(validity)))
+            .signWith(getSigningKey())
+            .compact();
+}
+```
+
+### Security considerations
+
+1. **Audit log** - logować wszystkie operacje z system token
+2. **Rate limiting** - ograniczyć liczbę operacji per token
+3. **Monitoring** - alert przy nietypowej aktywności system tokenu
+4. **Rotation** - token ważny max 25h, automatycznie odświeżany
+
+### Pliki do utworzenia/modyfikacji
+
+| Plik | Zmiana |
+|------|--------|
+| `SystemTokenProvider.java` | **NEW** - provider tokenów systemowych |
+| `JwtService.java` | Dodać `generateSystemToken()` |
+| `RecurringRuleAutoResumeScheduler.java` | Użyć `SystemTokenProvider` |
+| `MonthlyRolloverScheduler.java` | Użyć `SystemTokenProvider` (jeśli potrzebuje) |
+
+---
+
+## 14. 🟡 MEDIUM: Recurring Rules Atomicity & Saga (VID-148)
+
+**Plik:** `docs/features-backlog/VID-148-recurring-rules-atomicity-saga.md`
+**Priorytet:** ŚREDNI
+**Szacowany czas:** 8-16 godzin
+**Zależności:** VID-147 (System Auth Token)
+
+### Problem
+
+Operacje Pause/Resume w Recurring Rules nie są atomowe między RecurringRule (MongoDB) a CashFlow (osobny agregat/HTTP call). Może prowadzić do niespójności danych w scenariuszach awarii.
+
+### Obecny flow (clearGeneratedCashChanges):
+
+```
+1. batchDeleteExpectedCashChanges() → HTTP call do CashFlow (usuwa CashChanges)
+2. rule.clearGeneratedCashChanges()  → aktualizuje listę IDs w obiekcie rule
+3. ruleRepository.save(rule)         → zapisuje rule do MongoDB
+```
+
+### Scenariusze awarii
+
+| Scenariusz | Opis | Skutek |
+|------------|------|--------|
+| **Awaria po HTTP delete** | HTTP się udaje, app pada przed save rule | CashChanges usunięte, ale IDs w rule nadal istnieją |
+| **Awaria podczas generate** | 5/10 CashChanges utworzonych, app pada | "Osieroce" CashChanges nie śledzone przez rule |
+| **Cykliczne Pause/Resume** | Każdy cykl ma małe ryzyko partial failure | Narastanie osieroconych CashChanges |
+
+### Rozwiązania
+
+#### Opcja A: Saga z kompensacją (złożone)
+Dodać rollback logikę - skomplikowane do implementacji
+
+#### Opcja B: Idempotentność + Scheduled Reconciliation (rekomendowane)
+```java
+@Scheduled(cron = "0 0 4 * * *") // 04:00 UTC
+public void reconcileRulesWithCashChanges() {
+    // Znajdź osieroce CashChanges i usuń
+    // Znajdź phantom IDs w rules i usuń
+}
+```
+
+#### Opcja C: Intent-First (średnia złożoność)
+Najpierw zapisać intencję w rule, potem wykonać HTTP call
+
+### Rekomendacja
+
+**Short-term (VID-148a)**: Opcja B - Reconciliation Scheduler
+- Niskie ryzyko, self-healing
+- Działa obok istniejącego kodu
+
+**Medium-term (VID-148b)**: Opcja C - Intent-First
+- Lepsze gwarancje spójności
+
+### Acceptance Criteria
+
+- [ ] Scheduled job reconciliation (04:00 UTC)
+- [ ] Wykrywanie i czyszczenie orphaned CashChanges
+- [ ] Wykrywanie i usuwanie phantom IDs z rules
+- [ ] Logging i metryki
+
+---
+
+## Aktualizacja priorytetyzacji
+
+| Priorytet | Feature | Uzasadnienie | Status |
+|-----------|---------|--------------|--------|
+| 🔴 CRITICAL | **VID-146: Enable Scheduling** | Istniejący scheduler nie działa! | ✅ DONE |
+| 🔴 CRITICAL | VID-132: Resource Ownership | Security vulnerability - IDOR | TODO |
+| 🔴 HIGH | **VID-145: Pause/Resume Fix** | Bug z duplikatami, blokuje UX | ✅ DONE |
+| 🟡 MEDIUM | **VID-147: System Auth Token** | Wymagany dla schedulerów | TODO |
+| 🟡 MEDIUM | **VID-148: Atomicity/Saga** | Spójność danych przy awariach | TODO |
+| 🟡 MEDIUM | Kafka DLQ | Stabilność produkcji | TODO |
+| 🟡 MEDIUM | AI Categorization | UX improvement | TODO |
+| 🟢 LOW | Recurring Rules v2.0 | Nice to have | TODO |

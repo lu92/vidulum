@@ -154,6 +154,9 @@ public class RecurringRuleService {
             throw new InvalidRuleStateException(ruleId, rule.getStatus(), "pause");
         }
 
+        // Clear pending cash changes before pausing - paused rule should not have future forecasts
+        clearGeneratedCashChanges(rule, authToken);
+
         PauseInfo pauseInfo = command.resumeDate() != null
                 ? PauseInfo.untilDate(clock.instant(), command.resumeDate(), command.reason())
                 : PauseInfo.indefinite(clock.instant(), command.reason());
@@ -161,7 +164,7 @@ public class RecurringRuleService {
         rule.pause(pauseInfo, clock);
         ruleRepository.save(rule);
 
-        log.info("Paused recurring rule {} until {}", ruleId.id(),
+        log.info("Paused recurring rule {} until {} (cleared pending cash changes)", ruleId.id(),
                 command.resumeDate() != null ? command.resumeDate() : "indefinitely");
     }
 
@@ -177,12 +180,49 @@ public class RecurringRuleService {
         rule.resume(clock);
         ruleRepository.save(rule);
 
-        // Regenerate expected cash changes
+        // Defensive: clear any remaining pending cash changes (edge case - should be empty after proper pause)
+        clearGeneratedCashChanges(rule, authToken);
+        // Generate new expected cash changes from today
         generateExpectedCashChanges(rule, authToken);
 
-        log.info("Resumed recurring rule {}", ruleId.id());
+        log.info("Resumed recurring rule {} (regenerated cash changes)", ruleId.id());
     }
 
+    /**
+     * Auto-resumes a paused rule. Called by the scheduler when resumeDate is reached.
+     * This method does NOT require an auth token as it uses internal/system access.
+     *
+     * @param ruleId the rule ID to auto-resume
+     * @param resumeDate the date on which the rule should be resumed (for logging)
+     */
+    public void handleAutoResume(RecurringRuleId ruleId, LocalDate resumeDate) {
+        RecurringRule rule = ruleRepository.findById(ruleId)
+                .orElse(null);
+
+        if (rule == null) {
+            log.warn("Auto-resume: Rule {} not found, skipping", ruleId.id());
+            return;
+        }
+
+        if (!rule.isPaused()) {
+            log.warn("Auto-resume: Rule {} is not paused (status: {}), skipping", ruleId.id(), rule.getStatus());
+            return;
+        }
+
+        rule.resume(clock);
+        ruleRepository.save(rule);
+
+        // Note: Cash changes are NOT generated here because we don't have an auth token
+        // The scheduler will need to handle this separately or use a system token
+        log.info("Auto-resumed rule {} as of {} (cash changes need to be regenerated)", ruleId.id(), resumeDate);
+    }
+
+    /**
+     * Returns all paused rules that should be auto-resumed on or before the given date.
+     */
+    public List<RecurringRule> findRulesForAutoResume(LocalDate date) {
+        return ruleRepository.findPausedRulesWithResumeDateOnOrBefore(date);
+    }
 
     public void handle(DeleteRuleCommand command, String authToken) throws RecurringRuleException {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());

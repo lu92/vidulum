@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
+import com.multi.vidulum.recurring_rules.app.dto.CreateRuleRequest;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
@@ -32,6 +33,7 @@ import java.time.*;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,6 +97,11 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
     private static final String CURRENCY = "PLN";
+    private static final AtomicInteger CASHFLOW_NAME_COUNTER = new AtomicInteger(0);
+
+    private String uniqueCashFlowName(String baseName) {
+        return baseName + "-" + CASHFLOW_NAME_COUNTER.incrementAndGet();
+    }
 
     @BeforeEach
     void setUp() {
@@ -1778,5 +1785,490 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
 
         log.info("400 invalid rule ID format test for DELETE endpoint completed successfully");
+    }
+
+    // ============ VID-144: Pattern Validation Error Tests ============
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForMonthlyDayOfMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a monthly rule with invalid dayOfMonth (32)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.MONTHLY)
+                .dayOfMonth(32)  // Invalid: must be 1-31 or -1
+                .intervalMonths(1)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Monthly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-100, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("MONTHLY");
+        assertThat(response.getBody().get("message")).contains("Day of month");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for MONTHLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForWeeklyIntervalOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Weekly Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a weekly rule with invalid interval (53 weeks)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.WEEKLY)
+                .dayOfWeek(DayOfWeek.MONDAY)
+                .intervalWeeks(53)  // Invalid: must be 1-52
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Weekly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-50, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("WEEKLY");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for WEEKLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForQuarterlyMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("QuarterlyValidation"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a quarterly rule with invalid monthInQuarter (4)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.QUARTERLY)
+                .monthInQuarter(4)  // Invalid: must be 1-3
+                .dayOfMonth(15)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Quarterly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-500, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("QUARTERLY");
+        assertThat(response.getBody().get("message")).contains("Month in quarter");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for QUARTERLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForEveryNDaysIntervalZero() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("EveryNDaysValidation"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create an every-N-days rule with invalid interval (0)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.EVERY_N_DAYS)
+                .intervalDays(0)  // Invalid: must be >= 1
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Every N Days Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-25, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("EVERY_N_DAYS");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for EVERY_N_DAYS completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForYearlyMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Yearly Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a yearly rule with invalid month (13)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.YEARLY)
+                .month(13)  // Invalid: must be 1-12
+                .yearlyDayOfMonth(15)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Yearly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-1200, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(null)
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("YEARLY");
+        assertThat(response.getBody().get("message")).contains("Month");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for YEARLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldAcceptValidMonthlyPatternWithLastDayOfMonth() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Valid Last Day Pattern Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Create a monthly rule with dayOfMonth = -1 (last day of month)
+        String ruleId = recurringRulesActor.createMonthlyRuleLastDayOfMonth(
+                cashFlowId,
+                "Last Day Rent Payment",
+                "Monthly rent on the last day of month",
+                Money.of(-1500, CURRENCY),
+                "Rent",
+                LocalDate.of(2022, 1, 1),
+                LocalDate.of(2022, 6, 30),
+                1
+        );
+
+        // THEN: Rule should be created successfully
+        assertThat(ruleId).isNotNull();
+        assertThat(ruleId).startsWith("RR");
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getDayOfMonth()).isEqualTo(-1);
+
+        log.info("Valid MONTHLY with -1 dayOfMonth test completed: {}", ruleId);
+    }
+
+    // ==================== PAUSE/RESUME STATE VALIDATION TESTS ====================
+
+    @Test
+    void shouldReturn409WhenPausingAlreadyPausedRule() {
+        // GIVEN: Setup CashFlow and create a rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Double Pause Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Netflix", "Streaming subscription",
+                Money.of(-50, CURRENCY), "Subscription",
+                LocalDate.of(2022, 1, 1), null, 15, 1, false
+        );
+
+        // Pause the rule for the first time
+        recurringRulesActor.pauseRule(ruleId, LocalDate.of(2022, 6, 1), "Taking a break");
+
+        // Verify it's paused
+        RecurringRuleResponse pausedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(pausedRule.getStatus()).isEqualTo(RuleStatus.PAUSED);
+
+        // WHEN: Try to pause again
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.pauseRuleExpectingError(
+                ruleId, LocalDate.of(2022, 7, 1), "Second pause attempt"
+        );
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("pause");
+        assertThat(response.getBody().get("message")).contains("PAUSED");
+
+        log.info("409 for double pause test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenResumingActiveRule() {
+        // GIVEN: Setup CashFlow and create an ACTIVE rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Resume Active Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Gym", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Gym Membership", "Monthly gym fee",
+                Money.of(-100, CURRENCY), "Gym",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Verify it's active
+        RecurringRuleResponse activeRule = recurringRulesActor.getRule(ruleId);
+        assertThat(activeRule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+
+        // WHEN: Try to resume an active rule (invalid operation)
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.resumeRuleExpectingError(ruleId);
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("resume");
+        assertThat(response.getBody().get("message")).contains("ACTIVE");
+
+        log.info("409 for resume active rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenPausingDeletedRule() {
+        // GIVEN: Setup CashFlow and create a rule, then delete it
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pause Deleted Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Insurance", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Car Insurance", "Monthly insurance",
+                Money.of(-200, CURRENCY), "Insurance",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Delete the rule
+        recurringRulesActor.deleteRule(ruleId, "No longer needed");
+
+        // Verify it's deleted
+        RecurringRuleResponse deletedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(deletedRule.getStatus()).isEqualTo(RuleStatus.DELETED);
+
+        // WHEN: Try to pause a deleted rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.pauseRuleExpectingError(
+                ruleId, LocalDate.of(2022, 6, 1), "Trying to pause deleted"
+        );
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("pause");
+        assertThat(response.getBody().get("message")).contains("DELETED");
+
+        log.info("409 for pause deleted rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn409WhenResumingDeletedRule() {
+        // GIVEN: Setup CashFlow and create a rule, pause it, then delete it
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Resume Deleted Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Utilities", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Electricity Bill", "Monthly electricity",
+                Money.of(-150, CURRENCY), "Utilities",
+                LocalDate.of(2022, 1, 1), null, 1, 1, false
+        );
+
+        // Pause first
+        recurringRulesActor.pauseRule(ruleId, null, "Pausing before delete");
+
+        // Delete the paused rule
+        recurringRulesActor.deleteRule(ruleId, "No longer needed");
+
+        // Verify it's deleted
+        RecurringRuleResponse deletedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(deletedRule.getStatus()).isEqualTo(RuleStatus.DELETED);
+
+        // WHEN: Try to resume a deleted rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.resumeRuleExpectingError(ruleId);
+
+        // THEN: Should return 409 CONFLICT with RECURRING_RULE_INVALID_STATE
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_STATE");
+        assertThat(response.getBody().get("message")).contains("resume");
+        assertThat(response.getBody().get("message")).contains("DELETED");
+
+        log.info("409 for resume deleted rule test completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldClearPendingCashChangesWhenPausingAndRegenerateWhenResuming() {
+        // GIVEN: Setup CashFlow and create a rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pause Clear Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Rent", "Rent payment",
+                Money.of(-1000, CURRENCY), "Rent",
+                LocalDate.of(2022, 1, 1), LocalDate.of(2022, 12, 31), 1, 1, false
+        );
+
+        // Verify rule has generated cash changes
+        RecurringRuleResponse activeRule = recurringRulesActor.getRule(ruleId);
+        int initialCashChangesCount = activeRule.getGeneratedCashChangeIds().size();
+        assertThat(initialCashChangesCount).isGreaterThan(0);
+        log.info("Rule created with {} cash changes", initialCashChangesCount);
+
+        // WHEN: Pause the rule
+        recurringRulesActor.pauseRule(ruleId, LocalDate.of(2022, 6, 1), "Taking a break from rent");
+
+        // THEN: Generated cash changes should be cleared (pending ones deleted)
+        RecurringRuleResponse pausedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(pausedRule.getStatus()).isEqualTo(RuleStatus.PAUSED);
+        int afterPauseCashChangesCount = pausedRule.getGeneratedCashChangeIds().size();
+        log.info("After pause: {} cash changes remain", afterPauseCashChangesCount);
+
+        // WHEN: Resume the rule
+        recurringRulesActor.resumeRule(ruleId);
+
+        // THEN: New cash changes should be generated
+        RecurringRuleResponse resumedRule = recurringRulesActor.getRule(ruleId);
+        assertThat(resumedRule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+        int afterResumeCashChangesCount = resumedRule.getGeneratedCashChangeIds().size();
+        assertThat(afterResumeCashChangesCount).isGreaterThan(0);
+        log.info("After resume: {} cash changes generated", afterResumeCashChangesCount);
+
+        log.info("Pause clears, resume regenerates test completed successfully");
     }
 }
