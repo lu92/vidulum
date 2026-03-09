@@ -1,12 +1,14 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.LocalDate;
 
 public record DailyPattern(int intervalDays) implements RecurrencePattern {
 
     public DailyPattern {
         if (intervalDays < 1 || intervalDays > 365) {
-            throw new IllegalArgumentException("Interval must be between 1 and 365 days");
+            throw new InvalidRecurrencePatternException("DAILY", "Interval must be between 1 and 365 days");
         }
     }
 

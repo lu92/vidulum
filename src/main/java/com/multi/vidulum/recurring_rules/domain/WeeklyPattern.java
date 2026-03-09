@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -7,9 +9,11 @@ import java.util.Objects;
 public record WeeklyPattern(DayOfWeek dayOfWeek, int intervalWeeks) implements RecurrencePattern {
 
     public WeeklyPattern {
-        Objects.requireNonNull(dayOfWeek, "Day of week cannot be null");
+        if (dayOfWeek == null) {
+            throw new InvalidRecurrencePatternException("WEEKLY", "Day of week cannot be null");
+        }
         if (intervalWeeks < 1 || intervalWeeks > 52) {
-            throw new IllegalArgumentException("Interval must be between 1 and 52 weeks");
+            throw new InvalidRecurrencePatternException("WEEKLY", "Interval must be between 1 and 52 weeks");
         }
     }
 

@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.LocalDate;
 import java.time.Month;
 
@@ -7,10 +9,10 @@ public record YearlyPattern(int month, int dayOfMonth) implements RecurrencePatt
 
     public YearlyPattern {
         if (month < 1 || month > 12) {
-            throw new IllegalArgumentException("Month must be between 1 and 12");
+            throw new InvalidRecurrencePatternException("YEARLY", "Month must be between 1 and 12");
         }
         if (dayOfMonth < 1 || dayOfMonth > 31) {
-            throw new IllegalArgumentException("Day of month must be between 1 and 31");
+            throw new InvalidRecurrencePatternException("YEARLY", "Day of month must be between 1 and 31");
         }
     }
 

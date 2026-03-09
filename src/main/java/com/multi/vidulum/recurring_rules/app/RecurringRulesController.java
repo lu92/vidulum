@@ -168,6 +168,19 @@ public class RecurringRulesController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{ruleId}/impact-preview")
+    public ResponseEntity<DeleteImpactPreviewResponse> getDeleteImpactPreview(
+            @PathVariable String ruleId,
+            @RequestHeader("Authorization") String authHeader
+    ) throws RecurringRuleException {
+        String authToken = extractToken(authHeader);
+
+        PreviewDeleteImpactQuery query = new PreviewDeleteImpactQuery(ruleId, authToken);
+        DeleteImpactPreviewResponse response = ruleService.handle(query);
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{ruleId}/regenerate")
     public ResponseEntity<Void> regenerateExpectedCashChanges(
             @PathVariable String ruleId,

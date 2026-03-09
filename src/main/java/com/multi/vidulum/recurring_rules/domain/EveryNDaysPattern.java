@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
@@ -27,7 +29,7 @@ public record EveryNDaysPattern(
 
     public EveryNDaysPattern {
         if (intervalDays < 1 || intervalDays > 365) {
-            throw new IllegalArgumentException("Interval must be between 1 and 365 days");
+            throw new InvalidRecurrencePatternException("EVERY_N_DAYS", "Interval must be between 1 and 365 days");
         }
     }
 

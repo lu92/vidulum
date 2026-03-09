@@ -9,7 +9,7 @@ public record RecurringRuleId(String id) {
     public RecurringRuleId {
         Objects.requireNonNull(id, "Rule ID cannot be null");
         if (!id.matches(PREFIX + "\\d+")) {
-            throw new IllegalArgumentException("Invalid rule ID format: " + id);
+            throw new InvalidRecurringRuleIdFormatException(id);
         }
     }
 

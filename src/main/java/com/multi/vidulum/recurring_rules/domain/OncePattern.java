@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -19,7 +21,7 @@ public record OncePattern(
 
     public OncePattern {
         if (targetDate == null) {
-            throw new IllegalArgumentException("Target date is required for one-time pattern");
+            throw new InvalidRecurrencePatternException("ONCE", "Target date is required for one-time pattern");
         }
     }
 

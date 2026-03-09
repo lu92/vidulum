@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
+import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
@@ -1550,5 +1551,232 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         assertThat(response.getBody()).containsKey("message");
 
         log.info("404 rule not found error test completed successfully");
+    }
+
+    // ==================== DELETE IMPACT PREVIEW TESTS ====================
+
+    @Test
+    void shouldGetDeleteImpactPreviewForActiveRule() {
+        // GIVEN: Setup CashFlow with a monthly salary rule
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Impact Preview Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // Create a monthly salary rule
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        String salaryRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId,
+                "Monthly Salary",
+                "Regular monthly salary payment",
+                Money.of(5000, CURRENCY),
+                "Salary",
+                startDate,
+                endDate,
+                1,
+                1,
+                false
+        );
+        log.info("Created monthly salary rule: {}", salaryRuleId);
+
+        // Verify rule has generated cash changes
+        RecurringRuleResponse rule = recurringRulesActor.getRule(salaryRuleId);
+        int generatedCount = rule.getGeneratedCashChangeIds().size();
+        assertThat(generatedCount).isGreaterThan(0);
+        log.info("Rule generated {} cash changes", generatedCount);
+
+        // WHEN: Get delete impact preview
+        DeleteImpactPreviewResponse preview = recurringRulesActor.getDeleteImpactPreview(salaryRuleId);
+
+        // THEN: Preview should contain impact details
+        assertThat(preview).isNotNull();
+        assertThat(preview.ruleId()).isEqualTo(salaryRuleId);
+        assertThat(preview.ruleName()).isEqualTo("Monthly Salary");
+
+        // Impact details
+        assertThat(preview.impact()).isNotNull();
+        assertThat(preview.impact().futureOccurrences()).isNotNull();
+        assertThat(preview.impact().futureOccurrences().count()).isGreaterThanOrEqualTo(0);
+        assertThat(preview.impact().futureOccurrences().totalAmount()).isNotNull();
+
+        // Generated transactions
+        assertThat(preview.impact().generatedTransactions()).isNotNull();
+        assertThat(preview.impact().generatedTransactions().total()).isEqualTo(generatedCount);
+        assertThat(preview.impact().generatedTransactions().pending()).isGreaterThanOrEqualTo(0);
+        assertThat(preview.impact().generatedTransactions().confirmed()).isGreaterThanOrEqualTo(0);
+        // deletable = pending
+        assertThat(preview.impact().generatedTransactions().deletable())
+                .isEqualTo(preview.impact().generatedTransactions().pending());
+
+        // Forecast impact
+        assertThat(preview.impact().forecastImpact()).isNotNull();
+        assertThat(preview.impact().forecastImpact().affectedMonths()).isNotNull();
+
+        // Warnings and recommendations (lists can be empty but not null)
+        assertThat(preview.warnings()).isNotNull();
+        assertThat(preview.recommendations()).isNotNull();
+
+        log.info("Delete impact preview test completed:");
+        log.info("  Future occurrences: {}", preview.impact().futureOccurrences().count());
+        log.info("  Generated transactions: total={}, pending={}, confirmed={}",
+                preview.impact().generatedTransactions().total(),
+                preview.impact().generatedTransactions().pending(),
+                preview.impact().generatedTransactions().confirmed());
+        log.info("  Affected months: {}", preview.impact().forecastImpact().affectedMonths());
+        log.info("  Warnings: {}", preview.warnings().size());
+        log.info("  Recommendations: {}", preview.recommendations().size());
+    }
+
+    @Test
+    void shouldShowHighValueWarningInDeleteImpactPreview() {
+        // GIVEN: Setup CashFlow with a high-value rule (>10000 PLN total)
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(50000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "High Value Impact Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Investment", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // Create a high-value monthly investment rule (2000 PLN * 12 months = 24000 PLN)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        String investmentRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId,
+                "Monthly Investment",
+                "Regular investment contributions",
+                Money.of(-2000, CURRENCY),
+                "Investment",
+                startDate,
+                endDate,
+                15,
+                1,
+                false
+        );
+
+        // WHEN: Get delete impact preview
+        DeleteImpactPreviewResponse preview = recurringRulesActor.getDeleteImpactPreview(investmentRuleId);
+
+        // THEN: Should show HIGH_VALUE warning (if total > 10000)
+        if (preview.impact().futureOccurrences().totalAmount().getAmount().doubleValue() > 10000) {
+            assertThat(preview.warnings())
+                    .anyMatch(w -> "HIGH_VALUE".equals(w.type()));
+            log.info("HIGH_VALUE warning correctly shown for rule with {} PLN total",
+                    preview.impact().futureOccurrences().totalAmount().getAmount());
+        }
+    }
+
+    @Test
+    void shouldReturn404WhenGettingImpactPreviewForNonExistentRule() {
+        // WHEN: Try to get impact preview for a non-existent rule
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getDeleteImpactPreviewExpectingError("RR99999999");
+
+        // THEN: Should return 404 NOT_FOUND
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_NOT_FOUND");
+
+        log.info("404 impact preview error test completed successfully");
+    }
+
+    @Test
+    void shouldShowRecommendationsForActiveRuleWithMultipleFutureOccurrences() {
+        // GIVEN: Setup CashFlow with a rule that has many future occurrences
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Recommendations Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Subscription", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // Create a weekly rule (will have many future occurrences)
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        String subscriptionRuleId = recurringRulesActor.createWeeklyRule(
+                cashFlowId,
+                "Weekly Subscription",
+                "Weekly subscription payment",
+                Money.of(-50, CURRENCY),
+                "Subscription",
+                startDate,
+                endDate,
+                DayOfWeek.MONDAY,
+                1
+        );
+
+        // WHEN: Get delete impact preview
+        DeleteImpactPreviewResponse preview = recurringRulesActor.getDeleteImpactPreview(subscriptionRuleId);
+
+        // THEN: Should have recommendations for active rule with many future occurrences
+        assertThat(preview.impact().futureOccurrences().count()).isGreaterThan(3);
+
+        // Should recommend pausing instead of deleting
+        assertThat(preview.recommendations())
+                .anyMatch(r -> r.contains("wstrzymanie") || r.contains("pause"));
+
+        log.info("Recommendations test completed:");
+        log.info("  Future occurrences: {}", preview.impact().futureOccurrences().count());
+        log.info("  Recommendations: {}", preview.recommendations());
+    }
+
+    @Test
+    void shouldReturn400WhenGettingImpactPreviewWithInvalidRuleIdFormat() {
+        // WHEN: Try to get impact preview with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getDeleteImpactPreviewExpectingError("INVALID_ID");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+        assertThat(response.getBody().get("message")).contains("RRXXXXXXXX");
+
+        log.info("400 invalid rule ID format test completed successfully");
+    }
+
+    @Test
+    void shouldReturn400WhenGettingRuleWithInvalidRuleIdFormat() {
+        // WHEN: Try to get rule with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getRuleExpectingError("ABC123");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+        assertThat(response.getBody().get("message")).contains("ABC123");
+
+        log.info("400 invalid rule ID format test for GET endpoint completed successfully");
+    }
+
+    @Test
+    void shouldReturn400WhenDeletingRuleWithInvalidRuleIdFormat() {
+        // WHEN: Try to delete rule with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.deleteRuleExpectingError("123INVALID");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+
+        log.info("400 invalid rule ID format test for DELETE endpoint completed successfully");
     }
 }

@@ -7,6 +7,7 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;
+import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
 import com.multi.vidulum.recurring_rules.domain.exceptions.*;
 import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
@@ -14,13 +15,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -284,6 +290,126 @@ public class RecurringRuleService {
         return ruleRepository.findByUserId(userId).stream()
                 .map(RecurringRule::getSnapshot)
                 .toList();
+    }
+
+    public DeleteImpactPreviewResponse handle(PreviewDeleteImpactQuery query) throws RecurringRuleException {
+        RecurringRuleId ruleId = RecurringRuleId.of(query.ruleId());
+        RecurringRule rule = findRuleOrThrow(ruleId);
+
+        // 1. Calculate future occurrences (what would be removed from forecast)
+        LocalDate today = LocalDate.now(clock);
+        YearMonth currentMonth = YearMonth.from(today);
+        LocalDate forecastEnd = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
+
+        List<LocalDate> futureOccurrences = rule.isActive()
+                ? rule.generateOccurrences(today, forecastEnd)
+                : List.of();
+
+        // Calculate total amount for future occurrences
+        BigDecimal totalFutureAmount = BigDecimal.ZERO;
+        String currency = rule.getBaseAmount().getCurrency();
+        for (LocalDate occurrence : futureOccurrences) {
+            Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
+            totalFutureAmount = totalFutureAmount.add(effectiveAmount.getAmount().abs());
+        }
+
+        DeleteImpactPreviewResponse.DateRange dateRange = futureOccurrences.isEmpty()
+                ? null
+                : DeleteImpactPreviewResponse.DateRange.builder()
+                        .from(futureOccurrences.get(0))
+                        .to(futureOccurrences.get(futureOccurrences.size() - 1))
+                        .build();
+
+        DeleteImpactPreviewResponse.FutureOccurrences futureOccurrencesInfo =
+                DeleteImpactPreviewResponse.FutureOccurrences.builder()
+                        .count(futureOccurrences.size())
+                        .totalAmount(Money.of(totalFutureAmount, currency))
+                        .dateRange(dateRange)
+                        .build();
+
+        // 2. Get generated transaction statuses from CashFlow
+        List<CashChangeId> generatedIds = rule.getGeneratedCashChangeIds();
+        int pendingCount = 0;
+        int confirmedCount = 0;
+
+        if (!generatedIds.isEmpty()) {
+            Map<CashChangeId, CashFlowHttpClient.CashChangeStatusInfo> statuses =
+                    cashFlowHttpClient.getCashChangeStatuses(rule.getCashFlowId(), ruleId, query.authToken());
+
+            for (CashFlowHttpClient.CashChangeStatusInfo statusInfo : statuses.values()) {
+                if (statusInfo.isPending()) {
+                    pendingCount++;
+                } else if (statusInfo.isConfirmed()) {
+                    confirmedCount++;
+                }
+            }
+        }
+
+        DeleteImpactPreviewResponse.GeneratedTransactions generatedTransactions =
+                DeleteImpactPreviewResponse.GeneratedTransactions.builder()
+                        .total(generatedIds.size())
+                        .pending(pendingCount)
+                        .confirmed(confirmedCount)
+                        .deletable(pendingCount)
+                        .build();
+
+        // 3. Calculate forecast impact (affected months)
+        Set<String> affectedMonths = futureOccurrences.stream()
+                .map(date -> YearMonth.from(date).format(DateTimeFormatter.ofPattern("yyyy-MM")))
+                .collect(Collectors.toSet());
+
+        DeleteImpactPreviewResponse.ForecastImpact forecastImpact =
+                DeleteImpactPreviewResponse.ForecastImpact.builder()
+                        .affectedMonths(affectedMonths.stream().sorted().toList())
+                        .balanceReduction(Money.of(totalFutureAmount, currency))
+                        .build();
+
+        DeleteImpactPreviewResponse.ImpactDetails impactDetails =
+                DeleteImpactPreviewResponse.ImpactDetails.builder()
+                        .futureOccurrences(futureOccurrencesInfo)
+                        .generatedTransactions(generatedTransactions)
+                        .forecastImpact(forecastImpact)
+                        .build();
+
+        // 4. Generate warnings
+        List<DeleteImpactPreviewResponse.Warning> warnings = new ArrayList<>();
+
+        if (confirmedCount > 0) {
+            warnings.add(DeleteImpactPreviewResponse.Warning.builder()
+                    .type("CONFIRMED_TRANSACTIONS")
+                    .message(String.format("%d potwierdzone transakcje pozostaną bez zmian", confirmedCount))
+                    .severity("INFO")
+                    .build());
+        }
+
+        // Warning for high value rules
+        BigDecimal highValueThreshold = new BigDecimal("10000");
+        if (totalFutureAmount.compareTo(highValueThreshold) > 0) {
+            warnings.add(DeleteImpactPreviewResponse.Warning.builder()
+                    .type("HIGH_VALUE")
+                    .message(String.format("Ta reguła generuje transakcje o łącznej wartości %.2f %s", totalFutureAmount, currency))
+                    .severity("WARNING")
+                    .build());
+        }
+
+        // 5. Generate recommendations
+        List<String> recommendations = new ArrayList<>();
+
+        if (rule.isActive() && futureOccurrences.size() > 3) {
+            recommendations.add("Rozważ wstrzymanie reguły zamiast usuwania, jeśli planujesz ją reaktywować w przyszłości");
+        }
+
+        if (confirmedCount > 0) {
+            recommendations.add("Potwierdzone transakcje pozostaną w CashFlow jako historyczne dane");
+        }
+
+        return DeleteImpactPreviewResponse.builder()
+                .ruleId(ruleId.id())
+                .ruleName(rule.getName())
+                .impact(impactDetails)
+                .warnings(warnings)
+                .recommendations(recommendations)
+                .build();
     }
 
     // Private helper methods
