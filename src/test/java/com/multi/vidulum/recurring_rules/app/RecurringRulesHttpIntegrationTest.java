@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
+import com.multi.vidulum.recurring_rules.app.dto.CreateRuleRequest;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
@@ -1778,5 +1779,271 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
 
         log.info("400 invalid rule ID format test for DELETE endpoint completed successfully");
+    }
+
+    // ============ VID-144: Pattern Validation Error Tests ============
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForMonthlyDayOfMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a monthly rule with invalid dayOfMonth (32)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.MONTHLY)
+                .dayOfMonth(32)  // Invalid: must be 1-31 or -1
+                .intervalMonths(1)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Monthly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-100, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("MONTHLY");
+        assertThat(response.getBody().get("message")).contains("Day of month");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for MONTHLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForWeeklyIntervalOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Weekly Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a weekly rule with invalid interval (53 weeks)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.WEEKLY)
+                .dayOfWeek(DayOfWeek.MONDAY)
+                .intervalWeeks(53)  // Invalid: must be 1-52
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Weekly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-50, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("WEEKLY");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for WEEKLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForQuarterlyMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Quarterly Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a quarterly rule with invalid monthInQuarter (4)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.QUARTERLY)
+                .monthInQuarter(4)  // Invalid: must be 1-3
+                .dayOfMonth(15)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Quarterly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-500, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("QUARTERLY");
+        assertThat(response.getBody().get("message")).contains("Month in quarter");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for QUARTERLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForEveryNDaysIntervalZero() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "EveryNDays Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create an every-N-days rule with invalid interval (0)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.EVERY_N_DAYS)
+                .intervalDays(0)  // Invalid: must be >= 1
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Every N Days Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-25, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(LocalDate.of(2022, 12, 31))
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("EVERY_N_DAYS");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for EVERY_N_DAYS completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldReturn400WithInvalidPatternErrorForYearlyMonthOutOfRange() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Yearly Pattern Validation Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Test", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Try to create a yearly rule with invalid month (13)
+        PatternDto invalidPattern = PatternDto.builder()
+                .type(RecurrenceType.YEARLY)
+                .month(13)  // Invalid: must be 1-12
+                .yearlyDayOfMonth(15)
+                .build();
+
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId(cashFlowId)
+                .name("Invalid Yearly Rule")
+                .description("Test invalid pattern")
+                .baseAmount(Money.of(-1200, CURRENCY))
+                .category("Test")
+                .pattern(invalidPattern)
+                .startDate(LocalDate.of(2022, 1, 1))
+                .endDate(null)
+                .build();
+
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.createRuleExpectingError(request);
+
+        // THEN: Should return 400 with RECURRING_RULE_INVALID_PATTERN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PATTERN");
+        assertThat(response.getBody().get("message")).contains("YEARLY");
+        assertThat(response.getBody().get("message")).contains("Month");
+
+        log.info("RECURRING_RULE_INVALID_PATTERN test for YEARLY completed: {}", response.getBody().get("message"));
+    }
+
+    @Test
+    void shouldAcceptValidMonthlyPatternWithLastDayOfMonth() {
+        // GIVEN: Setup CashFlow
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Valid Last Day Pattern Test", startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Create a monthly rule with dayOfMonth = -1 (last day of month)
+        String ruleId = recurringRulesActor.createMonthlyRuleLastDayOfMonth(
+                cashFlowId,
+                "Last Day Rent Payment",
+                "Monthly rent on the last day of month",
+                Money.of(-1500, CURRENCY),
+                "Rent",
+                LocalDate.of(2022, 1, 1),
+                LocalDate.of(2022, 6, 30),
+                1
+        );
+
+        // THEN: Rule should be created successfully
+        assertThat(ruleId).isNotNull();
+        assertThat(ruleId).startsWith("RR");
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        assertThat(rule.getPattern().getDayOfMonth()).isEqualTo(-1);
+
+        log.info("Valid MONTHLY with -1 dayOfMonth test completed: {}", ruleId);
     }
 }
