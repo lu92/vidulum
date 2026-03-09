@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.LocalDate;
 import java.time.Month;
 
@@ -22,10 +24,10 @@ public record QuarterlyPattern(
 
     public QuarterlyPattern {
         if (monthInQuarter < 1 || monthInQuarter > 3) {
-            throw new IllegalArgumentException("Month in quarter must be 1, 2, or 3");
+            throw new InvalidRecurrencePatternException("QUARTERLY", "Month in quarter must be 1, 2, or 3");
         }
         if (dayOfMonth < LAST_DAY_OF_MONTH || dayOfMonth == 0 || dayOfMonth > 31) {
-            throw new IllegalArgumentException("Day of month must be between 1 and 31, or -1 for last day of month");
+            throw new InvalidRecurrencePatternException("QUARTERLY", "Day of month must be between 1 and 31, or -1 for last day of month");
         }
     }
 

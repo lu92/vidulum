@@ -94,6 +94,7 @@ public enum ErrorCode {
     INVALID_RECURRING_RULE_ID_FORMAT(HttpStatus.BAD_REQUEST, "Invalid RecurringRule ID format. Expected: RRXXXXXXXX"),
     RECURRING_RULE_INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "End date must be after start date"),
     RECURRING_RULE_CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "Category not found in CashFlow"),
+    RECURRING_RULE_INVALID_PATTERN(HttpStatus.BAD_REQUEST, "Invalid recurrence pattern configuration"),
 
     // Recurring Rules - Invalid State
     RECURRING_RULE_INVALID_STATE(HttpStatus.CONFLICT, "Operation not allowed in current rule status"),

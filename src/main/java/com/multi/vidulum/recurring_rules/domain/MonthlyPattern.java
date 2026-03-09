@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain;
 
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException;
+
 import java.time.LocalDate;
 
 public record MonthlyPattern(
@@ -17,10 +19,10 @@ public record MonthlyPattern(
 
     public MonthlyPattern {
         if (dayOfMonth < LAST_DAY_OF_MONTH || dayOfMonth == 0 || dayOfMonth > 31) {
-            throw new IllegalArgumentException("Day of month must be between 1 and 31, or -1 for last day of month");
+            throw new InvalidRecurrencePatternException("MONTHLY", "Day of month must be between 1 and 31, or -1 for last day of month");
         }
         if (intervalMonths < 1 || intervalMonths > 12) {
-            throw new IllegalArgumentException("Interval must be between 1 and 12 months");
+            throw new InvalidRecurrencePatternException("MONTHLY", "Interval must be between 1 and 12 months");
         }
     }
 

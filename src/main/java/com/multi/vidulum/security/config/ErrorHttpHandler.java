@@ -455,6 +455,13 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException.class)
+    public ResponseEntity<ApiError> handleInvalidRecurrencePattern(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRecurrencePatternException ex) {
+        log.debug("Invalid recurrence pattern [{}]: {}", ex.getPatternType(), ex.getReason());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_INVALID_PATTERN, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ Recurring Rules - Invalid State (409) ============
 
     @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException.class)
