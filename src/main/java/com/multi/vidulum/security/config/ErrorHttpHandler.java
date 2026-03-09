@@ -407,6 +407,15 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    // ============ Recurring Rules - ID Format Validation (400) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.InvalidRecurringRuleIdFormatException.class)
+    public ResponseEntity<ApiError> handleInvalidRecurringRuleIdFormat(com.multi.vidulum.recurring_rules.domain.InvalidRecurringRuleIdFormatException ex) {
+        log.debug("Invalid RecurringRule ID format: {}", ex.getProvidedId());
+        ApiError error = ApiError.of(ErrorCode.INVALID_RECURRING_RULE_ID_FORMAT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ Recurring Rules - Resources Not Found (404) ============
 
     @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException.class)

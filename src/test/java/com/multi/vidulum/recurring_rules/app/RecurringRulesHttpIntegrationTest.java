@@ -1738,4 +1738,45 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         log.info("  Future occurrences: {}", preview.impact().futureOccurrences().count());
         log.info("  Recommendations: {}", preview.recommendations());
     }
+
+    @Test
+    void shouldReturn400WhenGettingImpactPreviewWithInvalidRuleIdFormat() {
+        // WHEN: Try to get impact preview with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getDeleteImpactPreviewExpectingError("INVALID_ID");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+        assertThat(response.getBody().get("message")).contains("RRXXXXXXXX");
+
+        log.info("400 invalid rule ID format test completed successfully");
+    }
+
+    @Test
+    void shouldReturn400WhenGettingRuleWithInvalidRuleIdFormat() {
+        // WHEN: Try to get rule with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.getRuleExpectingError("ABC123");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+        assertThat(response.getBody().get("message")).contains("ABC123");
+
+        log.info("400 invalid rule ID format test for GET endpoint completed successfully");
+    }
+
+    @Test
+    void shouldReturn400WhenDeletingRuleWithInvalidRuleIdFormat() {
+        // WHEN: Try to delete rule with invalid rule ID format
+        ResponseEntity<Map<String, String>> response = recurringRulesActor.deleteRuleExpectingError("123INVALID");
+
+        // THEN: Should return 400 BAD_REQUEST with INVALID_RECURRING_RULE_ID_FORMAT
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("code");
+        assertThat(response.getBody().get("code")).isEqualTo("INVALID_RECURRING_RULE_ID_FORMAT");
+
+        log.info("400 invalid rule ID format test for DELETE endpoint completed successfully");
+    }
 }

@@ -687,6 +687,24 @@ public class RecurringRulesHttpActor {
         }
     }
 
+    /**
+     * Deletes a rule expecting an error response.
+     * Used for testing error handling (400 validation, 404 not found).
+     */
+    public ResponseEntity<Map<String, String>> deleteRuleExpectingError(String ruleId) {
+        try {
+            return rawRestTemplate.exchange(
+                    baseUrl + "/" + ruleId,
+                    HttpMethod.DELETE,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, String>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, String> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Helper Methods ============
 
     private HttpHeaders jsonHeaders() {
