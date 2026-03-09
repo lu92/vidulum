@@ -33,6 +33,7 @@ import java.time.*;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +97,11 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
     private static final String CURRENCY = "PLN";
+    private static final AtomicInteger CASHFLOW_NAME_COUNTER = new AtomicInteger(0);
+
+    private String uniqueCashFlowName(String baseName) {
+        return baseName + "-" + CASHFLOW_NAME_COUNTER.incrementAndGet();
+    }
 
     @BeforeEach
     void setUp() {
@@ -1880,7 +1886,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         YearMonth startPeriod = YearMonth.of(2021, 7);
         Money initialBalance = Money.of(10000, CURRENCY);
 
-        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Quarterly Pattern Validation Test", startPeriod, initialBalance);
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("QuarterlyValidation"), startPeriod, initialBalance);
 
         await().atMost(60, SECONDS).until(() ->
                 statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
@@ -1926,7 +1932,7 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         YearMonth startPeriod = YearMonth.of(2021, 7);
         Money initialBalance = Money.of(10000, CURRENCY);
 
-        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "EveryNDays Pattern Validation Test", startPeriod, initialBalance);
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("EveryNDaysValidation"), startPeriod, initialBalance);
 
         await().atMost(60, SECONDS).until(() ->
                 statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
