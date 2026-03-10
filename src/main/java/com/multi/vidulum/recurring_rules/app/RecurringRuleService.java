@@ -456,13 +456,14 @@ public class RecurringRuleService {
 
     // Dashboard and Upcoming Transactions
 
-    public DashboardResponse getDashboard(String userId) {
+    public DashboardResponse getDashboard(String userId, String cashFlowId, int upcomingDays, int projectionMonths) {
         UserId userIdObj = UserId.of(userId);
+        CashFlowId cashFlowIdObj = CashFlowId.of(cashFlowId);
 
-        // Get rule counts by status
-        int activeCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
-        int pausedCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.PAUSED);
-        int completedCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.COMPLETED);
+        // Get rule counts by status (filtered by cashFlowId)
+        int activeCount = (int) ruleRepository.countByUserIdAndCashFlowIdAndStatus(userIdObj, cashFlowIdObj, RuleStatus.ACTIVE);
+        int pausedCount = (int) ruleRepository.countByUserIdAndCashFlowIdAndStatus(userIdObj, cashFlowIdObj, RuleStatus.PAUSED);
+        int completedCount = (int) ruleRepository.countByUserIdAndCashFlowIdAndStatus(userIdObj, cashFlowIdObj, RuleStatus.COMPLETED);
 
         DashboardResponse.Summary summary = DashboardResponse.Summary.builder()
                 .activeRulesCount(activeCount)
@@ -470,20 +471,32 @@ public class RecurringRuleService {
                 .completedRulesCount(completedCount)
                 .build();
 
-        // Calculate monthly projection from active rules
+        // Calculate projection period based on projectionMonths
         LocalDate today = LocalDate.now(clock);
         YearMonth currentMonth = YearMonth.from(today);
-        LocalDate monthStart = currentMonth.atDay(1);
-        LocalDate monthEnd = currentMonth.atEndOfMonth();
+        LocalDate projectionStart = currentMonth.atDay(1);
+        LocalDate projectionEnd = currentMonth.plusMonths(projectionMonths - 1).atEndOfMonth();
 
-        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
+        DashboardResponse.ProjectionPeriod projectionPeriod = DashboardResponse.ProjectionPeriod.builder()
+                .startDate(projectionStart)
+                .endDate(projectionEnd)
+                .build();
+
+        DashboardResponse.Parameters parameters = DashboardResponse.Parameters.builder()
+                .upcomingDays(upcomingDays)
+                .projectionMonths(projectionMonths)
+                .projectionPeriod(projectionPeriod)
+                .build();
+
+        // Calculate monthly projection from active rules (filtered by cashFlowId)
+        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndCashFlowIdAndStatus(userIdObj, cashFlowIdObj, RuleStatus.ACTIVE);
 
         BigDecimal totalExpenses = BigDecimal.ZERO;
         BigDecimal totalIncome = BigDecimal.ZERO;
         String currency = "PLN"; // Default currency, will be updated from first rule
 
         for (RecurringRule rule : activeRules) {
-            List<LocalDate> occurrences = rule.generateOccurrences(monthStart, monthEnd);
+            List<LocalDate> occurrences = rule.generateOccurrences(projectionStart, projectionEnd);
             for (LocalDate occurrence : occurrences) {
                 Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
                 currency = effectiveAmount.getCurrency();
@@ -502,8 +515,8 @@ public class RecurringRuleService {
                 .netBalance(Money.of(totalIncome.subtract(totalExpenses), currency))
                 .build();
 
-        // Get upcoming transactions (next 7 days)
-        UpcomingTransactionsResponse upcomingResponse = getUpcomingTransactions(userId, 7, 5);
+        // Get upcoming transactions (filtered by cashFlowId)
+        UpcomingTransactionsResponse upcomingResponse = getUpcomingTransactions(userId, cashFlowId, upcomingDays, 5);
 
         List<DashboardResponse.UpcomingTransactionDto> upcomingTransactions = upcomingResponse.getTransactions().stream()
                 .map(t -> DashboardResponse.UpcomingTransactionDto.builder()
@@ -521,18 +534,21 @@ public class RecurringRuleService {
         return DashboardResponse.builder()
                 .userId(userId)
                 .generatedAt(clock.instant())
+                .cashFlowId(cashFlowId)
+                .parameters(parameters)
                 .summary(summary)
                 .monthlyProjection(monthlyProjection)
                 .upcomingTransactions(upcomingTransactions)
                 .build();
     }
 
-    public UpcomingTransactionsResponse getUpcomingTransactions(String userId, int days, int limit) {
+    public UpcomingTransactionsResponse getUpcomingTransactions(String userId, String cashFlowId, int days, int limit) {
         UserId userIdObj = UserId.of(userId);
+        CashFlowId cashFlowIdObj = CashFlowId.of(cashFlowId);
         LocalDate today = LocalDate.now(clock);
         LocalDate endDate = today.plusDays(days);
 
-        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
+        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndCashFlowIdAndStatus(userIdObj, cashFlowIdObj, RuleStatus.ACTIVE);
 
         List<UpcomingTransactionsResponse.UpcomingTransaction> allTransactions = new ArrayList<>();
 

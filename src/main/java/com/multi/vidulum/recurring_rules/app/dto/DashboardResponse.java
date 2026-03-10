@@ -18,9 +18,30 @@ public class DashboardResponse {
 
     private String userId;
     private Instant generatedAt;
+    private String cashFlowId;
+    private Parameters parameters;
     private Summary summary;
     private MonthlyProjection monthlyProjection;
     private List<UpcomingTransactionDto> upcomingTransactions;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Parameters {
+        private int upcomingDays;
+        private int projectionMonths;
+        private ProjectionPeriod projectionPeriod;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectionPeriod {
+        private LocalDate startDate;
+        private LocalDate endDate;
+    }
 
     @Data
     @Builder

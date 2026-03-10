@@ -38,4 +38,14 @@ public interface RecurringRuleMongoRepository extends MongoRepository<RecurringR
      * Find rules by user and status.
      */
     List<RecurringRuleEntity> findByUserIdAndStatus(String userId, RuleStatus status);
+
+    /**
+     * Count rules by user, cashflow and status for dashboard.
+     */
+    long countByUserIdAndCashFlowIdAndStatus(String userId, String cashFlowId, RuleStatus status);
+
+    /**
+     * Find rules by user, cashflow and status.
+     */
+    List<RecurringRuleEntity> findByUserIdAndCashFlowIdAndStatus(String userId, String cashFlowId, RuleStatus status);
 }

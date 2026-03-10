@@ -99,19 +99,46 @@ public class RecurringRulesController {
     }
 
     @GetMapping("/me/dashboard")
-    public ResponseEntity<DashboardResponse> getMyDashboard() {
+    public ResponseEntity<DashboardResponse> getMyDashboard(
+            @RequestParam String cashFlowId,
+            @RequestParam(defaultValue = "7") int upcomingDays,
+            @RequestParam(defaultValue = "1") int projectionMonths
+    ) {
+        // Validate parameters
+        if (cashFlowId == null || cashFlowId.isBlank()) {
+            throw new IllegalArgumentException("cashFlowId is required");
+        }
+        if (upcomingDays < 1 || upcomingDays > 90) {
+            throw new IllegalArgumentException("upcomingDays must be between 1 and 90");
+        }
+        if (projectionMonths < 1 || projectionMonths > 12) {
+            throw new IllegalArgumentException("projectionMonths must be between 1 and 12");
+        }
+
         String userId = getCurrentUserId();
-        DashboardResponse dashboard = ruleService.getDashboard(userId);
+        DashboardResponse dashboard = ruleService.getDashboard(userId, cashFlowId, upcomingDays, projectionMonths);
         return ResponseEntity.ok(dashboard);
     }
 
     @GetMapping("/me/upcoming")
     public ResponseEntity<UpcomingTransactionsResponse> getMyUpcomingTransactions(
+            @RequestParam String cashFlowId,
             @RequestParam(defaultValue = "30") int days,
             @RequestParam(defaultValue = "20") int limit
     ) {
+        // Validate parameters
+        if (cashFlowId == null || cashFlowId.isBlank()) {
+            throw new IllegalArgumentException("cashFlowId is required");
+        }
+        if (days < 1 || days > 90) {
+            throw new IllegalArgumentException("days must be between 1 and 90");
+        }
+        if (limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("limit must be between 1 and 100");
+        }
+
         String userId = getCurrentUserId();
-        UpcomingTransactionsResponse upcoming = ruleService.getUpcomingTransactions(userId, days, limit);
+        UpcomingTransactionsResponse upcoming = ruleService.getUpcomingTransactions(userId, cashFlowId, days, limit);
         return ResponseEntity.ok(upcoming);
     }
 

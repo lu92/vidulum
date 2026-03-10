@@ -10,9 +10,11 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
 import com.multi.vidulum.recurring_rules.app.dto.CreateRuleRequest;
+import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
+import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
 import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import com.multi.vidulum.recurring_rules.infrastructure.RecurringRuleMongoRepository;
@@ -2270,5 +2272,250 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
         log.info("After resume: {} cash changes generated", afterResumeCashChangesCount);
 
         log.info("Pause clears, resume regenerates test completed successfully");
+    }
+
+    // ============ Dashboard and Upcoming Transactions Tests ============
+
+    @Test
+    void shouldReturnDashboardWithSummaryAndMonthlyProjection() {
+        // GIVEN: Setup CashFlow with multiple recurring rules
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("Dashboard Test"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        // Create categories
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.createCategory(cashFlowId, "Groceries", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        // Create active rules
+        String salaryRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Salary", "Salary payment",
+                Money.of(8000, CURRENCY), "Salary",
+                startDate, endDate, 1, 1, false
+        );
+
+        String rentRuleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Rent", "Rent payment",
+                Money.of(-2000, CURRENCY), "Rent",
+                startDate, endDate, 5, 1, false
+        );
+
+        String groceriesRuleId = recurringRulesActor.createWeeklyRule(
+                cashFlowId, "Weekly Groceries", "Grocery shopping",
+                Money.of(-300, CURRENCY), "Groceries",
+                startDate, endDate, DayOfWeek.MONDAY, 1
+        );
+
+        // Pause one rule
+        recurringRulesActor.pauseRule(groceriesRuleId, null, "On vacation");
+
+        // WHEN: Get dashboard
+        DashboardResponse dashboard = recurringRulesActor.getMyDashboard(cashFlowId);
+
+        // THEN: Verify dashboard data
+        assertThat(dashboard).isNotNull();
+        assertThat(dashboard.getUserId()).isEqualTo(userId);
+        assertThat(dashboard.getCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(dashboard.getGeneratedAt()).isNotNull();
+
+        // Verify parameters are echoed back
+        assertThat(dashboard.getParameters()).isNotNull();
+        assertThat(dashboard.getParameters().getUpcomingDays()).isEqualTo(7);
+        assertThat(dashboard.getParameters().getProjectionMonths()).isEqualTo(1);
+        assertThat(dashboard.getParameters().getProjectionPeriod()).isNotNull();
+
+        // Summary should reflect 2 active, 1 paused, 0 completed
+        DashboardResponse.Summary summary = dashboard.getSummary();
+        assertThat(summary).isNotNull();
+        assertThat(summary.getActiveRulesCount()).isEqualTo(2);
+        assertThat(summary.getPausedRulesCount()).isEqualTo(1);
+        assertThat(summary.getCompletedRulesCount()).isEqualTo(0);
+
+        // Monthly projection should have income and expenses
+        DashboardResponse.MonthlyProjection projection = dashboard.getMonthlyProjection();
+        assertThat(projection).isNotNull();
+        assertThat(projection.getIncome()).isNotNull();
+        assertThat(projection.getExpenses()).isNotNull();
+        assertThat(projection.getNetBalance()).isNotNull();
+
+        // Upcoming transactions should be present
+        assertThat(dashboard.getUpcomingTransactions()).isNotNull();
+
+        log.info("Dashboard test completed: cashFlowId={}, activeRules={}, pausedRules={}, income={}, expenses={}, netBalance={}",
+                cashFlowId,
+                summary.getActiveRulesCount(),
+                summary.getPausedRulesCount(),
+                projection.getIncome(),
+                projection.getExpenses(),
+                projection.getNetBalance());
+    }
+
+    @Test
+    void shouldReturnEmptyDashboardWhenNoRulesExist() {
+        // GIVEN: Setup CashFlow without any recurring rules
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("Empty Dashboard"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Get dashboard
+        DashboardResponse dashboard = recurringRulesActor.getMyDashboard(cashFlowId);
+
+        // THEN: Verify empty dashboard
+        assertThat(dashboard).isNotNull();
+        assertThat(dashboard.getUserId()).isEqualTo(userId);
+        assertThat(dashboard.getCashFlowId()).isEqualTo(cashFlowId);
+
+        DashboardResponse.Summary summary = dashboard.getSummary();
+        assertThat(summary.getActiveRulesCount()).isEqualTo(0);
+        assertThat(summary.getPausedRulesCount()).isEqualTo(0);
+        assertThat(summary.getCompletedRulesCount()).isEqualTo(0);
+
+        assertThat(dashboard.getUpcomingTransactions()).isEmpty();
+
+        // Verify parameters are echoed back
+        assertThat(dashboard.getParameters()).isNotNull();
+        assertThat(dashboard.getParameters().getUpcomingDays()).isEqualTo(7);
+        assertThat(dashboard.getParameters().getProjectionMonths()).isEqualTo(1);
+
+        log.info("Empty dashboard test completed");
+    }
+
+    @Test
+    void shouldReturnUpcomingTransactionsWithDefaultParameters() {
+        // GIVEN: Setup CashFlow with recurring rules
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("Upcoming Test"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.createCategory(cashFlowId, "Rent", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Salary", "Salary",
+                Money.of(8000, CURRENCY), "Salary",
+                startDate, endDate, 1, 1, false
+        );
+
+        recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Rent", "Rent",
+                Money.of(-2000, CURRENCY), "Rent",
+                startDate, endDate, 5, 1, false
+        );
+
+        // WHEN: Get upcoming transactions with defaults (30 days, 20 limit)
+        UpcomingTransactionsResponse upcoming = recurringRulesActor.getMyUpcoming(cashFlowId);
+
+        // THEN: Verify response structure
+        assertThat(upcoming).isNotNull();
+        assertThat(upcoming.getTransactions()).isNotNull();
+        assertThat(upcoming.getTotalInflow()).isNotNull();
+        assertThat(upcoming.getTotalOutflow()).isNotNull();
+        assertThat(upcoming.getNetChange()).isNotNull();
+        assertThat(upcoming.getTotalCount()).isGreaterThanOrEqualTo(0);
+
+        // Verify transactions have required fields
+        for (UpcomingTransactionsResponse.UpcomingTransaction tx : upcoming.getTransactions()) {
+            assertThat(tx.getRuleId()).isNotNull().startsWith("RR");
+            assertThat(tx.getRuleName()).isNotNull();
+            assertThat(tx.getDueDate()).isNotNull();
+            assertThat(tx.getAmount()).isNotNull();
+            assertThat(tx.getType()).isIn("INFLOW", "OUTFLOW");
+            assertThat(tx.getCategory()).isNotNull();
+        }
+
+        log.info("Upcoming transactions test completed: count={}, totalInflow={}, totalOutflow={}, netChange={}",
+                upcoming.getTotalCount(),
+                upcoming.getTotalInflow(),
+                upcoming.getTotalOutflow(),
+                upcoming.getNetChange());
+    }
+
+    @Test
+    void shouldReturnUpcomingTransactionsWithCustomDaysParameter() {
+        // GIVEN: Setup CashFlow with recurring rules
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("Upcoming Custom"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.createCategory(cashFlowId, "Bills", Type.OUTFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        LocalDate endDate = LocalDate.of(2022, 12, 31);
+
+        recurringRulesActor.createWeeklyRule(
+                cashFlowId, "Weekly Bills", "Various bills",
+                Money.of(-100, CURRENCY), "Bills",
+                startDate, endDate, DayOfWeek.FRIDAY, 1
+        );
+
+        // WHEN: Get upcoming transactions for 7 days only
+        UpcomingTransactionsResponse upcoming7days = recurringRulesActor.getMyUpcoming(cashFlowId, 7, 10);
+
+        // AND: Get upcoming transactions for 60 days
+        UpcomingTransactionsResponse upcoming60days = recurringRulesActor.getMyUpcoming(cashFlowId, 60, 50);
+
+        // THEN: 60 days should have more transactions than 7 days
+        assertThat(upcoming60days.getTotalCount()).isGreaterThanOrEqualTo(upcoming7days.getTotalCount());
+
+        log.info("Custom days parameter test completed: 7days count={}, 60days count={}",
+                upcoming7days.getTotalCount(),
+                upcoming60days.getTotalCount());
+    }
+
+    @Test
+    void shouldReturnEmptyUpcomingTransactionsWhenNoRulesExist() {
+        // GIVEN: Setup CashFlow without any recurring rules
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, uniqueCashFlowName("Empty Upcoming"), startPeriod, initialBalance);
+
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(com.multi.vidulum.cashflow.domain.CashFlowId.of(cashFlowId)).isPresent()
+        );
+
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        // WHEN: Get upcoming transactions
+        UpcomingTransactionsResponse upcoming = recurringRulesActor.getMyUpcoming(cashFlowId);
+
+        // THEN: Should return empty response
+        assertThat(upcoming).isNotNull();
+        assertThat(upcoming.getTransactions()).isEmpty();
+        assertThat(upcoming.getTotalCount()).isEqualTo(0);
+
+        log.info("Empty upcoming transactions test completed");
     }
 }

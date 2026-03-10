@@ -50,4 +50,16 @@ public interface DomainRecurringRuleRepository {
      * Used for dashboard filtering.
      */
     List<RecurringRule> findByUserIdAndStatus(UserId userId, RuleStatus status);
+
+    /**
+     * Count rules by user, cashflow and status.
+     * Used for dashboard summary filtered by cashflow.
+     */
+    long countByUserIdAndCashFlowIdAndStatus(UserId userId, CashFlowId cashFlowId, RuleStatus status);
+
+    /**
+     * Find rules by user, cashflow and status.
+     * Used for dashboard filtering by cashflow.
+     */
+    List<RecurringRule> findByUserIdAndCashFlowIdAndStatus(UserId userId, CashFlowId cashFlowId, RuleStatus status);
 }
