@@ -7,6 +7,7 @@ import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RecurringRuleException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
@@ -105,14 +106,11 @@ public class RecurringRulesController {
             @RequestParam(defaultValue = "1") int projectionMonths
     ) {
         // Validate parameters
-        if (cashFlowId == null || cashFlowId.isBlank()) {
-            throw new IllegalArgumentException("cashFlowId is required");
-        }
         if (upcomingDays < 1 || upcomingDays > 90) {
-            throw new IllegalArgumentException("upcomingDays must be between 1 and 90");
+            throw new InvalidDashboardParameterException("upcomingDays", upcomingDays, 1, 90);
         }
         if (projectionMonths < 1 || projectionMonths > 12) {
-            throw new IllegalArgumentException("projectionMonths must be between 1 and 12");
+            throw new InvalidDashboardParameterException("projectionMonths", projectionMonths, 1, 12);
         }
 
         String userId = getCurrentUserId();
@@ -127,14 +125,11 @@ public class RecurringRulesController {
             @RequestParam(defaultValue = "20") int limit
     ) {
         // Validate parameters
-        if (cashFlowId == null || cashFlowId.isBlank()) {
-            throw new IllegalArgumentException("cashFlowId is required");
-        }
         if (days < 1 || days > 90) {
-            throw new IllegalArgumentException("days must be between 1 and 90");
+            throw new InvalidDashboardParameterException("days", days, 1, 90);
         }
         if (limit < 1 || limit > 100) {
-            throw new IllegalArgumentException("limit must be between 1 and 100");
+            throw new InvalidDashboardParameterException("limit", limit, 1, 100);
         }
 
         String userId = getCurrentUserId();

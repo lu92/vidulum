@@ -780,6 +780,91 @@ public class RecurringRulesHttpActor {
         }
     }
 
+    // ============ Dashboard/Upcoming Error-Expecting Operations ============
+
+    /**
+     * Gets dashboard expecting an error response.
+     * Used for testing validation errors (missing cashFlowId, invalid parameters).
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyDashboardExpectingError(String cashFlowId, int upcomingDays, int projectionMonths) {
+        String url = baseUrl + "/me/dashboard?cashFlowId=" + cashFlowId +
+                "&upcomingDays=" + upcomingDays +
+                "&projectionMonths=" + projectionMonths;
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets dashboard without cashFlowId expecting an error response.
+     * Used for testing missing required parameter.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyDashboardWithoutCashFlowIdExpectingError() {
+        String url = baseUrl + "/me/dashboard";
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets upcoming transactions expecting an error response.
+     * Used for testing validation errors.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyUpcomingExpectingError(String cashFlowId, int days, int limit) {
+        String url = baseUrl + "/me/upcoming?cashFlowId=" + cashFlowId +
+                "&days=" + days + "&limit=" + limit;
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets upcoming transactions without cashFlowId expecting an error response.
+     * Used for testing missing required parameter.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyUpcomingWithoutCashFlowIdExpectingError() {
+        String url = baseUrl + "/me/upcoming";
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Helper Methods ============
 
     private HttpHeaders jsonHeaders() {

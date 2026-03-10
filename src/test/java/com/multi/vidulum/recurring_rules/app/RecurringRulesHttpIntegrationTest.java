@@ -2518,4 +2518,100 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
 
         log.info("Empty upcoming transactions test completed");
     }
+
+    // ============ Dashboard/Upcoming Parameter Validation Tests ============
+
+    @Test
+    void shouldRejectDashboardWithMissingCashFlowId() {
+        // WHEN: Try to get dashboard without cashFlowId
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyDashboardWithoutCashFlowIdExpectingError();
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_MISSING_CASHFLOW_ID");
+
+        log.info("Dashboard missing cashFlowId validation test completed");
+    }
+
+    @Test
+    void shouldRejectDashboardWithInvalidUpcomingDays() {
+        // GIVEN: Valid cashFlowId but invalid upcomingDays (> 90)
+        String anyCashFlowId = "CF12345678";
+
+        // WHEN: Try to get dashboard with upcomingDays = 100
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyDashboardExpectingError(anyCashFlowId, 100, 1);
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PARAMETER");
+        assertThat(response.getBody().get("message").toString()).contains("upcomingDays");
+
+        log.info("Dashboard invalid upcomingDays validation test completed");
+    }
+
+    @Test
+    void shouldRejectDashboardWithInvalidProjectionMonths() {
+        // GIVEN: Valid cashFlowId but invalid projectionMonths (> 12)
+        String anyCashFlowId = "CF12345678";
+
+        // WHEN: Try to get dashboard with projectionMonths = 15
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyDashboardExpectingError(anyCashFlowId, 7, 15);
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PARAMETER");
+        assertThat(response.getBody().get("message").toString()).contains("projectionMonths");
+
+        log.info("Dashboard invalid projectionMonths validation test completed");
+    }
+
+    @Test
+    void shouldRejectUpcomingWithMissingCashFlowId() {
+        // WHEN: Try to get upcoming transactions without cashFlowId
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyUpcomingWithoutCashFlowIdExpectingError();
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_MISSING_CASHFLOW_ID");
+
+        log.info("Upcoming missing cashFlowId validation test completed");
+    }
+
+    @Test
+    void shouldRejectUpcomingWithInvalidDays() {
+        // GIVEN: Valid cashFlowId but invalid days (> 90)
+        String anyCashFlowId = "CF12345678";
+
+        // WHEN: Try to get upcoming with days = 100
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyUpcomingExpectingError(anyCashFlowId, 100, 20);
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PARAMETER");
+        assertThat(response.getBody().get("message").toString()).contains("days");
+
+        log.info("Upcoming invalid days validation test completed");
+    }
+
+    @Test
+    void shouldRejectUpcomingWithInvalidLimit() {
+        // GIVEN: Valid cashFlowId but invalid limit (> 100)
+        String anyCashFlowId = "CF12345678";
+
+        // WHEN: Try to get upcoming with limit = 150
+        ResponseEntity<Map<String, Object>> response = recurringRulesActor.getMyUpcomingExpectingError(anyCashFlowId, 30, 150);
+
+        // THEN: Should return 400 Bad Request
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("code")).isEqualTo("RECURRING_RULE_INVALID_PARAMETER");
+        assertThat(response.getBody().get("message").toString()).contains("limit");
+
+        log.info("Upcoming invalid limit validation test completed");
+    }
 }
