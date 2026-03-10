@@ -28,4 +28,14 @@ public interface RecurringRuleMongoRepository extends MongoRepository<RecurringR
      */
     @Query("{ 'status': 'PAUSED', 'pauseInfo.resumeDate': { $ne: null, $lte: ?0 } }")
     List<RecurringRuleEntity> findPausedRulesWithResumeDateOnOrBefore(LocalDate date);
+
+    /**
+     * Count rules by user and status for dashboard.
+     */
+    long countByUserIdAndStatus(String userId, RuleStatus status);
+
+    /**
+     * Find rules by user and status.
+     */
+    List<RecurringRuleEntity> findByUserIdAndStatus(String userId, RuleStatus status);
 }

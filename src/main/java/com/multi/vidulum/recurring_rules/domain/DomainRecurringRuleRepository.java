@@ -38,4 +38,16 @@ public interface DomainRecurringRuleRepository {
     long generateNextSequence();
 
     long generateNextAmountChangeSequence();
+
+    /**
+     * Count rules by user and status.
+     * Used for dashboard summary.
+     */
+    long countByUserIdAndStatus(UserId userId, RuleStatus status);
+
+    /**
+     * Find rules by user and status.
+     * Used for dashboard filtering.
+     */
+    List<RecurringRule> findByUserIdAndStatus(UserId userId, RuleStatus status);
 }

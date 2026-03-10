@@ -6,6 +6,10 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 
 ## Spis treści
 
+**🔴 START HERE TOMORROW:**
+0. [🔴 HIGH: Dashboard & Upcoming Transactions (VID-150)](#0--high-dashboard--upcoming-transactions-vid-150)
+
+**Existing items:**
 1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
 2. [✅ DONE: Month Rollover & Ongoing Sync](#2--done-month-rollover--ongoing-sync)
 3. [Kafka Dead Letter Queue (DLQ)](#3-kafka-dead-letter-queue-dlq)
@@ -16,10 +20,163 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 8. [Maven Multi-Module Migration](#8-maven-multi-module-migration)
 9. [Canonical CSV Architecture](#9-canonical-csv-architecture)
 10. [🔴 CRITICAL: Resource Ownership Security (VID-132)](#10--critical-resource-ownership-security-vid-132)
-11. [🔴 HIGH: Fix Pause/Resume Duplicates + Auto-Resume (VID-145)](#11--high-fix-pauseresume-duplicates--auto-resume-scheduler-vid-145)
-12. [🔴 CRITICAL: Enable Scheduling Infrastructure (VID-146)](#12--critical-enable-scheduling-infrastructure-vid-146)
+11. [✅ DONE: Fix Pause/Resume Duplicates + Auto-Resume (VID-145)](#11--done-fix-pauseresume-duplicates--auto-resume-scheduler-vid-145)
+12. [✅ DONE: Enable Scheduling Infrastructure (VID-146)](#12--done-enable-scheduling-infrastructure-vid-146)
 13. [🟡 MEDIUM: System Auth Token for Schedulers (VID-147)](#13--medium-system-auth-token-for-schedulers-vid-147)
 14. [🟡 MEDIUM: Recurring Rules Atomicity & Saga (VID-148)](#14--medium-recurring-rules-atomicity--saga-vid-148)
+15. [🟡 MEDIUM: Execution History & Event-Driven Tracking (VID-149)](#15--medium-execution-history--event-driven-tracking-vid-149)
+16. [🟡 MEDIUM: Scheduled Amount Changes (effectiveDate)](#16--medium-scheduled-amount-changes-effectivedate)
+17. [🟢 LOW: Mismatch Resolution](#17--low-mismatch-resolution)
+18. [🟢 LOW: AI Rule Suggestions](#18--low-ai-rule-suggestions)
+
+---
+
+## 0. 🔴 HIGH: Dashboard & Upcoming Transactions (VID-150)
+
+**Plik:** `docs/features-backlog/VID-150-dashboard-and-upcoming-transactions.md`
+**Priorytet:** 🔴 WYSOKI - START HERE TOMORROW
+**Szacowany czas:** 4-6 godzin
+**Status:** TODO
+
+### Problem
+
+Mockupy UI pokazują Dashboard z podsumowaniami i listą nadchodzących transakcji, ale backend nie ma odpowiednich endpointów.
+
+### Mockup Dashboard (Screen 11)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     RECURRING RULES DASHBOARD                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │
+│  │ Active Rules │  │   Monthly    │  │   Monthly    │  │   Net    │ │
+│  │      8       │  │  Expenses    │  │   Income     │  │ Balance  │ │
+│  │              │  │  -4,250 PLN  │  │  +8,500 PLN  │  │+4,250 PLN│ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘ │
+├─────────────────────────────────────────────────────────────────────┤
+│  NEEDS ATTENTION                                                     │
+│  ⚠️  1 mismatch to resolve - Netflix: 22.99 (expected 19.99)        │
+│  💡 3 suggested rules - New patterns detected                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  UPCOMING TRANSACTIONS (7 days)                                      │
+│  Feb 28  💰 Salary                                       +8,500 PLN │
+│  Mar 1   🏋️ Gym Membership                                 -50 PLN │
+│  Mar 5   👶 Daycare                                        -800 PLN │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Nowe Endpointy
+
+#### 1. Dashboard
+
+```
+GET /api/v1/recurring-rules/dashboard
+Authorization: Bearer {token}
+
+Response:
+{
+  "activeRulesCount": 8,
+  "pausedRulesCount": 1,
+  "completedRulesCount": 0,
+  "monthlyExpenses": {"amount": 4250.00, "currency": "PLN"},
+  "monthlyIncome": {"amount": 8500.00, "currency": "PLN"},
+  "netBalance": {"amount": 4250.00, "currency": "PLN"},
+  "needsAttention": {
+    "mismatchCount": 1,
+    "suggestedRulesCount": 3
+  },
+  "upcomingTransactions": [...]
+}
+```
+
+#### 2. Upcoming Transactions
+
+```
+GET /api/v1/recurring-rules/upcoming?days=7
+Authorization: Bearer {token}
+
+Response:
+{
+  "transactions": [
+    {
+      "ruleId": "RR001",
+      "ruleName": "Salary",
+      "cashChangeId": "CC123",
+      "dueDate": "2026-02-28",
+      "amount": {"amount": 8500.00, "currency": "PLN"},
+      "type": "INFLOW",
+      "category": "Salary",
+      "status": "PENDING",
+      "daysUntilDue": 3
+    }
+  ],
+  "totalInflow": {"amount": 8500.00, "currency": "PLN"},
+  "totalOutflow": {"amount": 850.00, "currency": "PLN"},
+  "netChange": {"amount": 7650.00, "currency": "PLN"}
+}
+```
+
+### Plan implementacji
+
+#### Dzień 1 (4-6h):
+
+1. **Utworzyć DTOs** (1h):
+   - `DashboardResponse.java`
+   - `UpcomingTransactionsResponse.java`
+   - `UpcomingTransaction.java`
+
+2. **Utworzyć Query** (30min):
+   - `GetDashboardQuery.java`
+   - `GetUpcomingTransactionsQuery.java`
+
+3. **Implementacja w Service** (2h):
+   - `RecurringRuleService.handle(GetDashboardQuery)`
+   - `RecurringRuleService.handle(GetUpcomingTransactionsQuery)`
+   - Agregacja danych z reguł i CashFlow
+
+4. **Endpointy w Controller** (30min):
+   - `GET /dashboard`
+   - `GET /upcoming`
+
+5. **Testy integracyjne** (1-2h):
+   - Test dashboard z różnymi stanami reguł
+   - Test upcoming z różnymi zakresami dat
+
+### Pliki do utworzenia
+
+```
+src/main/java/com/multi/vidulum/recurring_rules/app/dto/
+├── DashboardResponse.java
+└── UpcomingTransactionsResponse.java
+
+src/main/java/com/multi/vidulum/recurring_rules/app/queries/
+├── GetDashboardQuery.java
+└── GetUpcomingTransactionsQuery.java
+```
+
+### Pliki do zmodyfikowania
+
+```
+RecurringRulesController.java  - dodać 2 endpointy
+RecurringRuleService.java      - dodać 2 handlery
+RecurringRulesHttpActor.java   - dodać metody do testów
+RecurringRulesHttpIntegrationTest.java - dodać testy
+```
+
+### Acceptance Criteria
+
+- [ ] `GET /api/v1/recurring-rules/dashboard` zwraca statystyki
+- [ ] Liczniki reguł (active/paused/completed) są poprawne
+- [ ] Miesięczne wydatki/przychody obliczone poprawnie
+- [ ] `GET /api/v1/recurring-rules/upcoming?days=N` działa
+- [ ] Transakcje posortowane po dueDate rosnąco
+- [ ] Sumy inflow/outflow/net obliczone
+- [ ] `daysUntilDue` obliczane poprawnie
+- [ ] Testy integracyjne przechodzą
+
+### Powiązane pliki mockup
+
+- `docs/design/recurring-rules-web-mockups-en.html` - Screen 11 (Dashboard)
 
 ---
 
@@ -246,7 +403,7 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 
 **Plik:** `docs/features-backlog/2026-02-14-recurring-rule-engine-design.md`
 **Priorytet:** WYSOKI
-**Status:** ✅ **UKOŃCZONE ~95%** (2026-03-07)
+**Status:** ✅ **UKOŃCZONE ~98%** (2026-03-09)
 
 ### Podsumowanie stanu implementacji
 
@@ -258,6 +415,7 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 | **Advanced Options** | 100% | 0% |
 | **Error Handling** | 100% | 0% |
 | **Integration Tests** | 100% | 0% |
+| **Pause/Resume + Scheduling** | 100% | 0% |
 | **AI Features** | 0% | 100% (out of scope) |
 
 ### ✅ Zaimplementowane - PEŁNA LISTA
@@ -306,18 +464,27 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 | 9 scenariuszy testów integracyjnych | ✅ |
 | Testy wszystkich advanced options | ✅ |
 
+#### Pause/Resume & Scheduling (VID-145, VID-146)
+| Funkcjonalność | Status |
+|----------------|--------|
+| Pause clears CashChanges | ✅ |
+| Resume regenerates CashChanges | ✅ |
+| Auto-Resume Scheduler (03:00 UTC daily) | ✅ |
+| 409 CONFLICT for invalid state transitions | ✅ |
+| @EnableScheduling infrastructure | ✅ |
+
 ### ❌ Brakuje (v2.0 - Priorytet NISKI)
 
 | Funkcjonalność | Opis | Priorytet |
 |----------------|------|-----------|
 | ~~**Amount Changes API**~~ | ✅ DONE - Endpointy zaimplementowane | - |
 | ~~**GET /me fix**~~ | ✅ OK - działa prawidłowo | - |
-| **GET /{ruleId}/impact-preview** | Podgląd wpływu usunięcia reguły na forecast | 🟡 Średni |
-| **deleteGeneratedTransactions** | Opcja usuwania CashChanges przy DELETE rule | 🟡 Średni |
+| ~~**GET /{ruleId}/impact-preview**~~ | ✅ DONE - Podgląd wpływu usunięcia reguły | - |
+| ~~**deleteGeneratedTransactions**~~ | ✅ DONE - DELETE automatycznie czyści CashChanges | - |
 | **amountIsEstimate** | Flaga dla kwot przybliżonych | 🟢 Niski |
 | **counterpartyName/Account** | Hints dla future reconciliation | 🟢 Niski |
-| **executionHistory** | Historia wykonań w response | 🟢 Niski |
-| **statistics** | Statystyki reguły w response | 🟢 Niski |
+| **executionHistory** | Historia wykonań w response → **VID-149** | 🟡 Średni |
+| **statistics** | Statystyki reguły w response → **VID-149** | 🟡 Średni |
 | **Category archived handling** | Auto-pause przy archiwizacji kategorii | 🟢 Niski |
 | **CashFlowClosedEvent handling** | Auto-pause przy zamknięciu CF | 🟢 Niski |
 | **Batch operations** | Bulk create/update/delete | 🟢 Niski |
@@ -329,12 +496,13 @@ W `HistoricalCashChangeImportedEventHandler` (oraz innych handlerach Kafka) istn
 ```
 POST   /api/v1/recurring-rules                  # Utwórz regułę
 GET    /api/v1/recurring-rules/{ruleId}         # Szczegóły reguły
+GET    /api/v1/recurring-rules/{ruleId}/impact-preview  # Podgląd wpływu usunięcia
 GET    /api/v1/recurring-rules/cash-flow/{id}   # Lista reguł dla CashFlow
 GET    /api/v1/recurring-rules/user/{userId}    # Lista reguł użytkownika
 GET    /api/v1/recurring-rules/me               # Moje reguły
 PUT    /api/v1/recurring-rules/{ruleId}         # Edytuj regułę + regeneracja
-DELETE /api/v1/recurring-rules/{ruleId}         # Usuń regułę + cleanup
-POST   /api/v1/recurring-rules/{ruleId}/pause   # Wstrzymaj (z resumeDate)
+DELETE /api/v1/recurring-rules/{ruleId}         # Usuń regułę + cleanup CashChanges
+POST   /api/v1/recurring-rules/{ruleId}/pause   # Wstrzymaj + clear CashChanges
 POST   /api/v1/recurring-rules/{ruleId}/resume  # Wznów + regeneracja
 POST   /api/v1/recurring-rules/{ruleId}/regenerate # Ręczna regeneracja
 ```
@@ -347,7 +515,7 @@ POST   /api/v1/recurring-rules/{ruleId}/regenerate # Ręczna regeneracja
 | **Monarch Money** | ✅ Dobre | ✅ Świetne | ✅ Dobre (IF-THEN) |
 | **Copilot** | ⚠️ Ograniczone | ✅ Dobre | ❌ Brak |
 | **Agicap** | ✅ Świetne (B2B) | ✅ Dobre | ✅ Zaawansowane |
-| **Vidulum** | ✅ Zaawansowane | ❌ Phase 4 | ✅ Kompletne (95%) |
+| **Vidulum** | ✅ Zaawansowane | ❌ Phase 4 | ✅ Kompletne (98%) |
 
 ---
 
@@ -680,21 +848,26 @@ TX002,2026-01-31,Salary,8000.00,PLN,INFLOW,Income,Employer ABC
 
 ---
 
-## Priorytetyzacja
+## Priorytetyzacja (Updated 2026-03-10)
 
 | Priorytet | Feature | Uzasadnienie | Status |
 |-----------|---------|--------------|--------|
-| ✅ DONE | JWT Integration Tests | Bezpieczeństwo, już znaleziono bug | **UKOŃCZONE 2026-02-25** |
-| ✅ DONE | Month Rollover & Ongoing Sync | Blokuje użytkowników po aktywacji | **UKOŃCZONE 2026-02-25** |
-| ✅ DONE | Recurring Rules | Core feature dla prognozowania | **UKOŃCZONE ~95% 2026-03-07** |
+| 🔴 **HIGH** | **VID-150: Dashboard & Upcoming** | Key UX feature, mockups ready | **TODO - START TOMORROW** |
+| ✅ DONE | JWT Integration Tests | Bezpieczeństwo | **UKOŃCZONE 2026-02-25** |
+| ✅ DONE | Month Rollover & Ongoing Sync | Blokuje użytkowników | **UKOŃCZONE 2026-02-25** |
+| ✅ DONE | Recurring Rules | Core feature | **UKOŃCZONE ~98% 2026-03-09** |
+| ✅ DONE | VID-145: Pause/Resume Fix | Bug fix | **UKOŃCZONE 2026-03-09** |
+| ✅ DONE | VID-146: Enable Scheduling | Infrastructure | **UKOŃCZONE 2026-03-09** |
+| 🔴 CRITICAL | VID-132: Resource Ownership | Security - IDOR | **TODO - PRZED PRODUKCJĄ** |
+| 🟡 MEDIUM | VID-147: System Auth Token | Schedulery | TODO |
+| 🟡 MEDIUM | VID-148: Atomicity/Saga | Spójność danych | TODO |
+| 🟡 MEDIUM | VID-149: Execution History | Tracking, statistics | TODO |
+| 🟡 MEDIUM | Scheduled Amount Changes | effectiveDate | TODO |
 | 🟡 ŚREDNI | Kafka DLQ | Stabilność produkcji | TODO |
 | 🟡 ŚREDNI | AI Categorization | UX improvement | TODO |
-| 🟡 ŚREDNI | Alerts | Proactive notifications | TODO |
-| 🟡 ŚREDNI | Reconciliation | Automatyzacja | TODO |
-| 🔴 CRITICAL | Resource Ownership Security (VID-132) | Security vulnerability - IDOR | **TODO - PRZED PRODUKCJĄ** |
-| 🟢 NISKI | Recurring Rules v2.0 | Amount Changes API, batch ops | TODO |
+| 🟢 LOW | Mismatch Resolution | Reconciliation UI | TODO |
+| 🟢 LOW | AI Rule Suggestions | Pattern detection | TODO |
 | 🟢 NISKI | Maven Multi-Module | Refactoring | TODO |
-| 🟢 NISKI | Canonical CSV | Nice to have | TODO |
 
 ---
 
@@ -1052,15 +1225,333 @@ Najpierw zapisać intencję w rule, potem wykonać HTTP call
 
 ---
 
-## Aktualizacja priorytetyzacji
+## Aktualizacja priorytetyzacji (Recurring Rules related)
 
 | Priorytet | Feature | Uzasadnienie | Status |
 |-----------|---------|--------------|--------|
-| 🔴 CRITICAL | **VID-146: Enable Scheduling** | Istniejący scheduler nie działa! | ✅ DONE |
+| 🔴 **HIGH** | **VID-150: Dashboard & Upcoming** | Mockupy gotowe, key UX | **TODO - START TOMORROW** |
+| ✅ DONE | VID-146: Enable Scheduling | Istniejący scheduler nie działa! | ✅ DONE 2026-03-09 |
+| ✅ DONE | VID-145: Pause/Resume Fix | Bug z duplikatami | ✅ DONE 2026-03-09 |
 | 🔴 CRITICAL | VID-132: Resource Ownership | Security vulnerability - IDOR | TODO |
-| 🔴 HIGH | **VID-145: Pause/Resume Fix** | Bug z duplikatami, blokuje UX | ✅ DONE |
-| 🟡 MEDIUM | **VID-147: System Auth Token** | Wymagany dla schedulerów | TODO |
-| 🟡 MEDIUM | **VID-148: Atomicity/Saga** | Spójność danych przy awariach | TODO |
-| 🟡 MEDIUM | Kafka DLQ | Stabilność produkcji | TODO |
-| 🟡 MEDIUM | AI Categorization | UX improvement | TODO |
-| 🟢 LOW | Recurring Rules v2.0 | Nice to have | TODO |
+| 🟡 MEDIUM | VID-147: System Auth Token | Wymagany dla schedulerów | TODO |
+| 🟡 MEDIUM | VID-148: Atomicity/Saga | Spójność danych przy awariach | TODO |
+| 🟡 MEDIUM | VID-149: Execution History | Payment tracking, statistics | TODO |
+| 🟡 MEDIUM | Scheduled Amount Changes | effectiveDate in AmountChange | TODO |
+| 🟢 LOW | Mismatch Resolution | Reconciliation UI flow | TODO |
+| 🟢 LOW | AI Rule Suggestions | Pattern detection | TODO |
+
+---
+
+## 15. 🟡 MEDIUM: Execution History & Event-Driven Tracking (VID-149)
+
+**Plik:** `docs/features-backlog/VID-149-execution-history-analysis.md`
+**Priorytet:** ŚREDNI
+**Szacowany czas:** 6-10 godzin
+**Status:** TODO
+
+### Problem
+
+RecurringRule nie śledzi historii wykonań (opłaconych transakcji). Gdy użytkownik potwierdza płatność w CashFlow, RecurringRule nie jest o tym informowany.
+
+### Obecna architektura eventów
+
+```
+┌─────────────────────┐                              ┌─────────────────────┐
+│   RecurringRule     │         HTTP calls           │      CashFlow       │
+│   (MongoDB)         │ ───────────────────────────► │      (MongoDB)      │
+│                     │                              │                      │
+│  emit(RuleEvent)    │                              │  emit(CashFlowEvent) │
+│       │             │                              │         │            │
+│       ▼             │                              │         ▼            │
+│   eventConsumer     │                              │   Kafka "cash_flow"  │
+│   (NULL - unused!)  │                              │         │            │
+└─────────────────────┘                              └─────────┼────────────┘
+                                                               │
+                                                               ▼
+                                              ┌─────────────────────────────────┐
+                                              │   CashFlowEventListener         │
+                                              │   → RecurringRule NOT notified! │
+                                              └─────────────────────────────────┘
+```
+
+### Kluczowy problem: `CashChangeConfirmedEvent` nie zawiera `sourceRuleId`
+
+```java
+// Obecna definicja (CashFlowEvent.java:232):
+record CashChangeConfirmedEvent(
+    CashFlowId cashFlowId,
+    CashChangeId cashChangeId,
+    ZonedDateTime endDate
+) implements CashFlowEvent
+// ↑ BRAKUJE sourceRuleId!
+```
+
+### Istniejące struktury (gotowe, nieużywane)
+
+```java
+// RuleExecution.java - GOTOWE ale nie używane
+public record RuleExecution(
+    LocalDate executionDate,
+    Instant executedAt,
+    ExecutionStatus status,      // SUCCESS, FAILED, SKIPPED
+    CashChangeId generatedCashChangeId,
+    Money executedAmount,
+    String failureReason
+)
+
+// RecurringRule.java - lista istnieje ale jest pusta
+private List<RuleExecution> executions;
+
+// Metoda istnieje ale NIGDY nie jest wywoływana:
+public void recordExecution(RuleExecution execution, Clock clock)
+```
+
+### Plan implementacji
+
+#### Faza 1: Dodać sourceRuleId do CashChangeConfirmedEvent (30 min)
+- Zmodyfikować `CashFlowEvent.CashChangeConfirmedEvent`
+- Zaktualizować `ConfirmCashChangeCommandHandler`
+
+#### Faza 2: Utworzyć RecurringRuleEventListener (2h)
+- Nowy Kafka consumer dla `cash_flow` topic
+- Filtrować eventy z `sourceRuleId != null`
+- Wywoływać `rule.recordExecution()` przy potwierdzeniu
+
+#### Faza 3: Dodać executionHistory do Response (1h)
+- Rozszerzyć `RecurringRuleResponse` o `executionHistory`
+- Mapować z `RuleExecution` do DTO
+
+#### Faza 4: Statystyki (2h)
+- `totalConfirmed`, `totalPending`
+- `totalPaidAmount`
+- `averagePaymentDelay`
+
+### Przykład docelowego response
+
+```json
+{
+  "ruleId": "RR00000001",
+  "name": "Czynsz",
+  "executionHistory": [
+    {
+      "dueDate": "2026-01-01",
+      "cashChangeId": "CC00001",
+      "status": "CONFIRMED",
+      "confirmedAt": "2026-01-03T14:30:00Z"
+    },
+    {
+      "dueDate": "2026-02-01",
+      "cashChangeId": "CC00002",
+      "status": "PENDING",
+      "confirmedAt": null
+    }
+  ],
+  "statistics": {
+    "totalGenerated": 12,
+    "totalConfirmed": 1,
+    "totalPending": 11
+  }
+}
+```
+
+### Event flow po implementacji
+
+```
+CashFlow                              Kafka                    RecurringRule
+   │                                    │                           │
+   │  confirm()                         │                           │
+   │──────────────────────────────────►│  CashChangeConfirmedEvent │
+   │                                    │  + sourceRuleId           │
+   │                                    │───────────────────────────►│
+   │                                    │                           │  recordExecution()
+   │                                    │                           │  executions.add()
+   │                                    │                           │  save()
+```
+
+### Acceptance Criteria
+
+- [ ] `CashChangeConfirmedEvent` zawiera `sourceRuleId`
+- [ ] `RecurringRuleEventListener` przetwarza eventy potwierdzenia
+- [ ] `RecurringRule.executions` jest aktualizowane przy potwierdzeniu
+- [ ] `executionHistory` widoczne w GET rule response
+- [ ] Statystyki obliczane i zwracane
+
+### Szczegółowa dokumentacja
+
+Pełna analiza z diagramami: `docs/features-backlog/VID-149-execution-history-analysis.md`
+
+---
+
+## 16. 🟡 MEDIUM: Scheduled Amount Changes (effectiveDate)
+
+**Priorytet:** ŚREDNI
+**Szacowany czas:** 3-4 godziny
+**Status:** TODO
+
+### Problem
+
+Mockup "Scheduled Change" (Screen 9) pokazuje możliwość ustawienia daty od której zmiana kwoty zaczyna obowiązywać. Obecna implementacja AmountChange nie ma pola `effectiveDate` - zmiana jest natychmiastowa.
+
+### Obecna vs docelowa struktura
+
+**Obecna:**
+```java
+public record AmountChange(
+    AmountChangeId id,
+    Money amount,
+    AmountChangeType type,  // PERMANENT, ONE_TIME
+    String reason
+)
+```
+
+**Docelowa:**
+```java
+public record AmountChange(
+    AmountChangeId id,
+    Money amount,
+    AmountChangeType type,
+    String reason,
+    LocalDate effectiveDate,  // NEW - od kiedy obowiązuje
+    Instant createdAt         // NEW - audit trail
+)
+```
+
+### Zmiana w API
+
+```
+POST /api/v1/recurring-rules/{ruleId}/amount-changes
+{
+    "amount": {"amount": 2200.00, "currency": "PLN"},
+    "type": "PERMANENT",
+    "reason": "Rent increase per landlord notice",
+    "effectiveDate": "2027-01-01"  // NEW - optional
+}
+```
+
+### Logika calculateEffectiveAmount()
+
+```java
+public Money calculateEffectiveAmount(LocalDate forDate) {
+    Money effective = baseAmount;
+
+    for (AmountChange change : amountChanges) {
+        // NEW: sprawdź czy zmiana już obowiązuje
+        if (change.effectiveDate() != null && forDate.isBefore(change.effectiveDate())) {
+            continue;  // ta zmiana jeszcze nie obowiązuje
+        }
+
+        if (change.type() == AmountChangeType.PERMANENT) {
+            effective = change.amount();
+        }
+    }
+
+    return effective;
+}
+```
+
+### Backward compatibility
+
+- Istniejące AmountChanges bez effectiveDate = natychmiastowe (null = teraz)
+- Migracja: dla istniejących rekordów ustawić effectiveDate = createdAt
+
+### Pliki do modyfikacji
+
+| Plik | Zmiana |
+|------|--------|
+| `AmountChange.java` | Dodać effectiveDate, createdAt |
+| `AmountChangeEmbedded.java` | Dodać nowe pola |
+| `AddAmountChangeRequest.java` | Dodać effectiveDate |
+| `RecurringRule.java` | Update calculateEffectiveAmount() |
+| `AmountChangeResponse.java` | Dodać nowe pola |
+
+### Acceptance Criteria
+
+- [ ] `effectiveDate` można ustawić przy dodawaniu amount change
+- [ ] Zmiany z przyszłym effectiveDate nie wpływają na obecne obliczenia
+- [ ] Zmiany stają się aktywne od effectiveDate
+- [ ] `createdAt` śledzone dla audytu
+- [ ] Backward compatible z istniejącymi danymi
+
+---
+
+## 17. 🟢 LOW: Mismatch Resolution
+
+**Priorytet:** NISKI
+**Szacowany czas:** 1-2 dni
+**Status:** TODO
+
+### Problem
+
+Mockup "Mismatch Resolution" (Screen 10) pokazuje flow gdy rzeczywista transakcja != oczekiwana:
+- Netflix expected $19.99, received $22.99
+- Opcje: Update rule / Accept this only / Schedule change
+
+### Koncept
+
+Gdy CashChange jest potwierdzany z inną kwotą niż oczekiwana:
+1. Wykryj mismatch (expected vs actual)
+2. Utwórz `Mismatch` entity
+3. Pokaż użytkownikowi opcje rozwiązania:
+   - **Update rule to new amount** (wszystkie przyszłe)
+   - **Accept this transaction only** (jednorazowy wyjątek)
+   - **Schedule change from this date** (od teraz)
+
+### Wymagana implementacja
+
+1. **Detection**: Przy `confirmCashChange` porównaj kwoty
+2. **Storage**: Nowa kolekcja `mismatches`
+3. **API**:
+   - `GET /api/v1/recurring-rules/mismatches`
+   - `POST /api/v1/recurring-rules/mismatches/{id}/resolve`
+
+### Szczegóły w: `docs/features-backlog/VID-150-dashboard-and-upcoming-transactions.md`
+
+---
+
+## 18. 🟢 LOW: AI Rule Suggestions
+
+**Priorytet:** NISKI
+**Szacowany czas:** 3-5 dni
+**Status:** TODO
+
+### Problem
+
+Mockup "AI Suggestions" (Screen 12) pokazuje automatyczne wykrywanie wzorców w transakcjach i sugerowanie nowych reguł:
+- NETFLIX - 6 transactions, ~$19.99, 15th monthly - 95% confidence
+- PLANET FITNESS - 4 transactions, ~$25, 1st monthly - 85% confidence
+
+### Koncept
+
+Analizuj historię transakcji:
+1. Grupuj po merchant name
+2. Znajdź powtarzające się kwoty
+3. Wykryj częstotliwość (monthly, weekly)
+4. Oblicz confidence score
+5. Zaproponuj regułę do utworzenia
+
+### Wymagana implementacja
+
+1. **Pattern detection engine**
+2. **Confidence scoring algorithm**
+3. **Storage**: `suggested_rules` kolekcja
+4. **API**:
+   - `GET /api/v1/recurring-rules/suggestions`
+   - `POST /api/v1/recurring-rules/suggestions/{id}/accept`
+   - `POST /api/v1/recurring-rules/suggestions/{id}/dismiss`
+
+---
+
+## Podsumowanie Priorytetów
+
+| Priorytet | VID | Feature | Czas | Status |
+|-----------|-----|---------|------|--------|
+| 🔴 **HIGH** | **VID-150** | **Dashboard & Upcoming** | 4-6h | **TODO - START HERE** |
+| 🔴 HIGH | VID-132 | Resource Ownership Security | 8-12h | TODO |
+| ✅ DONE | VID-145 | Pause/Resume Fix | - | DONE |
+| ✅ DONE | VID-146 | Enable Scheduling | - | DONE |
+| 🟡 MEDIUM | VID-147 | System Auth Token | 4-6h | TODO |
+| 🟡 MEDIUM | VID-148 | Atomicity/Saga | 8-16h | TODO |
+| 🟡 MEDIUM | VID-149 | Execution History | 6-10h | TODO |
+| 🟡 MEDIUM | - | Scheduled Amount Changes | 3-4h | TODO |
+| 🟢 LOW | - | Mismatch Resolution | 1-2d | TODO |
+| 🟢 LOW | - | AI Rule Suggestions | 3-5d | TODO |

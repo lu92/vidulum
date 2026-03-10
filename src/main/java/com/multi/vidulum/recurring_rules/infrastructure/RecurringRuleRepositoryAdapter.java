@@ -86,6 +86,19 @@ public class RecurringRuleRepositoryAdapter implements DomainRecurringRuleReposi
     }
 
     @Override
+    public long countByUserIdAndStatus(UserId userId, RuleStatus status) {
+        return mongoRepository.countByUserIdAndStatus(userId.getId(), status);
+    }
+
+    @Override
+    public List<RecurringRule> findByUserIdAndStatus(UserId userId, RuleStatus status) {
+        return mongoRepository.findByUserIdAndStatus(userId.getId(), status).stream()
+                .map(RecurringRuleEntity::toSnapshot)
+                .map(RecurringRule::fromSnapshot)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public long generateNextSequence() {
         SequenceDocument counter = mongoTemplate.findAndModify(
                 query(where("_id").is(SEQUENCE_COLLECTION)),

@@ -98,6 +98,23 @@ public class RecurringRulesController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/me/dashboard")
+    public ResponseEntity<DashboardResponse> getMyDashboard() {
+        String userId = getCurrentUserId();
+        DashboardResponse dashboard = ruleService.getDashboard(userId);
+        return ResponseEntity.ok(dashboard);
+    }
+
+    @GetMapping("/me/upcoming")
+    public ResponseEntity<UpcomingTransactionsResponse> getMyUpcomingTransactions(
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        String userId = getCurrentUserId();
+        UpcomingTransactionsResponse upcoming = ruleService.getUpcomingTransactions(userId, days, limit);
+        return ResponseEntity.ok(upcoming);
+    }
+
     @PutMapping("/{ruleId}")
     public ResponseEntity<Void> updateRule(
             @PathVariable String ruleId,

@@ -7,7 +7,9 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;
+import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
+import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
 import com.multi.vidulum.recurring_rules.domain.exceptions.*;
 import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
@@ -450,6 +452,155 @@ public class RecurringRuleService {
                 .warnings(warnings)
                 .recommendations(recommendations)
                 .build();
+    }
+
+    // Dashboard and Upcoming Transactions
+
+    public DashboardResponse getDashboard(String userId) {
+        UserId userIdObj = UserId.of(userId);
+
+        // Get rule counts by status
+        int activeCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
+        int pausedCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.PAUSED);
+        int completedCount = (int) ruleRepository.countByUserIdAndStatus(userIdObj, RuleStatus.COMPLETED);
+
+        DashboardResponse.Summary summary = DashboardResponse.Summary.builder()
+                .activeRulesCount(activeCount)
+                .pausedRulesCount(pausedCount)
+                .completedRulesCount(completedCount)
+                .build();
+
+        // Calculate monthly projection from active rules
+        LocalDate today = LocalDate.now(clock);
+        YearMonth currentMonth = YearMonth.from(today);
+        LocalDate monthStart = currentMonth.atDay(1);
+        LocalDate monthEnd = currentMonth.atEndOfMonth();
+
+        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
+
+        BigDecimal totalExpenses = BigDecimal.ZERO;
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        String currency = "PLN"; // Default currency, will be updated from first rule
+
+        for (RecurringRule rule : activeRules) {
+            List<LocalDate> occurrences = rule.generateOccurrences(monthStart, monthEnd);
+            for (LocalDate occurrence : occurrences) {
+                Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
+                currency = effectiveAmount.getCurrency();
+
+                if (effectiveAmount.isPositive()) {
+                    totalIncome = totalIncome.add(effectiveAmount.getAmount());
+                } else {
+                    totalExpenses = totalExpenses.add(effectiveAmount.getAmount().abs());
+                }
+            }
+        }
+
+        DashboardResponse.MonthlyProjection monthlyProjection = DashboardResponse.MonthlyProjection.builder()
+                .expenses(Money.of(totalExpenses, currency))
+                .income(Money.of(totalIncome, currency))
+                .netBalance(Money.of(totalIncome.subtract(totalExpenses), currency))
+                .build();
+
+        // Get upcoming transactions (next 7 days)
+        UpcomingTransactionsResponse upcomingResponse = getUpcomingTransactions(userId, 7, 5);
+
+        List<DashboardResponse.UpcomingTransactionDto> upcomingTransactions = upcomingResponse.getTransactions().stream()
+                .map(t -> DashboardResponse.UpcomingTransactionDto.builder()
+                        .ruleId(t.getRuleId())
+                        .ruleName(t.getRuleName())
+                        .cashChangeId(t.getCashChangeId())
+                        .dueDate(t.getDueDate())
+                        .amount(t.getAmount())
+                        .type(t.getType())
+                        .category(t.getCategory())
+                        .daysUntilDue(t.getDaysUntilDue())
+                        .build())
+                .toList();
+
+        return DashboardResponse.builder()
+                .userId(userId)
+                .generatedAt(clock.instant())
+                .summary(summary)
+                .monthlyProjection(monthlyProjection)
+                .upcomingTransactions(upcomingTransactions)
+                .build();
+    }
+
+    public UpcomingTransactionsResponse getUpcomingTransactions(String userId, int days, int limit) {
+        UserId userIdObj = UserId.of(userId);
+        LocalDate today = LocalDate.now(clock);
+        LocalDate endDate = today.plusDays(days);
+
+        List<RecurringRule> activeRules = ruleRepository.findByUserIdAndStatus(userIdObj, RuleStatus.ACTIVE);
+
+        List<UpcomingTransactionsResponse.UpcomingTransaction> allTransactions = new ArrayList<>();
+
+        for (RecurringRule rule : activeRules) {
+            List<LocalDate> occurrences = rule.generateOccurrences(today, endDate);
+
+            for (LocalDate occurrence : occurrences) {
+                Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
+                String type = effectiveAmount.isPositive() ? "INFLOW" : "OUTFLOW";
+                int daysUntilDue = (int) java.time.temporal.ChronoUnit.DAYS.between(today, occurrence);
+
+                // Find matching generated cash change ID if exists
+                String cashChangeId = findGeneratedCashChangeIdForDate(rule, occurrence);
+
+                UpcomingTransactionsResponse.UpcomingTransaction transaction =
+                        UpcomingTransactionsResponse.UpcomingTransaction.builder()
+                                .ruleId(rule.getRuleId().id())
+                                .ruleName(rule.getName())
+                                .cashChangeId(cashChangeId)
+                                .dueDate(occurrence)
+                                .amount(Money.of(effectiveAmount.getAmount().abs(), effectiveAmount.getCurrency()))
+                                .type(type)
+                                .category(rule.getCategoryName().name())
+                                .daysUntilDue(daysUntilDue)
+                                .build();
+
+                allTransactions.add(transaction);
+            }
+        }
+
+        // Sort by due date and apply limit
+        List<UpcomingTransactionsResponse.UpcomingTransaction> sortedTransactions = allTransactions.stream()
+                .sorted((a, b) -> a.getDueDate().compareTo(b.getDueDate()))
+                .limit(limit > 0 ? limit : Integer.MAX_VALUE)
+                .toList();
+
+        // Calculate totals
+        BigDecimal totalInflow = BigDecimal.ZERO;
+        BigDecimal totalOutflow = BigDecimal.ZERO;
+        String currency = "PLN";
+
+        for (UpcomingTransactionsResponse.UpcomingTransaction t : sortedTransactions) {
+            currency = t.getAmount().getCurrency();
+            if ("INFLOW".equals(t.getType())) {
+                totalInflow = totalInflow.add(t.getAmount().getAmount());
+            } else {
+                totalOutflow = totalOutflow.add(t.getAmount().getAmount());
+            }
+        }
+
+        return UpcomingTransactionsResponse.builder()
+                .transactions(sortedTransactions)
+                .totalInflow(Money.of(totalInflow, currency))
+                .totalOutflow(Money.of(totalOutflow, currency))
+                .netChange(Money.of(totalInflow.subtract(totalOutflow), currency))
+                .totalCount(sortedTransactions.size())
+                .build();
+    }
+
+    /**
+     * Finds the generated cash change ID for a specific occurrence date.
+     * Returns null if no matching cash change was generated yet.
+     */
+    private String findGeneratedCashChangeIdForDate(RecurringRule rule, LocalDate occurrenceDate) {
+        // This is a simplified implementation - we don't have a direct mapping
+        // In a full implementation, we would store the mapping in GenerationInfo
+        // For now, return null as the UI can still show upcoming transactions without the ID
+        return null;
     }
 
     // Private helper methods
