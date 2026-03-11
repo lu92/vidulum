@@ -30,6 +30,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CategoryCreatedEvent,
         CashFlowEvent.CategoryArchivedEvent,
         CashFlowEvent.CategoryUnarchivedEvent,
+        CashFlowEvent.CategoryMovedEvent,
         CashFlowEvent.BudgetingSetEvent,
         CashFlowEvent.BudgetingUpdatedEvent,
         CashFlowEvent.BudgetingRemovedEvent {
@@ -429,6 +430,33 @@ public sealed interface CashFlowEvent extends DomainEvent
         @Override
         public ZonedDateTime occurredAt() {
             return updatedAt;
+        }
+    }
+
+    /**
+     * Event for moving a category to a different parent (or to root level).
+     * <p>
+     * Moving a category also moves all its subcategories with it.
+     * Transactions remain associated with their categories - only the hierarchy changes.
+     *
+     * @param cashFlowId            the CashFlow containing the category
+     * @param categoryName          the name of the category being moved
+     * @param oldParentCategoryName the previous parent (NOT_DEFINED if was at root)
+     * @param newParentCategoryName the new parent (NOT_DEFINED if moving to root)
+     * @param categoryType          INFLOW or OUTFLOW
+     * @param movedAt               timestamp when the move occurred
+     */
+    record CategoryMovedEvent(
+            CashFlowId cashFlowId,
+            CategoryName categoryName,
+            CategoryName oldParentCategoryName,
+            CategoryName newParentCategoryName,
+            Type categoryType,
+            ZonedDateTime movedAt
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return movedAt;
         }
     }
 }

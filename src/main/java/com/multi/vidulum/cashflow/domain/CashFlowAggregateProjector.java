@@ -32,6 +32,7 @@ public class CashFlowAggregateProjector {
                 case CashFlowEvent.ExpectedCashChangeDeletedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.ExpectedCashChangesBatchDeletedEvent event -> cashFlow.apply(event);
                 case CashFlowEvent.CashChangesBatchUpdatedEvent event -> cashFlow.apply(event);
+                case CashFlowEvent.CategoryMovedEvent event -> cashFlow.apply(event);
             }
         });
         return cashFlow;

@@ -5,6 +5,9 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.domain.CannotMoveSystemCategoryException;
+import com.multi.vidulum.cashflow.domain.CircularCategoryDependencyException;
+import com.multi.vidulum.cashflow.domain.CategoryMoveToSameParentException;
 import com.multi.vidulum.cashflow.domain.InvalidCashChangeIdFormatException;
 import com.multi.vidulum.cashflow.domain.InvalidCashFlowIdFormatException;
 import com.multi.vidulum.common.InvalidUserIdFormatException;
@@ -326,6 +329,36 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleCannotArchiveSystemCategory(CannotArchiveSystemCategoryException ex) {
         log.debug("Cannot archive system category: {}", ex.getMessage());
         ApiError error = ApiError.of(ErrorCode.CANNOT_ARCHIVE_SYSTEM_CATEGORY, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ CashFlow - Move Category Operations (400) ============
+
+    @ExceptionHandler(CannotMoveSystemCategoryException.class)
+    public ResponseEntity<ApiError> handleCannotMoveSystemCategory(CannotMoveSystemCategoryException ex) {
+        log.debug("Cannot move system category: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CANNOT_MOVE_SYSTEM_CATEGORY, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CircularCategoryDependencyException.class)
+    public ResponseEntity<ApiError> handleCircularCategoryDependency(CircularCategoryDependencyException ex) {
+        log.debug("Circular category dependency: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CATEGORY_CIRCULAR_DEPENDENCY, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CategoryMoveToSameParentException.class)
+    public ResponseEntity<ApiError> handleCategoryMoveToSameParent(CategoryMoveToSameParentException ex) {
+        log.debug("Category move to same parent: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CATEGORY_MOVE_TO_SAME_PARENT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CannotChangeCategoryTypeException.class)
+    public ResponseEntity<ApiError> handleCannotChangeCategoryType(CannotChangeCategoryTypeException ex) {
+        log.debug("Cannot change category type: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CANNOT_CHANGE_CATEGORY_TYPE, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

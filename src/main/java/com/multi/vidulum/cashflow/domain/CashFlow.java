@@ -583,6 +583,85 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     /**
+     * Moves a category to a new parent (or to root level if newParentCategoryName is NOT_DEFINED).
+     * <p>
+     * All subcategories of the moved category move with it, preserving the subtree structure.
+     * Transactions associated with the moved categories remain unchanged.
+     * <p>
+     * Validation (done in command handler):
+     * <ul>
+     *   <li>Category must exist</li>
+     *   <li>New parent must exist (if not moving to root)</li>
+     *   <li>Cannot move system categories (e.g., "Uncategorized")</li>
+     *   <li>Cannot create circular dependency (moving to own descendant)</li>
+     *   <li>Category type must match new parent type (INFLOW/OUTFLOW)</li>
+     * </ul>
+     */
+    public void apply(CashFlowEvent.CategoryMovedEvent event) {
+        List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
+
+        // Find the category to move
+        Category categoryToMove = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        // Remove from old parent (or root list)
+        if (event.oldParentCategoryName().isDefined()) {
+            Category oldParent = findCategoryByName(event.oldParentCategoryName(), categories)
+                    .orElseThrow(() -> new CategoryDoesNotExistsException(event.oldParentCategoryName()));
+            oldParent.getSubCategories().removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+        } else {
+            categories.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+        }
+
+        // Add to new parent (or root list)
+        if (event.newParentCategoryName().isDefined()) {
+            Category newParent = findCategoryByName(event.newParentCategoryName(), categories)
+                    .orElseThrow(() -> new CategoryDoesNotExistsException(event.newParentCategoryName()));
+            newParent.getSubCategories().add(categoryToMove);
+        } else {
+            categories.add(categoryToMove);
+        }
+
+        add(event);
+    }
+
+    /**
+     * Finds the parent category of a given category.
+     *
+     * @param categoryName the name of the category to find parent for
+     * @param categories   the list of root categories to search in
+     * @return Optional containing the parent category name, or NOT_DEFINED if at root level
+     */
+    public CategoryName findParentCategoryName(CategoryName categoryName, List<Category> categories) {
+        return findParentCategoryNameRecursive(categoryName, categories, CategoryName.NOT_DEFINED);
+    }
+
+    private CategoryName findParentCategoryNameRecursive(CategoryName target, List<Category> categories, CategoryName currentParent) {
+        for (Category category : categories) {
+            if (category.getCategoryName().equals(target)) {
+                return currentParent;
+            }
+            CategoryName foundInChildren = findParentCategoryNameRecursive(target, category.getSubCategories(), category.getCategoryName());
+            if (foundInChildren != null) {
+                return foundInChildren;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Checks if a category is a descendant of another category.
+     * Used for circular dependency detection when moving categories.
+     *
+     * @param potentialAncestor the category that might be an ancestor
+     * @param potentialDescendant the category that might be a descendant
+     * @return true if potentialDescendant is under potentialAncestor
+     */
+    public boolean isDescendantOf(Category potentialAncestor, CategoryName potentialDescendant) {
+        return findCategoryByName(potentialDescendant, potentialAncestor.getSubCategories()).isPresent();
+    }
+
+    /**
      * Deletes a single PENDING cash change from the CashFlow.
      * Used primarily by Recurring Rules module when deleting individual transactions.
      * <p>

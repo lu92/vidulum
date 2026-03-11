@@ -539,6 +539,27 @@ public final class CashFlowDto {
     }
 
     /**
+     * Request to move a category to a different parent.
+     * <p>
+     * All subcategories of the moved category will move with it, preserving the subtree structure.
+     * Transactions associated with the moved categories remain unchanged.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MoveCategoryJson {
+        /** The name of the category to move */
+        @NotBlank(message = "categoryName is required")
+        private String categoryName;
+        /** The type of the category (INFLOW or OUTFLOW) */
+        @NotNull(message = "categoryType is required")
+        private Type categoryType;
+        /** The new parent category (null or empty to move to root level) */
+        private String newParentCategoryName;
+    }
+
+    /**
      * Response with category details including archiving status.
      */
     @Data

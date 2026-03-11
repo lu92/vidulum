@@ -934,4 +934,74 @@ public class CashFlowHttpActor {
                 request
         );
     }
+
+    // ============ Move Category Operations ============
+
+    /**
+     * Moves a category to a new parent (or to root level) via HTTP.
+     *
+     * @param cashFlowId            the CashFlow containing the category
+     * @param categoryName          the name of the category to move
+     * @param newParentCategoryName the new parent (null or empty for root level)
+     * @param categoryType          the type (INFLOW or OUTFLOW)
+     */
+    public void moveCategory(String cashFlowId, String categoryName, String newParentCategoryName, Type categoryType) {
+        CashFlowDto.MoveCategoryJson request = CashFlowDto.MoveCategoryJson.builder()
+                .categoryName(categoryName)
+                .newParentCategoryName(newParentCategoryName)
+                .categoryType(categoryType)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category/move",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                Void.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.debug("Moved category via HTTP: cashFlowId={}, category={}, newParent={}",
+                cashFlowId, categoryName, newParentCategoryName);
+    }
+
+    /**
+     * Moves a category expecting an error response.
+     */
+    public ResponseEntity<ApiError> moveCategoryExpectingError(String cashFlowId, String categoryName,
+                                                                String newParentCategoryName, Type categoryType) {
+        CashFlowDto.MoveCategoryJson request = CashFlowDto.MoveCategoryJson.builder()
+                .categoryName(categoryName)
+                .newParentCategoryName(newParentCategoryName)
+                .categoryType(categoryType)
+                .build();
+
+        return executeExpectingError(
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category/move",
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
+     * Creates a subcategory under a parent category via HTTP.
+     * Uses isImport=true to allow category creation in SETUP mode.
+     */
+    public void createSubcategory(String cashFlowId, String parentCategoryName, String subcategoryName, Type type) {
+        CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
+                .parentCategoryName(parentCategoryName)
+                .category(subcategoryName)
+                .type(type)
+                .build();
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category?isImport=true",
+                HttpMethod.POST,
+                new HttpEntity<>(request, jsonHeaders()),
+                Void.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.debug("Created subcategory via HTTP: cashFlowId={}, parent={}, subcategory={}, type={}",
+                cashFlowId, parentCategoryName, subcategoryName, type);
+    }
 }
