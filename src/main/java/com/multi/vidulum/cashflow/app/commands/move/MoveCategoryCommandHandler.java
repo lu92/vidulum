@@ -141,21 +141,21 @@ public class MoveCategoryCommandHandler implements CommandHandler<MoveCategoryCo
 
     private CategoryName findParentRecursive(CategoryName target, List<Category> categories, CategoryName currentParent) {
         for (Category category : categories) {
-            // Check direct children
+            // Check direct children first
             for (Category child : category.getSubCategories()) {
                 if (child.getCategoryName().equals(target)) {
                     return category.getCategoryName();
                 }
             }
 
-            // Check if target is this category at root level
+            // Check if target is this category at current level
             if (category.getCategoryName().equals(target)) {
                 return currentParent;
             }
 
-            // Recurse into children
+            // Recurse into children - only continue if result is defined (found)
             CategoryName found = findParentRecursive(target, category.getSubCategories(), category.getCategoryName());
-            if (found != null) {
+            if (found != null && found.isDefined()) {
                 return found;
             }
         }
