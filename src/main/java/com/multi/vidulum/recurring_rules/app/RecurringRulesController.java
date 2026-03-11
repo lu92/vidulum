@@ -7,6 +7,7 @@ import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RecurringRuleException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
@@ -96,6 +97,44 @@ public class RecurringRulesController {
                 .map(RecurringRuleResponse::fromSnapshot)
                 .toList();
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/me/dashboard")
+    public ResponseEntity<DashboardResponse> getMyDashboard(
+            @RequestParam String cashFlowId,
+            @RequestParam(defaultValue = "7") int upcomingDays,
+            @RequestParam(defaultValue = "1") int projectionMonths
+    ) {
+        // Validate parameters
+        if (upcomingDays < 1 || upcomingDays > 90) {
+            throw new InvalidDashboardParameterException("upcomingDays", upcomingDays, 1, 90);
+        }
+        if (projectionMonths < 1 || projectionMonths > 12) {
+            throw new InvalidDashboardParameterException("projectionMonths", projectionMonths, 1, 12);
+        }
+
+        String userId = getCurrentUserId();
+        DashboardResponse dashboard = ruleService.getDashboard(userId, cashFlowId, upcomingDays, projectionMonths);
+        return ResponseEntity.ok(dashboard);
+    }
+
+    @GetMapping("/me/upcoming")
+    public ResponseEntity<UpcomingTransactionsResponse> getMyUpcomingTransactions(
+            @RequestParam String cashFlowId,
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        // Validate parameters
+        if (days < 1 || days > 90) {
+            throw new InvalidDashboardParameterException("days", days, 1, 90);
+        }
+        if (limit < 1 || limit > 100) {
+            throw new InvalidDashboardParameterException("limit", limit, 1, 100);
+        }
+
+        String userId = getCurrentUserId();
+        UpcomingTransactionsResponse upcoming = ruleService.getUpcomingTransactions(userId, cashFlowId, days, limit);
+        return ResponseEntity.ok(upcoming);
     }
 
     @PutMapping("/{ruleId}")

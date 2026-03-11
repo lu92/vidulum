@@ -2,6 +2,8 @@ package com.multi.vidulum.recurring_rules.app;
 
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.*;
+import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
+import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -327,6 +329,79 @@ public class RecurringRulesHttpActor {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    /**
+     * Gets dashboard for the current user filtered by cashFlowId.
+     * Returns summary of rules (active/paused/completed counts),
+     * monthly projection (expenses/income/net balance),
+     * and upcoming transactions.
+     *
+     * @param cashFlowId the cashflow to filter by (required)
+     */
+    public DashboardResponse getMyDashboard(String cashFlowId) {
+        return getMyDashboard(cashFlowId, 7, 1);
+    }
+
+    /**
+     * Gets dashboard for the current user with custom parameters.
+     *
+     * @param cashFlowId the cashflow to filter by (required)
+     * @param upcomingDays number of days to look ahead for upcoming transactions (default 7)
+     * @param projectionMonths number of months for projection (default 1)
+     */
+    public DashboardResponse getMyDashboard(String cashFlowId, int upcomingDays, int projectionMonths) {
+        String url = baseUrl + "/me/dashboard?cashFlowId=" + cashFlowId +
+                "&upcomingDays=" + upcomingDays +
+                "&projectionMonths=" + projectionMonths;
+
+        ResponseEntity<DashboardResponse> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
+                DashboardResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.info("Got dashboard for current user: cashFlowId={}, activeRules={}, pausedRules={}, completedRules={}",
+                cashFlowId,
+                response.getBody().getSummary().getActiveRulesCount(),
+                response.getBody().getSummary().getPausedRulesCount(),
+                response.getBody().getSummary().getCompletedRulesCount());
+        return response.getBody();
+    }
+
+    /**
+     * Gets upcoming transactions for the current user with default parameters (30 days, 20 limit).
+     *
+     * @param cashFlowId the cashflow to filter by (required)
+     */
+    public UpcomingTransactionsResponse getMyUpcoming(String cashFlowId) {
+        return getMyUpcoming(cashFlowId, 30, 20);
+    }
+
+    /**
+     * Gets upcoming transactions for the current user with custom parameters.
+     *
+     * @param cashFlowId the cashflow to filter by (required)
+     * @param days number of days to look ahead (default 30)
+     * @param limit maximum number of transactions to return (default 20)
+     */
+    public UpcomingTransactionsResponse getMyUpcoming(String cashFlowId, int days, int limit) {
+        String url = baseUrl + "/me/upcoming?cashFlowId=" + cashFlowId +
+                "&days=" + days + "&limit=" + limit;
+
+        ResponseEntity<UpcomingTransactionsResponse> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(jsonHeaders()),
+                UpcomingTransactionsResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        log.info("Got upcoming transactions: cashFlowId={}, count={}, days={}, limit={}",
+                cashFlowId, response.getBody().getTotalCount(), days, limit);
         return response.getBody();
     }
 
@@ -701,6 +776,91 @@ public class RecurringRulesHttpActor {
             );
         } catch (HttpClientErrorException e) {
             Map<String, String> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    // ============ Dashboard/Upcoming Error-Expecting Operations ============
+
+    /**
+     * Gets dashboard expecting an error response.
+     * Used for testing validation errors (missing cashFlowId, invalid parameters).
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyDashboardExpectingError(String cashFlowId, int upcomingDays, int projectionMonths) {
+        String url = baseUrl + "/me/dashboard?cashFlowId=" + cashFlowId +
+                "&upcomingDays=" + upcomingDays +
+                "&projectionMonths=" + projectionMonths;
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets dashboard without cashFlowId expecting an error response.
+     * Used for testing missing required parameter.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyDashboardWithoutCashFlowIdExpectingError() {
+        String url = baseUrl + "/me/dashboard";
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets upcoming transactions expecting an error response.
+     * Used for testing validation errors.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyUpcomingExpectingError(String cashFlowId, int days, int limit) {
+        String url = baseUrl + "/me/upcoming?cashFlowId=" + cashFlowId +
+                "&days=" + days + "&limit=" + limit;
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Gets upcoming transactions without cashFlowId expecting an error response.
+     * Used for testing missing required parameter.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getMyUpcomingWithoutCashFlowIdExpectingError() {
+        String url = baseUrl + "/me/upcoming";
+        try {
+            return rawRestTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
             return ResponseEntity.status(e.getStatusCode()).body(errorBody);
         }
     }

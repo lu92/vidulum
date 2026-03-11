@@ -472,6 +472,24 @@ public class ErrorHttpHandler {
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 
+    // ============ Recurring Rules - Dashboard/Query Parameter Validation (400) ============
+
+    @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException.class)
+    public ResponseEntity<ApiError> handleInvalidDashboardParameter(com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException ex) {
+        log.debug("Invalid dashboard parameter [{}]: value={}, allowed range=[{}-{}]",
+                ex.getParameterName(), ex.getProvidedValue(), ex.getMinValue(), ex.getMaxValue());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_INVALID_PARAMETER, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> handleMissingServletRequestParameter(org.springframework.web.bind.MissingServletRequestParameterException ex) {
+        log.debug("Missing required parameter: {}", ex.getParameterName());
+        String message = String.format("Required parameter '%s' is missing", ex.getParameterName());
+        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_MISSING_CASHFLOW_ID, message);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
     // ============ Recurring Rules - Communication Errors (503) ============
 
     @ExceptionHandler(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException.class)

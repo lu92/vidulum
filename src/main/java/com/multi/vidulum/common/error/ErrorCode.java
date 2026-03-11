@@ -99,6 +99,10 @@ public enum ErrorCode {
     // Recurring Rules - Invalid State
     RECURRING_RULE_INVALID_STATE(HttpStatus.CONFLICT, "Operation not allowed in current rule status"),
 
+    // Recurring Rules - Dashboard/Query Parameters
+    RECURRING_RULE_INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "Invalid query parameter value"),
+    RECURRING_RULE_MISSING_CASHFLOW_ID(HttpStatus.BAD_REQUEST, "cashFlowId parameter is required"),
+
     // Recurring Rules - Communication Errors
     RECURRING_RULE_CASHFLOW_COMMUNICATION_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "Failed to communicate with CashFlow service"),
 
