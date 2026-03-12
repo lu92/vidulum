@@ -371,6 +371,148 @@ public class MoveCategoryIntegrationTest extends AuthenticatedHttpIntegrationTes
         log.info("Correctly rejected moving category with wrong type specified");
     }
 
+    // ============ Position/Reorder Cases ============
+
+    @Test
+    void shouldReorderCategoryWithinSameParentUsingPosition() {
+        // Given: CashFlow with three root OUTFLOW categories: "Bills", "Food", "Transport"
+        actor = createActor();
+        YearMonth startPeriod = YearMonth.now(clock).minusMonths(2);
+
+        String cashFlowId = actor.createCashFlowWithHistory(userId, uniqueCashFlowName(), startPeriod, Money.of(5000, "PLN"));
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
+
+        actor.createCategory(cashFlowId, "Bills", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Food", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Transport", Type.OUTFLOW);
+
+        actor.attestHistoricalImport(cashFlowId, Money.of(5000, "PLN"), false, false);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName());
+
+        // Initial order (after Uncategorized): [Uncategorized, Bills, Food, Transport]
+        CashFlow before = domainCashFlowRepository.findById(cfId).orElseThrow();
+        List<String> orderBefore = before.getSnapshot().outflowCategories().stream()
+                .map(c -> c.getCategoryName().name()).toList();
+        log.info("Order before reorder: {}", orderBefore);
+
+        // When: Move "Transport" to position 0 (first position among siblings, same parent = root)
+        actor.moveCategory(cashFlowId, "Transport", null, Type.OUTFLOW, 0);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.CategoryMovedEvent.class.getSimpleName());
+
+        // Then: "Transport" should be at position 0
+        CashFlow after = domainCashFlowRepository.findById(cfId).orElseThrow();
+        List<String> orderAfter = after.getSnapshot().outflowCategories().stream()
+                .map(c -> c.getCategoryName().name()).toList();
+        log.info("Order after reorder: {}", orderAfter);
+
+        // Expected: [Transport, Uncategorized, Bills, Food]
+        assertThat(orderAfter.get(0)).isEqualTo("Transport");
+        assertThat(orderAfter).containsExactly("Transport", "Uncategorized", "Bills", "Food");
+
+        log.info("Successfully reordered category 'Transport' to position 0");
+    }
+
+    @Test
+    void shouldMoveAndPositionCategoryInNewParent() {
+        // Given: CashFlow with "Housing" root and "Bills", "Food" root categories
+        actor = createActor();
+        YearMonth startPeriod = YearMonth.now(clock).minusMonths(2);
+
+        String cashFlowId = actor.createCashFlowWithHistory(userId, uniqueCashFlowName(), startPeriod, Money.of(5000, "PLN"));
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
+
+        actor.createCategory(cashFlowId, "Housing", Type.OUTFLOW);
+        actor.createSubcategory(cashFlowId, "Housing", "Rent", Type.OUTFLOW);
+        actor.createSubcategory(cashFlowId, "Housing", "Utilities", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Bills", Type.OUTFLOW);
+
+        actor.attestHistoricalImport(cashFlowId, Money.of(5000, "PLN"), false, false);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName());
+
+        // When: Move "Bills" to "Housing" at position 0 (before Rent)
+        actor.moveCategory(cashFlowId, "Bills", "Housing", Type.OUTFLOW, 0);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.CategoryMovedEvent.class.getSimpleName());
+
+        // Then: "Bills" should be first child of "Housing"
+        CashFlow after = domainCashFlowRepository.findById(cfId).orElseThrow();
+        Category housing = after.getSnapshot().outflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Housing"))
+                .findFirst()
+                .orElseThrow();
+
+        List<String> childNames = housing.getSubCategories().stream()
+                .map(c -> c.getCategoryName().name()).toList();
+        assertThat(childNames).containsExactly("Bills", "Rent", "Utilities");
+
+        log.info("Successfully moved 'Bills' to 'Housing' at position 0");
+    }
+
+    @Test
+    void shouldAllowReorderWithSameParentAndPositionProvided() {
+        // Given: CashFlow with "Parent" -> ["Child1", "Child2", "Child3"]
+        actor = createActor();
+        YearMonth startPeriod = YearMonth.now(clock).minusMonths(2);
+
+        String cashFlowId = actor.createCashFlowWithHistory(userId, uniqueCashFlowName(), startPeriod, Money.of(5000, "PLN"));
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
+
+        actor.createCategory(cashFlowId, "Parent", Type.OUTFLOW);
+        actor.createSubcategory(cashFlowId, "Parent", "Child1", Type.OUTFLOW);
+        actor.createSubcategory(cashFlowId, "Parent", "Child2", Type.OUTFLOW);
+        actor.createSubcategory(cashFlowId, "Parent", "Child3", Type.OUTFLOW);
+
+        actor.attestHistoricalImport(cashFlowId, Money.of(5000, "PLN"), false, false);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName());
+
+        // When: Move "Child3" to position 0 within same parent "Parent"
+        // This should work because position is provided (reorder use case)
+        actor.moveCategory(cashFlowId, "Child3", "Parent", Type.OUTFLOW, 0);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.CategoryMovedEvent.class.getSimpleName());
+
+        // Then: "Child3" should be first
+        CashFlow after = domainCashFlowRepository.findById(cfId).orElseThrow();
+        Category parent = after.getSnapshot().outflowCategories().stream()
+                .filter(c -> c.getCategoryName().name().equals("Parent"))
+                .findFirst()
+                .orElseThrow();
+
+        List<String> childNames = parent.getSubCategories().stream()
+                .map(c -> c.getCategoryName().name()).toList();
+        assertThat(childNames).containsExactly("Child3", "Child1", "Child2");
+
+        log.info("Successfully reordered 'Child3' to position 0 within same parent");
+    }
+
+    @Test
+    void shouldHandlePositionLargerThanListSize() {
+        // Given: CashFlow with two root OUTFLOW categories
+        actor = createActor();
+        YearMonth startPeriod = YearMonth.now(clock).minusMonths(2);
+
+        String cashFlowId = actor.createCashFlowWithHistory(userId, uniqueCashFlowName(), startPeriod, Money.of(5000, "PLN"));
+        CashFlowId cfId = CashFlowId.of(cashFlowId);
+
+        actor.createCategory(cashFlowId, "First", Type.OUTFLOW);
+        actor.createCategory(cashFlowId, "Second", Type.OUTFLOW);
+
+        actor.attestHistoricalImport(cashFlowId, Money.of(5000, "PLN"), false, false);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.HistoricalImportAttestedEvent.class.getSimpleName());
+
+        // When: Move "First" with position=999 (larger than list size) - should append at end
+        actor.moveCategory(cashFlowId, "First", null, Type.OUTFLOW, 999);
+        waitForEventProcessed(cashFlowId, CashFlowEvent.CategoryMovedEvent.class.getSimpleName());
+
+        // Then: "First" should be at the end
+        CashFlow after = domainCashFlowRepository.findById(cfId).orElseThrow();
+        List<String> orderAfter = after.getSnapshot().outflowCategories().stream()
+                .map(c -> c.getCategoryName().name()).toList();
+
+        // Should be: [Uncategorized, Second, First] - "First" at end
+        assertThat(orderAfter.get(orderAfter.size() - 1)).isEqualTo("First");
+
+        log.info("Successfully handled position larger than list size");
+    }
+
     // ============ Helper Methods ============
 
     private void waitForEventProcessed(String cashFlowId, String eventTypeName) {

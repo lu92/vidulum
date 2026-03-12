@@ -434,7 +434,8 @@ public class CashFlowRestController {
                         CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategoryName()),
                         newParent,
-                        request.getCategoryType()
+                        request.getCategoryType(),
+                        request.getPosition()
                 )
         );
     }

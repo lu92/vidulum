@@ -69,8 +69,8 @@ public class MoveCategoryCommandHandler implements CommandHandler<MoveCategoryCo
         // 3. Find current parent
         CategoryName currentParentName = findParentCategoryName(command.categoryName(), categories);
 
-        // 4. Check if moving to same parent (no-op)
-        if (currentParentName.equals(command.newParentCategoryName())) {
+        // 4. Check if moving to same parent (no-op) - but allow if position is specified (reorder)
+        if (currentParentName.equals(command.newParentCategoryName()) && command.position() == null) {
             throw new CategoryMoveToSameParentException(command.categoryName(), command.newParentCategoryName());
         }
 
@@ -94,6 +94,7 @@ public class MoveCategoryCommandHandler implements CommandHandler<MoveCategoryCo
                 currentParentName,
                 command.newParentCategoryName(),
                 command.categoryType(),
+                command.position(),
                 ZonedDateTime.now(clock)
         );
 

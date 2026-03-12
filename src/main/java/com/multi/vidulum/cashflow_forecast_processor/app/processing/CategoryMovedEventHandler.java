@@ -72,23 +72,23 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
             return;
         }
 
-        // Add to new location
+        // Add to new location at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             // Add as child of new parent
             CategoryNode newParent = findCategoryNodeByName(categoryNodes, event.newParentCategoryName());
             if (newParent != null) {
                 movingNode.setParentCategoryNode(newParent);
-                newParent.getNodes().add(movingNode);
+                addAtPosition(newParent.getNodes(), movingNode, event.newPosition());
             } else {
                 log.warn("New parent CategoryNode [{}] not found, adding to root",
                         event.newParentCategoryName().name());
                 movingNode.setParentCategoryNode(null);
-                categoryNodes.add(movingNode);
+                addAtPosition(categoryNodes, movingNode, event.newPosition());
             }
         } else {
             // Add to root level
             movingNode.setParentCategoryNode(null);
-            categoryNodes.add(movingNode);
+            addAtPosition(categoryNodes, movingNode, event.newPosition());
         }
     }
 
@@ -109,20 +109,20 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
             return;
         }
 
-        // Add to new location
+        // Add to new location at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             // Add as child of new parent
             CashCategory newParent = findCategoryByName(categories, event.newParentCategoryName());
             if (newParent != null) {
-                newParent.getSubCategories().add(movingCategory);
+                addCashCategoryAtPosition(newParent.getSubCategories(), movingCategory, event.newPosition());
             } else {
                 log.warn("New parent CashCategory [{}] not found, adding to root",
                         event.newParentCategoryName().name());
-                categories.add(movingCategory);
+                addCashCategoryAtPosition(categories, movingCategory, event.newPosition());
             }
         } else {
             // Add to root level
-            categories.add(movingCategory);
+            addCashCategoryAtPosition(categories, movingCategory, event.newPosition());
         }
     }
 
@@ -206,5 +206,29 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
             category.getSubCategories().forEach(stack::push);
         }
         return null;
+    }
+
+    /**
+     * Adds a CategoryNode to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addAtPosition(List<CategoryNode> list, CategoryNode node, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(node);
+        } else {
+            list.add(Math.max(0, position), node);
+        }
+    }
+
+    /**
+     * Adds a CashCategory to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addCashCategoryAtPosition(List<CashCategory> list, CashCategory category, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(category);
+        } else {
+            list.add(Math.max(0, position), category);
+        }
     }
 }

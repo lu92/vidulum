@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -539,10 +540,17 @@ public final class CashFlowDto {
     }
 
     /**
-     * Request to move a category to a different parent.
+     * Request to move a category to a different parent and/or reorder within siblings.
      * <p>
      * All subcategories of the moved category will move with it, preserving the subtree structure.
      * Transactions associated with the moved categories remain unchanged.
+     * <p>
+     * Use cases:
+     * <ul>
+     *   <li>Move to different parent: set newParentCategoryName (position optional)</li>
+     *   <li>Move to root: set newParentCategoryName to null/empty (position optional)</li>
+     *   <li>Reorder within same parent: keep same parent, set position</li>
+     * </ul>
      */
     @Data
     @Builder
@@ -557,6 +565,9 @@ public final class CashFlowDto {
         private Type categoryType;
         /** The new parent category (null or empty to move to root level) */
         private String newParentCategoryName;
+        /** The 0-based position among siblings (null = append at end) */
+        @Min(value = 0, message = "position must be >= 0")
+        private Integer position;
     }
 
     /**

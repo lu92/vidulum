@@ -613,13 +613,13 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
             categories.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
         }
 
-        // Add to new parent (or root list)
+        // Add to new parent (or root list) at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             Category newParent = findCategoryByName(event.newParentCategoryName(), categories)
                     .orElseThrow(() -> new CategoryDoesNotExistsException(event.newParentCategoryName()));
-            newParent.getSubCategories().add(categoryToMove);
+            addAtPosition(newParent.getSubCategories(), categoryToMove, event.newPosition());
         } else {
-            categories.add(categoryToMove);
+            addAtPosition(categories, categoryToMove, event.newPosition());
         }
 
         add(event);
@@ -782,6 +782,18 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .orElseThrow(() -> new CashChangeDoesNotExistsException(cashChangeId));
         operation.accept(cashChange);
         cashChanges.replace(cashChangeId, cashChange);
+    }
+
+    /**
+     * Adds a category to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addAtPosition(List<Category> list, Category category, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(category);
+        } else {
+            list.add(Math.max(0, position), category);
+        }
     }
 
     private void add(CashFlowEvent event) {

@@ -946,10 +946,25 @@ public class CashFlowHttpActor {
      * @param categoryType          the type (INFLOW or OUTFLOW)
      */
     public void moveCategory(String cashFlowId, String categoryName, String newParentCategoryName, Type categoryType) {
+        moveCategory(cashFlowId, categoryName, newParentCategoryName, categoryType, null);
+    }
+
+    /**
+     * Moves a category to a new parent (or to root level) and/or reorders it via HTTP.
+     *
+     * @param cashFlowId            the CashFlow containing the category
+     * @param categoryName          the name of the category to move
+     * @param newParentCategoryName the new parent (null or empty for root level)
+     * @param categoryType          the type (INFLOW or OUTFLOW)
+     * @param position              the 0-based position among siblings (null = append at end)
+     */
+    public void moveCategory(String cashFlowId, String categoryName, String newParentCategoryName,
+                             Type categoryType, Integer position) {
         CashFlowDto.MoveCategoryJson request = CashFlowDto.MoveCategoryJson.builder()
                 .categoryName(categoryName)
                 .newParentCategoryName(newParentCategoryName)
                 .categoryType(categoryType)
+                .position(position)
                 .build();
 
         ResponseEntity<Void> response = restTemplate.exchange(
@@ -960,8 +975,8 @@ public class CashFlowHttpActor {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        log.debug("Moved category via HTTP: cashFlowId={}, category={}, newParent={}",
-                cashFlowId, categoryName, newParentCategoryName);
+        log.debug("Moved category via HTTP: cashFlowId={}, category={}, newParent={}, position={}",
+                cashFlowId, categoryName, newParentCategoryName, position);
     }
 
     /**
@@ -969,10 +984,20 @@ public class CashFlowHttpActor {
      */
     public ResponseEntity<ApiError> moveCategoryExpectingError(String cashFlowId, String categoryName,
                                                                 String newParentCategoryName, Type categoryType) {
+        return moveCategoryExpectingError(cashFlowId, categoryName, newParentCategoryName, categoryType, null);
+    }
+
+    /**
+     * Moves a category expecting an error response, with optional position.
+     */
+    public ResponseEntity<ApiError> moveCategoryExpectingError(String cashFlowId, String categoryName,
+                                                                String newParentCategoryName, Type categoryType,
+                                                                Integer position) {
         CashFlowDto.MoveCategoryJson request = CashFlowDto.MoveCategoryJson.builder()
                 .categoryName(categoryName)
                 .newParentCategoryName(newParentCategoryName)
                 .categoryType(categoryType)
+                .position(position)
                 .build();
 
         return executeExpectingError(
