@@ -19,6 +19,7 @@ import java.util.Optional;
 @Getter
 @NoArgsConstructor
 public class CategoryNode {
+    @Setter
     @JsonIgnore
     private CategoryNode parentCategoryNode;
     private CategoryName categoryName;

@@ -82,6 +82,9 @@ public class CashFlowEventListener {
             case "CategoryUnarchivedEvent" -> {
                 return event.getContent().to(CashFlowEvent.CategoryUnarchivedEvent.class);
             }
+            case "CategoryMovedEvent" -> {
+                return event.getContent().to(CashFlowEvent.CategoryMovedEvent.class);
+            }
             case "ExpectedCashChangeDeletedEvent" -> {
                 return event.getContent().to(CashFlowEvent.ExpectedCashChangeDeletedEvent.class);
             }

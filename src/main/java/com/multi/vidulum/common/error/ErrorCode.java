@@ -64,6 +64,10 @@ public enum ErrorCode {
     // CashFlow - Categories
     CATEGORY_IS_ARCHIVED(HttpStatus.BAD_REQUEST, "Category is archived"),
     CANNOT_ARCHIVE_SYSTEM_CATEGORY(HttpStatus.BAD_REQUEST, "Cannot archive system category"),
+    CANNOT_MOVE_SYSTEM_CATEGORY(HttpStatus.BAD_REQUEST, "Cannot move system category"),
+    CATEGORY_CIRCULAR_DEPENDENCY(HttpStatus.BAD_REQUEST, "Cannot move category to its own descendant"),
+    CANNOT_CHANGE_CATEGORY_TYPE(HttpStatus.BAD_REQUEST, "Cannot move category between INFLOW and OUTFLOW"),
+    CATEGORY_MOVE_TO_SAME_PARENT(HttpStatus.BAD_REQUEST, "Category is already under this parent"),
 
     // CashFlow - Bank Account Validation
     INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "Invalid bank account data"),

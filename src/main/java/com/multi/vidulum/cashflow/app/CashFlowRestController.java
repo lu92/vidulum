@@ -20,6 +20,7 @@ import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowCommand;
 import com.multi.vidulum.cashflow.app.commands.create.CreateCashFlowWithHistoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.move.MoveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateResult;
@@ -397,6 +398,42 @@ public class CashFlowRestController {
                 new UnarchiveCategoryCommand(
                         CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategoryName()),
+                        request.getCategoryType()
+                )
+        );
+    }
+
+    /**
+     * Move a category to a different parent (or to root level).
+     * <p>
+     * All subcategories of the moved category will move with it, preserving the subtree structure.
+     * Transactions associated with the moved categories remain unchanged.
+     * <p>
+     * Validations:
+     * <ul>
+     *   <li>Category must exist</li>
+     *   <li>New parent must exist (if not moving to root)</li>
+     *   <li>Cannot move system categories (e.g., "Uncategorized")</li>
+     *   <li>Cannot create circular dependency (moving to own descendant)</li>
+     *   <li>Cannot move to same parent (no-op)</li>
+     * </ul>
+     *
+     * @param cashFlowId the CashFlow containing the category
+     * @param request    the move request with category name, type, and new parent
+     */
+    @PostMapping("/cf={cashFlowId}/category/move")
+    public void moveCategory(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @Valid @RequestBody CashFlowDto.MoveCategoryJson request) {
+        CategoryName newParent = (request.getNewParentCategoryName() == null || request.getNewParentCategoryName().isBlank())
+                ? CategoryName.NOT_DEFINED
+                : new CategoryName(request.getNewParentCategoryName());
+
+        commandGateway.send(
+                new MoveCategoryCommand(
+                        CashFlowId.of(cashFlowId),
+                        new CategoryName(request.getCategoryName()),
+                        newParent,
                         request.getCategoryType()
                 )
         );
