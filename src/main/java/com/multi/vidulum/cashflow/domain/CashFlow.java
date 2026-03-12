@@ -600,27 +600,50 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     public void apply(CashFlowEvent.CategoryMovedEvent event) {
         List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
 
-        // Find the category to move
-        Category categoryToMove = findCategoryByName(event.categoryName(), categories)
-                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+        // Determine source and target lists
+        List<Category> sourceList;
+        List<Category> targetList;
 
-        // Remove from old parent (or root list)
         if (event.oldParentCategoryName().isDefined()) {
             Category oldParent = findCategoryByName(event.oldParentCategoryName(), categories)
                     .orElseThrow(() -> new CategoryDoesNotExistsException(event.oldParentCategoryName()));
-            oldParent.getSubCategories().removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+            sourceList = oldParent.getSubCategories();
         } else {
-            categories.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+            sourceList = categories;
         }
 
-        // Add to new parent (or root list)
         if (event.newParentCategoryName().isDefined()) {
             Category newParent = findCategoryByName(event.newParentCategoryName(), categories)
                     .orElseThrow(() -> new CategoryDoesNotExistsException(event.newParentCategoryName()));
-            newParent.getSubCategories().add(categoryToMove);
+            targetList = newParent.getSubCategories();
         } else {
-            categories.add(categoryToMove);
+            targetList = categories;
         }
+
+        // Find the category to move and its current index
+        Category categoryToMove = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        int oldIndex = -1;
+        for (int i = 0; i < sourceList.size(); i++) {
+            if (sourceList.get(i).getCategoryName().equals(event.categoryName())) {
+                oldIndex = i;
+                break;
+            }
+        }
+
+        // Remove from source list
+        sourceList.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+
+        // Calculate adjusted position for same-list moves
+        Integer adjustedPosition = event.newPosition();
+        if (sourceList == targetList && adjustedPosition != null && oldIndex >= 0 && oldIndex < adjustedPosition) {
+            // When moving forward in the same list, adjust position because removal shifted indices
+            adjustedPosition = adjustedPosition - 1;
+        }
+
+        // Add to target list at specified position
+        addAtPosition(targetList, categoryToMove, adjustedPosition);
 
         add(event);
     }
@@ -782,6 +805,18 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .orElseThrow(() -> new CashChangeDoesNotExistsException(cashChangeId));
         operation.accept(cashChange);
         cashChanges.replace(cashChangeId, cashChange);
+    }
+
+    /**
+     * Adds a category to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addAtPosition(List<Category> list, Category category, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(category);
+        } else {
+            list.add(Math.max(0, position), category);
+        }
     }
 
     private void add(CashFlowEvent event) {

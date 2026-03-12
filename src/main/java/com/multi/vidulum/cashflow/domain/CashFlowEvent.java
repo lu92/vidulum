@@ -444,6 +444,7 @@ public sealed interface CashFlowEvent extends DomainEvent
      * @param oldParentCategoryName the previous parent (NOT_DEFINED if was at root)
      * @param newParentCategoryName the new parent (NOT_DEFINED if moving to root)
      * @param categoryType          INFLOW or OUTFLOW
+     * @param newPosition           the 0-based position among siblings (null = append at end)
      * @param movedAt               timestamp when the move occurred
      */
     record CategoryMovedEvent(
@@ -452,6 +453,7 @@ public sealed interface CashFlowEvent extends DomainEvent
             CategoryName oldParentCategoryName,
             CategoryName newParentCategoryName,
             Type categoryType,
+            Integer newPosition,
             ZonedDateTime movedAt
     ) implements CashFlowEvent {
         @Override

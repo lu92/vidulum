@@ -72,6 +72,8 @@ public final class CashFlowForecastDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CashCategoryJson {
+        /** Position of this category in the list (0-based index) */
+        private int position;
         private String categoryName;
         private String category;
         private List<CashCategoryJson> subCategories;
@@ -148,6 +150,8 @@ public final class CashFlowForecastDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategoryNodeJson {
+        /** Position of this category in the list (0-based index) */
+        private int position;
         private String categoryName;
         private List<CategoryNodeJson> nodes;
         private BudgetingJson budgeting;

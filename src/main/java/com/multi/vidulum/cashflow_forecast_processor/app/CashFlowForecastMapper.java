@@ -64,13 +64,16 @@ public class CashFlowForecastMapper {
     }
 
     private List<CashFlowForecastDto.CashCategoryJson> mapCashCategories(List<CashCategory> categories) {
-        return categories.stream()
-                .map(this::mapCashCategory)
-                .collect(Collectors.toList());
+        List<CashFlowForecastDto.CashCategoryJson> result = new java.util.ArrayList<>();
+        for (int i = 0; i < categories.size(); i++) {
+            result.add(mapCashCategory(categories.get(i), i));
+        }
+        return result;
     }
 
-    private CashFlowForecastDto.CashCategoryJson mapCashCategory(CashCategory category) {
+    private CashFlowForecastDto.CashCategoryJson mapCashCategory(CashCategory category, int position) {
         return CashFlowForecastDto.CashCategoryJson.builder()
+                .position(position)
                 .categoryName(category.getCategoryName().name())
                 .category(category.getCategory().category())
                 .subCategories(mapCashCategories(category.getSubCategories()))
@@ -141,13 +144,16 @@ public class CashFlowForecastMapper {
     }
 
     private List<CashFlowForecastDto.CategoryNodeJson> mapCategoryNodes(List<CategoryNode> nodes) {
-        return nodes.stream()
-                .map(this::mapCategoryNode)
-                .collect(Collectors.toList());
+        List<CashFlowForecastDto.CategoryNodeJson> result = new java.util.ArrayList<>();
+        for (int i = 0; i < nodes.size(); i++) {
+            result.add(mapCategoryNode(nodes.get(i), i));
+        }
+        return result;
     }
 
-    private CashFlowForecastDto.CategoryNodeJson mapCategoryNode(CategoryNode node) {
+    private CashFlowForecastDto.CategoryNodeJson mapCategoryNode(CategoryNode node, int position) {
         return CashFlowForecastDto.CategoryNodeJson.builder()
+                .position(position)
                 .categoryName(node.getCategoryName().name())
                 .nodes(mapCategoryNodes(node.getNodes()))
                 .budgeting(mapBudgeting(node.getBudgeting()))

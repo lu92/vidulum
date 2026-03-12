@@ -29,6 +29,11 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
 
     private final CashFlowForecastStatementRepository statementRepository;
 
+    /**
+     * Result of removing an element from a list, containing the element and its original index.
+     */
+    private record RemovalResult<T>(T element, int oldIndex, List<T> sourceList) {}
+
     @Override
     public void handle(CashFlowEvent.CategoryMovedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
@@ -64,32 +69,40 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
                 : categoryStructure.outflowCategoryStructure();
 
         // Find and remove the node from old location
-        CategoryNode movingNode = findAndRemoveNode(categoryNodes, event.categoryName(), event.oldParentCategoryName());
+        RemovalResult<CategoryNode> removalResult = findAndRemoveNode(categoryNodes, event.categoryName(), event.oldParentCategoryName());
 
-        if (movingNode == null) {
+        if (removalResult == null) {
             log.warn("CategoryNode [{}] not found in category structure for cashflow [{}]",
                     event.categoryName().name(), event.cashFlowId().id());
             return;
         }
 
-        // Add to new location
+        CategoryNode movingNode = removalResult.element();
+        List<CategoryNode> targetList;
+
+        // Add to new location at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             // Add as child of new parent
             CategoryNode newParent = findCategoryNodeByName(categoryNodes, event.newParentCategoryName());
             if (newParent != null) {
                 movingNode.setParentCategoryNode(newParent);
-                newParent.getNodes().add(movingNode);
+                targetList = newParent.getNodes();
             } else {
                 log.warn("New parent CategoryNode [{}] not found, adding to root",
                         event.newParentCategoryName().name());
                 movingNode.setParentCategoryNode(null);
-                categoryNodes.add(movingNode);
+                targetList = categoryNodes;
             }
         } else {
             // Add to root level
             movingNode.setParentCategoryNode(null);
-            categoryNodes.add(movingNode);
+            targetList = categoryNodes;
         }
+
+        // Calculate adjusted position for same-list moves
+        Integer adjustedPosition = calculateAdjustedPosition(
+                event.newPosition(), removalResult.oldIndex(), removalResult.sourceList(), targetList);
+        addAtPosition(targetList, movingNode, adjustedPosition);
     }
 
     /**
@@ -101,54 +114,62 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
                 : monthlyForecast.getCategorizedOutFlows();
 
         // Find and remove from old location
-        CashCategory movingCategory = findAndRemoveCategory(categories, event.categoryName(), event.oldParentCategoryName());
+        RemovalResult<CashCategory> removalResult = findAndRemoveCategory(categories, event.categoryName(), event.oldParentCategoryName());
 
-        if (movingCategory == null) {
+        if (removalResult == null) {
             log.warn("CashCategory [{}] not found in monthly forecast for cashflow [{}]",
                     event.categoryName().name(), event.cashFlowId().id());
             return;
         }
 
-        // Add to new location
+        CashCategory movingCategory = removalResult.element();
+        List<CashCategory> targetList;
+
+        // Add to new location at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             // Add as child of new parent
             CashCategory newParent = findCategoryByName(categories, event.newParentCategoryName());
             if (newParent != null) {
-                newParent.getSubCategories().add(movingCategory);
+                targetList = newParent.getSubCategories();
             } else {
                 log.warn("New parent CashCategory [{}] not found, adding to root",
                         event.newParentCategoryName().name());
-                categories.add(movingCategory);
+                targetList = categories;
             }
         } else {
             // Add to root level
-            categories.add(movingCategory);
+            targetList = categories;
         }
+
+        // Calculate adjusted position for same-list moves
+        Integer adjustedPosition = calculateAdjustedPosition(
+                event.newPosition(), removalResult.oldIndex(), removalResult.sourceList(), targetList);
+        addCashCategoryAtPosition(targetList, movingCategory, adjustedPosition);
     }
 
     /**
      * Finds and removes a CategoryNode from the tree structure.
      *
-     * @return The removed CategoryNode, or null if not found
+     * @return RemovalResult containing the removed node, its old index, and source list; or null if not found
      */
-    private CategoryNode findAndRemoveNode(List<CategoryNode> categoryNodes, CategoryName categoryName, CategoryName oldParentName) {
+    private RemovalResult<CategoryNode> findAndRemoveNode(List<CategoryNode> categoryNodes, CategoryName categoryName, CategoryName oldParentName) {
+        List<CategoryNode> sourceList;
         if (!oldParentName.isDefined()) {
             // Was at root level
-            for (int i = 0; i < categoryNodes.size(); i++) {
-                if (categoryNodes.get(i).getCategoryName().equals(categoryName)) {
-                    return categoryNodes.remove(i);
-                }
-            }
+            sourceList = categoryNodes;
         } else {
             // Was under a parent
             CategoryNode oldParent = findCategoryNodeByName(categoryNodes, oldParentName);
-            if (oldParent != null) {
-                List<CategoryNode> childNodes = oldParent.getNodes();
-                for (int i = 0; i < childNodes.size(); i++) {
-                    if (childNodes.get(i).getCategoryName().equals(categoryName)) {
-                        return childNodes.remove(i);
-                    }
-                }
+            if (oldParent == null) {
+                return null;
+            }
+            sourceList = oldParent.getNodes();
+        }
+
+        for (int i = 0; i < sourceList.size(); i++) {
+            if (sourceList.get(i).getCategoryName().equals(categoryName)) {
+                CategoryNode removed = sourceList.remove(i);
+                return new RemovalResult<>(removed, i, sourceList);
             }
         }
         return null;
@@ -157,29 +178,45 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
     /**
      * Finds and removes a CashCategory from the tree structure.
      *
-     * @return The removed CashCategory, or null if not found
+     * @return RemovalResult containing the removed category, its old index, and source list; or null if not found
      */
-    private CashCategory findAndRemoveCategory(List<CashCategory> categories, CategoryName categoryName, CategoryName oldParentName) {
+    private RemovalResult<CashCategory> findAndRemoveCategory(List<CashCategory> categories, CategoryName categoryName, CategoryName oldParentName) {
+        List<CashCategory> sourceList;
         if (!oldParentName.isDefined()) {
             // Was at root level
-            for (int i = 0; i < categories.size(); i++) {
-                if (categories.get(i).getCategoryName().equals(categoryName)) {
-                    return categories.remove(i);
-                }
-            }
+            sourceList = categories;
         } else {
             // Was under a parent
             CashCategory oldParent = findCategoryByName(categories, oldParentName);
-            if (oldParent != null) {
-                List<CashCategory> subCategories = oldParent.getSubCategories();
-                for (int i = 0; i < subCategories.size(); i++) {
-                    if (subCategories.get(i).getCategoryName().equals(categoryName)) {
-                        return subCategories.remove(i);
-                    }
-                }
+            if (oldParent == null) {
+                return null;
+            }
+            sourceList = oldParent.getSubCategories();
+        }
+
+        for (int i = 0; i < sourceList.size(); i++) {
+            if (sourceList.get(i).getCategoryName().equals(categoryName)) {
+                CashCategory removed = sourceList.remove(i);
+                return new RemovalResult<>(removed, i, sourceList);
             }
         }
         return null;
+    }
+
+    /**
+     * Calculates adjusted position for same-list moves to handle off-by-one error.
+     * When moving forward in the same list, the removal shifts indices down,
+     * so we need to adjust the target position accordingly.
+     */
+    private <T> Integer calculateAdjustedPosition(Integer newPosition, int oldIndex, List<T> sourceList, List<T> targetList) {
+        if (newPosition == null) {
+            return null;
+        }
+        // Only adjust if source and target are the same list and moving forward
+        if (sourceList == targetList && oldIndex < newPosition) {
+            return newPosition - 1;
+        }
+        return newPosition;
     }
 
     private CategoryNode findCategoryNodeByName(List<CategoryNode> categoryNodes, CategoryName categoryName) {
@@ -206,5 +243,29 @@ public class CategoryMovedEventHandler implements CashFlowEventHandler<CashFlowE
             category.getSubCategories().forEach(stack::push);
         }
         return null;
+    }
+
+    /**
+     * Adds a CategoryNode to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addAtPosition(List<CategoryNode> list, CategoryNode node, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(node);
+        } else {
+            list.add(Math.max(0, position), node);
+        }
+    }
+
+    /**
+     * Adds a CashCategory to the list at the specified position.
+     * If position is null or out of bounds, adds at the end.
+     */
+    private void addCashCategoryAtPosition(List<CashCategory> list, CashCategory category, Integer position) {
+        if (position == null || position >= list.size()) {
+            list.add(category);
+        } else {
+            list.add(Math.max(0, position), category);
+        }
     }
 }

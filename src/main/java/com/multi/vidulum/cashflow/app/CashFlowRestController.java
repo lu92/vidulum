@@ -301,7 +301,7 @@ public class CashFlowRestController {
     @PostMapping("/cf={cashFlowId}/category")
     public void createCategoryEndpoint(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody CashFlowDto.CreateCategoryJson request,
+            @Valid @RequestBody CashFlowDto.CreateCategoryJson request,
             @RequestParam(name = "isImport", defaultValue = "false") boolean isImport) {
         createCategory(cashFlowId, request, isImport);
     }
@@ -434,7 +434,8 @@ public class CashFlowRestController {
                         CashFlowId.of(cashFlowId),
                         new CategoryName(request.getCategoryName()),
                         newParent,
-                        request.getCategoryType()
+                        request.getCategoryType(),
+                        request.getPosition()
                 )
         );
     }
