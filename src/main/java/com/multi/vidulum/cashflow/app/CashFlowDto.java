@@ -474,7 +474,12 @@ public final class CashFlowDto {
     @AllArgsConstructor
     public static class CreateCategoryJson {
         private String parentCategoryName; //optional
+
+        @NotBlank(message = "category is required")
+        @Size(min = 1, max = 50, message = "category must be between 1 and 50 characters")
         private String category;
+
+        @NotNull(message = "type is required")
         private Type type;
     }
 

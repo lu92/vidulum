@@ -412,6 +412,19 @@ public class CashFlowHttpActor {
     }
 
     /**
+     * Creates category with custom request body expecting an error response.
+     * Useful for validation testing with invalid/null values.
+     */
+    public ResponseEntity<ApiError> createCategoryWithRequestExpectingError(
+            String cashFlowId, CashFlowDto.CreateCategoryJson request, boolean isImport) {
+        return executeExpectingError(
+                baseUrl + "/cash-flow/cf=" + cashFlowId + "/category?isImport=" + isImport,
+                HttpMethod.POST,
+                request
+        );
+    }
+
+    /**
      * Archives category expecting an error response.
      */
     public ResponseEntity<ApiError> archiveCategoryExpectingError(String cashFlowId, String categoryName,

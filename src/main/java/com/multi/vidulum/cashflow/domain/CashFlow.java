@@ -600,27 +600,50 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     public void apply(CashFlowEvent.CategoryMovedEvent event) {
         List<Category> categories = Type.INFLOW.equals(event.categoryType()) ? inflowCategories : outflowCategories;
 
-        // Find the category to move
-        Category categoryToMove = findCategoryByName(event.categoryName(), categories)
-                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+        // Determine source and target lists
+        List<Category> sourceList;
+        List<Category> targetList;
 
-        // Remove from old parent (or root list)
         if (event.oldParentCategoryName().isDefined()) {
             Category oldParent = findCategoryByName(event.oldParentCategoryName(), categories)
                     .orElseThrow(() -> new CategoryDoesNotExistsException(event.oldParentCategoryName()));
-            oldParent.getSubCategories().removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+            sourceList = oldParent.getSubCategories();
         } else {
-            categories.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+            sourceList = categories;
         }
 
-        // Add to new parent (or root list) at specified position or at end
         if (event.newParentCategoryName().isDefined()) {
             Category newParent = findCategoryByName(event.newParentCategoryName(), categories)
                     .orElseThrow(() -> new CategoryDoesNotExistsException(event.newParentCategoryName()));
-            addAtPosition(newParent.getSubCategories(), categoryToMove, event.newPosition());
+            targetList = newParent.getSubCategories();
         } else {
-            addAtPosition(categories, categoryToMove, event.newPosition());
+            targetList = categories;
         }
+
+        // Find the category to move and its current index
+        Category categoryToMove = findCategoryByName(event.categoryName(), categories)
+                .orElseThrow(() -> new CategoryDoesNotExistsException(event.categoryName()));
+
+        int oldIndex = -1;
+        for (int i = 0; i < sourceList.size(); i++) {
+            if (sourceList.get(i).getCategoryName().equals(event.categoryName())) {
+                oldIndex = i;
+                break;
+            }
+        }
+
+        // Remove from source list
+        sourceList.removeIf(c -> c.getCategoryName().equals(event.categoryName()));
+
+        // Calculate adjusted position for same-list moves
+        Integer adjustedPosition = event.newPosition();
+        if (sourceList == targetList && adjustedPosition != null && oldIndex >= 0 && oldIndex < adjustedPosition) {
+            // When moving forward in the same list, adjust position because removal shifted indices
+            adjustedPosition = adjustedPosition - 1;
+        }
+
+        // Add to target list at specified position
+        addAtPosition(targetList, categoryToMove, adjustedPosition);
 
         add(event);
     }

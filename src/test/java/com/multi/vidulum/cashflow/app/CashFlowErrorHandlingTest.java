@@ -1453,6 +1453,147 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         //
         // The critical validation added (bankAccountNumber, denomination) ensures that
         // CategoryCreatedEventHandler never encounters null bankAccountNumber, fixing the NPE bug.
+
+        // --- /category endpoint (CreateCategoryJson) ---
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category is null")
+        void shouldReturn400WhenCategoryIsNull() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
+                    .category(null)  // null category
+                    .type(INFLOW)
+                    .build();
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCategoryWithRequestExpectingError(
+                    cashFlowId, request, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("category") && fe.message().contains("required"));
+
+            log.info("Create category validation error for null category: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category is blank")
+        void shouldReturn400WhenCategoryIsBlank() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
+                    .category("   ")  // blank category
+                    .type(INFLOW)
+                    .build();
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCategoryWithRequestExpectingError(
+                    cashFlowId, request, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe -> fe.field().equals("category"));
+
+            log.info("Create category validation error for blank category: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when type is null")
+        void shouldReturn400WhenTypeIsNull() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+
+            CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
+                    .category("ValidCategory")
+                    .type(null)  // null type
+                    .build();
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCategoryWithRequestExpectingError(
+                    cashFlowId, request, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("type") && fe.message().contains("required"));
+
+            log.info("Create category validation error for null type: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category exceeds 50 characters")
+        void shouldReturn400WhenCategoryTooLong() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            String longCategory = "X".repeat(51);  // 51 characters - exceeds max
+
+            CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
+                    .category(longCategory)
+                    .type(INFLOW)
+                    .build();
+
+            // when
+            ResponseEntity<ApiError> response = actor.createCategoryWithRequestExpectingError(
+                    cashFlowId, request, false);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+
+            ApiError error = response.getBody();
+            assertThat(error.status()).isEqualTo(400);
+            assertThat(error.code()).isEqualTo("VALIDATION_ERROR");
+            assertThat(error.fieldErrors()).isNotNull();
+            assertThat(error.fieldErrors()).anyMatch(fe ->
+                    fe.field().equals("category") && fe.message().contains("50"));
+
+            log.info("Create category validation error for too long category: fieldErrors={}", error.fieldErrors());
+        }
+
+        @Test
+        @DisplayName("Should accept category at maximum length (50 characters)")
+        void shouldAcceptCategoryAtMaxLength() {
+            // given
+            String userId = TestIds.nextUserId().getId();
+            String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
+            String maxLengthCategory = "X".repeat(50);  // Exactly 50 characters
+
+            // when
+            actor.createCategory(cashFlowId, maxLengthCategory, INFLOW);
+
+            // then - verify the category was created
+            CashFlowDto.CashFlowSummaryJson result = actor.getCashFlow(cashFlowId);
+            assertThat(result.getInflowCategories().stream()
+                    .anyMatch(c -> c.getCategoryName().name().equals(maxLengthCategory))).isTrue();
+
+            log.info("Category at max length accepted: length={}", maxLengthCategory.length());
+        }
     }
 
     // ============ UserId Format Validation (400) ============
