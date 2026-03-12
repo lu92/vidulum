@@ -9,6 +9,9 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 **🔴 START HERE TOMORROW:**
 0. [🔴 HIGH: Dashboard & Upcoming Transactions (VID-150)](#0--high-dashboard--upcoming-transactions-vid-150)
 
+**🟡 UI Integration (Category Management):**
+0.1. [🟡 MEDIUM: Category Ordering Support (VID-151)](#01--medium-category-ordering-support-vid-151)
+
 **Existing items:**
 1. [✅ DONE: Integration Tests with JWT Authentication](#1--done-integration-tests-with-jwt-authentication)
 2. [✅ DONE: Month Rollover & Ongoing Sync](#2--done-month-rollover--ongoing-sync)
@@ -177,6 +180,44 @@ RecurringRulesHttpIntegrationTest.java - dodać testy
 ### Powiązane pliki mockup
 
 - `docs/design/recurring-rules-web-mockups-en.html` - Screen 11 (Dashboard)
+
+---
+
+## 0.1. 🟡 MEDIUM: Category Ordering Support (VID-151)
+
+**Plik:** `docs/features-backlog/VID-151-category-ordering-support.md`
+**Priorytet:** 🟡 MEDIUM - UI Enhancement Request
+**Szacowany czas:** 3-4 godziny
+**Status:** TODO
+**Zależności:** VID-144 (Move Category) - DONE
+
+### Problem
+
+Aktualny endpoint `POST /cash-flow/cf={cashFlowId}/category/move` pozwala przenieść kategorię do innego rodzica, ale nie wspiera określenia pozycji wśród "rodzeństwa". Gdy użytkownik robi drag-and-drop, oczekuje że kategoria pojawi się dokładnie tam gdzie ją upuścił.
+
+### Rozwiązanie
+
+Rozszerzyć endpoint o opcjonalne pole `position`:
+
+```json
+{
+  "categoryName": "Groceries",
+  "categoryType": "OUTFLOW",
+  "newParentCategoryName": "Food",
+  "position": 0
+}
+```
+
+### Kluczowe zmiany
+
+1. **DTO** - dodać `@Min(0) Integer position`
+2. **Command/Event** - dodać pole `position`
+3. **Handler** - logika wstawiania na pozycję w LinkedList
+4. **Walidacja** - zmodyfikować `CATEGORY_MOVE_TO_SAME_PARENT` (pozwolić na reorder)
+
+### Uwaga
+
+Feature jest **nice-to-have**. UI może tymczasowo sortować alfabetycznie po stronie klienta.
 
 ---
 
