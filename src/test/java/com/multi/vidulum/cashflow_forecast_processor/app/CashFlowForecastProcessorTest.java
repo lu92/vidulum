@@ -951,6 +951,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .satisfies(statement -> {
+                    // Verify lastModification is set to rollback event's occurredAt
+                    assertThat(statement.getLastModification())
+                            .isEqualTo(ZonedDateTime.parse("2021-06-15T12:30:00Z"));
+
                     // Verify IMPORT_PENDING months have no transactions
                     for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
                         if (forecast.getStatus() == CashFlowMonthlyForecast.Status.IMPORT_PENDING) {
@@ -1626,6 +1630,67 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         assertThat(inflowStats.expected())
                                 .as("Expected inflow should be 6000 PLN for %s", month)
                                 .isEqualTo(Money.of(6000, "PLN"));
+                    }
+                });
+    }
+
+    /**
+     * Test that HistoricalImportAttestedEvent updates lastModification timestamp.
+     */
+    @Test
+    public void shouldUpdateLastModificationOnHistoricalImportAttestation() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+
+        // Create CashFlow with history
+        emit(
+                new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                        cashFlowId,
+                        new UserId("U10000001"),
+                        new Name("Test CashFlow"),
+                        new Description("CashFlow for attestation test"),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
+                        YearMonth.parse("2021-01"),
+                        YearMonth.parse("2021-06"),
+                        Money.of(1000, "USD"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // Attest historical import
+        ZonedDateTime attestedAt = ZonedDateTime.parse("2021-06-20T14:30:00Z");
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.HistoricalImportAttestedEvent(
+                        cashFlowId,
+                        Money.of(1000, "USD"),  // confirmedBalance
+                        Money.of(1000, "USD"),  // calculatedBalance
+                        Money.zero("USD"),       // balanceDifference
+                        false,                   // forced
+                        null,                    // adjustmentCashChangeId
+                        attestedAt
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify lastModification is set to attestation event's occurredAt
+                    assertThat(statement.getLastModification())
+                            .isEqualTo(attestedAt);
+
+                    // Verify IMPORT_PENDING months changed to IMPORTED
+                    for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
+                        if (forecast.getPeriod().isBefore(YearMonth.parse("2021-06"))) {
+                            assertThat(forecast.getStatus())
+                                    .as("Historical months should be IMPORTED after attestation")
+                                    .isEqualTo(CashFlowMonthlyForecast.Status.IMPORTED);
+                        }
                     }
                 });
     }
