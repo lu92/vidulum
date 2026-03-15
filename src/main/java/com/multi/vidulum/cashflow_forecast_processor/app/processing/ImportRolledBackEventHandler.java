@@ -56,7 +56,7 @@ public class ImportRolledBackEventHandler implements CashFlowEventHandler<CashFl
         }
 
         statement.updateStats();
-        statement.setLastMessageChecksum(getChecksum(event));
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
 
         log.info("Import rolled back for CashFlow [{}]. Cleared [{}] transactions from [{}] IMPORT_PENDING months. " +

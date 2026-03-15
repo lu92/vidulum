@@ -951,6 +951,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .satisfies(statement -> {
+                    // Verify lastModification is set to rollback event's occurredAt
+                    assertThat(statement.getLastModification())
+                            .isEqualTo(ZonedDateTime.parse("2021-06-15T12:30:00Z"));
+
                     // Verify IMPORT_PENDING months have no transactions
                     for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
                         if (forecast.getStatus() == CashFlowMonthlyForecast.Status.IMPORT_PENDING) {
@@ -1628,6 +1632,208 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                                 .isEqualTo(Money.of(6000, "PLN"));
                     }
                 });
+    }
+
+    /**
+     * Test that HistoricalImportAttestedEvent updates lastModification timestamp.
+     */
+    @Test
+    public void shouldUpdateLastModificationOnHistoricalImportAttestation() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+
+        // Create CashFlow with history
+        emit(
+                new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                        cashFlowId,
+                        new UserId("U10000001"),
+                        new Name("Test CashFlow"),
+                        new Description("CashFlow for attestation test"),
+                        BankAccount.fromIban(
+                                "Test Bank",
+                                "GB29NWBK60161331926819",
+                                Currency.of("USD"),
+                                Money.of(1000, "USD"),
+                                null),
+                        YearMonth.parse("2021-01"),
+                        YearMonth.parse("2021-06"),
+                        Money.of(1000, "USD"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                )
+        );
+
+        // Attest historical import
+        ZonedDateTime attestedAt = ZonedDateTime.parse("2021-06-20T14:30:00Z");
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.HistoricalImportAttestedEvent(
+                        cashFlowId,
+                        Money.of(1000, "USD"),  // confirmedBalance
+                        Money.of(1000, "USD"),  // calculatedBalance
+                        Money.zero("USD"),       // balanceDifference
+                        false,                   // forced
+                        null,                    // adjustmentCashChangeId
+                        attestedAt
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify lastModification is set to attestation event's occurredAt
+                    assertThat(statement.getLastModification())
+                            .isEqualTo(attestedAt);
+
+                    // Verify IMPORT_PENDING months changed to IMPORTED
+                    for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
+                        if (forecast.getPeriod().isBefore(YearMonth.parse("2021-06"))) {
+                            assertThat(forecast.getStatus())
+                                    .as("Historical months should be IMPORTED after attestation")
+                                    .isEqualTo(CashFlowMonthlyForecast.Status.IMPORTED);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Test that all currency values in forecast are consistent with the cashflow's currency (EUR).
+     * This test specifically verifies that totalPaidValue uses the correct currency,
+     * not hardcoded "USD".
+     */
+    @Test
+    public void shouldUseCorrectCurrencyForAllMoneyFieldsInEurCashFlow() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId1 = TestIds.nextCashChangeId();
+        CashChangeId cashChangeId2 = TestIds.nextCashChangeId();
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-03-01T10:00:00Z");
+
+        // Create CashFlow with EUR currency
+        emit(
+                new CashFlowEvent.CashFlowCreatedEvent(
+                        cashFlowId,
+                        new UserId("U10000001"),
+                        new Name("EUR CashFlow"),
+                        new Description("CashFlow with EUR currency for currency consistency test"),
+                        BankAccount.fromIban(
+                                "European Bank",
+                                "DE89370400440532013000",
+                                Currency.of("EUR"),
+                                Money.of(5000, "EUR"),
+                                null),
+                        createdDate
+                )
+        );
+
+        // Create category
+        emit(
+                new CashFlowEvent.CategoryCreatedEvent(
+                        cashFlowId,
+                        CategoryName.NOT_DEFINED,
+                        new CategoryName("Salary"),
+                        INFLOW,
+                        createdDate
+                )
+        );
+
+        // Add expected cash change
+        emit(
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        cashChangeId1,
+                        new Name("March Salary"),
+                        new Description("Monthly salary"),
+                        Money.of(3000, "EUR"),
+                        INFLOW,
+                        createdDate,
+                        new CategoryName("Salary"),
+                        ZonedDateTime.parse("2026-03-15T00:00:00Z"),
+                        null
+                ));
+
+        // Confirm the cash change (this triggers updateTotalPaidValue)
+        Checksum lastEventChecksum = emit(
+                new CashFlowEvent.CashChangeConfirmedEvent(
+                        cashFlowId,
+                        cashChangeId1,
+                        ZonedDateTime.parse("2026-03-15T10:00:00Z")
+                ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // Verify bank account currency
+                    assertThat(statement.getBankAccountNumber().denomination().getId())
+                            .as("Bank account should use EUR")
+                            .isEqualTo("EUR");
+
+                    // Check all months
+                    for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
+                        // Verify CashFlowStats currencies
+                        CashFlowStats stats = forecast.getCashFlowStats();
+                        assertThat(stats.getStart().getCurrency())
+                                .as("Stats start currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+                        assertThat(stats.getEnd().getCurrency())
+                                .as("Stats end currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+                        assertThat(stats.getNetChange().getCurrency())
+                                .as("Stats netChange currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+
+                        // Verify inflow stats currencies
+                        CashSummary inflowStats = stats.getInflowStats();
+                        assertThat(inflowStats.actual().getCurrency())
+                                .as("Inflow actual currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+                        assertThat(inflowStats.expected().getCurrency())
+                                .as("Inflow expected currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+
+                        // Verify outflow stats currencies
+                        CashSummary outflowStats = stats.getOutflowStats();
+                        assertThat(outflowStats.actual().getCurrency())
+                                .as("Outflow actual currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+                        assertThat(outflowStats.expected().getCurrency())
+                                .as("Outflow expected currency should be EUR for month %s", forecast.getPeriod())
+                                .isEqualTo("EUR");
+
+                        // Verify all category totalPaidValue currencies (THE BUG FIX)
+                        for (CashCategory category : forecast.getCategorizedInFlows()) {
+                            verifyCategoryCurrency(category, "EUR", forecast.getPeriod(), "inflow");
+                        }
+                        for (CashCategory category : forecast.getCategorizedOutFlows()) {
+                            verifyCategoryCurrency(category, "EUR", forecast.getPeriod(), "outflow");
+                        }
+                    }
+
+                    // Verify March has the paid transaction with correct amount
+                    CashFlowMonthlyForecast marchForecast = statement.getForecasts().get(YearMonth.parse("2026-03"));
+                    assertThat(marchForecast).isNotNull();
+
+                    CashCategory salaryCategory = marchForecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")).orElseThrow();
+                    assertThat(salaryCategory.getTotalPaidValue())
+                            .as("Salary category totalPaidValue should be 3000 EUR")
+                            .isEqualTo(Money.of(3000, "EUR"));
+                });
+    }
+
+    /**
+     * Recursively verify that all category currencies are correct.
+     */
+    private void verifyCategoryCurrency(CashCategory category, String expectedCurrency, YearMonth period, String flowType) {
+        assertThat(category.getTotalPaidValue().getCurrency())
+                .as("Category '%s' totalPaidValue currency should be %s for %s %s",
+                        category.getCategoryName().name(), expectedCurrency, flowType, period)
+                .isEqualTo(expectedCurrency);
+
+        for (CashCategory subCategory : category.getSubCategories()) {
+            verifyCategoryCurrency(subCategory, expectedCurrency, period, flowType);
+        }
     }
 
     private Checksum emit(CashFlowEvent cashFlowEvent) {

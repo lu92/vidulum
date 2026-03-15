@@ -43,7 +43,7 @@ public class HistoricalImportAttestedEventHandler implements CashFlowEventHandle
         }
 
         statement.updateStats();
-        statement.setLastMessageChecksum(getChecksum(event));
+        updateSyncMetadata(statement, event);
         statementRepository.save(statement);
 
         log.info("Historical import attested for CashFlow [{}]. Changed [{}] months from IMPORT_PENDING to IMPORTED. " +
