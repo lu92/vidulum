@@ -180,13 +180,15 @@ public class CashFlowMonthlyForecast {
     }
 
     public void updateTotalPaidValue() {
+        String currency = cashFlowStats.getStart().getCurrency();
+
         Consumer<CashCategory> updateTotalPaid = cashCategory -> {
             Money totalPaidValue = flattenCategories(List.of(cashCategory)).stream()
                     .map(CashCategory::getGroupedTransactions)
                     .map(x -> x.get(PAID))
                     .flatMap(Collection::stream)
                     .map(TransactionDetails::getMoney)
-                    .reduce(Money.zero("USD"), Money::plus);
+                    .reduce(Money.zero(currency), Money::plus);
             cashCategory.setTotalPaidValue(totalPaidValue);
         };
 
