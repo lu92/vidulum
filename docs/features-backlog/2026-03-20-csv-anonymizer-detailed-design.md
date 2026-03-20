@@ -22,6 +22,9 @@
 12. [Porównanie: Regex vs AI](#12-porównanie-regex-vs-ai)
 13. [Rekomendowane podejście hybrydowe](#13-rekomendowane-podejście-hybrydowe)
 14. [Plan implementacji](#14-plan-implementacji)
+15. [Mapping Rules Cache - przechowywanie reguł mapowania](#15-mapping-rules-cache---przechowywanie-reguł-mapowania)
+16. [Zabezpieczenia i walidacja reguł](#16-zabezpieczenia-i-walidacja-reguł)
+17. [Znane luki do rozwiązania (TODO)](#17-znane-luki-do-rozwiązania-todo)
 
 ---
 
@@ -1213,20 +1216,1315 @@ infrastructure/
     └── HybridTypeDetector.java
 ```
 
-### Faza 3: Cache
+### Faza 3: Mapping Rules Cache
 
 **Zakres:**
-- `TypeDetectionCache` (MongoDB)
-- Cache key: `{bankName}_{structureHash}`
-- Automatic cache invalidation
+- `MappingRulesCacheService` (L1 memory + L2 MongoDB)
+- `BankOriginCsvMappingRulesDocument` (MongoDB: `bank_origin_csv_mapping_rules`)
+- Cache key: `{bankName}_{currency}_{structureHash}`
+- Automatic cache invalidation (successRate < 85%)
+- Admin API do zarządzania regułami
 
 **Dodatkowe klasy:**
 ```
 infrastructure/
-└── anonymization/
-    ├── TypeDetectionCache.java
-    └── TypeDetectionCacheDocument.java (MongoDB)
+└── cache/
+    ├── MappingRulesCacheService.java
+    ├── BankOriginCsvMappingRulesDocument.java
+    ├── BankOriginCsvMappingRulesRepository.java
+    └── MappingRulesHealthChecker.java
 ```
+
+Szczegóły w sekcji [15. Mapping Rules Cache](#15-mapping-rules-cache---przechowywanie-reguł-mapowania).
+
+---
+
+## 15. Mapping Rules Cache - przechowywanie reguł mapowania
+
+### Problem
+
+Jak przechowywać i ponownie wykorzystywać reguły mapowania kolumn CSV na Canonical CSV, aby nie powtarzać kosztownych wywołań AI dla tego samego banku/formatu?
+
+### Rozwiązanie: MongoDB Collection `bank_origin_csv_mapping_rules`
+
+#### Model dokumentu
+
+```java
+@Document(collection = "bank_origin_csv_mapping_rules")
+public class BankOriginCsvMappingRulesDocument {
+
+    @Id
+    private String id;  // UUID
+
+    // === KLUCZ CACHE (unikalna identyfikacja formatu) ===
+    private String cacheKey;           // "NEST_BANK_PLN_a1b2c3d4" (hash struktury)
+    private String bankName;           // "Nest Bank"
+    private String bankCode;           // "1870" (z IBAN)
+    private String country;            // "PL"
+    private String currency;           // "PLN"
+    private String structureHash;      // SHA-256 z nagłówków CSV
+
+    // === REGUŁY PARSOWANIA ===
+    private int headerRowIndex;        // np. 6 dla Nest Bank
+    private List<Integer> metadataRows; // [0,1,2,3,4,5]
+    private String delimiter;          // "," lub ";"
+    private String encoding;           // "UTF-8", "CP1250"
+
+    // === MAPOWANIE KOLUMN → CANONICAL ===
+    private List<ColumnMapping> columnMappings;
+
+    // === MAPOWANIE KATEGORII → TYP ===
+    private Map<String, TransactionType> categoryToTypeMapping;
+
+    // === WERSJONOWANIE ===
+    private int version;               // 1, 2, 3... (inkrementowane przy zmianach)
+    private String aiModel;            // "gpt-4o-mini"
+    private String aiPromptVersion;    // "v2.1" (do invalidacji)
+
+    // === STATYSTYKI UŻYCIA ===
+    private int timesUsedSuccessfully;
+    private int timesUsedWithErrors;
+    private double successRate;
+    private Set<String> usersUsed;     // Którzy userzy używali
+
+    // === AUDIT ===
+    private String createdByUserId;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime lastUsedAt;
+    private ZonedDateTime lastModifiedAt;
+
+    // === STATUS ===
+    private MappingStatus status;      // ACTIVE, DEPRECATED, FAILED
+}
+
+public record ColumnMapping(
+    int sourceColumnIndex,
+    String sourceColumnName,      // "Kwota", "Data operacji"
+    String targetField,           // "amount", "operationDate"
+    String transformation,        // "ABS", "NEGATE", "DATE_FORMAT", null
+    String inputFormat,           // "dd-MM-yyyy"
+    String outputFormat,          // "yyyy-MM-dd"
+    String decimalSeparator,      // ","
+    String defaultValue           // null
+) {}
+
+public enum MappingStatus {
+    ACTIVE,      // Używany
+    DEPRECATED,  // Stary, ale jeszcze działa (dla starych CSV)
+    FAILED       // Zbyt wiele błędów, wymaga regeneracji
+}
+```
+
+### Generowanie Cache Key
+
+```java
+public String generateCacheKey(String csvContent, String bankHint, String currency) {
+    // 1. Wykryj bank (z IBAN lub hint)
+    String bankName = detectBankName(csvContent, bankHint);
+
+    // 2. Oblicz hash struktury (nagłówki + delimiter)
+    String structureHash = calculateStructureHash(csvContent);
+
+    // 3. Złóż klucz
+    return String.format("%s_%s_%s",
+        bankName.toUpperCase().replace(" ", "_"),
+        currency,
+        structureHash.substring(0, 8)  // Pierwsze 8 znaków hash
+    );
+    // Przykład: "NEST_BANK_PLN_a1b2c3d4"
+}
+
+private String calculateStructureHash(String csvContent) {
+    // Hash z:
+    // - Nagłówków kolumn (nazwy, kolejność)
+    // - Delimitera
+    // - Liczby metadata rows
+
+    String headerRow = findHeaderRow(csvContent);
+    String delimiter = detectDelimiter(csvContent);
+    int metadataCount = countMetadataRows(csvContent);
+
+    String toHash = headerRow + "|" + delimiter + "|" + metadataCount;
+    return DigestUtils.sha256Hex(toHash);
+}
+```
+
+### Dlaczego Structure Hash?
+
+```
+Ten sam bank może mieć RÓŻNE formaty:
+
+NEST BANK (format A - stary):
+Data,Kwota,Opis
+→ hash: "a1b2c3d4"
+
+NEST BANK (format B - nowy):
+Data operacji,Data księgowania,Kwota,Waluta,Tytuł
+→ hash: "e5f6g7h8"
+
+= DWA OSOBNE WPISY W CACHE
+```
+
+### Flow: Sprawdź cache → użyj lub stwórz
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Upload CSV                                                         │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. Generuj cacheKey                                                │
+│     bankName + currency + structureHash                             │
+│     → "NEST_BANK_PLN_a1b2c3d4"                                      │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  2. Sprawdź cache (MongoDB)                                         │
+│     findByCacheKeyAndStatus(cacheKey, ACTIVE)                       │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+              ┌────────────────┴────────────────┐
+              │                                 │
+              ▼                                 ▼
+         CACHE HIT                         CACHE MISS
+              │                                 │
+              ▼                                 ▼
+┌─────────────────────────┐      ┌─────────────────────────────────┐
+│ 3a. Użyj cached rules   │      │ 3b. Anonimizuj + AI call        │
+│     → LocalTransformer  │      │     → Otrzymaj nowe reguły      │
+│     → ~50ms             │      │     → Zapisz do cache           │
+│     → $0.00             │      │     → ~3s, ~$0.01               │
+└───────────┬─────────────┘      └───────────────┬─────────────────┘
+            │                                    │
+            └────────────────┬───────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  4. Transformuj pełny CSV lokalnie                                  │
+│     → Canonical CSV (400 wierszy)                                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Service do zarządzania cache
+
+```java
+@Service
+@RequiredArgsConstructor
+public class MappingRulesCacheService {
+
+    private final BankOriginCsvMappingRulesRepository repository;
+    private final AiBankCsvTransformService aiService;
+
+    // L1 cache (in-memory) dla szybkiego dostępu
+    private final Map<String, BankOriginCsvMappingRulesDocument> l1Cache =
+        new ConcurrentHashMap<>();
+
+    public Optional<BankOriginCsvMappingRulesDocument> findRules(String cacheKey) {
+        // 1. L1 cache (memory)
+        var cached = l1Cache.get(cacheKey);
+        if (cached != null && cached.getStatus() == ACTIVE) {
+            return Optional.of(cached);
+        }
+
+        // 2. L2 cache (MongoDB)
+        return repository.findByCacheKeyAndStatus(cacheKey, ACTIVE)
+            .map(rules -> {
+                l1Cache.put(cacheKey, rules);  // Populate L1
+                return rules;
+            });
+    }
+
+    public BankOriginCsvMappingRulesDocument createOrUpdateRules(
+            String cacheKey,
+            String csvSample,
+            String userId) {
+
+        // 1. Wywołaj AI dla nowych reguł
+        MappingRules newRules = aiService.detectMappingRules(csvSample);
+
+        // 2. Sprawdź czy istnieją stare reguły
+        Optional<BankOriginCsvMappingRulesDocument> existing =
+            repository.findByCacheKey(cacheKey);
+
+        if (existing.isPresent()) {
+            // 3a. Deprecate stare, dodaj nowe z version++
+            var old = existing.get();
+            old.setStatus(DEPRECATED);
+            repository.save(old);
+
+            return saveNewRules(cacheKey, newRules, old.getVersion() + 1, userId);
+        } else {
+            // 3b. Pierwszy wpis dla tego formatu
+            return saveNewRules(cacheKey, newRules, 1, userId);
+        }
+    }
+
+    public void recordUsage(String cacheKey, boolean success) {
+        repository.findByCacheKey(cacheKey).ifPresent(rules -> {
+            if (success) {
+                rules.setTimesUsedSuccessfully(rules.getTimesUsedSuccessfully() + 1);
+            } else {
+                rules.setTimesUsedWithErrors(rules.getTimesUsedWithErrors() + 1);
+            }
+            rules.setLastUsedAt(ZonedDateTime.now());
+            rules.setSuccessRate(calculateSuccessRate(rules));
+            repository.save(rules);
+            l1Cache.put(cacheKey, rules);
+        });
+    }
+}
+```
+
+### Co gdy bank zmieni format CSV?
+
+**Automatyczne wykrycie przez Structure Hash:**
+
+```
+Timeline:
+─────────────────────────────────────────────────────────────────────
+Styczeń 2026:   Bank używa formatu A
+                → User eksportuje CSV (format A)
+                → Cache: NEST_BANK_PLN_a1b2c3d4 (ACTIVE)
+
+Luty 2026:      Bank zmienia na format B
+                → Inny user eksportuje CSV (format B)
+                → Cache: NEST_BANK_PLN_e5f6g7h8 (ACTIVE) ← NOWY!
+                → Stary: NEST_BANK_PLN_a1b2c3d4 (nadal ACTIVE!)
+
+Marzec 2026:    Pierwszy user wgrywa swój stary CSV (format A)
+                → structureHash = "a1b2c3d4"
+                → CACHE HIT! Stare reguły nadal działają ✓
+```
+
+**Wniosek:** Zmiana formatu = nowy hash = automatycznie nowy wpis w cache. Stary format nadal działa dla starych plików.
+
+### Przykład danych w MongoDB
+
+```javascript
+// Kolekcja: bank_origin_csv_mapping_rules
+
+// Wpis 1: Stary format (nadal działa dla starych plików)
+{
+  "_id": "uuid-1",
+  "cacheKey": "NEST_BANK_PLN_a1b2c3d4",
+  "bankName": "Nest Bank",
+  "bankCode": "1870",
+  "country": "PL",
+  "currency": "PLN",
+  "structureHash": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+  "version": 1,
+  "status": "ACTIVE",
+  "headerRowIndex": 6,
+  "delimiter": ",",
+  "columnMappings": [
+    {"sourceColumnIndex": 0, "sourceColumnName": "Data", "targetField": "operationDate",
+     "inputFormat": "dd-MM-yyyy", "outputFormat": "yyyy-MM-dd"},
+    {"sourceColumnIndex": 1, "sourceColumnName": "Kwota", "targetField": "amount",
+     "transformation": "ABS", "decimalSeparator": ","},
+    {"sourceColumnIndex": 2, "sourceColumnName": "Opis", "targetField": "description"}
+  ],
+  "categoryToTypeMapping": {
+    "Przelewy wychodzące": "OUTFLOW",
+    "Przelewy przychodzące": "INFLOW",
+    "Opłaty i prowizje": "OUTFLOW"
+  },
+  "aiModel": "gpt-4o-mini",
+  "aiPromptVersion": "v2.1",
+  "timesUsedSuccessfully": 47,
+  "timesUsedWithErrors": 2,
+  "successRate": 0.959,
+  "usersUsed": ["U10000001", "U10000015", "U10000023"],
+  "createdByUserId": "U10000001",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "lastUsedAt": "2026-03-20T15:30:00Z",
+  "lastModifiedAt": "2026-01-15T10:00:00Z"
+}
+
+// Wpis 2: Nowy format (dla nowych plików)
+{
+  "_id": "uuid-2",
+  "cacheKey": "NEST_BANK_PLN_e5f6g7h8",
+  "bankName": "Nest Bank",
+  "bankCode": "1870",
+  "country": "PL",
+  "currency": "PLN",
+  "structureHash": "e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+  "version": 1,
+  "status": "ACTIVE",
+  "headerRowIndex": 0,
+  "delimiter": ";",
+  "columnMappings": [
+    {"sourceColumnIndex": 0, "sourceColumnName": "Data operacji", "targetField": "operationDate",
+     "inputFormat": "yyyy-MM-dd", "outputFormat": "yyyy-MM-dd"},
+    {"sourceColumnIndex": 1, "sourceColumnName": "Data księgowania", "targetField": "bookingDate",
+     "inputFormat": "yyyy-MM-dd", "outputFormat": "yyyy-MM-dd"},
+    {"sourceColumnIndex": 2, "sourceColumnName": "Kwota", "targetField": "amount",
+     "transformation": "ABS", "decimalSeparator": ","},
+    {"sourceColumnIndex": 3, "sourceColumnName": "Waluta", "targetField": "currency"},
+    {"sourceColumnIndex": 4, "sourceColumnName": "Tytuł", "targetField": "description"}
+  ],
+  "categoryToTypeMapping": {
+    "Przelew wychodzący": "OUTFLOW",
+    "Przelew przychodzący": "INFLOW"
+  },
+  "aiModel": "gpt-4o-mini",
+  "aiPromptVersion": "v2.1",
+  "timesUsedSuccessfully": 23,
+  "timesUsedWithErrors": 0,
+  "successRate": 1.0,
+  "usersUsed": ["U10000042", "U10000056"],
+  "createdByUserId": "U10000042",
+  "createdAt": "2026-02-20T10:00:00Z",
+  "lastUsedAt": "2026-03-20T16:45:00Z",
+  "lastModifiedAt": "2026-02-20T10:00:00Z"
+}
+```
+
+### Automatyczna invalidacja reguł
+
+```java
+@Service
+public class MappingRulesHealthChecker {
+
+    private static final double MIN_SUCCESS_RATE = 0.85;  // 85%
+    private static final int MIN_USES_FOR_EVALUATION = 10;
+
+    @Scheduled(cron = "0 0 * * * *")  // Co godzinę
+    public void checkRulesHealth() {
+        List<BankOriginCsvMappingRulesDocument> activeRules =
+            repository.findByStatus(ACTIVE);
+
+        for (var rules : activeRules) {
+            int totalUses = rules.getTimesUsedSuccessfully() + rules.getTimesUsedWithErrors();
+
+            if (totalUses >= MIN_USES_FOR_EVALUATION) {
+                if (rules.getSuccessRate() < MIN_SUCCESS_RATE) {
+                    // Zbyt wiele błędów → oznacz jako FAILED
+                    rules.setStatus(FAILED);
+                    repository.save(rules);
+
+                    log.warn("Mapping rules {} marked as FAILED. Success rate: {}%",
+                        rules.getCacheKey(), rules.getSuccessRate() * 100);
+
+                    // Alert do administratora
+                    alertService.sendMappingRulesFailedAlert(rules);
+                }
+            }
+        }
+    }
+}
+```
+
+### Admin API do zarządzania regułami
+
+```java
+@RestController
+@RequestMapping("/api/v1/admin/mapping-rules")
+@PreAuthorize("hasRole('ADMIN')")
+public class MappingRulesAdminController {
+
+    @GetMapping
+    public List<BankOriginCsvMappingRulesDocument> listAllRules(
+            @RequestParam(required = false) MappingStatus status) {
+        if (status != null) {
+            return repository.findByStatus(status);
+        }
+        return repository.findAll();
+    }
+
+    @PostMapping("/{cacheKey}/regenerate")
+    public ResponseEntity<BankOriginCsvMappingRulesDocument> regenerateRules(
+            @PathVariable String cacheKey,
+            @RequestBody RegenerateRequest request) {
+
+        // 1. Pobierz sample CSV (z ostatniej transformacji lub request)
+        String sampleCsv = request.sampleCsv();
+
+        // 2. Wymuś nowy AI call
+        var newRules = cacheService.forceRegenerateRules(
+            cacheKey, sampleCsv, getCurrentUserId());
+
+        return ResponseEntity.ok(newRules);
+    }
+
+    @PostMapping("/{cacheKey}/deprecate")
+    public ResponseEntity<Void> deprecateRules(@PathVariable String cacheKey) {
+        cacheService.deprecateRules(cacheKey);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{cacheKey}")
+    public ResponseEntity<Void> deleteRules(@PathVariable String cacheKey) {
+        repository.deleteByCacheKey(cacheKey);
+        l1Cache.remove(cacheKey);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+### Architektura cache
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MAPPING RULES CACHE ARCHITECTURE                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   L1 CACHE      │     │   L2 CACHE      │     │   AI SERVICE    │
+│   (Memory)      │     │   (MongoDB)     │     │   (Claude/GPT)  │
+│                 │     │                 │     │                 │
+│  ConcurrentMap  │────▶│  bank_origin_   │────▶│  Generuj nowe   │
+│  <cacheKey,     │     │  csv_mapping_   │     │  reguły         │
+│   rules>        │     │  rules          │     │                 │
+│                 │     │                 │     │  Koszt: ~$0.01  │
+│  TTL: 1h        │     │  Indexes:       │     │  Czas: ~3s      │
+│  Size: 100      │     │  - cacheKey     │     │                 │
+└─────────────────┘     │  - status       │     └─────────────────┘
+                        │  - bankName     │
+                        └─────────────────┘
+
+CACHE KEY FORMAT:
+{BANK_NAME}_{CURRENCY}_{STRUCTURE_HASH_8}
+
+PRZYKŁADY:
+- NEST_BANK_PLN_a1b2c3d4
+- MBANK_PLN_e5f6g7h8
+- DEUTSCHE_BANK_EUR_i9j0k1l2
+- BARCLAYS_GBP_m3n4o5p6
+
+LIFECYCLE:
+1. ACTIVE     → Używany, działa poprawnie
+2. DEPRECATED → Stary format, ale nadal działa (dla starych CSV)
+3. FAILED     → Zbyt wiele błędów (successRate < 85%), wymaga regeneracji
+```
+
+### Podsumowanie Mapping Rules Cache
+
+| Pytanie | Odpowiedź |
+|---------|-----------|
+| **Gdzie zapisywać?** | MongoDB: `bank_origin_csv_mapping_rules` + L1 memory cache |
+| **Jak identyfikować format?** | `cacheKey = bank + currency + structureHash` |
+| **Co gdy bank zmieni format?** | Nowy hash = nowy wpis (stary nadal działa dla starych CSV) |
+| **Co gdy user ma stary CSV?** | Hash = stary = stare reguły nadal działają |
+| **Kiedy regenerować?** | Auto: successRate < 85%, Manual: admin endpoint |
+| **Kto może zarządzać?** | Admin przez `/api/v1/admin/mapping-rules` |
+
+---
+
+## 16. Zabezpieczenia i walidacja reguł
+
+### 16.1 Walidacja reguł przed zapisem (Luka #2)
+
+**Problem:** AI może zwrócić niepoprawne reguły (brakujące kolumny, złe formaty).
+
+**Rozwiązanie:** Walidacja + dry-run przed zapisem do cache.
+
+```java
+public BankOriginCsvMappingRulesDocument createNewRules(
+        String cacheKey,
+        String csvSample,
+        String userId) {
+
+    MappingRules newRules = aiService.detectMappingRules(csvSample);
+
+    // WALIDACJA przed zapisem
+    ValidationResult validation = validateRules(newRules, csvSample);
+
+    if (!validation.isValid()) {
+        log.error("AI returned invalid rules for {}: {}", cacheKey, validation.errors());
+        throw new InvalidMappingRulesException(validation.errors());
+    }
+
+    // Test na sample przed zapisem (dry-run)
+    try {
+        transformWithRules(csvSample, newRules);
+    } catch (Exception e) {
+        log.error("Rules failed dry-run for {}", cacheKey, e);
+        throw new MappingRulesTestFailedException(e);
+    }
+
+    return saveNewRules(cacheKey, newRules, 1, userId);
+}
+```
+
+#### Walidator reguł
+
+```java
+@Component
+public class MappingRulesValidator {
+
+    // Wymagane pola w Canonical CSV
+    private static final Set<String> REQUIRED_FIELDS = Set.of(
+        "operationDate", "amount", "type", "description"
+    );
+
+    public ValidationResult validate(MappingRules rules, String csvSample) {
+        List<String> errors = new ArrayList<>();
+
+        // 1. Sprawdź wymagane pola
+        Set<String> mappedFields = rules.columnMappings().stream()
+            .map(ColumnMapping::targetField)
+            .collect(toSet());
+
+        for (String required : REQUIRED_FIELDS) {
+            if (!mappedFields.contains(required)) {
+                errors.add("Missing required mapping for: " + required);
+            }
+        }
+
+        // 2. Sprawdź indeksy kolumn
+        int maxColumnIndex = countColumns(csvSample);
+        for (var mapping : rules.columnMappings()) {
+            if (mapping.sourceColumnIndex() >= maxColumnIndex) {
+                errors.add("Column index " + mapping.sourceColumnIndex() +
+                           " out of bounds (max: " + (maxColumnIndex - 1) + ")");
+            }
+        }
+
+        // 3. Sprawdź formaty dat
+        for (var mapping : rules.columnMappings()) {
+            if ("operationDate".equals(mapping.targetField()) ||
+                "bookingDate".equals(mapping.targetField())) {
+                if (mapping.inputFormat() == null) {
+                    errors.add("Date field " + mapping.targetField() +
+                               " requires inputFormat");
+                }
+            }
+        }
+
+        // 4. Sprawdź categoryToTypeMapping
+        if (rules.categoryToTypeMapping() == null ||
+            rules.categoryToTypeMapping().isEmpty()) {
+            errors.add("categoryToTypeMapping cannot be empty");
+        }
+
+        return new ValidationResult(errors.isEmpty(), errors);
+    }
+
+    private int countColumns(String csvSample) {
+        String headerRow = findHeaderRow(csvSample);
+        String delimiter = detectDelimiter(csvSample);
+        return headerRow.split(Pattern.quote(delimiter)).length;
+    }
+}
+
+public record ValidationResult(
+    boolean valid,
+    List<String> errors
+) {
+    public boolean isValid() {
+        return valid;
+    }
+}
+```
+
+### 16.2 Ulepszone generowanie Structure Hash (Luka #3)
+
+**Problem:** Dwa różne banki mogą mieć identyczne nagłówki, co prowadzi do hash collision.
+
+**Rozwiązanie:** Uwzględnij więcej danych w hash.
+
+```java
+@Component
+public class StructureHashCalculator {
+
+    /**
+     * Generuje unikalny hash struktury CSV.
+     * Uwzględnia: nagłówki, delimiter, metadata count, sample danych, bank hint.
+     */
+    public String calculateStructureHash(String csvContent, String bankHint) {
+        String headerRow = findHeaderRow(csvContent);
+        String delimiter = detectDelimiter(csvContent);
+        int metadataCount = countMetadataRows(csvContent);
+        String firstDataRow = getFirstDataRow(csvContent);
+
+        // Złóż wszystkie elementy do hash
+        String toHash = String.join("|",
+            normalizeHeader(headerRow),
+            delimiter,
+            String.valueOf(metadataCount),
+            extractDataPattern(firstDataRow),  // Wzorzec danych (nie wartości!)
+            bankHint != null ? bankHint.toUpperCase() : ""
+        );
+
+        return DigestUtils.sha256Hex(toHash).substring(0, 16);  // 16 znaków
+    }
+
+    /**
+     * Normalizuje nagłówek (lowercase, trim, sort).
+     */
+    private String normalizeHeader(String headerRow) {
+        return Arrays.stream(headerRow.split("[,;]"))
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .sorted()
+            .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Wyciąga wzorzec danych (typy, nie wartości).
+     * Przykład: "31-12-2025,-3000.50,PLN,Jan Kowalski"
+     *        → "DATE,AMOUNT,CURRENCY,TEXT"
+     */
+    private String extractDataPattern(String dataRow) {
+        return Arrays.stream(dataRow.split("[,;]"))
+            .map(this::detectValueType)
+            .collect(Collectors.joining(","));
+    }
+
+    private String detectValueType(String value) {
+        value = value.trim();
+        if (value.matches("\\d{2}[-./]\\d{2}[-./]\\d{4}|\\d{4}[-./]\\d{2}[-./]\\d{2}")) {
+            return "DATE";
+        }
+        if (value.matches("-?\\d+[.,]?\\d*")) {
+            return "AMOUNT";
+        }
+        if (value.matches("[A-Z]{3}")) {
+            return "CURRENCY";
+        }
+        if (value.matches("[A-Z]{2}\\d{2}[A-Z0-9]+")) {
+            return "IBAN";
+        }
+        return "TEXT";
+    }
+}
+```
+
+#### Przykład hash dla różnych banków
+
+```
+Bank A (Nest):
+- Header: "Data,Kwota,Opis"
+- Delimiter: ","
+- Metadata: 6
+- Pattern: "DATE,AMOUNT,TEXT"
+- BankHint: "NEST"
+→ Hash: "a1b2c3d4e5f6g7h8"
+
+Bank B (mBank) - te same nagłówki, ale inne dane:
+- Header: "Data,Kwota,Opis"
+- Delimiter: ";"           ← RÓŻNICA
+- Metadata: 0              ← RÓŻNICA
+- Pattern: "DATE,AMOUNT,TEXT"
+- BankHint: "MBANK"        ← RÓŻNICA
+→ Hash: "x9y8z7w6v5u4t3s2"  ← RÓŻNY HASH!
+```
+
+### 16.3 Wersjonowanie AI Promptu (Luka #5)
+
+**Problem:** Zmiana promptu AI może spowodować niekompatybilność starych reguł.
+
+**Rozwiązanie:** Semantic versioning promptu + auto-deprecation.
+
+```java
+@Component
+@RequiredArgsConstructor
+public class PromptVersionManager {
+
+    @Value("${ai.prompt.version}")
+    private String currentPromptVersion;  // np. "v2.1"
+
+    private final BankOriginCsvMappingRulesRepository repository;
+
+    /**
+     * Sprawdza czy reguły są kompatybilne z obecnym promptem.
+     * Semantic versioning: major.minor
+     * - Major change (v1.x → v2.x) = niekompatybilne
+     * - Minor change (v2.1 → v2.2) = kompatybilne
+     */
+    public boolean isCompatible(String rulesPromptVersion) {
+        if (rulesPromptVersion == null) {
+            return false;  // Stare reguły bez wersji
+        }
+
+        String rulesMajor = extractMajorVersion(rulesPromptVersion);
+        String currentMajor = extractMajorVersion(currentPromptVersion);
+
+        return rulesMajor.equals(currentMajor);
+    }
+
+    private String extractMajorVersion(String version) {
+        // "v2.1" → "2"
+        return version.replaceAll("[^0-9.]", "").split("\\.")[0];
+    }
+
+    /**
+     * Znajduje tylko kompatybilne reguły.
+     */
+    public Optional<BankOriginCsvMappingRulesDocument> findCompatibleRules(String cacheKey) {
+        return repository.findByCacheKeyAndStatus(cacheKey, ACTIVE)
+            .filter(rules -> isCompatible(rules.getAiPromptVersion()));
+    }
+
+    /**
+     * Deprecuje niekompatybilne reguły przy starcie aplikacji.
+     * Uruchamiane automatycznie po upgrade promptu.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void deprecateIncompatibleRulesOnStartup() {
+        String currentMajor = extractMajorVersion(currentPromptVersion);
+
+        List<BankOriginCsvMappingRulesDocument> incompatibleRules =
+            repository.findByStatus(ACTIVE).stream()
+                .filter(rules -> !isCompatible(rules.getAiPromptVersion()))
+                .toList();
+
+        if (!incompatibleRules.isEmpty()) {
+            log.info("Found {} rules incompatible with prompt version {}. Deprecating...",
+                incompatibleRules.size(), currentPromptVersion);
+
+            for (var rules : incompatibleRules) {
+                rules.setStatus(DEPRECATED);
+                rules.setLastModifiedAt(ZonedDateTime.now());
+                repository.save(rules);
+
+                log.info("Deprecated rules {} (prompt version: {} → current: {})",
+                    rules.getCacheKey(),
+                    rules.getAiPromptVersion(),
+                    currentPromptVersion);
+            }
+        }
+    }
+}
+```
+
+#### Konfiguracja
+
+```yaml
+# application.yml
+ai:
+  prompt:
+    version: "v2.1"  # Zmień na v3.0 przy breaking changes
+```
+
+#### Schemat wersjonowania
+
+| Zmiana | Stara wersja | Nowa wersja | Kompatybilność |
+|--------|--------------|-------------|----------------|
+| Poprawka literówki | v2.1 | v2.2 | ✅ Kompatybilne |
+| Dodanie opcjonalnego pola | v2.2 | v2.3 | ✅ Kompatybilne |
+| Zmiana formatu output | v2.3 | v3.0 | ❌ **Niekompatybilne** |
+| Zmiana wymaganych pól | v3.0 | v4.0 | ❌ **Niekompatybilne** |
+
+### 16.4 Podsumowanie zabezpieczeń
+
+| Luka | Rozwiązanie | Komponent |
+|------|-------------|-----------|
+| **#2 Brak walidacji** | Validate + dry-run przed zapisem | `MappingRulesValidator` |
+| **#3 Hash collision** | Więcej danych w hash (delimiter, metadata, pattern, bankHint) | `StructureHashCalculator` |
+| **#5 Wersjonowanie promptu** | Semantic versioning + auto-deprecate | `PromptVersionManager` |
+
+---
+
+## 17. Znane luki do rozwiązania (TODO)
+
+Poniższe luki zostały zidentyfikowane podczas analizy designu. Do rozwiązania w kolejnych iteracjach.
+
+### 17.1 Race condition przy tworzeniu reguł (Luka #1)
+
+**Problem:**
+Dwóch użytkowników wgrywa CSV tego samego banku w tym samym czasie. Obaj nie znajdują reguł w cache, obaj wywołują AI, obaj próbują zapisać.
+
+**Scenariusz:**
+```
+User A: findRules(NEST_BANK_PLN_abc) → MISS
+User B: findRules(NEST_BANK_PLN_abc) → MISS
+User A: callAI() → rules_A
+User B: callAI() → rules_B
+User A: saveRules(rules_A) → OK
+User B: saveRules(rules_B) → OVERWRITE rules_A!
+```
+
+**Proponowane rozwiązanie:**
+```java
+@Service
+public class MappingRulesCacheService {
+
+    private final RedisLockRegistry lockRegistry;  // Lub MongoDBLock
+
+    public BankOriginCsvMappingRulesDocument getOrCreateRules(
+            String cacheKey, String csvSample, String userId) {
+
+        // 1. Najpierw próbuj znaleźć bez locka (fast path)
+        Optional<BankOriginCsvMappingRulesDocument> cached = findRules(cacheKey);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+
+        // 2. Lock na poziomie cacheKey
+        Lock lock = lockRegistry.obtain(cacheKey);
+        boolean acquired = lock.tryLock(30, TimeUnit.SECONDS);
+
+        if (!acquired) {
+            throw new CacheLockTimeoutException(cacheKey);
+        }
+
+        try {
+            // 3. Double-check po uzyskaniu locka
+            cached = findRules(cacheKey);
+            if (cached.isPresent()) {
+                return cached.get();  // Ktoś już utworzył
+            }
+
+            // 4. Teraz bezpiecznie tworzymy
+            return createOrUpdateRules(cacheKey, csvSample, userId);
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+**Alternatywa bez distributed lock:**
+MongoDB unique index + upsert:
+```java
+@CompoundIndex(name = "unique_cache_key", def = "{'cacheKey': 1, 'status': 1}", unique = true)
+```
+
+**Status:** TODO - do implementacji gdy będzie więcej niż 1 instancja aplikacji.
+
+---
+
+### 17.2 Brak obsługi częściowego sukcesu (Luka #4)
+
+**Problem:**
+AI zwraca reguły, dry-run przechodzi dla sample (10 wierszy), ale przy pełnej transformacji (400 wierszy) część wierszy failuje. Czy traktować jako sukces czy błąd?
+
+**Przykład:**
+```
+Wiersze 1-350: OK
+Wiersze 351-400: Parse error (nowy format daty w ostatnich transakcjach)
+
+Co robić?
+- Zapisać 350 poprawnych?
+- Odrzucić wszystkie?
+- Oznaczyć w UI?
+```
+
+**Proponowane rozwiązanie:**
+
+```java
+public record TransformationResult(
+    List<CanonicalCsvRow> successfulRows,
+    List<FailedRow> failedRows,
+    double successRate,
+    TransformationStatus status
+) {
+    public boolean isFullSuccess() {
+        return failedRows.isEmpty();
+    }
+
+    public boolean isPartialSuccess() {
+        return !failedRows.isEmpty() && successRate >= 0.90;  // 90%+
+    }
+
+    public boolean isFailed() {
+        return successRate < 0.90;
+    }
+}
+
+public record FailedRow(
+    int rowNumber,
+    String originalContent,
+    String errorMessage,
+    String failedColumn
+) {}
+
+public enum TransformationStatus {
+    FULL_SUCCESS,    // 100% wierszy OK
+    PARTIAL_SUCCESS, // 90-99% wierszy OK
+    FAILED           // <90% wierszy OK
+}
+```
+
+**Strategia:**
+| SuccessRate | Akcja |
+|-------------|-------|
+| 100% | Zapisz wszystko, rules.successRate++ |
+| 90-99% | Zapisz udane, pokaż warning w UI, rules.successRate ± |
+| <90% | Odrzuć wszystko, rules.errorRate++, suggest manual |
+
+**Status:** TODO - wymaga zmian w UI i logice importu.
+
+---
+
+### 17.3 L1 Cache nie synchronizowany między instancjami (Luka #6)
+
+**Problem:**
+Przy wielu instancjach aplikacji, L1 cache (ConcurrentHashMap) jest per-JVM. Admin deprecuje regułę w instancji A, instancja B nadal używa starej z L1.
+
+**Scenariusz:**
+```
+Instance A: l1Cache = {NEST_BANK: rules_v1}
+Instance B: l1Cache = {NEST_BANK: rules_v1}
+
+Admin via A: deprecateRules(NEST_BANK)
+- Instance A: MongoDB DEPRECATED, l1Cache.remove()
+- Instance B: nadal ma rules_v1 w l1Cache!  ← BUG
+
+User via B: getOrCreateRules(NEST_BANK)
+- Returns stale rules_v1 from l1Cache
+```
+
+**Proponowane rozwiązania:**
+
+**A) TTL na L1 cache (proste):**
+```java
+private final Cache<String, BankOriginCsvMappingRulesDocument> l1Cache =
+    Caffeine.newBuilder()
+        .expireAfterWrite(5, TimeUnit.MINUTES)  // Max 5 min stale
+        .maximumSize(100)
+        .build();
+```
+
+**B) Redis Pub/Sub (dla real-time):**
+```java
+@Component
+public class CacheInvalidationListener {
+
+    @Autowired
+    private RedisMessageListenerContainer container;
+
+    @PostConstruct
+    public void subscribe() {
+        container.addMessageListener(
+            (message, pattern) -> {
+                String cacheKey = new String(message.getBody());
+                l1Cache.invalidate(cacheKey);
+                log.info("Invalidated L1 cache for: {}", cacheKey);
+            },
+            new PatternTopic("cache:invalidate:mapping-rules:*")
+        );
+    }
+}
+
+// Przy deprecacji:
+public void deprecateRules(String cacheKey) {
+    repository.deprecate(cacheKey);
+    l1Cache.invalidate(cacheKey);
+    redisTemplate.convertAndSend("cache:invalidate:mapping-rules:" + cacheKey, cacheKey);
+}
+```
+
+**C) Hybrid: TTL + invalidate on read:**
+```java
+public Optional<BankOriginCsvMappingRulesDocument> findRules(String cacheKey) {
+    var cached = l1Cache.getIfPresent(cacheKey);
+
+    if (cached != null) {
+        // Verify status in DB every N minutes or every time
+        if (cached.getStatus() == DEPRECATED) {
+            l1Cache.invalidate(cacheKey);
+            return Optional.empty();
+        }
+        return Optional.of(cached);
+    }
+
+    // L2 lookup...
+}
+```
+
+**Rekomendacja:** Zacznij od TTL (5 min), dodaj Redis Pub/Sub gdy pojawi się problem.
+
+**Status:** TODO - aktualnie single instance, nie krytyczne.
+
+---
+
+### 17.4 Brak limitu wersji per bank (Luka #7)
+
+**Problem:**
+Bank często zmienia format → wiele wersji w cache → unbounded growth.
+
+**Przykład:**
+```
+Rok 2026:
+- NEST_BANK_PLN_abc_v1 (styczen)
+- NEST_BANK_PLN_def_v1 (luty)
+- NEST_BANK_PLN_ghi_v1 (marzec)
+- ...
+- NEST_BANK_PLN_xyz_v1 (grudzień)
+
+= 12 wersji per bank per rok × 50 banków = 600 wpisów/rok
+```
+
+**Proponowane rozwiązanie:**
+
+```java
+@Service
+public class MappingRulesCleanupService {
+
+    private static final int MAX_VERSIONS_PER_BANK = 5;
+    private static final int MAX_DEPRECATED_AGE_DAYS = 90;
+
+    @Scheduled(cron = "0 0 3 * * *")  // Codziennie o 3:00
+    public void cleanupOldRules() {
+        // 1. Usuń DEPRECATED starsze niż 90 dni
+        ZonedDateTime cutoff = ZonedDateTime.now().minusDays(MAX_DEPRECATED_AGE_DAYS);
+        int deleted = repository.deleteByStatusAndLastUsedAtBefore(DEPRECATED, cutoff);
+        log.info("Deleted {} deprecated rules older than {} days", deleted, MAX_DEPRECATED_AGE_DAYS);
+
+        // 2. Ogranicz liczbę ACTIVE per bank+currency
+        Map<String, List<BankOriginCsvMappingRulesDocument>> byBank =
+            repository.findByStatus(ACTIVE).stream()
+                .collect(groupingBy(r -> r.getBankName() + "_" + r.getCurrency()));
+
+        for (var entry : byBank.entrySet()) {
+            List<BankOriginCsvMappingRulesDocument> rules = entry.getValue();
+
+            if (rules.size() > MAX_VERSIONS_PER_BANK) {
+                // Sortuj po lastUsedAt, zachowaj najnowsze
+                rules.sort(comparing(BankOriginCsvMappingRulesDocument::getLastUsedAt).reversed());
+
+                List<BankOriginCsvMappingRulesDocument> toDeprecate =
+                    rules.subList(MAX_VERSIONS_PER_BANK, rules.size());
+
+                for (var rule : toDeprecate) {
+                    rule.setStatus(DEPRECATED);
+                    repository.save(rule);
+                    log.info("Auto-deprecated old rule: {} (last used: {})",
+                        rule.getCacheKey(), rule.getLastUsedAt());
+                }
+            }
+        }
+    }
+}
+```
+
+**Konfiguracja:**
+```yaml
+mapping-rules:
+  cleanup:
+    max-versions-per-bank: 5
+    max-deprecated-age-days: 90
+    cron: "0 0 3 * * *"
+```
+
+**Status:** TODO - nie krytyczne na start, dodać przy >100 wpisach w cache.
+
+---
+
+### 17.5 categoryToTypeMapping nie obsługuje nowych kategorii (Luka #8)
+
+**Problem:**
+Bank dodaje nową kategorię (np. "Płatność BLIK"), której nie ma w zapisanych regułach.
+
+**Scenariusz:**
+```
+Cached rules:
+categoryToTypeMapping = {
+  "Przelewy wychodzące": OUTFLOW,
+  "Przelewy przychodzące": INFLOW
+}
+
+Nowy CSV zawiera:
+"Płatność BLIK"  ← NIE MA W MAPPING!
+
+Co robić?
+```
+
+**Proponowane rozwiązanie:**
+
+```java
+public TransactionType resolveType(String bankCategory, Map<String, TransactionType> mapping) {
+    // 1. Exact match
+    if (mapping.containsKey(bankCategory)) {
+        return mapping.get(bankCategory);
+    }
+
+    // 2. Case-insensitive match
+    for (var entry : mapping.entrySet()) {
+        if (entry.getKey().equalsIgnoreCase(bankCategory)) {
+            return entry.getValue();
+        }
+    }
+
+    // 3. Partial/fuzzy match
+    for (var entry : mapping.entrySet()) {
+        if (bankCategory.toLowerCase().contains(entry.getKey().toLowerCase()) ||
+            entry.getKey().toLowerCase().contains(bankCategory.toLowerCase())) {
+            return entry.getValue();
+        }
+    }
+
+    // 4. Keyword-based fallback
+    String lower = bankCategory.toLowerCase();
+    if (containsAny(lower, "wychodzące", "wypłata", "płatność", "opłata", "przelew na")) {
+        return OUTFLOW;
+    }
+    if (containsAny(lower, "przychodzące", "wpłata", "zwrot", "przelew od")) {
+        return INFLOW;
+    }
+
+    // 5. Default + log warning
+    log.warn("Unknown bank category '{}', defaulting to OUTFLOW", bankCategory);
+    return OUTFLOW;
+}
+
+private boolean containsAny(String text, String... keywords) {
+    return Arrays.stream(keywords).anyMatch(text::contains);
+}
+```
+
+**Dodatkowa strategia:**
+Przy nieznanej kategorii:
+1. Log warning z pełnym kontekstem
+2. Użyj fallback
+3. Zwiększ `unknownCategoriesCount` w rules
+4. Przy >10% unknown → alert do admina
+
+```java
+if (unknownCategoryRate > 0.10) {
+    alertService.sendAlert(
+        "High unknown category rate for " + cacheKey + ": " + unknownCategoryRate);
+    rules.setStatus(NEEDS_UPDATE);
+}
+```
+
+**Status:** TODO - dodać przy pierwszym realnym przypadku.
+
+---
+
+### 17.6 Brak audit trail dla zmian reguł (Luka #9)
+
+**Problem:**
+Brak historii kto i kiedy zmienił reguły. Przy problemach trudno debugować.
+
+**Proponowane rozwiązanie:**
+
+**A) Osobna kolekcja audit:**
+
+```java
+@Document(collection = "mapping_rules_audit")
+public class MappingRulesAuditDocument {
+
+    @Id
+    private String id;
+
+    private String rulesId;           // ID dokumentu reguł
+    private String cacheKey;
+    private String action;            // CREATED, UPDATED, DEPRECATED, DELETED, REGENERATED
+    private String performedByUserId; // User lub "SYSTEM"
+    private String performedByRole;   // ADMIN, USER, SCHEDULER
+    private ZonedDateTime performedAt;
+
+    private String previousStatus;
+    private String newStatus;
+    private Integer previousVersion;
+    private Integer newVersion;
+
+    private String reason;            // "Low success rate", "Prompt version upgrade", etc.
+    private Map<String, Object> metadata;  // Dodatkowe info
+}
+```
+
+**B) Serwis audit:**
+
+```java
+@Service
+@RequiredArgsConstructor
+public class MappingRulesAuditService {
+
+    private final MappingRulesAuditRepository auditRepository;
+
+    public void logCreation(BankOriginCsvMappingRulesDocument rules, String userId) {
+        save(MappingRulesAuditDocument.builder()
+            .rulesId(rules.getId())
+            .cacheKey(rules.getCacheKey())
+            .action("CREATED")
+            .performedByUserId(userId)
+            .performedAt(ZonedDateTime.now())
+            .newStatus(rules.getStatus().name())
+            .newVersion(rules.getVersion())
+            .build());
+    }
+
+    public void logDeprecation(BankOriginCsvMappingRulesDocument rules,
+                               String userId, String reason) {
+        save(MappingRulesAuditDocument.builder()
+            .rulesId(rules.getId())
+            .cacheKey(rules.getCacheKey())
+            .action("DEPRECATED")
+            .performedByUserId(userId)
+            .performedAt(ZonedDateTime.now())
+            .previousStatus("ACTIVE")
+            .newStatus("DEPRECATED")
+            .reason(reason)
+            .build());
+    }
+
+    public void logAutoDeprecation(BankOriginCsvMappingRulesDocument rules, String reason) {
+        save(MappingRulesAuditDocument.builder()
+            .rulesId(rules.getId())
+            .cacheKey(rules.getCacheKey())
+            .action("AUTO_DEPRECATED")
+            .performedByUserId("SYSTEM")
+            .performedByRole("SCHEDULER")
+            .performedAt(ZonedDateTime.now())
+            .previousStatus("ACTIVE")
+            .newStatus("DEPRECATED")
+            .reason(reason)
+            .build());
+    }
+
+    // API do przeglądania
+    public List<MappingRulesAuditDocument> getAuditHistory(String cacheKey) {
+        return auditRepository.findByCacheKeyOrderByPerformedAtDesc(cacheKey);
+    }
+}
+```
+
+**C) Admin endpoint:**
+
+```java
+@GetMapping("/{cacheKey}/audit")
+public List<MappingRulesAuditDocument> getAuditHistory(@PathVariable String cacheKey) {
+    return auditService.getAuditHistory(cacheKey);
+}
+```
+
+**Przykład wpisu audit:**
+```json
+{
+  "id": "audit-001",
+  "rulesId": "rules-123",
+  "cacheKey": "NEST_BANK_PLN_a1b2c3d4",
+  "action": "AUTO_DEPRECATED",
+  "performedByUserId": "SYSTEM",
+  "performedByRole": "SCHEDULER",
+  "performedAt": "2026-03-20T03:00:00Z",
+  "previousStatus": "ACTIVE",
+  "newStatus": "DEPRECATED",
+  "reason": "Success rate dropped below 85% (current: 78%)"
+}
+```
+
+**Status:** TODO - nice to have, dodać przy wdrożeniu na produkcję.
+
+---
+
+### 17.7 Podsumowanie wszystkich luk
+
+| # | Luka | Priorytet | Status |
+|---|------|-----------|--------|
+| 1 | Race condition przy tworzeniu reguł | 🟡 Średni | TODO (single instance OK) |
+| 2 | Brak walidacji AI rules | 🔴 Wysoki | ✅ **ZROBIONE** (sekcja 16.1) |
+| 3 | Structure Hash collision | 🔴 Wysoki | ✅ **ZROBIONE** (sekcja 16.2) |
+| 4 | Brak obsługi częściowego sukcesu | 🟡 Średni | TODO |
+| 5 | Wersjonowanie promptu AI | 🔴 Wysoki | ✅ **ZROBIONE** (sekcja 16.3) |
+| 6 | L1 cache stale data | 🟡 Średni | TODO (single instance OK) |
+| 7 | Unbounded growth | 🟢 Niski | TODO (nie krytyczne na start) |
+| 8 | Nowe kategorie bankowe | 🟡 Średni | TODO |
+| 9 | Brak audit trail | 🟢 Niski | TODO (nice to have) |
+
+**Kolejność implementacji:**
+1. ✅ Luki #2, #3, #5 - krytyczne, zrobione
+2. Luka #4 (partial success) - przy pierwszych testach E2E
+3. Luki #1, #6 - przy skalowaniu do wielu instancji
+4. Luka #8 - przy pierwszym realnym przypadku
+5. Luki #7, #9 - przy wdrożeniu produkcyjnym
 
 ---
 
