@@ -10,7 +10,7 @@ import com.multi.vidulum.bank_data_adapter.infrastructure.AiResponseProcessor;
 import com.multi.vidulum.bank_data_adapter.infrastructure.AiTransformResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -40,7 +40,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiBankCsvTransformService {
 
-    private final AnthropicChatModel chatModel;
+    private final ChatModel chatModel;
     private final AiPromptBuilder promptBuilder;
     private final AiResponseProcessor responseProcessor;
     private final AiCsvTransformationRepository transformationRepository;

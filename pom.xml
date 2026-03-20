@@ -147,6 +147,12 @@
 			<artifactId>spring-ai-starter-model-anthropic</artifactId>
 		</dependency>
 
+		<!-- Spring AI - OpenAI/GPT (for GPT-4o-mini alternative) -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-openai</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<dependencyManagement>

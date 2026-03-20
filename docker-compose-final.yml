@@ -94,11 +94,27 @@ services:
       CASHFLOW_SERVICE_URL: http://localhost:8080
       # Spring converts CASHFLOW_SERVICE_URL to cashflow.service.url
 
-      # Spring AI - Anthropic/Claude API
-      # Zmienna jest pobierana z Twojego lokalnego środowiska
+      # ========================================
+      # Spring AI Configuration
+      # ========================================
+      # To use Anthropic (default):
+      #   export ANTHROPIC_API_KEY="sk-ant-..."
+      #
+      # To use OpenAI instead:
+      #   export OPENAI_API_KEY="sk-proj-..."
+      #   export ANTHROPIC_ENABLED=false
+      #   export OPENAI_ENABLED=true
+
+      # Anthropic/Claude API (default provider)
+      # Pricing: $1.00/$5.00 per 1M tokens (Haiku 4.5)
       SPRING_AI_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      # Opcjonalnie wyłącz AI jeśli brak klucza
       SPRING_AI_ANTHROPIC_CHAT_ENABLED: ${ANTHROPIC_ENABLED:-true}
+
+      # OpenAI/GPT API (alternative provider)
+      # Pricing: $0.15/$0.60 per 1M tokens (GPT-4o-mini) - 7x cheaper!
+      # Note: dummy key is required even when disabled (Spring AI 2.0 bug)
+      SPRING_AI_OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dummy-not-used}
+      SPRING_AI_OPENAI_CHAT_ENABLED: ${OPENAI_ENABLED:-false}
     depends_on:
       - kafka
       - mongodb
