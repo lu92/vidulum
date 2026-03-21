@@ -10,6 +10,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.pnl.app.PnlRestController;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
@@ -59,8 +61,9 @@ import static com.multi.vidulum.common.Side.BUY;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Slf4j
-@SpringBootTest(classes = FixedClockConfig.class)
+@SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
+@ActiveProfiles("test")
 public abstract class IntegrationTest {
 
     // Shared reusable containers - started once and reused across all tests

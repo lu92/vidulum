@@ -21,6 +21,7 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.events.BankDataIngestionUnifiedEvent;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -64,8 +65,9 @@ import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionNotFoundExcept
  * avoiding HTTP communication and commandGateway complexity.
  */
 @Slf4j
-@SpringBootTest(classes = FixedClockConfig.class)
+@SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
 @Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
+@org.springframework.test.context.ActiveProfiles("test")
 public class BankDataIngestionControllerTest {
 
     @org.springframework.boot.test.context.TestConfiguration

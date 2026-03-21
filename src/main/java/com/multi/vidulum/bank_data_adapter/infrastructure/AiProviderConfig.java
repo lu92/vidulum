@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_adapter.infrastructure;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -23,9 +24,12 @@ import java.util.Map;
  *     OPENAI_API_KEY=sk-proj-...
  *     ANTHROPIC_ENABLED=false
  *     OPENAI_ENABLED=true
+ *
+ * To disable in tests, set: vidulum.ai.enabled=false
  */
 @Slf4j
 @Configuration
+@ConditionalOnProperty(name = "vidulum.ai.enabled", havingValue = "true", matchIfMissing = true)
 public class AiProviderConfig {
 
     @Value("${spring.ai.openai.chat.enabled:false}")

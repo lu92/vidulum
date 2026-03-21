@@ -3,6 +3,7 @@ package com.multi.vidulum;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.RegisterRequest;
@@ -54,7 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @SpringBootTest(
-        classes = {FixedClockConfig.class},
+        classes = {FixedClockConfig.class, TestAiConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @Import({PortfolioAppConfig.class, TradingAppConfig.class, AuthenticatedHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
