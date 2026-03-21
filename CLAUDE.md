@@ -260,6 +260,41 @@ When creating new documentation:
 | `docs/historical-import-user-guide.md` | User guide for CSV import |
 | `docs/PERFORMANCE_TESTING_GUIDE.md` | Load testing tools, VPS sizing, monitoring |
 | `docs/FEATURES_BACKLOG_DETAILED.md` | Detailed description of all unimplemented features |
+| `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md` | **Manual testing guide for CSV import flow** |
+
+## Manual Testing - CSV Import Flow
+
+For manual testing of the complete CashFlow CSV import pipeline, refer to:
+**`docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`**
+
+This guide covers the full 11-step flow:
+1. Register User → TOKEN, USER_ID
+2. Create CashFlow with history → CF_ID
+3. AI Transform CSV → TRANSFORMATION_ID
+4. Download Transformed CSV
+5. Create Staging Session → SESSION_ID
+6. Configure Category Mappings (CREATE_NEW, CREATE_SUBCATEGORY, MAP_TO_UNCATEGORIZED)
+7. Revalidate Staging
+8. Start Import → JOB_ID
+9. Attest Historical Import
+10. Verify CashFlow
+11. Verify Forecast
+
+**Quick start for fresh test:**
+```bash
+# Clean Docker volumes (removes MongoDB cache and Kafka data)
+docker-compose -f docker-compose-final.yml down -v
+
+# Rebuild and start
+./mvnw package -DskipTests
+docker build -t vidulum-app:latest .
+docker-compose -f docker-compose-final.yml up -d
+```
+
+**Key gotchas:**
+- `paidDate` field is required in staging transactions
+- MappingAction enum values: `CREATE_NEW`, `CREATE_SUBCATEGORY`, `MAP_TO_UNCATEGORIZED` (NOT `MAP_TO_EXISTING`)
+- Use `down -v` to clear AI transformation cache between tests
 
 ### Features Backlog (NOT IMPLEMENTED)
 Files in `docs/features-backlog/` - these are designs waiting for implementation:
