@@ -1,5 +1,6 @@
 package com.multi.vidulum.security.config;
 
+import com.multi.vidulum.bank_data_adapter.domain.exceptions.*;
 import com.multi.vidulum.bank_data_ingestion.app.CsvParserService;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
@@ -529,6 +530,100 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleRecurringRuleCashFlowCommunication(com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException ex) {
         log.error("CashFlow communication error for recurring rule: {}", ex.getMessage(), ex);
         ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_CASHFLOW_COMMUNICATION_ERROR, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ AI Bank CSV Adapter - Validation Errors (400) ============
+
+    @ExceptionHandler(EmptyFileException.class)
+    public ResponseEntity<ApiError> handleEmptyFile(EmptyFileException ex) {
+        log.debug("Empty file uploaded");
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_EMPTY_FILE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(FileTooLargeException.class)
+    public ResponseEntity<ApiError> handleFileTooLarge(FileTooLargeException ex) {
+        log.debug("File too large: {} bytes, max: {} bytes", ex.getFileSize(), ex.getMaxSize());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_FILE_TOO_LARGE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(InvalidFileTypeException.class)
+    public ResponseEntity<ApiError> handleInvalidFileType(InvalidFileTypeException ex) {
+        log.debug("Invalid file type: {}", ex.getDetectedType());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_INVALID_FILE_TYPE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(UnrecognizedCsvFormatException.class)
+    public ResponseEntity<ApiError> handleUnrecognizedFormat(UnrecognizedCsvFormatException ex) {
+        log.warn("Unrecognized CSV format. Headers: {}", ex.getDetectedHeaders());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_UNRECOGNIZED_FORMAT, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(InvalidTransformationIdFormatException.class)
+    public ResponseEntity<ApiError> handleInvalidTransformationId(InvalidTransformationIdFormatException ex) {
+        log.debug("Invalid transformation ID format: {}", ex.getProvidedId());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_INVALID_TRANSFORMATION_ID, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ AI Bank CSV Adapter - Not Found (404) ============
+
+    @ExceptionHandler(TransformationNotFoundException.class)
+    public ResponseEntity<ApiError> handleTransformationNotFound(TransformationNotFoundException ex) {
+        log.debug("Transformation not found: {}", ex.getTransformationId());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_TRANSFORMATION_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ AI Bank CSV Adapter - Conflicts (409) ============
+
+    @ExceptionHandler(DuplicateFileException.class)
+    public ResponseEntity<ApiError> handleDuplicateFile(DuplicateFileException ex) {
+        log.debug("Duplicate file detected. Hash: {}, existing: {}",
+            ex.getFileHash(), ex.getExistingTransformationId());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_DUPLICATE_FILE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(TransformationAlreadyImportedException.class)
+    public ResponseEntity<ApiError> handleAlreadyImported(TransformationAlreadyImportedException ex) {
+        log.debug("Transformation already imported: {}", ex.getTransformationId());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_ALREADY_IMPORTED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ AI Bank CSV Adapter - External Service Errors ============
+
+    @ExceptionHandler(AiServiceException.class)
+    public ResponseEntity<ApiError> handleAiServiceError(AiServiceException ex) {
+        log.error("AI service error [{}]: {} (retries: {})",
+            ex.getAiErrorCode(), ex.getAiErrorMessage(), ex.getRetryCount());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_AI_SERVICE_ERROR, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ApiError> handleAiUnavailable(AiServiceUnavailableException ex) {
+        log.error("AI service unavailable", ex);
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_AI_SERVICE_UNAVAILABLE, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(AiRateLimitExceededException.class)
+    public ResponseEntity<ApiError> handleRateLimitExceeded(AiRateLimitExceededException ex) {
+        log.warn("AI rate limit exceeded. Retry after: {} seconds", ex.getRetryAfterSeconds());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_RATE_LIMIT_EXCEEDED, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(IngestionServiceException.class)
+    public ResponseEntity<ApiError> handleIngestionServiceError(IngestionServiceException ex) {
+        log.error("Ingestion service error: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_INGESTION_SERVICE_ERROR, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

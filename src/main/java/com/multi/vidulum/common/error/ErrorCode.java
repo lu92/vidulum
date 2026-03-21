@@ -112,7 +112,29 @@ public enum ErrorCode {
 
     // Internal
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred"),
-    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found");
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
+
+    // ============ AI Bank CSV Adapter ============
+
+    // Validation Errors (400)
+    AI_ADAPTER_EMPTY_FILE(HttpStatus.BAD_REQUEST, "Uploaded file is empty"),
+    AI_ADAPTER_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "File exceeds maximum size limit"),
+    AI_ADAPTER_INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "Invalid file type. Expected CSV"),
+    AI_ADAPTER_UNRECOGNIZED_FORMAT(HttpStatus.BAD_REQUEST, "AI could not recognize bank CSV format"),
+    AI_ADAPTER_INVALID_TRANSFORMATION_ID(HttpStatus.BAD_REQUEST, "Invalid transformation ID format"),
+
+    // Resources Not Found (404)
+    AI_ADAPTER_TRANSFORMATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Transformation not found"),
+
+    // Conflicts (409)
+    AI_ADAPTER_DUPLICATE_FILE(HttpStatus.CONFLICT, "This file has already been processed"),
+    AI_ADAPTER_ALREADY_IMPORTED(HttpStatus.CONFLICT, "This transformation has already been imported"),
+
+    // External Service Errors (502/503/429)
+    AI_ADAPTER_AI_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "AI service returned an error"),
+    AI_ADAPTER_AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI service is temporarily unavailable"),
+    AI_ADAPTER_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI API rate limit exceeded"),
+    AI_ADAPTER_INGESTION_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "Bank data ingestion service returned an error");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

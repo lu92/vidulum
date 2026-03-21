@@ -19,6 +19,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Service for parsing CSV files with bank transactions.
@@ -48,6 +50,39 @@ public class CsvParserService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),  // 15/08/2021
             DateTimeFormatter.ofPattern("MM/dd/yyyy"),  // 08/15/2021
             DateTimeFormatter.ofPattern("yyyy/MM/dd")   // 2021/08/15
+    );
+
+    // IBAN validation pattern: 2 letter country code + 2 check digits + up to 30 alphanumeric
+    private static final Pattern IBAN_PATTERN = Pattern.compile("^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$");
+
+    // IBAN lengths per country (without spaces)
+    private static final Map<String, Integer> IBAN_LENGTHS = Map.ofEntries(
+            Map.entry("PL", 28),
+            Map.entry("DE", 22),
+            Map.entry("GB", 22),
+            Map.entry("FR", 27),
+            Map.entry("ES", 24),
+            Map.entry("IT", 27),
+            Map.entry("NL", 18),
+            Map.entry("AT", 20),
+            Map.entry("BE", 16),
+            Map.entry("CH", 21),
+            Map.entry("CZ", 24),
+            Map.entry("SE", 24),
+            Map.entry("NO", 15),
+            Map.entry("DK", 18)
+    );
+
+    // Currency to default country mapping (for IBAN prefix inference)
+    private static final Map<String, String> CURRENCY_TO_COUNTRY = Map.of(
+            "PLN", "PL",
+            "EUR", "DE",  // Default EUR to Germany
+            "GBP", "GB",
+            "CHF", "CH",
+            "CZK", "CZ",
+            "SEK", "SE",
+            "NOK", "NO",
+            "DKK", "DK"
     );
 
     /**
@@ -95,18 +130,19 @@ public class CsvParserService {
     }
 
     private BankCsvRow parseRow(CSVRecord record) {
+        String currency = getRequiredString(record, "currency");
         return new BankCsvRow(
                 getOptionalString(record, "bankTransactionId"),
                 getRequiredString(record, "name"),
                 getOptionalString(record, "description"),
                 getOptionalString(record, "bankCategory"),
                 getRequiredBigDecimal(record, "amount"),
-                getRequiredString(record, "currency"),
+                currency,
                 getRequiredType(record, "type"),
                 getRequiredDate(record, "operationDate"),
                 getOptionalDate(record, "bookingDate"),
-                getOptionalString(record, "sourceAccountNumber"),
-                getOptionalString(record, "targetAccountNumber")
+                normalizeIban(getOptionalString(record, "sourceAccountNumber"), currency),
+                normalizeIban(getOptionalString(record, "targetAccountNumber"), currency)
         );
     }
 
@@ -208,6 +244,73 @@ public class CsvParserService {
             }
         }
         throw new IllegalArgumentException(column + " has invalid date format: " + value);
+    }
+
+    /**
+     * Normalizes account number to full IBAN format with country prefix.
+     * - Removes spaces and dashes
+     * - Adds country prefix if missing (based on currency)
+     * - Returns null if input is null or empty
+     *
+     * @param accountNumber raw account number (may or may not have country prefix)
+     * @param currency      currency code to infer country if prefix missing
+     * @return normalized IBAN or null
+     */
+    private String normalizeIban(String accountNumber, String currency) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+            return null;
+        }
+
+        // Remove spaces and dashes
+        String cleaned = accountNumber.replaceAll("[\\s\\-]", "").toUpperCase();
+
+        // Check if already has country prefix (2 letters at start)
+        if (cleaned.length() >= 2 && Character.isLetter(cleaned.charAt(0)) && Character.isLetter(cleaned.charAt(1))) {
+            // Already has prefix, validate format
+            if (isValidIbanFormat(cleaned)) {
+                return cleaned;
+            }
+            // Has letters but invalid format - return as-is with warning
+            log.warn("Account number has country prefix but invalid IBAN format: {}", accountNumber);
+            return cleaned;
+        }
+
+        // No country prefix - try to infer from currency
+        String countryCode = CURRENCY_TO_COUNTRY.get(currency);
+        if (countryCode != null) {
+            Integer expectedLength = IBAN_LENGTHS.get(countryCode);
+            // Check if adding prefix would give expected length
+            if (expectedLength != null && cleaned.length() == expectedLength - 2) {
+                String withPrefix = countryCode + cleaned;
+                log.debug("Normalized account {} to IBAN {} (inferred from currency {})",
+                        accountNumber, withPrefix, currency);
+                return withPrefix;
+            }
+        }
+
+        // Cannot normalize - return as-is
+        log.debug("Cannot normalize account number to IBAN: {} (currency: {})", accountNumber, currency);
+        return cleaned;
+    }
+
+    /**
+     * Validates IBAN format (basic structure check, not checksum).
+     */
+    private boolean isValidIbanFormat(String iban) {
+        if (!IBAN_PATTERN.matcher(iban).matches()) {
+            return false;
+        }
+
+        // Check length for known countries
+        String countryCode = iban.substring(0, 2);
+        Integer expectedLength = IBAN_LENGTHS.get(countryCode);
+        if (expectedLength != null && iban.length() != expectedLength) {
+            log.warn("IBAN {} has invalid length for country {} (expected {}, got {})",
+                    iban, countryCode, expectedLength, iban.length());
+            return false;
+        }
+
+        return true;
     }
 
     /**

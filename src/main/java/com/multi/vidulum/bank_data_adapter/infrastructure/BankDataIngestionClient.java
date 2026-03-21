@@ -1,0 +1,142 @@
+package com.multi.vidulum.bank_data_adapter.infrastructure;
+
+import com.multi.vidulum.bank_data_adapter.domain.exceptions.IngestionServiceException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+import java.nio.charset.StandardCharsets;
+
+/**
+ * REST client for communication with bank-data-ingestion module.
+ */
+@Slf4j
+@Component
+public class BankDataIngestionClient {
+
+    private final RestClient restClient;
+    private final String baseUrl;
+
+    public BankDataIngestionClient(
+            RestClient.Builder restClientBuilder,
+            @Value("${bank-data-ingestion.base-url:http://localhost:8080}") String baseUrl) {
+        this.restClient = restClientBuilder.build();
+        this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Send transformed CSV to bank-data-ingestion for staging.
+     *
+     * @param cashFlowId       CashFlow ID to import to
+     * @param csvContent       Transformed CSV content (BankCsvRow format)
+     * @param fileName         File name for the upload
+     * @param authToken        JWT token for authentication
+     * @return Upload response with staging session ID
+     */
+    public UploadCsvResponse sendToIngestion(String cashFlowId, String csvContent, String fileName, String authToken) {
+        log.info("Sending transformed CSV to ingestion: cashFlowId={}, fileName={}, size={}",
+            cashFlowId, fileName, csvContent.length());
+
+        try {
+            // Create multipart request
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new NamedByteArrayResource(csvContent.getBytes(StandardCharsets.UTF_8), fileName));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.setBearerAuth(authToken.replace("Bearer ", ""));
+
+            String url = baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload";
+
+            ResponseEntity<UploadCsvResponse> response = restClient.post()
+                .uri(url)
+                .headers(h -> h.addAll(headers))
+                .body(body)
+                .retrieve()
+                .toEntity(UploadCsvResponse.class);
+
+            log.info("Ingestion upload successful: stagingSessionId={}",
+                response.getBody() != null ? response.getBody().stagingSessionId() : "null");
+
+            return response.getBody();
+
+        } catch (HttpClientErrorException e) {
+            log.error("Client error from ingestion service: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IngestionServiceException(
+                "Ingestion service error: " + e.getMessage(),
+                e.getStatusCode().value(),
+                extractErrorCode(e.getResponseBodyAsString())
+            );
+        } catch (HttpServerErrorException e) {
+            log.error("Server error from ingestion service: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IngestionServiceException(
+                "Ingestion service unavailable: " + e.getMessage(),
+                e.getStatusCode().value(),
+                "SERVER_ERROR"
+            );
+        } catch (RestClientException e) {
+            log.error("Error connecting to ingestion service", e);
+            throw new IngestionServiceException("Cannot connect to ingestion service", e);
+        }
+    }
+
+    private String extractErrorCode(String responseBody) {
+        // Try to extract error code from JSON response
+        if (responseBody != null && responseBody.contains("errorCode")) {
+            int start = responseBody.indexOf("\"errorCode\":\"") + 13;
+            int end = responseBody.indexOf("\"", start);
+            if (start > 12 && end > start) {
+                return responseBody.substring(start, end);
+            }
+        }
+        return "UNKNOWN";
+    }
+
+    /**
+     * Response from upload CSV endpoint.
+     */
+    public record UploadCsvResponse(
+        String stagingSessionId,
+        ParseSummary parseSummary,
+        StagingResponse stagingResponse
+    ) {}
+
+    public record ParseSummary(
+        int totalRows,
+        int successfulRows,
+        int failedRows
+    ) {}
+
+    public record StagingResponse(
+        String stagingSessionId,
+        int stagedCount
+    ) {}
+
+    /**
+     * ByteArrayResource with a filename (required for multipart uploads).
+     */
+    private static class NamedByteArrayResource extends ByteArrayResource {
+        private final String filename;
+
+        public NamedByteArrayResource(byte[] byteArray, String filename) {
+            super(byteArray);
+            this.filename = filename;
+        }
+
+        @Override
+        public String getFilename() {
+            return filename;
+        }
+    }
+}

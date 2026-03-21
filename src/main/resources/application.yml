@@ -2,11 +2,34 @@ management:
   endpoints:
     web:
       exposure:
-        include=*:
+        include: "*"
 
 spring:
   main:
     allow-bean-definition-overriding: true
+  # Spring AI Configuration
+  # Use AI_PROVIDER env variable to switch between providers:
+  #   - anthropic (default): Claude Haiku 4.5 - $1.00/$5.00 per 1M tokens
+  #   - openai: GPT-4o-mini - $0.15/$0.60 per 1M tokens (7x cheaper)
+  ai:
+    # Anthropic/Claude configuration
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        enabled: ${ANTHROPIC_ENABLED:true}
+        options:
+          model: claude-haiku-4-5-20251001
+          temperature: 0.1
+          max-tokens: 16384
+    # OpenAI/GPT configuration
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        enabled: ${OPENAI_ENABLED:false}
+        options:
+          model: gpt-4o-mini
+          temperature: 0.1
+          max-tokens: 16384
   # Spring Boot 4.0: spring.data.mongodb -> spring.mongodb (top-level properties)
   mongodb:
     database: testDB
@@ -25,6 +48,10 @@ spring:
     # In Jackson 3 (Spring Boot 4.0), WRITE_DATES_AS_TIMESTAMPS is false by default
     # so we don't need to configure it explicitly
     use-jackson2-defaults: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 application:
   security:
@@ -56,3 +83,12 @@ vidulum:
     processing:
       batch-size: 50
       progress-update-interval: 10
+
+# Bank Data Adapter (AI CSV transformation)
+bank-data-adapter:
+  max-file-size-bytes: 5242880  # 5MB
+  max-retries: 2
+
+# Bank Data Ingestion REST client
+bank-data-ingestion:
+  base-url: http://localhost:8080
