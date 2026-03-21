@@ -48,6 +48,10 @@ spring:
     # In Jackson 3 (Spring Boot 4.0), WRITE_DATES_AS_TIMESTAMPS is false by default
     # so we don't need to configure it explicitly
     use-jackson2-defaults: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 application:
   security:

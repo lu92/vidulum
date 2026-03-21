@@ -86,6 +86,11 @@ public class AiCsvTransformationDocument {
     private String stagingSessionId;                // Staging session ID (if imported)
     private Date importedAt;                        // When imported (stored as Date in MongoDB)
 
+    // ========== CACHE TRACKING ==========
+    private boolean fromCache;                      // Whether this transformation used cached mapping rules
+    @Indexed
+    private String bankIdentifier;                  // Bank format identifier for cache lookup
+
     // ========== HELPER METHODS FOR ZONEDDATETIME CONVERSION ==========
 
     public ZonedDateTime getCreatedAtZoned() {

@@ -402,6 +402,131 @@ class CsvParserServiceTest {
         assertThat(row.effectiveBankCategory()).isEqualTo("Uncategorized");
     }
 
+    // ==================== IBAN Normalization Tests ====================
+
+    @Test
+    @DisplayName("Should normalize Polish account number without prefix to IBAN with PL prefix")
+    void shouldNormalizePolishAccountWithoutPrefixToIban() {
+        // given - 26 digits without PL prefix, currency PLN
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,98124014441111001078171074,22102049002879287900000091
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isEqualTo("PL98124014441111001078171074");
+        assertThat(row.targetAccountNumber()).isEqualTo("PL22102049002879287900000091");
+    }
+
+    @Test
+    @DisplayName("Should keep IBAN with prefix unchanged")
+    void shouldKeepIbanWithPrefixUnchanged() {
+        // given - already has PL prefix
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,PL98124014441111001078171074,PL22102049002879287900000091
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isEqualTo("PL98124014441111001078171074");
+        assertThat(row.targetAccountNumber()).isEqualTo("PL22102049002879287900000091");
+    }
+
+    @Test
+    @DisplayName("Should remove spaces from IBAN")
+    void shouldRemoveSpacesFromIban() {
+        // given - IBAN with spaces
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,"PL 98 1240 1444 1111 0010 7817 1074",
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isEqualTo("PL98124014441111001078171074");
+    }
+
+    @Test
+    @DisplayName("Should normalize German account number for EUR currency")
+    void shouldNormalizeGermanAccountForEur() {
+        // given - 20 digits without prefix, currency EUR
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,EUR,OUTFLOW,2021-08-15,,89370400440532013000,
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isEqualTo("DE89370400440532013000");
+    }
+
+    @Test
+    @DisplayName("Should handle null and empty account numbers")
+    void shouldHandleNullAndEmptyAccountNumbers() {
+        // given
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isNull();
+        assertThat(row.targetAccountNumber()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should uppercase IBAN prefix")
+    void shouldUppercaseIbanPrefix() {
+        // given - lowercase prefix
+        String csvContent = """
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,pl98124014441111001078171074,
+                """;
+
+        MockMultipartFile file = createCsvFile(csvContent);
+
+        // when
+        CsvParserService.CsvParseResult result = csvParserService.parse(file);
+
+        // then
+        assertThat(result.hasErrors()).isFalse();
+        BankCsvRow row = result.rows().get(0);
+        assertThat(row.sourceAccountNumber()).isEqualTo("PL98124014441111001078171074");
+    }
+
     private MockMultipartFile createCsvFile(String content) {
         return new MockMultipartFile(
                 "file",

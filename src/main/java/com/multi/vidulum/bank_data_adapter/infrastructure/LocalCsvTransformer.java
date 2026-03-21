@@ -1,0 +1,424 @@
+package com.multi.vidulum.bank_data_adapter.infrastructure;
+
+import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
+import com.multi.vidulum.bank_data_adapter.domain.MappingRules.ColumnMapping;
+import com.multi.vidulum.bank_data_adapter.domain.MappingRules.TransformationType;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Transforms bank CSV to BankCsvRow format using cached mapping rules.
+ * No AI call needed - purely local transformation.
+ *
+ * This is used when we already have mapping rules for a known bank format.
+ */
+@Slf4j
+@Component
+public class LocalCsvTransformer {
+
+    // BankCsvRow header
+    private static final String OUTPUT_HEADER =
+        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber";
+
+    /**
+     * Transform full CSV using mapping rules.
+     *
+     * @param csvContent Full CSV content
+     * @param rules Mapping rules for this bank format
+     * @return Transformed CSV in BankCsvRow format
+     */
+    public TransformResult transform(String csvContent, MappingRules rules) {
+        if (csvContent == null || csvContent.isBlank()) {
+            return TransformResult.failure("Empty CSV content");
+        }
+
+        String[] lines = csvContent.split("\n");
+        List<String> outputLines = new ArrayList<>();
+        outputLines.add(OUTPUT_HEADER);
+
+        List<String> warnings = new ArrayList<>();
+        int successCount = 0;
+        int errorCount = 0;
+        int lineNumber = 0;
+
+        // Skip metadata rows
+        int dataStartRow = rules.getHeaderRowIndex() + 1;
+
+        for (int i = 0; i < lines.length; i++) {
+            lineNumber = i + 1;
+            String line = lines[i].trim();
+
+            // Skip empty lines and metadata/header rows
+            if (line.isEmpty() || i <= rules.getHeaderRowIndex()) {
+                continue;
+            }
+
+            try {
+                String[] columns = parseCsvLine(line, rules.getDelimiter());
+                String outputRow = transformRow(columns, rules, lineNumber);
+
+                if (outputRow != null) {
+                    outputLines.add(outputRow);
+                    successCount++;
+                }
+            } catch (Exception e) {
+                errorCount++;
+                if (errorCount <= 5) {
+                    warnings.add(String.format("Line %d: %s", lineNumber, e.getMessage()));
+                }
+                log.debug("Error transforming line {}: {}", lineNumber, e.getMessage());
+            }
+        }
+
+        if (errorCount > 5) {
+            warnings.add(String.format("... and %d more errors", errorCount - 5));
+        }
+
+        String outputCsv = String.join("\n", outputLines);
+        log.info("Local transform completed: {} rows, {} errors", successCount, errorCount);
+
+        return TransformResult.success(outputCsv, successCount, warnings);
+    }
+
+    private String[] parseCsvLine(String line, String delimiter) {
+        // Handle quoted values
+        List<String> columns = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        String delim = delimiter != null ? delimiter : ",";
+        char delimChar = delim.charAt(0);
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    // Escaped quote
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == delimChar && !inQuotes) {
+                columns.add(current.toString().trim());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        columns.add(current.toString().trim());
+
+        return columns.toArray(new String[0]);
+    }
+
+    private String transformRow(String[] columns, MappingRules rules, int lineNumber) {
+        Map<String, String> output = new LinkedHashMap<>();
+
+        // Initialize with empty values
+        output.put("bankTransactionId", "");
+        output.put("name", "");
+        output.put("description", "");
+        output.put("bankCategory", "");
+        output.put("amount", "");
+        output.put("currency", "");
+        output.put("type", "");
+        output.put("operationDate", "");
+        output.put("bookingDate", "");
+        output.put("sourceAccountNumber", "");
+        output.put("targetAccountNumber", "");
+
+        // Apply mappings
+        for (ColumnMapping mapping : rules.getColumnMappings()) {
+            if (mapping.getTransformationType() == TransformationType.SKIP) {
+                continue;
+            }
+
+            String sourceValue = "";
+            if (mapping.getSourceIndex() >= 0 && mapping.getSourceIndex() < columns.length) {
+                sourceValue = columns[mapping.getSourceIndex()];
+            }
+
+            String transformedValue = applyTransformation(sourceValue, mapping, rules, columns);
+            output.put(mapping.getTargetField(), transformedValue);
+        }
+
+        // Generate transaction ID if not present
+        if (output.get("bankTransactionId").isBlank()) {
+            output.put("bankTransactionId", generateTransactionId(output, lineNumber));
+        }
+
+        // Validate required fields
+        if (output.get("operationDate").isBlank() || output.get("amount").isBlank()) {
+            return null; // Skip invalid rows
+        }
+
+        // Build output CSV row
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+            escapeCsv(output.get("bankTransactionId")),
+            escapeCsv(output.get("name")),
+            escapeCsv(output.get("description")),
+            escapeCsv(output.get("bankCategory")),
+            output.get("amount"),
+            output.get("currency"),
+            output.get("type"),
+            output.get("operationDate"),
+            output.get("bookingDate"),
+            escapeCsv(output.get("sourceAccountNumber")),
+            escapeCsv(output.get("targetAccountNumber"))
+        );
+    }
+
+    private String applyTransformation(String value, ColumnMapping mapping, MappingRules rules, String[] allColumns) {
+        if (value == null) {
+            value = "";
+        }
+
+        return switch (mapping.getTransformationType()) {
+            case DIRECT -> value;
+
+            case DATE_PARSE -> parseDate(value, rules.getDateFormat());
+
+            case AMOUNT_PARSE -> parseAmount(value);
+
+            case TYPE_DETECT -> detectType(value, allColumns, mapping.getTransformationParams());
+
+            case CURRENCY_EXTRACT -> extractCurrency(value, mapping.getTransformationParams());
+
+            case IBAN_NORMALIZE -> normalizeIban(value);
+
+            case CONCAT -> concatColumns(allColumns, mapping.getTransformationParams());
+
+            case REGEX_EXTRACT -> extractWithRegex(value, mapping.getTransformationParams());
+
+            case VALUE_MAP -> mapValue(value, mapping.getTransformationParams());
+
+            case ID_GENERATE -> ""; // Handled separately
+
+            case SKIP -> "";
+        };
+    }
+
+    private String parseDate(String value, String format) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        try {
+            // Try provided format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+            LocalDate date = LocalDate.parse(value.trim(), formatter);
+            return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            // Try common formats
+            for (String fallbackFormat : List.of("dd-MM-yyyy", "dd.MM.yyyy", "yyyy-MM-dd", "dd/MM/yyyy")) {
+                try {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(fallbackFormat);
+                    LocalDate date = LocalDate.parse(value.trim(), formatter);
+                    return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+        }
+        return value;
+    }
+
+    private String parseAmount(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        // Remove currency symbols and spaces
+        String cleaned = value.replaceAll("[^0-9,.-]", "").trim();
+
+        // Handle Polish format (1 234,56 -> 1234.56)
+        if (cleaned.contains(",")) {
+            // Check if comma is decimal separator
+            int commaPos = cleaned.lastIndexOf(',');
+            int dotPos = cleaned.lastIndexOf('.');
+
+            if (commaPos > dotPos) {
+                // Comma is decimal separator
+                cleaned = cleaned.replace(".", "").replace(",", ".");
+            } else {
+                // Dot is decimal separator
+                cleaned = cleaned.replace(",", "");
+            }
+        }
+
+        try {
+            BigDecimal amount = new BigDecimal(cleaned);
+            return amount.toPlainString();
+        } catch (NumberFormatException e) {
+            log.debug("Failed to parse amount: {}", value);
+            return value;
+        }
+    }
+
+    private String detectType(String value, String[] allColumns, Map<String, String> params) {
+        // Check amount sign first
+        String amountColumn = params != null ? params.get("amountColumn") : null;
+        if (amountColumn != null) {
+            try {
+                int amountIdx = Integer.parseInt(amountColumn);
+                if (amountIdx >= 0 && amountIdx < allColumns.length) {
+                    String amountStr = allColumns[amountIdx].replaceAll("[^0-9,.-]", "");
+                    if (amountStr.startsWith("-")) {
+                        return "OUTFLOW";
+                    }
+                    return "INFLOW";
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        // Check value text
+        String lower = value.toLowerCase();
+        if (lower.contains("wychodzące") || lower.contains("obciążeni") ||
+            lower.contains("outgoing") || lower.contains("debit") ||
+            lower.contains("wydatek") || lower.contains("opłat")) {
+            return "OUTFLOW";
+        }
+        if (lower.contains("przychodzące") || lower.contains("uznani") ||
+            lower.contains("incoming") || lower.contains("credit") ||
+            lower.contains("przychod") || lower.contains("wpływ")) {
+            return "INFLOW";
+        }
+
+        return "OUTFLOW"; // Default to outflow for safety
+    }
+
+    private String extractCurrency(String value, Map<String, String> params) {
+        if (value == null || value.isBlank()) {
+            return params != null ? params.getOrDefault("default", "PLN") : "PLN";
+        }
+
+        // Extract currency code from value
+        Matcher matcher = Pattern.compile("([A-Z]{3})").matcher(value.toUpperCase());
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return params != null ? params.getOrDefault("default", "PLN") : "PLN";
+    }
+
+    private String normalizeIban(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        // Remove spaces and special characters
+        String cleaned = value.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+
+        // Add PL prefix if it's a 26-digit Polish account
+        if (cleaned.length() == 26 && cleaned.matches("\\d+")) {
+            cleaned = "PL" + cleaned;
+        }
+
+        return cleaned;
+    }
+
+    private String concatColumns(String[] columns, Map<String, String> params) {
+        if (params == null || !params.containsKey("indices")) {
+            return "";
+        }
+
+        String[] indices = params.get("indices").split(",");
+        String separator = params.getOrDefault("separator", " ");
+
+        StringBuilder result = new StringBuilder();
+        for (String idxStr : indices) {
+            try {
+                int idx = Integer.parseInt(idxStr.trim());
+                if (idx >= 0 && idx < columns.length) {
+                    String val = columns[idx].trim();
+                    if (!val.isEmpty()) {
+                        if (result.length() > 0) {
+                            result.append(separator);
+                        }
+                        result.append(val);
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return result.toString();
+    }
+
+    private String extractWithRegex(String value, Map<String, String> params) {
+        if (value == null || params == null || !params.containsKey("pattern")) {
+            return value;
+        }
+
+        try {
+            Pattern pattern = Pattern.compile(params.get("pattern"));
+            Matcher matcher = pattern.matcher(value);
+            if (matcher.find()) {
+                int group = Integer.parseInt(params.getOrDefault("group", "0"));
+                return matcher.group(group);
+            }
+        } catch (Exception e) {
+            log.debug("Regex extraction failed: {}", e.getMessage());
+        }
+
+        return value;
+    }
+
+    private String mapValue(String value, Map<String, String> params) {
+        if (value == null || params == null) {
+            return value;
+        }
+
+        return params.getOrDefault(value.trim(), value);
+    }
+
+    private String generateTransactionId(Map<String, String> row, int lineNumber) {
+        // Generate deterministic ID from row content
+        String content = row.get("operationDate") + row.get("amount") + row.get("name") + lineNumber;
+        return "TXN-" + Math.abs(content.hashCode());
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        // Remove or replace problematic characters
+        value = value.replace("|", " ").replace("\r", " ").replace("\n", " ");
+
+        // Quote if contains comma, quote, or special chars
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+
+        return value;
+    }
+
+    /**
+     * Result of local transformation.
+     */
+    public record TransformResult(
+        boolean success,
+        String csvContent,
+        int rowCount,
+        List<String> warnings,
+        String errorMessage
+    ) {
+        public static TransformResult success(String csv, int rows, List<String> warnings) {
+            return new TransformResult(true, csv, rows, warnings, null);
+        }
+
+        public static TransformResult failure(String error) {
+            return new TransformResult(false, null, 0, List.of(), error);
+        }
+    }
+}

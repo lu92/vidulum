@@ -17,7 +17,7 @@ public record BankCsvRow(
          */
         String bankTransactionId,
 
-        /**
+        /**3
          * Transaction name/title.
          * REQUIRED
          */

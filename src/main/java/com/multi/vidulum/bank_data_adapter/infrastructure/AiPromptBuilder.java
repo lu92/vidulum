@@ -34,8 +34,20 @@ public class AiPromptBuilder {
         - type: INFLOW (positive/credit) or OUTFLOW (negative/debit)
         - operationDate: YYYY-MM-DD format (REQUIRED)
         - bookingDate: YYYY-MM-DD format (same as operationDate if not available)
-        - sourceAccountNumber: sender's account for INFLOW, empty for OUTFLOW
-        - targetAccountNumber: recipient's account for OUTFLOW, empty for INFLOW
+        - sourceAccountNumber: sender's IBAN for INFLOW, empty for OUTFLOW (see IBAN NORMALIZATION)
+        - targetAccountNumber: recipient's IBAN for OUTFLOW, empty for INFLOW (see IBAN NORMALIZATION)
+
+        ## IBAN NORMALIZATION (CRITICAL):
+        Account numbers MUST be normalized to full IBAN format with country prefix:
+        - If account has 26 digits without prefix AND currency is PLN → add "PL" prefix
+        - If account has 22 digits without prefix AND currency is EUR → add "DE" prefix (or detect from bank)
+        - If account already has 2-letter country prefix (PL, DE, GB, etc.) → keep as is
+        - Remove all spaces and dashes from account numbers
+        - Examples:
+          - "98124014441111001078171074" (26 digits, PLN) → "PL98124014441111001078171074"
+          - "PL98124014441111001078171074" → "PL98124014441111001078171074" (already correct)
+          - "22102049002879287900000091" (26 digits, PLN) → "PL22102049002879287900000091"
+        - IBAN lengths per country: PL=28, DE=22, GB=22, FR=27, ES=24, IT=27, NL=18
 
         ## TRANSFORMATION RULES:
         1. SKIP metadata header lines (account info, date ranges, totals, summaries)
