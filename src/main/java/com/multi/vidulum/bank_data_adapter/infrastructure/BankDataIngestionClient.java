@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_adapter.infrastructure;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.multi.vidulum.bank_data_adapter.domain.exceptions.IngestionServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,7 +107,9 @@ public class BankDataIngestionClient {
     /**
      * Response from upload CSV endpoint.
      * Matches BankDataIngestionDto.UploadCsvResponse structure.
+     * Uses @JsonIgnoreProperties to handle extra fields from backend.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record UploadCsvResponse(
         ParseSummary parseSummary,
         StagingResult stagingResult  // Field name must match JSON: "stagingResult"
@@ -119,6 +122,7 @@ public class BankDataIngestionClient {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ParseSummary(
         int totalRows,
         int successfulRows,
@@ -128,7 +132,9 @@ public class BankDataIngestionClient {
     /**
      * Staging result from bank-data-ingestion.
      * Matches BankDataIngestionDto.StageTransactionsResponse structure.
+     * Only maps the fields we need; ignores extra fields like expiresAt, summary, etc.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record StagingResult(
         String stagingSessionId,
         String cashFlowId,
