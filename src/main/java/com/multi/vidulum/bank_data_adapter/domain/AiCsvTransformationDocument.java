@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -90,6 +91,13 @@ public class AiCsvTransformationDocument {
     private boolean fromCache;                      // Whether this transformation used cached mapping rules
     @Indexed
     private String bankIdentifier;                  // Bank format identifier for cache lookup
+
+    // ========== DATE RANGE STATISTICS ==========
+    private LocalDate minTransactionDate;           // Earliest transaction date in CSV
+    private LocalDate maxTransactionDate;           // Latest transaction date in CSV
+    private String suggestedStartPeriod;            // YearMonth string, e.g., "2023-06"
+    private int monthsOfData;                       // Number of distinct months covered
+    private List<String> monthsCovered;             // List of "YYYY-MM" strings in order
 
     // ========== HELPER METHODS FOR ZONEDDATETIME CONVERSION ==========
 

@@ -23,8 +23,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Main service for AI-powered bank CSV transformation.
@@ -181,6 +186,9 @@ public class AiBankCsvTransformService {
         document.setFromCache(fromCache);
         document.setBankIdentifier(bankIdentifier);
 
+        // Extract date range statistics
+        extractDateRangeAndUpdate(document, transformedCsv);
+
         // Save document
         AiCsvTransformationDocument saved = transformationRepository.save(document);
 
@@ -314,6 +322,9 @@ public class AiBankCsvTransformService {
             document.setOutputRowCount(result.rowCount());
             document.setWarnings(result.warnings());
             document.setInputRowCount(countInputRows(csvContent));
+
+            // Extract date range statistics
+            extractDateRangeAndUpdate(document, result.csvContent());
         } else {
             document.setSuccess(false);
             if (result != null && result.error() != null) {
@@ -551,5 +562,162 @@ public class AiBankCsvTransformService {
             .divide(BigDecimal.valueOf(1_000_000), 6, RoundingMode.HALF_UP);
 
         return inputCost.add(outputCost);
+    }
+
+    // ============ Date range extraction ============
+
+    /**
+     * Extracts date range statistics from transformed CSV and updates the document.
+     *
+     * @param document The transformation document to update
+     * @param transformedCsv The transformed CSV content in BankCsvRow format
+     */
+    private void extractDateRangeAndUpdate(AiCsvTransformationDocument document, String transformedCsv) {
+        if (transformedCsv == null || transformedCsv.isBlank()) {
+            return;
+        }
+
+        DateRangeStats stats = extractDateRange(transformedCsv);
+
+        document.setMinTransactionDate(stats.minDate());
+        document.setMaxTransactionDate(stats.maxDate());
+        document.setSuggestedStartPeriod(stats.suggestedStartPeriod());
+        document.setMonthsOfData(stats.monthsOfData());
+        document.setMonthsCovered(stats.monthsCovered());
+
+        // Add warning for future dates
+        if (stats.maxDate() != null && stats.maxDate().isAfter(LocalDate.now(clock))) {
+            List<String> warnings = document.getWarnings() != null ?
+                new ArrayList<>(document.getWarnings()) : new ArrayList<>();
+            warnings.add("CSV contains future-dated transactions (scheduled payments)");
+            document.setWarnings(warnings);
+        }
+
+        log.debug("Date range extracted: {} to {}, {} months, suggested start: {}",
+            stats.minDate(), stats.maxDate(), stats.monthsOfData(), stats.suggestedStartPeriod());
+    }
+
+    /**
+     * Extracts date range statistics from transformed CSV content.
+     * Parses the operationDate column from BankCsvRow format CSV.
+     *
+     * @param transformedCsv CSV content in BankCsvRow format
+     * @return DateRangeStats with min/max dates and month coverage
+     */
+    DateRangeStats extractDateRange(String transformedCsv) {
+        if (transformedCsv == null || transformedCsv.isBlank()) {
+            return DateRangeStats.empty();
+        }
+
+        String[] lines = transformedCsv.split("\n");
+        if (lines.length < 2) {
+            return DateRangeStats.empty();
+        }
+
+        // Find operationDate column index from header
+        String header = lines[0].trim();
+        String[] columns = parseCSVLine(header);
+        int dateColumnIndex = -1;
+
+        for (int i = 0; i < columns.length; i++) {
+            if ("operationDate".equalsIgnoreCase(columns[i].trim())) {
+                dateColumnIndex = i;
+                break;
+            }
+        }
+
+        if (dateColumnIndex == -1) {
+            log.warn("operationDate column not found in CSV header: {}", header);
+            return DateRangeStats.empty();
+        }
+
+        // Extract dates from data rows
+        List<LocalDate> dates = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE; // YYYY-MM-DD
+
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty()) continue;
+
+            String[] values = parseCSVLine(line);
+            if (values.length > dateColumnIndex) {
+                String dateStr = values[dateColumnIndex].trim();
+                if (!dateStr.isEmpty()) {
+                    try {
+                        LocalDate date = LocalDate.parse(dateStr, formatter);
+                        dates.add(date);
+                    } catch (DateTimeParseException e) {
+                        log.trace("Could not parse date: {}", dateStr);
+                    }
+                }
+            }
+        }
+
+        if (dates.isEmpty()) {
+            return DateRangeStats.empty();
+        }
+
+        // Calculate statistics
+        LocalDate minDate = dates.stream().min(LocalDate::compareTo).orElse(null);
+        LocalDate maxDate = dates.stream().max(LocalDate::compareTo).orElse(null);
+
+        Set<YearMonth> monthsSet = dates.stream()
+            .map(YearMonth::from)
+            .collect(Collectors.toCollection(TreeSet::new));
+
+        List<String> monthsCovered = monthsSet.stream()
+            .map(YearMonth::toString)
+            .toList();
+
+        String suggestedStartPeriod = minDate != null ?
+            YearMonth.from(minDate).toString() : null;
+
+        return new DateRangeStats(
+            minDate,
+            maxDate,
+            suggestedStartPeriod,
+            monthsSet.size(),
+            monthsCovered
+        );
+    }
+
+    /**
+     * Simple CSV line parser that handles quoted fields.
+     */
+    private String[] parseCSVLine(String line) {
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        result.add(current.toString());
+
+        return result.toArray(new String[0]);
+    }
+
+    /**
+     * Holds date range statistics extracted from transformed CSV.
+     */
+    public record DateRangeStats(
+        LocalDate minDate,
+        LocalDate maxDate,
+        String suggestedStartPeriod,
+        int monthsOfData,
+        List<String> monthsCovered
+    ) {
+        public static DateRangeStats empty() {
+            return new DateRangeStats(null, null, null, 0, List.of());
+        }
     }
 }
