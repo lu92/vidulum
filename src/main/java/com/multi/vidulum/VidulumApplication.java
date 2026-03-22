@@ -1,5 +1,7 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
+import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.ImportJobEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagedTransactionEntity;
@@ -100,6 +102,10 @@ public class VidulumApplication {
         mongoTemplate.dropCollection(StagedTransactionEntity.class);
         mongoTemplate.dropCollection(CategoryMappingEntity.class);
         mongoTemplate.dropCollection(ImportJobEntity.class);
+
+        // Bank Data Adapter (AI CSV Transformation)
+        mongoTemplate.dropCollection(AiCsvTransformationDocument.class);
+        mongoTemplate.dropCollection(MappingRules.class);
 
         // Other
         mongoTemplate.dropCollection(TaskEntity.class);
