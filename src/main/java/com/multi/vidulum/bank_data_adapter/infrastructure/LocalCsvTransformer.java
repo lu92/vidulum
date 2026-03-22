@@ -271,36 +271,67 @@ public class LocalCsvTransformer {
     }
 
     private String detectType(String value, String[] allColumns, Map<String, String> params) {
-        // Check amount sign first
+        // First priority: Check amount column sign (most reliable method)
         String amountColumn = params != null ? params.get("amountColumn") : null;
         if (amountColumn != null) {
             try {
                 int amountIdx = Integer.parseInt(amountColumn);
                 if (amountIdx >= 0 && amountIdx < allColumns.length) {
-                    String amountStr = allColumns[amountIdx].replaceAll("[^0-9,.-]", "");
-                    if (amountStr.startsWith("-")) {
+                    String rawAmount = allColumns[amountIdx].trim();
+                    // Check for negative sign at the beginning
+                    if (rawAmount.startsWith("-") || rawAmount.startsWith("−")) {
                         return "OUTFLOW";
                     }
+                    // Check for negative sign anywhere (some formats put it at end)
+                    if (rawAmount.contains("-") || rawAmount.contains("−")) {
+                        // Make sure it's not just a thousands separator issue
+                        String cleaned = rawAmount.replaceAll("[^0-9,.-−]", "");
+                        if (cleaned.startsWith("-") || cleaned.startsWith("−")) {
+                            return "OUTFLOW";
+                        }
+                    }
+                    // Positive amount = INFLOW
                     return "INFLOW";
                 }
             } catch (NumberFormatException ignored) {
             }
         }
 
-        // Check value text
-        String lower = value.toLowerCase();
-        if (lower.contains("wychodzące") || lower.contains("obciążeni") ||
-            lower.contains("outgoing") || lower.contains("debit") ||
-            lower.contains("wydatek") || lower.contains("opłat")) {
-            return "OUTFLOW";
-        }
-        if (lower.contains("przychodzące") || lower.contains("uznani") ||
-            lower.contains("incoming") || lower.contains("credit") ||
-            lower.contains("przychod") || lower.contains("wpływ")) {
-            return "INFLOW";
+        // Second priority: If no amountColumn param, try to find amount in all columns
+        // Look for any column that looks like a negative number
+        if (amountColumn == null) {
+            for (String col : allColumns) {
+                String trimmed = col.trim();
+                // Check if this looks like a monetary amount
+                if (trimmed.matches("^-?[0-9\\s,.−]+$") || trimmed.matches("^-?[0-9\\s,.−]+\\s*[A-Z]{3}$")) {
+                    if (trimmed.startsWith("-") || trimmed.startsWith("−")) {
+                        return "OUTFLOW";
+                    }
+                }
+            }
         }
 
-        return "OUTFLOW"; // Default to outflow for safety
+        // Third priority: Check value text for Polish/English keywords
+        if (value != null && !value.isBlank()) {
+            String lower = value.toLowerCase();
+            // OUTFLOW indicators
+            if (lower.contains("wychodzące") || lower.contains("obciążeni") ||
+                lower.contains("outgoing") || lower.contains("debit") ||
+                lower.contains("wydatek") || lower.contains("opłat") ||
+                lower.contains("wypłata") || lower.contains("płatność") ||
+                lower.contains("przelew wychodzący")) {
+                return "OUTFLOW";
+            }
+            // INFLOW indicators
+            if (lower.contains("przychodzące") || lower.contains("uznani") ||
+                lower.contains("incoming") || lower.contains("credit") ||
+                lower.contains("przychod") || lower.contains("wpływ") ||
+                lower.contains("wpłata") || lower.contains("przelew przychodzący")) {
+                return "INFLOW";
+            }
+        }
+
+        return "OUTFLOW"; // Default to outflow for safety (most bank transactions are expenses)
     }
 
     private String extractCurrency(String value, Map<String, String> params) {

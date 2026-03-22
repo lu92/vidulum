@@ -113,6 +113,24 @@ public class AiMappingRulesPromptBuilder {
            - If currency is embedded in amount (e.g., "5000 PLN") → use CURRENCY_EXTRACT with regex
            - If no currency column → use CURRENCY_EXTRACT with default based on country (PLN for Poland, EUR for Eurozone, etc.)
 
+        8. CRITICAL - TYPE FIELD MAPPING:
+           - The "type" field MUST be either "INFLOW" or "OUTFLOW" - never Polish transaction types!
+           - ALWAYS use "transformationType": "TYPE_DETECT" for the type field
+           - ALWAYS include "amountColumn" parameter pointing to the amount column index
+           - The TYPE_DETECT will determine INFLOW/OUTFLOW based on the SIGN of the amount:
+             * Negative amounts (-100.00) = OUTFLOW (expenses, payments)
+             * Positive amounts (100.00) = INFLOW (income, deposits)
+           - NEVER use "DIRECT" for type field - Polish bank types like "TRANSAKCJA KARTĄ", "PRZELEW" are NOT valid!
+           - Example for type mapping:
+             {
+               "sourceColumn": "Kwota",
+               "sourceIndex": 3,
+               "targetField": "type",
+               "transformationType": "TYPE_DETECT",
+               "transformationParams": {"amountColumn": "3"},
+               "required": true
+             }
+
         ## DETECTING THE FORMAT:
         - Look for metadata lines before header (account number, date range, totals)
         - Header row usually contains: Date, Amount, Description equivalents
