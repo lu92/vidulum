@@ -67,7 +67,7 @@ public class BankDataIngestionClient {
                 .toEntity(UploadCsvResponse.class);
 
             log.info("Ingestion upload successful: stagingSessionId={}",
-                response.getBody() != null ? response.getBody().stagingSessionId() : "null");
+                response.getBody() != null ? response.getBody().getStagingSessionId() : "null");
 
             return response.getBody();
 
@@ -105,12 +105,19 @@ public class BankDataIngestionClient {
 
     /**
      * Response from upload CSV endpoint.
+     * Matches BankDataIngestionDto.UploadCsvResponse structure.
      */
     public record UploadCsvResponse(
-        String stagingSessionId,
         ParseSummary parseSummary,
-        StagingResponse stagingResponse
-    ) {}
+        StagingResult stagingResult  // Field name must match JSON: "stagingResult"
+    ) {
+        /**
+         * Helper method to extract stagingSessionId from nested stagingResult.
+         */
+        public String getStagingSessionId() {
+            return stagingResult != null ? stagingResult.stagingSessionId() : null;
+        }
+    }
 
     public record ParseSummary(
         int totalRows,
@@ -118,9 +125,14 @@ public class BankDataIngestionClient {
         int failedRows
     ) {}
 
-    public record StagingResponse(
+    /**
+     * Staging result from bank-data-ingestion.
+     * Matches BankDataIngestionDto.StageTransactionsResponse structure.
+     */
+    public record StagingResult(
         String stagingSessionId,
-        int stagedCount
+        String cashFlowId,
+        String status
     ) {}
 
     /**

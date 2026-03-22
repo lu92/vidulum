@@ -128,10 +128,8 @@ public class AiBankCsvController {
             authHeader
         );
 
-        // Mark as imported
-        String stagingSessionId = uploadResponse.stagingSessionId() != null ?
-            uploadResponse.stagingSessionId() :
-            (uploadResponse.stagingResponse() != null ? uploadResponse.stagingResponse().stagingSessionId() : null);
+        // Extract stagingSessionId from response
+        String stagingSessionId = uploadResponse.getStagingSessionId();
 
         if (stagingSessionId != null) {
             transformService.markAsImported(transformationId, userId, stagingSessionId);

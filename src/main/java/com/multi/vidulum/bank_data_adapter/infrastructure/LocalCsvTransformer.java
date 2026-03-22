@@ -156,6 +156,13 @@ public class LocalCsvTransformer {
             output.put("bankTransactionId", generateTransactionId(output, lineNumber));
         }
 
+        // Ensure currency has a value (fallback to rules default or PLN)
+        if (output.get("currency").isBlank()) {
+            String defaultCurrency = rules.getBankCountry() != null ?
+                getCurrencyForCountry(rules.getBankCountry()) : "PLN";
+            output.put("currency", defaultCurrency);
+        }
+
         // Validate required fields
         if (output.get("operationDate").isBlank() || output.get("amount").isBlank()) {
             return null; // Skip invalid rows
@@ -385,6 +392,25 @@ public class LocalCsvTransformer {
         // Generate deterministic ID from row content
         String content = row.get("operationDate") + row.get("amount") + row.get("name") + lineNumber;
         return "TXN-" + Math.abs(content.hashCode());
+    }
+
+    /**
+     * Get default currency for a country code.
+     */
+    private String getCurrencyForCountry(String countryCode) {
+        if (countryCode == null) return "PLN";
+        return switch (countryCode.toUpperCase()) {
+            case "PL" -> "PLN";
+            case "DE", "FR", "ES", "IT", "NL", "AT", "BE", "FI", "IE", "PT", "GR" -> "EUR";
+            case "GB", "UK" -> "GBP";
+            case "US" -> "USD";
+            case "CH" -> "CHF";
+            case "CZ" -> "CZK";
+            case "SE" -> "SEK";
+            case "NO" -> "NOK";
+            case "DK" -> "DKK";
+            default -> "PLN"; // Default for Polish banks
+        };
     }
 
     private String escapeCsv(String value) {

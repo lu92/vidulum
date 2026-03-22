@@ -72,6 +72,14 @@ public class AiMappingRulesPromptBuilder {
               "transformationType": "TYPE_DETECT",
               "transformationParams": {"amountColumn": "3"},
               "required": true
+            },
+            {
+              "sourceColumn": "Waluta",
+              "sourceIndex": 4,
+              "targetField": "currency",
+              "transformationType": "CURRENCY_EXTRACT",
+              "transformationParams": {"default": "PLN"},
+              "required": true
             }
           ],
           "confidenceScore": 0.95,
@@ -100,6 +108,10 @@ public class AiMappingRulesPromptBuilder {
         4. Account numbers without country prefix get PL prefix if 26 digits
         5. If no description column, concatenate merchant info columns
         6. bankTransactionId can use ID_GENERATE if bank doesn't provide
+        7. CURRENCY IS REQUIRED - always include currency mapping:
+           - If CSV has currency column → use CURRENCY_EXTRACT
+           - If currency is embedded in amount (e.g., "5000 PLN") → use CURRENCY_EXTRACT with regex
+           - If no currency column → use CURRENCY_EXTRACT with default based on country (PLN for Poland, EUR for Eurozone, etc.)
 
         ## DETECTING THE FORMAT:
         - Look for metadata lines before header (account number, date range, totals)
