@@ -50,6 +50,22 @@ public class AiMappingRulesPromptBuilder {
               "required": true
             },
             {
+              "sourceColumn": "Dane kontrahenta",
+              "sourceIndex": 5,
+              "targetField": "name",
+              "transformationType": "DIRECT",
+              "transformationParams": {},
+              "required": true
+            },
+            {
+              "sourceColumn": "Tytuł operacji",
+              "sourceIndex": 7,
+              "targetField": "description",
+              "transformationType": "DIRECT",
+              "transformationParams": {},
+              "required": false
+            },
+            {
               "sourceColumn": "Kwota",
               "sourceIndex": 3,
               "targetField": "amount",
@@ -80,12 +96,20 @@ public class AiMappingRulesPromptBuilder {
               "transformationType": "CURRENCY_EXTRACT",
               "transformationParams": {"default": "PLN"},
               "required": true
+            },
+            {
+              "sourceColumn": "Numer rachunku kontrahenta",
+              "sourceIndex": 6,
+              "targetField": "targetAccountNumber",
+              "transformationType": "IBAN_NORMALIZE",
+              "transformationParams": {},
+              "required": false
             }
           ],
           "confidenceScore": 0.95,
           "warnings": [],
-          "sampleInputRow": "31-12-2025,31-12-2025,Opłaty i prowizje,-10,PLN,,,Prowizja...,76047.25",
-          "sampleOutputRow": "NEST_2025-12-31_001,Prowizja...,,...,10,PLN,OUTFLOW,2025-12-31,2025-12-31,,"
+          "sampleInputRow": "31-12-2025,31-12-2025,Opłaty i prowizje,-10,PLN,Bank XYZ,PL12345678901234567890123456,Prowizja za przelew,76047.25",
+          "sampleOutputRow": "TXN-123456789,Bank XYZ,Prowizja za przelew,Opłaty i prowizje,10,PLN,OUTFLOW,2025-12-31,2025-12-31,,PL12345678901234567890123456"
         }
 
         ## TRANSFORMATION TYPES:
@@ -131,12 +155,54 @@ public class AiMappingRulesPromptBuilder {
                "required": true
              }
 
+        9. CRITICAL - NAME FIELD IS REQUIRED:
+           - The "name" field is MANDATORY - without it rows will be rejected!
+           - Map the counterparty/merchant/recipient column to "name"
+           - Common source columns: "Dane kontrahenta", "Kontrahent", "Nadawca/Odbiorca", "Counterparty", "Merchant"
+           - If no single name column exists, use CONCAT to combine relevant columns
+           - Example for name mapping:
+             {
+               "sourceColumn": "Dane kontrahenta",
+               "sourceIndex": 5,
+               "targetField": "name",
+               "transformationType": "DIRECT",
+               "transformationParams": {},
+               "required": true
+             }
+
+        10. DESCRIPTION FIELD:
+            - Map transaction title/description to "description"
+            - Common source columns: "Tytuł operacji", "Opis", "Tytuł", "Description", "Reference"
+            - If name column contains full description, description can be empty
+            - Example for description mapping:
+              {
+                "sourceColumn": "Tytuł operacji",
+                "sourceIndex": 7,
+                "targetField": "description",
+                "transformationType": "DIRECT",
+                "transformationParams": {},
+                "required": false
+              }
+
+        ## REQUIRED MAPPINGS CHECKLIST:
+        You MUST include mappings for ALL of these fields:
+        - ✓ operationDate (REQUIRED) - use DATE_PARSE
+        - ✓ name (REQUIRED) - use DIRECT or CONCAT - THIS IS CRITICAL!
+        - ✓ amount (REQUIRED) - use AMOUNT_PARSE
+        - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
+        - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
+        - ○ description (optional) - use DIRECT
+        - ○ bankCategory (optional) - use DIRECT
+        - ○ bookingDate (optional) - use DATE_PARSE
+        - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
+        - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
+
         ## DETECTING THE FORMAT:
         - Look for metadata lines before header (account number, date range, totals)
         - Header row usually contains: Date, Amount, Description equivalents
-        - Polish banks: "Data", "Kwota", "Tytuł operacji", "Kontrahent"
-        - German banks: "Datum", "Betrag", "Verwendungszweck"
-        - English banks: "Date", "Amount", "Description"
+        - Polish banks: "Data", "Kwota", "Tytuł operacji", "Kontrahent", "Dane kontrahenta"
+        - German banks: "Datum", "Betrag", "Verwendungszweck", "Empfänger"
+        - English banks: "Date", "Amount", "Description", "Payee", "Merchant"
 
         ## ERROR FORMAT (if cannot parse):
         {

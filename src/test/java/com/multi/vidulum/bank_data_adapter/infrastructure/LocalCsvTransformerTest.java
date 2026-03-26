@@ -570,4 +570,441 @@ class LocalCsvTransformerTest {
                 .build();
         }
     }
+
+    @Nested
+    @DisplayName("Name Field Fallback")
+    class NameFieldFallback {
+
+        @Test
+        @DisplayName("Should use description as name when name mapping is missing")
+        void shouldUseDescriptionAsNameWhenNameMappingIsMissing() {
+            // given - CSV with description but no name column mapped
+            String csv = """
+                Data,Kwota,Opis
+                2023-06-15,100.00,Przelew za czynsz
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Opis")
+                        .sourceIndex(2)
+                        .targetField("description")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                    // NOTE: No name mapping!
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            // Name should be populated from description
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(2);
+            // Format: bankTransactionId,name,description,...
+            String dataRow = lines[1];
+            assertThat(dataRow).contains("Przelew za czynsz");
+        }
+
+        @Test
+        @DisplayName("Should use bankCategory as name when name and description are missing")
+        void shouldUseBankCategoryAsNameWhenNameAndDescriptionMissing() {
+            // given - CSV with only bankCategory
+            String csv = """
+                Data,Kwota,Kategoria
+                2023-06-15,100.00,Przelewy wychodzace
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kategoria")
+                        .sourceIndex(2)
+                        .targetField("bankCategory")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                    // NOTE: No name or description mapping!
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(2);
+            // Name should be populated from bankCategory
+            String dataRow = lines[1];
+            assertThat(dataRow).contains("Przelewy wychodzace");
+        }
+
+        @Test
+        @DisplayName("Should generate placeholder name when no name, description or bankCategory")
+        void shouldGeneratePlaceholderNameWhenNothingAvailable() {
+            // given - CSV with only required fields
+            String csv = """
+                Data,Kwota
+                2023-06-15,100.00
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build()
+                    // NOTE: No name, description or bankCategory mapping!
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(2);
+            // Name should be generated placeholder
+            String dataRow = lines[1];
+            assertThat(dataRow).contains("Transaction 100");
+        }
+
+        @Test
+        @DisplayName("Should NOT use fallback when name mapping exists and has value")
+        void shouldNotUseFallbackWhenNameMappingExists() {
+            // given - CSV with name column mapped
+            String csv = """
+                Data,Kwota,Kontrahent,Opis
+                2023-06-15,100.00,Firma ABC,Platnosc za fakture
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kontrahent")
+                        .sourceIndex(2)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Opis")
+                        .sourceIndex(3)
+                        .targetField("description")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(2);
+            // Name should be "Firma ABC", not "Platnosc za fakture"
+            String dataRow = lines[1];
+            assertThat(dataRow).contains("Firma ABC");
+            // Both name and description should be present
+            assertThat(dataRow).contains("Platnosc za fakture");
+        }
+    }
+
+    @Nested
+    @DisplayName("Amount Absolute Value")
+    class AmountAbsoluteValue {
+
+        @Test
+        @DisplayName("Should convert negative amount to positive (absolute value)")
+        void shouldConvertNegativeAmountToPositive() {
+            // given - CSV with negative amounts
+            String csv = """
+                Data,Kwota,Nazwa
+                2023-06-15,-100.00,Przelew wychodzacy
+                2023-06-16,-2500.50,Oplata za usluge
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Nazwa")
+                        .sourceIndex(2)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(3); // header + 2 data rows
+
+            // First row: -100.00 should become 100.00 (positive)
+            String firstRow = lines[1];
+            assertThat(firstRow).contains(",100.00,"); // amount is positive
+            assertThat(firstRow).contains(",OUTFLOW,"); // type detected from negative sign
+            assertThat(firstRow).doesNotContain(",-100");
+
+            // Second row: -2500.50 should become 2500.50 (positive)
+            String secondRow = lines[2];
+            assertThat(secondRow).contains(",2500.50,"); // amount is positive
+            assertThat(secondRow).contains(",OUTFLOW,"); // type detected from negative sign
+            assertThat(secondRow).doesNotContain(",-2500");
+        }
+
+        @Test
+        @DisplayName("Should keep positive amount unchanged")
+        void shouldKeepPositiveAmountUnchanged() {
+            // given - CSV with positive amounts
+            String csv = """
+                Data,Kwota,Nazwa
+                2023-06-15,5000.00,Wyplata
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Nazwa")
+                        .sourceIndex(2)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(2);
+
+            String dataRow = lines[1];
+            assertThat(dataRow).contains(",5000.00,"); // amount stays positive
+            assertThat(dataRow).contains(",INFLOW,"); // type detected from positive sign
+        }
+
+        @Test
+        @DisplayName("Should handle mixed positive and negative amounts")
+        void shouldHandleMixedAmounts() {
+            // given - CSV with mixed amounts
+            String csv = """
+                Data,Kwota,Nazwa
+                2023-06-15,5000.00,Wyplata
+                2023-06-16,-1500.00,Czynsz
+                2023-06-17,200.00,Zwrot
+                2023-06-18,-50.00,Prowizja
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .transformationParams(Map.of("format", "yyyy-MM-dd"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Nazwa")
+                        .sourceIndex(2)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(5); // header + 4 data rows
+
+            // All amounts should be positive, type determines direction
+            assertThat(lines[1]).contains(",5000.00,").contains(",INFLOW,");
+            assertThat(lines[2]).contains(",1500.00,").contains(",OUTFLOW,");
+            assertThat(lines[3]).contains(",200.00,").contains(",INFLOW,");
+            assertThat(lines[4]).contains(",50.00,").contains(",OUTFLOW,");
+
+            // No negative amounts in output
+            for (int i = 1; i < lines.length; i++) {
+                assertThat(lines[i]).doesNotContain(",-");
+            }
+        }
+    }
 }

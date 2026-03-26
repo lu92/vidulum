@@ -163,6 +163,24 @@ public class LocalCsvTransformer {
             output.put("currency", defaultCurrency);
         }
 
+        // Ensure name has a value (REQUIRED field - fallback to description or bankCategory)
+        if (output.get("name").isBlank()) {
+            // Try description first
+            if (!output.get("description").isBlank()) {
+                output.put("name", output.get("description"));
+            }
+            // Try bankCategory as last resort
+            else if (!output.get("bankCategory").isBlank()) {
+                output.put("name", output.get("bankCategory"));
+            }
+            // Generate a placeholder name from amount and date
+            else {
+                String placeholder = String.format("Transaction %s %s",
+                    output.get("amount"), output.get("operationDate"));
+                output.put("name", placeholder);
+            }
+        }
+
         // Validate required fields
         if (output.get("operationDate").isBlank() || output.get("amount").isBlank()) {
             return null; // Skip invalid rows
@@ -263,7 +281,8 @@ public class LocalCsvTransformer {
 
         try {
             BigDecimal amount = new BigDecimal(cleaned);
-            return amount.toPlainString();
+            // Always return positive value - direction is determined by type (INFLOW/OUTFLOW)
+            return amount.abs().toPlainString();
         } catch (NumberFormatException e) {
             log.debug("Failed to parse amount: {}", value);
             return value;
