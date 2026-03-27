@@ -190,7 +190,11 @@ public class AiBankCsvController {
         String maxTransactionDate,      // Latest transaction date (YYYY-MM-DD)
         String suggestedStartPeriod,    // YearMonth string (YYYY-MM)
         int monthsOfData,               // Number of distinct months covered
-        List<String> monthsCovered      // List of "YYYY-MM" strings in order
+        List<String> monthsCovered,     // List of "YYYY-MM" strings in order
+        // Detection info (for UI feedback)
+        String detectionResult,         // CANONICAL, CACHED, AI_TRANSFORMED
+        boolean fromCache,              // Whether cached mapping rules were used
+        long processingTimeMs           // Processing time in milliseconds
     ) {}
 
     public record PreviewResponse(
@@ -240,7 +244,11 @@ public class AiBankCsvController {
             doc.getMaxTransactionDate() != null ? doc.getMaxTransactionDate().toString() : null,
             doc.getSuggestedStartPeriod(),
             doc.getMonthsOfData(),
-            doc.getMonthsCovered() != null ? doc.getMonthsCovered() : List.of()
+            doc.getMonthsCovered() != null ? doc.getMonthsCovered() : List.of(),
+            // Detection info
+            doc.getDetectionResult() != null ? doc.getDetectionResult().name() : null,
+            doc.isFromCache(),
+            doc.getProcessingTimeMs()
         );
     }
 

@@ -2,6 +2,7 @@ package com.multi.vidulum.bank_data_adapter.app;
 
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
+import com.multi.vidulum.bank_data_adapter.domain.DetectionResult;
 import com.multi.vidulum.bank_data_adapter.domain.ImportStatus;
 import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
 import com.multi.vidulum.bank_data_adapter.domain.exceptions.*;
@@ -110,6 +111,14 @@ public class AiBankCsvTransformService {
         // Decode CSV content
         String csvString = decodeWithFallback(csvContent);
 
+        long startTime = System.currentTimeMillis();
+
+        // Step 0: Check if this is canonical format (Vidulum format)
+        if (isCanonicalFormat(csvString)) {
+            log.info("✅ CANONICAL format detected - skipping AI transformation");
+            return handleCanonicalFormat(csvString, fileName, fileHash, userId, startTime);
+        }
+
         // Compute bank identifier
         String bankIdentifier = mappingRulesCacheService.computeBankIdentifier(csvString);
         log.info("Bank identifier: {}", bankIdentifier != null ? bankIdentifier.substring(0, 12) : "null");
@@ -128,9 +137,9 @@ public class AiBankCsvTransformService {
             .importStatus(ImportStatus.PENDING)
             .build();
 
-        long startTime = System.currentTimeMillis();
         boolean fromCache = false;
         MappingRules rules = null;
+        DetectionResult detectionResult;
 
         // Step 1: Check cache
         if (useCache && bankIdentifier != null) {
@@ -138,10 +147,15 @@ public class AiBankCsvTransformService {
             if (cachedRules.isPresent()) {
                 rules = cachedRules.get();
                 fromCache = true;
+                detectionResult = DetectionResult.CACHED;
                 log.info("✅ Cache HIT for bank: {} (usage: {})",
                     rules.getBankName(), rules.getUsageCount());
                 mappingRulesCacheService.recordUsage(bankIdentifier);
+            } else {
+                detectionResult = DetectionResult.AI_TRANSFORMED;
             }
+        } else {
+            detectionResult = DetectionResult.AI_TRANSFORMED;
         }
 
         // Step 2: If no cache, try AI-based transformation
@@ -185,6 +199,7 @@ public class AiBankCsvTransformService {
         document.setInputRowCount(countInputRows(csvString));
         document.setFromCache(fromCache);
         document.setBankIdentifier(bankIdentifier);
+        document.setDetectionResult(detectionResult);
 
         // Extract date range statistics
         extractDateRangeAndUpdate(document, transformedCsv);
@@ -192,9 +207,9 @@ public class AiBankCsvTransformService {
         // Save document
         AiCsvTransformationDocument saved = transformationRepository.save(document);
 
-        log.info("Transformation completed: id={}, success=true, bank={}, rows={}, time={}ms, fromCache={}",
+        log.info("Transformation completed: id={}, success=true, bank={}, rows={}, time={}ms, detection={}",
             saved.getId(), saved.getDetectedBank(), saved.getOutputRowCount(),
-            saved.getProcessingTimeMs(), fromCache);
+            saved.getProcessingTimeMs(), detectionResult);
 
         return saved;
     }
@@ -312,6 +327,7 @@ public class AiBankCsvTransformService {
         document.setProcessingTimeMs(processingTime);
         document.setRetryCount(retryCount);
         document.setFromCache(false);
+        document.setDetectionResult(DetectionResult.AI_TRANSFORMED);
 
         if (result != null && result.success()) {
             document.setSuccess(true);
@@ -389,6 +405,127 @@ public class AiBankCsvTransformService {
         doc.setImportedAtFromZoned(ZonedDateTime.now(clock));
 
         transformationRepository.save(doc);
+    }
+
+    // ============ Canonical Format Detection ============
+
+    /**
+     * Canonical format headers matching BankCsvRow structure.
+     * These are the expected headers for Vidulum's standard format.
+     */
+    private static final Set<String> CANONICAL_REQUIRED_HEADERS = Set.of(
+        "name", "amount", "currency", "type", "operationDate"
+    );
+
+    private static final Set<String> CANONICAL_ALL_HEADERS = Set.of(
+        "bankTransactionId", "name", "description", "bankCategory",
+        "amount", "currency", "type", "operationDate", "bookingDate",
+        "sourceAccountNumber", "targetAccountNumber"
+    );
+
+    /**
+     * Checks if the CSV is already in Vidulum canonical format.
+     * Canonical format has specific headers matching BankCsvRow structure.
+     *
+     * @param csvContent The CSV content to check
+     * @return true if the CSV is in canonical format
+     */
+    boolean isCanonicalFormat(String csvContent) {
+        if (csvContent == null || csvContent.isBlank()) {
+            return false;
+        }
+
+        // Get first line (header)
+        String[] lines = csvContent.split("\n", 2);
+        if (lines.length == 0) {
+            return false;
+        }
+
+        String headerLine = lines[0].trim().toLowerCase();
+        String[] headers = parseCSVLine(headerLine);
+
+        // Convert to set for easy comparison
+        Set<String> headerSet = Arrays.stream(headers)
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+
+        // Check if all required headers are present
+        boolean hasRequiredHeaders = headerSet.containsAll(
+            CANONICAL_REQUIRED_HEADERS.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet())
+        );
+
+        if (!hasRequiredHeaders) {
+            return false;
+        }
+
+        // Check if headers mostly match canonical format (at least 7 of 11)
+        long matchingHeaders = headerSet.stream()
+            .filter(h -> CANONICAL_ALL_HEADERS.stream()
+                .map(String::toLowerCase)
+                .anyMatch(c -> c.equals(h)))
+            .count();
+
+        boolean isCanonical = matchingHeaders >= 7;
+
+        if (isCanonical) {
+            log.debug("Canonical format detected: {} of {} headers match",
+                matchingHeaders, CANONICAL_ALL_HEADERS.size());
+        }
+
+        return isCanonical;
+    }
+
+    /**
+     * Handles canonical format CSV - no transformation needed.
+     * Just validates, extracts stats, and saves.
+     */
+    private AiCsvTransformationDocument handleCanonicalFormat(
+            String csvContent, String fileName, String fileHash, String userId, long startTime) {
+
+        // Count rows
+        String[] lines = csvContent.split("\n");
+        int rowCount = (int) Arrays.stream(lines)
+            .skip(1) // skip header
+            .filter(line -> !line.trim().isEmpty())
+            .count();
+
+        // Create document
+        AiCsvTransformationDocument document = AiCsvTransformationDocument.builder()
+            .id(UUID.randomUUID().toString())
+            .userId(userId)
+            .originalFileName(fileName)
+            .originalFileSizeBytes(csvContent.getBytes().length)
+            .originalFileHash(fileHash)
+            .originalCsvContent(csvContent)
+            .transformedCsvContent(csvContent) // Same as input - already canonical
+            .success(true)
+            .detectedBank("Vidulum Format")
+            .detectedLanguage("en")
+            .detectedCountry("XX")
+            .inputRowCount(rowCount)
+            .outputRowCount(rowCount)
+            .warnings(List.of())
+            .createdAt(AiCsvTransformationDocument.toDate(ZonedDateTime.now(clock)))
+            .createdBy(userId)
+            .importStatus(ImportStatus.PENDING)
+            .fromCache(false)
+            .detectionResult(DetectionResult.CANONICAL)
+            .processingTimeMs(System.currentTimeMillis() - startTime)
+            .build();
+
+        // Extract date range statistics
+        extractDateRangeAndUpdate(document, csvContent);
+
+        // Save document
+        AiCsvTransformationDocument saved = transformationRepository.save(document);
+
+        log.info("Canonical format processed: id={}, rows={}, time={}ms",
+            saved.getId(), saved.getOutputRowCount(), saved.getProcessingTimeMs());
+
+        return saved;
     }
 
     // ============ Private methods ============

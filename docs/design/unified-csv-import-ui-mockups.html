@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified CSV Import - UI Mockups (Simplified Flow)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .screen-container { max-width: 1400px; margin: 0 auto; }
+        .mockup-frame { border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .step-indicator { scroll-margin-top: 80px; }
+        .mobile-frame { max-width: 375px; margin: 0 auto; border-radius: 24px; overflow: hidden; border: 8px solid #1f2937; }
+        .mobile-notch { height: 24px; background: #000; border-radius: 0 0 16px 16px; width: 150px; margin: 0 auto; }
+        .scenario-card { border-left: 4px solid; padding-left: 16px; margin-bottom: 16px; }
+        .scenario-instant { border-color: #22c55e; background: #f0fdf4; }
+        .scenario-ai { border-color: #8b5cf6; background: #faf5ff; }
+        .tab-btn { padding: 8px 16px; border-radius: 8px; cursor: pointer; border: 1px solid #e5e7eb; background: white; transition: all 0.2s; }
+        .tab-btn:hover { background: #f3f4f6; }
+        .tab-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .endpoint-badge { font-family: monospace; font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+        .method-post { background: #dcfce7; color: #166534; }
+        .method-get { background: #dbeafe; color: #1e40af; }
+        .detection-badge { font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+        .detection-canonical { background: #d1fae5; color: #065f46; }
+        .detection-cached { background: #e0e7ff; color: #3730a3; }
+        .detection-ai { background: #f3e8ff; color: #6b21a8; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="screen-container p-4 md:p-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Unified CSV Import Flow</h1>
+            <p class="text-gray-600 mb-2">Simplified 3-Step User Journey (English Only)</p>
+            <div class="flex justify-center gap-2 mt-4 flex-wrap">
+                <span class="detection-badge detection-canonical">CANONICAL - Instant</span>
+                <span class="detection-badge detection-cached">CACHED - Instant</span>
+                <span class="detection-badge detection-ai">AI_TRANSFORMED - 5-15s</span>
+            </div>
+        </div>
+
+        <!-- Platform Toggle -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button class="tab-btn active" onclick="switchPlatform('web')"><i class="fas fa-desktop mr-2"></i>Web</button>
+            <button class="tab-btn" onclick="switchPlatform('mobile')"><i class="fas fa-mobile-alt mr-2"></i>Mobile</button>
+        </div>
+
+        <!-- ==================== API ENDPOINTS SUMMARY ==================== -->
+        <section class="mb-12 bg-white rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6"><i class="fas fa-plug mr-2 text-indigo-500"></i>API Endpoints Used</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold">Step</th>
+                            <th class="px-4 py-3 text-left font-semibold">Endpoint</th>
+                            <th class="px-4 py-3 text-left font-semibold">Purpose</th>
+                            <th class="px-4 py-3 text-left font-semibold">Key Response Fields</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        <tr>
+                            <td class="px-4 py-3 font-medium">1. Upload</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/api/v1/csv-import/upload</code>
+                            </td>
+                            <td class="px-4 py-3">Upload CSV, auto-detect format (canonical/cached/AI)</td>
+                            <td class="px-4 py-3">
+                                <code>transformationId</code>, <code>detectionResult</code>, <code>suggestedStartPeriod</code>, <code>detectedBank</code>, <code>detectedCurrency</code>
+                            </td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="px-4 py-3 font-medium">2. Create CashFlow</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/cash-flow/with-history</code>
+                            </td>
+                            <td class="px-4 py-3">Create CashFlow in SETUP mode with historical periods</td>
+                            <td class="px-4 py-3">
+                                <code>cashFlowId</code> (string)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 font-medium">3a. Import to Staging</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/api/v1/bank-data-adapter/{transformationId}/import</code>
+                            </td>
+                            <td class="px-4 py-3">Send transformed CSV to staging for category mapping</td>
+                            <td class="px-4 py-3">
+                                <code>stagingSessionId</code>, <code>importedRows</code>
+                            </td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="px-4 py-3 font-medium">3b. Get Unmapped Categories</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-get">GET</span>
+                                <code class="ml-2">/api/v1/bank-data-ingestion/cf={id}/staging/{sessionId}</code>
+                            </td>
+                            <td class="px-4 py-3">Get list of bank categories that need mapping</td>
+                            <td class="px-4 py-3">
+                                <code>unmappedCategories[]</code>, <code>status</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 font-medium">3c. Create Mappings</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/api/v1/bank-data-ingestion/cf={id}/mappings</code>
+                            </td>
+                            <td class="px-4 py-3">Map bank categories to CashFlow categories</td>
+                            <td class="px-4 py-3">
+                                <code>mappedCount</code>
+                            </td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="px-4 py-3 font-medium">3d. Revalidate</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/api/v1/bank-data-ingestion/cf={id}/staging/{sessionId}/revalidate</code>
+                            </td>
+                            <td class="px-4 py-3">Verify all categories are mapped</td>
+                            <td class="px-4 py-3">
+                                <code>status</code>, <code>stillUnmappedCategories[]</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 font-medium">3e. Execute Import</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/api/v1/bank-data-ingestion/cf={id}/import</code>
+                            </td>
+                            <td class="px-4 py-3">Import transactions to CashFlow</td>
+                            <td class="px-4 py-3">
+                                <code>jobId</code>, <code>transactionsImported</code>, <code>categoriesCreated[]</code>
+                            </td>
+                        </tr>
+                        <tr class="bg-yellow-50">
+                            <td class="px-4 py-3 font-medium">4. Attest (Optional)</td>
+                            <td class="px-4 py-3">
+                                <span class="endpoint-badge method-post">POST</span>
+                                <code class="ml-2">/cash-flow/cf={id}/attest-historical-import</code>
+                            </td>
+                            <td class="px-4 py-3">Confirm balance and transition to OPEN status</td>
+                            <td class="px-4 py-3">
+                                <code>status: "OPEN"</code>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================== SIMPLIFIED USER JOURNEY ==================== -->
+        <section class="mb-12 bg-white rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6"><i class="fas fa-route mr-2 text-indigo-500"></i>Simplified User Journey (3 Steps)</h2>
+
+            <div class="overflow-x-auto">
+                <div class="flex gap-4 min-w-max pb-4 items-center">
+                    <!-- Step 1 -->
+                    <div class="w-64 text-center bg-blue-50 rounded-xl p-4">
+                        <div class="w-14 h-14 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">1</div>
+                        <h4 class="font-bold text-lg">Upload CSV</h4>
+                        <p class="text-sm text-gray-600 mt-2">Drag & drop any bank CSV</p>
+                        <div class="mt-3 space-y-1">
+                            <div class="text-xs bg-white rounded px-2 py-1">
+                                <span class="detection-badge detection-canonical">CANONICAL</span> → 50ms
+                            </div>
+                            <div class="text-xs bg-white rounded px-2 py-1">
+                                <span class="detection-badge detection-cached">CACHED</span> → 100ms
+                            </div>
+                            <div class="text-xs bg-white rounded px-2 py-1">
+                                <span class="detection-badge detection-ai">AI</span> → 5-15s
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center"><i class="fas fa-arrow-right text-2xl text-gray-300"></i></div>
+
+                    <!-- Step 2 -->
+                    <div class="w-64 text-center bg-indigo-50 rounded-xl p-4">
+                        <div class="w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">2</div>
+                        <h4 class="font-bold text-lg">Create CashFlow</h4>
+                        <p class="text-sm text-gray-600 mt-2">Pre-filled from CSV data</p>
+                        <div class="mt-3 text-xs text-left bg-white rounded p-2">
+                            <div>✓ Bank name (detected)</div>
+                            <div>✓ Currency (detected)</div>
+                            <div>✓ Start period (from CSV)</div>
+                            <div class="text-orange-600">⚠ Initial balance (user input)</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center"><i class="fas fa-arrow-right text-2xl text-gray-300"></i></div>
+
+                    <!-- Step 3 -->
+                    <div class="w-64 text-center bg-green-50 rounded-xl p-4">
+                        <div class="w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">3</div>
+                        <h4 class="font-bold text-lg">Map & Import</h4>
+                        <p class="text-sm text-gray-600 mt-2">Map categories, import transactions</p>
+                        <div class="mt-3 text-xs text-left bg-white rounded p-2">
+                            <div>→ Map bank categories</div>
+                            <div>→ Review transactions</div>
+                            <div>→ Import to CashFlow</div>
+                            <div class="text-green-600">✓ Done!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detection Scenarios -->
+            <div class="grid md:grid-cols-3 gap-4 mt-8">
+                <div class="scenario-card scenario-instant rounded-lg p-4">
+                    <h4 class="font-bold text-green-800 mb-2">
+                        <span class="detection-badge detection-canonical mr-2">CANONICAL</span>
+                        Vidulum Format
+                    </h4>
+                    <p class="text-sm text-green-700">User uploads pre-formatted CSV. Instant processing, no AI needed.</p>
+                    <div class="mt-2 text-xs text-green-600">
+                        <i class="fas fa-bolt mr-1"></i> ~50ms • Free • No AI call
+                    </div>
+                </div>
+                <div class="scenario-card scenario-instant rounded-lg p-4">
+                    <h4 class="font-bold text-indigo-800 mb-2">
+                        <span class="detection-badge detection-cached mr-2">CACHED</span>
+                        Known Bank Format
+                    </h4>
+                    <p class="text-sm text-indigo-700">Bank format was seen before. Uses cached mapping rules.</p>
+                    <div class="mt-2 text-xs text-indigo-600">
+                        <i class="fas fa-bolt mr-1"></i> ~100ms • Free • Cached rules
+                    </div>
+                </div>
+                <div class="scenario-card scenario-ai rounded-lg p-4">
+                    <h4 class="font-bold text-purple-800 mb-2">
+                        <span class="detection-badge detection-ai mr-2">AI_TRANSFORMED</span>
+                        New Bank Format
+                    </h4>
+                    <p class="text-sm text-purple-700">New bank format. AI analyzes and creates mapping rules.</p>
+                    <div class="mt-2 text-xs text-purple-600">
+                        <i class="fas fa-brain mr-1"></i> ~5-15s • ~$0.01 • Creates cache for future
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 1: UPLOAD ==================== -->
+        <section id="step1" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">1</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Upload CSV</h2>
+                    <p class="text-gray-600">Single unified endpoint handles all CSV formats</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="endpoint-badge method-post">POST</span>
+                    <code class="ml-2 text-sm">/api/v1/csv-import/upload</code>
+                </div>
+            </div>
+
+            <!-- WEB Version -->
+            <div class="platform-web">
+                <div class="mockup-frame bg-white">
+                    <!-- Header -->
+                    <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <i class="fas fa-wallet text-2xl"></i>
+                            <span class="text-xl font-semibold">Vidulum</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-sm opacity-75">Welcome, John!</span>
+                            <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center">JD</div>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="bg-gray-50 px-6 py-4 border-b">
+                        <div class="flex items-center justify-between max-w-2xl mx-auto">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                                <span class="ml-3 font-medium text-blue-600">Upload CSV</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-gray-300 mx-6"></div>
+                            <div class="flex items-center opacity-50">
+                                <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center font-bold">2</div>
+                                <span class="ml-3 text-gray-500">Create CashFlow</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-gray-300 mx-6"></div>
+                            <div class="flex items-center opacity-50">
+                                <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center font-bold">3</div>
+                                <span class="ml-3 text-gray-500">Map & Import</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-8 max-w-3xl mx-auto">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Import Bank Statement</h3>
+                        <p class="text-gray-600 mb-8">Upload your bank's CSV export. We'll automatically detect the format.</p>
+
+                        <!-- Upload Area -->
+                        <div class="border-2 border-dashed border-indigo-300 rounded-xl p-12 text-center hover:border-indigo-500 hover:bg-indigo-50 transition cursor-pointer bg-gray-50">
+                            <div class="mb-4">
+                                <div class="w-20 h-20 mx-auto bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-indigo-500"></i>
+                                </div>
+                            </div>
+                            <p class="text-xl font-medium text-gray-700 mb-2">Drag & drop your CSV file here</p>
+                            <p class="text-gray-500 mb-4">or</p>
+                            <button class="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">
+                                <i class="fas fa-folder-open mr-2"></i>
+                                Browse Files
+                            </button>
+                            <p class="text-sm text-gray-500 mt-6">Maximum size: 5MB • Format: CSV</p>
+                        </div>
+
+                        <!-- Bank Hint (Optional) -->
+                        <div class="mt-8">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Bank hint (optional)
+                                <span class="text-gray-400 font-normal ml-2">- helps speed up detection</span>
+                            </label>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                                    <div class="w-6 h-6 bg-orange-500 rounded flex items-center justify-center text-white text-xs font-bold">ING</div>
+                                    <span>ING Bank</span>
+                                </button>
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                                    <div class="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white text-xs font-bold">m</div>
+                                    <span>mBank</span>
+                                </button>
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                                    <div class="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white text-xs font-bold">NB</div>
+                                    <span>Nest Bank</span>
+                                </button>
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50 text-gray-500">
+                                    Other / Not sure
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-blue-800">
+                                        <strong>Supported formats:</strong> Native bank CSV exports, or Vidulum canonical format.
+                                        We support ING, mBank, PKO BP, Santander, Nest Bank, BNP Paribas, and more.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing State (shown during upload) -->
+                <div class="mockup-frame bg-white mt-8">
+                    <div class="bg-indigo-600 text-white px-6 py-4">
+                        <span class="font-semibold">Processing...</span>
+                    </div>
+                    <div class="p-8 text-center">
+                        <div class="w-24 h-24 mx-auto bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center relative mb-6">
+                            <div class="absolute inset-0 rounded-full border-4 border-purple-300 animate-ping opacity-30"></div>
+                            <i class="fas fa-cog text-4xl text-purple-500 animate-spin"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Analyzing your file...</h3>
+                        <p class="text-gray-500 mb-4">This may take a few seconds for new bank formats</p>
+
+                        <!-- Detection feedback will appear here -->
+                        <div class="max-w-md mx-auto mt-6 p-4 bg-purple-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-brain text-purple-500 animate-pulse"></i>
+                                <span class="text-sm text-purple-700">AI is analyzing the CSV structure...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOBILE Version -->
+            <div class="platform-mobile hidden mt-8">
+                <div class="mobile-frame bg-white shadow-2xl mx-auto">
+                    <div class="bg-black text-white p-2 flex justify-between items-center text-xs">
+                        <span>9:41</span>
+                        <div class="mobile-notch"></div>
+                        <div class="flex items-center gap-1">
+                            <i class="fas fa-signal"></i>
+                            <i class="fas fa-wifi"></i>
+                            <i class="fas fa-battery-full"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-600 text-white px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <button><i class="fas fa-times"></i></button>
+                            <span class="font-semibold">Import CSV</span>
+                            <div class="w-6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Progress -->
+                    <div class="bg-gray-50 px-4 py-3 border-b flex justify-center gap-2">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                        <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                    </div>
+
+                    <div class="p-4 h-[500px]">
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">Upload Bank CSV</h3>
+                        <p class="text-gray-600 text-sm mb-6">We'll auto-detect your bank format</p>
+
+                        <!-- Upload Button -->
+                        <div class="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center bg-indigo-50 mb-6">
+                            <div class="w-16 h-16 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-file-upload text-2xl text-indigo-500"></i>
+                            </div>
+                            <button class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                                <i class="fas fa-folder-open mr-2"></i>
+                                Choose File
+                            </button>
+                            <p class="text-xs text-gray-500 mt-3">Max 5MB • CSV format</p>
+                        </div>
+
+                        <!-- Bank Hint -->
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Bank (optional):</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="px-3 py-2 border rounded-lg text-sm">ING</button>
+                                <button class="px-3 py-2 border rounded-lg text-sm">mBank</button>
+                                <button class="px-3 py-2 border rounded-lg text-sm">Nest</button>
+                                <button class="px-3 py-2 border rounded-lg text-sm">Other</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 2: CREATE CASHFLOW ==================== -->
+        <section id="step2" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-indigo-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">2</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Create CashFlow</h2>
+                    <p class="text-gray-600">Pre-filled form based on CSV analysis</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="endpoint-badge method-post">POST</span>
+                    <code class="ml-2 text-sm">/cash-flow/with-history</code>
+                </div>
+            </div>
+
+            <!-- WEB Version -->
+            <div class="platform-web">
+                <div class="mockup-frame bg-white">
+                    <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <i class="fas fa-wallet text-2xl"></i>
+                            <span class="text-xl font-semibold">Vidulum</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="bg-gray-50 px-6 py-4 border-b">
+                        <div class="flex items-center justify-between max-w-2xl mx-auto">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <span class="ml-3 text-green-600">Upload CSV</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-green-500 mx-6"></div>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-indigo-500 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                                <span class="ml-3 font-medium text-indigo-600">Create CashFlow</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-gray-300 mx-6"></div>
+                            <div class="flex items-center opacity-50">
+                                <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center font-bold">3</div>
+                                <span class="ml-3 text-gray-500">Map & Import</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-8">
+                        <div class="max-w-2xl mx-auto">
+                            <!-- Detection Result Banner -->
+                            <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-green-500"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-green-800">CSV analyzed successfully!</p>
+                                        <p class="text-sm text-green-600">
+                                            <span class="detection-badge detection-cached mr-2">CACHED</span>
+                                            Nest Bank format • 402 transactions • 85ms
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">Create Your CashFlow</h3>
+                            <p class="text-gray-600 mb-8">We've pre-filled details from your CSV. Please verify and add missing info.</p>
+
+                            <!-- Form -->
+                            <div class="space-y-6">
+                                <!-- CashFlow Name -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">CashFlow Name *</label>
+                                    <input type="text" value="Nest Bank - Main Account"
+                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+
+                                <!-- Bank Info (Pre-filled) -->
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Bank Name
+                                            <span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> Detected</span>
+                                        </label>
+                                        <input type="text" value="Nest Bank" readonly
+                                               class="w-full px-4 py-3 border rounded-lg bg-gray-50 text-gray-600">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Currency
+                                            <span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> Detected</span>
+                                        </label>
+                                        <input type="text" value="PLN" readonly
+                                               class="w-full px-4 py-3 border rounded-lg bg-gray-50 text-gray-600">
+                                    </div>
+                                </div>
+
+                                <!-- Account Number -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Account Number (IBAN) *</label>
+                                    <input type="text" placeholder="PL61 1090 1014 0000 0712 1981 2874"
+                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                    <p class="text-xs text-gray-500 mt-1">Enter your full IBAN number</p>
+                                </div>
+
+                                <!-- Date Range Info -->
+                                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <h4 class="font-medium text-blue-800 mb-2">
+                                        <i class="fas fa-calendar-alt mr-2"></i>
+                                        Transaction Date Range
+                                    </h4>
+                                    <div class="grid grid-cols-3 gap-4 text-sm">
+                                        <div>
+                                            <span class="text-blue-600">First transaction:</span>
+                                            <p class="font-medium text-blue-800">January 13, 2023</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-blue-600">Last transaction:</span>
+                                            <p class="font-medium text-blue-800">December 31, 2025</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-blue-600">Coverage:</span>
+                                            <p class="font-medium text-blue-800">36 months</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Start Period (Pre-filled, critical) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Start Period *
+                                        <span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> Auto-set from CSV</span>
+                                    </label>
+                                    <input type="text" value="2023-01" readonly
+                                           class="w-full px-4 py-3 border rounded-lg bg-green-50 text-green-800 font-medium">
+                                    <p class="text-xs text-green-600 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Set to earliest transaction month. Do not change to avoid losing transactions.
+                                    </p>
+                                </div>
+
+                                <!-- Initial Balance (User must provide!) -->
+                                <div class="p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                                    <label class="block text-sm font-medium text-yellow-800 mb-2">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        Initial Balance (Required) *
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <input type="number" placeholder="5000.00"
+                                               class="flex-1 px-4 py-3 border-2 border-yellow-400 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500">
+                                        <span class="px-4 py-3 bg-gray-100 border rounded-lg text-gray-600">PLN</span>
+                                    </div>
+                                    <p class="text-xs text-yellow-700 mt-2">
+                                        <strong>What was your bank balance on January 1, 2023?</strong><br>
+                                        This is the balance BEFORE the first transaction in your CSV.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex justify-between items-center mt-8 pt-6 border-t">
+                                <button class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    Back
+                                </button>
+                                <button class="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                                    Create CashFlow & Continue
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOBILE Version -->
+            <div class="platform-mobile hidden mt-8">
+                <div class="mobile-frame bg-white shadow-2xl mx-auto">
+                    <div class="bg-black text-white p-2 flex justify-between items-center text-xs">
+                        <span>9:41</span>
+                        <div class="mobile-notch"></div>
+                        <div class="flex items-center gap-1">
+                            <i class="fas fa-signal"></i>
+                            <i class="fas fa-wifi"></i>
+                            <i class="fas fa-battery-full"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-600 text-white px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <button><i class="fas fa-arrow-left"></i></button>
+                            <span class="font-semibold">Create CashFlow</span>
+                            <div class="w-6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Progress -->
+                    <div class="bg-gray-50 px-4 py-3 border-b flex justify-center gap-2">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                    </div>
+
+                    <div class="p-4 h-[500px] overflow-y-auto">
+                        <!-- Success Banner -->
+                        <div class="mb-4 p-3 bg-green-50 rounded-lg flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-500"></i>
+                            <span class="text-sm text-green-700">402 transactions found</span>
+                        </div>
+
+                        <!-- Form Fields -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" value="Nest Bank - Main" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
+                                    <input type="text" value="Nest Bank" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                                    <input type="text" value="PLN" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Start Period</label>
+                                <input type="text" value="2023-01" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-green-50 text-green-800">
+                            </div>
+
+                            <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-300">
+                                <label class="block text-sm font-medium text-yellow-800 mb-1">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    Initial Balance *
+                                </label>
+                                <input type="number" placeholder="5000.00" class="w-full px-3 py-2 border-2 border-yellow-400 rounded-lg text-sm">
+                                <p class="text-xs text-yellow-700 mt-1">Balance on Jan 1, 2023</p>
+                            </div>
+                        </div>
+
+                        <button class="w-full mt-6 py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                            Create & Continue
+                            <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 3: MAP & IMPORT ==================== -->
+        <section id="step3" class="mb-16 step-indicator">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">3</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Map Categories & Import</h2>
+                    <p class="text-gray-600">Map bank categories to your CashFlow, then import transactions</p>
+                </div>
+            </div>
+
+            <!-- Endpoints used in this step -->
+            <div class="bg-gray-100 rounded-lg p-4 mb-6 text-sm">
+                <div class="grid md:grid-cols-2 gap-2">
+                    <div><span class="endpoint-badge method-post">POST</span> <code>/api/v1/bank-data-adapter/{id}/import</code> → staging</div>
+                    <div><span class="endpoint-badge method-get">GET</span> <code>/api/v1/bank-data-ingestion/cf={id}/staging/{sessionId}</code></div>
+                    <div><span class="endpoint-badge method-post">POST</span> <code>/api/v1/bank-data-ingestion/cf={id}/mappings</code></div>
+                    <div><span class="endpoint-badge method-post">POST</span> <code>/api/v1/bank-data-ingestion/cf={id}/import</code></div>
+                </div>
+            </div>
+
+            <!-- WEB Version -->
+            <div class="platform-web">
+                <div class="mockup-frame bg-white">
+                    <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <i class="fas fa-wallet text-2xl"></i>
+                            <span class="text-xl font-semibold">Vidulum</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="bg-gray-50 px-6 py-4 border-b">
+                        <div class="flex items-center justify-between max-w-2xl mx-auto">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <span class="ml-3 text-green-600">Upload CSV</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-green-500 mx-6"></div>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <span class="ml-3 text-green-600">Create CashFlow</span>
+                            </div>
+                            <div class="flex-1 h-1 bg-green-500 mx-6"></div>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                                <span class="ml-3 font-medium text-green-600">Map & Import</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-8">
+                        <div class="max-w-3xl mx-auto">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">Map Bank Categories</h3>
+                            <p class="text-gray-600 mb-6">Tell us how to categorize each type of bank transaction</p>
+
+                            <!-- Category Mapping Table -->
+                            <div class="border rounded-lg overflow-hidden mb-8">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Bank Category</th>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Count</th>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Type</th>
+                                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Map To</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y">
+                                        <tr>
+                                            <td class="px-4 py-3 font-medium">Przelewy wychodzące</td>
+                                            <td class="px-4 py-3 text-gray-600">334</td>
+                                            <td class="px-4 py-3">
+                                                <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <select class="w-full px-3 py-2 border rounded-lg text-sm">
+                                                    <option>+ Create: "Outgoing Transfers"</option>
+                                                    <option>Skip these transactions</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-3 font-medium">Przelewy przychodzące</td>
+                                            <td class="px-4 py-3 text-gray-600">52</td>
+                                            <td class="px-4 py-3">
+                                                <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">INFLOW</span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <select class="w-full px-3 py-2 border rounded-lg text-sm">
+                                                    <option>+ Create: "Income"</option>
+                                                    <option>Skip these transactions</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-medium">Opłaty i prowizje</td>
+                                            <td class="px-4 py-3 text-gray-600">15</td>
+                                            <td class="px-4 py-3">
+                                                <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <select class="w-full px-3 py-2 border rounded-lg text-sm">
+                                                    <option>+ Create: "Bank Fees"</option>
+                                                    <option>Skip these transactions</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-3 font-medium">Płatności kartą</td>
+                                            <td class="px-4 py-3 text-gray-600">1</td>
+                                            <td class="px-4 py-3">
+                                                <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">OUTFLOW</span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <select class="w-full px-3 py-2 border rounded-lg text-sm">
+                                                    <option>+ Create: "Card Payments"</option>
+                                                    <option>Skip these transactions</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Summary -->
+                            <div class="grid md:grid-cols-3 gap-4 mb-8">
+                                <div class="bg-blue-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl font-bold text-blue-600">402</div>
+                                    <div class="text-sm text-gray-600">Total Transactions</div>
+                                </div>
+                                <div class="bg-green-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl font-bold text-green-600">4</div>
+                                    <div class="text-sm text-gray-600">Categories to Create</div>
+                                </div>
+                                <div class="bg-purple-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl font-bold text-purple-600">36</div>
+                                    <div class="text-sm text-gray-600">Months of Data</div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex justify-between items-center pt-6 border-t">
+                                <button class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    Back
+                                </button>
+                                <button class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Import 402 Transactions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success State -->
+                <div class="mockup-frame bg-white mt-8">
+                    <div class="bg-green-600 text-white px-6 py-4">
+                        <span class="font-semibold"><i class="fas fa-check-circle mr-2"></i>Import Complete!</span>
+                    </div>
+                    <div class="p-8 text-center">
+                        <div class="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
+                            <i class="fas fa-check-circle text-5xl text-green-500"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Successfully Imported!</h3>
+                        <p class="text-gray-600 mb-6">Your transactions have been imported to your CashFlow</p>
+
+                        <div class="grid md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-8">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="text-2xl font-bold text-green-600">402</div>
+                                <div class="text-xs text-gray-500">Transactions</div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="text-2xl font-bold text-blue-600">4</div>
+                                <div class="text-xs text-gray-500">Categories Created</div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="text-2xl font-bold text-purple-600">0</div>
+                                <div class="text-xs text-gray-500">Errors</div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="text-2xl font-bold text-indigo-600">2.3s</div>
+                                <div class="text-xs text-gray-500">Import Time</div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center gap-4">
+                            <button class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Import More Data
+                            </button>
+                            <button class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                Go to CashFlow Dashboard
+                                <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOBILE Version -->
+            <div class="platform-mobile hidden mt-8">
+                <div class="mobile-frame bg-white shadow-2xl mx-auto">
+                    <div class="bg-black text-white p-2 flex justify-between items-center text-xs">
+                        <span>9:41</span>
+                        <div class="mobile-notch"></div>
+                        <div class="flex items-center gap-1">
+                            <i class="fas fa-signal"></i>
+                            <i class="fas fa-wifi"></i>
+                            <i class="fas fa-battery-full"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-600 text-white px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <button><i class="fas fa-arrow-left"></i></button>
+                            <span class="font-semibold">Map Categories</span>
+                            <div class="w-6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Progress -->
+                    <div class="bg-gray-50 px-4 py-3 border-b flex justify-center gap-2">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+
+                    <div class="p-4 h-[500px] overflow-y-auto">
+                        <p class="text-sm text-gray-600 mb-4">Map 4 bank categories:</p>
+
+                        <!-- Category Cards -->
+                        <div class="space-y-3 mb-6">
+                            <div class="border rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-medium text-sm">Przelewy wychodzące</span>
+                                    <span class="text-xs text-gray-500">334</span>
+                                </div>
+                                <select class="w-full px-2 py-1 border rounded text-sm">
+                                    <option>+ Create: Outgoing Transfers</option>
+                                </select>
+                            </div>
+                            <div class="border rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-medium text-sm">Przelewy przychodzące</span>
+                                    <span class="text-xs text-gray-500">52</span>
+                                </div>
+                                <select class="w-full px-2 py-1 border rounded text-sm">
+                                    <option>+ Create: Income</option>
+                                </select>
+                            </div>
+                            <div class="border rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-medium text-sm">Opłaty i prowizje</span>
+                                    <span class="text-xs text-gray-500">15</span>
+                                </div>
+                                <select class="w-full px-2 py-1 border rounded text-sm">
+                                    <option>+ Create: Bank Fees</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="w-full py-3 bg-green-600 text-white rounded-lg font-medium">
+                            <i class="fas fa-download mr-2"></i>
+                            Import 402 Transactions
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ERROR SCENARIOS ==================== -->
+        <section id="errors" class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
+                    <i class="fas fa-exclamation"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Error Scenarios</h2>
+                    <p class="text-gray-600">Common errors and how to handle them</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- AI Service Unavailable -->
+                <div class="mockup-frame bg-white">
+                    <div class="bg-gray-600 text-white px-4 py-2 text-sm">
+                        HTTP 503 - AI Service Unavailable
+                    </div>
+                    <div class="p-6 text-center">
+                        <div class="w-14 h-14 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-server text-2xl text-gray-500"></i>
+                        </div>
+                        <h4 class="font-bold text-gray-800 mb-2">AI Service Temporarily Unavailable</h4>
+                        <p class="text-sm text-gray-600 mb-4">Please try again in a few moments.</p>
+                        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">
+                            <i class="fas fa-redo mr-2"></i>Retry
+                        </button>
+                    </div>
+                </div>
+
+                <!-- File Too Large -->
+                <div class="mockup-frame bg-white">
+                    <div class="bg-red-600 text-white px-4 py-2 text-sm">
+                        HTTP 400 - File Too Large
+                    </div>
+                    <div class="p-6 text-center">
+                        <div class="w-14 h-14 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-weight-hanging text-2xl text-red-500"></i>
+                        </div>
+                        <h4 class="font-bold text-gray-800 mb-2">File Too Large (6.2MB)</h4>
+                        <p class="text-sm text-gray-600 mb-4">Maximum allowed: 5MB</p>
+                        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">
+                            Choose Smaller File
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Unrecognized Format -->
+                <div class="mockup-frame bg-white">
+                    <div class="bg-yellow-600 text-white px-4 py-2 text-sm">
+                        HTTP 400 - Unrecognized Format
+                    </div>
+                    <div class="p-6 text-center">
+                        <div class="w-14 h-14 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-question-circle text-2xl text-yellow-500"></i>
+                        </div>
+                        <h4 class="font-bold text-gray-800 mb-2">Could Not Recognize Format</h4>
+                        <p class="text-sm text-gray-600 mb-4">AI couldn't identify the bank or structure.</p>
+                        <div class="flex gap-2 justify-center">
+                            <button class="px-4 py-2 border rounded-lg text-sm">Try Different File</button>
+                            <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Use Canonical Format</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duplicate File -->
+                <div class="mockup-frame bg-white">
+                    <div class="bg-blue-600 text-white px-4 py-2 text-sm">
+                        HTTP 409 - Duplicate File
+                    </div>
+                    <div class="p-6 text-center">
+                        <div class="w-14 h-14 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-copy text-2xl text-blue-500"></i>
+                        </div>
+                        <h4 class="font-bold text-gray-800 mb-2">File Already Processed</h4>
+                        <p class="text-sm text-gray-600 mb-4">This exact file was uploaded before.</p>
+                        <div class="flex gap-2 justify-center">
+                            <button class="px-4 py-2 border rounded-lg text-sm">View Previous</button>
+                            <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Choose Different</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-8 text-gray-500 border-t">
+            <p>Unified CSV Import Flow - UI Mockups</p>
+            <p class="text-sm mt-2">Vidulum CashFlow © 2026</p>
+        </footer>
+    </div>
+
+    <script>
+        function switchPlatform(platform) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if ((platform === 'web' && btn.textContent.includes('Web')) ||
+                    (platform === 'mobile' && btn.textContent.includes('Mobile'))) {
+                    btn.classList.add('active');
+                }
+            });
+
+            document.querySelectorAll('.platform-web').forEach(el => {
+                el.classList.toggle('hidden', platform !== 'web');
+            });
+            document.querySelectorAll('.platform-mobile').forEach(el => {
+                el.classList.toggle('hidden', platform !== 'mobile');
+            });
+        }
+    </script>
+</body>
+</html>

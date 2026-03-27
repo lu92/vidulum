@@ -92,6 +92,9 @@ public class AiCsvTransformationDocument {
     @Indexed
     private String bankIdentifier;                  // Bank format identifier for cache lookup
 
+    // ========== DETECTION RESULT ==========
+    private DetectionResult detectionResult;        // CANONICAL, CACHED, AI_TRANSFORMED
+
     // ========== DATE RANGE STATISTICS ==========
     private LocalDate minTransactionDate;           // Earliest transaction date in CSV
     private LocalDate maxTransactionDate;           // Latest transaction date in CSV
