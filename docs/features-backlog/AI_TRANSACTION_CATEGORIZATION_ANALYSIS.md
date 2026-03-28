@@ -1851,6 +1851,761 @@ Categorize these transaction patterns:
 
 ---
 
+## Architecture Integration Diagram
+
+This section shows exactly where AI categorization integrates with the existing Vidulum codebase.
+
+### Current Flow (Without AI)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         OBECNY FLOW IMPORTU                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┐     ┌──────────────────┐     ┌────────────────────────────┐
+│                 │     │                  │     │                            │
+│   CSV File      │────▶│ UnifiedCsv       │────▶│ AiBankCsvTransformService  │
+│   (Bank Export) │     │ ImportController │     │ (Format transformation)    │
+│                 │     │                  │     │                            │
+└─────────────────┘     └──────────────────┘     └────────────────────────────┘
+                                                              │
+                        ┌─────────────────────────────────────┘
+                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  AiCsvTransformationDocument                                                 │
+│  ├── transformationId                                                        │
+│  ├── detectedBank: "Nest Bank"                                               │
+│  ├── transformedCsvContent (BankCsvRow format)                              │
+│  ├── bankCategories: ["Przelewy wychodzące", "Opłaty i prowizje", ...]      │
+│  └── suggestedStartPeriod: "2023-01"                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  POST /api/v1/bank-data-ingestion/cf={cashFlowId}/staging                   │
+│                                                                              │
+│  StageTransactionsCommandHandler                                            │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  For each transaction:                                                  │ │
+│  │                                                                         │ │
+│  │  1. Load CategoryMapping for (bankCategory, type)                      │ │
+│  │                                                                         │ │
+│  │  2. IF mapping exists:                                                  │ │
+│  │     └── Create MappedTransactionData                                   │ │
+│  │         ├── categoryName: "Mieszkanie"                                 │ │
+│  │         ├── parentCategoryName: null (lub "Dom")                       │ │
+│  │         └── validation: VALID                                          │ │
+│  │                                                                         │ │
+│  │  3. IF mapping NOT exists:                        ◄── PROBLEM!         │ │
+│  │     └── validation: PENDING_MAPPING                                    │ │
+│  │         └── User musi ręcznie zmapować                                 │ │
+│  │                                                                         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  StageTransactionsResult                                                     │
+│  ├── status: HAS_UNMAPPED_CATEGORIES | READY_FOR_IMPORT                     │
+│  ├── unmappedCategories: [                                                  │
+│  │     { bankCategory: "Przelewy wychodzące", count: 180, type: OUTFLOW }   │
+│  │   ]                                                                       │
+│  └── User musi ręcznie skonfigurować mappings!                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Proposed Flow (With AI)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      NOWY FLOW Z AI KATEGORYZACJĄ                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┐     ┌──────────────────┐     ┌────────────────────────────┐
+│   CSV File      │────▶│ UnifiedCsv       │────▶│ AiBankCsvTransformService  │
+│   (Bank Export) │     │ ImportController │     │ (bez zmian)                │
+└─────────────────┘     └──────────────────┘     └────────────────────────────┘
+                                                              │
+                        ┌─────────────────────────────────────┘
+                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  POST /api/v1/bank-data-ingestion/cf={cashFlowId}/staging                   │
+│                                                                              │
+│  StageTransactionsCommandHandler (ZMODYFIKOWANY)                            │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                         │ │
+│  │  1. Load CategoryMappings (existing)                                   │ │
+│  │  2. Load PatternMappings (NEW - cached AI/user mappings)               │ │
+│  │  3. Load GlobalPatterns (NEW - system-wide known patterns)             │ │
+│  │                                                                         │ │
+│  │  For each transaction:                                                  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐   │ │
+│  │  │                                                                 │   │ │
+│  │  │  CHECK 1: CategoryMapping exists?                               │   │ │
+│  │  │  └── YES → Use mapping (existing behavior)                      │   │ │
+│  │  │                                                                 │   │ │
+│  │  │  CHECK 2: PatternMapping in cache? (NEW)                        │   │ │
+│  │  │  └── YES → Use cached pattern (FREE, instant)                   │   │ │
+│  │  │      └── Source: USER_CONFIRMED | AI_CONFIRMED                  │   │ │
+│  │  │                                                                 │   │ │
+│  │  │  CHECK 3: GlobalPattern match? (NEW)                            │   │ │
+│  │  │  └── YES → Use global pattern (FREE, instant)                   │   │ │
+│  │  │      └── "BIEDRONKA" → "Zakupy spożywcze"                       │   │ │
+│  │  │      └── "ZUS" → "Składki ZUS"                                  │   │ │
+│  │  │                                                                 │   │ │
+│  │  │  CHECK 4: None above → Mark for AI batch (NEW)                  │   │ │
+│  │  │  └── Collect in uncategorizedBatch                              │   │ │
+│  │  │                                                                 │   │ │
+│  │  └─────────────────────────────────────────────────────────────────┘   │ │
+│  │                                                                         │ │
+│  │  AFTER LOOP: Process uncategorizedBatch with AI (NEW)                  │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐   │ │
+│  │  │                                                                 │   │ │
+│  │  │  1. Deduplicate patterns (402 txn → 45 patterns)               │   │ │
+│  │  │  2. Call AiCategorizationService.categorizeBatch()             │   │ │
+│  │  │  3. Apply suggestions to StagedTransactions                    │   │ │
+│  │  │                                                                 │   │ │
+│  │  └─────────────────────────────────────────────────────────────────┘   │ │
+│  │                                                                         │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  StageTransactionsResult (EXTENDED)                                          │
+│  ├── status: READY_FOR_IMPORT | HAS_LOW_CONFIDENCE_SUGGESTIONS              │
+│  ├── aiSuggestions: [                                                        │
+│  │     {                                                                     │
+│  │       pattern: "MINDBOX",                                                 │
+│  │       suggestedCategory: "Wynagrodzenie",                                │
+│  │       parentCategory: null,                                               │
+│  │       confidence: 85,                                                     │
+│  │       reasoning: "Regular monthly payment from company",                  │
+│  │       transactionCount: 12,                                               │
+│  │       status: SUGGEST (50-89%)                                           │
+│  │     },                                                                    │
+│  │     {                                                                     │
+│  │       pattern: "BIEDRONKA",                                               │
+│  │       suggestedCategory: "Zakupy spożywcze",                             │
+│  │       parentCategory: "Jedzenie",                                         │
+│  │       confidence: 99,                                                     │
+│  │       status: AUTO_ACCEPT (≥90%)                                         │
+│  │     }                                                                     │
+│  │   ]                                                                       │
+│  ├── autoAcceptedCount: 285 (71%)                                           │
+│  ├── suggestionsToReview: 95 (24%)                                          │
+│  └── manualRequired: 22 (5%)                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### New Module Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ai_categorization module (NEW)                                              │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  domain/                                                            │    │
+│  │  ├── PatternMapping.java (MongoDB document)                        │    │
+│  │  │   ├── id: String                                                │    │
+│  │  │   ├── userId: String                                            │    │
+│  │  │   ├── cashFlowId: String (nullable = global)                    │    │
+│  │  │   ├── normalizedPattern: String ("BIEDRONKA")                   │    │
+│  │  │   ├── categoryName: String                                      │    │
+│  │  │   ├── parentCategoryName: String (nullable)                     │    │
+│  │  │   ├── source: USER_CONFIRMED | AI_CONFIRMED | GLOBAL            │    │
+│  │  │   ├── confidence: int (100 for user-confirmed)                  │    │
+│  │  │   └── timesUsed: int                                            │    │
+│  │  │                                                                  │    │
+│  │  ├── AiCategorySuggestion.java                                     │    │
+│  │  │   ├── pattern: String                                           │    │
+│  │  │   ├── category: String                                          │    │
+│  │  │   ├── parentCategory: String                                    │    │
+│  │  │   ├── confidence: int (0-100)                                   │    │
+│  │  │   ├── reasoning: String                                         │    │
+│  │  │   └── resultType: AUTO_ACCEPT | SUGGEST | MANUAL_REQUIRED       │    │
+│  │  │                                                                  │    │
+│  │  └── GlobalPattern.java (seed data)                                │    │
+│  │      ├── Polish grocery chains: BIEDRONKA, LIDL, ŻABKA, etc.      │    │
+│  │      ├── Gas stations: ORLEN, BP, SHELL                            │    │
+│  │      ├── Streaming: NETFLIX, SPOTIFY, HBO, DISNEY+                 │    │
+│  │      └── Government: ZUS, URZĄD SKARBOWY                           │    │
+│  │                                                                     │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  app/                                                               │    │
+│  │  ├── TransactionNameNormalizer.java                                │    │
+│  │  │   └── normalize("BIEDRONKA WARSZAWA UL.X 123") → "BIEDRONKA"    │    │
+│  │  │                                                                  │    │
+│  │  ├── PatternDeduplicator.java                                      │    │
+│  │  │   └── deduplicate(402 txn) → 45 unique patterns                 │    │
+│  │  │                                                                  │    │
+│  │  ├── AiCategorizationService.java                                  │    │
+│  │  │   ├── categorizeBatch(patterns, userCategories) → suggestions  │    │
+│  │  │   └── Uses: OpenAI GPT-4o-mini / Claude Haiku                  │    │
+│  │  │                                                                  │    │
+│  │  └── PatternMappingService.java                                    │    │
+│  │      ├── findCachedMapping(pattern, cashFlowId)                    │    │
+│  │      ├── saveConfirmedSuggestion(suggestion, userId)               │    │
+│  │      └── saveUserMapping(pattern, category, userId)                │    │
+│  │                                                                     │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  infrastructure/                                                    │    │
+│  │  ├── PatternMappingRepository.java (MongoDB)                       │    │
+│  │  ├── LlmClient.java (OpenAI/Claude API client)                     │    │
+│  │  └── CategorizationPromptBuilder.java                              │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Nested Categories - Where AI Inserts Categories
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CashFlow.inflowCategories / outflowCategories (NESTED STRUCTURE)           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+outflowCategories: List<Category>
+│
+├── "Uncategorized" (SYSTEM, isModifiable=false)
+│   └── subCategories: []
+│
+├── "Mieszkanie" (USER_CREATED or AI_SUGGESTED)        ◄── AI może stworzyć
+│   └── subCategories:
+│       ├── "Czynsz"                                   ◄── lub jako subcategory
+│       ├── "Media"
+│       └── "Ubezpieczenie"
+│
+├── "Transport" (USER_CREATED or AI_SUGGESTED)
+│   └── subCategories:
+│       ├── "Paliwo"                                   ◄── AI: ORLEN → tu
+│       ├── "Komunikacja miejska"
+│       └── "Serwis samochodu"
+│
+├── "Jedzenie" (USER_CREATED or AI_SUGGESTED)
+│   └── subCategories:
+│       ├── "Zakupy spożywcze"                         ◄── AI: BIEDRONKA → tu
+│       ├── "Restauracje"
+│       └── "Kawiarnie"
+│
+└── "Opłaty" (USER_CREATED or AI_SUGGESTED)
+    └── subCategories:
+        ├── "Składki ZUS"                              ◄── AI: ZUS → tu
+        ├── "Podatki"                                  ◄── AI: URZĄD SKARBOWY → tu
+        └── "Bankowe"                                  ◄── AI: PROWIZJA → tu
+
+
+inflowCategories: List<Category>
+│
+├── "Uncategorized" (SYSTEM)
+│
+├── "Wynagrodzenie" (USER_CREATED or AI_SUGGESTED)
+│   └── subCategories:
+│       ├── "Pensja"                                   ◄── AI: MINDBOX → tu
+│       └── "Premie"
+│
+└── "Inne przychody"
+    └── subCategories:
+        ├── "Zwroty"
+        └── "Odsetki"
+```
+
+### Key Integration Point
+
+**File**: `src/main/java/com/multi/vidulum/bank_data_ingestion/app/commands/stage_transactions/StageTransactionsCommandHandler.java`
+
+**Location**: Lines 136-175 (processTransaction method)
+
+```java
+// CURRENT CODE (line 140-151):
+if (mapping == null) {
+    return StagedTransaction.create(
+        cashFlowId,
+        stagingSessionId,
+        originalData,
+        null, // no mapped data yet
+        TransactionValidation.pendingMapping(txn.bankCategory()),
+        now,
+        config.getStagingTtlHours()
+    );
+}
+
+// NEW CODE (replace above):
+if (mapping == null) {
+    // CHECK 2: Pattern cache (user confirmed or AI confirmed)
+    String normalizedName = normalizer.normalize(txn.name());
+    Optional<PatternMapping> cachedPattern = patternMappingService
+        .findCachedMapping(normalizedName, cashFlowId);
+
+    if (cachedPattern.isPresent()) {
+        return createFromCachedPattern(cachedPattern.get(), ...);  // FREE
+    }
+
+    // CHECK 3: Global patterns (system-wide known patterns)
+    Optional<PatternMapping> globalPattern = patternMappingService
+        .findGlobalPattern(normalizedName);
+
+    if (globalPattern.isPresent()) {
+        return createFromGlobalPattern(globalPattern.get(), ...);  // FREE
+    }
+
+    // CHECK 4: None found - add to AI batch
+    forAiBatch.add(new TransactionForAi(txn, normalizedName));
+
+    return StagedTransaction.create(
+        ...,
+        null,
+        TransactionValidation.pendingAiCategorization(),  // NEW status
+        ...
+    );
+}
+```
+
+### New REST Endpoints
+
+```
+NEW ENDPOINTS:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ POST /api/v1/bank-data-ingestion/cf={cashFlowId}/staging/{sessionId}/       │
+│      accept-ai-suggestions                                                   │
+│                                                                              │
+│ Request:                                                                     │
+│ {                                                                            │
+│   "acceptedPatterns": [                                                      │
+│     { "pattern": "MINDBOX", "category": "Wynagrodzenie", "accepted": true }, │
+│     { "pattern": "ZYCIE", "category": "Oszczędności", "accepted": true },   │
+│     { "pattern": "XYZ", "accepted": false }  // rejected - manual later     │
+│   ]                                                                          │
+│ }                                                                            │
+│                                                                              │
+│ Action:                                                                      │
+│ 1. For accepted: Save to PatternMapping cache (for future imports)          │
+│ 2. For accepted: Create CategoryMapping (for this import)                   │
+│ 3. Trigger revalidation                                                      │
+│                                                                              │
+│ Response:                                                                    │
+│ {                                                                            │
+│   "acceptedCount": 2,                                                        │
+│   "rejectedCount": 1,                                                        │
+│   "savedToCache": 2,                                                         │
+│   "revalidationTriggered": true                                              │
+│ }                                                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ GET /api/v1/categorization/patterns?cashFlowId={id}                         │
+│                                                                              │
+│ Returns user's cached patterns for review/editing                           │
+│                                                                              │
+│ Response:                                                                    │
+│ {                                                                            │
+│   "patterns": [                                                              │
+│     { "pattern": "BIEDRONKA", "category": "Zakupy spożywcze",              │
+│       "source": "GLOBAL", "timesUsed": 45 },                                │
+│     { "pattern": "MINDBOX", "category": "Wynagrodzenie",                    │
+│       "source": "AI_CONFIRMED", "timesUsed": 12 }                           │
+│   ]                                                                          │
+│ }                                                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### MongoDB Collection
+
+```
+Collection: pattern_mappings
+
+{
+  "_id": "pm_12345",
+  "userId": "user_abc",
+  "cashFlowId": "cf_xyz",        // null = global pattern
+  "normalizedPattern": "BIEDRONKA",
+  "categoryName": "Zakupy spożywcze",
+  "parentCategoryName": "Jedzenie",
+  "categoryType": "OUTFLOW",
+  "source": "USER_CONFIRMED",    // USER_CONFIRMED | AI_CONFIRMED | GLOBAL
+  "confidence": 100,
+  "timesUsed": 45,
+  "created": ISODate("2026-03-01"),
+  "lastUsed": ISODate("2026-03-28")
+}
+
+Indexes:
+- (userId, cashFlowId, normalizedPattern) - unique
+- (normalizedPattern, source) - for global pattern lookup
+- (userId, lastUsed) - for cache cleanup
+```
+
+### Integration Priority Matrix
+
+| Location | What to Add | Priority | Effort |
+|----------|-------------|----------|--------|
+| `StageTransactionsCommandHandler` (line 141) | Pattern cache lookup + AI batch | **CRITICAL** | Medium |
+| New module `ai_categorization` | All new services | **HIGH** | High |
+| `StagedTransaction` | Add `aiSuggestion` field | **HIGH** | Low |
+| `TransactionValidation` | Add `PENDING_AI` status | **MEDIUM** | Low |
+| `StageTransactionsResult` | Add `aiSuggestions` list | **MEDIUM** | Low |
+| REST endpoint | `accept-ai-suggestions` | **MEDIUM** | Medium |
+| MongoDB | Collection `pattern_mappings` | **HIGH** | Low |
+| Global patterns seed | Initial data for known patterns | **LOW** | Low |
+
+### Configuration
+
+```yaml
+# application.yml
+vidulum:
+  ai-categorization:
+    enabled: true
+    provider: openai  # or claude
+    batch-size: 50
+    timeout-seconds: 30
+
+    thresholds:
+      auto-accept: 90      # confidence >= 90% → auto-apply
+      suggest: 50          # confidence 50-89% → show to user
+      # confidence < 50% → manual required
+
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      model: gpt-4o-mini
+
+    claude:
+      api-key: ${ANTHROPIC_API_KEY}
+      model: claude-3-5-haiku-20241022
+```
+
+---
+
+## Alternative: AI Categorization WITHOUT Modifying Staging Handler
+
+This section describes an alternative architecture where the **existing staging handler remains completely unchanged**. AI categorization is implemented as a separate, optional step called AFTER staging.
+
+### Why Keep Staging Unchanged?
+
+| Benefit | Description |
+|---------|-------------|
+| **Zero risk** | No changes to working production code |
+| **Backward compatible** | Old flow works exactly as before |
+| **Opt-in** | Users can choose whether to use AI |
+| **Testable** | AI logic isolated in new handler |
+| **Rollback safe** | Disable AI without touching staging |
+
+### Architecture: POST-STAGING AI Step
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    FLOW BEZ MODYFIKACJI STAGING                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. POST /staging                    ← BEZ ZMIAN, staging jak dotychczas     │
+│         │                                                                    │
+│         ▼                                                                    │
+│  ┌──────────────────┐                                                        │
+│  │ StagedTransactions│  status: PENDING_MAPPING (brak kategorii)             │
+│  │ w MongoDB         │                                                       │
+│  └────────┬─────────┘                                                        │
+│           │                                                                  │
+│           ▼                                                                  │
+│  2. POST /ai-categorize/{sessionId}  ← NOWY ENDPOINT (opcjonalny)            │
+│         │                                                                    │
+│         │  • Odczytuje staged transactions                                   │
+│         │  • Normalizuje nazwy transakcji                                    │
+│         │  • Sprawdza cache (PatternMapping, GlobalPatterns)                 │
+│         │  • Wysyła nowe wzorce do AI (batch)                                │
+│         │  • Zapisuje sugestie do StagedTransaction.aiSuggestion             │
+│         │                                                                    │
+│         ▼                                                                    │
+│  ┌──────────────────┐                                                        │
+│  │ StagedTransactions│  status: AI_SUGGESTED + aiSuggestion field            │
+│  │ (zaktualizowane)  │                                                       │
+│  └────────┬─────────┘                                                        │
+│           │                                                                  │
+│           ▼                                                                  │
+│  3. POST /accept-suggestions         ← USER POTWIERDZA/MODYFIKUJE            │
+│         │                                                                    │
+│         │  • Zapisuje do PatternMapping cache (na przyszłość)                │
+│         │  • Aktualizuje StagedTransaction z finalnymi kategoriami           │
+│         │                                                                    │
+│         ▼                                                                    │
+│  4. POST /import                     ← BEZ ZMIAN, import jak dotychczas      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### New Endpoint: AI Categorize
+
+```java
+// BankDataIngestionRestController.java - NOWY ENDPOINT
+
+@PostMapping("/cf={cashFlowId}/staging/{sessionId}/ai-categorize")
+public AiCategorizationResultDto aiCategorize(
+    @PathVariable CashFlowId cashFlowId,
+    @PathVariable UUID sessionId) {
+
+    return commandGateway.send(new AiCategorizeTransactionsCommand(
+        cashFlowId,
+        sessionId
+    ));
+}
+```
+
+### New Command Handler (Separate File)
+
+```java
+// AiCategorizeTransactionsCommandHandler.java - NOWY PLIK
+// Nie modyfikuje StageTransactionsCommandHandler!
+
+@CommandHandlerAnnotation
+@RequiredArgsConstructor
+public class AiCategorizeTransactionsCommandHandler {
+
+    private final StagedTransactionRepository stagedRepo;
+    private final PatternMappingRepository patternRepo;
+    private final GlobalPatternRepository globalRepo;
+    private final AiCategorizationService aiService;
+    private final TransactionNameNormalizer normalizer;
+
+    public AiCategorizationResultDto handle(AiCategorizeTransactionsCommand cmd) {
+
+        // 1. Pobierz staged transactions (READ-ONLY)
+        List<StagedTransaction> staged = stagedRepo.findBySessionId(cmd.sessionId());
+
+        // 2. Zbuduj listę do kategoryzacji
+        List<TransactionForCategorization> forCategorization = staged.stream()
+            .filter(s -> s.needsCategorization())
+            .map(s -> new TransactionForCategorization(
+                s.getId(),
+                normalizer.normalize(s.getName()),
+                s.getCounterparty(),
+                s.getType()
+            ))
+            .toList();
+
+        // 3. Kategoryzuj (cache-first, AI-fallback)
+        List<AiSuggestion> suggestions = categorize(forCategorization);
+
+        // 4. Zapisz sugestie do StagedTransaction (UPDATE tylko aiSuggestion pole)
+        for (AiSuggestion suggestion : suggestions) {
+            StagedTransaction txn = stagedRepo.findById(suggestion.transactionId());
+            txn.setAiSuggestion(suggestion);  // Nowe pole
+            stagedRepo.save(txn);
+        }
+
+        // 5. Zwróć podsumowanie
+        return new AiCategorizationResultDto(
+            suggestions.stream().filter(s -> s.confidence() >= 90).count(),  // auto-accept
+            suggestions.stream().filter(s -> s.confidence() >= 50 && s.confidence() < 90).count(),  // suggest
+            suggestions.stream().filter(s -> s.confidence() < 50).count()  // manual required
+        );
+    }
+
+    private List<AiSuggestion> categorize(List<TransactionForCategorization> transactions) {
+        List<AiSuggestion> results = new ArrayList<>();
+        List<TransactionForCategorization> forAi = new ArrayList<>();
+
+        for (TransactionForCategorization txn : transactions) {
+            // CHECK 1: User's cached mapping (100% confidence)
+            Optional<PatternMapping> cached = patternRepo.findByPattern(txn.normalizedName());
+            if (cached.isPresent()) {
+                results.add(AiSuggestion.fromCache(txn.id(), cached.get()));
+                continue;
+            }
+
+            // CHECK 2: Global pattern (90% confidence)
+            Optional<GlobalPattern> global = globalRepo.findByPattern(txn.normalizedName());
+            if (global.isPresent()) {
+                results.add(AiSuggestion.fromGlobal(txn.id(), global.get()));
+                continue;
+            }
+
+            // CHECK 3: Need AI
+            forAi.add(txn);
+        }
+
+        // Batch AI call for remaining
+        if (!forAi.isEmpty()) {
+            results.addAll(aiService.categorizeBatch(forAi));
+        }
+
+        return results;
+    }
+}
+```
+
+### Minimal Change to StagedTransaction
+
+```java
+// StagedTransaction.java - TYLKO dodanie nowego pola
+
+public class StagedTransaction {
+    // ... existing fields (bez zmian) ...
+
+    // NOWE POLE (nullable)
+    private AiSuggestion aiSuggestion;
+
+    @Data
+    public static class AiSuggestion {
+        String suggestedCategory;
+        String suggestedSubCategory;  // nullable
+        int confidence;               // 0-100
+        String source;                // "GLOBAL", "PATTERN_CACHE", "AI"
+        String reasoning;             // AI explanation
+    }
+
+    public boolean needsCategorization() {
+        return this.mappedData == null || this.mappedData.getCategoryName() == null;
+    }
+}
+```
+
+### UI Flow with POST-STAGING AI
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          UI FLOW (FRONTEND)                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  STEP 1: User uploads CSV                                                    │
+│  ───────────────────────────────────────────────────────────────────────────│
+│  POST /csv-import/upload                                                     │
+│  ───────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  STEP 2: System creates staging session                                      │
+│  ───────────────────────────────────────────────────────────────────────────│
+│  POST /staging (automatically or manually)                                   │
+│  Returns: { sessionId, hasUnmappedCategories: true }                        │
+│  ───────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  STEP 3: UI shows option                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                       │  │
+│  │  📋 Staging session utworzona                                         │  │
+│  │                                                                       │  │
+│  │  Masz 180 transakcji bez kategorii.                                   │  │
+│  │                                                                       │  │
+│  │  Jak chcesz je skategoryzować?                                        │  │
+│  │                                                                       │  │
+│  │  [🤖 Użyj AI (zalecane)]     [📝 Mapuj ręcznie]                       │  │
+│  │                                                                       │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  IF USER CLICKS "Użyj AI":                                                   │
+│  ───────────────────────────────────────────────────────────────────────────│
+│  POST /ai-categorize/{sessionId}                                             │
+│  [Loading: "AI kategoryzuje transakcje..."]                                  │
+│                                                                              │
+│  Returns:                                                                    │
+│  {                                                                           │
+│    autoAccepted: 145,    // ≥90% confidence                                 │
+│    suggestions: 25,       // 50-89% confidence                              │
+│    manualRequired: 10     // <50% confidence                                │
+│  }                                                                           │
+│  ───────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  STEP 4: Show AI results                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                       │  │
+│  │  🤖 AI Categorization Results                                         │  │
+│  │                                                                       │  │
+│  │  ✅ Auto-accepted (≥90% pewności): 145 transakcji                    │  │
+│  │     Te transakcje zostały automatycznie skategoryzowane               │  │
+│  │                                                                       │  │
+│  │  ⚠️ Do potwierdzenia (50-89% pewności): 25 transakcji                │  │
+│  │     [Przejrzyj sugestie]                                              │  │
+│  │                                                                       │  │
+│  │  ❓ Wymagają ręcznej kategoryzacji (<50%): 10 transakcji              │  │
+│  │     [Kategoryzuj ręcznie]                                             │  │
+│  │                                                                       │  │
+│  │  [Kontynuuj import]                                                   │  │
+│  │                                                                       │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  IF USER CLICKS "Mapuj ręcznie":                                             │
+│  ───────────────────────────────────────────────────────────────────────────│
+│  → Stary flow: POST /mappings (bez zmian)                                   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Benefits Summary
+
+| Aspect | Benefit |
+|--------|---------|
+| **StageTransactionsCommandHandler** | ZERO ZMIAN |
+| **RevalidateCommandHandler** | ZERO ZMIAN |
+| **ImportCommandHandler** | ZERO ZMIAN |
+| **Backward compatibility** | 100% - stary flow działa bez AI |
+| **Testowanie** | Łatwe mockowanie AI serwisu |
+| **Opt-in** | User może pominąć AI i mapować ręcznie |
+| **Rollback** | Wyłączenie AI nie wymaga zmian w staging |
+| **Debugowanie** | AI logic izolowana w osobnym handlerze |
+
+### Files to Create (No Modifications to Existing)
+
+```
+NEW FILES:
+├── app/commands/ai_categorize/
+│   ├── AiCategorizeTransactionsCommand.java
+│   └── AiCategorizeTransactionsCommandHandler.java
+│
+├── app/commands/accept_suggestions/
+│   ├── AcceptAiSuggestionsCommand.java
+│   └── AcceptAiSuggestionsCommandHandler.java
+│
+├── domain/
+│   ├── AiSuggestion.java (embedded in StagedTransaction)
+│   ├── PatternMapping.java (MongoDB document)
+│   └── GlobalPattern.java (MongoDB document)
+│
+├── infrastructure/
+│   ├── PatternMappingRepository.java
+│   └── GlobalPatternRepository.java
+│
+└── BankDataIngestionRestController.java  ← ADD 2 new endpoints only
+```
+
+### Implementation Order
+
+| Phase | Task | Changes to Existing Code |
+|-------|------|--------------------------|
+| 1 | Create `PatternMapping` MongoDB document | None |
+| 2 | Create `PatternMappingRepository` | None |
+| 3 | Create `GlobalPattern` seed data | None |
+| 4 | Add `aiSuggestion` field to `StagedTransaction` | **Minimal** - add 1 field |
+| 5 | Create `AiCategorizeTransactionsCommandHandler` | None |
+| 6 | Create `AcceptAiSuggestionsCommandHandler` | None |
+| 7 | Add 2 endpoints to REST controller | **Minimal** - add 2 methods |
+| 8 | Update `StageTransactionsResult` DTO | **Minimal** - add optional field |
+
+### Comparison: Two Approaches
+
+| Aspect | Modify Staging | POST-STAGING (This Section) |
+|--------|---------------|------------------------------|
+| Code changes | Medium (modify handler) | Minimal (add new handlers) |
+| Risk | Medium | **Low** |
+| Performance | Slightly better (1 pass) | Slightly slower (2 passes) |
+| Complexity | Higher (mixed logic) | **Lower (separated logic)** |
+| Testability | Harder | **Easier** |
+| Rollback | Requires code change | **Feature flag** |
+| Backward compat | Needs testing | **Guaranteed** |
+
+### Recommendation
+
+**Use POST-STAGING approach** for initial implementation because:
+
+1. **Zero risk** to existing working code
+2. **Easier to test** - AI logic completely isolated
+3. **Opt-in** - users can skip AI if they prefer manual
+4. **Faster to market** - no regression testing needed
+5. **Rollback** - just disable endpoint, no code changes
+
+Later, if performance becomes an issue (unlikely for <1000 transactions), consider migrating to in-staging approach.
+
+---
+
 ## Related Documents
 
 - [AI Use Cases Overview](./AI_USE_CASES.md)
