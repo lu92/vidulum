@@ -6,7 +6,63 @@
 
 ---
 
+## ⚠️ Konwencja wartości amount
+
+> **WAŻNE:** W systemie Vidulum wartości `amount` i `money` są **ZAWSZE DODATNIE**.
+> Kierunek transakcji (wpływ/wydatek) określa pole `type` (INFLOW/OUTFLOW).
+>
+> ```
+> ✅ POPRAWNIE:  { amount: 3000.00, type: OUTFLOW }  // wydatek 3000 PLN
+> ❌ BŁĘDNIE:    { amount: -3000.00 }                 // NIGDY ujemne!
+> ```
+>
+> **Wyjątek:** W raportach/wizualizacjach (np. `totalAmount`, `categorizedOutFlows`)
+> wartości mogą być ujemne dla czytelności prezentacji użytkownikowi.
+
+---
+
 ## Current System Analysis (EXISTING ENDPOINTS)
+
+### Module Architecture (Separation of Concerns)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                    ARCHITEKTURA MODUŁÓW - CELOWE ROZDZIELENIE                            │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+Projekt stosuje SEPARATION OF CONCERNS - moduły są celowo rozdzielone:
+
+┌─────────────────────────────────┐          ┌─────────────────────────────────┐
+│      bank_data_adapter          │          │      bank_data_ingestion        │
+│                                 │          │                                 │
+│  ODPOWIEDZIALNOŚĆ:              │          │  ODPOWIEDZIALNOŚĆ:              │
+│  • CSV format detection         │          │  • Staging transactions         │
+│  • AI/Cache transformation      │          │  • Category mappings            │
+│  • Normalize to BankCsvRow      │          │  • Import to CashFlow           │
+│                                 │          │  • Validation & deduplication   │
+│  STORAGE:                       │   REST   │  STORAGE:                       │
+│  ai_csv_transformations         │ ───────► │  staged_transactions            │
+│  (transformationId)             │   HTTP   │  category_mappings              │
+│                                 │          │  import_jobs                    │
+│  SCOPE: per User                │          │  SCOPE: per CashFlow            │
+└─────────────────────────────────┘          └─────────────────────────────────┘
+         │                                             ▲
+         │ BankDataIngestionClient                     │
+         │ POST /cf={id}/upload                        │
+         └─────────────────────────────────────────────┘
+
+KOMUNIKACJA MIĘDZY MODUŁAMI:
+────────────────────────────
+1. User → POST /csv-import/upload → bank_data_adapter
+   └── Zwraca: transformationId
+
+2. User → POST /bank-data-adapter/{transformationId}/import
+   └── bank_data_adapter → POST /bank-data-ingestion/cf={id}/upload
+   └── Zwraca: stagingSessionId (z bank_data_ingestion)
+
+3. User → POST /bank-data-ingestion/cf={id}/import
+   └── Używa stagingSessionId do importu
+```
 
 ### Existing Endpoints Map
 
@@ -35,6 +91,30 @@ MODUŁ: bank_data_adapter
 │     ├── isCanonicalFormat() → jeśli tak, CANONICAL (instant, FREE)           │
 │     ├── checkCache(bankIdentifier) → jeśli hit, CACHED (instant, FREE)       │
 │     └── obtainMappingRulesFromAi() → AI_TRANSFORMED (5-15s, ~$0.01)          │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ GET /api/v1/bank-data-adapter/{transformationId}                              │
+│ ├── Pobiera szczegóły transformacji                                           │
+│ └── Zwraca: TransformResponse (full transformation details)                  │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ GET /api/v1/bank-data-adapter/{transformationId}/preview                      │
+│ ├── Podgląd pierwszych 10 wierszy przetworzonego CSV                         │
+│ └── Zwraca: PreviewResponse { id, detectedBank, rowCount, previewLines[] }   │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ GET /api/v1/bank-data-adapter/{transformationId}/download                     │
+│ ├── Pobiera pełny przetransformowany CSV (format BankCsvRow)                 │
+│ ├── Content-Type: text/csv                                                    │
+│ └── Zwraca: CSV file jako attachment                                          │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ POST /api/v1/bank-data-adapter/{transformationId}/import      ← KLUCZOWY!    │
+│ ├── Wysyła transformację do bank-data-ingestion i tworzy staging session     │
+│ ├── Przyjmuje: { cashFlowId }                                                 │
+│ ├── Wewnętrznie: BankDataIngestionClient.sendToIngestion()                   │
+│ │   └── POST /api/v1/bank-data-ingestion/cf={cashFlowId}/upload              │
+│ ├── Aktualizuje: importStatus = IMPORTED, stagingSessionId = ...             │
+│ └── Zwraca: ImportResponse { transformationId, stagingSessionId, ... }       │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ GET /api/v1/bank-data-adapter/history                                         │
+│ └── Zwraca: List<TransformHistoryItem> (wszystkie transformacje usera)       │
 └───────────────────────────────────────────────────────────────────────────────┘
 
 MODUŁ: cashflow
@@ -433,9 +513,9 @@ Response: {
       ]
     },
     // ... kolejne miesiące
-    "2022-01": {
+    "2026-03": {
       status: "ACTIVE",
-      // current month transactions
+      // current month transactions (activePeriod)
     }
   },
   categoryStructure: {
@@ -804,8 +884,8 @@ Single endpoint that accepts ANY CSV file and:
 │  │        cashFlowId,                                                                  ││
 │  │        name: "Składki ZUS",                                                         ││
 │  │        description: "składki ZUS",                                                  ││
-│  │        money: { amount: -1771.17, currency: "PLN" },                               ││
-│  │        type: OUTFLOW,                                                               ││
+│  │        money: { amount: 1771.17, currency: "PLN" },  // amount ZAWSZE dodatnie     ││
+│  │        type: OUTFLOW,  // typ określa kierunek                                      ││
 │  │        categoryName: "ZUS",                                                         ││
 │  │        parentCategoryName: "Opłaty obowiązkowe",                                    ││
 │  │        dueDate: "2023-01-20",                                                       ││
@@ -1623,9 +1703,9 @@ This section documents the complete user journey showing:
 ║         │ name: "Lucjan Bik Pekao"                                                     │  ║
 ║         │ description: "zycie"                                                         │  ║
 ║         │ bankCategory: "Przelewy wychodzące"                                          │  ║
-║         │ amount: -3000.00                                                             │  ║
+║         │ amount: 3000.00   // ZAWSZE DODATNIE! Typ określa kierunek                  │  ║
 ║         │ currency: PLN                                                                │  ║
-║         │ type: OUTFLOW                                                                │  ║
+║         │ type: OUTFLOW    // Kierunek: INFLOW (+) lub OUTFLOW (-)                   │  ║
 ║         │ operationDate: 2025-12-31                                                    │  ║
 ║         │ bookingDate: 2025-12-31                                                      │  ║
 ║         │ sourceAccountNumber: 93187010452083105656550001                              │  ║
@@ -1862,24 +1942,48 @@ This section documents the complete user journey showing:
                                             │
                                             ▼
 ╔═══════════════════════════════════════════════════════════════════════════════════════════╗
-║ KROK 4: USER TWORZY STAGING SESSION (UPLOAD CSV DO CASHFLOW)                              ║
+║ KROK 4: USER WYSYŁA TRANSFORMACJĘ DO STAGING                                              ║
 ╠═══════════════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                           ║
+║  ⚠️ ARCHITEKTURA: Moduły bank_data_adapter i bank_data_ingestion są CELOWO ROZDZIELONE   ║
+║                                                                                           ║
+║  bank_data_adapter:   Transformacja CSV (format detection, AI/cache)                      ║
+║  bank_data_ingestion: Staging i import do CashFlow (per cashFlowId)                       ║
+║                                                                                           ║
+║  Komunikacja odbywa się przez REST API (BankDataIngestionClient)                          ║
+║                                                                                           ║
 ║  📤 REQUEST:                                                                              ║
-║  POST /api/v1/bank-data-ingestion/cf=CF10000123/staging/from-transformation               ║
-║  Body: { "transformationId": "891e699b-2120-42bc-9ad5-5ab692854faa" }                    ║
+║  POST /api/v1/bank-data-adapter/{transformationId}/import                                 ║
+║  Authorization: Bearer eyJhbGciOi...                                                      ║
+║  Body: { "cashFlowId": "CF10000123" }                                                     ║
 ║                                                                                           ║
-║  ⚙️ PRZETWARZANIE W CreateStagingFromTransformationCommandHandler:                        ║
+║  ⚙️ PRZETWARZANIE W AiBankCsvController.importToCashFlow():                               ║
 ║                                                                                           ║
-║  1. WALIDACJA:                                                                            ║
-║     ├── Transformation istnieje? ✓                                                        ║
-║     ├── Transformation.userId == request.userId? ✓                                       ║
-║     ├── Transformation.importStatus == PENDING? ✓                                        ║
-║     │   └── IMPORTED → throw AlreadyImportedException (HTTP 409)                         ║
-║     ├── CashFlow istnieje? ✓                                                              ║
-║     └── CashFlow.status == SETUP? ✓                                                       ║
+║  1. WALIDACJA W BANK_DATA_ADAPTER:                                                        ║
+║     ├── transformService.getTransformation(transformationId, userId)                      ║
+║     │   ├── Transformation istnieje? ✓                                                    ║
+║     │   └── Transformation.userId == request.userId? ✓ (security check)                  ║
+║     └── Transformation.importStatus == PENDING? (opcjonalnie)                             ║
 ║                                                                                           ║
-║  2. PARSOWANIE CANONICAL CSV:                                                             ║
+║  2. WYSŁANIE DO BANK_DATA_INGESTION (via BankDataIngestionClient):                        ║
+║     ├── ingestionClient.sendToIngestion(cashFlowId, transformedCsvContent, ...)           ║
+║     │                                                                                     ║
+║     │   Wewnętrznie wykonuje:                                                             ║
+║     │   POST /api/v1/bank-data-ingestion/cf={cashFlowId}/upload                           ║
+║     │   Content-Type: multipart/form-data                                                 ║
+║     │   Body: file = ai_transformed_{id}.csv (canonical BankCsvRow format)                ║
+║     │                                                                                     ║
+║     └── Zwraca: UploadCsvResponse { stagingSessionId, parseSummary, ... }                ║
+║                                                                                           ║
+║  3. AKTUALIZACJA TRANSFORMACJI:                                                           ║
+║     transformService.markAsImported(transformationId, userId, stagingSessionId)           ║
+║     └── ai_csv_transformations.stagingSessionId = "session-789" (link do ingestion)      ║
+║                                                                                           ║
+║  ─────────────────────────────────────────────────────────────────────────────────────────║
+║                                                                                           ║
+║  ⚙️ PRZETWARZANIE W BANK_DATA_INGESTION (UploadCsvCommandHandler):                        ║
+║                                                                                           ║
+║  1. PARSOWANIE CANONICAL CSV (CsvParserService):                                          ║
 ║     transformedCsvContent → List<BankCsvRow>:                                            ║
 ║     [                                                                                     ║
 ║       BankCsvRow {                                                                        ║
@@ -1887,15 +1991,15 @@ This section documents the complete user journey showing:
 ║         name: "Lucjan Bik Pekao",                                                         ║
 ║         description: "zycie",                                                             ║
 ║         bankCategory: "Przelewy wychodzące",                                              ║
-║         amount: -3000.00,                                                                 ║
+║         amount: 3000.00,   // ZAWSZE DODATNIE! Typ określa kierunek                      ║
 ║         currency: "PLN",                                                                  ║
-║         type: OUTFLOW,                                                                    ║
+║         type: OUTFLOW,     // Kierunek: INFLOW (+) lub OUTFLOW (-)                       ║
 ║         operationDate: 2025-12-31                                                         ║
 ║       },                                                                                  ║
 ║       ... (402 rows)                                                                      ║
 ║     ]                                                                                     ║
 ║                                                                                           ║
-║  3. STAGING TRANSACTIONS (StageTransactionsCommandHandler):                               ║
+║  2. STAGING TRANSACTIONS (StageTransactionsCommandHandler):                               ║
 ║                                                                                           ║
 ║     Dla każdej transakcji:                                                                ║
 ║     ┌─────────────────────────────────────────────────────────────────────────────────┐  ║
@@ -1980,6 +2084,24 @@ This section documents the complete user journey showing:
 ║       ],                                                                                  ║
 ║       "unmappedCategories": []    ← puste jeśli wszystkie zmapowane                      ║
 ║     }                                                                                     ║
+║                                                                                           ║
+║  ─────────────────────────────────────────────────────────────────────────────────────────║
+║                                                                                           ║
+║  📥 FINALNA RESPONSE Z BANK_DATA_ADAPTER (200 OK):                                        ║
+║     {                                                                                     ║
+║       "transformationId": "891e699b-2120-42bc-9ad5-5ab692854faa",                        ║
+║       "stagingSessionId": "session-789",    ← KLUCZ do dalszych operacji                 ║
+║       "importedRows": 402,                                                                ║
+║       "message": "Transformation imported successfully"                                   ║
+║     }                                                                                     ║
+║                                                                                           ║
+║  💾 AKTUALIZACJA MongoDB (collection: ai_csv_transformations):                            ║
+║     {                                                                                     ║
+║       "importStatus": "IMPORTED",                                                         ║
+║       "stagingSessionId": "session-789",  ← link między modułami                         ║
+║       "importedAt": "2026-03-28T10:00:30Z"                                               ║
+║     }                                                                                     ║
+║                                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════════╝
                                             │
                                             ▼
@@ -2018,8 +2140,8 @@ This section documents the complete user journey showing:
 ║     │     "name": "Lucjan Bik Pekao",                                                     ║
 ║     │     "description": "zycie",                                                         ║
 ║     │     "category": "Przelewy",                                                         ║
-║     │     "money": { "amount": -3000.00, "currency": "PLN" },                            ║
-║     │     "type": "OUTFLOW",                                                              ║
+║     │     "money": { "amount": 3000.00, "currency": "PLN" },  // ZAWSZE dodatnie!        ║
+║     │     "type": "OUTFLOW",  // typ określa kierunek                                     ║
 ║     │     "dueDate": "2025-12-31",                                                        ║
 ║     │     "paidDate": "2025-12-31"                                                        ║
 ║     │   }                                                                                 ║
@@ -2083,7 +2205,7 @@ This section documents the complete user journey showing:
 ║     │                                                                                     ║
 ║     └── RÓŻNICA!                                                                          ║
 ║         ├── createAdjustment=true → stwórz transakcję korygującą                         ║
-║         │   CashChange { name: "Balance Adjustment", amount: -13621.25 }                 ║
+║         │   CashChange { name: "Balance Adjustment", amount: 13621.25, type: OUTFLOW }   ║
 ║         │                                                                                 ║
 ║         ├── forceAttestation=true → zignoruj różnicę (nie twórz adjustment)              ║
 ║         │                                                                                 ║
@@ -2472,8 +2594,8 @@ KROK 4: Staging
     BankCsvRow {                              →     StagedTransaction {
       bankCategory: "Przelewy wychodzące",            originalData: { bankCategory: "..." },
       name: "Lucjan Bik",                             mappedData: {
-      amount: -3000                                     categoryName: "Przelewy",
-    }                                                   parentCategoryName: null
+      amount: 3000, type: OUTFLOW                       categoryName: "Przelewy",
+    }   // amount ZAWSZE dodatnie!                      // type określa kierunek                                                   parentCategoryName: null
                                                       },
                                                       validation: { status: VALID }
                                                     }
@@ -2486,9 +2608,9 @@ KROK 5: Import
     StagedTransaction {                       →     CashChange {
       mappedData: {                                   name: "Lucjan Bik",
         categoryName: "Przelewy",                     category: "Przelewy",
-        money: -3000 PLN,                             money: -3000 PLN,
-        paidDate: 2025-12-31                          status: CONFIRMED,
-      }                                               paidDate: 2025-12-31
+        money: 3000 PLN, type: OUTFLOW,               money: 3000 PLN,
+        paidDate: 2025-12-31                          type: OUTFLOW, status: CONFIRMED,
+      }  // amount ZAWSZE dodatnie!                   paidDate: 2025-12-31                                               paidDate: 2025-12-31
     }                                               }
 
 KROK 6: Attestation
