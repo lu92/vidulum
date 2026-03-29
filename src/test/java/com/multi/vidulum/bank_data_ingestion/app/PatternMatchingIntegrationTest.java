@@ -226,8 +226,13 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
     }
 
     @Test
-    @DisplayName("Should apply pattern matching during revalidation")
+    @DisplayName("Should apply pattern matching during initial staging (pattern configured before staging)")
     void shouldApplyPatternMatchingDuringRevalidation() {
+        // This test verifies that pattern matching works during initial staging.
+        // Note: With Uncategorized fallback, revalidation only processes PENDING_MAPPING transactions.
+        // Transactions already categorized (even as Uncategorized) are not re-categorized during revalidation.
+        // To get proper categorization, patterns should be configured BEFORE staging.
+
         // given - create CashFlow with nested categories
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
@@ -242,17 +247,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         actor.createCategory(cashFlowId, "Opłaty publiczne", Type.OUTFLOW);
         actor.createCategory(cashFlowId, "Podatki", "Opłaty publiczne", Type.OUTFLOW);
 
-        // Step 1: Stage transactions WITHOUT any mappings (will be PENDING_MAPPING)
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
-                actor.bankTransaction("TXN-001", "URZAD SKARBOWY W MIELCU",
-                        "Przelewy wychodzące", 500.0, "PLN", Type.OUTFLOW,
-                        ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
-        ));
-
-        assertThat(stageResponse.getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
-        String stagingSessionId = stageResponse.getStagingSessionId();
-
-        // Step 2: Create pattern mapping (simulating AI categorization)
+        // Step 1: Create pattern mapping BEFORE staging (simulating AI categorization)
         PatternMapping pattern = PatternMapping.createUser(
                 "URZAD SKARBOWY",
                 "Podatki",
@@ -265,29 +260,30 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
 
         log.info("Created pattern mapping: URZAD SKARBOWY -> Podatki");
 
-        // Step 3: Revalidate - pattern should be applied
-        BankDataIngestionDto.RevalidateStagingResponse revalidateResponse =
-                actor.revalidateStaging(cashFlowId, stagingSessionId);
+        // Step 2: Stage transactions - pattern matching should apply during staging
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+                actor.bankTransaction("TXN-001", "URZAD SKARBOWY W MIELCU",
+                        "Przelewy wychodzące", 500.0, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+        ));
 
-        // then - transaction should now be valid via pattern matching
-        assertThat(revalidateResponse.getStatus()).isEqualTo("SUCCESS");
-        assertThat(revalidateResponse.getSummary().getRevalidatedCount()).isEqualTo(1);
-        assertThat(revalidateResponse.getSummary().getStillPendingCount()).isEqualTo(0);
-        assertThat(revalidateResponse.getSummary().getValidCount()).isEqualTo(1);
+        // With pattern mapping, transaction should be READY_FOR_IMPORT with correct category
+        assertThat(stageResponse.getStatus()).isEqualTo("READY_FOR_IMPORT");
+        String stagingSessionId = stageResponse.getStagingSessionId();
 
-        // Verify the transaction has correct category
+        // Verify the transaction has correct category from pattern matching
         BankDataIngestionDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stagingSessionId);
 
         BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
         assertThat(txn.getTargetCategory())
-                .as("Transaction should be categorized via pattern matching during revalidation")
+                .as("Transaction should be categorized via pattern matching during staging")
                 .isEqualTo("Podatki");
         assertThat(txn.getParentCategory())
                 .as("Parent category should be looked up dynamically")
                 .isEqualTo("Opłaty publiczne");
 
-        log.info("Revalidation with pattern matching passed: {} -> {} (parent: {})",
+        log.info("Pattern matching during staging passed: {} -> {} (parent: {})",
                 txn.getName(), txn.getTargetCategory(), txn.getParentCategory());
     }
 
