@@ -27,6 +27,12 @@ import java.util.Comparator;
 public class StageTransactionsCommandHandler
         implements CommandHandler<StageTransactionsCommand, StageTransactionsResult> {
 
+    /**
+     * Default fallback category name for transactions without explicit mapping.
+     * This allows imports to succeed even when AI/user hasn't categorized all transactions.
+     */
+    private static final String UNCATEGORIZED_CATEGORY = "Uncategorized";
+
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
@@ -142,14 +148,23 @@ public class StageTransactionsCommandHandler
      * Finds unmapped categories - categories that have neither:
      * - A category mapping (bank category → target category)
      * - A pattern mapping that matches the transaction name
+     * - An "Uncategorized" fallback category in the CashFlow
      *
-     * If a transaction can be categorized via pattern matching, it's not considered unmapped.
+     * If a transaction can be categorized via pattern matching or fallback to Uncategorized,
+     * it's not considered unmapped.
      */
     private List<StageTransactionsResult.UnmappedCategory> findUnmappedCategories(
             List<StageTransactionsCommand.BankTransaction> transactions,
             Map<MappingKey, CategoryMapping> mappingMap,
             List<PatternMapping> patternMappings,
             CashFlowInfo cashFlowInfo) {
+
+        // If CashFlow has "Uncategorized" category, all transactions can be categorized (fallback)
+        boolean hasUncategorizedFallback = cashFlowInfo.getAllCategoryNames().contains(UNCATEGORIZED_CATEGORY);
+        if (hasUncategorizedFallback) {
+            // All transactions will fallback to Uncategorized if no other mapping - no unmapped categories
+            return List.of();
+        }
 
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
 
@@ -239,8 +254,37 @@ public class StageTransactionsCommandHandler
         MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
         CategoryMapping mapping = mappingMap.get(key);
 
-        // If no mapping exists, create transaction with PENDING_MAPPING status
+        // If no mapping exists, try fallback to "Uncategorized" or create PENDING_MAPPING
         if (mapping == null) {
+            // Priority 3: Fallback to "Uncategorized" category if it exists
+            if (cashFlowInfo.getAllCategoryNames().contains(UNCATEGORIZED_CATEGORY)) {
+                MappedTransactionData mappedData = new MappedTransactionData(
+                        txn.name(),
+                        txn.description(),
+                        new CategoryName(UNCATEGORIZED_CATEGORY),
+                        null, // no parent category for Uncategorized
+                        txn.money(),
+                        txn.type(),
+                        txn.paidDate()
+                );
+
+                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+
+                log.trace("Transaction [{}] fallback to Uncategorized (no pattern or category mapping)",
+                        txn.name());
+
+                return StagedTransaction.create(
+                        cashFlowId,
+                        stagingSessionId,
+                        originalData,
+                        mappedData,
+                        validation,
+                        now,
+                        config.getStagingTtlHours()
+                );
+            }
+
+            // No fallback available - create PENDING_MAPPING
             return StagedTransaction.create(
                     cashFlowId,
                     stagingSessionId,

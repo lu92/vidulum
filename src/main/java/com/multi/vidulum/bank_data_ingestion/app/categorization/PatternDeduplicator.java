@@ -50,6 +50,7 @@ public class PatternDeduplicator {
                     .add(new TransactionInfo(
                             transaction.stagedTransactionId().id(),
                             originalName,
+                            transaction.originalData().description(),
                             transaction.originalData().money().getAmount(),
                             transaction.originalData().bankCategory()
                     ));
@@ -67,6 +68,13 @@ public class PatternDeduplicator {
         String sampleTransaction = transactions.stream()
                 .max(Comparator.comparingInt(t -> t.originalName().length()))
                 .map(TransactionInfo::originalName)
+                .orElse("");
+
+        // Find the most informative description (longest non-blank description)
+        String sampleDescription = transactions.stream()
+                .map(TransactionInfo::description)
+                .filter(d -> d != null && !d.isBlank())
+                .max(Comparator.comparingInt(String::length))
                 .orElse("");
 
         // Calculate total amount
@@ -90,6 +98,7 @@ public class PatternDeduplicator {
         return new PatternGroup(
                 key.pattern(),
                 sampleTransaction,
+                sampleDescription,
                 key.type(),
                 transactions.size(),
                 totalAmount,
@@ -110,6 +119,7 @@ public class PatternDeduplicator {
     private record TransactionInfo(
             String transactionId,
             String originalName,
+            String description,
             BigDecimal amount,
             String bankCategory
     ) {
@@ -121,6 +131,7 @@ public class PatternDeduplicator {
     public record PatternGroup(
             String pattern,
             String sampleTransaction,
+            String sampleDescription,
             Type type,
             int transactionCount,
             BigDecimal totalAmount,

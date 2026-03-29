@@ -150,13 +150,29 @@ public class AiCategorizationPromptBuilder {
 
     private String formatPatternGroup(PatternDeduplicator.PatternGroup pg) {
         String amountStr = formatAmount(pg.totalAmount());
-        return String.format("  [%d txns, %s] %s | sample: \"%s\" | bank: %s\n",
+        StringBuilder sb = new StringBuilder();
+
+        // First line: count, amount, pattern
+        sb.append(String.format("  [%d txns, %s] %s\n",
                 pg.transactionCount(),
                 amountStr,
-                pg.pattern(),
-                truncate(pg.sampleTransaction(), 50),
-                pg.bankCategory() != null ? pg.bankCategory() : "-"
-        );
+                pg.pattern()));
+
+        // Second line: sample name
+        sb.append(String.format("    | name: \"%s\"\n",
+                truncate(pg.sampleTransaction(), 50)));
+
+        // Third line: title/description (if available) - THIS IS THE KEY IMPROVEMENT!
+        if (pg.sampleDescription() != null && !pg.sampleDescription().isBlank()) {
+            sb.append(String.format("    | title: \"%s\"\n",
+                    truncate(pg.sampleDescription(), 70)));
+        }
+
+        // Fourth line: bank category
+        sb.append(String.format("    | bank: %s\n",
+                pg.bankCategory() != null && !pg.bankCategory().isBlank() ? pg.bankCategory() : "-"));
+
+        return sb.toString();
     }
 
     private String formatAmount(BigDecimal amount) {
