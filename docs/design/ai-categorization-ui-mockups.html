@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Categorization - UI Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1a1a2e;
+        }
+
+        h2 {
+            color: #1a1a2e;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        h3 {
+            color: #4a5568;
+            margin: 30px 0 15px;
+        }
+
+        .section-label {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        /* ==================== WEB MOCKUPS ==================== */
+        .web-container {
+            max-width: 1200px;
+            margin: 0 auto 60px;
+        }
+
+        .mockup-frame {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+
+        .browser-bar {
+            background: #e8e8e8;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .browser-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .browser-dot.red { background: #ff5f57; }
+        .browser-dot.yellow { background: #ffbd2e; }
+        .browser-dot.green { background: #28ca42; }
+
+        .browser-url {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-left: 20px;
+            font-size: 13px;
+            color: #666;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .screen-content {
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        /* Choice Screen */
+        .choice-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .choice-header h2 {
+            border: none;
+            margin: 0 0 10px;
+        }
+
+        .choice-header p {
+            color: #718096;
+        }
+
+        .staging-info {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .staging-stat {
+            text-align: center;
+        }
+
+        .staging-stat .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .staging-stat .label {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .choice-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .choice-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .choice-card:hover {
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .choice-card.recommended {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f5f7ff 0%, #fff 100%);
+        }
+
+        .choice-card .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .choice-card h3 {
+            margin: 0 0 12px;
+            color: #1a1a2e;
+        }
+
+        .choice-card p {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .choice-card ul {
+            text-align: left;
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .choice-card li {
+            padding: 6px 0;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .choice-card li::before {
+            content: "✓";
+            color: #48bb78;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            position: absolute;
+            top: -10px;
+            right: 20px;
+        }
+
+        .choice-card {
+            position: relative;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .cost-tag {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .free-tag {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        /* AI Results Screen */
+        .ai-results {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+        }
+
+        .structure-panel {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .structure-panel h4 {
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+
+        .category-tree {
+            list-style: none;
+        }
+
+        .category-tree li {
+            padding: 8px 0;
+        }
+
+        .category-parent {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .category-parent input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .category-children {
+            list-style: none;
+            margin-left: 26px;
+            margin-top: 4px;
+        }
+
+        .category-children li {
+            padding: 4px 0;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .suggestions-panel h4 {
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+
+        .suggestion-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .tab .count {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 11px;
+        }
+
+        .tab.active .count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .suggestion-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .suggestion-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .suggestion-item.needs-input {
+            border-color: #fbd38d;
+            background: #fffbeb;
+        }
+
+        .pattern-info h5 {
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .pattern-info .sample {
+            font-size: 12px;
+            color: #718096;
+            font-family: monospace;
+        }
+
+        .pattern-info .stats {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+
+        .suggestion-category {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-badge {
+            background: #edf2f7;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .category-badge .parent {
+            color: #718096;
+        }
+
+        .category-badge .child {
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .confidence-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .confidence-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .confidence-low {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .btn-icon:hover {
+            background: #f7fafc;
+        }
+
+        .btn-icon.accept {
+            border-color: #48bb78;
+            color: #48bb78;
+        }
+
+        .btn-icon.reject {
+            border-color: #fc8181;
+            color: #fc8181;
+        }
+
+        .category-select {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 180px;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .stats-summary {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .stats-summary strong {
+            color: #1a1a2e;
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-state h3 {
+            margin-bottom: 8px;
+        }
+
+        .loading-state p {
+            color: #718096;
+        }
+
+        /* ==================== MOBILE MOCKUPS ==================== */
+        .mobile-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .phone-frame {
+            width: 375px;
+            background: #1a1a2e;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .phone-screen {
+            background: white;
+            border-radius: 32px;
+            overflow: hidden;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-status-bar {
+            background: #f7fafc;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .phone-header {
+            background: #667eea;
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone-header .back {
+            font-size: 20px;
+        }
+
+        .phone-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .phone-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .phone-bottom-bar {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .phone-bottom-bar .btn {
+            flex: 1;
+        }
+
+        /* Mobile Choice Cards */
+        .mobile-choice-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .mobile-choice-card.recommended {
+            border-color: #667eea;
+        }
+
+        .mobile-choice-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .mobile-choice-header .icon {
+            font-size: 32px;
+        }
+
+        .mobile-choice-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .mobile-choice-card p {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 12px;
+        }
+
+        .mobile-choice-card .btn {
+            width: 100%;
+        }
+
+        /* Mobile Suggestions */
+        .mobile-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .mobile-section-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .mobile-suggestion {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .mobile-suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .mobile-pattern {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .mobile-sample {
+            font-size: 12px;
+            color: #718096;
+            font-family: monospace;
+            margin-bottom: 12px;
+        }
+
+        .mobile-suggestion-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mobile-category-select {
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .mobile-stats {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .mobile-stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .mobile-stats-row:not(:last-child) {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .mobile-stats-label {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .mobile-stats-value {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        /* Mobile Swipe Actions */
+        .swipe-hint {
+            text-align: center;
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 8px;
+        }
+
+        .mobile-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mobile-tab {
+            padding: 8px 16px;
+            background: #f7fafc;
+            border-radius: 20px;
+            font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .mobile-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Progress indicator */
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .progress-step {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e2e8f0;
+        }
+
+        .progress-step.active {
+            background: #667eea;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .progress-step.completed {
+            background: #48bb78;
+        }
+
+        /* Description text */
+        .description {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .description h4 {
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .description p {
+            color: #4a5568;
+            font-size: 14px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>AI Categorization - UI Mockups</h1>
+
+<!-- ==================== WEB MOCKUPS ==================== -->
+
+<div class="web-container">
+    <span class="section-label">WEB</span>
+
+    <h2>Screen 1: Categorization Method Choice</h2>
+
+    <div class="description">
+        <h4>Context</h4>
+        <p>User has uploaded CSV and staging session was created. Now they need to map bank categories to CashFlow categories. This screen offers two paths: AI-assisted or manual mapping.</p>
+    </div>
+
+    <div class="mockup-frame">
+        <div class="browser-bar">
+            <div class="browser-dot red"></div>
+            <div class="browser-dot yellow"></div>
+            <div class="browser-dot green"></div>
+            <div class="browser-url">vidulum.app/import/staging/abc-123</div>
+        </div>
+        <div class="screen-content">
+            <div class="choice-header">
+                <h2>How would you like to categorize your transactions?</h2>
+                <p>45 transactions need category mapping before import</p>
+            </div>
+
+            <div class="staging-info">
+                <div class="staging-stat">
+                    <div class="value">402</div>
+                    <div class="label">Total Transactions</div>
+                </div>
+                <div class="staging-stat">
+                    <div class="value">12</div>
+                    <div class="label">Bank Categories</div>
+                </div>
+                <div class="staging-stat">
+                    <div class="value">45</div>
+                    <div class="label">Unique Patterns</div>
+                </div>
+                <div class="staging-stat">
+                    <div class="value">Jan 2023 - Dec 2025</div>
+                    <div class="label">Date Range</div>
+                </div>
+            </div>
+
+            <div class="choice-cards">
+                <div class="choice-card recommended">
+                    <span class="badge">RECOMMENDED</span>
+                    <div class="icon">🤖</div>
+                    <h3>AI Categorization</h3>
+                    <p>Let AI analyze transaction names and suggest categories with nested structure</p>
+                    <ul>
+                        <li>Analyzes transaction names (not just bank categories)</li>
+                        <li>Suggests nested category structure</li>
+                        <li>~2 seconds processing time</li>
+                        <li>Learn from your confirmations</li>
+                    </ul>
+                    <button class="btn btn-primary">Use AI Categorization</button>
+                    <div class="cost-tag">Cost: ~$0.01</div>
+                </div>
+
+                <div class="choice-card">
+                    <div class="icon">✏️</div>
+                    <h3>Manual Mapping</h3>
+                    <p>Map each bank category to your CashFlow categories yourself</p>
+                    <ul>
+                        <li>Full control over mappings</li>
+                        <li>No AI cost</li>
+                        <li>Takes 5-15 minutes</li>
+                        <li>Best for simple imports</li>
+                    </ul>
+                    <button class="btn btn-secondary">Map Manually</button>
+                    <div class="cost-tag free-tag">FREE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Screen 2: AI Processing (Loading State)</h2>
+
+    <div class="mockup-frame">
+        <div class="browser-bar">
+            <div class="browser-dot red"></div>
+            <div class="browser-dot yellow"></div>
+            <div class="browser-dot green"></div>
+            <div class="browser-url">vidulum.app/import/staging/abc-123/categorize</div>
+        </div>
+        <div class="screen-content">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3>AI is analyzing your transactions...</h3>
+                <p>This usually takes 2-5 seconds</p>
+                <br><br>
+                <div style="color: #718096; font-size: 14px;">
+                    <p>✓ Normalizing transaction names</p>
+                    <p>✓ Checking global pattern cache (15 found)</p>
+                    <p>✓ Checking your personal cache (10 found)</p>
+                    <p style="color: #667eea;">⟳ Analyzing 20 new patterns with AI...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Screen 3: AI Suggestions Review</h2>
+
+    <div class="description">
+        <h4>Context</h4>
+        <p>AI has analyzed patterns and returned suggestions. User reviews the suggested category structure (left panel) and individual pattern mappings (right panel). High confidence items are auto-accepted, medium confidence needs confirmation, low confidence needs manual input.</p>
+    </div>
+
+    <div class="mockup-frame">
+        <div class="browser-bar">
+            <div class="browser-dot red"></div>
+            <div class="browser-dot yellow"></div>
+            <div class="browser-dot green"></div>
+            <div class="browser-url">vidulum.app/import/staging/abc-123/review</div>
+        </div>
+        <div class="screen-content">
+            <div class="ai-results">
+                <div class="structure-panel">
+                    <h4>📁 Suggested Category Structure</h4>
+                    <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Uncheck categories you don't want to create</p>
+
+                    <ul class="category-tree">
+                        <li>
+                            <label class="category-parent">
+                                <input type="checkbox" checked> Housing
+                            </label>
+                            <ul class="category-children">
+                                <li>└ Rent</li>
+                                <li>└ Utilities</li>
+                                <li>└ Insurance</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <label class="category-parent">
+                                <input type="checkbox" checked> Mandatory Fees
+                            </label>
+                            <ul class="category-children">
+                                <li>└ Social Security (ZUS)</li>
+                                <li>└ Income Tax</li>
+                                <li>└ VAT</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <label class="category-parent">
+                                <input type="checkbox" checked> Food
+                            </label>
+                            <ul class="category-children">
+                                <li>└ Groceries</li>
+                                <li>└ Restaurants</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <label class="category-parent">
+                                <input type="checkbox"> Entertainment
+                            </label>
+                            <ul class="category-children">
+                                <li>└ Subscriptions</li>
+                                <li>└ Streaming</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <label class="category-parent">
+                                <input type="checkbox" checked> Salary
+                            </label>
+                            <ul class="category-children">
+                                <li>└ Base Salary</li>
+                                <li>└ Bonuses</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;">+ Add Custom Category</button>
+                </div>
+
+                <div class="suggestions-panel">
+                    <h4>🏷️ Pattern Categorization</h4>
+
+                    <div class="suggestion-tabs">
+                        <div class="tab">All<span class="count">45</span></div>
+                        <div class="tab active">Needs Review<span class="count">13</span></div>
+                        <div class="tab">Auto-Accepted<span class="count">32</span></div>
+                    </div>
+
+                    <div class="suggestion-list">
+                        <!-- High confidence - auto accepted -->
+                        <div class="suggestion-item">
+                            <div class="pattern-info">
+                                <h5>ZUS</h5>
+                                <div class="sample">ZUS SKŁADKI 01/2026 NR 123456</div>
+                                <div class="stats">12 transactions • 21,254.04 PLN • OUTFLOW</div>
+                            </div>
+                            <div class="suggestion-category">
+                                <div class="category-badge">
+                                    <span class="parent">Mandatory Fees → </span>
+                                    <span class="child">Social Security (ZUS)</span>
+                                </div>
+                                <span class="confidence-badge confidence-high">99%</span>
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="btn-icon accept" title="Accept">✓</button>
+                                <button class="btn-icon" title="Change">✎</button>
+                            </div>
+                        </div>
+
+                        <!-- Medium confidence - needs confirmation -->
+                        <div class="suggestion-item">
+                            <div class="pattern-info">
+                                <h5>ALLEGRO</h5>
+                                <div class="sample">ALLEGRO SP. Z O.O. ZAKUP 12345</div>
+                                <div class="stats">8 transactions • 1,450.00 PLN • OUTFLOW</div>
+                            </div>
+                            <div class="suggestion-category">
+                                <select class="category-select">
+                                    <option selected>Shopping → Online Shopping</option>
+                                    <option>Entertainment → Hobby</option>
+                                    <option>Food → Groceries</option>
+                                    <option>+ Create new category...</option>
+                                </select>
+                                <span class="confidence-badge confidence-medium">72%</span>
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="btn-icon accept" title="Accept">✓</button>
+                                <button class="btn-icon reject" title="Reject">✕</button>
+                            </div>
+                        </div>
+
+                        <!-- Low confidence - needs manual input -->
+                        <div class="suggestion-item needs-input">
+                            <div class="pattern-info">
+                                <h5>LUCJAN BIK PEKAO</h5>
+                                <div class="sample">LUCJAN BIK PEKAO - zycie</div>
+                                <div class="stats">20 transactions • 60,000.00 PLN • OUTFLOW</div>
+                            </div>
+                            <div class="suggestion-category">
+                                <select class="category-select" style="border-color: #f6ad55;">
+                                    <option value="">-- Select category --</option>
+                                    <option>Savings → Personal Savings</option>
+                                    <option>Transfers → Family</option>
+                                    <option>+ Create new category...</option>
+                                </select>
+                                <span class="confidence-badge confidence-low">25%</span>
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="btn-icon accept" title="Accept">✓</button>
+                                <button class="btn-icon reject" title="Skip">⊘</button>
+                            </div>
+                        </div>
+
+                        <!-- Another high confidence -->
+                        <div class="suggestion-item">
+                            <div class="pattern-info">
+                                <h5>BIEDRONKA</h5>
+                                <div class="sample">BIEDRONKA WARSZAWA UL. MARSZALKOWSKA</div>
+                                <div class="stats">15 transactions • 2,340.50 PLN • OUTFLOW</div>
+                            </div>
+                            <div class="suggestion-category">
+                                <div class="category-badge">
+                                    <span class="parent">Food → </span>
+                                    <span class="child">Groceries</span>
+                                </div>
+                                <span class="confidence-badge confidence-high">98%</span>
+                            </div>
+                            <div class="suggestion-actions">
+                                <button class="btn-icon accept" title="Accept">✓</button>
+                                <button class="btn-icon" title="Change">✎</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <div class="stats-summary">
+                            <span><strong>32</strong> auto-accepted</span>
+                            <span><strong>8</strong> confirmed</span>
+                            <span><strong>5</strong> need input</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary" style="margin-right: 12px;">Cancel</button>
+                            <button class="btn btn-primary">Accept & Continue to Import</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MOBILE MOCKUPS ==================== -->
+
+<div class="web-container">
+    <span class="section-label">MOBILE</span>
+
+    <h2>Mobile Screens</h2>
+
+    <div class="mobile-container">
+        <!-- Screen 1: Choice -->
+        <div>
+            <h3 style="text-align: center; margin-bottom: 16px;">Choice Screen</h3>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>📶 🔋</span>
+                    </div>
+                    <div class="phone-header">
+                        <span class="back">←</span>
+                        <h1>Categorize Transactions</h1>
+                    </div>
+                    <div class="phone-content">
+                        <div class="progress-steps">
+                            <div class="progress-step completed"></div>
+                            <div class="progress-step completed"></div>
+                            <div class="progress-step active"></div>
+                            <div class="progress-step"></div>
+                        </div>
+
+                        <div class="mobile-stats">
+                            <div class="mobile-stats-row">
+                                <span class="mobile-stats-label">Transactions</span>
+                                <span class="mobile-stats-value">402</span>
+                            </div>
+                            <div class="mobile-stats-row">
+                                <span class="mobile-stats-label">Patterns to map</span>
+                                <span class="mobile-stats-value">45</span>
+                            </div>
+                            <div class="mobile-stats-row">
+                                <span class="mobile-stats-label">Bank categories</span>
+                                <span class="mobile-stats-value">12</span>
+                            </div>
+                        </div>
+
+                        <div class="mobile-choice-card recommended">
+                            <div class="mobile-choice-header">
+                                <span class="icon">🤖</span>
+                                <div>
+                                    <h3>AI Categorization</h3>
+                                    <span style="font-size: 11px; color: #667eea;">RECOMMENDED</span>
+                                </div>
+                            </div>
+                            <p>AI analyzes names and suggests nested categories. Takes ~2 seconds.</p>
+                            <button class="btn btn-primary">Use AI (~$0.01)</button>
+                        </div>
+
+                        <div class="mobile-choice-card">
+                            <div class="mobile-choice-header">
+                                <span class="icon">✏️</span>
+                                <h3>Manual Mapping</h3>
+                            </div>
+                            <p>Map each category yourself. Full control, no cost.</p>
+                            <button class="btn btn-secondary">Map Manually</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 2: Loading -->
+        <div>
+            <h3 style="text-align: center; margin-bottom: 16px;">AI Processing</h3>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>📶 🔋</span>
+                    </div>
+                    <div class="phone-header">
+                        <span class="back">←</span>
+                        <h1>AI Categorization</h1>
+                    </div>
+                    <div class="phone-content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                        <div class="loading-spinner"></div>
+                        <h3 style="margin-bottom: 8px;">Analyzing patterns...</h3>
+                        <p style="color: #718096; font-size: 14px;">This takes about 2-5 seconds</p>
+
+                        <div style="margin-top: 40px; text-align: left; width: 100%;">
+                            <p style="color: #48bb78; font-size: 13px; margin: 8px 0;">✓ 15 patterns from global cache</p>
+                            <p style="color: #48bb78; font-size: 13px; margin: 8px 0;">✓ 10 patterns from your history</p>
+                            <p style="color: #667eea; font-size: 13px; margin: 8px 0;">⟳ Analyzing 20 new patterns...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Review -->
+        <div>
+            <h3 style="text-align: center; margin-bottom: 16px;">Review Suggestions</h3>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>📶 🔋</span>
+                    </div>
+                    <div class="phone-header">
+                        <span class="back">←</span>
+                        <h1>Review AI Suggestions</h1>
+                    </div>
+                    <div class="phone-content">
+                        <div class="mobile-tabs">
+                            <div class="mobile-tab">All (45)</div>
+                            <div class="mobile-tab active">Review (13)</div>
+                            <div class="mobile-tab">Auto (32)</div>
+                        </div>
+
+                        <div class="mobile-suggestion">
+                            <div class="mobile-suggestion-header">
+                                <span class="mobile-pattern">ZUS</span>
+                                <span class="confidence-badge confidence-high">99%</span>
+                            </div>
+                            <div class="mobile-sample">ZUS SKŁADKI 01/2026</div>
+                            <div class="mobile-suggestion-footer">
+                                <div class="category-badge" style="font-size: 12px;">
+                                    Mandatory Fees → ZUS
+                                </div>
+                                <div>
+                                    <button class="btn-icon accept" style="width: 32px; height: 32px;">✓</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mobile-suggestion" style="border-color: #fbd38d; background: #fffbeb;">
+                            <div class="mobile-suggestion-header">
+                                <span class="mobile-pattern">LUCJAN BIK</span>
+                                <span class="confidence-badge confidence-low">25%</span>
+                            </div>
+                            <div class="mobile-sample">LUCJAN BIK PEKAO - zycie</div>
+                            <div class="mobile-suggestion-footer">
+                                <select class="mobile-category-select">
+                                    <option>Select category...</option>
+                                    <option>Savings</option>
+                                    <option>Transfers</option>
+                                </select>
+                                <button class="btn-icon accept" style="width: 32px; height: 32px;">✓</button>
+                            </div>
+                        </div>
+
+                        <div class="mobile-suggestion">
+                            <div class="mobile-suggestion-header">
+                                <span class="mobile-pattern">ALLEGRO</span>
+                                <span class="confidence-badge confidence-medium">72%</span>
+                            </div>
+                            <div class="mobile-sample">ALLEGRO SP. Z O.O.</div>
+                            <div class="mobile-suggestion-footer">
+                                <select class="mobile-category-select">
+                                    <option selected>Shopping → Online</option>
+                                    <option>Entertainment</option>
+                                </select>
+                                <button class="btn-icon accept" style="width: 32px; height: 32px;">✓</button>
+                            </div>
+                        </div>
+
+                        <div class="swipe-hint">Swipe left to reject, right to accept</div>
+                    </div>
+                    <div class="phone-bottom-bar">
+                        <button class="btn btn-secondary">Cancel</button>
+                        <button class="btn btn-primary">Accept All (40/45)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 4: Structure -->
+        <div>
+            <h3 style="text-align: center; margin-bottom: 16px;">Category Structure</h3>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>📶 🔋</span>
+                    </div>
+                    <div class="phone-header">
+                        <span class="back">←</span>
+                        <h1>Category Structure</h1>
+                    </div>
+                    <div class="phone-content">
+                        <p style="color: #718096; font-size: 14px; margin-bottom: 20px;">AI suggested this structure. Uncheck what you don't need.</p>
+
+                        <div style="background: #f7fafc; border-radius: 12px; padding: 16px;">
+                            <div style="font-weight: 600; margin-bottom: 12px; color: #e53e3e;">OUTFLOW</div>
+
+                            <label style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                                <input type="checkbox" checked style="width: 20px; height: 20px; margin-right: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">Housing</div>
+                                    <div style="font-size: 12px; color: #718096;">Rent, Utilities, Insurance</div>
+                                </div>
+                            </label>
+
+                            <label style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                                <input type="checkbox" checked style="width: 20px; height: 20px; margin-right: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">Mandatory Fees</div>
+                                    <div style="font-size: 12px; color: #718096;">ZUS, Income Tax, VAT</div>
+                                </div>
+                            </label>
+
+                            <label style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                                <input type="checkbox" checked style="width: 20px; height: 20px; margin-right: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">Food</div>
+                                    <div style="font-size: 12px; color: #718096;">Groceries, Restaurants</div>
+                                </div>
+                            </label>
+
+                            <label style="display: flex; align-items: center; padding: 10px 0; opacity: 0.5;">
+                                <input type="checkbox" style="width: 20px; height: 20px; margin-right: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">Entertainment</div>
+                                    <div style="font-size: 12px; color: #718096;">Subscriptions, Streaming</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div style="background: #f7fafc; border-radius: 12px; padding: 16px; margin-top: 16px;">
+                            <div style="font-weight: 600; margin-bottom: 12px; color: #38a169;">INFLOW</div>
+
+                            <label style="display: flex; align-items: center; padding: 10px 0;">
+                                <input type="checkbox" checked style="width: 20px; height: 20px; margin-right: 12px;">
+                                <div>
+                                    <div style="font-weight: 600;">Salary</div>
+                                    <div style="font-size: 12px; color: #718096;">Base Salary, Bonuses</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-secondary" style="width: 100%; margin-top: 16px;">+ Add Custom Category</button>
+                    </div>
+                    <div class="phone-bottom-bar">
+                        <button class="btn btn-primary" style="width: 100%;">Continue</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

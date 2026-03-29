@@ -1,5 +1,8 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsResult;
+import com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize.AiCategorizeCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_all_mappings.DeleteAllCategoryMappingsCommand;
@@ -32,6 +35,8 @@ import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.L
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
+import com.multi.vidulum.user.domain.DomainUserRepository;
+import com.multi.vidulum.user.domain.User;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -39,6 +44,8 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,6 +62,7 @@ public class BankDataIngestionRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final DomainUserRepository userRepository;
 
     /**
      * Configure category mappings for bank data ingestion.
@@ -322,6 +330,181 @@ public class BankDataIngestionRestController {
         );
 
         return toUploadCsvResponse(result);
+    }
+
+    // ============ AI Categorization endpoints ============
+
+    /**
+     * Trigger AI-powered categorization for a staging session.
+     * Analyzes staged transactions and returns category structure and pattern mapping suggestions.
+     */
+    @PostMapping("/staging/{stagingSessionId}/ai-categorize")
+    public BankDataIngestionDto.AiCategorizeResponse aiCategorize(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("stagingSessionId") String stagingSessionId) {
+
+        AiCategorizationResult result = commandGateway.send(
+                new AiCategorizeCommand(
+                        CashFlowId.of(cashFlowId),
+                        StagingSessionId.of(stagingSessionId),
+                        getCurrentUserId()
+                )
+        );
+
+        return toAiCategorizeResponse(result);
+    }
+
+    /**
+     * Accept AI categorization suggestions.
+     * Creates categories, applies mappings, and optionally caches patterns for future imports.
+     */
+    @PostMapping("/staging/{stagingSessionId}/accept-ai")
+    public BankDataIngestionDto.AcceptAiSuggestionsResponse acceptAiSuggestions(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("stagingSessionId") String stagingSessionId,
+            @RequestBody BankDataIngestionDto.AcceptAiSuggestionsRequest request) {
+
+        AcceptAiSuggestionsResult result = commandGateway.send(
+                new AcceptAiSuggestionsCommand(
+                        CashFlowId.of(cashFlowId),
+                        StagingSessionId.of(stagingSessionId),
+                        getCurrentUserId(),
+                        toCategoriesToCreate(request.getAcceptedCategories()),
+                        toMappingsToApply(request.getAcceptedMappings()),
+                        request.isSaveToCache()
+                )
+        );
+
+        return toAcceptAiSuggestionsResponse(result);
+    }
+
+    // ============ User ID helper ============
+
+    private String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new IllegalStateException("User not found: " + username));
+            return user.getUserId().getId();
+        }
+        throw new IllegalStateException("No authenticated user found");
+    }
+
+    // ============ AI Categorization mapping helpers ============
+
+    private BankDataIngestionDto.AiCategorizeResponse toAiCategorizeResponse(AiCategorizationResult result) {
+        return BankDataIngestionDto.AiCategorizeResponse.builder()
+                .sessionId(result.sessionId().id())
+                .status(result.status())
+                .suggestedStructure(toSuggestedStructureJson(result.suggestedStructure()))
+                .patternSuggestions(result.patternSuggestions().stream()
+                        .map(this::toPatternSuggestionJson)
+                        .toList())
+                .stats(toCategorizationStatsJson(result.stats()))
+                .cost(BankDataIngestionDto.AiCostJson.builder()
+                        .tokensUsed(result.cost().tokensUsed())
+                        .estimatedCost(result.cost().estimatedCost())
+                        .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiSuggestedStructureJson toSuggestedStructureJson(
+            AiCategorizationResult.SuggestedStructure structure) {
+        return BankDataIngestionDto.AiSuggestedStructureJson.builder()
+                .outflow(structure.outflow().stream()
+                        .map(this::toCategoryNodeJson)
+                        .toList())
+                .inflow(structure.inflow().stream()
+                        .map(this::toCategoryNodeJson)
+                        .toList())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiCategoryNodeJson toCategoryNodeJson(
+            AiCategorizationResult.CategoryNode node) {
+        return BankDataIngestionDto.AiCategoryNodeJson.builder()
+                .name(node.name())
+                .subCategories(node.subCategories())
+                .transactionCount(node.transactionCount())
+                .totalAmount(node.totalAmount().doubleValue())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiPatternSuggestionJson toPatternSuggestionJson(
+            AiCategorizationResult.PatternSuggestion suggestion) {
+        return BankDataIngestionDto.AiPatternSuggestionJson.builder()
+                .pattern(suggestion.pattern())
+                .sampleTransaction(suggestion.sampleTransaction())
+                .suggestedCategory(suggestion.suggestedCategory())
+                .parentCategory(suggestion.parentCategory())
+                .type(suggestion.type())
+                .confidence(suggestion.confidence())
+                .source(suggestion.source().name())
+                .transactionCount(suggestion.transactionCount())
+                .totalAmount(suggestion.totalAmount().doubleValue())
+                .needsUserInput(suggestion.needsUserInput())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiCategorizationStatsJson toCategorizationStatsJson(
+            AiCategorizationResult.CategorizationStats stats) {
+        return BankDataIngestionDto.AiCategorizationStatsJson.builder()
+                .totalPatterns(stats.totalPatterns())
+                .autoAccepted(stats.autoAccepted())
+                .suggested(stats.suggested())
+                .needsManual(stats.needsManual())
+                .fromGlobalCache(stats.fromGlobalCache())
+                .fromUserCache(stats.fromUserCache())
+                .fromAi(stats.fromAi())
+                .build();
+    }
+
+    private List<AcceptAiSuggestionsCommand.CategoryToCreate> toCategoriesToCreate(
+            List<BankDataIngestionDto.AiCategoryToCreateJson> categories) {
+        if (categories == null) return List.of();
+        return categories.stream()
+                .map(c -> new AcceptAiSuggestionsCommand.CategoryToCreate(
+                        c.getName(),
+                        c.getParentName(),
+                        c.getType()
+                ))
+                .toList();
+    }
+
+    private List<AcceptAiSuggestionsCommand.MappingToApply> toMappingsToApply(
+            List<BankDataIngestionDto.AiMappingToApplyJson> mappings) {
+        if (mappings == null) return List.of();
+        return mappings.stream()
+                .map(m -> new AcceptAiSuggestionsCommand.MappingToApply(
+                        m.getPattern(),
+                        m.getBankCategory(),
+                        m.getTargetCategory(),
+                        m.getParentCategory(),
+                        m.getType(),
+                        m.getConfidence()
+                ))
+                .toList();
+    }
+
+    private BankDataIngestionDto.AcceptAiSuggestionsResponse toAcceptAiSuggestionsResponse(
+            AcceptAiSuggestionsResult result) {
+        return BankDataIngestionDto.AcceptAiSuggestionsResponse.builder()
+                .cashFlowId(result.cashFlowId().id())
+                .sessionId(result.sessionId().id())
+                .status(result.status())
+                .categoriesCreated(result.categoriesCreated())
+                .mappingsApplied(result.mappingsApplied())
+                .patternsCached(result.patternsCached())
+                .warnings(result.warnings())
+                .validationSummary(BankDataIngestionDto.AiStagingValidationSummaryJson.builder()
+                        .totalTransactions(result.validationSummary().totalTransactions())
+                        .validTransactions(result.validationSummary().validTransactions())
+                        .invalidTransactions(result.validationSummary().invalidTransactions())
+                        .duplicateTransactions(result.validationSummary().duplicateTransactions())
+                        .readyForImport(result.validationSummary().readyForImport())
+                        .build())
+                .build();
     }
 
     // ============ Upload CSV mapping helpers ============
