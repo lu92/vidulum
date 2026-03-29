@@ -480,7 +480,7 @@ public class BankDataIngestionRestController {
                         m.getPattern(),
                         m.getBankCategory(),
                         m.getTargetCategory(),
-                        m.getParentCategory(),
+                        // parentCategory removed - looked up dynamically from CashFlow
                         m.getType(),
                         m.getConfidence()
                 ))

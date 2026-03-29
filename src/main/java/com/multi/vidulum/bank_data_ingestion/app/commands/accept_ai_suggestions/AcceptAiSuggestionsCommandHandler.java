@@ -86,20 +86,20 @@ public class AcceptAiSuggestionsCommandHandler
         }
 
         // Step 2: Create category mappings
+        // Note: parentCategory is no longer used - mappings are to leaf category name only.
+        // The parent relationship is looked up dynamically from CashFlow.
         if (command.acceptedMappings() != null && !command.acceptedMappings().isEmpty()) {
             List<ConfigureCategoryMappingCommand.MappingConfig> mappingConfigs = new ArrayList<>();
 
             for (AcceptAiSuggestionsCommand.MappingToApply mapping : command.acceptedMappings()) {
-                // Determine appropriate action
-                MappingAction action = mapping.parentCategory() != null
-                        ? MappingAction.CREATE_SUBCATEGORY
-                        : MappingAction.CREATE_NEW;
+                // Use MAP_TO_EXISTING since category should already exist
+                MappingAction action = MappingAction.MAP_TO_EXISTING;
 
                 // Create mapping config for bank category → target category
                 mappingConfigs.add(new ConfigureCategoryMappingCommand.MappingConfig(
                         mapping.bankCategory(),
                         new CategoryName(mapping.targetCategory()),
-                        mapping.parentCategory() != null ? new CategoryName(mapping.parentCategory()) : null,
+                        null,  // parentCategory not stored in mapping - looked up dynamically
                         mapping.type(),
                         action
                 ));
@@ -118,24 +118,27 @@ public class AcceptAiSuggestionsCommandHandler
         }
 
         // Step 3: Save to pattern cache (if requested)
+        // Patterns are stored per CashFlow (not per user) for better isolation
         if (command.saveToCache() && command.acceptedMappings() != null) {
+            String cashFlowIdStr = command.cashFlowId().id();
+
             for (AcceptAiSuggestionsCommand.MappingToApply mapping : command.acceptedMappings()) {
                 try {
-                    // Check if user already has this pattern
+                    // Check if this CashFlow already has this pattern
                     boolean exists = patternMappingRepository
-                            .findUserByNormalizedPatternAndTypeAndUserId(
+                            .findUserByNormalizedPatternAndTypeAndCashFlowId(
                                     mapping.pattern().toUpperCase(),
                                     mapping.type(),
-                                    command.userId()
+                                    cashFlowIdStr
                             ).isPresent();
 
                     if (!exists) {
                         PatternMapping patternMapping = PatternMapping.createUser(
                                 mapping.pattern().toUpperCase(),
                                 mapping.targetCategory(),
-                                mapping.parentCategory(),
                                 mapping.type(),
                                 command.userId(),
+                                cashFlowIdStr,
                                 (double) mapping.confidence() / 100.0
                         );
                         patternMappingRepository.save(patternMapping);
@@ -145,7 +148,7 @@ public class AcceptAiSuggestionsCommandHandler
                     log.warn("Failed to cache pattern: {}", mapping.pattern(), e);
                 }
             }
-            log.info("Cached {} patterns for user: {}", patternsCached, command.userId());
+            log.info("Cached {} patterns for cashFlow: {}", patternsCached, cashFlowIdStr);
         }
 
         // Step 4: Revalidate staging session

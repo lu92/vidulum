@@ -16,10 +16,14 @@ import java.time.Instant;
 
 /**
  * MongoDB entity for PatternMapping.
+ *
+ * USER patterns are isolated per CashFlow via cashFlowId.
+ * GLOBAL patterns have null cashFlowId and userId.
  */
 @Document(collection = "pattern_mappings")
 @CompoundIndex(name = "global_pattern_idx", def = "{'normalizedPattern': 1, 'source': 1}", unique = false)
-@CompoundIndex(name = "user_pattern_idx", def = "{'normalizedPattern': 1, 'userId': 1, 'source': 1}", unique = false)
+@CompoundIndex(name = "user_pattern_idx", def = "{'normalizedPattern': 1, 'userId': 1, 'cashFlowId': 1, 'source': 1}", unique = false)
+@CompoundIndex(name = "cashflow_pattern_idx", def = "{'cashFlowId': 1, 'normalizedPattern': 1, 'categoryType': 1}", unique = false)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,7 +36,6 @@ public class PatternMappingEntity {
     private String normalizedPattern;
 
     private String suggestedCategory;
-    private String parentCategory;
     private Type categoryType;
 
     @Indexed
@@ -40,6 +43,9 @@ public class PatternMappingEntity {
 
     @Indexed
     private String userId;
+
+    @Indexed
+    private String cashFlowId;
 
     private int usageCount;
     private double confidenceScore;
@@ -54,10 +60,10 @@ public class PatternMappingEntity {
                 domain.id().id(),
                 domain.normalizedPattern(),
                 domain.suggestedCategory(),
-                domain.parentCategory(),
                 domain.categoryType(),
                 domain.source(),
                 domain.userId(),
+                domain.cashFlowId(),
                 domain.usageCount(),
                 domain.confidenceScore(),
                 domain.createdAt(),
@@ -73,10 +79,10 @@ public class PatternMappingEntity {
                 PatternMappingId.of(id),
                 normalizedPattern,
                 suggestedCategory,
-                parentCategory,
                 categoryType,
                 source,
                 userId,
+                cashFlowId,
                 usageCount,
                 confidenceScore,
                 createdAt,

@@ -18,6 +18,11 @@ import java.util.List;
  * Global patterns are well-known brands, institutions, and services
  * that can be categorized with high confidence without AI assistance.
  * This reduces AI costs and provides instant categorization.
+ *
+ * NOTE: GLOBAL patterns are currently disabled in AiCategorizationService.
+ * They are kept for future use when we implement per-language global patterns.
+ *
+ * On startup, this also clears all USER patterns to ensure clean state.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,7 +32,23 @@ public class GlobalPatternSeeder {
     private final PatternMappingRepository patternMappingRepository;
 
     @EventListener(ApplicationReadyEvent.class)
-    public void seedGlobalPatterns() {
+    public void onApplicationReady() {
+        clearUserPatterns();
+        seedGlobalPatterns();
+    }
+
+    /**
+     * Clears all USER patterns on application startup.
+     * This ensures clean state and avoids stale pattern mappings.
+     */
+    private void clearUserPatterns() {
+        long deletedCount = patternMappingRepository.deleteAllUserPatterns();
+        if (deletedCount > 0) {
+            log.info("Cleared {} USER pattern mappings on startup", deletedCount);
+        }
+    }
+
+    private void seedGlobalPatterns() {
         long existingCount = patternMappingRepository.countGlobal();
 
         if (existingCount > 0) {
@@ -38,7 +59,7 @@ public class GlobalPatternSeeder {
         List<PatternMapping> patterns = createGlobalPatterns();
         patternMappingRepository.saveAll(patterns);
 
-        log.info("Seeded {} global patterns for AI categorization", patterns.size());
+        log.info("Seeded {} global patterns for AI categorization (currently disabled)", patterns.size());
     }
 
     private List<PatternMapping> createGlobalPatterns() {
@@ -285,11 +306,19 @@ public class GlobalPatternSeeder {
         return patterns;
     }
 
-    private static PatternMapping globalOutflow(String pattern, String category, String parent, double confidence) {
-        return PatternMapping.createGlobal(pattern, category, parent, Type.OUTFLOW, confidence);
+    /**
+     * Creates a GLOBAL outflow pattern.
+     * Note: parentCategory is no longer stored - kept as parameter for documentation.
+     */
+    private static PatternMapping globalOutflow(String pattern, String category, String parentDoc, double confidence) {
+        return PatternMapping.createGlobal(pattern, category, Type.OUTFLOW, confidence);
     }
 
-    private static PatternMapping globalInflow(String pattern, String category, String parent, double confidence) {
-        return PatternMapping.createGlobal(pattern, category, parent, Type.INFLOW, confidence);
+    /**
+     * Creates a GLOBAL inflow pattern.
+     * Note: parentCategory is no longer stored - kept as parameter for documentation.
+     */
+    private static PatternMapping globalInflow(String pattern, String category, String parentDoc, double confidence) {
+        return PatternMapping.createGlobal(pattern, category, Type.INFLOW, confidence);
     }
 }

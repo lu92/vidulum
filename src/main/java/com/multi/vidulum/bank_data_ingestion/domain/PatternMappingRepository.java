@@ -7,6 +7,9 @@ import java.util.Optional;
 
 /**
  * Repository interface for PatternMapping persistence.
+ *
+ * USER patterns are isolated per CashFlow - each CashFlow has its own set of learned patterns.
+ * GLOBAL patterns are currently disabled but kept for future use.
  */
 public interface PatternMappingRepository {
 
@@ -27,35 +30,39 @@ public interface PatternMappingRepository {
 
     /**
      * Finds a GLOBAL pattern by normalized pattern string.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     Optional<PatternMapping> findGlobalByNormalizedPattern(String normalizedPattern);
 
     /**
      * Finds a GLOBAL pattern by normalized pattern and type.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     Optional<PatternMapping> findGlobalByNormalizedPatternAndType(String normalizedPattern, Type type);
 
     /**
-     * Finds a USER pattern by normalized pattern and user ID.
+     * Finds a USER pattern by normalized pattern, type, and CashFlow ID.
+     * This is the primary lookup method for per-CashFlow pattern matching.
      */
-    Optional<PatternMapping> findUserByNormalizedPatternAndUserId(String normalizedPattern, String userId);
-
-    /**
-     * Finds a USER pattern by normalized pattern, type, and user ID.
-     */
-    Optional<PatternMapping> findUserByNormalizedPatternAndTypeAndUserId(
+    Optional<PatternMapping> findUserByNormalizedPatternAndTypeAndCashFlowId(
             String normalizedPattern,
             Type type,
-            String userId
+            String cashFlowId
     );
 
     /**
      * Finds all GLOBAL patterns.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     List<PatternMapping> findAllGlobal();
 
     /**
-     * Finds all USER patterns for a specific user.
+     * Finds all USER patterns for a specific CashFlow.
+     */
+    List<PatternMapping> findAllByCashFlowId(String cashFlowId);
+
+    /**
+     * Finds all USER patterns for a specific user (across all CashFlows).
      */
     List<PatternMapping> findAllByUserId(String userId);
 
@@ -70,9 +77,15 @@ public interface PatternMappingRepository {
     void deleteById(PatternMappingId id);
 
     /**
-     * Deletes all USER patterns for a specific user.
+     * Deletes all USER patterns (non-GLOBAL).
+     * Used during application startup to clear learned patterns.
      */
-    long deleteAllByUserId(String userId);
+    long deleteAllUserPatterns();
+
+    /**
+     * Deletes all patterns for a specific CashFlow.
+     */
+    long deleteAllByCashFlowId(String cashFlowId);
 
     /**
      * Counts all GLOBAL patterns.
@@ -80,9 +93,9 @@ public interface PatternMappingRepository {
     long countGlobal();
 
     /**
-     * Counts all USER patterns for a specific user.
+     * Counts all patterns for a specific CashFlow.
      */
-    long countByUserId(String userId);
+    long countByCashFlowId(String cashFlowId);
 
     /**
      * Checks if a GLOBAL pattern exists.

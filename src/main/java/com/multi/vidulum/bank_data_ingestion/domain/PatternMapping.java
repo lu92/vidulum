@@ -9,23 +9,26 @@ import java.time.Instant;
  * Domain record representing a pattern-to-category mapping.
  *
  * Pattern mappings are used to cache categorization decisions:
- * - GLOBAL patterns: Known brands/institutions (BIEDRONKA, ZUS, NETFLIX)
- * - USER patterns: User's previous categorizations
+ * - GLOBAL patterns: Known brands/institutions (BIEDRONKA, ZUS, NETFLIX) - currently disabled
+ * - USER patterns: User's previous categorizations, isolated per CashFlow
  * - AI patterns: AI-suggested categorizations
  *
  * This enables:
  * - Fast lookups for known patterns (FREE)
  * - Learning from user confirmations
  * - Reducing AI calls on subsequent imports
+ *
+ * Note: Parent category is NOT stored - it's looked up dynamically from CashFlow
+ * to avoid desynchronization when user moves categories.
  */
 public record PatternMapping(
         PatternMappingId id,
         String normalizedPattern,        // e.g., "ZUS", "BIEDRONKA"
         String suggestedCategory,        // e.g., "Social Security"
-        String parentCategory,           // nullable, e.g., "Mandatory Fees"
         Type categoryType,               // INFLOW or OUTFLOW
         PatternSource source,            // GLOBAL, USER, or AI
         String userId,                   // null for GLOBAL patterns
+        String cashFlowId,               // null for GLOBAL patterns, required for USER
         int usageCount,
         double confidenceScore,          // 0.0 - 1.0
         Instant createdAt,
@@ -35,11 +38,11 @@ public record PatternMapping(
     /**
      * Creates a new GLOBAL pattern mapping.
      * Global patterns are known brands/institutions available to all users.
+     * NOTE: GLOBAL patterns are currently disabled but kept for future use.
      */
     public static PatternMapping createGlobal(
             String normalizedPattern,
             String suggestedCategory,
-            String parentCategory,
             Type categoryType,
             double confidenceScore
     ) {
@@ -48,10 +51,10 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
-                parentCategory,
                 categoryType,
                 PatternSource.GLOBAL,
                 null,
+                null,  // no cashFlowId for GLOBAL
                 0,
                 confidenceScore,
                 now,
@@ -62,13 +65,14 @@ public record PatternMapping(
     /**
      * Creates a new USER pattern mapping.
      * User patterns are learned from user's categorization confirmations.
+     * Isolated per CashFlow to avoid cross-CashFlow category mismatches.
      */
     public static PatternMapping createUser(
             String normalizedPattern,
             String suggestedCategory,
-            String parentCategory,
             Type categoryType,
             String userId,
+            String cashFlowId,
             double confidenceScore
     ) {
         Instant now = Instant.now();
@@ -76,10 +80,10 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
-                parentCategory,
                 categoryType,
                 PatternSource.USER,
                 userId,
+                cashFlowId,
                 1,
                 confidenceScore,
                 now,
@@ -90,13 +94,14 @@ public record PatternMapping(
     /**
      * Creates a new AI pattern mapping.
      * AI patterns are suggestions from the AI categorization service.
+     * Isolated per CashFlow.
      */
     public static PatternMapping createAi(
             String normalizedPattern,
             String suggestedCategory,
-            String parentCategory,
             Type categoryType,
             String userId,
+            String cashFlowId,
             double confidenceScore
     ) {
         Instant now = Instant.now();
@@ -104,10 +109,10 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
-                parentCategory,
                 categoryType,
                 PatternSource.AI,
                 userId,
+                cashFlowId,
                 0,
                 confidenceScore,
                 now,
@@ -123,10 +128,10 @@ public record PatternMapping(
                 id,
                 normalizedPattern,
                 suggestedCategory,
-                parentCategory,
                 categoryType,
                 source,
                 userId,
+                cashFlowId,
                 usageCount + 1,
                 confidenceScore,
                 createdAt,
@@ -137,15 +142,15 @@ public record PatternMapping(
     /**
      * Updates the category suggestion for this pattern.
      */
-    public PatternMapping updateCategory(String newCategory, String newParent, double newConfidence) {
+    public PatternMapping updateCategory(String newCategory, double newConfidence) {
         return new PatternMapping(
                 id,
                 normalizedPattern,
                 newCategory,
-                newParent,
                 categoryType,
                 source,
                 userId,
+                cashFlowId,
                 usageCount,
                 newConfidence,
                 createdAt,

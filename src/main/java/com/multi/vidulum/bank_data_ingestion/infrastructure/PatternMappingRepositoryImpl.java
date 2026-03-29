@@ -15,6 +15,9 @@ import java.util.Optional;
 
 /**
  * Implementation of PatternMappingRepository using MongoDB.
+ *
+ * USER patterns are isolated per CashFlow.
+ * GLOBAL patterns are currently disabled but implementation kept for future use.
  */
 @Repository
 @RequiredArgsConstructor
@@ -62,24 +65,15 @@ public class PatternMappingRepositoryImpl implements PatternMappingRepository {
     }
 
     @Override
-    public Optional<PatternMapping> findUserByNormalizedPatternAndUserId(String normalizedPattern, String userId) {
-        return mongoRepository.findUserByNormalizedPatternAndUserId(
-                        normalizedPattern.toUpperCase().trim(),
-                        userId
-                )
-                .map(PatternMappingEntity::toDomain);
-    }
-
-    @Override
-    public Optional<PatternMapping> findUserByNormalizedPatternAndTypeAndUserId(
+    public Optional<PatternMapping> findUserByNormalizedPatternAndTypeAndCashFlowId(
             String normalizedPattern,
             Type type,
-            String userId
+            String cashFlowId
     ) {
-        return mongoRepository.findUserByNormalizedPatternAndCategoryTypeAndUserId(
+        return mongoRepository.findUserByNormalizedPatternAndCategoryTypeAndCashFlowId(
                         normalizedPattern.toUpperCase().trim(),
                         type,
-                        userId
+                        cashFlowId
                 )
                 .map(PatternMappingEntity::toDomain);
     }
@@ -87,6 +81,13 @@ public class PatternMappingRepositoryImpl implements PatternMappingRepository {
     @Override
     public List<PatternMapping> findAllGlobal() {
         return mongoRepository.findAllGlobal().stream()
+                .map(PatternMappingEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<PatternMapping> findAllByCashFlowId(String cashFlowId) {
+        return mongoRepository.findAllByCashFlowId(cashFlowId).stream()
                 .map(PatternMappingEntity::toDomain)
                 .toList();
     }
@@ -111,8 +112,13 @@ public class PatternMappingRepositoryImpl implements PatternMappingRepository {
     }
 
     @Override
-    public long deleteAllByUserId(String userId) {
-        return mongoRepository.deleteAllByUserId(userId);
+    public long deleteAllUserPatterns() {
+        return mongoRepository.deleteAllUserPatterns();
+    }
+
+    @Override
+    public long deleteAllByCashFlowId(String cashFlowId) {
+        return mongoRepository.deleteAllByCashFlowId(cashFlowId);
     }
 
     @Override
@@ -121,8 +127,8 @@ public class PatternMappingRepositoryImpl implements PatternMappingRepository {
     }
 
     @Override
-    public long countByUserId(String userId) {
-        return mongoRepository.countByUserId(userId);
+    public long countByCashFlowId(String cashFlowId) {
+        return mongoRepository.countByCashFlowId(cashFlowId);
     }
 
     @Override

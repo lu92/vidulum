@@ -48,10 +48,13 @@ public record AcceptAiSuggestionsCommand(
     /**
      * A mapping to apply from bank category to CashFlow category.
      *
+     * Note: parentCategory is NOT stored in PatternMapping anymore.
+     * The parent relationship is looked up dynamically from the CashFlow
+     * to avoid desynchronization when user moves/restructures categories.
+     *
      * @param pattern           normalized pattern (e.g., "BIEDRONKA")
      * @param bankCategory      original bank category
-     * @param targetCategory    target CashFlow category
-     * @param parentCategory    parent category (for nested structure)
+     * @param targetCategory    target CashFlow category (leaf category name)
      * @param type              INFLOW or OUTFLOW
      * @param confidence        confidence score (0-100)
      */
@@ -59,7 +62,6 @@ public record AcceptAiSuggestionsCommand(
             String pattern,
             String bankCategory,
             String targetCategory,
-            String parentCategory,
             Type type,
             int confidence
     ) {}

@@ -13,18 +13,23 @@ import java.util.Optional;
 
 /**
  * Spring Data MongoDB repository for PatternMappingEntity.
+ *
+ * USER patterns are isolated per CashFlow.
+ * GLOBAL patterns are currently disabled but queries kept for future use.
  */
 @Repository
 public interface PatternMappingMongoRepository extends MongoRepository<PatternMappingEntity, String> {
 
     /**
      * Find GLOBAL pattern by normalized pattern string.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     @Query("{ 'normalizedPattern': ?0, 'source': 'GLOBAL' }")
     Optional<PatternMappingEntity> findGlobalByNormalizedPattern(String normalizedPattern);
 
     /**
      * Find GLOBAL pattern by normalized pattern and category type.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     @Query("{ 'normalizedPattern': ?0, 'categoryType': ?1, 'source': 'GLOBAL' }")
     Optional<PatternMappingEntity> findGlobalByNormalizedPatternAndCategoryType(
@@ -33,32 +38,30 @@ public interface PatternMappingMongoRepository extends MongoRepository<PatternMa
     );
 
     /**
-     * Find USER pattern by normalized pattern and user ID.
+     * Find USER pattern by normalized pattern, type, and CashFlow ID.
+     * Primary lookup method for per-CashFlow pattern matching.
      */
-    @Query("{ 'normalizedPattern': ?0, 'userId': ?1, 'source': 'USER' }")
-    Optional<PatternMappingEntity> findUserByNormalizedPatternAndUserId(
-            String normalizedPattern,
-            String userId
-    );
-
-    /**
-     * Find USER pattern by normalized pattern, type, and user ID.
-     */
-    @Query("{ 'normalizedPattern': ?0, 'categoryType': ?1, 'userId': ?2, 'source': 'USER' }")
-    Optional<PatternMappingEntity> findUserByNormalizedPatternAndCategoryTypeAndUserId(
+    @Query("{ 'normalizedPattern': ?0, 'categoryType': ?1, 'cashFlowId': ?2, 'source': 'USER' }")
+    Optional<PatternMappingEntity> findUserByNormalizedPatternAndCategoryTypeAndCashFlowId(
             String normalizedPattern,
             Type categoryType,
-            String userId
+            String cashFlowId
     );
 
     /**
      * Find all GLOBAL patterns.
+     * NOTE: GLOBAL patterns are currently disabled.
      */
     @Query("{ 'source': 'GLOBAL' }")
     List<PatternMappingEntity> findAllGlobal();
 
     /**
-     * Find all patterns by user ID.
+     * Find all patterns by CashFlow ID.
+     */
+    List<PatternMappingEntity> findAllByCashFlowId(String cashFlowId);
+
+    /**
+     * Find all patterns by user ID (across all CashFlows).
      */
     List<PatternMappingEntity> findAllByUserId(String userId);
 
@@ -68,9 +71,16 @@ public interface PatternMappingMongoRepository extends MongoRepository<PatternMa
     List<PatternMappingEntity> findAllBySource(PatternSource source);
 
     /**
-     * Delete all patterns by user ID.
+     * Delete all USER patterns (non-GLOBAL).
+     * Used during application startup to clear learned patterns.
      */
-    long deleteAllByUserId(String userId);
+    @Query(value = "{ 'source': { '$ne': 'GLOBAL' } }", delete = true)
+    long deleteAllUserPatterns();
+
+    /**
+     * Delete all patterns by CashFlow ID.
+     */
+    long deleteAllByCashFlowId(String cashFlowId);
 
     /**
      * Count GLOBAL patterns.
@@ -79,9 +89,9 @@ public interface PatternMappingMongoRepository extends MongoRepository<PatternMa
     long countGlobal();
 
     /**
-     * Count patterns by user ID.
+     * Count patterns by CashFlow ID.
      */
-    long countByUserId(String userId);
+    long countByCashFlowId(String cashFlowId);
 
     /**
      * Check if GLOBAL pattern exists.

@@ -65,6 +65,7 @@ public record AiCategorizationResult(
     ) {
         /**
          * Creates a suggestion from a cached pattern mapping.
+         * Note: parentCategory is set to null - it's looked up dynamically from CashFlow.
          */
         public static PatternSuggestion fromCache(
                 PatternMapping mapping,
@@ -80,7 +81,7 @@ public record AiCategorizationResult(
                     mapping.normalizedPattern(),
                     sampleTransaction,
                     mapping.suggestedCategory(),
-                    mapping.parentCategory(),
+                    null,  // parentCategory is looked up dynamically from CashFlow
                     mapping.categoryType(),
                     mapping.confidencePercentage(),
                     displaySource,

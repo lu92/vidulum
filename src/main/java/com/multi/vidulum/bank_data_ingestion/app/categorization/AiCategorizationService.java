@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * Flow:
  * 1. Load staged transactions from session
  * 2. Normalize and deduplicate into patterns
- * 3. Check cache (GLOBAL → USER) for known patterns
+ * 3. Check USER cache (per CashFlow) for known patterns
  * 4. Send remaining patterns to AI
  * 5. Combine results and return suggestions
  *
@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
  * - Pattern deduplication reduces AI input (402 txns → 45 patterns)
  * - Cache hits are FREE
  * - Only uncached patterns sent to AI
+ *
+ * Note: GLOBAL patterns are currently disabled. Each CashFlow has its own
+ * isolated cache of USER patterns to avoid cross-CashFlow category mismatches.
  */
 @Slf4j
 @Service
@@ -49,19 +52,23 @@ public class AiCategorizationService {
     @Value("${vidulum.ai.categorization.max-patterns:100}")
     private int maxPatternsToAi;
 
+    // GLOBAL patterns are disabled - they caused issues with language mismatch
+    // (English patterns couldn't match Polish categories in CashFlow)
+    private static final boolean GLOBAL_CACHE_ENABLED = false;
+
     /**
      * Categorizes transactions in a staging session.
      *
-     * @param sessionId   the staging session ID
-     * @param transactions the staged transactions
-     * @param userId      the user ID (for user-specific patterns)
+     * @param sessionId          the staging session ID
+     * @param transactions       the staged transactions
+     * @param cashFlowId         the CashFlow ID (for per-CashFlow pattern isolation)
      * @param existingCategories existing category names in the CashFlow
      * @return categorization result with suggestions
      */
     public AiCategorizationResult categorize(
             StagingSessionId sessionId,
             List<StagedTransaction> transactions,
-            String userId,
+            String cashFlowId,
             List<String> existingCategories) {
 
         if (transactions == null || transactions.isEmpty()) {
@@ -69,8 +76,8 @@ public class AiCategorizationService {
             return AiCategorizationResult.noPatterns(sessionId);
         }
 
-        log.info("Starting AI categorization for session: {}, transactions: {}",
-                sessionId, transactions.size());
+        log.info("Starting AI categorization for session: {}, cashFlowId: {}, transactions: {}",
+                sessionId, cashFlowId, transactions.size());
 
         // Step 1: Deduplicate into patterns
         List<PatternDeduplicator.PatternGroup> patternGroups = deduplicator.deduplicate(transactions);
@@ -81,7 +88,7 @@ public class AiCategorizationService {
             return AiCategorizationResult.noPatterns(sessionId);
         }
 
-        // Step 2: Check cache for each pattern
+        // Step 2: Check cache for each pattern (per CashFlow)
         List<AiCategorizationResult.PatternSuggestion> cachedSuggestions = new ArrayList<>();
         List<PatternDeduplicator.PatternGroup> uncachedPatterns = new ArrayList<>();
 
@@ -92,9 +99,9 @@ public class AiCategorizationService {
             String normalizedPattern = pg.pattern();
             Type type = pg.type();
 
-            // Check USER cache first (higher priority)
+            // Check USER cache (per CashFlow)
             Optional<PatternMapping> userMapping = patternMappingRepository
-                    .findUserByNormalizedPatternAndTypeAndUserId(normalizedPattern, type, userId);
+                    .findUserByNormalizedPatternAndTypeAndCashFlowId(normalizedPattern, type, cashFlowId);
 
             if (userMapping.isPresent()) {
                 cachedSuggestions.add(AiCategorizationResult.PatternSuggestion.fromCache(
@@ -108,28 +115,30 @@ public class AiCategorizationService {
                 continue;
             }
 
-            // Check GLOBAL cache
-            Optional<PatternMapping> globalMapping = patternMappingRepository
-                    .findGlobalByNormalizedPatternAndType(normalizedPattern, type);
+            // GLOBAL cache is disabled - patterns are per-CashFlow only
+            if (GLOBAL_CACHE_ENABLED) {
+                Optional<PatternMapping> globalMapping = patternMappingRepository
+                        .findGlobalByNormalizedPatternAndType(normalizedPattern, type);
 
-            if (globalMapping.isPresent()) {
-                cachedSuggestions.add(AiCategorizationResult.PatternSuggestion.fromCache(
-                        globalMapping.get(),
-                        pg.sampleTransaction(),
-                        pg.transactionCount(),
-                        pg.totalAmount()
-                ));
-                patternMappingRepository.recordUsage(globalMapping.get().id());
-                globalCacheHits++;
-                continue;
+                if (globalMapping.isPresent()) {
+                    cachedSuggestions.add(AiCategorizationResult.PatternSuggestion.fromCache(
+                            globalMapping.get(),
+                            pg.sampleTransaction(),
+                            pg.transactionCount(),
+                            pg.totalAmount()
+                    ));
+                    patternMappingRepository.recordUsage(globalMapping.get().id());
+                    globalCacheHits++;
+                    continue;
+                }
             }
 
             // No cache hit - needs AI
             uncachedPatterns.add(pg);
         }
 
-        log.info("Cache results: {} global hits, {} user hits, {} need AI",
-                globalCacheHits, userCacheHits, uncachedPatterns.size());
+        log.info("Cache results for cashFlowId {}: {} user hits, {} need AI (GLOBAL disabled: {})",
+                cashFlowId, userCacheHits, uncachedPatterns.size(), !GLOBAL_CACHE_ENABLED);
 
         // Step 3: Call AI for uncached patterns
         List<AiCategorizationResult.PatternSuggestion> aiSuggestions = new ArrayList<>();

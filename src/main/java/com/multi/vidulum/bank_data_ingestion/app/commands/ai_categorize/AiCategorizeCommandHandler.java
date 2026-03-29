@@ -61,10 +61,11 @@ public class AiCategorizeCommandHandler
         log.debug("Existing categories: {}", existingCategories.size());
 
         // Step 4: Call AI Categorization Service
+        // Pass cashFlowId for per-CashFlow pattern isolation
         AiCategorizationResult result = aiCategorizationService.categorize(
                 command.sessionId(),
                 transactions,
-                command.userId(),
+                command.cashFlowId().id(),  // cashFlowId for per-CashFlow cache
                 existingCategories
         );
 

@@ -2,9 +2,6 @@ package com.multi.vidulum.bank_data_ingestion.domain;
 
 /**
  * Defines what action to take when mapping a bank category to a system category.
- *
- * Note: Only one file can be imported per CashFlow, so MAP_TO_EXISTING is not needed.
- * Categories are either created new or mapped to Uncategorized.
  */
 public enum MappingAction {
     /**
@@ -16,6 +13,11 @@ public enum MappingAction {
      * Create a new subcategory under an existing parent category.
      */
     CREATE_SUBCATEGORY,
+
+    /**
+     * Map to an existing category in the CashFlow.
+     */
+    MAP_TO_EXISTING,
 
     /**
      * Map to the special "Uncategorized" category.
