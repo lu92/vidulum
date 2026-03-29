@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 
 import java.time.YearMonth;
@@ -145,5 +146,40 @@ public record CashFlowInfo(
             count += countCategoriesRecursive(cat.subCategories());
         }
         return count;
+    }
+
+    /**
+     * Finds the parent category for a given category name and type.
+     * Returns null if the category is a top-level category or not found.
+     *
+     * This is used for pattern matching where we need to determine the parent
+     * category dynamically from the CashFlow structure.
+     */
+    public CategoryName findParentCategory(String categoryName, Type type) {
+        List<CategoryInfo> categories = type == Type.INFLOW ? inflowCategories : outflowCategories;
+        return findParentCategoryRecursive(categoryName, categories, null);
+    }
+
+    private CategoryName findParentCategoryRecursive(
+            String categoryName,
+            List<CategoryInfo> categories,
+            String currentParent) {
+
+        for (CategoryInfo cat : categories) {
+            // Check if this category matches
+            if (cat.name().equals(categoryName)) {
+                return currentParent != null ? new CategoryName(currentParent) : null;
+            }
+            // Check subcategories
+            CategoryName found = findParentCategoryRecursive(categoryName, cat.subCategories(), cat.name());
+            if (found != null || (cat.subCategories().stream().anyMatch(sub -> sub.name().equals(categoryName)))) {
+                // If found in subcategories, return the parent
+                if (cat.subCategories().stream().anyMatch(sub -> sub.name().equals(categoryName))) {
+                    return new CategoryName(cat.name());
+                }
+                return found;
+            }
+        }
+        return null;
     }
 }

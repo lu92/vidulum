@@ -22,7 +22,7 @@ import java.util.List;
  * NOTE: GLOBAL patterns are currently disabled in AiCategorizationService.
  * They are kept for future use when we implement per-language global patterns.
  *
- * On startup, this also clears all USER patterns to ensure clean state.
+ * All data (including patterns) is cleared in VidulumApplication.clearData().
  */
 @Component
 @RequiredArgsConstructor
@@ -33,19 +33,7 @@ public class GlobalPatternSeeder {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        clearUserPatterns();
         seedGlobalPatterns();
-    }
-
-    /**
-     * Clears all USER patterns on application startup.
-     * This ensures clean state and avoids stale pattern mappings.
-     */
-    private void clearUserPatterns() {
-        long deletedCount = patternMappingRepository.deleteAllUserPatterns();
-        if (deletedCount > 0) {
-            log.info("Cleared {} USER pattern mappings on startup", deletedCount);
-        }
     }
 
     private void seedGlobalPatterns() {
