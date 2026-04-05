@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Builds prompts for AI-powered transaction categorization.
@@ -62,23 +61,33 @@ public class AiCategorizationPromptBuilder {
      * Builds the user prompt with pattern groups.
      *
      * @param patternGroups the deduplicated pattern groups
-     * @param existingCategories existing categories in the CashFlow (to avoid duplicates)
+     * @param categoryStructure existing categories with type and hierarchy
      * @return the user prompt
      */
     public String buildUserPrompt(List<PatternDeduplicator.PatternGroup> patternGroups,
-                                   List<String> existingCategories) {
+                                   ExistingCategoryStructure categoryStructure) {
 
         StringBuilder sb = new StringBuilder();
 
         sb.append("Analyze these transaction patterns and suggest categories:\n\n");
 
-        // Add existing categories context
-        if (existingCategories != null && !existingCategories.isEmpty()) {
-            sb.append("EXISTING CATEGORIES (use these if patterns match):\n");
-            for (String cat : existingCategories) {
-                sb.append("  - ").append(cat).append("\n");
+        // Add existing categories context WITH TYPE AND HIERARCHY
+        if (categoryStructure != null && !categoryStructure.isEmpty()) {
+            sb.append("EXISTING CATEGORIES (PREFER these over creating new ones!):\n\n");
+
+            // INFLOW categories with hierarchy
+            if (!categoryStructure.inflowCategories().isEmpty()) {
+                sb.append("  INFLOW (przychody):\n");
+                formatCategoryHierarchy(categoryStructure.inflowCategories(), sb, "    ");
+                sb.append("\n");
             }
-            sb.append("\n");
+
+            // OUTFLOW categories with hierarchy
+            if (!categoryStructure.outflowCategories().isEmpty()) {
+                sb.append("  OUTFLOW (wydatki):\n");
+                formatCategoryHierarchy(categoryStructure.outflowCategories(), sb, "    ");
+                sb.append("\n");
+            }
         }
 
         // Group by type
@@ -107,7 +116,7 @@ public class AiCategorizationPromptBuilder {
             sb.append("\n");
         }
 
-        // Expected output format
+        // Expected output format with improved JSON structure
         sb.append("""
 
             Return JSON in this exact format:
@@ -132,20 +141,50 @@ public class AiCategorizationPromptBuilder {
                   "suggestedCategory": "Zakupy spożywcze",
                   "parentCategory": "Żywność",
                   "type": "OUTFLOW",
-                  "confidence": 95
+                  "confidence": 95,
+                  "isExistingCategory": true,
+                  "reason": "Matches existing category 'Zakupy spożywcze' under 'Żywność'"
+                }
+              ],
+              "unrecognizedPatterns": [
+                {
+                  "pattern": "XYZ123456",
+                  "type": "OUTFLOW",
+                  "reason": "Cryptic identifier, cannot determine category"
                 }
               ]
             }
 
-            Rules:
-            1. confidence: 90-100 = auto-accept, 50-89 = suggested, <50 = needs manual
-            2. For patterns you don't recognize, set confidence < 50
-            3. Match existing categories when possible
-            4. Keep category names concise (2-3 words max)
-            5. Return ONLY valid JSON, no markdown code blocks
+            CRITICAL RULES:
+            1. ALWAYS check EXISTING CATEGORIES first! If a pattern matches an existing category, use it with isExistingCategory=true
+            2. TYPE MATCHING: OUTFLOW patterns MUST map to OUTFLOW categories, INFLOW patterns MUST map to INFLOW categories
+            3. For patterns you CANNOT recognize, add them to "unrecognizedPatterns" array
+            4. confidence levels: 90-100 = auto-accept, 50-89 = needs confirmation, <50 = needs manual review
+            5. Keep category names concise (2-3 words max)
+            6. Return ONLY valid JSON, no markdown code blocks
+
+            IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
             """);
 
         return sb.toString();
+    }
+
+    /**
+     * Formats category hierarchy for prompt.
+     */
+    private void formatCategoryHierarchy(List<ExistingCategoryStructure.CategoryNode> nodes,
+                                          StringBuilder sb, String indent) {
+        for (ExistingCategoryStructure.CategoryNode node : nodes) {
+            sb.append(indent).append("- ").append(node.name());
+            if (node.hasSubCategories()) {
+                sb.append(":\n");
+                for (ExistingCategoryStructure.CategoryNode sub : node.subCategories()) {
+                    sb.append(indent).append("    - ").append(sub.name()).append("\n");
+                }
+            } else {
+                sb.append("\n");
+            }
+        }
     }
 
     private String formatPatternGroup(PatternDeduplicator.PatternGroup pg) {

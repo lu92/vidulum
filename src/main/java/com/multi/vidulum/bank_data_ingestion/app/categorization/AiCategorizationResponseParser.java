@@ -51,8 +51,10 @@ public class AiCategorizationResponseParser {
             AiCategorizationResult.SuggestedStructure structure = convertStructure(dto.categoryStructure);
             List<AiCategorizationResult.PatternSuggestion> suggestions =
                     convertMappings(dto.patternMappings, patternGroups);
+            List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
+                    convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
 
-            return ParseResult.success(structure, suggestions);
+            return ParseResult.success(structure, suggestions, unrecognized);
 
         } catch (Exception e) {
             log.error("Failed to parse AI categorization response: {}", e.getMessage(), e);
@@ -149,11 +151,59 @@ public class AiCategorizationResponseParser {
                     type,
                     mapping.confidence,
                     transactionCount,
-                    totalAmount
+                    totalAmount,
+                    mapping.isExistingCategory != null ? mapping.isExistingCategory : false,
+                    mapping.reason
             ));
         }
 
         return suggestions;
+    }
+
+    /**
+     * Converts unrecognized patterns from AI response.
+     */
+    private List<AiCategorizationResult.UnrecognizedPattern> convertUnrecognizedPatterns(
+            List<UnrecognizedPatternDto> unrecognized,
+            List<PatternDeduplicator.PatternGroup> patternGroups) {
+
+        if (unrecognized == null || unrecognized.isEmpty()) {
+            return List.of();
+        }
+
+        // Create lookup map for pattern groups
+        Map<String, PatternDeduplicator.PatternGroup> groupMap = patternGroups.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        PatternDeduplicator.PatternGroup::pattern,
+                        g -> g,
+                        (a, b) -> a
+                ));
+
+        List<AiCategorizationResult.UnrecognizedPattern> result = new ArrayList<>();
+
+        for (UnrecognizedPatternDto dto : unrecognized) {
+            PatternDeduplicator.PatternGroup group = groupMap.get(dto.pattern);
+
+            int transactionCount = group != null ? group.transactionCount() : 1;
+            BigDecimal totalAmount = group != null ? group.totalAmount() : BigDecimal.ZERO;
+
+            Type type;
+            try {
+                type = Type.valueOf(dto.type);
+            } catch (Exception e) {
+                type = Type.OUTFLOW;
+            }
+
+            result.add(new AiCategorizationResult.UnrecognizedPattern(
+                    dto.pattern,
+                    type,
+                    dto.reason,
+                    transactionCount,
+                    totalAmount
+            ));
+        }
+
+        return result;
     }
 
     // ============ DTOs for JSON parsing ============
@@ -163,6 +213,7 @@ public class AiCategorizationResponseParser {
     public static class AiResponseDto {
         private CategoryStructureDto categoryStructure;
         private List<PatternMappingDto> patternMappings;
+        private List<UnrecognizedPatternDto> unrecognizedPatterns;
     }
 
     @Data
@@ -187,6 +238,16 @@ public class AiCategorizationResponseParser {
         private String parentCategory;
         private String type;
         private int confidence;
+        private Boolean isExistingCategory;
+        private String reason;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class UnrecognizedPatternDto {
+        private String pattern;
+        private String type;
+        private String reason;
     }
 
     // ============ Result wrapper ============
@@ -195,18 +256,21 @@ public class AiCategorizationResponseParser {
             boolean success,
             AiCategorizationResult.SuggestedStructure structure,
             List<AiCategorizationResult.PatternSuggestion> suggestions,
+            List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             String errorMessage
     ) {
         public static ParseResult success(
                 AiCategorizationResult.SuggestedStructure structure,
-                List<AiCategorizationResult.PatternSuggestion> suggestions) {
-            return new ParseResult(true, structure, suggestions, null);
+                List<AiCategorizationResult.PatternSuggestion> suggestions,
+                List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns) {
+            return new ParseResult(true, structure, suggestions, unrecognizedPatterns, null);
         }
 
         public static ParseResult error(String message) {
             return new ParseResult(
                     false,
                     AiCategorizationResult.SuggestedStructure.empty(),
+                    List.of(),
                     List.of(),
                     message
             );

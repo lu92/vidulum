@@ -62,14 +62,14 @@ public class AiCategorizationService {
      * @param sessionId          the staging session ID
      * @param transactions       the staged transactions
      * @param cashFlowId         the CashFlow ID (for per-CashFlow pattern isolation)
-     * @param existingCategories existing category names in the CashFlow
+     * @param categoryStructure  existing categories with type and hierarchy
      * @return categorization result with suggestions
      */
     public AiCategorizationResult categorize(
             StagingSessionId sessionId,
             List<StagedTransaction> transactions,
             String cashFlowId,
-            List<String> existingCategories) {
+            ExistingCategoryStructure categoryStructure) {
 
         if (transactions == null || transactions.isEmpty()) {
             log.info("No transactions to categorize for session: {}", sessionId);
@@ -142,6 +142,7 @@ public class AiCategorizationService {
 
         // Step 3: Call AI for uncached patterns
         List<AiCategorizationResult.PatternSuggestion> aiSuggestions = new ArrayList<>();
+        List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
         AiCategorizationResult.SuggestedStructure structure =
                 AiCategorizationResult.SuggestedStructure.empty();
         int tokensUsed = 0;
@@ -158,11 +159,12 @@ public class AiCategorizationService {
                         uncachedPatterns.size(), patternsForAi.size(), maxPatternsToAi);
             }
 
-            AiCallResult aiResult = callAi(patternsForAi, existingCategories);
+            AiCallResult aiResult = callAi(patternsForAi, categoryStructure);
 
             if (aiResult.success) {
                 structure = aiResult.structure;
                 aiSuggestions = aiResult.suggestions;
+                unrecognizedPatterns = aiResult.unrecognizedPatterns;
                 tokensUsed = aiResult.tokensUsed;
             } else {
                 log.warn("AI categorization failed: {}", aiResult.errorMessage);
@@ -191,6 +193,15 @@ public class AiCategorizationService {
                 .filter(s -> s.confidence() < 50)
                 .count();
 
+        // Calculate new stats: matchedExisting vs createdNew
+        int matchedExisting = (int) allSuggestions.stream()
+                .filter(AiCategorizationResult.PatternSuggestion::isExistingCategory)
+                .count();
+        int createdNew = (int) allSuggestions.stream()
+                .filter(s -> !s.isExistingCategory())
+                .count();
+        int unrecognizedCount = unrecognizedPatterns.size();
+
         AiCategorizationResult.CategorizationStats stats = new AiCategorizationResult.CategorizationStats(
                 patternGroups.size(),
                 autoAccepted,
@@ -198,27 +209,30 @@ public class AiCategorizationService {
                 needsManual,
                 globalCacheHits,
                 userCacheHits,
-                aiSuggestions.size()
+                aiSuggestions.size(),
+                matchedExisting,
+                createdNew,
+                unrecognizedCount
         );
 
         AiCategorizationResult.AiCost cost = tokensUsed > 0
                 ? AiCategorizationResult.AiCost.estimated(tokensUsed)
                 : AiCategorizationResult.AiCost.free();
 
-        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, cost: {}",
-                allSuggestions.size(), autoAccepted, suggested, needsManual, cost.estimatedCost());
+        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, cost: {}",
+                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, cost.estimatedCost());
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, stats, cost);
+        return AiCategorizationResult.success(sessionId, structure, allSuggestions, unrecognizedPatterns, stats, cost);
     }
 
     /**
      * Calls AI with patterns and parses response.
      */
     private AiCallResult callAi(List<PatternDeduplicator.PatternGroup> patterns,
-                                 List<String> existingCategories) {
+                                 ExistingCategoryStructure categoryStructure) {
         try {
             String systemPrompt = promptBuilder.getSystemPrompt();
-            String userPrompt = promptBuilder.buildUserPrompt(patterns, existingCategories);
+            String userPrompt = promptBuilder.buildUserPrompt(patterns, categoryStructure);
 
             log.debug("AI prompt size: {} chars", userPrompt.length());
 
@@ -244,16 +258,17 @@ public class AiCategorizationService {
                         true,
                         parseResult.structure(),
                         parseResult.suggestions(),
+                        parseResult.unrecognizedPatterns(),
                         tokensUsed,
                         null
                 );
             } else {
-                return new AiCallResult(false, null, List.of(), 0, parseResult.errorMessage());
+                return new AiCallResult(false, null, List.of(), List.of(), 0, parseResult.errorMessage());
             }
 
         } catch (Exception e) {
             log.error("AI categorization error", e);
-            return new AiCallResult(false, null, List.of(), 0, e.getMessage());
+            return new AiCallResult(false, null, List.of(), List.of(), 0, e.getMessage());
         }
     }
 
@@ -261,6 +276,7 @@ public class AiCategorizationService {
             boolean success,
             AiCategorizationResult.SuggestedStructure structure,
             List<AiCategorizationResult.PatternSuggestion> suggestions,
+            List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             int tokensUsed,
             String errorMessage
     ) {}

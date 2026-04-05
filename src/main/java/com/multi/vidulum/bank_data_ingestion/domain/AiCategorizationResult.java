@@ -14,6 +14,7 @@ public record AiCategorizationResult(
         String status,
         SuggestedStructure suggestedStructure,
         List<PatternSuggestion> patternSuggestions,
+        List<UnrecognizedPattern> unrecognizedPatterns,
         CategorizationStats stats,
         AiCost cost
 ) {
@@ -49,6 +50,17 @@ public record AiCategorizationResult(
     }
 
     /**
+     * A pattern that AI could not recognize.
+     */
+    public record UnrecognizedPattern(
+            String pattern,
+            Type type,
+            String reason,
+            int transactionCount,
+            BigDecimal totalAmount
+    ) {}
+
+    /**
      * A pattern suggestion with confidence and source information.
      */
     public record PatternSuggestion(
@@ -61,7 +73,9 @@ public record AiCategorizationResult(
             PatternSource source,
             int transactionCount,
             BigDecimal totalAmount,
-            boolean needsUserInput
+            boolean needsUserInput,
+            boolean isExistingCategory,
+            String reason
     ) {
         /**
          * Creates a suggestion from a cached pattern mapping.
@@ -87,7 +101,9 @@ public record AiCategorizationResult(
                     displaySource,
                     transactionCount,
                     totalAmount,
-                    false // cached patterns don't need user input
+                    false, // cached patterns don't need user input
+                    true,  // cached patterns always map to existing categories
+                    "Pattern from cache"
             );
         }
 
@@ -102,7 +118,9 @@ public record AiCategorizationResult(
                 Type type,
                 int confidence,
                 int transactionCount,
-                BigDecimal totalAmount
+                BigDecimal totalAmount,
+                boolean isExistingCategory,
+                String reason
         ) {
             return new PatternSuggestion(
                     pattern,
@@ -114,7 +132,9 @@ public record AiCategorizationResult(
                     PatternSource.AI,
                     transactionCount,
                     totalAmount,
-                    confidence < 50 // needs user input if low confidence
+                    confidence < 50, // needs user input if low confidence
+                    isExistingCategory,
+                    reason
             );
         }
 
@@ -143,10 +163,13 @@ public record AiCategorizationResult(
             int needsManual,
             int fromGlobalCache,
             int fromUserCache,
-            int fromAi
+            int fromAi,
+            int matchedExisting,
+            int createdNew,
+            int unrecognized
     ) {
         public static CategorizationStats empty() {
-            return new CategorizationStats(0, 0, 0, 0, 0, 0, 0);
+            return new CategorizationStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
     }
 
@@ -175,6 +198,7 @@ public record AiCategorizationResult(
             StagingSessionId sessionId,
             SuggestedStructure structure,
             List<PatternSuggestion> suggestions,
+            List<UnrecognizedPattern> unrecognizedPatterns,
             CategorizationStats stats,
             AiCost cost
     ) {
@@ -183,6 +207,7 @@ public record AiCategorizationResult(
                 STATUS_AI_SUGGESTIONS_READY,
                 structure,
                 suggestions,
+                unrecognizedPatterns,
                 stats,
                 cost
         );
@@ -197,6 +222,7 @@ public record AiCategorizationResult(
                 STATUS_NO_PATTERNS_TO_CATEGORIZE,
                 SuggestedStructure.empty(),
                 List.of(),
+                List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()
         );
@@ -210,6 +236,7 @@ public record AiCategorizationResult(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
+                List.of(),
                 List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()

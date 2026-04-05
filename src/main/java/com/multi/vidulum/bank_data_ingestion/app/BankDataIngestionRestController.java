@@ -3,6 +3,8 @@ package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize.AiCategorizeCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedCommand;
+import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.delete_all_mappings.DeleteAllCategoryMappingsCommand;
@@ -378,6 +380,28 @@ public class BankDataIngestionRestController {
         return toAcceptAiSuggestionsResponse(result);
     }
 
+    /**
+     * Force all PENDING_MAPPING transactions to use "Uncategorized" category.
+     * This is an explicit user decision to proceed with import without categorizing.
+     *
+     * The "Uncategorized" category will be created automatically if it doesn't exist.
+     * After this call, the staging session should be READY_FOR_IMPORT (unless there are other errors).
+     */
+    @PostMapping("/staging/{stagingSessionId}/force-uncategorized")
+    public BankDataIngestionDto.ForceUncategorizedResponse forceUncategorized(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @PathVariable("stagingSessionId") String stagingSessionId) {
+
+        ForceUncategorizedResult result = commandGateway.send(
+                new ForceUncategorizedCommand(
+                        CashFlowId.of(cashFlowId),
+                        StagingSessionId.of(stagingSessionId)
+                )
+        );
+
+        return toForceUncategorizedResponse(result);
+    }
+
     // ============ User ID helper ============
 
     private String getCurrentUserId() {
@@ -498,6 +522,24 @@ public class BankDataIngestionRestController {
                 .patternsCached(result.patternsCached())
                 .warnings(result.warnings())
                 .validationSummary(BankDataIngestionDto.AiStagingValidationSummaryJson.builder()
+                        .totalTransactions(result.validationSummary().totalTransactions())
+                        .validTransactions(result.validationSummary().validTransactions())
+                        .invalidTransactions(result.validationSummary().invalidTransactions())
+                        .duplicateTransactions(result.validationSummary().duplicateTransactions())
+                        .readyForImport(result.validationSummary().readyForImport())
+                        .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.ForceUncategorizedResponse toForceUncategorizedResponse(
+            ForceUncategorizedResult result) {
+        return BankDataIngestionDto.ForceUncategorizedResponse.builder()
+                .cashFlowId(result.cashFlowId().id())
+                .stagingSessionId(result.stagingSessionId().id())
+                .status(result.status().name())
+                .transactionsUpdated(result.transactionsUpdated())
+                .categoryCreated(result.categoryCreated())
+                .validationSummary(BankDataIngestionDto.ForceUncategorizedValidationSummaryJson.builder()
                         .totalTransactions(result.validationSummary().totalTransactions())
                         .validTransactions(result.validationSummary().validTransactions())
                         .invalidTransactions(result.validationSummary().invalidTransactions())

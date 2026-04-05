@@ -724,4 +724,34 @@ public class BankDataIngestionDto {
         private int duplicateTransactions;
         private boolean readyForImport;
     }
+
+    // ============ Force Uncategorized DTOs ============
+
+    /**
+     * Response from forcing pending transactions to use "Uncategorized" category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ForceUncategorizedResponse {
+        private String cashFlowId;
+        private String stagingSessionId;
+        private String status;
+        private int transactionsUpdated;
+        private boolean categoryCreated;
+        private ForceUncategorizedValidationSummaryJson validationSummary;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ForceUncategorizedValidationSummaryJson {
+        private int totalTransactions;
+        private int validTransactions;
+        private int invalidTransactions;
+        private int duplicateTransactions;
+        private boolean readyForImport;
+    }
 }

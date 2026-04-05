@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.categorization.AiCategorizationService;
+import com.multi.vidulum.bank_data_ingestion.app.categorization.ExistingCategoryStructure;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -10,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -54,11 +54,13 @@ public class AiCategorizeCommandHandler
 
         log.info("Found {} staged transactions for AI categorization", transactions.size());
 
-        // Step 3: Get existing categories for context
+        // Step 3: Get existing categories for context (with type and hierarchy)
         CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        List<String> existingCategories = collectCategoryNames(cashFlowInfo);
+        ExistingCategoryStructure categoryStructure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
 
-        log.debug("Existing categories: {}", existingCategories.size());
+        log.debug("Existing categories: {} inflow, {} outflow",
+                categoryStructure.allInflowNames().size(),
+                categoryStructure.allOutflowNames().size());
 
         // Step 4: Call AI Categorization Service
         // Pass cashFlowId for per-CashFlow pattern isolation
@@ -66,7 +68,7 @@ public class AiCategorizeCommandHandler
                 command.sessionId(),
                 transactions,
                 command.cashFlowId().id(),  // cashFlowId for per-CashFlow cache
-                existingCategories
+                categoryStructure
         );
 
         log.info("AI categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual",
@@ -76,22 +78,5 @@ public class AiCategorizeCommandHandler
                 result.stats().needsManual());
 
         return result;
-    }
-
-    /**
-     * Collects all category names from CashFlowInfo (flattened).
-     */
-    private List<String> collectCategoryNames(CashFlowInfo info) {
-        List<String> names = new ArrayList<>();
-        collectNames(info.inflowCategories(), names);
-        collectNames(info.outflowCategories(), names);
-        return names;
-    }
-
-    private void collectNames(List<CashFlowInfo.CategoryInfo> categories, List<String> names) {
-        for (CashFlowInfo.CategoryInfo cat : categories) {
-            names.add(cat.name());
-            collectNames(cat.subCategories(), names);
-        }
     }
 }

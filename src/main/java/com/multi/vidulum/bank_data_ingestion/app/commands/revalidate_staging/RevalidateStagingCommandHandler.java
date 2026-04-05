@@ -19,18 +19,15 @@ import java.util.*;
 /**
  * Handler for revalidating a staging session after mappings have been configured.
  * Updates transactions that were PENDING_MAPPING to have proper mapped data and validation.
+ *
+ * Transactions without mapping will remain in PENDING_MAPPING state until user
+ * explicitly configures mapping (via AI categorization or manual).
  */
 @Slf4j
 @Component
 @AllArgsConstructor
 public class RevalidateStagingCommandHandler
         implements CommandHandler<RevalidateStagingCommand, RevalidateStagingResult> {
-
-    /**
-     * Default fallback category name for transactions without explicit mapping.
-     * This allows imports to succeed even when AI/user hasn't categorized all transactions.
-     */
-    private static final String UNCATEGORIZED_CATEGORY = "Uncategorized";
 
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
@@ -118,20 +115,11 @@ public class RevalidateStagingCommandHandler
                         updatedTransactions.add(revalidated);
                         revalidatedCount++;
                     } else {
-                        // Priority 3: Fallback to "Uncategorized" category
-                        // This ensures import can proceed even without explicit mappings
-                        if (cashFlowInfo.getAllCategoryNames().contains(UNCATEGORIZED_CATEGORY)) {
-                            StagedTransaction fallbackTransaction = revalidateTransactionWithUncategorized(
-                                    st, cashFlowInfo, now);
-                            updatedTransactions.add(fallbackTransaction);
-                            revalidatedCount++;
-                            log.trace("Transaction [{}] fallback to Uncategorized (no pattern or category mapping)",
-                                    st.originalData().name());
-                        } else {
-                            // No Uncategorized category exists - still pending
-                            stillUnmappedCategories.add(st.originalData().bankCategory());
-                            updatedTransactions.add(st);
-                        }
+                        // No mapping found - transaction stays PENDING_MAPPING
+                        // User must configure mapping (via AI or manual) before import
+                        stillUnmappedCategories.add(st.originalData().bankCategory());
+                        updatedTransactions.add(st);
+                        log.trace("Transaction [{}] still pending - no mapping found", st.originalData().name());
                     }
                 }
             } else {
@@ -261,42 +249,6 @@ public class RevalidateStagingCommandHandler
                 original.originalData().description(),
                 mapping.targetCategoryName(),
                 mapping.parentCategoryName(),
-                original.originalData().money(),
-                original.originalData().type(),
-                original.originalData().paidDate()
-        );
-
-        // Validate
-        TransactionValidation validation = validateTransaction(original, cashFlowInfo, now);
-
-        // Create new staged transaction with updated data
-        return new StagedTransaction(
-                original.stagedTransactionId(),
-                original.cashFlowId(),
-                original.stagingSessionId(),
-                original.originalData(),
-                mappedData,
-                validation,
-                original.createdAt(),
-                original.expiresAt()
-        );
-    }
-
-    /**
-     * Revalidate transaction using fallback "Uncategorized" category.
-     * This is used when no pattern or category mapping matches.
-     */
-    private StagedTransaction revalidateTransactionWithUncategorized(
-            StagedTransaction original,
-            CashFlowInfo cashFlowInfo,
-            ZonedDateTime now) {
-
-        // Create mapped data with Uncategorized category (no parent)
-        MappedTransactionData mappedData = new MappedTransactionData(
-                original.originalData().name(),
-                original.originalData().description(),
-                new CategoryName(UNCATEGORIZED_CATEGORY),
-                null, // no parent category
                 original.originalData().money(),
                 original.originalData().type(),
                 original.originalData().paidDate()
