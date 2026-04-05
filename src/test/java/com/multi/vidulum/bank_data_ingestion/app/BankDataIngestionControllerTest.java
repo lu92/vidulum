@@ -488,10 +488,9 @@ public class BankDataIngestionControllerTest {
     }
 
     @Test
-    @DisplayName("Should fallback to Uncategorized when mappings are missing")
-    void shouldFallbackToUncategorizedWhenMappingsMissing() {
+    @DisplayName("Should return PENDING_MAPPING when mappings are missing")
+    void shouldReturnPendingMappingWhenMappingsMissing() {
         // given: create a CashFlow WITHOUT configuring mappings
-        // CashFlow automatically has "Uncategorized" category created by domain
         String cashFlowId = createCashFlowWithHistory();
 
         // when: stage transactions with unmapped categories
@@ -512,17 +511,18 @@ public class BankDataIngestionControllerTest {
 
         BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(cashFlowId, request);
 
-        log.info("Stage transactions with fallback to Uncategorized - status: {}", response.getStatus());
+        log.info("Stage transactions with PENDING_MAPPING - status: {}, unmapped: {}",
+                response.getStatus(), response.getUnmappedCategories());
 
-        // then: verify transactions fallback to Uncategorized and are READY_FOR_IMPORT
-        assertThat(response.getStatus()).isEqualTo("READY_FOR_IMPORT");
-        assertThat(response.getUnmappedCategories()).isEmpty(); // No unmapped categories - all fallback to Uncategorized
-        assertThat(response.getSummary().getValidTransactions()).isEqualTo(1);
+        // then: verify transactions are marked as HAS_UNMAPPED_CATEGORIES (requiring user decision)
+        assertThat(response.getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(response.getUnmappedCategories()).hasSize(1);
+        assertThat(response.getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
+        assertThat(response.getUnmappedCategories().get(0).getCount()).isEqualTo(1);
+        assertThat(response.getUnmappedCategories().get(0).getType()).isEqualTo(Type.OUTFLOW);
 
-        // Verify category breakdown shows Uncategorized
-        assertThat(response.getCategoryBreakdown()).hasSize(1);
-        assertThat(response.getCategoryBreakdown().get(0).getTargetCategory()).isEqualTo("Uncategorized");
-        assertThat(response.getCategoryBreakdown().get(0).getTransactionCount()).isEqualTo(1);
+        // Category breakdown is empty until user configures mappings
+        assertThat(response.getCategoryBreakdown()).isEmpty();
     }
 
     @Test
@@ -1323,10 +1323,9 @@ public class BankDataIngestionControllerTest {
     }
 
     @Test
-    @DisplayName("Should upload CSV and fallback to Uncategorized when mappings missing")
-    void shouldUploadCsvAndFallbackToUncategorizedWhenMappingsMissing() {
+    @DisplayName("Should upload CSV and return PENDING_MAPPING when mappings missing")
+    void shouldUploadCsvAndReturnPendingMappingWhenMappingsMissing() {
         // given: create a CashFlow WITHOUT configuring mappings
-        // CashFlow automatically has "Uncategorized" category
         String cashFlowId = createCashFlowWithHistory();
 
         String csvContent = """
@@ -1344,14 +1343,17 @@ public class BankDataIngestionControllerTest {
         // when: upload CSV
         BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
 
-        log.info("Upload CSV with fallback to Uncategorized - staging status: {}", response.getStagingResult().getStatus());
+        log.info("Upload CSV with PENDING_MAPPING - staging status: {}, unmapped: {}",
+                response.getStagingResult().getStatus(), response.getStagingResult().getUnmappedCategories());
 
-        // then: verify parse is successful and staging is READY_FOR_IMPORT (fallback to Uncategorized)
+        // then: verify parse is successful but staging has unmapped categories (requires user decision)
         assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(1);
-        assertThat(response.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
-        assertThat(response.getStagingResult().getUnmappedCategories()).isEmpty();
-        assertThat(response.getStagingResult().getCategoryBreakdown()).hasSize(1);
-        assertThat(response.getStagingResult().getCategoryBreakdown().get(0).getTargetCategory()).isEqualTo("Uncategorized");
+        assertThat(response.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(response.getStagingResult().getUnmappedCategories()).hasSize(1);
+        assertThat(response.getStagingResult().getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
+
+        // Category breakdown is empty until user configures mappings
+        assertThat(response.getStagingResult().getCategoryBreakdown()).isEmpty();
     }
 
     @Test

@@ -274,6 +274,18 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
+     * Creates a mapping that will map bank category to "Uncategorized" during import.
+     */
+    public BankDataIngestionDto.MappingConfigJson mappingToUncategorized(String bankCategory, Type type) {
+        return BankDataIngestionDto.MappingConfigJson.builder()
+                .bankCategoryName(bankCategory)
+                .action(MappingAction.MAP_TO_UNCATEGORIZED)
+                .targetCategoryName("Uncategorized")
+                .categoryType(type)
+                .build();
+    }
+
+    /**
      * Gets category mappings for a CashFlow.
      */
     public BankDataIngestionDto.GetMappingsResponse getMappings(String cashFlowId) {

@@ -138,20 +138,14 @@ public class StageTransactionsCommandHandler
                 .orElse(null);
     }
 
-    private static final String UNCATEGORIZED_CATEGORY = "Uncategorized";
-
     /**
      * Finds unmapped categories - categories that have neither:
      * - A category mapping (bank category → target category)
      * - A pattern mapping that matches the transaction name
-     * - Automatic fallback to "Uncategorized" category
      *
-     * Since every CashFlow has "Uncategorized" category created by domain,
-     * transactions without mapping will automatically fallback to "Uncategorized"
-     * instead of being marked as PENDING_MAPPING.
-     *
-     * This method returns empty list if "Uncategorized" exists (which is always true),
-     * allowing READY_FOR_IMPORT status even without explicit mappings.
+     * Transactions without mapping will be marked as PENDING_MAPPING,
+     * requiring the user to explicitly choose a categorization strategy
+     * (create new category, create subcategory, or map to uncategorized).
      */
     private List<StageTransactionsResult.UnmappedCategory> findUnmappedCategories(
             List<StageTransactionsCommand.BankTransaction> transactions,
@@ -159,14 +153,6 @@ public class StageTransactionsCommandHandler
             List<PatternMapping> patternMappings,
             CashFlowInfo cashFlowInfo) {
 
-        // If "Uncategorized" exists, all unmapped transactions will fallback to it
-        // So we don't need to report unmapped categories
-        if (cashFlowInfo.getAllCategoryNames().contains(UNCATEGORIZED_CATEGORY)) {
-            return List.of();
-        }
-
-        // Fallback logic for edge case when "Uncategorized" doesn't exist
-        // (should never happen since domain always creates it)
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
 
         for (StageTransactionsCommand.BankTransaction txn : transactions) {
@@ -258,17 +244,19 @@ public class StageTransactionsCommandHandler
         MappedTransactionData mappedData;
 
         if (mapping == null) {
-            // No explicit mapping - fallback to "Uncategorized" category
-            // Every CashFlow has "Uncategorized" category created by domain
-            log.trace("Transaction [{}] has no mapping - fallback to Uncategorized", txn.name());
-            mappedData = new MappedTransactionData(
-                    txn.name(),
-                    txn.description(),
-                    new CategoryName(UNCATEGORIZED_CATEGORY),
-                    null, // Uncategorized is always top-level
-                    txn.money(),
-                    txn.type(),
-                    txn.paidDate()
+            // No mapping configured - mark as PENDING_MAPPING
+            // User must explicitly choose: CREATE_NEW, CREATE_SUBCATEGORY, or MAP_TO_UNCATEGORIZED
+            log.debug("Transaction [{}] has no mapping for bank category [{}] - marking as PENDING_MAPPING",
+                    txn.name(), txn.bankCategory());
+
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    null, // No mapped data - pending mapping decision
+                    TransactionValidation.pendingMapping(txn.bankCategory()),
+                    now,
+                    config.getStagingTtlHours()
             );
         } else {
             mappedData = new MappedTransactionData(

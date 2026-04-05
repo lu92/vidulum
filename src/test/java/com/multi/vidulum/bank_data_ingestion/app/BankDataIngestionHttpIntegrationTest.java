@@ -779,10 +779,9 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
     }
 
     @Test
-    @DisplayName("Should upload CSV file and fallback to Uncategorized when mappings missing via REST API")
-    void shouldUploadCsvFileAndFallbackToUncategorizedViaRestApi() {
+    @DisplayName("Should upload CSV file and return HAS_UNMAPPED_CATEGORIES when mappings missing via REST API")
+    void shouldUploadCsvFileAndReturnUnmappedCategoriesViaRestApi() {
         // given - create CashFlow WITHOUT configuring all mappings
-        // CashFlow automatically has "Uncategorized" category for fallback
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
@@ -792,13 +791,13 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
                 Money.of(10000.0, "PLN")
         );
 
-        // Configure only some mappings (missing: Rozrywka, Transport - will fallback to Uncategorized)
+        // Configure only some mappings (missing: Rozrywka, Transport - will be PENDING_MAPPING)
         actor.configureMappings(cashFlowId, List.of(
                 actor.mappingCreateNew("Wpływy regularne", "Salary", Type.INFLOW),
                 actor.mappingCreateNew("Mieszkanie", "Rent", Type.OUTFLOW),
                 actor.mappingCreateNew("Zakupy kartą", "Groceries", Type.OUTFLOW),
                 actor.mappingCreateNew("Rachunki", "Utilities", Type.OUTFLOW)
-                // Missing: Rozrywka, Transport - will fallback to Uncategorized
+                // Missing: Rozrywka, Transport - will be PENDING_MAPPING
         ));
 
         // when - upload CSV file from resources
@@ -810,20 +809,18 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
         // then - CSV should be parsed successfully
         assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(23);
 
-        // Staging should be READY_FOR_IMPORT with unmapped transactions falling back to Uncategorized
+        // Staging should be HAS_UNMAPPED_CATEGORIES (requires user to configure mappings)
         assertThat(uploadResponse.getStagingResult()).isNotNull();
-        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
-        assertThat(uploadResponse.getStagingResult().getUnmappedCategories()).isEmpty();
+        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
 
-        // Verify Uncategorized is in the category breakdown
-        List<String> categories = uploadResponse.getStagingResult().getCategoryBreakdown().stream()
-                .map(BankDataIngestionDto.CategoryBreakdownJson::getTargetCategory)
+        // Verify unmapped categories are reported
+        List<String> unmappedCategories = uploadResponse.getStagingResult().getUnmappedCategories().stream()
+                .map(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
                 .toList();
-        assertThat(categories).contains("Uncategorized");
+        assertThat(unmappedCategories).containsExactlyInAnyOrder("Rozrywka", "Transport");
 
-        log.info("CSV upload with fallback to Uncategorized - {} transactions staged, categories: {}",
-                uploadResponse.getStagingResult().getSummary().getTotalTransactions(),
-                categories);
+        log.info("CSV upload with unmapped categories - unmapped: {}",
+                unmappedCategories);
     }
 
     @Test
@@ -891,10 +888,9 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
     }
 
     @Test
-    @DisplayName("Should upload CSV with fallback to Uncategorized and complete import directly via REST API")
-    void shouldUploadWithFallbackToUncategorizedAndImportDirectlyViaRestApi() {
+    @DisplayName("Should upload CSV without mappings, configure MAP_TO_UNCATEGORIZED, and complete import via REST API")
+    void shouldUploadWithoutMappingsConfigureUncategorizedAndImportViaRestApi() {
         // given - create CashFlow WITHOUT configuring any mappings upfront
-        // All unmapped transactions will fallback to "Uncategorized" category
         YearMonth startPeriod = YearMonth.of(2021, 7);
 
         String cashFlowId = actor.createCashFlowWithHistory(
@@ -904,71 +900,73 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
                 Money.of(10000.0, "PLN")
         );
 
-        // Step 1: Upload CSV WITHOUT any mappings configured - should fallback to Uncategorized
+        // Step 1: Upload CSV WITHOUT any mappings configured - should return HAS_UNMAPPED_CATEGORIES
         BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
 
-        // then - CSV parsed successfully and all transactions are READY_FOR_IMPORT (fallback to Uncategorized)
+        // then - CSV parsed successfully but staging has unmapped categories
         assertThat(uploadResponse.getParseSummary().getSuccessfulRows()).isEqualTo(23);
         assertThat(uploadResponse.getStagingResult()).isNotNull();
-        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("READY_FOR_IMPORT");
-        assertThat(uploadResponse.getStagingResult().getUnmappedCategories()).isEmpty();
+        assertThat(uploadResponse.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(uploadResponse.getStagingResult().getUnmappedCategories()).isNotEmpty();
 
         String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
 
-        // Verify all transactions are in "Uncategorized" (may have 2 entries for INFLOW/OUTFLOW)
-        List<String> categories = uploadResponse.getStagingResult().getCategoryBreakdown().stream()
-                .map(BankDataIngestionDto.CategoryBreakdownJson::getTargetCategory)
-                .distinct()
+        // Verify all bank categories are reported as unmapped
+        List<String> unmappedCategories = uploadResponse.getStagingResult().getUnmappedCategories().stream()
+                .map(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
                 .toList();
-        assertThat(categories).containsExactly("Uncategorized");
+        assertThat(unmappedCategories).containsExactlyInAnyOrder(
+                "Wpływy regularne", "Mieszkanie", "Zakupy kartą", "Rachunki", "Rozrywka", "Transport"
+        );
 
-        log.info("Staging session {} ready for import - all {} transactions fallback to Uncategorized",
-                stagingSessionId, uploadResponse.getStagingResult().getSummary().getTotalTransactions());
+        log.info("Staging session {} has unmapped categories: {}",
+                stagingSessionId, unmappedCategories);
 
-        // Step 2: List staging sessions - should show READY_FOR_IMPORT
-        BankDataIngestionDto.ListStagingSessionsResponse sessionsResponse = actor.listStagingSessions(cashFlowId);
-        assertThat(sessionsResponse.isHasPendingImport()).isTrue();
-        assertThat(sessionsResponse.getStagingSessions()).hasSize(1);
-        assertThat(sessionsResponse.getStagingSessions().get(0).getStatus()).isEqualTo("READY_FOR_IMPORT");
-        assertThat(sessionsResponse.getStagingSessions().get(0).getCounts().getValidTransactions()).isEqualTo(23);
+        // Step 2: Configure all mappings to MAP_TO_UNCATEGORIZED
+        actor.configureMappings(cashFlowId, List.of(
+                actor.mappingToUncategorized("Wpływy regularne", Type.INFLOW),
+                actor.mappingToUncategorized("Mieszkanie", Type.OUTFLOW),
+                actor.mappingToUncategorized("Zakupy kartą", Type.OUTFLOW),
+                actor.mappingToUncategorized("Rachunki", Type.OUTFLOW),
+                actor.mappingToUncategorized("Rozrywka", Type.OUTFLOW),
+                actor.mappingToUncategorized("Transport", Type.OUTFLOW)
+        ));
 
-        // Step 3: Start import directly (no need for revalidation)
+        // Step 3: Revalidate staging session
+        BankDataIngestionDto.RevalidateStagingResponse revalidateResponse = actor.revalidateStaging(cashFlowId, stagingSessionId);
+        assertThat(revalidateResponse.getStatus()).isIn("READY_FOR_IMPORT", "SUCCESS");
+        assertThat(revalidateResponse.getSummary().getValidCount()).isEqualTo(23);
+
+        // Step 4: Start import
         BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
         assertThat(importResponse.getStatus()).isIn("IN_PROGRESS", "COMPLETED");
         String jobId = importResponse.getJobId();
 
-        // Step 4: Check progress - should complete
+        // Step 5: Check progress - should complete
         BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
         assertThat(progress.getResult()).isNotNull();
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
         assertThat(progress.getResult().getTransactionsFailed()).isEqualTo(0);
 
-        // Verify import summary is present (summary may not always be populated)
-        if (progress.getSummary() != null) {
-            assertThat(progress.getSummary().getCategoryBreakdown()).isNotEmpty();
-            // totalDurationMs may be 0 in tests due to fast execution
-            assertThat(progress.getSummary().getTotalDurationMs()).isGreaterThanOrEqualTo(0);
-        }
-
-        // Step 5: Finalize import
+        // Step 6: Finalize import
         BankDataIngestionDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
         assertThat(finalizeResponse.getStatus()).isIn("COMPLETED", "FINALIZED");
 
-        // Step 6: Verify CashFlow has all transactions in Uncategorized
+        // Step 7: Verify CashFlow has all transactions in Uncategorized
         CashFlowDto.CashFlowSummaryJson cashFlow = actor.getCashFlow(cashFlowId);
         assertThat(cashFlow.getCashChanges()).hasSize(23);
 
-        // All transactions should be in "Uncategorized" (since no mappings were configured)
+        // All transactions should be in "Uncategorized" (since we mapped everything to Uncategorized)
         List<String> transactionCategories = cashFlow.getCashChanges().values().stream()
                 .map(CashFlowDto.CashChangeSummaryJson::getCategoryName)
                 .distinct()
                 .toList();
         assertThat(transactionCategories).containsExactly("Uncategorized");
 
-        log.info("Import with fallback completed: {} transactions imported, all in Uncategorized",
+        log.info("Import with MAP_TO_UNCATEGORIZED completed: {} transactions imported, all in Uncategorized",
                 cashFlow.getCashChanges().size());
     }
 
