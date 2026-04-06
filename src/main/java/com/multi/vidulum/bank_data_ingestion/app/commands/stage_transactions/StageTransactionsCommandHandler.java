@@ -140,6 +140,7 @@ public class StageTransactionsCommandHandler
 
     /**
      * Finds unmapped categories - categories that have neither:
+     * - A direct match to existing CashFlow category (Priority 0)
      * - A category mapping (bank category → target category)
      * - A pattern mapping that matches the transaction name
      *
@@ -154,20 +155,26 @@ public class StageTransactionsCommandHandler
             CashFlowInfo cashFlowInfo) {
 
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
+        Set<String> allCategoryNames = cashFlowInfo.getAllCategoryNames();
 
         for (StageTransactionsCommand.BankTransaction txn : transactions) {
             MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
 
-            // Check if has category mapping
+            // Priority 0: Check if bankCategory directly matches existing CashFlow category
+            if (allCategoryNames.contains(txn.bankCategory())) {
+                continue; // Direct match - not unmapped
+            }
+
+            // Priority 1: Check if has category mapping
             if (mappingMap.containsKey(key)) {
                 continue; // Has category mapping - not unmapped
             }
 
-            // Check if has pattern matching
+            // Priority 2: Check if has pattern matching
             PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
             if (patternMatch != null) {
                 // Pattern matched - check if target category exists in CashFlow
-                if (cashFlowInfo.getAllCategoryNames().contains(patternMatch.categoryName())) {
+                if (allCategoryNames.contains(patternMatch.categoryName())) {
                     continue; // Pattern matched to existing category - not unmapped
                 }
             }
@@ -204,8 +211,44 @@ public class StageTransactionsCommandHandler
                 txn.paidDate()
         );
 
+        Set<String> allCategoryNames = cashFlowInfo.getAllCategoryNames();
+
+        // Priority 0: Direct bankCategory match to existing CashFlow category
+        // This is most useful for banks like Pekao that provide detailed category names
+        // (e.g., "Artykuły spożywcze", "Transport") which can directly match user categories
+        if (allCategoryNames.contains(txn.bankCategory())) {
+            // bankCategory matches existing category name directly
+            CategoryName parentCategoryName = cashFlowInfo.findParentCategory(txn.bankCategory(), txn.type());
+
+            MappedTransactionData mappedData = new MappedTransactionData(
+                    txn.name(),
+                    txn.description(),
+                    new CategoryName(txn.bankCategory()),
+                    parentCategoryName,
+                    txn.money(),
+                    txn.type(),
+                    txn.paidDate()
+            );
+
+            // Validate transaction
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+
+            log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category",
+                    txn.name(), txn.bankCategory());
+
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    mappedData,
+                    validation,
+                    now,
+                    config.getStagingTtlHours()
+            );
+        }
+
         // Priority 1: Pattern matching (if pattern matched and category exists in CashFlow)
-        if (patternMatch != null && cashFlowInfo.getAllCategoryNames().contains(patternMatch.categoryName())) {
+        if (patternMatch != null && allCategoryNames.contains(patternMatch.categoryName())) {
             // Look up parent category from CashFlow structure
             CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
                     patternMatch.categoryName(), patternMatch.type());

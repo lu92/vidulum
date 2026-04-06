@@ -89,14 +89,34 @@ public class RevalidateStagingCommandHandler
         Set<String> stillUnmappedCategories = new HashSet<>();
         int revalidatedCount = 0;
 
+        Set<String> allCategoryNames = cashFlowInfo.getAllCategoryNames();
+        int directMatchedCount = 0;
         int patternMatchedCount = 0;
         for (StagedTransaction st : stagedTransactions) {
             if (st.isPendingMapping()) {
-                // Priority 1: Try pattern matching first
+                String bankCategory = st.originalData().bankCategory();
+
+                // Priority 0: Direct bankCategory match to existing CashFlow category
+                // This is most useful for banks like Pekao that provide detailed category names
+                if (allCategoryNames.contains(bankCategory)) {
+                    CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
+                            bankCategory, st.originalData().type());
+
+                    StagedTransaction revalidated = revalidateTransactionWithDirectMatch(
+                            st, bankCategory, parentCategoryName, cashFlowInfo, now);
+                    updatedTransactions.add(revalidated);
+                    revalidatedCount++;
+                    directMatchedCount++;
+                    log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category",
+                            st.originalData().name(), bankCategory);
+                    continue;
+                }
+
+                // Priority 1: Try pattern matching
                 PatternMatchResult patternMatch = findMatchingPattern(
                         st.originalData().name(), st.originalData().type(), patternMappings);
 
-                if (patternMatch != null && cashFlowInfo.getAllCategoryNames().contains(patternMatch.categoryName())) {
+                if (patternMatch != null && allCategoryNames.contains(patternMatch.categoryName())) {
                     // Pattern matched to existing category
                     StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, cashFlowInfo, now);
                     updatedTransactions.add(revalidated);
@@ -106,7 +126,7 @@ public class RevalidateStagingCommandHandler
                             st.originalData().name(), patternMatch.pattern().normalizedPattern(), patternMatch.categoryName());
                 } else {
                     // Priority 2: Try category mapping
-                    MappingKey key = new MappingKey(st.originalData().bankCategory(), st.originalData().type());
+                    MappingKey key = new MappingKey(bankCategory, st.originalData().type());
                     CategoryMapping mapping = mappingMap.get(key);
 
                     if (mapping != null) {
@@ -117,7 +137,7 @@ public class RevalidateStagingCommandHandler
                     } else {
                         // No mapping found - transaction stays PENDING_MAPPING
                         // User must configure mapping (via AI or manual) before import
-                        stillUnmappedCategories.add(st.originalData().bankCategory());
+                        stillUnmappedCategories.add(bankCategory);
                         updatedTransactions.add(st);
                         log.trace("Transaction [{}] still pending - no mapping found", st.originalData().name());
                     }
@@ -130,8 +150,8 @@ public class RevalidateStagingCommandHandler
         // Save updated transactions
         stagedTransactionRepository.saveAll(updatedTransactions);
 
-        log.info("Revalidated {} transactions for session [{}] ({} pattern-matched), {} still pending",
-                revalidatedCount, command.stagingSessionId().id(), patternMatchedCount,
+        log.info("Revalidated {} transactions for session [{}] ({} direct-matched, {} pattern-matched), {} still pending",
+                revalidatedCount, command.stagingSessionId().id(), directMatchedCount, patternMatchedCount,
                 updatedTransactions.stream().filter(StagedTransaction::isPendingMapping).count());
 
         // Build summary
@@ -195,6 +215,44 @@ public class RevalidateStagingCommandHandler
                 .max(Comparator.comparingDouble(PatternMapping::confidenceScore))
                 .map(p -> new PatternMatchResult(p.suggestedCategory(), p.categoryType(), p))
                 .orElse(null);
+    }
+
+    /**
+     * Revalidate transaction using direct bankCategory match.
+     * This is Priority 0 - when bankCategory exactly matches existing CashFlow category name.
+     */
+    private StagedTransaction revalidateTransactionWithDirectMatch(
+            StagedTransaction original,
+            String matchedCategoryName,
+            CategoryName parentCategoryName,
+            CashFlowInfo cashFlowInfo,
+            ZonedDateTime now) {
+
+        // Create mapped data using bankCategory as the target category
+        MappedTransactionData mappedData = new MappedTransactionData(
+                original.originalData().name(),
+                original.originalData().description(),
+                new CategoryName(matchedCategoryName),
+                parentCategoryName,
+                original.originalData().money(),
+                original.originalData().type(),
+                original.originalData().paidDate()
+        );
+
+        // Validate
+        TransactionValidation validation = validateTransaction(original, cashFlowInfo, now);
+
+        // Create new staged transaction with updated data
+        return new StagedTransaction(
+                original.stagedTransactionId(),
+                original.cashFlowId(),
+                original.stagingSessionId(),
+                original.originalData(),
+                mappedData,
+                validation,
+                original.createdAt(),
+                original.expiresAt()
+        );
     }
 
     /**
