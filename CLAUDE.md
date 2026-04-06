@@ -163,9 +163,10 @@ When the user asks to "restart Docker" or "rebuild Docker image", perform a **fu
 # 1. Package the application (create JAR)
 ./mvnw package -DskipTests
 
-# 2. Build fresh Docker image
+# 2. Build fresh Docker image WITHOUT CACHE
+# IMPORTANT: Always use --no-cache to ensure latest JAR is used
 # IMPORTANT: Always use vidulum-app:latest (NOT vidulum:latest)
-docker build -t vidulum-app:latest .
+docker build --no-cache -t vidulum-app:latest .
 
 # 3. Stop and remove all containers
 docker-compose -f docker-compose-final.yml down
