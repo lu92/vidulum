@@ -441,4 +441,92 @@ public class DirectCategoryMatchIntegrationTest extends AuthenticatedHttpIntegra
         log.info("Full import with direct matching completed: {} -> category '{}'",
                 importedTxn.getName(), importedTxn.getCategoryName());
     }
+
+    @Test
+    @DisplayName("Direct match should be case-insensitive")
+    void directMatchShouldBeCaseInsensitive() {
+        // given - create CashFlow with category in specific case
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+
+        String cashFlowId = actor.createCashFlowWithHistory(
+                userId,
+                uniqueCashFlowName(),
+                startPeriod,
+                Money.of(10000.0, "PLN")
+        );
+
+        // Create categories with specific casing
+        actor.createCategory(cashFlowId, "Artykuły spożywcze", Type.OUTFLOW);  // Mixed case
+        actor.createCategory(cashFlowId, "Transport", Type.OUTFLOW);            // Title case
+        actor.createCategory(cashFlowId, "Wynagrodzenie", Type.INFLOW);         // Title case
+
+        log.info("Created categories with specific casing: 'Artykuły spożywcze', 'Transport', 'Wynagrodzenie'");
+
+        // when - stage transactions with DIFFERENT casing in bankCategory
+        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+                // UPPERCASE bankCategory
+                actor.bankTransaction("TXN-001", "BIEDRONKA",
+                        "ARTYKUŁY SPOŻYWCZE", 100.0, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC)),
+                // lowercase bankCategory
+                actor.bankTransaction("TXN-002", "UBER",
+                        "transport", 50.0, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 16, 10, 0, 0, 0, ZoneOffset.UTC)),
+                // Mixed case bankCategory (exact match)
+                actor.bankTransaction("TXN-003", "PRZELEW PRZYCHODZĄCY",
+                        "Wynagrodzenie", 8000.0, "PLN", Type.INFLOW,
+                        ZonedDateTime.of(2021, 8, 10, 10, 0, 0, 0, ZoneOffset.UTC)),
+                // Different case that should NOT match (nonexistent category)
+                actor.bankTransaction("TXN-004", "NIEZNANY SKLEP",
+                        "NIEZNANA KATEGORIA", 99.0, "PLN", Type.OUTFLOW,
+                        ZonedDateTime.of(2021, 8, 17, 10, 0, 0, 0, ZoneOffset.UTC))
+        ));
+
+        // then - should match case-insensitively but preserve original category name
+        assertThat(stageResponse.getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
+        assertThat(stageResponse.getSummary().getValidTransactions()).isEqualTo(3);
+        assertThat(stageResponse.getUnmappedCategories()).hasSize(1);
+        assertThat(stageResponse.getUnmappedCategories().get(0).getBankCategory())
+                .isEqualTo("NIEZNANA KATEGORIA");
+
+        BankDataIngestionDto.GetStagingPreviewResponse preview =
+                actor.getStagingPreview(cashFlowId, stageResponse.getStagingSessionId());
+
+        // Find transactions by name
+        BankDataIngestionDto.StagedTransactionPreviewJson foodTxn = preview.getTransactions().stream()
+                .filter(t -> t.getName().equals("BIEDRONKA")).findFirst().orElseThrow();
+        BankDataIngestionDto.StagedTransactionPreviewJson transportTxn = preview.getTransactions().stream()
+                .filter(t -> t.getName().equals("UBER")).findFirst().orElseThrow();
+        BankDataIngestionDto.StagedTransactionPreviewJson salaryTxn = preview.getTransactions().stream()
+                .filter(t -> t.getName().equals("PRZELEW PRZYCHODZĄCY")).findFirst().orElseThrow();
+        BankDataIngestionDto.StagedTransactionPreviewJson unknownTxn = preview.getTransactions().stream()
+                .filter(t -> t.getName().equals("NIEZNANY SKLEP")).findFirst().orElseThrow();
+
+        // KEY ASSERTIONS: Case-insensitive matching preserves original category name
+        assertThat(foodTxn.getTargetCategory())
+                .as("UPPERCASE 'ARTYKUŁY SPOŻYWCZE' should match 'Artykuły spożywcze' (case-insensitive)")
+                .isEqualTo("Artykuły spożywcze"); // Original case preserved
+        assertThat(foodTxn.getValidation().getStatus()).isEqualTo("VALID");
+
+        assertThat(transportTxn.getTargetCategory())
+                .as("lowercase 'transport' should match 'Transport' (case-insensitive)")
+                .isEqualTo("Transport"); // Original case preserved
+        assertThat(transportTxn.getValidation().getStatus()).isEqualTo("VALID");
+
+        assertThat(salaryTxn.getTargetCategory())
+                .as("Exact case 'Wynagrodzenie' should match")
+                .isEqualTo("Wynagrodzenie");
+        assertThat(salaryTxn.getValidation().getStatus()).isEqualTo("VALID");
+
+        assertThat(unknownTxn.getTargetCategory())
+                .as("No matching category, should remain unmapped")
+                .isNull();
+        assertThat(unknownTxn.getValidation().getStatus()).isEqualTo("PENDING_MAPPING");
+
+        log.info("Case-insensitive test passed:");
+        log.info("  - bankCategory='ARTYKUŁY SPOŻYWCZE' -> targetCategory='{}' (UPPERCASE -> MixedCase)", foodTxn.getTargetCategory());
+        log.info("  - bankCategory='transport' -> targetCategory='{}' (lowercase -> TitleCase)", transportTxn.getTargetCategory());
+        log.info("  - bankCategory='Wynagrodzenie' -> targetCategory='{}' (exact match)", salaryTxn.getTargetCategory());
+        log.info("  - bankCategory='NIEZNANA KATEGORIA' -> PENDING_MAPPING (no match)");
+    }
 }

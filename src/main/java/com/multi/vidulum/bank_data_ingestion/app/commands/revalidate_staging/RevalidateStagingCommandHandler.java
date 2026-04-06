@@ -89,41 +89,46 @@ public class RevalidateStagingCommandHandler
         Set<String> stillUnmappedCategories = new HashSet<>();
         int revalidatedCount = 0;
 
-        Set<String> allCategoryNames = cashFlowInfo.getAllCategoryNames();
         int directMatchedCount = 0;
         int patternMatchedCount = 0;
         for (StagedTransaction st : stagedTransactions) {
             if (st.isPendingMapping()) {
                 String bankCategory = st.originalData().bankCategory();
 
-                // Priority 0: Direct bankCategory match to existing CashFlow category
+                // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
                 // This is most useful for banks like Pekao that provide detailed category names
-                if (allCategoryNames.contains(bankCategory)) {
+                Optional<String> directMatch = cashFlowInfo.findCategoryNameIgnoreCase(bankCategory, st.originalData().type());
+                if (directMatch.isPresent()) {
+                    String actualCategoryName = directMatch.get();
                     CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
-                            bankCategory, st.originalData().type());
+                            actualCategoryName, st.originalData().type());
 
                     StagedTransaction revalidated = revalidateTransactionWithDirectMatch(
-                            st, bankCategory, parentCategoryName, cashFlowInfo, now);
+                            st, actualCategoryName, parentCategoryName, cashFlowInfo, now);
                     updatedTransactions.add(revalidated);
                     revalidatedCount++;
                     directMatchedCount++;
-                    log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category",
-                            st.originalData().name(), bankCategory);
+                    log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category [{}]",
+                            st.originalData().name(), bankCategory, actualCategoryName);
                     continue;
                 }
 
-                // Priority 1: Try pattern matching
+                // Priority 1: Try pattern matching (case-insensitive)
                 PatternMatchResult patternMatch = findMatchingPattern(
                         st.originalData().name(), st.originalData().type(), patternMappings);
 
-                if (patternMatch != null && allCategoryNames.contains(patternMatch.categoryName())) {
+                Optional<String> patternMatchCategory = patternMatch != null
+                        ? cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), st.originalData().type())
+                        : Optional.empty();
+                if (patternMatchCategory.isPresent()) {
+                    String actualCategoryName = patternMatchCategory.get();
                     // Pattern matched to existing category
-                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, cashFlowInfo, now);
+                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, actualCategoryName, cashFlowInfo, now);
                     updatedTransactions.add(revalidated);
                     revalidatedCount++;
                     patternMatchedCount++;
                     log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
-                            st.originalData().name(), patternMatch.pattern().normalizedPattern(), patternMatch.categoryName());
+                            st.originalData().name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
                 } else {
                     // Priority 2: Try category mapping
                     MappingKey key = new MappingKey(bankCategory, st.originalData().type());
@@ -261,18 +266,19 @@ public class RevalidateStagingCommandHandler
     private StagedTransaction revalidateTransactionWithPattern(
             StagedTransaction original,
             PatternMatchResult patternMatch,
+            String actualCategoryName,
             CashFlowInfo cashFlowInfo,
             ZonedDateTime now) {
 
-        // Look up parent category from CashFlow structure
+        // Look up parent category from CashFlow structure (case-insensitive)
         CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
-                patternMatch.categoryName(), patternMatch.type());
+                actualCategoryName, patternMatch.type());
 
-        // Create mapped data
+        // Create mapped data with actual category name (correct case)
         MappedTransactionData mappedData = new MappedTransactionData(
                 original.originalData().name(),
                 original.originalData().description(),
-                new CategoryName(patternMatch.categoryName()),
+                new CategoryName(actualCategoryName),
                 parentCategoryName,
                 original.originalData().money(),
                 original.originalData().type(),
