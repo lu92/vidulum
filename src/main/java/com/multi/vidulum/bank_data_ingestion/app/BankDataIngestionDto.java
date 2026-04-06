@@ -595,6 +595,7 @@ public class BankDataIngestionDto {
         private String status;
         private AiSuggestedStructureJson suggestedStructure;
         private List<AiPatternSuggestionJson> patternSuggestions;
+        private List<AiBankCategorySuggestionJson> bankCategorySuggestions;
         private AiCategorizationStatsJson stats;
         private AiCostJson cost;
     }
@@ -636,6 +637,24 @@ public class BankDataIngestionDto {
         private boolean needsUserInput;
     }
 
+    /**
+     * Bank category suggestion - maps bank category to CashFlow category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiBankCategorySuggestionJson {
+        private String bankCategory;
+        private String targetCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private int transactionCount;
+        private double totalAmount;
+        private String reason;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -669,6 +688,7 @@ public class BankDataIngestionDto {
     public static class AcceptAiSuggestionsRequest {
         private List<AiCategoryToCreateJson> acceptedCategories;
         private List<AiMappingToApplyJson> acceptedMappings;
+        private List<AiBankCategoryMappingToApplyJson> acceptedBankCategoryMappings;
         private boolean saveToCache;
     }
 
@@ -693,6 +713,20 @@ public class BankDataIngestionDto {
         private String parentCategory;
         private Type type;
         private int confidence;
+    }
+
+    /**
+     * Bank category mapping - maps bank category name to CashFlow category.
+     * Used when bank category names differ from CashFlow category names.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiBankCategoryMappingToApplyJson {
+        private String bankCategory;
+        private String targetCategory;
+        private Type type;
     }
 
     /**

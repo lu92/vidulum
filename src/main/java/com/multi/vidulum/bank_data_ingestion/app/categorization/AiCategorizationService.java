@@ -142,6 +142,7 @@ public class AiCategorizationService {
 
         // Step 3: Call AI for uncached patterns
         List<AiCategorizationResult.PatternSuggestion> aiSuggestions = new ArrayList<>();
+        List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
         List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
         AiCategorizationResult.SuggestedStructure structure =
                 AiCategorizationResult.SuggestedStructure.empty();
@@ -164,6 +165,7 @@ public class AiCategorizationService {
             if (aiResult.success) {
                 structure = aiResult.structure;
                 aiSuggestions = aiResult.suggestions;
+                bankCategorySuggestions = aiResult.bankCategorySuggestions;
                 unrecognizedPatterns = aiResult.unrecognizedPatterns;
                 tokensUsed = aiResult.tokensUsed;
             } else {
@@ -219,10 +221,10 @@ public class AiCategorizationService {
                 ? AiCategorizationResult.AiCost.estimated(tokensUsed)
                 : AiCategorizationResult.AiCost.free();
 
-        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, cost: {}",
-                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, cost.estimatedCost());
+        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} bank category mappings, cost: {}",
+                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, bankCategorySuggestions.size(), cost.estimatedCost());
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, unrecognizedPatterns, stats, cost);
+        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, stats, cost);
     }
 
     /**
@@ -258,17 +260,18 @@ public class AiCategorizationService {
                         true,
                         parseResult.structure(),
                         parseResult.suggestions(),
+                        parseResult.bankCategorySuggestions(),
                         parseResult.unrecognizedPatterns(),
                         tokensUsed,
                         null
                 );
             } else {
-                return new AiCallResult(false, null, List.of(), List.of(), 0, parseResult.errorMessage());
+                return new AiCallResult(false, null, List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
             }
 
         } catch (Exception e) {
             log.error("AI categorization error", e);
-            return new AiCallResult(false, null, List.of(), List.of(), 0, e.getMessage());
+            return new AiCallResult(false, null, List.of(), List.of(), List.of(), 0, e.getMessage());
         }
     }
 
@@ -276,6 +279,7 @@ public class AiCategorizationService {
             boolean success,
             AiCategorizationResult.SuggestedStructure structure,
             List<AiCategorizationResult.PatternSuggestion> suggestions,
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             int tokensUsed,
             String errorMessage

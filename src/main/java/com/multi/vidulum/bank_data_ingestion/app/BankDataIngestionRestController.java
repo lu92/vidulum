@@ -373,6 +373,7 @@ public class BankDataIngestionRestController {
                         getCurrentUserId(),
                         toCategoriesToCreate(request.getAcceptedCategories()),
                         toMappingsToApply(request.getAcceptedMappings()),
+                        toBankCategoryMappingsToApply(request.getAcceptedBankCategoryMappings()),
                         request.isSaveToCache()
                 )
         );
@@ -425,11 +426,28 @@ public class BankDataIngestionRestController {
                 .patternSuggestions(result.patternSuggestions().stream()
                         .map(this::toPatternSuggestionJson)
                         .toList())
+                .bankCategorySuggestions(result.bankCategorySuggestions().stream()
+                        .map(this::toBankCategorySuggestionJson)
+                        .toList())
                 .stats(toCategorizationStatsJson(result.stats()))
                 .cost(BankDataIngestionDto.AiCostJson.builder()
                         .tokensUsed(result.cost().tokensUsed())
                         .estimatedCost(result.cost().estimatedCost())
                         .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiBankCategorySuggestionJson toBankCategorySuggestionJson(
+            AiCategorizationResult.BankCategorySuggestion suggestion) {
+        return BankDataIngestionDto.AiBankCategorySuggestionJson.builder()
+                .bankCategory(suggestion.bankCategory())
+                .targetCategory(suggestion.targetCategory())
+                .parentCategory(suggestion.parentCategory())
+                .type(suggestion.type())
+                .confidence(suggestion.confidence())
+                .transactionCount(suggestion.transactionCount())
+                .totalAmount(suggestion.totalAmount().doubleValue())
+                .reason(suggestion.reason())
                 .build();
     }
 
@@ -507,6 +525,18 @@ public class BankDataIngestionRestController {
                         // parentCategory removed - looked up dynamically from CashFlow
                         m.getType(),
                         m.getConfidence()
+                ))
+                .toList();
+    }
+
+    private List<AcceptAiSuggestionsCommand.BankCategoryMappingToApply> toBankCategoryMappingsToApply(
+            List<BankDataIngestionDto.AiBankCategoryMappingToApplyJson> mappings) {
+        if (mappings == null) return List.of();
+        return mappings.stream()
+                .map(m -> new AcceptAiSuggestionsCommand.BankCategoryMappingToApply(
+                        m.getBankCategory(),
+                        m.getTargetCategory(),
+                        m.getType()
                 ))
                 .toList();
     }

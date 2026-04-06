@@ -156,4 +156,17 @@ public record ExistingCategoryStructure(
     public int totalCategoryCount() {
         return allInflowNames.size() + allOutflowNames.size();
     }
+
+    /**
+     * Checks if a category name exists (case-insensitive).
+     * Used for Direct Category Match detection.
+     */
+    public boolean containsCategoryIgnoreCase(String categoryName) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return false;
+        }
+        String normalized = categoryName.trim().toLowerCase();
+        return getAllCategoryNames().stream()
+                .anyMatch(name -> name.toLowerCase().equals(normalized));
+    }
 }

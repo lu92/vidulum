@@ -117,6 +117,33 @@ public class AcceptAiSuggestionsCommandHandler
             }
         }
 
+        // Step 2b: Create bank category mappings
+        int bankCategoryMappingsApplied = 0;
+        if (command.acceptedBankCategoryMappings() != null && !command.acceptedBankCategoryMappings().isEmpty()) {
+            List<ConfigureCategoryMappingCommand.MappingConfig> bankMappingConfigs = new ArrayList<>();
+
+            for (AcceptAiSuggestionsCommand.BankCategoryMappingToApply mapping : command.acceptedBankCategoryMappings()) {
+                bankMappingConfigs.add(new ConfigureCategoryMappingCommand.MappingConfig(
+                        mapping.bankCategory(),
+                        new CategoryName(mapping.targetCategory()),
+                        null,  // parentCategory looked up dynamically
+                        mapping.type(),
+                        MappingAction.MAP_TO_EXISTING
+                ));
+            }
+
+            if (!bankMappingConfigs.isEmpty()) {
+                ConfigureCategoryMappingCommand bankMappingCommand = new ConfigureCategoryMappingCommand(
+                        command.cashFlowId(),
+                        bankMappingConfigs
+                );
+
+                ConfigureCategoryMappingResult bankMappingResult = mappingHandler.handle(bankMappingCommand);
+                bankCategoryMappingsApplied = bankMappingResult.mappingsConfigured();
+                log.info("Applied {} bank category mappings", bankCategoryMappingsApplied);
+            }
+        }
+
         // Step 3: Save to pattern cache (if requested)
         // Patterns are stored per CashFlow (not per user) for better isolation
         if (command.saveToCache() && command.acceptedMappings() != null) {
@@ -169,8 +196,8 @@ public class AcceptAiSuggestionsCommandHandler
                         revalidateResult.status() == RevalidateStagingResult.Status.SUCCESS
                 );
 
-        log.info("Accept AI suggestions complete: {} categories, {} mappings, {} cached. Session ready: {}",
-                categoriesCreated, mappingsApplied, patternsCached, validationSummary.readyForImport());
+        log.info("Accept AI suggestions complete: {} categories, {} pattern mappings, {} bank category mappings, {} cached. Session ready: {}",
+                categoriesCreated, mappingsApplied, bankCategoryMappingsApplied, patternsCached, validationSummary.readyForImport());
 
         if (warnings.isEmpty()) {
             return AcceptAiSuggestionsResult.success(

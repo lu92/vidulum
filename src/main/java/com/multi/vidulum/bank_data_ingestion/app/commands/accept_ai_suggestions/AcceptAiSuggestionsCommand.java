@@ -21,6 +21,7 @@ import java.util.List;
  * @param userId     the user ID (for user-specific pattern cache)
  * @param acceptedCategories categories to create (from AI suggestions)
  * @param acceptedMappings   pattern mappings to apply
+ * @param acceptedBankCategoryMappings bank category → CashFlow category mappings
  * @param saveToCache        whether to save accepted mappings to user cache
  */
 public record AcceptAiSuggestionsCommand(
@@ -29,6 +30,7 @@ public record AcceptAiSuggestionsCommand(
         String userId,
         List<CategoryToCreate> acceptedCategories,
         List<MappingToApply> acceptedMappings,
+        List<BankCategoryMappingToApply> acceptedBankCategoryMappings,
         boolean saveToCache
 ) implements Command {
 
@@ -64,5 +66,19 @@ public record AcceptAiSuggestionsCommand(
             String targetCategory,
             Type type,
             int confidence
+    ) {}
+
+    /**
+     * A mapping from bank category to CashFlow category.
+     * Used when bank category names differ from CashFlow category names.
+     *
+     * @param bankCategory      the original bank category name (e.g., "Wpływy regularne")
+     * @param targetCategory    the target CashFlow category (e.g., "Wynagrodzenie")
+     * @param type              INFLOW or OUTFLOW
+     */
+    public record BankCategoryMappingToApply(
+            String bankCategory,
+            String targetCategory,
+            Type type
     ) {}
 }

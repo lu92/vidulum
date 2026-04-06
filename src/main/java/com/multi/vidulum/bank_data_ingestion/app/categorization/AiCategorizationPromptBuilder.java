@@ -5,6 +5,8 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Builds prompts for AI-powered transaction categorization.
@@ -116,6 +118,33 @@ public class AiCategorizationPromptBuilder {
             sb.append("\n");
         }
 
+        // Add unique bank categories that need mapping
+        Set<String> uniqueBankCategories = patternGroups.stream()
+                .map(PatternDeduplicator.PatternGroup::bankCategory)
+                .filter(bc -> bc != null && !bc.isBlank())
+                .collect(Collectors.toSet());
+
+        if (!uniqueBankCategories.isEmpty()) {
+            sb.append("UNIQUE BANK CATEGORIES (create mappings for those not matching existing categories):\n");
+            for (String bankCategory : uniqueBankCategories) {
+                Type categoryType = patternGroups.stream()
+                        .filter(pg -> bankCategory.equals(pg.bankCategory()))
+                        .map(PatternDeduplicator.PatternGroup::type)
+                        .findFirst()
+                        .orElse(Type.OUTFLOW);
+
+                boolean directMatch = categoryStructure != null &&
+                        categoryStructure.containsCategoryIgnoreCase(bankCategory);
+
+                if (directMatch) {
+                    sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → DIRECT MATCH (no mapping needed)\n");
+                } else {
+                    sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → NEEDS MAPPING to existing category\n");
+                }
+            }
+            sb.append("\n");
+        }
+
         // Expected output format with improved JSON structure
         sb.append("""
 
@@ -146,6 +175,16 @@ public class AiCategorizationPromptBuilder {
                   "reason": "Matches existing category 'Zakupy spożywcze' under 'Żywność'"
                 }
               ],
+              "bankCategoryMappings": [
+                {
+                  "bankCategory": "Wpływy regularne",
+                  "targetCategory": "Wynagrodzenie",
+                  "parentCategory": "Przychody",
+                  "type": "INFLOW",
+                  "confidence": 85,
+                  "reason": "Bank's generic income category maps to specific salary category"
+                }
+              ],
               "unrecognizedPatterns": [
                 {
                   "pattern": "XYZ123456",
@@ -162,6 +201,7 @@ public class AiCategorizationPromptBuilder {
             4. confidence levels: 90-100 = auto-accept, 50-89 = needs confirmation, <50 = needs manual review
             5. Keep category names concise (2-3 words max)
             6. Return ONLY valid JSON, no markdown code blocks
+            7. BANK CATEGORY MAPPINGS: For bank categories marked "NEEDS MAPPING", create a mapping to the most appropriate EXISTING category. Skip categories marked "DIRECT MATCH".
 
             IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
             """);

@@ -51,10 +51,12 @@ public class AiCategorizationResponseParser {
             AiCategorizationResult.SuggestedStructure structure = convertStructure(dto.categoryStructure);
             List<AiCategorizationResult.PatternSuggestion> suggestions =
                     convertMappings(dto.patternMappings, patternGroups);
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions =
+                    convertBankCategoryMappings(dto.bankCategoryMappings, patternGroups);
             List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
                     convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
 
-            return ParseResult.success(structure, suggestions, unrecognized);
+            return ParseResult.success(structure, suggestions, bankCategorySuggestions, unrecognized);
 
         } catch (Exception e) {
             log.error("Failed to parse AI categorization response: {}", e.getMessage(), e);
@@ -206,6 +208,57 @@ public class AiCategorizationResponseParser {
         return result;
     }
 
+    /**
+     * Converts bank category mappings from AI response.
+     */
+    private List<AiCategorizationResult.BankCategorySuggestion> convertBankCategoryMappings(
+            List<BankCategoryMappingDto> mappings,
+            List<PatternDeduplicator.PatternGroup> patternGroups) {
+
+        if (mappings == null || mappings.isEmpty()) {
+            return List.of();
+        }
+
+        // Create lookup map by bankCategory to get transaction counts
+        Map<String, Integer> bankCategoryTransactionCounts = new java.util.HashMap<>();
+        Map<String, BigDecimal> bankCategoryAmounts = new java.util.HashMap<>();
+
+        for (PatternDeduplicator.PatternGroup group : patternGroups) {
+            String bankCategory = group.bankCategory();
+            if (bankCategory != null && !bankCategory.isBlank()) {
+                bankCategoryTransactionCounts.merge(bankCategory, group.transactionCount(), Integer::sum);
+                bankCategoryAmounts.merge(bankCategory, group.totalAmount(), BigDecimal::add);
+            }
+        }
+
+        List<AiCategorizationResult.BankCategorySuggestion> result = new ArrayList<>();
+
+        for (BankCategoryMappingDto dto : mappings) {
+            Type type;
+            try {
+                type = Type.valueOf(dto.type);
+            } catch (Exception e) {
+                type = Type.OUTFLOW;
+            }
+
+            int transactionCount = bankCategoryTransactionCounts.getOrDefault(dto.bankCategory, 1);
+            BigDecimal totalAmount = bankCategoryAmounts.getOrDefault(dto.bankCategory, BigDecimal.ZERO);
+
+            result.add(new AiCategorizationResult.BankCategorySuggestion(
+                    dto.bankCategory,
+                    dto.targetCategory,
+                    dto.parentCategory,
+                    type,
+                    dto.confidence,
+                    transactionCount,
+                    totalAmount,
+                    dto.reason
+            ));
+        }
+
+        return result;
+    }
+
     // ============ DTOs for JSON parsing ============
 
     @Data
@@ -213,6 +266,7 @@ public class AiCategorizationResponseParser {
     public static class AiResponseDto {
         private CategoryStructureDto categoryStructure;
         private List<PatternMappingDto> patternMappings;
+        private List<BankCategoryMappingDto> bankCategoryMappings;
         private List<UnrecognizedPatternDto> unrecognizedPatterns;
     }
 
@@ -250,26 +304,40 @@ public class AiCategorizationResponseParser {
         private String reason;
     }
 
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BankCategoryMappingDto {
+        private String bankCategory;
+        private String targetCategory;
+        private String parentCategory;
+        private String type;
+        private int confidence;
+        private String reason;
+    }
+
     // ============ Result wrapper ============
 
     public record ParseResult(
             boolean success,
             AiCategorizationResult.SuggestedStructure structure,
             List<AiCategorizationResult.PatternSuggestion> suggestions,
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             String errorMessage
     ) {
         public static ParseResult success(
                 AiCategorizationResult.SuggestedStructure structure,
                 List<AiCategorizationResult.PatternSuggestion> suggestions,
+                List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
                 List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns) {
-            return new ParseResult(true, structure, suggestions, unrecognizedPatterns, null);
+            return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, null);
         }
 
         public static ParseResult error(String message) {
             return new ParseResult(
                     false,
                     AiCategorizationResult.SuggestedStructure.empty(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     message

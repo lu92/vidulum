@@ -14,6 +14,7 @@ public record AiCategorizationResult(
         String status,
         SuggestedStructure suggestedStructure,
         List<PatternSuggestion> patternSuggestions,
+        List<BankCategorySuggestion> bankCategorySuggestions,
         List<UnrecognizedPattern> unrecognizedPatterns,
         CategorizationStats stats,
         AiCost cost
@@ -59,6 +60,35 @@ public record AiCategorizationResult(
             int transactionCount,
             BigDecimal totalAmount
     ) {}
+
+    /**
+     * A suggestion to map a bank category to a CashFlow category.
+     * Used when bank category names differ from CashFlow category names.
+     */
+    public record BankCategorySuggestion(
+            String bankCategory,
+            String targetCategory,
+            String parentCategory,
+            Type type,
+            int confidence,
+            int transactionCount,
+            BigDecimal totalAmount,
+            String reason
+    ) {
+        /**
+         * Checks if this suggestion is auto-accepted (high confidence).
+         */
+        public boolean isAutoAccepted() {
+            return confidence >= 90;
+        }
+
+        /**
+         * Checks if this suggestion needs confirmation (medium confidence).
+         */
+        public boolean needsConfirmation() {
+            return confidence >= 50 && confidence < 90;
+        }
+    }
 
     /**
      * A pattern suggestion with confidence and source information.
@@ -198,6 +228,7 @@ public record AiCategorizationResult(
             StagingSessionId sessionId,
             SuggestedStructure structure,
             List<PatternSuggestion> suggestions,
+            List<BankCategorySuggestion> bankCategorySuggestions,
             List<UnrecognizedPattern> unrecognizedPatterns,
             CategorizationStats stats,
             AiCost cost
@@ -207,6 +238,7 @@ public record AiCategorizationResult(
                 STATUS_AI_SUGGESTIONS_READY,
                 structure,
                 suggestions,
+                bankCategorySuggestions,
                 unrecognizedPatterns,
                 stats,
                 cost
@@ -223,6 +255,7 @@ public record AiCategorizationResult(
                 SuggestedStructure.empty(),
                 List.of(),
                 List.of(),
+                List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()
         );
@@ -236,6 +269,7 @@ public record AiCategorizationResult(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
+                List.of(),
                 List.of(),
                 List.of(),
                 CategorizationStats.empty(),
