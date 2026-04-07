@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.cashflow.domain.Type;
 import lombok.AllArgsConstructor;
@@ -719,14 +720,21 @@ public class BankDataIngestionDto {
      * Bank category mapping - maps bank category name to CashFlow category.
      * Used when bank category names differ from CashFlow category names.
      */
+    /**
+     * Bank category mapping from AI suggestions.
+     * Maps bank-assigned categories (like "PRZELEW") to CashFlow categories (like "Wynagrodzenie").
+     */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class AiBankCategoryMappingToApplyJson {
         private String bankCategory;
         private String targetCategory;
         private Type type;
+        /** AI confidence score (0-100). Optional - used for analytics/auditing. */
+        private Integer confidence;
     }
 
     /**

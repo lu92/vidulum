@@ -101,7 +101,8 @@ public class AcceptAiSuggestionsCommandHandler
                         new CategoryName(mapping.targetCategory()),
                         null,  // parentCategory not stored in mapping - looked up dynamically
                         mapping.type(),
-                        action
+                        action,
+                        mapping.confidence()
                 ));
             }
 
@@ -128,7 +129,8 @@ public class AcceptAiSuggestionsCommandHandler
                         new CategoryName(mapping.targetCategory()),
                         null,  // parentCategory looked up dynamically
                         mapping.type(),
-                        MappingAction.MAP_TO_EXISTING
+                        MappingAction.MAP_TO_EXISTING,
+                        mapping.confidence()
                 ));
             }
 

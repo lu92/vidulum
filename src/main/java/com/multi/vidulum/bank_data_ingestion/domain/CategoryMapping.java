@@ -17,6 +17,7 @@ import java.time.ZonedDateTime;
  * @param parentCategoryName the parent category name for CREATE_SUBCATEGORY action (nullable)
  * @param categoryType       INFLOW or OUTFLOW
  * @param action             what action to take when this mapping is applied
+ * @param confidence         AI confidence score (0-100) when mapping was created from AI suggestion (nullable)
  * @param createdAt          when this mapping was created
  * @param updatedAt          when this mapping was last updated
  */
@@ -28,6 +29,7 @@ public record CategoryMapping(
         CategoryName parentCategoryName,
         Type categoryType,
         MappingAction action,
+        Integer confidence,
         ZonedDateTime createdAt,
         ZonedDateTime updatedAt
 ) {
@@ -39,6 +41,7 @@ public record CategoryMapping(
             CategoryName parentCategoryName,
             Type categoryType,
             MappingAction action,
+            Integer confidence,
             ZonedDateTime now
     ) {
         return new CategoryMapping(
@@ -49,6 +52,7 @@ public record CategoryMapping(
                 parentCategoryName,
                 categoryType,
                 action,
+                confidence,
                 now,
                 now
         );
@@ -63,6 +67,7 @@ public record CategoryMapping(
                 this.parentCategoryName,
                 this.categoryType,
                 this.action,
+                this.confidence,
                 this.createdAt,
                 updatedAt
         );
@@ -82,6 +87,7 @@ public record CategoryMapping(
                 parentCategoryName,
                 this.categoryType,
                 action,
+                this.confidence,  // preserve original confidence
                 this.createdAt,
                 now
         );

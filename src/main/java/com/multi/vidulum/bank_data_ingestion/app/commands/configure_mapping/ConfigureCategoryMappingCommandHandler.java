@@ -69,6 +69,7 @@ public class ConfigureCategoryMappingCommandHandler
                         config.parentCategoryName(),
                         config.categoryType(),
                         config.action(),
+                        config.confidence(),
                         now
                 );
                 savedMapping = categoryMappingRepository.save(newMapping);

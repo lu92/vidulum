@@ -43,6 +43,9 @@ public class CategoryMappingEntity {
 
     private MappingAction action;
 
+    /** AI confidence score (0-100) when mapping was created from AI suggestion. Null for manual mappings. */
+    private Integer confidence;
+
     private Date createdAt;
 
     private Date updatedAt;
@@ -56,6 +59,7 @@ public class CategoryMappingEntity {
                 .parentCategoryName(mapping.parentCategoryName() != null ? mapping.parentCategoryName().name() : null)
                 .categoryType(mapping.categoryType())
                 .action(mapping.action())
+                .confidence(mapping.confidence())
                 .createdAt(Date.from(mapping.createdAt().toInstant()))
                 .updatedAt(Date.from(mapping.updatedAt().toInstant()))
                 .build();
@@ -70,6 +74,7 @@ public class CategoryMappingEntity {
                 parentCategoryName != null ? new CategoryName(parentCategoryName) : null,
                 categoryType,
                 action,
+                confidence,
                 ZonedDateTime.ofInstant(createdAt.toInstant(), ZoneOffset.UTC),
                 ZonedDateTime.ofInstant(updatedAt.toInstant(), ZoneOffset.UTC)
         );

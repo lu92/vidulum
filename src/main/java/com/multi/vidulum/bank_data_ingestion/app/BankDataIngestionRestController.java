@@ -160,7 +160,8 @@ public class BankDataIngestionRestController {
                 targetCategoryName,
                 parentCategoryName,
                 json.getCategoryType(),
-                json.getAction()
+                json.getAction(),
+                null  // manual mappings don't have AI confidence
         );
     }
 
@@ -536,7 +537,8 @@ public class BankDataIngestionRestController {
                 .map(m -> new AcceptAiSuggestionsCommand.BankCategoryMappingToApply(
                         m.getBankCategory(),
                         m.getTargetCategory(),
-                        m.getType()
+                        m.getType(),
+                        m.getConfidence()
                 ))
                 .toList();
     }

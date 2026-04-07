@@ -75,10 +75,12 @@ public record AcceptAiSuggestionsCommand(
      * @param bankCategory      the original bank category name (e.g., "Wpływy regularne")
      * @param targetCategory    the target CashFlow category (e.g., "Wynagrodzenie")
      * @param type              INFLOW or OUTFLOW
+     * @param confidence        AI confidence score (0-100), nullable for manual mappings
      */
     public record BankCategoryMappingToApply(
             String bankCategory,
             String targetCategory,
-            Type type
+            Type type,
+            Integer confidence
     ) {}
 }
