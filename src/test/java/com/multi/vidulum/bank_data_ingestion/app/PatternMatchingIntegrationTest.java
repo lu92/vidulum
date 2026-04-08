@@ -130,6 +130,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         PatternMapping zusPattern = PatternMapping.createUser(
                 "ZUS",
                 "ZUS",
+                "Opłaty publiczne",  // intendedParentCategory
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,
@@ -138,6 +139,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         PatternMapping urzadPattern = PatternMapping.createUser(
                 "URZAD SKARBOWY",
                 "Podatki",
+                "Opłaty publiczne",  // intendedParentCategory
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,
@@ -251,6 +253,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         PatternMapping pattern = PatternMapping.createUser(
                 "URZAD SKARBOWY",
                 "Podatki",
+                "Opłaty publiczne",  // intendedParentCategory
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,
@@ -308,6 +311,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         PatternMapping zusPattern = PatternMapping.createUser(
                 "ZUS",
                 "Składki społeczne",
+                null,  // intendedParentCategory - no parent in this test
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,
@@ -365,6 +369,7 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
         PatternMapping pattern = PatternMapping.createUser(
                 "ZUS",
                 "ZUS",
+                "Opłaty publiczne",  // intendedParentCategory
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,

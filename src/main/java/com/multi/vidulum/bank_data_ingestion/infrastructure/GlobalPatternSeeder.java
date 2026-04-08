@@ -296,17 +296,17 @@ public class GlobalPatternSeeder {
 
     /**
      * Creates a GLOBAL outflow pattern.
-     * Note: parentCategory is no longer stored - kept as parameter for documentation.
+     * The parentDoc parameter is now stored as intendedParentCategory hint.
      */
     private static PatternMapping globalOutflow(String pattern, String category, String parentDoc, double confidence) {
-        return PatternMapping.createGlobal(pattern, category, Type.OUTFLOW, confidence);
+        return PatternMapping.createGlobal(pattern, category, parentDoc, Type.OUTFLOW, confidence);
     }
 
     /**
      * Creates a GLOBAL inflow pattern.
-     * Note: parentCategory is no longer stored - kept as parameter for documentation.
+     * The parentDoc parameter is now stored as intendedParentCategory hint.
      */
     private static PatternMapping globalInflow(String pattern, String category, String parentDoc, double confidence) {
-        return PatternMapping.createGlobal(pattern, category, Type.INFLOW, confidence);
+        return PatternMapping.createGlobal(pattern, category, parentDoc, Type.INFLOW, confidence);
     }
 }

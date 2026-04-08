@@ -18,13 +18,15 @@ import java.time.Instant;
  * - Learning from user confirmations
  * - Reducing AI calls on subsequent imports
  *
- * Note: Parent category is NOT stored - it's looked up dynamically from CashFlow
- * to avoid desynchronization when user moves categories.
+ * The {@code intendedParentCategory} field stores AI's original intent for hierarchy.
+ * This is a HINT for future AI calls - not a hard reference.
+ * The actual parent is looked up dynamically from CashFlow to handle user reorganizations.
  */
 public record PatternMapping(
         PatternMappingId id,
         String normalizedPattern,        // e.g., "ZUS", "BIEDRONKA"
         String suggestedCategory,        // e.g., "Social Security"
+        String intendedParentCategory,   // AI's intended parent (nullable) - hint for future imports
         Type categoryType,               // INFLOW or OUTFLOW
         PatternSource source,            // GLOBAL, USER, or AI
         String userId,                   // null for GLOBAL patterns
@@ -43,6 +45,7 @@ public record PatternMapping(
     public static PatternMapping createGlobal(
             String normalizedPattern,
             String suggestedCategory,
+            String intendedParentCategory,
             Type categoryType,
             double confidenceScore
     ) {
@@ -51,6 +54,7 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
+                intendedParentCategory,
                 categoryType,
                 PatternSource.GLOBAL,
                 null,
@@ -70,6 +74,7 @@ public record PatternMapping(
     public static PatternMapping createUser(
             String normalizedPattern,
             String suggestedCategory,
+            String intendedParentCategory,
             Type categoryType,
             String userId,
             String cashFlowId,
@@ -80,6 +85,7 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
+                intendedParentCategory,
                 categoryType,
                 PatternSource.USER,
                 userId,
@@ -99,6 +105,7 @@ public record PatternMapping(
     public static PatternMapping createAi(
             String normalizedPattern,
             String suggestedCategory,
+            String intendedParentCategory,
             Type categoryType,
             String userId,
             String cashFlowId,
@@ -109,6 +116,7 @@ public record PatternMapping(
                 PatternMappingId.generate(),
                 normalizedPattern.toUpperCase().trim(),
                 suggestedCategory,
+                intendedParentCategory,
                 categoryType,
                 PatternSource.AI,
                 userId,
@@ -128,6 +136,7 @@ public record PatternMapping(
                 id,
                 normalizedPattern,
                 suggestedCategory,
+                intendedParentCategory,
                 categoryType,
                 source,
                 userId,
@@ -142,11 +151,12 @@ public record PatternMapping(
     /**
      * Updates the category suggestion for this pattern.
      */
-    public PatternMapping updateCategory(String newCategory, double newConfidence) {
+    public PatternMapping updateCategory(String newCategory, String newIntendedParent, double newConfidence) {
         return new PatternMapping(
                 id,
                 normalizedPattern,
                 newCategory,
+                newIntendedParent,
                 categoryType,
                 source,
                 userId,

@@ -62,6 +62,12 @@ public interface PatternMappingRepository {
     List<PatternMapping> findAllByCashFlowId(String cashFlowId);
 
     /**
+     * Finds USER patterns for a CashFlow that have intendedParentCategory set.
+     * Used to provide hierarchy hints to AI during subsequent imports.
+     */
+    List<PatternMapping> findByCashFlowIdWithIntendedParent(String cashFlowId);
+
+    /**
      * Finds all USER patterns for a specific user (across all CashFlows).
      */
     List<PatternMapping> findAllByUserId(String userId);

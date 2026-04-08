@@ -165,6 +165,7 @@ public class AcceptAiSuggestionsCommandHandler
                         PatternMapping patternMapping = PatternMapping.createUser(
                                 mapping.pattern().toUpperCase(),
                                 mapping.targetCategory(),
+                                mapping.parentCategory(),  // Store AI's intended parent as hint
                                 mapping.type(),
                                 command.userId(),
                                 cashFlowIdStr,

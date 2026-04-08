@@ -93,6 +93,13 @@ public class PatternMappingRepositoryImpl implements PatternMappingRepository {
     }
 
     @Override
+    public List<PatternMapping> findByCashFlowIdWithIntendedParent(String cashFlowId) {
+        return mongoRepository.findByCashFlowIdAndIntendedParentCategoryNotNull(cashFlowId).stream()
+                .map(PatternMappingEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<PatternMapping> findAllByUserId(String userId) {
         return mongoRepository.findAllByUserId(userId).stream()
                 .map(PatternMappingEntity::toDomain)

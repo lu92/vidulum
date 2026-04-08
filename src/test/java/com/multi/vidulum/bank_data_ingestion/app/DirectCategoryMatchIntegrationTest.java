@@ -212,6 +212,7 @@ public class DirectCategoryMatchIntegrationTest extends AuthenticatedHttpIntegra
         PatternMapping uberPattern = PatternMapping.createUser(
                 "UBER",
                 "Taxi",
+                null,  // intendedParentCategory - not needed for this test
                 Type.OUTFLOW,
                 userId,
                 cashFlowId,

@@ -54,6 +54,8 @@ public class AiCategorizationResponseParser {
                     convertBankCategoryMappings(dto.bankCategoryMappings, patternGroups);
             List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
                     convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
+            List<AiCategorizationResult.StructureOptimization> structureOptimizations =
+                    convertStructureOptimizations(dto.structureOptimizations);
 
             // Convert structure and apply post-processing
             AiCategorizationResult.SuggestedStructure rawStructure = convertStructure(dto.categoryStructure);
@@ -66,7 +68,7 @@ public class AiCategorizationResponseParser {
             // where filtering leaves only 1 child)
             AiCategorizationResult.SuggestedStructure finalStructure = flattenSingleChildCategories(enrichedStructure);
 
-            return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized);
+            return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized, structureOptimizations);
 
         } catch (Exception e) {
             log.error("Failed to parse AI categorization response: {}", e.getMessage(), e);
@@ -408,6 +410,40 @@ public class AiCategorizationResponseParser {
         return result;
     }
 
+    /**
+     * Converts structure optimizations from AI response.
+     * These are suggestions for reorganizing existing categories based on cached intents.
+     */
+    private List<AiCategorizationResult.StructureOptimization> convertStructureOptimizations(
+            List<StructureOptimizationDto> optimizations) {
+
+        if (optimizations == null || optimizations.isEmpty()) {
+            return List.of();
+        }
+
+        List<AiCategorizationResult.StructureOptimization> result = new ArrayList<>();
+
+        for (StructureOptimizationDto dto : optimizations) {
+            Type type;
+            try {
+                type = Type.valueOf(dto.type);
+            } catch (Exception e) {
+                type = Type.OUTFLOW;
+            }
+
+            result.add(new AiCategorizationResult.StructureOptimization(
+                    dto.categoryName,
+                    dto.suggestedParent,
+                    dto.currentParent,
+                    type,
+                    dto.affectedTransactionCount,
+                    dto.reason
+            ));
+        }
+
+        return result;
+    }
+
     // ============ DTOs for JSON parsing ============
 
     @Data
@@ -417,6 +453,7 @@ public class AiCategorizationResponseParser {
         private List<PatternMappingDto> patternMappings;
         private List<BankCategoryMappingDto> bankCategoryMappings;
         private List<UnrecognizedPatternDto> unrecognizedPatterns;
+        private List<StructureOptimizationDto> structureOptimizations;
     }
 
     @Data
@@ -464,6 +501,17 @@ public class AiCategorizationResponseParser {
         private String reason;
     }
 
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class StructureOptimizationDto {
+        private String categoryName;
+        private String suggestedParent;
+        private String currentParent;
+        private String type;
+        private int affectedTransactionCount;
+        private String reason;
+    }
+
     // ============ Result wrapper ============
 
     public record ParseResult(
@@ -472,20 +520,23 @@ public class AiCategorizationResponseParser {
             List<AiCategorizationResult.PatternSuggestion> suggestions,
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
+            List<AiCategorizationResult.StructureOptimization> structureOptimizations,
             String errorMessage
     ) {
         public static ParseResult success(
                 AiCategorizationResult.SuggestedStructure structure,
                 List<AiCategorizationResult.PatternSuggestion> suggestions,
                 List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
-                List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns) {
-            return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, null);
+                List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
+                List<AiCategorizationResult.StructureOptimization> structureOptimizations) {
+            return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, null);
         }
 
         public static ParseResult error(String message) {
             return new ParseResult(
                     false,
                     AiCategorizationResult.SuggestedStructure.empty(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     List.of(),

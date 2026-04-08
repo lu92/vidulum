@@ -36,6 +36,7 @@ public class PatternMappingEntity {
     private String normalizedPattern;
 
     private String suggestedCategory;
+    private String intendedParentCategory;  // AI's original hierarchy intent (nullable)
     private Type categoryType;
 
     @Indexed
@@ -60,6 +61,7 @@ public class PatternMappingEntity {
                 domain.id().id(),
                 domain.normalizedPattern(),
                 domain.suggestedCategory(),
+                domain.intendedParentCategory(),
                 domain.categoryType(),
                 domain.source(),
                 domain.userId(),
@@ -79,6 +81,7 @@ public class PatternMappingEntity {
                 PatternMappingId.of(id),
                 normalizedPattern,
                 suggestedCategory,
+                intendedParentCategory,
                 categoryType,
                 source,
                 userId,

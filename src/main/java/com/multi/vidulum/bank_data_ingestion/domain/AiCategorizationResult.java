@@ -16,6 +16,7 @@ public record AiCategorizationResult(
         List<PatternSuggestion> patternSuggestions,
         List<BankCategorySuggestion> bankCategorySuggestions,
         List<UnrecognizedPattern> unrecognizedPatterns,
+        List<StructureOptimization> structureOptimizations,
         CategorizationStats stats,
         AiCost cost
 ) {
@@ -59,6 +60,24 @@ public record AiCategorizationResult(
             String reason,
             int transactionCount,
             BigDecimal totalAmount
+    ) {}
+
+    /**
+     * Suggested structure optimization from AI.
+     * Used when AI detects patterns from cache that had hierarchy intents
+     * and can suggest reorganizing categories.
+     *
+     * Example: If cached pattern "ZABKA" had intendedParent="Żywność", but
+     * current CashFlow has "Zakupy spożywcze" as root (flattened), AI can suggest
+     * creating "Żywność" parent and moving "Zakupy spożywcze" under it.
+     */
+    public record StructureOptimization(
+            String categoryName,          // Category to move/reorganize
+            String suggestedParent,       // Suggested new parent
+            String currentParent,         // Current parent (null if root)
+            Type type,                    // INFLOW or OUTFLOW
+            int affectedTransactionCount, // How many transactions would be affected
+            String reason                 // Why AI suggests this optimization
     ) {}
 
     /**
@@ -109,7 +128,7 @@ public record AiCategorizationResult(
     ) {
         /**
          * Creates a suggestion from a cached pattern mapping.
-         * Note: parentCategory is set to null - it's looked up dynamically from CashFlow.
+         * Uses intendedParentCategory from cache as hint for AI to maintain hierarchy consistency.
          */
         public static PatternSuggestion fromCache(
                 PatternMapping mapping,
@@ -125,7 +144,7 @@ public record AiCategorizationResult(
                     mapping.normalizedPattern(),
                     sampleTransaction,
                     mapping.suggestedCategory(),
-                    null,  // parentCategory is looked up dynamically from CashFlow
+                    mapping.intendedParentCategory(),  // Use cached hierarchy intent as hint
                     mapping.categoryType(),
                     mapping.confidencePercentage(),
                     displaySource,
@@ -230,6 +249,7 @@ public record AiCategorizationResult(
             List<PatternSuggestion> suggestions,
             List<BankCategorySuggestion> bankCategorySuggestions,
             List<UnrecognizedPattern> unrecognizedPatterns,
+            List<StructureOptimization> structureOptimizations,
             CategorizationStats stats,
             AiCost cost
     ) {
@@ -240,6 +260,7 @@ public record AiCategorizationResult(
                 suggestions,
                 bankCategorySuggestions,
                 unrecognizedPatterns,
+                structureOptimizations,
                 stats,
                 cost
         );
@@ -256,6 +277,7 @@ public record AiCategorizationResult(
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()
         );
@@ -269,6 +291,7 @@ public record AiCategorizationResult(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

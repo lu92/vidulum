@@ -140,10 +140,17 @@ public class AiCategorizationService {
         log.info("Cache results for cashFlowId {}: {} user hits, {} need AI (GLOBAL disabled: {})",
                 cashFlowId, userCacheHits, uncachedPatterns.size(), !GLOBAL_CACHE_ENABLED);
 
-        // Step 3: Call AI for uncached patterns
+        // Step 3: Collect cached patterns with intendedParentCategory (for hierarchy hints)
+        List<PatternMapping> cachedPatternIntents = patternMappingRepository
+                .findByCashFlowIdWithIntendedParent(cashFlowId);
+        log.debug("Found {} cached patterns with intendedParentCategory hints for cashFlowId: {}",
+                cachedPatternIntents.size(), cashFlowId);
+
+        // Step 4: Call AI for uncached patterns
         List<AiCategorizationResult.PatternSuggestion> aiSuggestions = new ArrayList<>();
         List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
         List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
+        List<AiCategorizationResult.StructureOptimization> structureOptimizations = new ArrayList<>();
         AiCategorizationResult.SuggestedStructure structure =
                 AiCategorizationResult.SuggestedStructure.empty();
         int tokensUsed = 0;
@@ -160,13 +167,14 @@ public class AiCategorizationService {
                         uncachedPatterns.size(), patternsForAi.size(), maxPatternsToAi);
             }
 
-            AiCallResult aiResult = callAi(patternsForAi, categoryStructure);
+            AiCallResult aiResult = callAi(patternsForAi, categoryStructure, cachedPatternIntents);
 
             if (aiResult.success) {
                 structure = aiResult.structure;
                 aiSuggestions = aiResult.suggestions;
                 bankCategorySuggestions = aiResult.bankCategorySuggestions;
                 unrecognizedPatterns = aiResult.unrecognizedPatterns;
+                structureOptimizations = aiResult.structureOptimizations;
                 tokensUsed = aiResult.tokensUsed;
             } else {
                 log.warn("AI categorization failed: {}", aiResult.errorMessage);
@@ -221,20 +229,21 @@ public class AiCategorizationService {
                 ? AiCategorizationResult.AiCost.estimated(tokensUsed)
                 : AiCategorizationResult.AiCost.free();
 
-        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} bank category mappings, cost: {}",
-                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, bankCategorySuggestions.size(), cost.estimatedCost());
+        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} bank category mappings, {} structure optimizations, cost: {}",
+                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, bankCategorySuggestions.size(), structureOptimizations.size(), cost.estimatedCost());
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, stats, cost);
+        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, stats, cost);
     }
 
     /**
      * Calls AI with patterns and parses response.
      */
     private AiCallResult callAi(List<PatternDeduplicator.PatternGroup> patterns,
-                                 ExistingCategoryStructure categoryStructure) {
+                                 ExistingCategoryStructure categoryStructure,
+                                 List<PatternMapping> cachedPatternIntents) {
         try {
             String systemPrompt = promptBuilder.getSystemPrompt();
-            String userPrompt = promptBuilder.buildUserPrompt(patterns, categoryStructure);
+            String userPrompt = promptBuilder.buildUserPrompt(patterns, categoryStructure, cachedPatternIntents);
 
             log.debug("AI prompt size: {} chars", userPrompt.length());
 
@@ -262,16 +271,17 @@ public class AiCategorizationService {
                         parseResult.suggestions(),
                         parseResult.bankCategorySuggestions(),
                         parseResult.unrecognizedPatterns(),
+                        parseResult.structureOptimizations(),
                         tokensUsed,
                         null
                 );
             } else {
-                return new AiCallResult(false, null, List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
+                return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
             }
 
         } catch (Exception e) {
             log.error("AI categorization error", e);
-            return new AiCallResult(false, null, List.of(), List.of(), List.of(), 0, e.getMessage());
+            return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, e.getMessage());
         }
     }
 
@@ -281,6 +291,7 @@ public class AiCategorizationService {
             List<AiCategorizationResult.PatternSuggestion> suggestions,
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
+            List<AiCategorizationResult.StructureOptimization> structureOptimizations,
             int tokensUsed,
             String errorMessage
     ) {}

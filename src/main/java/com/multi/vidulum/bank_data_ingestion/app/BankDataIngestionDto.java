@@ -732,6 +732,7 @@ public class BankDataIngestionDto {
     public static class AiBankCategoryMappingToApplyJson {
         private String bankCategory;
         private String targetCategory;
+        private String parentCategory;
         private Type type;
         /** AI confidence score (0-100). Optional - used for analytics/auditing. */
         private Integer confidence;

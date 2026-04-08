@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
+import com.multi.vidulum.bank_data_ingestion.domain.PatternMapping;
 import com.multi.vidulum.cashflow.domain.Type;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,7 @@ public class AiCategorizationPromptBuilder {
             6. FLATTEN single-child hierarchies: if a parent would have only 1 subcategory, DON'T create the parent - use the subcategory directly as a root category
             7. Only include categories that have actual transactions mapping to them
             8. CATEGORY NAME UNIQUENESS: Names must be unique within each type (INFLOW or OUTFLOW separately). The same name CAN exist in both types if logically justified (e.g., "Inne" for both income and expenses is OK).
+            9. HIERARCHY CONSISTENCY FROM CACHE: When CACHED PATTERN INTENTS section is provided, respect intendedParent as a hint for hierarchy. If current structure differs from cached intents, you MAY suggest structureOptimizations to reorganize categories.
 
             Category types:
             - OUTFLOW: Expenses (wydatki)
@@ -71,6 +73,20 @@ public class AiCategorizationPromptBuilder {
      */
     public String buildUserPrompt(List<PatternDeduplicator.PatternGroup> patternGroups,
                                    ExistingCategoryStructure categoryStructure) {
+        return buildUserPrompt(patternGroups, categoryStructure, List.of());
+    }
+
+    /**
+     * Builds the user prompt with pattern groups and cached pattern intents.
+     *
+     * @param patternGroups the deduplicated pattern groups
+     * @param categoryStructure existing categories with type and hierarchy
+     * @param cachedPatternIntents patterns from cache with intendedParentCategory hints
+     * @return the user prompt
+     */
+    public String buildUserPrompt(List<PatternDeduplicator.PatternGroup> patternGroups,
+                                   ExistingCategoryStructure categoryStructure,
+                                   List<PatternMapping> cachedPatternIntents) {
 
         StringBuilder sb = new StringBuilder();
 
@@ -93,6 +109,27 @@ public class AiCategorizationPromptBuilder {
                 formatCategoryHierarchy(categoryStructure.outflowCategories(), sb, "    ");
                 sb.append("\n");
             }
+        }
+
+        // Add cached pattern intents (Phase 2: hierarchy hints from previous imports)
+        List<PatternMapping> patternsWithIntents = cachedPatternIntents.stream()
+                .filter(pm -> pm.intendedParentCategory() != null && !pm.intendedParentCategory().isBlank())
+                .limit(10) // Limit to avoid prompt explosion
+                .toList();
+
+        if (!patternsWithIntents.isEmpty()) {
+            sb.append("CACHED PATTERN INTENTS (hierarchy hints from previous imports):\n");
+            sb.append("These patterns were previously assigned to categories with intended parent hierarchies.\n");
+            sb.append("Consider these when building category structure:\n\n");
+
+            for (PatternMapping pm : patternsWithIntents) {
+                sb.append(String.format("  - Pattern: %s → Category: %s (intendedParent: %s) [%s]\n",
+                        pm.normalizedPattern(),
+                        pm.suggestedCategory(),
+                        pm.intendedParentCategory(),
+                        pm.categoryType()));
+            }
+            sb.append("\n");
         }
 
         // Group by type
@@ -194,6 +231,16 @@ public class AiCategorizationPromptBuilder {
                   "type": "OUTFLOW",
                   "reason": "Cryptic identifier, cannot determine category"
                 }
+              ],
+              "structureOptimizations": [
+                {
+                  "categoryName": "Zakupy spożywcze",
+                  "suggestedParent": "Żywność",
+                  "currentParent": null,
+                  "type": "OUTFLOW",
+                  "affectedTransactionCount": 15,
+                  "reason": "Cached intents suggest this category should be under 'Żywność' for better organization"
+                }
               ]
             }
 
@@ -208,6 +255,8 @@ public class AiCategorizationPromptBuilder {
             8. NO SINGLE-CHILD HIERARCHIES: If a parent category would have only 1 subcategory, DO NOT create hierarchy - use subcategory as root category instead
             9. NO EMPTY CATEGORIES: Only include categories in categoryStructure that have at least one transaction pattern mapping to them
             10. UNIQUE NAMES PER TYPE: Category names must be unique within INFLOW and unique within OUTFLOW. Same name in both types is allowed (e.g., "Inne" in INFLOW and "Inne" in OUTFLOW is valid).
+            11. STRUCTURE OPTIMIZATIONS: If CACHED PATTERN INTENTS suggest a different hierarchy than current structure, add suggestions to "structureOptimizations" array. This is OPTIONAL - only include if cached intents indicate useful reorganization.
+            12. OPTIMIZATION PRIORITY: Prioritize using existing categories over suggesting reorganizations. Only suggest optimization if it would improve consistency with user's previous categorization choices.
 
             IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
             """);

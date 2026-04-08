@@ -61,6 +61,13 @@ public interface PatternMappingMongoRepository extends MongoRepository<PatternMa
     List<PatternMappingEntity> findAllByCashFlowId(String cashFlowId);
 
     /**
+     * Find patterns by CashFlow ID that have intendedParentCategory set.
+     * Used to provide hierarchy hints to AI during subsequent imports.
+     */
+    @Query("{ 'cashFlowId': ?0, 'intendedParentCategory': { '$ne': null } }")
+    List<PatternMappingEntity> findByCashFlowIdAndIntendedParentCategoryNotNull(String cashFlowId);
+
+    /**
      * Find all patterns by user ID (across all CashFlows).
      */
     List<PatternMappingEntity> findAllByUserId(String userId);

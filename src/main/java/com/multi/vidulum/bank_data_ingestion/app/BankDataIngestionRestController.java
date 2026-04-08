@@ -523,7 +523,7 @@ public class BankDataIngestionRestController {
                         m.getPattern(),
                         m.getBankCategory(),
                         m.getTargetCategory(),
-                        // parentCategory removed - looked up dynamically from CashFlow
+                        m.getParentCategory(),  // Store as intendedParentCategory hint for future imports
                         m.getType(),
                         m.getConfidence()
                 ))
@@ -537,6 +537,7 @@ public class BankDataIngestionRestController {
                 .map(m -> new AcceptAiSuggestionsCommand.BankCategoryMappingToApply(
                         m.getBankCategory(),
                         m.getTargetCategory(),
+                        m.getParentCategory(),
                         m.getType(),
                         m.getConfidence()
                 ))
