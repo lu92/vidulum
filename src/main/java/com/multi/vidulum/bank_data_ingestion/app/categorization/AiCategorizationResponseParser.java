@@ -48,7 +48,6 @@ public class AiCategorizationResponseParser {
             }
 
             // Convert to domain objects
-            AiCategorizationResult.SuggestedStructure structure = convertStructure(dto.categoryStructure);
             List<AiCategorizationResult.PatternSuggestion> suggestions =
                     convertMappings(dto.patternMappings, patternGroups);
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions =
@@ -56,7 +55,18 @@ public class AiCategorizationResponseParser {
             List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
                     convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
 
-            return ParseResult.success(structure, suggestions, bankCategorySuggestions, unrecognized);
+            // Convert structure and apply post-processing
+            AiCategorizationResult.SuggestedStructure rawStructure = convertStructure(dto.categoryStructure);
+
+            // Post-processing step 1: Enrich with transaction counts and filter empty categories
+            AiCategorizationResult.SuggestedStructure enrichedStructure =
+                    enrichAndFilterCategories(rawStructure, suggestions, bankCategorySuggestions);
+
+            // Post-processing step 2: Flatten single-child hierarchies (after filtering, so we catch cases
+            // where filtering leaves only 1 child)
+            AiCategorizationResult.SuggestedStructure finalStructure = flattenSingleChildCategories(enrichedStructure);
+
+            return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized);
 
         } catch (Exception e) {
             log.error("Failed to parse AI categorization response: {}", e.getMessage(), e);
@@ -111,6 +121,145 @@ public class AiCategorizationResponseParser {
         }
 
         return new AiCategorizationResult.SuggestedStructure(outflow, inflow);
+    }
+
+    /**
+     * Flattens single-child hierarchies.
+     * If a parent has only 1 subcategory, the subcategory is promoted to root level.
+     * Example: "Żywność" → ["Sklepy spożywcze"] becomes just "Sklepy spożywcze" (no parent)
+     */
+    AiCategorizationResult.SuggestedStructure flattenSingleChildCategories(
+            AiCategorizationResult.SuggestedStructure structure) {
+
+        List<AiCategorizationResult.CategoryNode> flattenedOutflow = flattenNodes(structure.outflow());
+        List<AiCategorizationResult.CategoryNode> flattenedInflow = flattenNodes(structure.inflow());
+
+        return new AiCategorizationResult.SuggestedStructure(flattenedOutflow, flattenedInflow);
+    }
+
+    private List<AiCategorizationResult.CategoryNode> flattenNodes(List<AiCategorizationResult.CategoryNode> nodes) {
+        List<AiCategorizationResult.CategoryNode> result = new ArrayList<>();
+
+        for (AiCategorizationResult.CategoryNode node : nodes) {
+            if (node.subCategories() != null && node.subCategories().size() == 1) {
+                // Single child - promote to root level without parent
+                String childName = node.subCategories().get(0);
+                result.add(new AiCategorizationResult.CategoryNode(
+                        childName,
+                        List.of(),  // No subcategories - it's now a root category
+                        node.transactionCount(),
+                        node.totalAmount()
+                ));
+                log.debug("Flattened single-child hierarchy: {} → {} became just {}",
+                        node.name(), childName, childName);
+            } else {
+                // Keep as is (0 children or 2+ children)
+                result.add(node);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Enriches category structure with transaction counts from pattern mappings,
+     * and filters out categories that have no transactions.
+     */
+    AiCategorizationResult.SuggestedStructure enrichAndFilterCategories(
+            AiCategorizationResult.SuggestedStructure structure,
+            List<AiCategorizationResult.PatternSuggestion> patternSuggestions,
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions) {
+
+        // Build maps: category name → (transactionCount, totalAmount)
+        Map<String, Integer> categoryTransactionCounts = new java.util.HashMap<>();
+        Map<String, BigDecimal> categoryAmounts = new java.util.HashMap<>();
+
+        // Count from pattern suggestions
+        for (AiCategorizationResult.PatternSuggestion ps : patternSuggestions) {
+            String category = ps.suggestedCategory();
+            String parent = ps.parentCategory();
+
+            // Add to subcategory
+            categoryTransactionCounts.merge(category, ps.transactionCount(), Integer::sum);
+            categoryAmounts.merge(category, ps.totalAmount(), BigDecimal::add);
+
+            // Also add to parent if exists
+            if (parent != null && !parent.isBlank()) {
+                categoryTransactionCounts.merge(parent, ps.transactionCount(), Integer::sum);
+                categoryAmounts.merge(parent, ps.totalAmount(), BigDecimal::add);
+            }
+        }
+
+        // Count from bank category suggestions
+        for (AiCategorizationResult.BankCategorySuggestion bcs : bankCategorySuggestions) {
+            String category = bcs.targetCategory();
+            String parent = bcs.parentCategory();
+
+            categoryTransactionCounts.merge(category, bcs.transactionCount(), Integer::sum);
+            categoryAmounts.merge(category, bcs.totalAmount(), BigDecimal::add);
+
+            if (parent != null && !parent.isBlank()) {
+                categoryTransactionCounts.merge(parent, bcs.transactionCount(), Integer::sum);
+                categoryAmounts.merge(parent, bcs.totalAmount(), BigDecimal::add);
+            }
+        }
+
+        // Enrich and filter outflow
+        List<AiCategorizationResult.CategoryNode> enrichedOutflow =
+                enrichAndFilterNodes(structure.outflow(), categoryTransactionCounts, categoryAmounts);
+
+        // Enrich and filter inflow
+        List<AiCategorizationResult.CategoryNode> enrichedInflow =
+                enrichAndFilterNodes(structure.inflow(), categoryTransactionCounts, categoryAmounts);
+
+        return new AiCategorizationResult.SuggestedStructure(enrichedOutflow, enrichedInflow);
+    }
+
+    private List<AiCategorizationResult.CategoryNode> enrichAndFilterNodes(
+            List<AiCategorizationResult.CategoryNode> nodes,
+            Map<String, Integer> transactionCounts,
+            Map<String, BigDecimal> amounts) {
+
+        List<AiCategorizationResult.CategoryNode> result = new ArrayList<>();
+
+        for (AiCategorizationResult.CategoryNode node : nodes) {
+            int nodeTransactionCount = transactionCounts.getOrDefault(node.name(), 0);
+            BigDecimal nodeAmount = amounts.getOrDefault(node.name(), BigDecimal.ZERO);
+
+            // Filter subcategories that have transactions
+            List<String> filteredSubs = new ArrayList<>();
+            for (String sub : node.subCategories()) {
+                int subCount = transactionCounts.getOrDefault(sub, 0);
+                if (subCount > 0) {
+                    filteredSubs.add(sub);
+                } else {
+                    log.debug("Filtering out empty subcategory: {} (0 transactions)", sub);
+                }
+            }
+
+            // Calculate parent transaction count as sum of children if has subcategories
+            if (!filteredSubs.isEmpty()) {
+                int childTotal = filteredSubs.stream()
+                        .mapToInt(sub -> transactionCounts.getOrDefault(sub, 0))
+                        .sum();
+                nodeTransactionCount = Math.max(nodeTransactionCount, childTotal);
+            }
+
+            // Only include if has transactions OR has valid subcategories
+            if (nodeTransactionCount > 0 || !filteredSubs.isEmpty()) {
+                result.add(new AiCategorizationResult.CategoryNode(
+                        node.name(),
+                        filteredSubs,
+                        nodeTransactionCount,
+                        nodeAmount
+                ));
+            } else {
+                log.debug("Filtering out empty parent category: {} (0 transactions, 0 subcategories)",
+                        node.name());
+            }
+        }
+
+        return result;
     }
 
     private List<AiCategorizationResult.PatternSuggestion> convertMappings(

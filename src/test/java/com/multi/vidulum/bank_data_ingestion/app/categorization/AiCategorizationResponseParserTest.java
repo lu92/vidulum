@@ -280,7 +280,7 @@ class AiCategorizationResponseParserTest {
     @Test
     @DisplayName("Should parse category structure with hierarchy")
     void shouldParseCategoryStructureWithHierarchy() {
-        // given
+        // given - 2+ children means hierarchy is kept
         String aiResponse = """
                 {
                   "categoryStructure": {
@@ -301,12 +301,28 @@ class AiCategorizationResponseParserTest {
                       }
                     ]
                   },
-                  "patternMappings": []
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Zakupy spożywcze", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "RESTAURACJA", "suggestedCategory": "Restauracje", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "ORLEN", "suggestedCategory": "Paliwo", "parentCategory": "Transport", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "ZTM", "suggestedCategory": "Komunikacja miejska", "parentCategory": "Transport", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "PENSJA", "suggestedCategory": "Pensja", "parentCategory": "Wynagrodzenie", "type": "INFLOW", "confidence": 95},
+                    {"pattern": "PREMIA", "suggestedCategory": "Premia", "parentCategory": "Wynagrodzenie", "type": "INFLOW", "confidence": 95}
+                  ]
                 }
                 """;
 
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("RESTAURACJA", "Restauracja", "", Type.OUTFLOW, 2, new BigDecimal("100.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("ZTM", "ZTM", "", Type.OUTFLOW, 5, new BigDecimal("50.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("PENSJA", "Pensja", "", Type.INFLOW, 1, new BigDecimal("5000.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("PREMIA", "Premia", "", Type.INFLOW, 1, new BigDecimal("1000.00"), "", List.of())
+        );
+
         // when
-        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, List.of());
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
 
         // then
         assertThat(result.success()).isTrue();
@@ -316,5 +332,272 @@ class AiCategorizationResponseParserTest {
                 .containsExactly("Zakupy spożywcze", "Restauracje");
         assertThat(result.structure().inflow()).hasSize(1);
         assertThat(result.structure().inflow().get(0).name()).isEqualTo("Wynagrodzenie");
+    }
+
+    // ============ NEW TESTS FOR POST-PROCESSING ============
+
+    @Test
+    @DisplayName("Should flatten single-child hierarchy - promote child to root level")
+    void shouldFlattenSingleChildHierarchy() {
+        // given - "Żywność" has only 1 child "Sklepy spożywcze" → should be flattened
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {
+                        "name": "Żywność",
+                        "subCategories": ["Sklepy spożywcze"]
+                      }
+                    ],
+                    "inflow": []
+                  },
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Sklepy spożywcze", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90}
+                  ]
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup(
+                        "BIEDRONKA", "Biedronka zakupy", "", Type.OUTFLOW,
+                        5, new BigDecimal("250.00"), "", List.of()
+                )
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+
+        // "Żywność" should be removed, "Sklepy spożywcze" should be promoted to root
+        assertThat(result.structure().outflow()).hasSize(1);
+        assertThat(result.structure().outflow().get(0).name()).isEqualTo("Sklepy spożywcze");
+        assertThat(result.structure().outflow().get(0).subCategories()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should keep hierarchy when parent has 2+ children")
+    void shouldKeepHierarchyWithMultipleChildren() {
+        // given - "Żywność" has 2 children → should NOT be flattened
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {
+                        "name": "Żywność",
+                        "subCategories": ["Sklepy spożywcze", "Restauracje"]
+                      }
+                    ],
+                    "inflow": []
+                  },
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Sklepy spożywcze", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "PIZZERIA", "suggestedCategory": "Restauracje", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 85}
+                  ]
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.structure().outflow()).hasSize(1);
+        assertThat(result.structure().outflow().get(0).name()).isEqualTo("Żywność");
+        assertThat(result.structure().outflow().get(0).subCategories())
+                .containsExactly("Sklepy spożywcze", "Restauracje");
+    }
+
+    @Test
+    @DisplayName("Should remove categories with zero transactions")
+    void shouldRemoveCategoriesWithZeroTransactions() {
+        // given - "Wynagrodzenie" has NO pattern mappings → should be removed
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {
+                        "name": "Żywność",
+                        "subCategories": ["Sklepy spożywcze", "Restauracje"]
+                      }
+                    ],
+                    "inflow": [
+                      {
+                        "name": "Wynagrodzenie",
+                        "subCategories": ["Pensja"]
+                      }
+                    ]
+                  },
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Sklepy spożywcze", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "PIZZERIA", "suggestedCategory": "Restauracje", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 85}
+                  ]
+                }
+                """;
+
+        // Note: No INFLOW patterns - "Wynagrodzenie" has 0 transactions
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+
+        // OUTFLOW should be kept (has transactions)
+        assertThat(result.structure().outflow()).hasSize(1);
+        assertThat(result.structure().outflow().get(0).name()).isEqualTo("Żywność");
+
+        // INFLOW should be empty (no transactions for "Wynagrodzenie")
+        assertThat(result.structure().inflow()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should calculate transaction count from pattern mappings")
+    void shouldCalculateTransactionCountFromPatternMappings() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {
+                        "name": "Zakupy",
+                        "subCategories": []
+                      }
+                    ],
+                    "inflow": []
+                  },
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Zakupy", "type": "OUTFLOW", "confidence": 90},
+                    {"pattern": "LIDL", "suggestedCategory": "Zakupy", "type": "OUTFLOW", "confidence": 85}
+                  ]
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
+                new PatternDeduplicator.PatternGroup("LIDL", "Lidl", "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.structure().outflow()).hasSize(1);
+
+        AiCategorizationResult.CategoryNode zakupy = result.structure().outflow().get(0);
+        assertThat(zakupy.name()).isEqualTo("Zakupy");
+        assertThat(zakupy.transactionCount()).isEqualTo(8); // 5 + 3
+        assertThat(zakupy.totalAmount()).isEqualByComparingTo(new BigDecimal("400.00")); // 250 + 150
+    }
+
+    @Test
+    @DisplayName("Should filter out empty subcategories and then flatten if only 1 child remains")
+    void shouldFilterOutEmptySubcategoriesAndFlattenIfOnlyOneChildRemains() {
+        // given - "Żywność" has 2 subcategories but only 1 has transactions
+        // After filtering "Restauracje" (0 transactions), only 1 child remains → should be flattened
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {
+                        "name": "Żywność",
+                        "subCategories": ["Sklepy spożywcze", "Restauracje"]
+                      }
+                    ],
+                    "inflow": []
+                  },
+                  "patternMappings": [
+                    {"pattern": "BIEDRONKA", "suggestedCategory": "Sklepy spożywcze", "parentCategory": "Żywność", "type": "OUTFLOW", "confidence": 90}
+                  ]
+                }
+                """;
+
+        // Only "Sklepy spożywcze" has transactions, "Restauracje" has 0
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+
+        // Processing order: 1) Filter (removes "Restauracje"), 2) Flatten (1 child → promote)
+        // Result: "Sklepy spożywcze" as root category (no parent "Żywność")
+        assertThat(result.structure().outflow()).hasSize(1);
+        assertThat(result.structure().outflow().get(0).name()).isEqualTo("Sklepy spożywcze");
+        assertThat(result.structure().outflow().get(0).subCategories()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle empty category structure")
+    void shouldHandleEmptyCategoryStructure() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [],
+                    "inflow": []
+                  },
+                  "patternMappings": []
+                }
+                """;
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, List.of());
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.structure().outflow()).isEmpty();
+        assertThat(result.structure().inflow()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should count bank category suggestion transactions")
+    void shouldCountBankCategorySuggestionTransactions() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [
+                      {"name": "Opłaty", "subCategories": []}
+                    ],
+                    "inflow": []
+                  },
+                  "patternMappings": [],
+                  "bankCategoryMappings": [
+                    {"bankCategory": "Przelewy wychodzące", "targetCategory": "Opłaty", "type": "OUTFLOW", "confidence": 80}
+                  ]
+                }
+                """;
+
+        // Bank category groups
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer 1", "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "Przelewy wychodzące", List.of()),
+                new PatternDeduplicator.PatternGroup("TX2", "Transfer 2", "", Type.OUTFLOW, 2, new BigDecimal("200.00"), "Przelewy wychodzące", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.structure().outflow()).hasSize(1);
+
+        AiCategorizationResult.CategoryNode oplaty = result.structure().outflow().get(0);
+        assertThat(oplaty.name()).isEqualTo("Opłaty");
+        assertThat(oplaty.transactionCount()).isEqualTo(5); // 3 + 2 from bank category
     }
 }
