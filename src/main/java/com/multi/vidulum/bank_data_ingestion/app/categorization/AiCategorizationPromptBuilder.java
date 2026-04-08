@@ -35,6 +35,7 @@ public class AiCategorizationPromptBuilder {
             5. Consider transaction frequency and amounts when prioritizing
             6. FLATTEN single-child hierarchies: if a parent would have only 1 subcategory, DON'T create the parent - use the subcategory directly as a root category
             7. Only include categories that have actual transactions mapping to them
+            8. CATEGORY NAME UNIQUENESS: Names must be unique within each type (INFLOW or OUTFLOW separately). The same name CAN exist in both types if logically justified (e.g., "Inne" for both income and expenses is OK).
 
             Category types:
             - OUTFLOW: Expenses (wydatki)
@@ -206,6 +207,7 @@ public class AiCategorizationPromptBuilder {
             7. BANK CATEGORY MAPPINGS: For bank categories marked "NEEDS MAPPING", create a mapping to the most appropriate EXISTING category. Skip categories marked "DIRECT MATCH".
             8. NO SINGLE-CHILD HIERARCHIES: If a parent category would have only 1 subcategory, DO NOT create hierarchy - use subcategory as root category instead
             9. NO EMPTY CATEGORIES: Only include categories in categoryStructure that have at least one transaction pattern mapping to them
+            10. UNIQUE NAMES PER TYPE: Category names must be unique within INFLOW and unique within OUTFLOW. Same name in both types is allowed (e.g., "Inne" in INFLOW and "Inne" in OUTFLOW is valid).
 
             IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
             """);
