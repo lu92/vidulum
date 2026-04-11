@@ -8,6 +8,7 @@ import com.multi.vidulum.bank_data_adapter.infrastructure.AiMappingRulesPromptBu
 import com.multi.vidulum.bank_data_adapter.infrastructure.AiPromptBuilder;
 import com.multi.vidulum.bank_data_adapter.infrastructure.AiResponseProcessor;
 import com.multi.vidulum.bank_data_adapter.infrastructure.CsvAnonymizer;
+import com.multi.vidulum.bank_data_adapter.infrastructure.CsvFormatDetector;
 import com.multi.vidulum.bank_data_adapter.infrastructure.LocalCsvTransformer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +65,9 @@ class CanonicalCsvDetectionTest {
     @Mock
     private AiCsvTransformationRepository transformationRepository;
 
+    @Mock
+    private CsvFormatDetector csvFormatDetector;
+
     private AiBankCsvTransformService service;
 
     private static final Clock FIXED_CLOCK = Clock.fixed(
@@ -82,6 +86,7 @@ class CanonicalCsvDetectionTest {
             localCsvTransformer,
             mappingRulesCacheService,
             transformationRepository,
+            csvFormatDetector,
             FIXED_CLOCK
         );
         // Set @Value fields via reflection since they're not injected in unit tests

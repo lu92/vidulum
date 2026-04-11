@@ -7,6 +7,7 @@ import com.multi.vidulum.bank_data_adapter.domain.ImportStatus;
 import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
 import com.multi.vidulum.bank_data_adapter.domain.exceptions.*;
 import com.multi.vidulum.bank_data_adapter.infrastructure.*;
+import com.multi.vidulum.bank_data_adapter.infrastructure.CsvFormatDetector.DetectedDelimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -60,6 +61,7 @@ public class AiBankCsvTransformService {
     private final LocalCsvTransformer localCsvTransformer;
     private final MappingRulesCacheService mappingRulesCacheService;
     private final AiCsvTransformationRepository transformationRepository;
+    private final CsvFormatDetector csvFormatDetector;
     private final Clock clock;
 
     @Value("${bank-data-adapter.max-file-size-bytes:5242880}")
@@ -216,9 +218,13 @@ public class AiBankCsvTransformService {
 
     /**
      * Obtains mapping rules from AI using anonymized sample.
+     * Uses CsvFormatDetector to pre-detect format and pass hints to AI.
      */
     private MappingRules obtainMappingRulesFromAi(String csvContent, String bankHint,
                                                    String bankIdentifier, String userId) {
+        // Step 1: Pre-detect delimiter BEFORE calling AI
+        DetectedDelimiter detectedDelimiter = csvFormatDetector.detect(csvContent);
+
         // Anonymize and extract sample
         String anonymizedSample = csvAnonymizer.anonymizeAndSample(csvContent, sampleRows);
         log.debug("Anonymized sample size: {} chars (original: {} chars)",
@@ -231,7 +237,9 @@ public class AiBankCsvTransformService {
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 String systemPrompt = mappingRulesPromptBuilder.getSystemPrompt();
-                String userPrompt = mappingRulesPromptBuilder.buildUserPrompt(anonymizedSample, bankHint);
+                // Pass detected delimiter as hint to AI
+                String userPrompt = mappingRulesPromptBuilder.buildUserPrompt(
+                    anonymizedSample, bankHint, detectedDelimiter);
 
                 Prompt prompt = new Prompt(List.of(
                     new SystemMessage(systemPrompt),
@@ -241,14 +249,15 @@ public class AiBankCsvTransformService {
                 ChatResponse response = callAiWithErrorHandling(prompt);
                 String aiOutput = response.getResult().getOutput().getText();
 
+                // Process with validation against detected delimiter
                 AiMappingRulesProcessor.MappingRulesResult result =
-                    mappingRulesProcessor.process(aiOutput, bankIdentifier);
+                    mappingRulesProcessor.process(aiOutput, bankIdentifier, detectedDelimiter);
 
                 if (result.success()) {
                     MappingRules rules = result.rules();
                     rules.setCreatedByUserId(userId);
                     rules.setGeneratedByModel("claude-haiku");
-                    rules.setPromptVersion("v1");
+                    rules.setPromptVersion("v2-with-predetection");
 
                     // Cache the rules
                     if (useCache && bankIdentifier != null) {

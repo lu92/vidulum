@@ -102,10 +102,9 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         int validCount = validTransactions.size();
         int duplicateCount = (int) stagedTransactions.stream().filter(StagedTransaction::isDuplicate).count();
 
-        // Determine categories to create
-        List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
+        // Determine categories to create (based on staged transactions, not mapping actions)
         List<CategoryToCreate> categoriesToCreate = determineCategoriesToCreate(
-                validTransactions, cashFlowInfo, mappings);
+                validTransactions, cashFlowInfo);
 
         // Create the import job
         ImportJob importJob = ImportJob.create(
@@ -194,34 +193,27 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
      */
     private List<CategoryToCreate> determineCategoriesToCreate(
             List<StagedTransaction> validTransactions,
-            CashFlowInfo cashFlowInfo,
-            List<CategoryMapping> mappings) {
+            CashFlowInfo cashFlowInfo) {
 
         Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
-        Map<String, CategoryMapping> mappingByBankCategoryAndType = buildMappingMap(mappings);
         Set<String> categoriesToCreateSet = new HashSet<>();
         List<CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : validTransactions) {
             String categoryKey = st.mappedData().categoryName().name() + ":" + st.mappedData().type();
 
+            // If category doesn't exist in CashFlow, we need to create it
+            // This handles both CREATE_NEW mappings and MAP_TO_EXISTING when category is missing
             if (!existingCategories.contains(st.mappedData().categoryName().name()) &&
                     !categoriesToCreateSet.contains(categoryKey)) {
 
-                String mappingKey = st.originalData().bankCategory() + ":" + st.mappedData().type();
-                CategoryMapping mapping = mappingByBankCategoryAndType.get(mappingKey);
-
-                if (mapping != null && (mapping.action() == MappingAction.CREATE_NEW ||
-                        mapping.action() == MappingAction.CREATE_SUBCATEGORY)) {
-
-                    result.add(new CategoryToCreate(
-                            st.mappedData().categoryName().name(),
-                            st.mappedData().parentCategoryName() != null
-                                    ? st.mappedData().parentCategoryName().name() : null,
-                            st.mappedData().type()
-                    ));
-                    categoriesToCreateSet.add(categoryKey);
-                }
+                result.add(new CategoryToCreate(
+                        st.mappedData().categoryName().name(),
+                        st.mappedData().parentCategoryName() != null
+                                ? st.mappedData().parentCategoryName().name() : null,
+                        st.mappedData().type()
+                ));
+                categoriesToCreateSet.add(categoryKey);
             }
         }
 
@@ -229,15 +221,6 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     }
 
     private record CategoryToCreate(String name, String parent, Type type) {
-    }
-
-    private Map<String, CategoryMapping> buildMappingMap(List<CategoryMapping> mappings) {
-        Map<String, CategoryMapping> map = new HashMap<>();
-        for (CategoryMapping mapping : mappings) {
-            String key = mapping.bankCategoryName() + ":" + mapping.categoryType();
-            map.put(key, mapping);
-        }
-        return map;
     }
 
     /**

@@ -56,6 +56,9 @@ class DateRangeExtractionTest {
     @Mock
     private AiCsvTransformationRepository transformationRepository;
 
+    @Mock
+    private CsvFormatDetector csvFormatDetector;
+
     private AiBankCsvTransformService service;
 
     private static final Clock FIXED_CLOCK = Clock.fixed(
@@ -75,6 +78,7 @@ class DateRangeExtractionTest {
             localCsvTransformer,
             mappingRulesCacheService,
             transformationRepository,
+            csvFormatDetector,
             FIXED_CLOCK
         );
     }
