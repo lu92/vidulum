@@ -600,4 +600,156 @@ class AiCategorizationResponseParserTest {
         assertThat(oplaty.name()).isEqualTo("Opłaty");
         assertThat(oplaty.transactionCount()).isEqualTo(5); // 3 + 2 from bank category
     }
+
+    // ============ TESTS FOR STRATEGY C: bankCategoryMappings VALIDATION ============
+
+    @Test
+    @DisplayName("Should filter out bankCategoryMappings with invalid bankCategory (merchant name instead of actual bankCategory)")
+    void shouldFilterOutInvalidBankCategoryMappings() {
+        // given - AI incorrectly used "ZABKA" as bankCategory (should be "TRANSAKCJA KARTĄ PŁATNICZĄ")
+        // This is a common AI mistake where it confuses merchant names with bankCategories
+        String aiResponse = """
+                {
+                  "categoryStructure": {"outflow": [], "inflow": []},
+                  "patternMappings": [
+                    {"pattern": "ZABKA", "suggestedCategory": "Zakupy", "type": "OUTFLOW", "confidence": 90}
+                  ],
+                  "bankCategoryMappings": [
+                    {"bankCategory": "ZABKA", "targetCategory": "Zakupy", "type": "OUTFLOW", "confidence": 80},
+                    {"bankCategory": "TRANSAKCJA KARTĄ PŁATNICZĄ", "targetCategory": "Inne", "type": "OUTFLOW", "confidence": 70}
+                  ]
+                }
+                """;
+
+        // Actual data has "TRANSAKCJA KARTĄ PŁATNICZĄ" as bankCategory, not "ZABKA"
+        // ZABKA is just a merchant name (pattern), not a bankCategory
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup(
+                        "ZABKA", "Zabka zakupy", "",
+                        Type.OUTFLOW, 5, new BigDecimal("100.00"),
+                        "TRANSAKCJA KARTĄ PŁATNICZĄ",  // ← actual bankCategory from bank
+                        List.of()
+                )
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        // Only valid mapping should remain (TRANSAKCJA KARTĄ PŁATNICZĄ)
+        // "ZABKA" mapping should be filtered out because ZABKA is not in actual bankCategories
+        assertThat(result.bankCategorySuggestions()).hasSize(1);
+        assertThat(result.bankCategorySuggestions().get(0).bankCategory())
+                .isEqualTo("TRANSAKCJA KARTĄ PŁATNICZĄ");
+    }
+
+    @Test
+    @DisplayName("Should keep all bankCategoryMappings when all reference actual bankCategories")
+    void shouldKeepAllValidBankCategoryMappings() {
+        // given - all bankCategoryMappings reference actual bankCategories from the data
+        String aiResponse = """
+                {
+                  "categoryStructure": {"outflow": [], "inflow": []},
+                  "patternMappings": [],
+                  "bankCategoryMappings": [
+                    {"bankCategory": "PRZELEW", "targetCategory": "Przelewy", "type": "OUTFLOW", "confidence": 85},
+                    {"bankCategory": "WPŁYWY REGULARNE", "targetCategory": "Wynagrodzenie", "type": "INFLOW", "confidence": 90}
+                  ]
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer", "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of()),
+                new PatternDeduplicator.PatternGroup("TX2", "Salary", "", Type.INFLOW, 1, new BigDecimal("5000.00"), "WPŁYWY REGULARNE", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.bankCategorySuggestions()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should handle empty bankCategoryMappings in validation")
+    void shouldHandleEmptyBankCategoryMappingsInValidation() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {"outflow": [], "inflow": []},
+                  "patternMappings": [],
+                  "bankCategoryMappings": []
+                }
+                """;
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, List.of());
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.bankCategorySuggestions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should filter multiple invalid bankCategoryMappings (merchant names)")
+    void shouldFilterMultipleInvalidBankCategoryMappings() {
+        // given - AI made multiple mistakes: ZABKA, NETFLIX, ORLEN are merchant names, not bankCategories
+        String aiResponse = """
+                {
+                  "categoryStructure": {"outflow": [], "inflow": []},
+                  "patternMappings": [],
+                  "bankCategoryMappings": [
+                    {"bankCategory": "ZABKA", "targetCategory": "Zakupy", "type": "OUTFLOW", "confidence": 80},
+                    {"bankCategory": "NETFLIX", "targetCategory": "Rozrywka", "type": "OUTFLOW", "confidence": 80},
+                    {"bankCategory": "ORLEN", "targetCategory": "Paliwo", "type": "OUTFLOW", "confidence": 80},
+                    {"bankCategory": "TRANSAKCJA KARTĄ PŁATNICZĄ", "targetCategory": "Inne", "type": "OUTFLOW", "confidence": 70}
+                  ]
+                }
+                """;
+
+        // All transactions have the same generic bankCategory
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka", "", Type.OUTFLOW, 5, new BigDecimal("100.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of()),
+                new PatternDeduplicator.PatternGroup("NETFLIX", "Netflix", "", Type.OUTFLOW, 3, new BigDecimal("50.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of()),
+                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        // Only 1 valid mapping should remain
+        assertThat(result.bankCategorySuggestions()).hasSize(1);
+        assertThat(result.bankCategorySuggestions().get(0).bankCategory())
+                .isEqualTo("TRANSAKCJA KARTĄ PŁATNICZĄ");
+    }
+
+    @Test
+    @DisplayName("Should validate bankCategory case-insensitively")
+    void shouldValidateBankCategoryCaseInsensitively() {
+        // given - AI returns lowercase, actual data has uppercase
+        String aiResponse = """
+                {
+                  "categoryStructure": {"outflow": [], "inflow": []},
+                  "patternMappings": [],
+                  "bankCategoryMappings": [
+                    {"bankCategory": "przelew", "targetCategory": "Przelewy", "type": "OUTFLOW", "confidence": 85}
+                  ]
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer", "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of())
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.bankCategorySuggestions()).hasSize(1); // should match case-insensitively
+    }
 }

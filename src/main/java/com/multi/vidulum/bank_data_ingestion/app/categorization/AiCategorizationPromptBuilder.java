@@ -165,6 +165,22 @@ public class AiCategorizationPromptBuilder {
                 .collect(Collectors.toSet());
 
         if (!uniqueBankCategories.isEmpty()) {
+            sb.append("""
+
+                ⚠️ WARNING ABOUT BANK CATEGORIES:
+                The following are ACTUAL bankCategory values from the bank's CSV export.
+                Most Polish banks use GENERIC categories that are NOT useful for categorization:
+                - "TRANSAKCJA KARTĄ PŁATNICZĄ" = card payment (covers 60%+ of all transactions!)
+                - "PRZELEW" / "PRZELEW WYCHODZĄCY" = wire transfer
+                - "PŁATNOŚĆ BLIK" = BLIK payment
+
+                DO NOT create bankCategoryMappings for these generic categories!
+                Instead, focus on creating patternMappings for each merchant pattern shown above.
+
+                REMEMBER: bankCategory values are shown in "bank:" field of each pattern above.
+                Only values from that field can be used in bankCategoryMappings!
+
+                """);
             sb.append("UNIQUE BANK CATEGORIES (create mappings for those not matching existing categories):\n");
             for (String bankCategory : uniqueBankCategories) {
                 Type categoryType = patternGroups.stream()
@@ -259,6 +275,21 @@ public class AiCategorizationPromptBuilder {
             12. OPTIMIZATION PRIORITY: Prioritize using existing categories over suggesting reorganizations. Only suggest optimization if it would improve consistency with user's previous categorization choices.
 
             IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
+
+            CRITICAL DISTINCTION - READ CAREFULLY:
+            - "pattern" = merchant/vendor name extracted from transaction (e.g., "ZABKA", "NETFLIX", "ORLEN", "XTREME FITNESS")
+            - "bankCategory" = generic category assigned by bank (e.g., "TRANSAKCJA KARTĄ PŁATNICZĄ", "PRZELEW", "PŁATNOŚĆ BLIK")
+
+            In Polish banks, 60%+ of transactions have generic bankCategory like "TRANSAKCJA KARTĄ PŁATNICZĄ".
+            This is USELESS for categorization because hundreds of different merchants share the same bankCategory.
+
+            MANDATORY RULES:
+            1. You MUST create a patternMapping for EVERY pattern shown in OUTFLOW/INFLOW PATTERNS section!
+               If you see 45 patterns, you should return ~40-45 patternMappings (unless some are truly unrecognizable).
+            2. bankCategoryMappings should ONLY contain values from the "bank:" field shown in patterns!
+               DO NOT use merchant names (like "ZABKA", "NETFLIX") as bankCategory - these belong in patternMappings!
+            3. For generic bankCategories like "TRANSAKCJA KARTĄ PŁATNICZĄ", do NOT create bankCategoryMapping.
+               Instead, categorize via patternMappings based on merchant names.
             """);
 
         return sb.toString();

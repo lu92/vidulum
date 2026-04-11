@@ -21,12 +21,13 @@ public class TransactionNameNormalizer {
             // Grocery stores
             "BIEDRONKA", "LIDL", "ŻABKA", "ZABKA", "KAUFLAND", "AUCHAN", "CARREFOUR",
             "TESCO", "NETTO", "DINO", "STOKROTKA", "LEWIATAN", "MAKRO", "SELGROS",
+            "INTERMARCHE", "FRESHMARKET", "FRESHPOINT",
             // Streaming
             "NETFLIX", "SPOTIFY", "HBO", "DISNEY", "TIDAL", "PLAYER",
             // Online shopping
             "ALLEGRO", "AMAZON", "ALIEXPRESS", "ZALANDO", "EMPIK",
             // Fuel
-            "ORLEN", "BP", "SHELL", "LOTOS", "MOYA", "AMIC",
+            "ORLEN", "BP", "SHELL", "LOTOS", "MOYA", "AMIC", "MOL",
             // Transport
             "PKP", "INTERCITY", "FLIXBUS", "BOLT", "UBER",
             // Telecom
@@ -37,16 +38,21 @@ public class TransactionNameNormalizer {
             "MCDONALD", "KFC", "SUBWAY", "STARBUCKS", "WOLT", "GLOVO",
             // Home
             "IKEA", "CASTORAMA", "OBI", "JYSK",
-            // Health
+            // Health & Fitness
             "ROSSMANN", "HEBE", "MEDICOVER", "LUXMED",
+            "XTREME", "ZDROFIT", "DECATHLON", "CITYFIT",
+            "JUNONA", "SHIVAGO", "FIZJOTERAPIA",
             // Insurance
             "PZU", "WARTA", "ALLIANZ", "AXA", "GENERALI", "UNIQA", "LINK4",
             // Clothing
             "ZARA", "RESERVED", "SINSAY", "CROPP", "CCC", "DEICHMANN", "PEPCO",
             // Government
             "ZUS", "KRUS", "NFZ",
-            // Software
+            // Software & Subscriptions
             "MICROSOFT", "GOOGLE", "APPLE", "ADOBE", "GITHUB", "JETBRAINS",
+            "CLAUDE", "CHATGPT", "OPENAI", "TRADINGVIEW", "CANVA",
+            // Dating & Social
+            "BADOO", "TINDER",
             // Electronics
             "MEDIAEXPERT", "MEDIAMARKT", "KOMPUTRONIK", "MORELE"
     );
@@ -58,7 +64,11 @@ public class TransactionNameNormalizer {
             "LEROY MERLIN", "BLACK RED", "AGATA MEBLE", "LUX MED", "ENEL-MED",
             "ERGO HESTIA", "TK MAXX", "T-MOBILE", "CANAL+", "POLSAT BOX",
             "AMAZON PRIME", "APPLE MUSIC", "YOUTUBE PREMIUM",
-            "URZĄD SKARBOWY", "US SKARBOWY"
+            "URZĄD SKARBOWY", "US SKARBOWY",
+            // Fitness
+            "XTREME FITNESS", "CITY FIT", "FITNESS PLATINIUM",
+            // AI Services
+            "CLAUDE.AI", "CHAT GPT"
     );
 
     // Regex patterns to remove

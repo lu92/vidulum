@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Parses AI response JSON into domain objects.
@@ -50,8 +52,11 @@ public class AiCategorizationResponseParser {
             // Convert to domain objects
             List<AiCategorizationResult.PatternSuggestion> suggestions =
                     convertMappings(dto.patternMappings, patternGroups);
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions =
+            List<AiCategorizationResult.BankCategorySuggestion> rawBankCategorySuggestions =
                     convertBankCategoryMappings(dto.bankCategoryMappings, patternGroups);
+            // Validate bankCategoryMappings - filter out invalid ones where AI confused merchant names with bankCategories
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions =
+                    validateBankCategoryMappings(rawBankCategorySuggestions, patternGroups);
             List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
                     convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
             List<AiCategorizationResult.StructureOptimization> structureOptimizations =
@@ -408,6 +413,55 @@ public class AiCategorizationResponseParser {
         }
 
         return result;
+    }
+
+    /**
+     * Validates that bankCategoryMappings reference actual bankCategories from transactions.
+     * Removes mappings that reference non-existent bankCategories (e.g., merchant names like "ZABKA").
+     *
+     * This prevents a common AI mistake where it confuses merchant names (patterns) with
+     * bank category values. For example, AI might incorrectly return:
+     *   {"bankCategory": "ZABKA", "targetCategory": "Zakupy"}
+     * when the actual bankCategory in the data is "TRANSAKCJA KARTĄ PŁATNICZĄ".
+     *
+     * @param mappings the mappings from AI
+     * @param patternGroups the original pattern groups with actual bankCategories
+     * @return filtered list containing only valid mappings
+     */
+    private List<AiCategorizationResult.BankCategorySuggestion> validateBankCategoryMappings(
+            List<AiCategorizationResult.BankCategorySuggestion> mappings,
+            List<PatternDeduplicator.PatternGroup> patternGroups) {
+
+        if (mappings.isEmpty()) {
+            return mappings;
+        }
+
+        // Collect actual bankCategories from transactions
+        Set<String> actualBankCategories = patternGroups.stream()
+                .map(PatternDeduplicator.PatternGroup::bankCategory)
+                .filter(bc -> bc != null && !bc.isBlank())
+                .map(String::toUpperCase)
+                .collect(Collectors.toSet());
+
+        // Filter out mappings that don't match actual bankCategories
+        List<AiCategorizationResult.BankCategorySuggestion> validMappings = mappings.stream()
+                .filter(m -> {
+                    boolean isValid = actualBankCategories.contains(m.bankCategory().toUpperCase());
+                    if (!isValid) {
+                        log.warn("Removing invalid bankCategoryMapping: '{}' is not an actual bankCategory. " +
+                                        "This appears to be a merchant name, not a bank category. Actual bankCategories: {}",
+                                m.bankCategory(), actualBankCategories);
+                    }
+                    return isValid;
+                })
+                .toList();
+
+        if (validMappings.size() < mappings.size()) {
+            log.info("Filtered out {} invalid bankCategoryMappings (AI confused merchant names with bankCategories)",
+                    mappings.size() - validMappings.size());
+        }
+
+        return validMappings;
     }
 
     /**
