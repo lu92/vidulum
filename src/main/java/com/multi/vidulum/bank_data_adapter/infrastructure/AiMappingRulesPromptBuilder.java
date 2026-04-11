@@ -165,13 +165,20 @@ public class AiMappingRulesPromptBuilder {
         - ✓ amount (REQUIRED) - use AMOUNT_PARSE
         - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
         - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
+        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
         - ○ description (optional) - use DIRECT
-        - ○ bankCategory (optional) - use DIRECT
         - ○ bookingDate (optional) - use DATE_PARSE
         - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
         - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
         - ○ merchant (optional) - use MERCHANT_EXTRACT
         - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
+
+        12. BANK CATEGORY MAPPING (IMPORTANT):
+            - bankCategory is the bank's transaction type/category
+            - Common source columns: "Rodzaj operacji", "Typ operacji", "Kategoria", "Transaction Type", "Category"
+            - This is different from type (INFLOW/OUTFLOW) - it's the bank's classification
+            - Examples of bank categories: "Przelewy wychodzące", "Opłaty i prowizje", "Płatności kartą"
+            - If such column exists, you MUST map it to bankCategory
 
         11. MERCHANT EXTRACTION (for bank intermediary transactions):
             - When "name" contains bank intermediary, extract real merchant from description
