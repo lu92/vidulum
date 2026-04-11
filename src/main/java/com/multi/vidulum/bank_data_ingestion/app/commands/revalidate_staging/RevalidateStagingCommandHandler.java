@@ -241,7 +241,9 @@ public class RevalidateStagingCommandHandler
                 parentCategoryName,
                 original.originalData().money(),
                 original.originalData().type(),
-                original.originalData().paidDate()
+                original.originalData().paidDate(),
+                original.originalData().merchant(),
+                original.originalData().merchantConfidence()
         );
 
         // Validate
@@ -282,7 +284,9 @@ public class RevalidateStagingCommandHandler
                 parentCategoryName,
                 original.originalData().money(),
                 original.originalData().type(),
-                original.originalData().paidDate()
+                original.originalData().paidDate(),
+                original.originalData().merchant(),
+                original.originalData().merchantConfidence()
         );
 
         // Validate
@@ -315,7 +319,9 @@ public class RevalidateStagingCommandHandler
                 mapping.parentCategoryName(),
                 original.originalData().money(),
                 original.originalData().type(),
-                original.originalData().paidDate()
+                original.originalData().paidDate(),
+                original.originalData().merchant(),
+                original.originalData().merchantConfidence()
         );
 
         // Validate

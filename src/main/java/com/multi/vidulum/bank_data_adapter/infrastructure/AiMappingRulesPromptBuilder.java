@@ -27,7 +27,7 @@ public class AiMappingRulesPromptBuilder {
         %s
 
         ## TARGET FORMAT (BankCsvRow):
-        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
 
         ## RETURN JSON with this structure:
         {
@@ -124,6 +124,8 @@ public class AiMappingRulesPromptBuilder {
         - VALUE_MAP: map values using lookup table
         - ID_GENERATE: generate transaction ID
         - SKIP: ignore this column
+        - MERCHANT_EXTRACT: extract merchant name from description (for bank intermediary transactions)
+        - MERCHANT_CONFIDENCE: calculate confidence score for merchant extraction (0.0-1.0)
 
         ## RULES FOR MAPPING:
         1. sourceIndex is 0-based column index
@@ -196,6 +198,35 @@ public class AiMappingRulesPromptBuilder {
         - ○ bookingDate (optional) - use DATE_PARSE
         - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
         - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
+        - ○ merchant (optional) - use MERCHANT_EXTRACT - extract real merchant from description
+        - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE - confidence score 0.0-1.0
+
+        11. MERCHANT EXTRACTION (CRITICAL FOR BANK INTERMEDIARY TRANSACTIONS):
+            - When "name" field contains bank intermediary like "BANK PEKAO S.A.", "PEKAO", etc.
+            - The REAL merchant (BADOO, NETFLIX, OPENAI, etc.) is hidden in "description"
+            - Use MERCHANT_EXTRACT to extract merchant name from description
+            - Use MERCHANT_CONFIDENCE to set confidence score (0.0-1.0)
+            - Example patterns in description:
+              * "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Badoo help@badoo.com" → merchant: "BADOO", confidence: 0.95
+              * "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → merchant: "NETFLIX", confidence: 0.98
+              * "Nadawca: ANTHROPIC CLAUDE" → merchant: "CLAUDE", confidence: 0.90
+            - Example for merchant mapping:
+              {
+                "sourceColumn": "Tytuł operacji",
+                "sourceIndex": 7,
+                "targetField": "merchant",
+                "transformationType": "MERCHANT_EXTRACT",
+                "transformationParams": {"nameColumn": "5", "patterns": ["Nadawca:\\s*([^\\s]+)", "Odbiorca:\\s*([^\\s]+)"]},
+                "required": false
+              },
+              {
+                "sourceColumn": "Tytuł operacji",
+                "sourceIndex": 7,
+                "targetField": "merchantConfidence",
+                "transformationType": "MERCHANT_CONFIDENCE",
+                "transformationParams": {},
+                "required": false
+              }
 
         ## DETECTING THE FORMAT:
         - Look for metadata lines before header (account number, date range, totals)

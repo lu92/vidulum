@@ -62,6 +62,8 @@ class AiCategorizationPromptBuilderTest {
                 new PatternDeduplicator.PatternGroup(
                         "BIEDRONKA",
                         "Biedronka zakupy",
+                        null, // sampleMerchant
+                        null, // averageMerchantConfidence
                         "Zakupy żywności",
                         Type.OUTFLOW,
                         3,
@@ -129,6 +131,8 @@ class AiCategorizationPromptBuilderTest {
                 new PatternDeduplicator.PatternGroup(
                         "NETFLIX",
                         "Netflix subscription",
+                        "NETFLIX", // sampleMerchant
+                        0.95, // averageMerchantConfidence
                         "Monthly streaming service",
                         Type.OUTFLOW,
                         1,
@@ -139,6 +143,8 @@ class AiCategorizationPromptBuilderTest {
                 new PatternDeduplicator.PatternGroup(
                         "WYPLATA",
                         "Wypłata pensji",
+                        null, // sampleMerchant
+                        null, // averageMerchantConfidence
                         "Wynagrodzenie za grudzień",
                         Type.INFLOW,
                         1,
@@ -167,6 +173,8 @@ class AiCategorizationPromptBuilderTest {
                 new PatternDeduplicator.PatternGroup(
                         "TEST",
                         "Test transaction",
+                        null, // sampleMerchant
+                        null, // averageMerchantConfidence
                         "",
                         Type.OUTFLOW,
                         1,
@@ -194,6 +202,8 @@ class AiCategorizationPromptBuilderTest {
                 new PatternDeduplicator.PatternGroup(
                         "SILVA",
                         "Silva Martins",
+                        null, // sampleMerchant
+                        null, // averageMerchantConfidence
                         "Czynsz za styczeń 2026",
                         Type.OUTFLOW,
                         1,

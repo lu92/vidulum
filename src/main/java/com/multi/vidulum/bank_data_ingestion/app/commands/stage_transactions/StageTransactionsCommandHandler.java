@@ -207,7 +207,9 @@ public class StageTransactionsCommandHandler
                 txn.bankCategory(),
                 txn.money(),
                 txn.type(),
-                txn.paidDate()
+                txn.paidDate(),
+                txn.merchant(),
+                txn.merchantConfidence()
         );
 
         // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
@@ -226,7 +228,9 @@ public class StageTransactionsCommandHandler
                     parentCategoryName,
                     txn.money(),
                     txn.type(),
-                    txn.paidDate()
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
             );
 
             // Validate transaction
@@ -262,7 +266,9 @@ public class StageTransactionsCommandHandler
                     parentCategoryName,
                     txn.money(),
                     txn.type(),
-                    txn.paidDate()
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
             );
 
             // Validate transaction
@@ -311,7 +317,9 @@ public class StageTransactionsCommandHandler
                     mapping.parentCategoryName(),
                     txn.money(),
                     txn.type(),
-                    txn.paidDate()
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
             );
         }
 

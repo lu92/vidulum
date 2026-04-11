@@ -420,7 +420,8 @@ public class AiBankCsvTransformService {
     private static final Set<String> CANONICAL_ALL_HEADERS = Set.of(
         "bankTransactionId", "name", "description", "bankCategory",
         "amount", "currency", "type", "operationDate", "bookingDate",
-        "sourceAccountNumber", "targetAccountNumber"
+        "sourceAccountNumber", "targetAccountNumber",
+        "merchant", "merchantConfidence"
     );
 
     /**

@@ -31,8 +31,8 @@ class CsvParserServiceTest {
     void shouldParseValidCsvWithAllFields() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Netflix Subscription,Monthly streaming,Subscriptions,49.99,PLN,OUTFLOW,2021-08-15,2021-08-16,PL12345678901234567890123456,PL98765432109876543210987654
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Netflix Subscription,Monthly streaming,Subscriptions,49.99,PLN,OUTFLOW,2021-08-15,2021-08-16,PL12345678901234567890123456,PL98765432109876543210987654,NETFLIX,0.95
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -56,6 +56,8 @@ class CsvParserServiceTest {
         assertThat(row.bookingDate()).isEqualTo(LocalDate.of(2021, 8, 16));
         assertThat(row.sourceAccountNumber()).isEqualTo("PL12345678901234567890123456");
         assertThat(row.targetAccountNumber()).isEqualTo("PL98765432109876543210987654");
+        assertThat(row.merchant()).isEqualTo("NETFLIX");
+        assertThat(row.merchantConfidence()).isEqualTo(0.95);
     }
 
     @Test
@@ -63,8 +65,8 @@ class CsvParserServiceTest {
     void shouldParseCsvWithOnlyRequiredFields() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                ,Groceries Shopping,,Zakupy,150.50,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                ,Groceries Shopping,,Zakupy,150.50,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -88,6 +90,8 @@ class CsvParserServiceTest {
         assertThat(row.bookingDate()).isNull();
         assertThat(row.sourceAccountNumber()).isNull();
         assertThat(row.targetAccountNumber()).isNull();
+        assertThat(row.merchant()).isNull();
+        assertThat(row.merchantConfidence()).isNull();
     }
 
     @Test
@@ -95,10 +99,10 @@ class CsvParserServiceTest {
     void shouldParseMultipleRows() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Netflix,Streaming,Subs,49.99,PLN,OUTFLOW,2021-08-15,,,
-                TXN002,Salary,,Income,8500.00,PLN,INFLOW,2021-09-01,2021-09-01,,
-                TXN003,Rent,Monthly rent,Housing,2000,PLN,OUTFLOW,2021-09-05,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Netflix,Streaming,Subs,49.99,PLN,OUTFLOW,2021-08-15,,,,,
+                TXN002,Salary,,Income,8500.00,PLN,INFLOW,2021-09-01,2021-09-01,,,,
+                TXN003,Rent,Monthly rent,Housing,2000,PLN,OUTFLOW,2021-09-05,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -117,8 +121,8 @@ class CsvParserServiceTest {
     void shouldHandleEuropeanDateFormat() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,100,PLN,OUTFLOW,15.08.2021,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,100,PLN,OUTFLOW,15.08.2021,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -136,9 +140,9 @@ class CsvParserServiceTest {
     void shouldHandleSlashDateFormats() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test1,Desc,Cat,100,PLN,OUTFLOW,15/08/2021,,,
-                TXN002,Test2,Desc,Cat,100,PLN,OUTFLOW,2021/08/15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test1,Desc,Cat,100,PLN,OUTFLOW,15/08/2021,,,,,
+                TXN002,Test2,Desc,Cat,100,PLN,OUTFLOW,2021/08/15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -158,8 +162,8 @@ class CsvParserServiceTest {
     void shouldHandleCommaAsDecimalSeparator() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,"150,50",PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,"150,50",PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -177,10 +181,10 @@ class CsvParserServiceTest {
     void shouldHandleTypeCaseInsensitively() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Out,Desc,Cat,100,PLN,outflow,2021-08-15,,,
-                TXN002,In,Desc,Cat,100,PLN,INFLOW,2021-08-15,,,
-                TXN003,InMixed,Desc,Cat,100,PLN,InFlow,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Out,Desc,Cat,100,PLN,outflow,2021-08-15,,,,,
+                TXN002,In,Desc,Cat,100,PLN,INFLOW,2021-08-15,,,,,
+                TXN003,InMixed,Desc,Cat,100,PLN,InFlow,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -200,8 +204,8 @@ class CsvParserServiceTest {
     void shouldReportErrorForMissingRequiredName() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -222,8 +226,8 @@ class CsvParserServiceTest {
     void shouldReportErrorForMissingRequiredAmount() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -241,8 +245,8 @@ class CsvParserServiceTest {
     void shouldReportErrorForInvalidAmountFormat() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,not-a-number,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,not-a-number,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -260,8 +264,8 @@ class CsvParserServiceTest {
     void shouldReportErrorForInvalidType() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,100,PLN,INVALID_TYPE,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,100,PLN,INVALID_TYPE,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -279,8 +283,8 @@ class CsvParserServiceTest {
     void shouldReportErrorForInvalidDateFormat() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,100,PLN,OUTFLOW,not-a-date,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,100,PLN,OUTFLOW,not-a-date,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -298,11 +302,11 @@ class CsvParserServiceTest {
     void shouldContinueParsingAfterRowErrors() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,
-                TXN002,Valid Transaction,Desc,Cat,200,PLN,INFLOW,2021-08-16,,,
-                TXN003,Another,Desc,Cat,invalid-amount,PLN,OUTFLOW,2021-08-17,,,
-                TXN004,Also Valid,Desc,Cat,300,PLN,OUTFLOW,2021-08-18,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,,,
+                TXN002,Valid Transaction,Desc,Cat,200,PLN,INFLOW,2021-08-16,,,,,
+                TXN003,Another,Desc,Cat,invalid-amount,PLN,OUTFLOW,2021-08-17,,,,,
+                TXN004,Also Valid,Desc,Cat,300,PLN,OUTFLOW,2021-08-18,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -329,8 +333,8 @@ class CsvParserServiceTest {
     void shouldValidateAmountIsPositive() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Test,Desc,Cat,-100,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Test,Desc,Cat,-100,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -371,22 +375,26 @@ class CsvParserServiceTest {
         // given
         BankCsvRow rowWithNulls = new BankCsvRow(
                 null, "Test", null, null, BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), null, null, null
+                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null
         );
 
         BankCsvRow rowWithValues = new BankCsvRow(
                 "TXN1", "Test", "Desc", "Category", BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), LocalDate.now().plusDays(1), "ACC1", "ACC2"
+                Type.OUTFLOW, LocalDate.now(), LocalDate.now().plusDays(1), "ACC1", "ACC2", "NETFLIX", 0.95
         );
 
         // then
         assertThat(rowWithNulls.effectiveDescription()).isEmpty();
         assertThat(rowWithNulls.effectiveBankCategory()).isEqualTo("Uncategorized");
         assertThat(rowWithNulls.effectiveBookingDate()).isEqualTo(rowWithNulls.operationDate());
+        assertThat(rowWithNulls.effectiveMerchant()).isEqualTo("Test"); // fallback to name
+        assertThat(rowWithNulls.hasHighConfidenceMerchant()).isFalse();
 
         assertThat(rowWithValues.effectiveDescription()).isEqualTo("Desc");
         assertThat(rowWithValues.effectiveBankCategory()).isEqualTo("Category");
         assertThat(rowWithValues.effectiveBookingDate()).isEqualTo(rowWithValues.bookingDate());
+        assertThat(rowWithValues.effectiveMerchant()).isEqualTo("NETFLIX");
+        assertThat(rowWithValues.hasHighConfidenceMerchant()).isTrue();
     }
 
     @Test
@@ -395,7 +403,7 @@ class CsvParserServiceTest {
         // given
         BankCsvRow row = new BankCsvRow(
                 null, "Test", null, "   ", BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), null, null, null
+                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null
         );
 
         // then
@@ -409,8 +417,8 @@ class CsvParserServiceTest {
     void shouldNormalizePolishAccountWithoutPrefixToIban() {
         // given - 26 digits without PL prefix, currency PLN
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,98124014441111001078171074,22102049002879287900000091
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,98124014441111001078171074,22102049002879287900000091,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -430,8 +438,8 @@ class CsvParserServiceTest {
     void shouldKeepIbanWithPrefixUnchanged() {
         // given - already has PL prefix
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,PL98124014441111001078171074,PL22102049002879287900000091
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,PL98124014441111001078171074,PL22102049002879287900000091,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -451,8 +459,8 @@ class CsvParserServiceTest {
     void shouldRemoveSpacesFromIban() {
         // given - IBAN with spaces
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,"PL 98 1240 1444 1111 0010 7817 1074",
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,"PL 98 1240 1444 1111 0010 7817 1074",,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -471,8 +479,8 @@ class CsvParserServiceTest {
     void shouldNormalizeGermanAccountForEur() {
         // given - 20 digits without prefix, currency EUR
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,EUR,OUTFLOW,2021-08-15,,89370400440532013000,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,EUR,OUTFLOW,2021-08-15,,89370400440532013000,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -491,8 +499,8 @@ class CsvParserServiceTest {
     void shouldHandleNullAndEmptyAccountNumbers() {
         // given
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);
@@ -512,8 +520,8 @@ class CsvParserServiceTest {
     void shouldUppercaseIbanPrefix() {
         // given - lowercase prefix
         String csvContent = """
-                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
-                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,pl98124014441111001078171074,
+                bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+                TXN001,Transfer,Desc,Cat,100,PLN,OUTFLOW,2021-08-15,,pl98124014441111001078171074,,,
                 """;
 
         MockMultipartFile file = createCsvFile(csvContent);

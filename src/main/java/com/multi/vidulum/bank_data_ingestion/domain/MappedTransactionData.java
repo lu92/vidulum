@@ -16,6 +16,8 @@ import java.time.ZonedDateTime;
  * @param money              transaction amount
  * @param type               INFLOW or OUTFLOW
  * @param paidDate           when the transaction was paid
+ * @param merchant           extracted merchant name (from description for bank intermediary transactions)
+ * @param merchantConfidence confidence score for merchant extraction (0.0 - 1.0)
  */
 public record MappedTransactionData(
         String name,
@@ -24,6 +26,8 @@ public record MappedTransactionData(
         CategoryName parentCategoryName,
         Money money,
         Type type,
-        ZonedDateTime paidDate
+        ZonedDateTime paidDate,
+        String merchant,
+        Double merchantConfidence
 ) {
 }

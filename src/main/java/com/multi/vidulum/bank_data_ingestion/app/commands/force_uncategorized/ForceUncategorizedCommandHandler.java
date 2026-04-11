@@ -152,7 +152,9 @@ public class ForceUncategorizedCommandHandler
                         null, // no parent
                         st.originalData().money(),
                         st.originalData().type(),
-                        st.originalData().paidDate()
+                        st.originalData().paidDate(),
+                        st.originalData().merchant(),
+                        st.originalData().merchantConfidence()
                 );
 
                 // Validate transaction

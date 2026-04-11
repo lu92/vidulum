@@ -131,6 +131,8 @@ public class BankDataIngestionDto {
         private String currency;
         private Type type;
         private ZonedDateTime paidDate;
+        private String merchant;
+        private Double merchantConfidence;
     }
 
     @Data

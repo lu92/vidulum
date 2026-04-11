@@ -24,9 +24,9 @@ import java.util.regex.Pattern;
 @Component
 public class LocalCsvTransformer {
 
-    // BankCsvRow header
+    // BankCsvRow header (must match CsvParserService.HEADERS)
     private static final String OUTPUT_HEADER =
-        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber";
+        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence";
 
     /**
      * Transform full CSV using mapping rules.
@@ -135,6 +135,8 @@ public class LocalCsvTransformer {
         output.put("bookingDate", "");
         output.put("sourceAccountNumber", "");
         output.put("targetAccountNumber", "");
+        output.put("merchant", "");
+        output.put("merchantConfidence", "");
 
         // Apply mappings
         for (ColumnMapping mapping : rules.getColumnMappings()) {
@@ -187,7 +189,7 @@ public class LocalCsvTransformer {
         }
 
         // Build output CSV row
-        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
             escapeCsv(output.get("bankTransactionId")),
             escapeCsv(output.get("name")),
             escapeCsv(output.get("description")),
@@ -198,7 +200,9 @@ public class LocalCsvTransformer {
             output.get("operationDate"),
             output.get("bookingDate"),
             escapeCsv(output.get("sourceAccountNumber")),
-            escapeCsv(output.get("targetAccountNumber"))
+            escapeCsv(output.get("targetAccountNumber")),
+            escapeCsv(output.get("merchant")),
+            output.get("merchantConfidence")
         );
     }
 
@@ -229,6 +233,10 @@ public class LocalCsvTransformer {
             case ID_GENERATE -> ""; // Handled separately
 
             case SKIP -> "";
+
+            case MERCHANT_EXTRACT -> extractMerchant(value, allColumns, mapping.getTransformationParams());
+
+            case MERCHANT_CONFIDENCE -> calculateMerchantConfidence(value, allColumns, mapping.getTransformationParams());
         };
     }
 
@@ -461,6 +469,144 @@ public class LocalCsvTransformer {
             case "DK" -> "DKK";
             default -> "PLN"; // Default for Polish banks
         };
+    }
+
+    /**
+     * Extract merchant name from transaction description.
+     * Used when the "name" field contains a bank intermediary (e.g., "BANK PEKAO S.A.")
+     * but the real merchant (BADOO, NETFLIX, OPENAI) is hidden in description.
+     *
+     * Common patterns in Polish bank descriptions:
+     * - "Nadawca: BADOO help@badoo.com" → BADOO
+     * - "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → NETFLIX
+     * - "Odbiorca: ANTHROPIC" → ANTHROPIC
+     */
+    private String extractMerchant(String description, String[] allColumns, Map<String, String> params) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+
+        // Check if name column contains bank intermediary (indicating merchant should be extracted)
+        String nameColumn = params != null ? params.get("nameColumn") : null;
+        if (nameColumn != null) {
+            try {
+                int nameIdx = Integer.parseInt(nameColumn);
+                if (nameIdx >= 0 && nameIdx < allColumns.length) {
+                    String name = allColumns[nameIdx].toUpperCase();
+                    // Only extract merchant if name looks like a bank intermediary
+                    if (!isBankIntermediary(name)) {
+                        return ""; // Name is already the real merchant
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        // Try extraction patterns
+        String descUpper = description.toUpperCase();
+
+        // Pattern 1: "Nadawca: XXX" or "Odbiorca: XXX"
+        Pattern senderRecipient = Pattern.compile("(?:Nadawca|Odbiorca):\\s*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE);
+        Matcher m1 = senderRecipient.matcher(description);
+        if (m1.find()) {
+            String merchant = m1.group(1).toUpperCase();
+            if (isValidMerchantName(merchant)) {
+                return merchant;
+            }
+        }
+
+        // Pattern 2: Well-known services in description
+        String[] knownMerchants = {"NETFLIX", "SPOTIFY", "OPENAI", "ANTHROPIC", "CLAUDE", "BADOO",
+            "GOOGLE", "APPLE", "AMAZON", "MICROSOFT", "FACEBOOK", "META", "PAYPAL", "UBER", "BOLT"};
+        for (String known : knownMerchants) {
+            if (descUpper.contains(known)) {
+                return known;
+            }
+        }
+
+        // Pattern 3: First word after "Tytuł:" or "Title:"
+        Pattern titlePattern = Pattern.compile("(?:Tytu[łl]|Title):\\s*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE);
+        Matcher m3 = titlePattern.matcher(description);
+        if (m3.find()) {
+            String merchant = m3.group(1).toUpperCase();
+            if (isValidMerchantName(merchant)) {
+                return merchant;
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Check if name looks like a bank intermediary rather than actual merchant.
+     */
+    private boolean isBankIntermediary(String name) {
+        if (name == null) return false;
+        String upper = name.toUpperCase();
+        return upper.contains("BANK") ||
+               upper.contains("PEKAO") ||
+               upper.contains("PKO") ||
+               upper.contains("MBANK") ||
+               upper.contains("ING ") ||
+               upper.contains("SANTANDER") ||
+               upper.contains("BNP") ||
+               upper.contains("PARIBAS") ||
+               upper.contains("NEST ") ||
+               upper.contains("ALIOR") ||
+               upper.contains("MILLENNIUM") ||
+               upper.contains("GETIN") ||
+               upper.contains("BOS ") ||
+               upper.contains("CREDIT ") ||
+               upper.contains("ROZLICZENIE");
+    }
+
+    /**
+     * Check if extracted name is a valid merchant (not a generic word).
+     */
+    private boolean isValidMerchantName(String name) {
+        if (name == null || name.length() < 3) return false;
+        // Exclude generic Polish/English words
+        String upper = name.toUpperCase();
+        return !upper.equals("PAN") && !upper.equals("PANI") &&
+               !upper.equals("MR") && !upper.equals("MRS") &&
+               !upper.equals("THE") && !upper.equals("AND") &&
+               !upper.equals("DLA") && !upper.equals("OD") &&
+               !upper.equals("DO") && !upper.equals("NA") &&
+               !upper.equals("ZA") && !upper.equals("PRZELEW");
+    }
+
+    /**
+     * Calculate confidence score for merchant extraction.
+     * Returns value between 0.0 and 1.0.
+     */
+    private String calculateMerchantConfidence(String description, String[] allColumns, Map<String, String> params) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+
+        String descUpper = description.toUpperCase();
+
+        // High confidence: Known merchant names
+        String[] knownMerchants = {"NETFLIX", "SPOTIFY", "OPENAI", "ANTHROPIC", "CLAUDE", "BADOO",
+            "GOOGLE", "APPLE", "AMAZON", "MICROSOFT", "FACEBOOK", "META", "PAYPAL", "UBER", "BOLT"};
+        for (String known : knownMerchants) {
+            if (descUpper.contains(known)) {
+                return "0.95"; // Very high confidence for known merchants
+            }
+        }
+
+        // Medium-high confidence: Clear sender/recipient pattern
+        if (description.matches("(?i).*(?:Nadawca|Odbiorca):\\s*[A-Za-z0-9]+.*")) {
+            return "0.85";
+        }
+
+        // Medium confidence: Title pattern
+        if (description.matches("(?i).*(?:Tytu[łl]|Title):\\s*[A-Za-z0-9]+.*")) {
+            return "0.70";
+        }
+
+        // Low confidence: Generic description
+        return "";
     }
 
     private String escapeCsv(String value) {

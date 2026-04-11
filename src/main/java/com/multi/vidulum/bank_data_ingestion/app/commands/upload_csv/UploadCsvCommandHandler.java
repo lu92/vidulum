@@ -85,7 +85,9 @@ public class UploadCsvCommandHandler
                 row.effectiveBankCategory(),
                 Money.of(row.amount().doubleValue(), row.currency()),
                 row.type(),
-                paidDate
+                paidDate,
+                row.merchant(),
+                row.merchantConfidence()
         );
     }
 

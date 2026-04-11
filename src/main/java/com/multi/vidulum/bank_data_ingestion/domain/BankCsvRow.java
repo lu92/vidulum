@@ -75,7 +75,21 @@ public record BankCsvRow(
          * Target account number (IBAN format).
          * OPTIONAL - for OUTFLOW: recipient's account, for INFLOW: user's account
          */
-        String targetAccountNumber
+        String targetAccountNumber,
+
+        /**
+         * Extracted merchant name (from description for bank intermediary transactions).
+         * OPTIONAL - AI extracts this when name is "BANK PEKAO S.A." etc.
+         * Examples: "BADOO", "NETFLIX", "OPENAI", "CLAUDE"
+         */
+        String merchant,
+
+        /**
+         * Confidence score for merchant extraction (0.0 - 1.0).
+         * OPTIONAL - null if merchant was not extracted by AI.
+         * Higher values indicate more reliable extraction.
+         */
+        Double merchantConfidence
 
 ) {
     /**
@@ -97,5 +111,21 @@ public record BankCsvRow(
      */
     public String effectiveBankCategory() {
         return bankCategory != null && !bankCategory.isBlank() ? bankCategory : "Uncategorized";
+    }
+
+    /**
+     * Returns effective merchant (name if merchant is null).
+     * This is used for pattern grouping in PatternDeduplicator.
+     */
+    public String effectiveMerchant() {
+        return merchant != null && !merchant.isBlank() ? merchant : name;
+    }
+
+    /**
+     * Returns true if merchant was extracted with high confidence (>= 0.7).
+     */
+    public boolean hasHighConfidenceMerchant() {
+        return merchant != null && !merchant.isBlank()
+                && merchantConfidence != null && merchantConfidence >= 0.7;
     }
 }

@@ -274,6 +274,17 @@ public class AiCategorizationPromptBuilder {
             11. STRUCTURE OPTIMIZATIONS: If CACHED PATTERN INTENTS suggest a different hierarchy than current structure, add suggestions to "structureOptimizations" array. This is OPTIONAL - only include if cached intents indicate useful reorganization.
             12. OPTIMIZATION PRIORITY: Prioritize using existing categories over suggesting reorganizations. Only suggest optimization if it would improve consistency with user's previous categorization choices.
 
+            ⚠️ CATEGORY CONSISTENCY - CRITICAL:
+            13. EVERY parentCategory used in patternMappings or bankCategoryMappings MUST exist in categoryStructure!
+                - If you use "parentCategory": "Żywność", then categoryStructure.outflow MUST contain {"name": "Żywność", ...}
+                - If you use "parentCategory": "Transport", then categoryStructure.outflow MUST contain {"name": "Transport", ...}
+                - NULL parentCategory is allowed for root-level categories (no hierarchy)
+            14. EVERY suggestedCategory in patternMappings MUST exist somewhere in categoryStructure:
+                - Either as a parent category name, OR
+                - As a subcategory under some parent
+            15. DO NOT reference category names from the examples in system prompt unless you ALSO add them to categoryStructure!
+                The example names like "Opłaty obowiązkowe", "Żywność", "Transport" are just hints - you must CREATE them in categoryStructure if you want to USE them.
+
             IMPORTANT: Type mismatches are FORBIDDEN! An expense (OUTFLOW) cannot go to an income category (INFLOW) and vice versa.
 
             CRITICAL DISTINCTION - READ CAREFULLY:
@@ -323,17 +334,27 @@ public class AiCategorizationPromptBuilder {
                 amountStr,
                 pg.pattern()));
 
-        // Second line: sample name
+        // Second line: sample name (original bank name)
         sb.append(String.format("    | name: \"%s\"\n",
                 truncate(pg.sampleTransaction(), 50)));
 
-        // Third line: title/description (if available) - THIS IS THE KEY IMPROVEMENT!
+        // Third line: merchant with confidence (if extracted by AI)
+        // This is the KEY IMPROVEMENT for bank intermediary transactions
+        if (pg.sampleMerchant() != null && !pg.sampleMerchant().isBlank()) {
+            String confidenceStr = pg.averageMerchantConfidence() != null
+                    ? String.format(" (%.0f%%)", pg.averageMerchantConfidence() * 100)
+                    : "";
+            sb.append(String.format("    | merchant: \"%s\"%s\n",
+                    pg.sampleMerchant(), confidenceStr));
+        }
+
+        // Fourth line: title/description (if available)
         if (pg.sampleDescription() != null && !pg.sampleDescription().isBlank()) {
             sb.append(String.format("    | title: \"%s\"\n",
                     truncate(pg.sampleDescription(), 70)));
         }
 
-        // Fourth line: bank category
+        // Fifth line: bank category
         sb.append(String.format("    | bank: %s\n",
                 pg.bankCategory() != null && !pg.bankCategory().isBlank() ? pg.bankCategory() : "-"));
 

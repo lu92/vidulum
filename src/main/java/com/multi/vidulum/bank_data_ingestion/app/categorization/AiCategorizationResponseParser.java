@@ -65,9 +65,14 @@ public class AiCategorizationResponseParser {
             // Convert structure and apply post-processing
             AiCategorizationResult.SuggestedStructure rawStructure = convertStructure(dto.categoryStructure);
 
+            // Post-processing step 0: Fix missing categories in structure
+            // AI often generates patternMappings referencing categories not in categoryStructure
+            AiCategorizationResult.SuggestedStructure fixedStructure =
+                    fixMissingCategoriesInStructure(rawStructure, suggestions, bankCategorySuggestions);
+
             // Post-processing step 1: Enrich with transaction counts and filter empty categories
             AiCategorizationResult.SuggestedStructure enrichedStructure =
-                    enrichAndFilterCategories(rawStructure, suggestions, bankCategorySuggestions);
+                    enrichAndFilterCategories(fixedStructure, suggestions, bankCategorySuggestions);
 
             // Post-processing step 2: Flatten single-child hierarchies (after filtering, so we catch cases
             // where filtering leaves only 1 child)
@@ -128,6 +133,132 @@ public class AiCategorizationResponseParser {
         }
 
         return new AiCategorizationResult.SuggestedStructure(outflow, inflow);
+    }
+
+    /**
+     * Fixes missing categories in structure by adding categories referenced in patternMappings
+     * but not present in categoryStructure.
+     *
+     * This handles a common AI bug where it generates patternMappings with parentCategory values
+     * like "Żywność", "Transport" that are NOT actually included in categoryStructure.
+     *
+     * The fix:
+     * 1. Collect all parentCategory + suggestedCategory from mappings
+     * 2. Check which ones are missing from structure
+     * 3. Add missing parents as new nodes, with suggestedCategory as subcategory
+     */
+    AiCategorizationResult.SuggestedStructure fixMissingCategoriesInStructure(
+            AiCategorizationResult.SuggestedStructure structure,
+            List<AiCategorizationResult.PatternSuggestion> patternSuggestions,
+            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions) {
+
+        // Build sets of existing category names by type
+        Set<String> existingOutflowCategories = collectAllCategoryNames(structure.outflow());
+        Set<String> existingInflowCategories = collectAllCategoryNames(structure.inflow());
+
+        // Collect missing parents and their children from pattern mappings
+        // Map: parentCategory -> Set of subcategories
+        Map<String, Set<String>> missingOutflowParents = new java.util.HashMap<>();
+        Map<String, Set<String>> missingInflowParents = new java.util.HashMap<>();
+
+        // Also track orphan categories (no parent but not in structure)
+        Set<String> orphanOutflowCategories = new java.util.HashSet<>();
+        Set<String> orphanInflowCategories = new java.util.HashSet<>();
+
+        // Process pattern suggestions
+        for (AiCategorizationResult.PatternSuggestion ps : patternSuggestions) {
+            String parent = ps.parentCategory();
+            String suggested = ps.suggestedCategory();
+            boolean isOutflow = ps.type() == Type.OUTFLOW;
+
+            Set<String> existingSet = isOutflow ? existingOutflowCategories : existingInflowCategories;
+            Map<String, Set<String>> missingParentsMap = isOutflow ? missingOutflowParents : missingInflowParents;
+            Set<String> orphansSet = isOutflow ? orphanOutflowCategories : orphanInflowCategories;
+
+            if (parent != null && !parent.isBlank()) {
+                // Has parent - check if parent exists
+                if (!existingSet.contains(parent)) {
+                    missingParentsMap.computeIfAbsent(parent, k -> new java.util.HashSet<>()).add(suggested);
+                    log.debug("Found missing parent category: {} (for subcategory: {}, type: {})",
+                            parent, suggested, ps.type());
+                }
+            } else {
+                // No parent - check if suggested exists as root
+                if (!existingSet.contains(suggested)) {
+                    orphansSet.add(suggested);
+                    log.debug("Found orphan category (no parent, not in structure): {} (type: {})",
+                            suggested, ps.type());
+                }
+            }
+        }
+
+        // Process bank category suggestions similarly
+        for (AiCategorizationResult.BankCategorySuggestion bcs : bankCategorySuggestions) {
+            String parent = bcs.parentCategory();
+            String target = bcs.targetCategory();
+            boolean isOutflow = bcs.type() == Type.OUTFLOW;
+
+            Set<String> existingSet = isOutflow ? existingOutflowCategories : existingInflowCategories;
+            Map<String, Set<String>> missingParentsMap = isOutflow ? missingOutflowParents : missingInflowParents;
+            Set<String> orphansSet = isOutflow ? orphanOutflowCategories : orphanInflowCategories;
+
+            if (parent != null && !parent.isBlank() && !existingSet.contains(parent)) {
+                missingParentsMap.computeIfAbsent(parent, k -> new java.util.HashSet<>()).add(target);
+            } else if ((parent == null || parent.isBlank()) && !existingSet.contains(target)) {
+                orphansSet.add(target);
+            }
+        }
+
+        // Build fixed structure
+        List<AiCategorizationResult.CategoryNode> fixedOutflow = new ArrayList<>(structure.outflow());
+        List<AiCategorizationResult.CategoryNode> fixedInflow = new ArrayList<>(structure.inflow());
+
+        // Add missing parent categories
+        for (Map.Entry<String, Set<String>> entry : missingOutflowParents.entrySet()) {
+            String parentName = entry.getKey();
+            List<String> subcategories = new ArrayList<>(entry.getValue());
+            fixedOutflow.add(new AiCategorizationResult.CategoryNode(parentName, subcategories));
+            log.info("Auto-added missing OUTFLOW parent category: {} with subcategories: {}", parentName, subcategories);
+        }
+
+        for (Map.Entry<String, Set<String>> entry : missingInflowParents.entrySet()) {
+            String parentName = entry.getKey();
+            List<String> subcategories = new ArrayList<>(entry.getValue());
+            fixedInflow.add(new AiCategorizationResult.CategoryNode(parentName, subcategories));
+            log.info("Auto-added missing INFLOW parent category: {} with subcategories: {}", parentName, subcategories);
+        }
+
+        // Add orphan categories as root-level (no subcategories)
+        for (String orphan : orphanOutflowCategories) {
+            fixedOutflow.add(new AiCategorizationResult.CategoryNode(orphan, List.of()));
+            log.info("Auto-added orphan OUTFLOW category as root: {}", orphan);
+        }
+
+        for (String orphan : orphanInflowCategories) {
+            fixedInflow.add(new AiCategorizationResult.CategoryNode(orphan, List.of()));
+            log.info("Auto-added orphan INFLOW category as root: {}", orphan);
+        }
+
+        int totalAdded = missingOutflowParents.size() + missingInflowParents.size()
+                + orphanOutflowCategories.size() + orphanInflowCategories.size();
+        if (totalAdded > 0) {
+            log.warn("Fixed {} missing categories in AI response categoryStructure. " +
+                    "This indicates AI didn't follow the consistency rule.", totalAdded);
+        }
+
+        return new AiCategorizationResult.SuggestedStructure(fixedOutflow, fixedInflow);
+    }
+
+    /**
+     * Collects all category names from nodes (both parent names and subcategory names).
+     */
+    private Set<String> collectAllCategoryNames(List<AiCategorizationResult.CategoryNode> nodes) {
+        Set<String> names = new java.util.HashSet<>();
+        for (AiCategorizationResult.CategoryNode node : nodes) {
+            names.add(node.name());
+            names.addAll(node.subCategories());
+        }
+        return names;
     }
 
     /**

@@ -28,6 +28,10 @@ public class PatternDeduplicator {
     /**
      * Groups staged transactions by their normalized pattern.
      *
+     * IMPORTANT: When merchant is available (extracted by AI), use it for grouping
+     * instead of the name. This separates transactions like "BANK PEKAO S.A."
+     * into individual merchants (BADOO, NETFLIX, OPENAI, etc.).
+     *
      * @param transactions the staged transactions to group
      * @return a list of pattern groups, sorted by transaction count (descending)
      */
@@ -37,11 +41,17 @@ public class PatternDeduplicator {
         }
 
         // Group transactions by normalized pattern + type
+        // KEY CHANGE: Use merchant when available, otherwise fallback to name
         Map<PatternKey, List<TransactionInfo>> groups = new HashMap<>();
 
         for (StagedTransaction transaction : transactions) {
             String originalName = transaction.originalData().name();
-            String normalizedPattern = normalizer.normalize(originalName);
+            String merchant = transaction.originalData().merchant();
+            Double merchantConfidence = transaction.originalData().merchantConfidence();
+
+            // Use effectiveMerchant for grouping: merchant if available, otherwise name
+            String patternSource = transaction.originalData().effectiveMerchant();
+            String normalizedPattern = normalizer.normalize(patternSource);
             Type type = transaction.originalData().type();
 
             PatternKey key = new PatternKey(normalizedPattern, type);
@@ -52,7 +62,9 @@ public class PatternDeduplicator {
                             originalName,
                             transaction.originalData().description(),
                             transaction.originalData().money().getAmount(),
-                            transaction.originalData().bankCategory()
+                            transaction.originalData().bankCategory(),
+                            merchant,
+                            merchantConfidence
                     ));
         }
 
@@ -69,6 +81,24 @@ public class PatternDeduplicator {
                 .max(Comparator.comparingInt(t -> t.originalName().length()))
                 .map(TransactionInfo::originalName)
                 .orElse("");
+
+        // Find sample merchant (first non-null merchant with highest confidence)
+        String sampleMerchant = transactions.stream()
+                .filter(t -> t.merchant() != null && !t.merchant().isBlank())
+                .max(Comparator.comparingDouble(t -> t.merchantConfidence() != null ? t.merchantConfidence() : 0.0))
+                .map(TransactionInfo::merchant)
+                .orElse(null);
+
+        // Calculate average merchant confidence for transactions that have it
+        Double averageMerchantConfidence = transactions.stream()
+                .filter(t -> t.merchantConfidence() != null)
+                .mapToDouble(TransactionInfo::merchantConfidence)
+                .average()
+                .orElse(0.0);
+        // Set to null if no transactions had confidence
+        if (transactions.stream().noneMatch(t -> t.merchantConfidence() != null)) {
+            averageMerchantConfidence = null;
+        }
 
         // Find the most informative description (longest non-blank description)
         String sampleDescription = transactions.stream()
@@ -98,6 +128,8 @@ public class PatternDeduplicator {
         return new PatternGroup(
                 key.pattern(),
                 sampleTransaction,
+                sampleMerchant,
+                averageMerchantConfidence,
                 sampleDescription,
                 key.type(),
                 transactions.size(),
@@ -121,7 +153,9 @@ public class PatternDeduplicator {
             String originalName,
             String description,
             BigDecimal amount,
-            String bankCategory
+            String bankCategory,
+            String merchant,
+            Double merchantConfidence
     ) {
     }
 
@@ -131,6 +165,8 @@ public class PatternDeduplicator {
     public record PatternGroup(
             String pattern,
             String sampleTransaction,
+            String sampleMerchant,
+            Double averageMerchantConfidence,
             String sampleDescription,
             Type type,
             int transactionCount,

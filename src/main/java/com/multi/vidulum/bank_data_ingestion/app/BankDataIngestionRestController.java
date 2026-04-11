@@ -619,7 +619,9 @@ public class BankDataIngestionRestController {
                 json.getBankCategory(),
                 Money.of(json.getAmount(), json.getCurrency()),
                 json.getType(),
-                json.getPaidDate()
+                json.getPaidDate(),
+                json.getMerchant(),
+                json.getMerchantConfidence()
         );
     }
 
