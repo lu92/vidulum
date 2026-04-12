@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_adapter.infrastructure;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.multi.vidulum.bank_data_adapter.domain.exceptions.IngestionServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -67,7 +68,7 @@ public class BankDataIngestionClient {
                 .toEntity(UploadCsvResponse.class);
 
             log.info("Ingestion upload successful: stagingSessionId={}",
-                response.getBody() != null ? response.getBody().stagingSessionId() : "null");
+                response.getBody() != null ? response.getBody().getStagingSessionId() : "null");
 
             return response.getBody();
 
@@ -105,22 +106,39 @@ public class BankDataIngestionClient {
 
     /**
      * Response from upload CSV endpoint.
+     * Matches BankDataIngestionDto.UploadCsvResponse structure.
+     * Uses @JsonIgnoreProperties to handle extra fields from backend.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record UploadCsvResponse(
-        String stagingSessionId,
         ParseSummary parseSummary,
-        StagingResponse stagingResponse
-    ) {}
+        StagingResult stagingResult  // Field name must match JSON: "stagingResult"
+    ) {
+        /**
+         * Helper method to extract stagingSessionId from nested stagingResult.
+         */
+        public String getStagingSessionId() {
+            return stagingResult != null ? stagingResult.stagingSessionId() : null;
+        }
+    }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ParseSummary(
         int totalRows,
         int successfulRows,
         int failedRows
     ) {}
 
-    public record StagingResponse(
+    /**
+     * Staging result from bank-data-ingestion.
+     * Matches BankDataIngestionDto.StageTransactionsResponse structure.
+     * Only maps the fields we need; ignores extra fields like expiresAt, summary, etc.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record StagingResult(
         String stagingSessionId,
-        int stagedCount
+        String cashFlowId,
+        String status
     ) {}
 
     /**

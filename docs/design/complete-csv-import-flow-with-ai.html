@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete CSV Import Flow with AI Categorization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .screen-container { max-width: 1400px; margin: 0 auto; }
+        .mockup-frame { border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .mobile-frame { max-width: 375px; margin: 0 auto; border-radius: 40px; overflow: hidden; border: 12px solid #1f2937; background: #1f2937; }
+        .mobile-screen { border-radius: 28px; overflow: hidden; background: white; }
+        .mobile-notch { height: 30px; background: #1f2937; border-radius: 0 0 20px 20px; width: 150px; margin: 0 auto; position: relative; top: -1px; }
+        .step-badge {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 16px;
+        }
+        .detection-badge { font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+        .detection-canonical { background: #d1fae5; color: #065f46; }
+        .detection-cached { background: #e0e7ff; color: #3730a3; }
+        .detection-ai { background: #f3e8ff; color: #6b21a8; }
+        .confidence-high { background: #d1fae5; color: #065f46; }
+        .confidence-medium { background: #fef3c7; color: #92400e; }
+        .confidence-low { background: #fee2e2; color: #991b1b; }
+        .category-tree-item { padding: 8px 12px; border-radius: 8px; margin: 4px 0; }
+        .category-parent { background: #f3f4f6; }
+        .category-child { background: #f9fafb; margin-left: 20px; font-size: 14px; }
+        .flow-arrow {
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            color: #9ca3af; font-size: 20px;
+        }
+        .endpoint-badge { font-family: monospace; font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+        .method-post { background: #dcfce7; color: #166534; }
+        .method-get { background: #dbeafe; color: #1e40af; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="screen-container p-4 md:p-8">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Complete CSV Import Flow</h1>
+            <p class="text-gray-600 mb-2">With AI-Powered Transaction Categorization</p>
+            <div class="flex justify-center gap-4 mt-4 flex-wrap">
+                <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">5 Steps</span>
+                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">AI or Manual</span>
+                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">Nested Categories</span>
+            </div>
+        </div>
+
+        <!-- Flow Overview -->
+        <section class="mb-12 bg-white rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-route mr-2 text-indigo-500"></i>Complete User Journey</h2>
+
+            <div class="overflow-x-auto">
+                <div class="flex items-center gap-2 min-w-max pb-4">
+                    <!-- Step 1 -->
+                    <div class="w-48 text-center bg-blue-50 rounded-xl p-4">
+                        <div class="step-badge bg-blue-500 text-white mx-auto mb-3">1</div>
+                        <h4 class="font-bold text-sm">Upload CSV</h4>
+                        <p class="text-xs text-gray-600 mt-1">Drag & drop bank file</p>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                    <!-- Step 2 -->
+                    <div class="w-48 text-center bg-purple-50 rounded-xl p-4 border-2 border-purple-300">
+                        <div class="step-badge bg-purple-500 text-white mx-auto mb-3">2</div>
+                        <h4 class="font-bold text-sm">Choose Method</h4>
+                        <p class="text-xs text-gray-600 mt-1">AI or Manual mapping</p>
+                        <span class="text-xs text-purple-600 font-medium">NEW!</span>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                    <!-- Step 3 -->
+                    <div class="w-48 text-center bg-indigo-50 rounded-xl p-4">
+                        <div class="step-badge bg-indigo-500 text-white mx-auto mb-3">3</div>
+                        <h4 class="font-bold text-sm">Review & Map</h4>
+                        <p class="text-xs text-gray-600 mt-1">Confirm categories</p>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                    <!-- Step 4 -->
+                    <div class="w-48 text-center bg-green-50 rounded-xl p-4">
+                        <div class="step-badge bg-green-500 text-white mx-auto mb-3">4</div>
+                        <h4 class="font-bold text-sm">Create CashFlow</h4>
+                        <p class="text-xs text-gray-600 mt-1">Pre-filled form</p>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                    <!-- Step 5 -->
+                    <div class="w-48 text-center bg-emerald-50 rounded-xl p-4">
+                        <div class="step-badge bg-emerald-500 text-white mx-auto mb-3">5</div>
+                        <h4 class="font-bold text-sm">Import & Attest</h4>
+                        <p class="text-xs text-gray-600 mt-1">Verify balance</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 1: UPLOAD CSV ==================== -->
+        <section class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="step-badge bg-blue-500 text-white mr-4">1</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Upload CSV</h2>
+                    <p class="text-gray-600">Single endpoint handles all formats</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="endpoint-badge method-post">POST</span>
+                    <code class="ml-2 text-sm">/api/v1/csv-import/upload</code>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- WEB -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-desktop mr-2"></i>WEB</h3>
+                    <div class="mockup-frame bg-white">
+                        <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-wallet text-xl"></i>
+                                <span class="font-semibold">Vidulum</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm opacity-75">John Doe</span>
+                                <div class="w-8 h-8 bg-indigo-400 rounded-full flex items-center justify-center text-sm">JD</div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="bg-gray-50 px-6 py-4 border-b">
+                            <div class="flex items-center justify-between max-w-xl mx-auto">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                                    <span class="ml-2 text-sm font-medium text-blue-600">Upload</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">2</div>
+                                    <span class="ml-2 text-sm">Method</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">3</div>
+                                    <span class="ml-2 text-sm">Map</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">4</div>
+                                    <span class="ml-2 text-sm">Create</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">5</div>
+                                    <span class="ml-2 text-sm">Import</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-8">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">Import Bank Statement</h3>
+                            <p class="text-gray-600 mb-6">Upload your bank's CSV export. We'll auto-detect the format.</p>
+
+                            <!-- Upload Area -->
+                            <div class="border-2 border-dashed border-indigo-300 rounded-xl p-10 text-center hover:border-indigo-500 hover:bg-indigo-50 transition cursor-pointer bg-gray-50">
+                                <div class="w-16 h-16 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                                    <i class="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i>
+                                </div>
+                                <p class="text-lg font-medium text-gray-700 mb-2">Drag & drop your CSV file</p>
+                                <p class="text-gray-500 mb-4">or</p>
+                                <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                    <i class="fas fa-folder-open mr-2"></i>Browse Files
+                                </button>
+                                <p class="text-sm text-gray-400 mt-4">Max 5MB • CSV format</p>
+                            </div>
+
+                            <!-- Bank Hint -->
+                            <div class="mt-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Bank hint (optional)</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm">ING</button>
+                                    <button class="px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm">mBank</button>
+                                    <button class="px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm border-green-500 bg-green-50">Nest Bank</button>
+                                    <button class="px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm">PKO BP</button>
+                                    <button class="px-3 py-2 border rounded-lg hover:bg-gray-50 text-sm text-gray-400">Other</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-mobile-alt mr-2"></i>MOBILE</h3>
+                    <div class="mobile-frame">
+                        <div class="mobile-screen">
+                            <div class="bg-black text-white px-4 py-2 flex justify-between items-center text-xs">
+                                <span>9:41</span>
+                                <div class="mobile-notch"></div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-signal"></i>
+                                    <i class="fas fa-battery-full"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+                                <button><i class="fas fa-times"></i></button>
+                                <span class="font-semibold">Import CSV</span>
+                                <div class="w-6"></div>
+                            </div>
+
+                            <!-- Progress dots -->
+                            <div class="bg-gray-50 py-3 flex justify-center gap-2 border-b">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            </div>
+
+                            <div class="p-4" style="height: 480px;">
+                                <h3 class="text-lg font-bold text-gray-800 mb-1">Upload Bank CSV</h3>
+                                <p class="text-gray-600 text-sm mb-6">We'll auto-detect your bank format</p>
+
+                                <!-- Upload Button -->
+                                <div class="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center bg-indigo-50 mb-6">
+                                    <div class="w-14 h-14 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-3">
+                                        <i class="fas fa-file-upload text-2xl text-indigo-500"></i>
+                                    </div>
+                                    <button class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium">
+                                        <i class="fas fa-folder-open mr-2"></i>Choose File
+                                    </button>
+                                    <p class="text-xs text-gray-500 mt-2">Max 5MB</p>
+                                </div>
+
+                                <!-- Bank Hint -->
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 mb-2">Bank (optional)</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button class="px-3 py-2 border rounded-lg text-sm">ING</button>
+                                        <button class="px-3 py-2 border rounded-lg text-sm border-green-500 bg-green-50">Nest</button>
+                                        <button class="px-3 py-2 border rounded-lg text-sm">mBank</button>
+                                        <button class="px-3 py-2 border rounded-lg text-sm text-gray-400">Other</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing State -->
+            <div class="mt-8">
+                <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-spinner mr-2"></i>PROCESSING STATE</h3>
+                <div class="grid lg:grid-cols-3 gap-4">
+                    <!-- Canonical -->
+                    <div class="mockup-frame bg-white p-6 text-center">
+                        <span class="detection-badge detection-canonical mb-3 inline-block">CANONICAL</span>
+                        <div class="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="fas fa-check text-green-500 text-xl"></i>
+                        </div>
+                        <p class="font-medium text-gray-800">Instant! (~50ms)</p>
+                        <p class="text-sm text-gray-500">Vidulum format detected</p>
+                    </div>
+                    <!-- Cached -->
+                    <div class="mockup-frame bg-white p-6 text-center">
+                        <span class="detection-badge detection-cached mb-3 inline-block">CACHED</span>
+                        <div class="w-12 h-12 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="fas fa-database text-indigo-500 text-xl"></i>
+                        </div>
+                        <p class="font-medium text-gray-800">Fast (~100ms)</p>
+                        <p class="text-sm text-gray-500">Known bank format</p>
+                    </div>
+                    <!-- AI -->
+                    <div class="mockup-frame bg-white p-6 text-center">
+                        <span class="detection-badge detection-ai mb-3 inline-block">AI_TRANSFORMED</span>
+                        <div class="w-12 h-12 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="fas fa-brain text-purple-500 text-xl animate-pulse"></i>
+                        </div>
+                        <p class="font-medium text-gray-800">AI analyzing... (5-15s)</p>
+                        <p class="text-sm text-gray-500">New format • ~$0.01</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 2: CHOOSE METHOD ==================== -->
+        <section class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="step-badge bg-purple-500 text-white mr-4">2</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Choose Categorization Method</h2>
+                    <p class="text-gray-600">AI-assisted or manual mapping</p>
+                </div>
+                <span class="ml-4 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">NEW!</span>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- WEB -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-desktop mr-2"></i>WEB</h3>
+                    <div class="mockup-frame bg-white">
+                        <div class="bg-indigo-600 text-white px-6 py-4">
+                            <span class="font-semibold">Vidulum</span>
+                        </div>
+
+                        <!-- Progress -->
+                        <div class="bg-gray-50 px-6 py-4 border-b">
+                            <div class="flex items-center justify-between max-w-xl mx-auto">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center"><i class="fas fa-check text-xs"></i></div>
+                                    <span class="ml-2 text-sm text-green-600">Upload</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                                    <span class="ml-2 text-sm font-medium text-purple-600">Method</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-8">
+                            <!-- Success Banner -->
+                            <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-green-500"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-green-800">CSV analyzed successfully!</p>
+                                    <p class="text-sm text-green-600">
+                                        <span class="detection-badge detection-cached mr-2">CACHED</span>
+                                        Nest Bank • 402 transactions • 45 unique patterns
+                                    </p>
+                                </div>
+                            </div>
+
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">How would you like to categorize?</h3>
+                            <p class="text-gray-600 mb-8">45 transaction patterns need category mapping</p>
+
+                            <!-- Choice Cards -->
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <!-- AI Option -->
+                                <div class="border-2 border-purple-400 rounded-xl p-6 bg-purple-50 cursor-pointer hover:shadow-lg transition relative">
+                                    <div class="absolute -top-3 right-4 px-3 py-1 bg-purple-500 text-white text-xs rounded-full font-medium">RECOMMENDED</div>
+                                    <div class="text-center mb-4">
+                                        <div class="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                                            <i class="fas fa-robot text-3xl text-purple-500"></i>
+                                        </div>
+                                        <h4 class="text-lg font-bold text-gray-800">AI Categorization</h4>
+                                    </div>
+                                    <ul class="text-sm text-gray-600 space-y-2 mb-4">
+                                        <li><i class="fas fa-check text-green-500 mr-2"></i>Analyzes transaction names</li>
+                                        <li><i class="fas fa-check text-green-500 mr-2"></i>Suggests nested categories</li>
+                                        <li><i class="fas fa-check text-green-500 mr-2"></i>~2 seconds processing</li>
+                                        <li><i class="fas fa-check text-green-500 mr-2"></i>Learns from your choices</li>
+                                    </ul>
+                                    <div class="text-center">
+                                        <button class="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700">
+                                            <i class="fas fa-magic mr-2"></i>Use AI Categorization
+                                        </button>
+                                        <p class="text-xs text-purple-600 mt-2">Cost: ~$0.01</p>
+                                    </div>
+                                </div>
+
+                                <!-- Manual Option -->
+                                <div class="border-2 border-gray-200 rounded-xl p-6 bg-white cursor-pointer hover:shadow-lg hover:border-gray-300 transition">
+                                    <div class="text-center mb-4">
+                                        <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                            <i class="fas fa-hand-pointer text-3xl text-gray-500"></i>
+                                        </div>
+                                        <h4 class="text-lg font-bold text-gray-800">Manual Mapping</h4>
+                                    </div>
+                                    <ul class="text-sm text-gray-600 space-y-2 mb-4">
+                                        <li><i class="fas fa-check text-gray-400 mr-2"></i>Map each category yourself</li>
+                                        <li><i class="fas fa-check text-gray-400 mr-2"></i>Full control over structure</li>
+                                        <li><i class="fas fa-check text-gray-400 mr-2"></i>Takes 5-15 minutes</li>
+                                        <li><i class="fas fa-check text-gray-400 mr-2"></i>No AI cost</li>
+                                    </ul>
+                                    <div class="text-center">
+                                        <button class="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">
+                                            <i class="fas fa-edit mr-2"></i>Map Manually
+                                        </button>
+                                        <p class="text-xs text-gray-500 mt-2">Free</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-mobile-alt mr-2"></i>MOBILE</h3>
+                    <div class="mobile-frame">
+                        <div class="mobile-screen">
+                            <div class="bg-black text-white px-4 py-2 flex justify-between items-center text-xs">
+                                <span>9:41</span>
+                                <div class="mobile-notch"></div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-signal"></i>
+                                    <i class="fas fa-battery-full"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+                                <button><i class="fas fa-arrow-left"></i></button>
+                                <span class="font-semibold">Choose Method</span>
+                                <div class="w-6"></div>
+                            </div>
+
+                            <div class="bg-gray-50 py-3 flex justify-center gap-2 border-b">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            </div>
+
+                            <div class="p-4" style="height: 480px; overflow-y: auto;">
+                                <!-- Success -->
+                                <div class="mb-4 p-3 bg-green-50 rounded-lg flex items-center gap-2">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <div>
+                                        <span class="text-sm text-green-700 font-medium">402 transactions</span>
+                                        <span class="text-xs text-green-600 block">45 patterns to categorize</span>
+                                    </div>
+                                </div>
+
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">How to categorize?</h3>
+
+                                <!-- AI Card -->
+                                <div class="border-2 border-purple-400 rounded-xl p-4 bg-purple-50 mb-4 relative">
+                                    <span class="absolute -top-2 right-3 px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">RECOMMENDED</span>
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-robot text-xl text-purple-500"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">AI Categorization</h4>
+                                            <p class="text-xs text-gray-500">~2 seconds • ~$0.01</p>
+                                        </div>
+                                    </div>
+                                    <ul class="text-xs text-gray-600 space-y-1 mb-3">
+                                        <li><i class="fas fa-check text-green-500 mr-1"></i>Analyzes transaction names</li>
+                                        <li><i class="fas fa-check text-green-500 mr-1"></i>Suggests nested categories</li>
+                                        <li><i class="fas fa-check text-green-500 mr-1"></i>Learns from your choices</li>
+                                    </ul>
+                                    <button class="w-full py-2 bg-purple-600 text-white rounded-lg text-sm font-medium">
+                                        <i class="fas fa-magic mr-1"></i>Use AI
+                                    </button>
+                                </div>
+
+                                <!-- Manual Card -->
+                                <div class="border-2 border-gray-200 rounded-xl p-4 bg-white">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-hand-pointer text-xl text-gray-500"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">Manual Mapping</h4>
+                                            <p class="text-xs text-gray-500">5-15 minutes • Free</p>
+                                        </div>
+                                    </div>
+                                    <button class="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+                                        <i class="fas fa-edit mr-1"></i>Map Manually
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 3: AI REVIEW ==================== -->
+        <section class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="step-badge bg-indigo-500 text-white mr-4">3</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Review AI Suggestions</h2>
+                    <p class="text-gray-600">Confirm category structure and mappings</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="endpoint-badge method-post">POST</span>
+                    <code class="ml-2 text-sm">/api/v1/bank-data-ingestion/cf={id}/staging/{sessionId}/ai-categorize</code>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- WEB -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-desktop mr-2"></i>WEB</h3>
+                    <div class="mockup-frame bg-white">
+                        <div class="bg-indigo-600 text-white px-6 py-4">
+                            <span class="font-semibold">Vidulum</span>
+                        </div>
+
+                        <!-- Progress -->
+                        <div class="bg-gray-50 px-6 py-4 border-b">
+                            <div class="flex items-center justify-between max-w-xl mx-auto">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center"><i class="fas fa-check text-xs"></i></div>
+                                </div>
+                                <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center"><i class="fas fa-check text-xs"></i></div>
+                                </div>
+                                <div class="flex-1 h-1 bg-green-500 mx-4"></div>
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                                    <span class="ml-2 text-sm font-medium text-indigo-600">Review</span>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                                </div>
+                                <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
+                                <div class="flex items-center opacity-40">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-6">
+                            <div class="grid grid-cols-5 gap-4">
+                                <!-- Left: Category Structure -->
+                                <div class="col-span-2 bg-gray-50 rounded-lg p-4">
+                                    <h4 class="font-bold text-gray-800 mb-3 flex items-center">
+                                        <i class="fas fa-folder-tree mr-2 text-indigo-500"></i>
+                                        Category Structure
+                                    </h4>
+                                    <p class="text-xs text-gray-500 mb-3">Uncheck to remove</p>
+
+                                    <!-- OUTFLOW -->
+                                    <div class="mb-3">
+                                        <p class="text-xs font-semibold text-red-600 mb-2">OUTFLOW</p>
+                                        <div class="space-y-1">
+                                            <label class="category-tree-item category-parent flex items-center cursor-pointer">
+                                                <input type="checkbox" checked class="mr-2">
+                                                <span class="font-medium text-sm">Housing</span>
+                                            </label>
+                                            <div class="category-tree-item category-child text-gray-600">└ Rent, Utilities</div>
+
+                                            <label class="category-tree-item category-parent flex items-center cursor-pointer">
+                                                <input type="checkbox" checked class="mr-2">
+                                                <span class="font-medium text-sm">Mandatory Fees</span>
+                                            </label>
+                                            <div class="category-tree-item category-child text-gray-600">└ ZUS, Tax</div>
+
+                                            <label class="category-tree-item category-parent flex items-center cursor-pointer">
+                                                <input type="checkbox" checked class="mr-2">
+                                                <span class="font-medium text-sm">Food</span>
+                                            </label>
+                                            <div class="category-tree-item category-child text-gray-600">└ Groceries, Restaurants</div>
+
+                                            <label class="category-tree-item category-parent flex items-center cursor-pointer opacity-50">
+                                                <input type="checkbox" class="mr-2">
+                                                <span class="font-medium text-sm line-through">Entertainment</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- INFLOW -->
+                                    <div>
+                                        <p class="text-xs font-semibold text-green-600 mb-2">INFLOW</p>
+                                        <div class="space-y-1">
+                                            <label class="category-tree-item category-parent flex items-center cursor-pointer">
+                                                <input type="checkbox" checked class="mr-2">
+                                                <span class="font-medium text-sm">Salary</span>
+                                            </label>
+                                            <div class="category-tree-item category-child text-gray-600">└ Base, Bonuses</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right: Pattern Mappings -->
+                                <div class="col-span-3">
+                                    <h4 class="font-bold text-gray-800 mb-3 flex items-center">
+                                        <i class="fas fa-tags mr-2 text-indigo-500"></i>
+                                        Pattern Mappings
+                                    </h4>
+
+                                    <!-- Tabs -->
+                                    <div class="flex gap-2 mb-3">
+                                        <button class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">Needs Review (5)</button>
+                                        <button class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">Auto (40)</button>
+                                    </div>
+
+                                    <!-- Patterns -->
+                                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                                        <!-- High confidence -->
+                                        <div class="border rounded-lg p-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="font-medium text-sm">ZUS</p>
+                                                <p class="text-xs text-gray-500">12 txn • 21,254 PLN</p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs bg-gray-100 px-2 py-1 rounded">Mandatory Fees → ZUS</span>
+                                                <span class="confidence-high text-xs px-2 py-1 rounded">99%</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Medium confidence -->
+                                        <div class="border border-yellow-300 bg-yellow-50 rounded-lg p-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <p class="font-medium text-sm">ALLEGRO</p>
+                                                    <p class="text-xs text-gray-500">8 txn • 1,450 PLN</p>
+                                                </div>
+                                                <span class="confidence-medium text-xs px-2 py-1 rounded">72%</span>
+                                            </div>
+                                            <select class="w-full px-2 py-1 border rounded text-sm">
+                                                <option>Shopping → Online</option>
+                                                <option>Entertainment</option>
+                                                <option>Food → Groceries</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Low confidence -->
+                                        <div class="border border-red-300 bg-red-50 rounded-lg p-3">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <p class="font-medium text-sm">LUCJAN BIK PEKAO</p>
+                                                    <p class="text-xs text-gray-500">20 txn • 60,000 PLN</p>
+                                                </div>
+                                                <span class="confidence-low text-xs px-2 py-1 rounded">25%</span>
+                                            </div>
+                                            <select class="w-full px-2 py-1 border-2 border-red-300 rounded text-sm">
+                                                <option value="">-- Select category --</option>
+                                                <option>Savings</option>
+                                                <option>Transfers → Family</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Another high -->
+                                        <div class="border rounded-lg p-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="font-medium text-sm">BIEDRONKA</p>
+                                                <p class="text-xs text-gray-500">15 txn • 2,340 PLN</p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs bg-gray-100 px-2 py-1 rounded">Food → Groceries</span>
+                                                <span class="confidence-high text-xs px-2 py-1 rounded">98%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stats & Actions -->
+                            <div class="flex justify-between items-center mt-6 pt-4 border-t">
+                                <div class="flex gap-4 text-sm text-gray-600">
+                                    <span><strong class="text-green-600">40</strong> auto-accepted</span>
+                                    <span><strong class="text-yellow-600">3</strong> to confirm</span>
+                                    <span><strong class="text-red-600">2</strong> need input</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Back</button>
+                                    <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                                        Accept & Continue
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-mobile-alt mr-2"></i>MOBILE</h3>
+                    <div class="mobile-frame">
+                        <div class="mobile-screen">
+                            <div class="bg-black text-white px-4 py-2 flex justify-between items-center text-xs">
+                                <span>9:41</span>
+                                <div class="mobile-notch"></div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-signal"></i>
+                                    <i class="fas fa-battery-full"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+                                <button><i class="fas fa-arrow-left"></i></button>
+                                <span class="font-semibold">Review AI Suggestions</span>
+                                <div class="w-6"></div>
+                            </div>
+
+                            <div class="bg-gray-50 py-3 flex justify-center gap-2 border-b">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            </div>
+
+                            <div class="p-4" style="height: 420px; overflow-y: auto;">
+                                <!-- Tabs -->
+                                <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                    <button class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs whitespace-nowrap">Review (5)</button>
+                                    <button class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs whitespace-nowrap">Auto (40)</button>
+                                    <button class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs whitespace-nowrap">Structure</button>
+                                </div>
+
+                                <!-- Patterns -->
+                                <div class="space-y-3">
+                                    <div class="border rounded-lg p-3">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p class="font-medium text-sm">ZUS</p>
+                                                <p class="text-xs text-gray-500">12 txn</p>
+                                            </div>
+                                            <span class="confidence-high text-xs px-2 py-0.5 rounded">99%</span>
+                                        </div>
+                                        <div class="text-xs bg-gray-100 px-2 py-1 rounded inline-block">
+                                            Mandatory Fees → ZUS
+                                        </div>
+                                    </div>
+
+                                    <div class="border border-yellow-300 bg-yellow-50 rounded-lg p-3">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p class="font-medium text-sm">ALLEGRO</p>
+                                                <p class="text-xs text-gray-500">8 txn</p>
+                                            </div>
+                                            <span class="confidence-medium text-xs px-2 py-0.5 rounded">72%</span>
+                                        </div>
+                                        <select class="w-full px-2 py-1 border rounded text-sm">
+                                            <option>Shopping → Online</option>
+                                            <option>Entertainment</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="border border-red-300 bg-red-50 rounded-lg p-3">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p class="font-medium text-sm">LUCJAN BIK</p>
+                                                <p class="text-xs text-gray-500">20 txn</p>
+                                            </div>
+                                            <span class="confidence-low text-xs px-2 py-0.5 rounded">25%</span>
+                                        </div>
+                                        <select class="w-full px-2 py-1 border-2 border-red-300 rounded text-sm">
+                                            <option value="">Select category...</option>
+                                            <option>Savings</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="border rounded-lg p-3">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p class="font-medium text-sm">BIEDRONKA</p>
+                                                <p class="text-xs text-gray-500">15 txn</p>
+                                            </div>
+                                            <span class="confidence-high text-xs px-2 py-0.5 rounded">98%</span>
+                                        </div>
+                                        <div class="text-xs bg-gray-100 px-2 py-1 rounded inline-block">
+                                            Food → Groceries
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Bar -->
+                            <div class="border-t p-4 bg-white flex gap-3">
+                                <button class="flex-1 py-2 border rounded-lg text-gray-600 text-sm">Back</button>
+                                <button class="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">
+                                    Accept (43/45)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 4: CREATE CASHFLOW ==================== -->
+        <section class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="step-badge bg-green-500 text-white mr-4">4</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Create CashFlow</h2>
+                    <p class="text-gray-600">Pre-filled form from CSV data</p>
+                </div>
+                <div class="ml-auto">
+                    <span class="endpoint-badge method-post">POST</span>
+                    <code class="ml-2 text-sm">/cash-flow/with-history</code>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- WEB -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-desktop mr-2"></i>WEB</h3>
+                    <div class="mockup-frame bg-white">
+                        <div class="bg-indigo-600 text-white px-6 py-4">
+                            <span class="font-semibold">Vidulum</span>
+                        </div>
+
+                        <div class="p-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">Create Your CashFlow</h3>
+                            <p class="text-gray-600 mb-6">Pre-filled from your CSV. Add initial balance.</p>
+
+                            <div class="space-y-4">
+                                <!-- Name -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">CashFlow Name</label>
+                                    <input type="text" value="Nest Bank - Main Account" class="w-full px-3 py-2 border rounded-lg">
+                                </div>
+
+                                <!-- Bank & Currency -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Bank <i class="fas fa-check-circle text-green-500 ml-1"></i>
+                                        </label>
+                                        <input type="text" value="Nest Bank" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Currency <i class="fas fa-check-circle text-green-500 ml-1"></i>
+                                        </label>
+                                        <input type="text" value="PLN" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50">
+                                    </div>
+                                </div>
+
+                                <!-- Account Number -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Account Number (IBAN)</label>
+                                    <input type="text" placeholder="PL61 1090 1014 0000 0712 1981 2874" class="w-full px-3 py-2 border rounded-lg">
+                                </div>
+
+                                <!-- Date Range -->
+                                <div class="p-3 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-calendar mr-2"></i>
+                                        <strong>Date range:</strong> Jan 2023 - Dec 2025 (36 months)
+                                    </p>
+                                </div>
+
+                                <!-- Start Period -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        Start Period <i class="fas fa-check-circle text-green-500 ml-1"></i>
+                                    </label>
+                                    <input type="text" value="2023-01" readonly class="w-full px-3 py-2 border rounded-lg bg-green-50 text-green-800">
+                                </div>
+
+                                <!-- Initial Balance -->
+                                <div class="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                                    <label class="block text-sm font-medium text-yellow-800 mb-2">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        Initial Balance (Required)
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <input type="number" placeholder="5000.00" class="flex-1 px-3 py-2 border-2 border-yellow-400 rounded-lg">
+                                        <span class="px-4 py-2 bg-gray-100 border rounded-lg">PLN</span>
+                                    </div>
+                                    <p class="text-xs text-yellow-700 mt-2">Balance on Jan 1, 2023 (before first transaction)</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between mt-6 pt-4 border-t">
+                                <button class="px-4 py-2 text-gray-600">Back</button>
+                                <button class="px-6 py-2 bg-green-600 text-white rounded-lg font-medium">
+                                    Create CashFlow
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-mobile-alt mr-2"></i>MOBILE</h3>
+                    <div class="mobile-frame">
+                        <div class="mobile-screen">
+                            <div class="bg-black text-white px-4 py-2 flex justify-between items-center text-xs">
+                                <span>9:41</span>
+                                <div class="mobile-notch"></div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-signal"></i>
+                                    <i class="fas fa-battery-full"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+                                <button><i class="fas fa-arrow-left"></i></button>
+                                <span class="font-semibold">Create CashFlow</span>
+                                <div class="w-6"></div>
+                            </div>
+
+                            <div class="bg-gray-50 py-3 flex justify-center gap-2 border-b">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            </div>
+
+                            <div class="p-4" style="height: 420px; overflow-y: auto;">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                        <input type="text" value="Nest Bank - Main" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
+                                            <input type="text" value="Nest Bank" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                                            <input type="text" value="PLN" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Period</label>
+                                        <input type="text" value="2023-01" readonly class="w-full px-3 py-2 border rounded-lg text-sm bg-green-50 text-green-800">
+                                    </div>
+
+                                    <div class="p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                                        <label class="block text-sm font-medium text-yellow-800 mb-1">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Initial Balance *
+                                        </label>
+                                        <input type="number" placeholder="5000.00" class="w-full px-3 py-2 border-2 border-yellow-400 rounded-lg text-sm">
+                                        <p class="text-xs text-yellow-700 mt-1">Balance on Jan 1, 2023</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t p-4 bg-white">
+                                <button class="w-full py-3 bg-green-600 text-white rounded-lg font-medium">
+                                    Create CashFlow
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STEP 5: IMPORT & ATTEST ==================== -->
+        <section class="mb-16">
+            <div class="flex items-center mb-6">
+                <div class="step-badge bg-emerald-500 text-white mr-4">5</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Import & Attest</h2>
+                    <p class="text-gray-600">Import transactions and verify balance</p>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- WEB - Success -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-desktop mr-2"></i>WEB - Import Complete</h3>
+                    <div class="mockup-frame bg-white">
+                        <div class="bg-emerald-600 text-white px-6 py-4">
+                            <span class="font-semibold"><i class="fas fa-check-circle mr-2"></i>Import Complete!</span>
+                        </div>
+
+                        <div class="p-8 text-center">
+                            <div class="w-20 h-20 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+                                <i class="fas fa-check-circle text-4xl text-emerald-500"></i>
+                            </div>
+
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">Successfully Imported!</h3>
+                            <p class="text-gray-600 mb-6">Your CashFlow is ready to use</p>
+
+                            <div class="grid grid-cols-4 gap-4 max-w-lg mx-auto mb-6">
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-xl font-bold text-emerald-600">402</div>
+                                    <div class="text-xs text-gray-500">Transactions</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-xl font-bold text-blue-600">12</div>
+                                    <div class="text-xs text-gray-500">Categories</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-xl font-bold text-purple-600">36</div>
+                                    <div class="text-xs text-gray-500">Months</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <div class="text-xl font-bold text-indigo-600">2.1s</div>
+                                    <div class="text-xs text-gray-500">Time</div>
+                                </div>
+                            </div>
+
+                            <!-- Balance Verification -->
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+                                <h4 class="font-medium text-green-800 mb-2">
+                                    <i class="fas fa-check-circle mr-2"></i>Balance Verified
+                                </h4>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-green-600">Calculated:</span>
+                                        <p class="font-bold text-green-800">76,047.25 PLN</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-green-600">CSV Balance:</span>
+                                        <p class="font-bold text-green-800">76,047.25 PLN</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-center gap-4">
+                                <button class="px-6 py-3 border rounded-lg text-gray-700 hover:bg-gray-50">
+                                    Import More
+                                </button>
+                                <button class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                    Go to Dashboard
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE - Success -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3"><i class="fas fa-mobile-alt mr-2"></i>MOBILE - Success</h3>
+                    <div class="mobile-frame">
+                        <div class="mobile-screen">
+                            <div class="bg-black text-white px-4 py-2 flex justify-between items-center text-xs">
+                                <span>9:41</span>
+                                <div class="mobile-notch"></div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-signal"></i>
+                                    <i class="fas fa-battery-full"></i>
+                                </div>
+                            </div>
+
+                            <div class="bg-emerald-600 text-white px-4 py-3 flex items-center justify-center">
+                                <span class="font-semibold"><i class="fas fa-check-circle mr-2"></i>Import Complete!</span>
+                            </div>
+
+                            <div class="p-4 text-center" style="height: 500px;">
+                                <div class="w-16 h-16 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4 mt-6">
+                                    <i class="fas fa-check-circle text-3xl text-emerald-500"></i>
+                                </div>
+
+                                <h3 class="text-xl font-bold text-gray-800 mb-2">Success!</h3>
+                                <p class="text-gray-600 text-sm mb-6">Your CashFlow is ready</p>
+
+                                <div class="grid grid-cols-2 gap-3 mb-6">
+                                    <div class="bg-gray-50 rounded-lg p-3">
+                                        <div class="text-lg font-bold text-emerald-600">402</div>
+                                        <div class="text-xs text-gray-500">Transactions</div>
+                                    </div>
+                                    <div class="bg-gray-50 rounded-lg p-3">
+                                        <div class="text-lg font-bold text-blue-600">12</div>
+                                        <div class="text-xs text-gray-500">Categories</div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 text-left">
+                                    <p class="text-sm text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Balance verified: <strong>76,047.25 PLN</strong>
+                                    </p>
+                                </div>
+
+                                <button class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium mb-3">
+                                    Go to Dashboard
+                                </button>
+                                <button class="w-full py-3 border rounded-lg text-gray-600">
+                                    Import More
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-8 text-gray-500 border-t">
+            <p>Complete CSV Import Flow with AI Categorization</p>
+            <p class="text-sm mt-2">Vidulum © 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

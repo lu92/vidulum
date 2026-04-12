@@ -239,6 +239,20 @@ public class MappingRules {
         /**
          * Skip this column (not mapped to output)
          */
-        SKIP
+        SKIP,
+
+        /**
+         * Extract merchant name from description (for bank intermediary transactions).
+         * When "name" contains bank intermediary like "BANK PEKAO S.A.", the real merchant
+         * (BADOO, NETFLIX, OPENAI, etc.) is hidden in description.
+         * Params: nameColumn (index), patterns (regex list)
+         */
+        MERCHANT_EXTRACT,
+
+        /**
+         * Calculate confidence score for merchant extraction (0.0-1.0).
+         * Higher confidence when merchant is clearly identifiable in description.
+         */
+        MERCHANT_CONFIDENCE
     }
 }

@@ -4,6 +4,7 @@ import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -18,6 +19,7 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.Comparator;
 
 @Slf4j
 @Component
@@ -27,6 +29,7 @@ public class StageTransactionsCommandHandler
 
     private final StagedTransactionRepository stagedTransactionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
+    private final PatternMappingRepository patternMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
@@ -44,30 +47,39 @@ public class StageTransactionsCommandHandler
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();
 
-        // Load all mappings for this CashFlow
+        // Load all category mappings for this CashFlow
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        // Find unmapped categories
+        // Load all pattern mappings for this CashFlow (for pattern-based categorization)
+        List<PatternMapping> patternMappings = patternMappingRepository.findAllByCashFlowId(command.cashFlowId().id());
+        log.debug("Loaded {} pattern mappings for CashFlow [{}]", patternMappings.size(), command.cashFlowId().id());
+
+        // Find unmapped categories (considering pattern mappings)
         List<StageTransactionsResult.UnmappedCategory> unmappedCategories = findUnmappedCategories(
-                command.transactions(), mappingMap);
+                command.transactions(), mappingMap, patternMappings, cashFlowInfo);
 
         // Process and stage ALL transactions (even those with unmapped categories)
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
         Set<String> existingBankTransactionIds = cashFlowInfo.existingTransactionIds();
 
+        int patternMatchedCount = 0;
         for (StageTransactionsCommand.BankTransaction txn : command.transactions()) {
+            PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
+            if (patternMatch != null) {
+                patternMatchedCount++;
+            }
             StagedTransaction staged = processTransaction(
                     txn, command.cashFlowId(), stagingSessionId, cashFlowInfo,
-                    mappingMap, existingBankTransactionIds, now);
+                    mappingMap, patternMatch, existingBankTransactionIds, now);
             stagedTransactions.add(staged);
         }
 
         // Save all staged transactions (including those pending mapping)
         stagedTransactionRepository.saveAll(stagedTransactions);
 
-        log.info("Staged {} transactions for CashFlow [{}] in session [{}]",
-                stagedTransactions.size(), command.cashFlowId().id(), stagingSessionId.id());
+        log.info("Staged {} transactions for CashFlow [{}] in session [{}] ({} pattern-matched)",
+                stagedTransactions.size(), command.cashFlowId().id(), stagingSessionId.id(), patternMatchedCount);
 
         // If there are unmapped categories, return HAS_UNMAPPED_CATEGORIES status
         if (!unmappedCategories.isEmpty()) {
@@ -93,17 +105,81 @@ public class StageTransactionsCommandHandler
     private record MappingKey(String bankCategory, Type type) {
     }
 
+    /**
+     * Result of pattern matching - contains category info from matched pattern.
+     */
+    private record PatternMatchResult(
+            String categoryName,
+            Type type,
+            PatternMapping pattern
+    ) {}
+
+    /**
+     * Finds the best matching pattern for a transaction name.
+     * Returns null if no pattern matches.
+     *
+     * Matching logic:
+     * 1. Normalize transaction name to uppercase
+     * 2. Find all patterns that are contained in the transaction name
+     * 3. Return the pattern with highest confidence score
+     */
+    private PatternMatchResult findMatchingPattern(String transactionName, Type type, List<PatternMapping> patterns) {
+        if (patterns.isEmpty() || transactionName == null) {
+            return null;
+        }
+
+        String normalizedName = transactionName.toUpperCase();
+
+        return patterns.stream()
+                .filter(p -> p.categoryType() == type)
+                .filter(p -> normalizedName.contains(p.normalizedPattern()))
+                .max(Comparator.comparingDouble(PatternMapping::confidenceScore))
+                .map(p -> new PatternMatchResult(p.suggestedCategory(), p.categoryType(), p))
+                .orElse(null);
+    }
+
+    /**
+     * Finds unmapped categories - categories that have neither:
+     * - A direct match to existing CashFlow category (Priority 0)
+     * - A category mapping (bank category → target category)
+     * - A pattern mapping that matches the transaction name
+     *
+     * Transactions without mapping will be marked as PENDING_MAPPING,
+     * requiring the user to explicitly choose a categorization strategy
+     * (create new category, create subcategory, or map to uncategorized).
+     */
     private List<StageTransactionsResult.UnmappedCategory> findUnmappedCategories(
             List<StageTransactionsCommand.BankTransaction> transactions,
-            Map<MappingKey, CategoryMapping> mappingMap) {
+            Map<MappingKey, CategoryMapping> mappingMap,
+            List<PatternMapping> patternMappings,
+            CashFlowInfo cashFlowInfo) {
 
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
 
         for (StageTransactionsCommand.BankTransaction txn : transactions) {
             MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
-            if (!mappingMap.containsKey(key)) {
-                unmappedCounts.merge(key, 1, Integer::sum);
+
+            // Priority 0: Check if bankCategory directly matches existing CashFlow category (case-insensitive)
+            if (cashFlowInfo.findCategoryNameIgnoreCase(txn.bankCategory(), txn.type()).isPresent()) {
+                continue; // Direct match - not unmapped
             }
+
+            // Priority 1: Check if has category mapping
+            if (mappingMap.containsKey(key)) {
+                continue; // Has category mapping - not unmapped
+            }
+
+            // Priority 2: Check if has pattern matching
+            PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
+            if (patternMatch != null) {
+                // Pattern matched - check if target category exists in CashFlow (case-insensitive)
+                if (cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), txn.type()).isPresent()) {
+                    continue; // Pattern matched to existing category - not unmapped
+                }
+            }
+
+            // No mapping and no pattern match to existing category - count as unmapped
+            unmappedCounts.merge(key, 1, Integer::sum);
         }
 
         return unmappedCounts.entrySet().stream()
@@ -120,6 +196,7 @@ public class StageTransactionsCommandHandler
             StagingSessionId stagingSessionId,
             CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap,
+            PatternMatchResult patternMatch,
             Set<String> existingBankTransactionIds,
             ZonedDateTime now) {
 
@@ -130,35 +207,121 @@ public class StageTransactionsCommandHandler
                 txn.bankCategory(),
                 txn.money(),
                 txn.type(),
-                txn.paidDate()
+                txn.paidDate(),
+                txn.merchant(),
+                txn.merchantConfidence()
         );
 
-        // Get mapping (may be null if not configured)
-        MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
-        CategoryMapping mapping = mappingMap.get(key);
+        // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
+        // This is most useful for banks like Pekao that provide detailed category names
+        // (e.g., "Artykuły spożywcze", "Transport") which can directly match user categories
+        Optional<String> directMatchCategory = cashFlowInfo.findCategoryNameIgnoreCase(txn.bankCategory(), txn.type());
+        if (directMatchCategory.isPresent()) {
+            String actualCategoryName = directMatchCategory.get();
+            // bankCategory matches existing category name directly
+            CategoryName parentCategoryName = cashFlowInfo.findParentCategory(actualCategoryName, txn.type());
 
-        // If no mapping exists, create transaction with PENDING_MAPPING status
-        if (mapping == null) {
+            MappedTransactionData mappedData = new MappedTransactionData(
+                    txn.name(),
+                    txn.description(),
+                    new CategoryName(actualCategoryName),
+                    parentCategoryName,
+                    txn.money(),
+                    txn.type(),
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
+            );
+
+            // Validate transaction
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+
+            log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category [{}]",
+                    txn.name(), txn.bankCategory(), actualCategoryName);
+
             return StagedTransaction.create(
                     cashFlowId,
                     stagingSessionId,
                     originalData,
-                    null, // no mapped data yet
-                    TransactionValidation.pendingMapping(txn.bankCategory()),
+                    mappedData,
+                    validation,
                     now,
                     config.getStagingTtlHours()
             );
         }
 
-        MappedTransactionData mappedData = new MappedTransactionData(
-                txn.name(),
-                txn.description(),
-                mapping.targetCategoryName(),
-                mapping.parentCategoryName(),
-                txn.money(),
-                txn.type(),
-                txn.paidDate()
-        );
+        // Priority 1: Pattern matching (if pattern matched and category exists in CashFlow)
+        Optional<String> patternMatchCategory = patternMatch != null
+                ? cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), txn.type())
+                : Optional.empty();
+        if (patternMatchCategory.isPresent()) {
+            String actualCategoryName = patternMatchCategory.get();
+            // Look up parent category from CashFlow structure
+            CategoryName parentCategoryName = cashFlowInfo.findParentCategory(actualCategoryName, txn.type());
+
+            MappedTransactionData mappedData = new MappedTransactionData(
+                    txn.name(),
+                    txn.description(),
+                    new CategoryName(actualCategoryName),
+                    parentCategoryName,
+                    txn.money(),
+                    txn.type(),
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
+            );
+
+            // Validate transaction
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+
+            log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
+                    txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
+
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    mappedData,
+                    validation,
+                    now,
+                    config.getStagingTtlHours()
+            );
+        }
+
+        // Priority 2: Category mapping (bank category -> target category)
+        MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
+        CategoryMapping mapping = mappingMap.get(key);
+
+        MappedTransactionData mappedData;
+
+        if (mapping == null) {
+            // No mapping configured - mark as PENDING_MAPPING
+            // User must explicitly choose: CREATE_NEW, CREATE_SUBCATEGORY, or MAP_TO_UNCATEGORIZED
+            log.debug("Transaction [{}] has no mapping for bank category [{}] - marking as PENDING_MAPPING",
+                    txn.name(), txn.bankCategory());
+
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    null, // No mapped data - pending mapping decision
+                    TransactionValidation.pendingMapping(txn.bankCategory()),
+                    now,
+                    config.getStagingTtlHours()
+            );
+        } else {
+            mappedData = new MappedTransactionData(
+                    txn.name(),
+                    txn.description(),
+                    mapping.targetCategoryName(),
+                    mapping.parentCategoryName(),
+                    txn.money(),
+                    txn.type(),
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence()
+            );
+        }
 
         // Validate transaction
         TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);

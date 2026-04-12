@@ -24,9 +24,9 @@ import java.util.regex.Pattern;
 @Component
 public class LocalCsvTransformer {
 
-    // BankCsvRow header
+    // BankCsvRow header (must match CsvParserService.HEADERS)
     private static final String OUTPUT_HEADER =
-        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber";
+        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence";
 
     /**
      * Transform full CSV using mapping rules.
@@ -135,6 +135,8 @@ public class LocalCsvTransformer {
         output.put("bookingDate", "");
         output.put("sourceAccountNumber", "");
         output.put("targetAccountNumber", "");
+        output.put("merchant", "");
+        output.put("merchantConfidence", "");
 
         // Apply mappings
         for (ColumnMapping mapping : rules.getColumnMappings()) {
@@ -156,13 +158,38 @@ public class LocalCsvTransformer {
             output.put("bankTransactionId", generateTransactionId(output, lineNumber));
         }
 
+        // Ensure currency has a value (fallback to rules default or PLN)
+        if (output.get("currency").isBlank()) {
+            String defaultCurrency = rules.getBankCountry() != null ?
+                getCurrencyForCountry(rules.getBankCountry()) : "PLN";
+            output.put("currency", defaultCurrency);
+        }
+
+        // Ensure name has a value (REQUIRED field - fallback to description or bankCategory)
+        if (output.get("name").isBlank()) {
+            // Try description first
+            if (!output.get("description").isBlank()) {
+                output.put("name", output.get("description"));
+            }
+            // Try bankCategory as last resort
+            else if (!output.get("bankCategory").isBlank()) {
+                output.put("name", output.get("bankCategory"));
+            }
+            // Generate a placeholder name from amount and date
+            else {
+                String placeholder = String.format("Transaction %s %s",
+                    output.get("amount"), output.get("operationDate"));
+                output.put("name", placeholder);
+            }
+        }
+
         // Validate required fields
         if (output.get("operationDate").isBlank() || output.get("amount").isBlank()) {
             return null; // Skip invalid rows
         }
 
         // Build output CSV row
-        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
             escapeCsv(output.get("bankTransactionId")),
             escapeCsv(output.get("name")),
             escapeCsv(output.get("description")),
@@ -173,7 +200,9 @@ public class LocalCsvTransformer {
             output.get("operationDate"),
             output.get("bookingDate"),
             escapeCsv(output.get("sourceAccountNumber")),
-            escapeCsv(output.get("targetAccountNumber"))
+            escapeCsv(output.get("targetAccountNumber")),
+            escapeCsv(output.get("merchant")),
+            output.get("merchantConfidence")
         );
     }
 
@@ -204,6 +233,10 @@ public class LocalCsvTransformer {
             case ID_GENERATE -> ""; // Handled separately
 
             case SKIP -> "";
+
+            case MERCHANT_EXTRACT -> extractMerchant(value, allColumns, mapping.getTransformationParams());
+
+            case MERCHANT_CONFIDENCE -> calculateMerchantConfidence(value, allColumns, mapping.getTransformationParams());
         };
     }
 
@@ -256,7 +289,8 @@ public class LocalCsvTransformer {
 
         try {
             BigDecimal amount = new BigDecimal(cleaned);
-            return amount.toPlainString();
+            // Always return positive value - direction is determined by type (INFLOW/OUTFLOW)
+            return amount.abs().toPlainString();
         } catch (NumberFormatException e) {
             log.debug("Failed to parse amount: {}", value);
             return value;
@@ -264,36 +298,67 @@ public class LocalCsvTransformer {
     }
 
     private String detectType(String value, String[] allColumns, Map<String, String> params) {
-        // Check amount sign first
+        // First priority: Check amount column sign (most reliable method)
         String amountColumn = params != null ? params.get("amountColumn") : null;
         if (amountColumn != null) {
             try {
                 int amountIdx = Integer.parseInt(amountColumn);
                 if (amountIdx >= 0 && amountIdx < allColumns.length) {
-                    String amountStr = allColumns[amountIdx].replaceAll("[^0-9,.-]", "");
-                    if (amountStr.startsWith("-")) {
+                    String rawAmount = allColumns[amountIdx].trim();
+                    // Check for negative sign at the beginning
+                    if (rawAmount.startsWith("-") || rawAmount.startsWith("−")) {
                         return "OUTFLOW";
                     }
+                    // Check for negative sign anywhere (some formats put it at end)
+                    if (rawAmount.contains("-") || rawAmount.contains("−")) {
+                        // Make sure it's not just a thousands separator issue
+                        String cleaned = rawAmount.replaceAll("[^0-9,.-−]", "");
+                        if (cleaned.startsWith("-") || cleaned.startsWith("−")) {
+                            return "OUTFLOW";
+                        }
+                    }
+                    // Positive amount = INFLOW
                     return "INFLOW";
                 }
             } catch (NumberFormatException ignored) {
             }
         }
 
-        // Check value text
-        String lower = value.toLowerCase();
-        if (lower.contains("wychodzące") || lower.contains("obciążeni") ||
-            lower.contains("outgoing") || lower.contains("debit") ||
-            lower.contains("wydatek") || lower.contains("opłat")) {
-            return "OUTFLOW";
-        }
-        if (lower.contains("przychodzące") || lower.contains("uznani") ||
-            lower.contains("incoming") || lower.contains("credit") ||
-            lower.contains("przychod") || lower.contains("wpływ")) {
-            return "INFLOW";
+        // Second priority: If no amountColumn param, try to find amount in all columns
+        // Look for any column that looks like a negative number
+        if (amountColumn == null) {
+            for (String col : allColumns) {
+                String trimmed = col.trim();
+                // Check if this looks like a monetary amount
+                if (trimmed.matches("^-?[0-9\\s,.−]+$") || trimmed.matches("^-?[0-9\\s,.−]+\\s*[A-Z]{3}$")) {
+                    if (trimmed.startsWith("-") || trimmed.startsWith("−")) {
+                        return "OUTFLOW";
+                    }
+                }
+            }
         }
 
-        return "OUTFLOW"; // Default to outflow for safety
+        // Third priority: Check value text for Polish/English keywords
+        if (value != null && !value.isBlank()) {
+            String lower = value.toLowerCase();
+            // OUTFLOW indicators
+            if (lower.contains("wychodzące") || lower.contains("obciążeni") ||
+                lower.contains("outgoing") || lower.contains("debit") ||
+                lower.contains("wydatek") || lower.contains("opłat") ||
+                lower.contains("wypłata") || lower.contains("płatność") ||
+                lower.contains("przelew wychodzący")) {
+                return "OUTFLOW";
+            }
+            // INFLOW indicators
+            if (lower.contains("przychodzące") || lower.contains("uznani") ||
+                lower.contains("incoming") || lower.contains("credit") ||
+                lower.contains("przychod") || lower.contains("wpływ") ||
+                lower.contains("wpłata") || lower.contains("przelew przychodzący")) {
+                return "INFLOW";
+            }
+        }
+
+        return "OUTFLOW"; // Default to outflow for safety (most bank transactions are expenses)
     }
 
     private String extractCurrency(String value, Map<String, String> params) {
@@ -385,6 +450,163 @@ public class LocalCsvTransformer {
         // Generate deterministic ID from row content
         String content = row.get("operationDate") + row.get("amount") + row.get("name") + lineNumber;
         return "TXN-" + Math.abs(content.hashCode());
+    }
+
+    /**
+     * Get default currency for a country code.
+     */
+    private String getCurrencyForCountry(String countryCode) {
+        if (countryCode == null) return "PLN";
+        return switch (countryCode.toUpperCase()) {
+            case "PL" -> "PLN";
+            case "DE", "FR", "ES", "IT", "NL", "AT", "BE", "FI", "IE", "PT", "GR" -> "EUR";
+            case "GB", "UK" -> "GBP";
+            case "US" -> "USD";
+            case "CH" -> "CHF";
+            case "CZ" -> "CZK";
+            case "SE" -> "SEK";
+            case "NO" -> "NOK";
+            case "DK" -> "DKK";
+            default -> "PLN"; // Default for Polish banks
+        };
+    }
+
+    /**
+     * Extract merchant name from transaction description.
+     * Used when the "name" field contains a bank intermediary (e.g., "BANK PEKAO S.A.")
+     * but the real merchant (BADOO, NETFLIX, OPENAI) is hidden in description.
+     *
+     * Common patterns in Polish bank descriptions:
+     * - "Nadawca: BADOO help@badoo.com" → BADOO
+     * - "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → NETFLIX
+     * - "Odbiorca: ANTHROPIC" → ANTHROPIC
+     */
+    private String extractMerchant(String description, String[] allColumns, Map<String, String> params) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+
+        // Check if name column contains bank intermediary (indicating merchant should be extracted)
+        String nameColumn = params != null ? params.get("nameColumn") : null;
+        if (nameColumn != null) {
+            try {
+                int nameIdx = Integer.parseInt(nameColumn);
+                if (nameIdx >= 0 && nameIdx < allColumns.length) {
+                    String name = allColumns[nameIdx].toUpperCase();
+                    // Only extract merchant if name looks like a bank intermediary
+                    if (!isBankIntermediary(name)) {
+                        return ""; // Name is already the real merchant
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        // Try extraction patterns
+        String descUpper = description.toUpperCase();
+
+        // Pattern 1: "Nadawca: XXX" or "Odbiorca: XXX"
+        Pattern senderRecipient = Pattern.compile("(?:Nadawca|Odbiorca):\\s*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE);
+        Matcher m1 = senderRecipient.matcher(description);
+        if (m1.find()) {
+            String merchant = m1.group(1).toUpperCase();
+            if (isValidMerchantName(merchant)) {
+                return merchant;
+            }
+        }
+
+        // Pattern 2: Well-known services in description
+        String[] knownMerchants = {"NETFLIX", "SPOTIFY", "OPENAI", "ANTHROPIC", "CLAUDE", "BADOO",
+            "GOOGLE", "APPLE", "AMAZON", "MICROSOFT", "FACEBOOK", "META", "PAYPAL", "UBER", "BOLT"};
+        for (String known : knownMerchants) {
+            if (descUpper.contains(known)) {
+                return known;
+            }
+        }
+
+        // Pattern 3: First word after "Tytuł:" or "Title:"
+        Pattern titlePattern = Pattern.compile("(?:Tytu[łl]|Title):\\s*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE);
+        Matcher m3 = titlePattern.matcher(description);
+        if (m3.find()) {
+            String merchant = m3.group(1).toUpperCase();
+            if (isValidMerchantName(merchant)) {
+                return merchant;
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Check if name looks like a bank intermediary rather than actual merchant.
+     */
+    private boolean isBankIntermediary(String name) {
+        if (name == null) return false;
+        String upper = name.toUpperCase();
+        return upper.contains("BANK") ||
+               upper.contains("PEKAO") ||
+               upper.contains("PKO") ||
+               upper.contains("MBANK") ||
+               upper.contains("ING ") ||
+               upper.contains("SANTANDER") ||
+               upper.contains("BNP") ||
+               upper.contains("PARIBAS") ||
+               upper.contains("NEST ") ||
+               upper.contains("ALIOR") ||
+               upper.contains("MILLENNIUM") ||
+               upper.contains("GETIN") ||
+               upper.contains("BOS ") ||
+               upper.contains("CREDIT ") ||
+               upper.contains("ROZLICZENIE");
+    }
+
+    /**
+     * Check if extracted name is a valid merchant (not a generic word).
+     */
+    private boolean isValidMerchantName(String name) {
+        if (name == null || name.length() < 3) return false;
+        // Exclude generic Polish/English words
+        String upper = name.toUpperCase();
+        return !upper.equals("PAN") && !upper.equals("PANI") &&
+               !upper.equals("MR") && !upper.equals("MRS") &&
+               !upper.equals("THE") && !upper.equals("AND") &&
+               !upper.equals("DLA") && !upper.equals("OD") &&
+               !upper.equals("DO") && !upper.equals("NA") &&
+               !upper.equals("ZA") && !upper.equals("PRZELEW");
+    }
+
+    /**
+     * Calculate confidence score for merchant extraction.
+     * Returns value between 0.0 and 1.0.
+     */
+    private String calculateMerchantConfidence(String description, String[] allColumns, Map<String, String> params) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+
+        String descUpper = description.toUpperCase();
+
+        // High confidence: Known merchant names
+        String[] knownMerchants = {"NETFLIX", "SPOTIFY", "OPENAI", "ANTHROPIC", "CLAUDE", "BADOO",
+            "GOOGLE", "APPLE", "AMAZON", "MICROSOFT", "FACEBOOK", "META", "PAYPAL", "UBER", "BOLT"};
+        for (String known : knownMerchants) {
+            if (descUpper.contains(known)) {
+                return "0.95"; // Very high confidence for known merchants
+            }
+        }
+
+        // Medium-high confidence: Clear sender/recipient pattern
+        if (description.matches("(?i).*(?:Nadawca|Odbiorca):\\s*[A-Za-z0-9]+.*")) {
+            return "0.85";
+        }
+
+        // Medium confidence: Title pattern
+        if (description.matches("(?i).*(?:Tytu[łl]|Title):\\s*[A-Za-z0-9]+.*")) {
+            return "0.70";
+        }
+
+        // Low confidence: Generic description
+        return "";
     }
 
     private String escapeCsv(String value) {

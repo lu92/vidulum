@@ -2,10 +2,12 @@ package com.multi.vidulum.bank_data_adapter.app;
 
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
+import com.multi.vidulum.bank_data_adapter.domain.DetectionResult;
 import com.multi.vidulum.bank_data_adapter.domain.ImportStatus;
 import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
 import com.multi.vidulum.bank_data_adapter.domain.exceptions.*;
 import com.multi.vidulum.bank_data_adapter.infrastructure.*;
+import com.multi.vidulum.bank_data_adapter.infrastructure.CsvFormatDetector.DetectedDelimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -23,8 +25,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Main service for AI-powered bank CSV transformation.
@@ -54,6 +61,7 @@ public class AiBankCsvTransformService {
     private final LocalCsvTransformer localCsvTransformer;
     private final MappingRulesCacheService mappingRulesCacheService;
     private final AiCsvTransformationRepository transformationRepository;
+    private final CsvFormatDetector csvFormatDetector;
     private final Clock clock;
 
     @Value("${bank-data-adapter.max-file-size-bytes:5242880}")
@@ -105,6 +113,14 @@ public class AiBankCsvTransformService {
         // Decode CSV content
         String csvString = decodeWithFallback(csvContent);
 
+        long startTime = System.currentTimeMillis();
+
+        // Step 0: Check if this is canonical format (Vidulum format)
+        if (isCanonicalFormat(csvString)) {
+            log.info("✅ CANONICAL format detected - skipping AI transformation");
+            return handleCanonicalFormat(csvString, fileName, fileHash, userId, startTime);
+        }
+
         // Compute bank identifier
         String bankIdentifier = mappingRulesCacheService.computeBankIdentifier(csvString);
         log.info("Bank identifier: {}", bankIdentifier != null ? bankIdentifier.substring(0, 12) : "null");
@@ -123,9 +139,9 @@ public class AiBankCsvTransformService {
             .importStatus(ImportStatus.PENDING)
             .build();
 
-        long startTime = System.currentTimeMillis();
         boolean fromCache = false;
         MappingRules rules = null;
+        DetectionResult detectionResult;
 
         // Step 1: Check cache
         if (useCache && bankIdentifier != null) {
@@ -133,10 +149,15 @@ public class AiBankCsvTransformService {
             if (cachedRules.isPresent()) {
                 rules = cachedRules.get();
                 fromCache = true;
+                detectionResult = DetectionResult.CACHED;
                 log.info("✅ Cache HIT for bank: {} (usage: {})",
                     rules.getBankName(), rules.getUsageCount());
                 mappingRulesCacheService.recordUsage(bankIdentifier);
+            } else {
+                detectionResult = DetectionResult.AI_TRANSFORMED;
             }
+        } else {
+            detectionResult = DetectionResult.AI_TRANSFORMED;
         }
 
         // Step 2: If no cache, try AI-based transformation
@@ -180,22 +201,30 @@ public class AiBankCsvTransformService {
         document.setInputRowCount(countInputRows(csvString));
         document.setFromCache(fromCache);
         document.setBankIdentifier(bankIdentifier);
+        document.setDetectionResult(detectionResult);
+
+        // Extract date range statistics
+        extractDateRangeAndUpdate(document, transformedCsv);
 
         // Save document
         AiCsvTransformationDocument saved = transformationRepository.save(document);
 
-        log.info("Transformation completed: id={}, success=true, bank={}, rows={}, time={}ms, fromCache={}",
+        log.info("Transformation completed: id={}, success=true, bank={}, rows={}, time={}ms, detection={}",
             saved.getId(), saved.getDetectedBank(), saved.getOutputRowCount(),
-            saved.getProcessingTimeMs(), fromCache);
+            saved.getProcessingTimeMs(), detectionResult);
 
         return saved;
     }
 
     /**
      * Obtains mapping rules from AI using anonymized sample.
+     * Uses CsvFormatDetector to pre-detect format and pass hints to AI.
      */
     private MappingRules obtainMappingRulesFromAi(String csvContent, String bankHint,
                                                    String bankIdentifier, String userId) {
+        // Step 1: Pre-detect delimiter BEFORE calling AI
+        DetectedDelimiter detectedDelimiter = csvFormatDetector.detect(csvContent);
+
         // Anonymize and extract sample
         String anonymizedSample = csvAnonymizer.anonymizeAndSample(csvContent, sampleRows);
         log.debug("Anonymized sample size: {} chars (original: {} chars)",
@@ -208,7 +237,9 @@ public class AiBankCsvTransformService {
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 String systemPrompt = mappingRulesPromptBuilder.getSystemPrompt();
-                String userPrompt = mappingRulesPromptBuilder.buildUserPrompt(anonymizedSample, bankHint);
+                // Pass detected delimiter as hint to AI
+                String userPrompt = mappingRulesPromptBuilder.buildUserPrompt(
+                    anonymizedSample, bankHint, detectedDelimiter);
 
                 Prompt prompt = new Prompt(List.of(
                     new SystemMessage(systemPrompt),
@@ -218,14 +249,15 @@ public class AiBankCsvTransformService {
                 ChatResponse response = callAiWithErrorHandling(prompt);
                 String aiOutput = response.getResult().getOutput().getText();
 
+                // Process with validation against detected delimiter
                 AiMappingRulesProcessor.MappingRulesResult result =
-                    mappingRulesProcessor.process(aiOutput, bankIdentifier);
+                    mappingRulesProcessor.process(aiOutput, bankIdentifier, detectedDelimiter);
 
                 if (result.success()) {
                     MappingRules rules = result.rules();
                     rules.setCreatedByUserId(userId);
                     rules.setGeneratedByModel("claude-haiku");
-                    rules.setPromptVersion("v1");
+                    rules.setPromptVersion("v2-with-predetection");
 
                     // Cache the rules
                     if (useCache && bankIdentifier != null) {
@@ -304,6 +336,7 @@ public class AiBankCsvTransformService {
         document.setProcessingTimeMs(processingTime);
         document.setRetryCount(retryCount);
         document.setFromCache(false);
+        document.setDetectionResult(DetectionResult.AI_TRANSFORMED);
 
         if (result != null && result.success()) {
             document.setSuccess(true);
@@ -314,6 +347,9 @@ public class AiBankCsvTransformService {
             document.setOutputRowCount(result.rowCount());
             document.setWarnings(result.warnings());
             document.setInputRowCount(countInputRows(csvContent));
+
+            // Extract date range statistics
+            extractDateRangeAndUpdate(document, result.csvContent());
         } else {
             document.setSuccess(false);
             if (result != null && result.error() != null) {
@@ -378,6 +414,128 @@ public class AiBankCsvTransformService {
         doc.setImportedAtFromZoned(ZonedDateTime.now(clock));
 
         transformationRepository.save(doc);
+    }
+
+    // ============ Canonical Format Detection ============
+
+    /**
+     * Canonical format headers matching BankCsvRow structure.
+     * These are the expected headers for Vidulum's standard format.
+     */
+    private static final Set<String> CANONICAL_REQUIRED_HEADERS = Set.of(
+        "name", "amount", "currency", "type", "operationDate"
+    );
+
+    private static final Set<String> CANONICAL_ALL_HEADERS = Set.of(
+        "bankTransactionId", "name", "description", "bankCategory",
+        "amount", "currency", "type", "operationDate", "bookingDate",
+        "sourceAccountNumber", "targetAccountNumber",
+        "merchant", "merchantConfidence"
+    );
+
+    /**
+     * Checks if the CSV is already in Vidulum canonical format.
+     * Canonical format has specific headers matching BankCsvRow structure.
+     *
+     * @param csvContent The CSV content to check
+     * @return true if the CSV is in canonical format
+     */
+    boolean isCanonicalFormat(String csvContent) {
+        if (csvContent == null || csvContent.isBlank()) {
+            return false;
+        }
+
+        // Get first line (header)
+        String[] lines = csvContent.split("\n", 2);
+        if (lines.length == 0) {
+            return false;
+        }
+
+        String headerLine = lines[0].trim().toLowerCase();
+        String[] headers = parseCSVLine(headerLine);
+
+        // Convert to set for easy comparison
+        Set<String> headerSet = Arrays.stream(headers)
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+
+        // Check if all required headers are present
+        boolean hasRequiredHeaders = headerSet.containsAll(
+            CANONICAL_REQUIRED_HEADERS.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet())
+        );
+
+        if (!hasRequiredHeaders) {
+            return false;
+        }
+
+        // Check if headers mostly match canonical format (at least 7 of 11)
+        long matchingHeaders = headerSet.stream()
+            .filter(h -> CANONICAL_ALL_HEADERS.stream()
+                .map(String::toLowerCase)
+                .anyMatch(c -> c.equals(h)))
+            .count();
+
+        boolean isCanonical = matchingHeaders >= 7;
+
+        if (isCanonical) {
+            log.debug("Canonical format detected: {} of {} headers match",
+                matchingHeaders, CANONICAL_ALL_HEADERS.size());
+        }
+
+        return isCanonical;
+    }
+
+    /**
+     * Handles canonical format CSV - no transformation needed.
+     * Just validates, extracts stats, and saves.
+     */
+    private AiCsvTransformationDocument handleCanonicalFormat(
+            String csvContent, String fileName, String fileHash, String userId, long startTime) {
+
+        // Count rows
+        String[] lines = csvContent.split("\n");
+        int rowCount = (int) Arrays.stream(lines)
+            .skip(1) // skip header
+            .filter(line -> !line.trim().isEmpty())
+            .count();
+
+        // Create document
+        AiCsvTransformationDocument document = AiCsvTransformationDocument.builder()
+            .id(UUID.randomUUID().toString())
+            .userId(userId)
+            .originalFileName(fileName)
+            .originalFileSizeBytes(csvContent.getBytes().length)
+            .originalFileHash(fileHash)
+            .originalCsvContent(csvContent)
+            .transformedCsvContent(csvContent) // Same as input - already canonical
+            .success(true)
+            .detectedBank("Vidulum Format")
+            .detectedLanguage("en")
+            .detectedCountry("XX")
+            .inputRowCount(rowCount)
+            .outputRowCount(rowCount)
+            .warnings(List.of())
+            .createdAt(AiCsvTransformationDocument.toDate(ZonedDateTime.now(clock)))
+            .createdBy(userId)
+            .importStatus(ImportStatus.PENDING)
+            .fromCache(false)
+            .detectionResult(DetectionResult.CANONICAL)
+            .processingTimeMs(System.currentTimeMillis() - startTime)
+            .build();
+
+        // Extract date range statistics
+        extractDateRangeAndUpdate(document, csvContent);
+
+        // Save document
+        AiCsvTransformationDocument saved = transformationRepository.save(document);
+
+        log.info("Canonical format processed: id={}, rows={}, time={}ms",
+            saved.getId(), saved.getOutputRowCount(), saved.getProcessingTimeMs());
+
+        return saved;
     }
 
     // ============ Private methods ============
@@ -551,5 +709,162 @@ public class AiBankCsvTransformService {
             .divide(BigDecimal.valueOf(1_000_000), 6, RoundingMode.HALF_UP);
 
         return inputCost.add(outputCost);
+    }
+
+    // ============ Date range extraction ============
+
+    /**
+     * Extracts date range statistics from transformed CSV and updates the document.
+     *
+     * @param document The transformation document to update
+     * @param transformedCsv The transformed CSV content in BankCsvRow format
+     */
+    private void extractDateRangeAndUpdate(AiCsvTransformationDocument document, String transformedCsv) {
+        if (transformedCsv == null || transformedCsv.isBlank()) {
+            return;
+        }
+
+        DateRangeStats stats = extractDateRange(transformedCsv);
+
+        document.setMinTransactionDate(stats.minDate());
+        document.setMaxTransactionDate(stats.maxDate());
+        document.setSuggestedStartPeriod(stats.suggestedStartPeriod());
+        document.setMonthsOfData(stats.monthsOfData());
+        document.setMonthsCovered(stats.monthsCovered());
+
+        // Add warning for future dates
+        if (stats.maxDate() != null && stats.maxDate().isAfter(LocalDate.now(clock))) {
+            List<String> warnings = document.getWarnings() != null ?
+                new ArrayList<>(document.getWarnings()) : new ArrayList<>();
+            warnings.add("CSV contains future-dated transactions (scheduled payments)");
+            document.setWarnings(warnings);
+        }
+
+        log.debug("Date range extracted: {} to {}, {} months, suggested start: {}",
+            stats.minDate(), stats.maxDate(), stats.monthsOfData(), stats.suggestedStartPeriod());
+    }
+
+    /**
+     * Extracts date range statistics from transformed CSV content.
+     * Parses the operationDate column from BankCsvRow format CSV.
+     *
+     * @param transformedCsv CSV content in BankCsvRow format
+     * @return DateRangeStats with min/max dates and month coverage
+     */
+    DateRangeStats extractDateRange(String transformedCsv) {
+        if (transformedCsv == null || transformedCsv.isBlank()) {
+            return DateRangeStats.empty();
+        }
+
+        String[] lines = transformedCsv.split("\n");
+        if (lines.length < 2) {
+            return DateRangeStats.empty();
+        }
+
+        // Find operationDate column index from header
+        String header = lines[0].trim();
+        String[] columns = parseCSVLine(header);
+        int dateColumnIndex = -1;
+
+        for (int i = 0; i < columns.length; i++) {
+            if ("operationDate".equalsIgnoreCase(columns[i].trim())) {
+                dateColumnIndex = i;
+                break;
+            }
+        }
+
+        if (dateColumnIndex == -1) {
+            log.warn("operationDate column not found in CSV header: {}", header);
+            return DateRangeStats.empty();
+        }
+
+        // Extract dates from data rows
+        List<LocalDate> dates = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE; // YYYY-MM-DD
+
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty()) continue;
+
+            String[] values = parseCSVLine(line);
+            if (values.length > dateColumnIndex) {
+                String dateStr = values[dateColumnIndex].trim();
+                if (!dateStr.isEmpty()) {
+                    try {
+                        LocalDate date = LocalDate.parse(dateStr, formatter);
+                        dates.add(date);
+                    } catch (DateTimeParseException e) {
+                        log.trace("Could not parse date: {}", dateStr);
+                    }
+                }
+            }
+        }
+
+        if (dates.isEmpty()) {
+            return DateRangeStats.empty();
+        }
+
+        // Calculate statistics
+        LocalDate minDate = dates.stream().min(LocalDate::compareTo).orElse(null);
+        LocalDate maxDate = dates.stream().max(LocalDate::compareTo).orElse(null);
+
+        Set<YearMonth> monthsSet = dates.stream()
+            .map(YearMonth::from)
+            .collect(Collectors.toCollection(TreeSet::new));
+
+        List<String> monthsCovered = monthsSet.stream()
+            .map(YearMonth::toString)
+            .toList();
+
+        String suggestedStartPeriod = minDate != null ?
+            YearMonth.from(minDate).toString() : null;
+
+        return new DateRangeStats(
+            minDate,
+            maxDate,
+            suggestedStartPeriod,
+            monthsSet.size(),
+            monthsCovered
+        );
+    }
+
+    /**
+     * Simple CSV line parser that handles quoted fields.
+     */
+    private String[] parseCSVLine(String line) {
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        result.add(current.toString());
+
+        return result.toArray(new String[0]);
+    }
+
+    /**
+     * Holds date range statistics extracted from transformed CSV.
+     */
+    public record DateRangeStats(
+        LocalDate minDate,
+        LocalDate maxDate,
+        String suggestedStartPeriod,
+        int monthsOfData,
+        List<String> monthsCovered
+    ) {
+        public static DateRangeStats empty() {
+            return new DateRangeStats(null, null, null, 0, List.of());
+        }
     }
 }

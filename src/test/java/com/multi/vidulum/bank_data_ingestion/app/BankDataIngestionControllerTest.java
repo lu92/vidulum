@@ -488,8 +488,8 @@ public class BankDataIngestionControllerTest {
     }
 
     @Test
-    @DisplayName("Should return HAS_UNMAPPED_CATEGORIES when mappings are missing")
-    void shouldReturnUnmappedCategoriesWhenMappingsMissing() {
+    @DisplayName("Should return PENDING_MAPPING when mappings are missing")
+    void shouldReturnPendingMappingWhenMappingsMissing() {
         // given: create a CashFlow WITHOUT configuring mappings
         String cashFlowId = createCashFlowWithHistory();
 
@@ -511,14 +511,18 @@ public class BankDataIngestionControllerTest {
 
         BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(cashFlowId, request);
 
-        log.info("Stage transactions with unmapped categories response - status: {}", response.getStatus());
+        log.info("Stage transactions with PENDING_MAPPING - status: {}, unmapped: {}",
+                response.getStatus(), response.getUnmappedCategories());
 
-        // then: verify unmapped categories result
+        // then: verify transactions are marked as HAS_UNMAPPED_CATEGORIES (requiring user decision)
         assertThat(response.getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
         assertThat(response.getUnmappedCategories()).hasSize(1);
         assertThat(response.getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
-        assertThat(response.getUnmappedCategories().get(0).getType()).isEqualTo(Type.OUTFLOW);
         assertThat(response.getUnmappedCategories().get(0).getCount()).isEqualTo(1);
+        assertThat(response.getUnmappedCategories().get(0).getType()).isEqualTo(Type.OUTFLOW);
+
+        // Category breakdown is empty until user configures mappings
+        assertThat(response.getCategoryBreakdown()).isEmpty();
     }
 
     @Test
@@ -1319,8 +1323,8 @@ public class BankDataIngestionControllerTest {
     }
 
     @Test
-    @DisplayName("Should upload CSV and return HAS_UNMAPPED_CATEGORIES when mappings missing")
-    void shouldUploadCsvAndReturnUnmappedCategoriesWhenMappingsMissing() {
+    @DisplayName("Should upload CSV and return PENDING_MAPPING when mappings missing")
+    void shouldUploadCsvAndReturnPendingMappingWhenMappingsMissing() {
         // given: create a CashFlow WITHOUT configuring mappings
         String cashFlowId = createCashFlowWithHistory();
 
@@ -1339,13 +1343,17 @@ public class BankDataIngestionControllerTest {
         // when: upload CSV
         BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
 
-        log.info("Upload CSV with unmapped categories - staging status: {}", response.getStagingResult().getStatus());
+        log.info("Upload CSV with PENDING_MAPPING - staging status: {}, unmapped: {}",
+                response.getStagingResult().getStatus(), response.getStagingResult().getUnmappedCategories());
 
-        // then: verify parse is successful but staging has unmapped categories
+        // then: verify parse is successful but staging has unmapped categories (requires user decision)
         assertThat(response.getParseSummary().getSuccessfulRows()).isEqualTo(1);
         assertThat(response.getStagingResult().getStatus()).isEqualTo("HAS_UNMAPPED_CATEGORIES");
         assertThat(response.getStagingResult().getUnmappedCategories()).hasSize(1);
         assertThat(response.getStagingResult().getUnmappedCategories().get(0).getBankCategory()).isEqualTo("Unknown Category");
+
+        // Category breakdown is empty until user configures mappings
+        assertThat(response.getStagingResult().getCategoryBreakdown()).isEmpty();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.cashflow.domain.Type;
 import lombok.AllArgsConstructor;
@@ -130,6 +131,8 @@ public class BankDataIngestionDto {
         private String currency;
         private Type type;
         private ZonedDateTime paidDate;
+        private String merchant;
+        private Double merchantConfidence;
     }
 
     @Data
@@ -579,5 +582,221 @@ public class BankDataIngestionDto {
         private int validCount;
         private int invalidCount;
         private int duplicateCount;
+    }
+
+    // ============ AI Categorization DTOs ============
+
+    /**
+     * Response from AI categorization endpoint.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiCategorizeResponse {
+        private String sessionId;
+        private String status;
+        private AiSuggestedStructureJson suggestedStructure;
+        private List<AiPatternSuggestionJson> patternSuggestions;
+        private List<AiBankCategorySuggestionJson> bankCategorySuggestions;
+        private AiCategorizationStatsJson stats;
+        private AiCostJson cost;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiSuggestedStructureJson {
+        private List<AiCategoryNodeJson> outflow;
+        private List<AiCategoryNodeJson> inflow;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiCategoryNodeJson {
+        private String name;
+        private List<String> subCategories;
+        private int transactionCount;
+        private double totalAmount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiPatternSuggestionJson {
+        private String pattern;
+        private String sampleTransaction;
+        private String suggestedCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private String source; // GLOBAL, USER, AI
+        private int transactionCount;
+        private double totalAmount;
+        private boolean needsUserInput;
+    }
+
+    /**
+     * Bank category suggestion - maps bank category to CashFlow category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiBankCategorySuggestionJson {
+        private String bankCategory;
+        private String targetCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private int transactionCount;
+        private double totalAmount;
+        private String reason;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiCategorizationStatsJson {
+        private int totalPatterns;
+        private int autoAccepted;
+        private int suggested;
+        private int needsManual;
+        private int fromGlobalCache;
+        private int fromUserCache;
+        private int fromAi;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiCostJson {
+        private int tokensUsed;
+        private String estimatedCost;
+    }
+
+    /**
+     * Request to accept AI categorization suggestions.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AcceptAiSuggestionsRequest {
+        private List<AiCategoryToCreateJson> acceptedCategories;
+        private List<AiMappingToApplyJson> acceptedMappings;
+        private List<AiBankCategoryMappingToApplyJson> acceptedBankCategoryMappings;
+        private boolean saveToCache;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiCategoryToCreateJson {
+        private String name;
+        private String parentName;
+        private Type type;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiMappingToApplyJson {
+        private String pattern;
+        private String bankCategory;
+        private String targetCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+    }
+
+    /**
+     * Bank category mapping - maps bank category name to CashFlow category.
+     * Used when bank category names differ from CashFlow category names.
+     */
+    /**
+     * Bank category mapping from AI suggestions.
+     * Maps bank-assigned categories (like "PRZELEW") to CashFlow categories (like "Wynagrodzenie").
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class AiBankCategoryMappingToApplyJson {
+        private String bankCategory;
+        private String targetCategory;
+        private String parentCategory;
+        private Type type;
+        /** AI confidence score (0-100). Optional - used for analytics/auditing. */
+        private Integer confidence;
+    }
+
+    /**
+     * Response from accepting AI suggestions.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AcceptAiSuggestionsResponse {
+        private String cashFlowId;
+        private String sessionId;
+        private String status;
+        private int categoriesCreated;
+        private int mappingsApplied;
+        private int patternsCached;
+        private List<String> warnings;
+        private AiStagingValidationSummaryJson validationSummary;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiStagingValidationSummaryJson {
+        private int totalTransactions;
+        private int validTransactions;
+        private int invalidTransactions;
+        private int duplicateTransactions;
+        private boolean readyForImport;
+    }
+
+    // ============ Force Uncategorized DTOs ============
+
+    /**
+     * Response from forcing pending transactions to use "Uncategorized" category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ForceUncategorizedResponse {
+        private String cashFlowId;
+        private String stagingSessionId;
+        private String status;
+        private int transactionsUpdated;
+        private boolean categoryCreated;
+        private ForceUncategorizedValidationSummaryJson validationSummary;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ForceUncategorizedValidationSummaryJson {
+        private int totalTransactions;
+        private int validTransactions;
+        private int invalidTransactions;
+        private int duplicateTransactions;
+        private boolean readyForImport;
     }
 }

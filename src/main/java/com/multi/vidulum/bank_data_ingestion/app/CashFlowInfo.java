@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 
 import java.time.YearMonth;
@@ -130,6 +131,38 @@ public record CashFlowInfo(
     }
 
     /**
+     * Find category name with case-insensitive matching.
+     * Returns the actual category name if found, empty otherwise.
+     * This is used for Priority 0: Direct Category Match.
+     */
+    public java.util.Optional<String> findCategoryNameIgnoreCase(String bankCategory) {
+        if (bankCategory == null || bankCategory.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        String normalized = bankCategory.trim().toLowerCase();
+        return getAllCategoryNames().stream()
+                .filter(name -> name.toLowerCase().equals(normalized))
+                .findFirst();
+    }
+
+    /**
+     * Find category name with case-insensitive matching, respecting type (INFLOW/OUTFLOW).
+     * Returns the actual category name if found in the correct type, empty otherwise.
+     */
+    public java.util.Optional<String> findCategoryNameIgnoreCase(String bankCategory, Type type) {
+        if (bankCategory == null || bankCategory.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        String normalized = bankCategory.trim().toLowerCase();
+        List<CategoryInfo> categories = type == Type.INFLOW ? inflowCategories : outflowCategories;
+        Set<String> typeSpecificNames = new java.util.HashSet<>();
+        collectCategoryNames(categories, typeSpecificNames);
+        return typeSpecificNames.stream()
+                .filter(name -> name.toLowerCase().equals(normalized))
+                .findFirst();
+    }
+
+    /**
      * Count total categories (excluding "Uncategorized").
      */
     public int countCategories() {
@@ -145,5 +178,40 @@ public record CashFlowInfo(
             count += countCategoriesRecursive(cat.subCategories());
         }
         return count;
+    }
+
+    /**
+     * Finds the parent category for a given category name and type (case-insensitive).
+     * Returns null if the category is a top-level category or not found.
+     *
+     * This is used for pattern matching where we need to determine the parent
+     * category dynamically from the CashFlow structure.
+     */
+    public CategoryName findParentCategory(String categoryName, Type type) {
+        List<CategoryInfo> categories = type == Type.INFLOW ? inflowCategories : outflowCategories;
+        return findParentCategoryRecursive(categoryName.toLowerCase(), categories, null);
+    }
+
+    private CategoryName findParentCategoryRecursive(
+            String normalizedCategoryName,
+            List<CategoryInfo> categories,
+            String currentParent) {
+
+        for (CategoryInfo cat : categories) {
+            // Check if this category matches (case-insensitive)
+            if (cat.name().toLowerCase().equals(normalizedCategoryName)) {
+                return currentParent != null ? new CategoryName(currentParent) : null;
+            }
+            // Check subcategories
+            CategoryName found = findParentCategoryRecursive(normalizedCategoryName, cat.subCategories(), cat.name());
+            if (found != null || (cat.subCategories().stream().anyMatch(sub -> sub.name().toLowerCase().equals(normalizedCategoryName)))) {
+                // If found in subcategories, return the parent
+                if (cat.subCategories().stream().anyMatch(sub -> sub.name().toLowerCase().equals(normalizedCategoryName))) {
+                    return new CategoryName(cat.name());
+                }
+                return found;
+            }
+        }
+        return null;
     }
 }

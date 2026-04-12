@@ -1,13 +1,17 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
+import com.multi.vidulum.bank_data_adapter.domain.MappingRules;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.ImportJobEntity;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.PatternMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagedTransactionEntity;
 import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.entity.CashFlowForecastStatementEntity;
 import com.multi.vidulum.pnl.infrastructure.entities.PnlHistoryEntity;
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.recurring_rules.infrastructure.RecurringRuleEntity;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.security.token.Token;
@@ -100,6 +104,14 @@ public class VidulumApplication {
         mongoTemplate.dropCollection(StagedTransactionEntity.class);
         mongoTemplate.dropCollection(CategoryMappingEntity.class);
         mongoTemplate.dropCollection(ImportJobEntity.class);
+        mongoTemplate.dropCollection(PatternMappingEntity.class);
+
+        // Bank Data Adapter (AI CSV Transformation)
+        mongoTemplate.dropCollection(AiCsvTransformationDocument.class);
+        mongoTemplate.dropCollection(MappingRules.class);
+
+        // Recurring Rules
+        mongoTemplate.dropCollection(RecurringRuleEntity.class);
 
         // Other
         mongoTemplate.dropCollection(TaskEntity.class);

@@ -32,6 +32,9 @@ Ten dokument zawiera szczegółowy opis wszystkich niezaimplementowanych funkcji
 17. [🟢 LOW: Mismatch Resolution](#17--low-mismatch-resolution)
 18. [🟢 LOW: AI Rule Suggestions](#18--low-ai-rule-suggestions)
 
+**📹 Marketing & Demo:**
+19. [🟡 MEDIUM: Supademo Interactive Scenarios](#19--medium-supademo-interactive-scenarios)
+
 ---
 
 ## 0. 🔴 HIGH: Dashboard & Upcoming Transactions (VID-150)
@@ -1582,6 +1585,122 @@ Analizuj historię transakcji:
 
 ---
 
+---
+
+## 19. 🟡 MEDIUM: Supademo Interactive Scenarios
+
+**Priorytet:** MEDIUM (Marketing/Sales enablement)
+**Szacowany czas:** 2-3 dni
+**Status:** TODO
+
+### Problem
+
+Potrzebujemy interaktywnych demo produktu dla:
+- Landing page
+- Sales presentations
+- User onboarding
+- Partner/investor pitches
+
+### Narzędzie: Supademo
+
+[https://supademo.com/](https://supademo.com/) - platforma do tworzenia interaktywnych demo:
+- Nagrywanie przez rozszerzenie Chrome
+- AI voiceover w 15+ językach (w tym polski)
+- Conditional branching - widz wybiera własną ścieżkę
+- Analytics - śledzenie gdzie użytkownicy porzucają demo
+- Embed na landing page lub udostępnianie linkiem
+
+### Zakres prac
+
+#### 1. Mapa funkcjonalności
+Przegląd kodu backend + UI i identyfikacja które feature'y są gotowe do prezentacji:
+- CashFlow creation & management
+- AI CSV Import
+- Category mapping
+- Recurring rules
+- Forecast view
+- Dashboard
+
+#### 2. Scenariusze krok-po-kroku
+Dokładne ścieżki kliknięć z opisami:
+- Co użytkownik widzi na ekranie
+- Gdzie kliknąć
+- Co się dzieje po kliknięciu
+- Tekst do hotspota (15-18 słów optymalnie wg Supademo)
+
+#### 3. Propozycje rozgałęzień
+"Choose your journey" dla różnych person:
+- **Właściciel małej firmy** - szybki overview, ROI, automatyzacja
+- **Księgowy/finansista** - szczegóły, raporty, integracje
+- **Freelancer** - prostota, mobile, quick wins
+
+#### 4. Teksty do hotspotów
+Gotowe opisy do każdego kroku w demo (PL + EN), 15-18 słów każdy.
+
+#### 5. Plan nagrywania
+Kolejność i priorytetyzacja które demo nagrać najpierw.
+
+### Kryteria akceptacji
+
+- [ ] Lista wszystkich możliwych ścieżek demo z priorytetami
+- [ ] Minimum 3 szczegółowe scenariusze gotowe do nagrania
+- [ ] Propozycja struktury rozgałęzień dla głównego demo
+- [ ] Teksty hotspotów dla każdego kroku (10-12 kroków na demo)
+- [ ] Rekomendacja które dane mockowe przygotować do nagrania
+
+### Uwagi techniczne
+
+- Optymalna długość demo: 10-12 kroków (80%+ completion rate wg State of Interactive Demos 2026)
+- Hotspoty: 15-18 słów
+- Rozważyć embedded mode z mock data do nagrywania (stabilne dane)
+
+### Proponowane scenariusze demo
+
+#### Demo 1: "Quick Overview" (główne)
+10-12 kroków pokazujących full flow:
+1. Dashboard view
+2. Create CashFlow
+3. AI CSV Import
+4. Preview transformation
+5. Category mapping
+6. View imported transactions
+7. Create recurring rule
+8. View forecast
+9. Summary/CTA
+
+#### Demo 2: "AI Import Deep Dive"
+Focus na AI-powered features:
+1. Upload bank CSV
+2. AI detects bank
+3. Automatic transformation
+4. Preview & validation
+5. One-click import
+6. Results
+
+#### Demo 3: "Recurring Rules"
+Automatyzacja płatności:
+1. View transactions
+2. Detect pattern
+3. Create rule
+4. Configure frequency
+5. Enable automation
+6. Track executions
+
+### Zależności
+
+- Dostęp do repozytorium UI: `vidulum_ui`
+- Działająca instancja aplikacji do nagrywania
+- Mock data set (stabilne, nie zmieniające się dane)
+- Konto Supademo (darmowy trial lub płatny plan)
+
+### Deliverables
+
+1. **Dokument scenariuszy**: `docs/marketing/supademo-scenarios.md`
+2. **Teksty hotspotów**: `docs/marketing/supademo-hotspot-texts.md`
+3. **Mock data script**: Skrypt tworzący stabilne dane do nagrywania
+
+---
+
 ## Podsumowanie Priorytetów
 
 | Priorytet | VID | Feature | Czas | Status |
@@ -1594,5 +1713,6 @@ Analizuj historię transakcji:
 | 🟡 MEDIUM | VID-148 | Atomicity/Saga | 8-16h | TODO |
 | 🟡 MEDIUM | VID-149 | Execution History | 6-10h | TODO |
 | 🟡 MEDIUM | - | Scheduled Amount Changes | 3-4h | TODO |
+| 🟡 MEDIUM | - | **Supademo Scenarios** | 2-3d | TODO |
 | 🟢 LOW | - | Mismatch Resolution | 1-2d | TODO |
 | 🟢 LOW | - | AI Rule Suggestions | 3-5d | TODO |

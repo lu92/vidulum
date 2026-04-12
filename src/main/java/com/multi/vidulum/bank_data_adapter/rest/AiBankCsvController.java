@@ -128,10 +128,8 @@ public class AiBankCsvController {
             authHeader
         );
 
-        // Mark as imported
-        String stagingSessionId = uploadResponse.stagingSessionId() != null ?
-            uploadResponse.stagingSessionId() :
-            (uploadResponse.stagingResponse() != null ? uploadResponse.stagingResponse().stagingSessionId() : null);
+        // Extract stagingSessionId from response
+        String stagingSessionId = uploadResponse.getStagingSessionId();
 
         if (stagingSessionId != null) {
             transformService.markAsImported(transformationId, userId, stagingSessionId);
@@ -186,7 +184,17 @@ public class AiBankCsvController {
         List<String> warnings,
         String importStatus,
         String errorCode,
-        String errorMessage
+        String errorMessage,
+        // Date range fields
+        String minTransactionDate,      // Earliest transaction date (YYYY-MM-DD)
+        String maxTransactionDate,      // Latest transaction date (YYYY-MM-DD)
+        String suggestedStartPeriod,    // YearMonth string (YYYY-MM)
+        int monthsOfData,               // Number of distinct months covered
+        List<String> monthsCovered,     // List of "YYYY-MM" strings in order
+        // Detection info (for UI feedback)
+        String detectionResult,         // CANONICAL, CACHED, AI_TRANSFORMED
+        boolean fromCache,              // Whether cached mapping rules were used
+        long processingTimeMs           // Processing time in milliseconds
     ) {}
 
     public record PreviewResponse(
@@ -230,7 +238,17 @@ public class AiBankCsvController {
             doc.getWarnings() != null ? doc.getWarnings() : List.of(),
             doc.getImportStatus() != null ? doc.getImportStatus().name() : null,
             doc.getErrorCode(),
-            doc.getErrorMessage()
+            doc.getErrorMessage(),
+            // Date range fields
+            doc.getMinTransactionDate() != null ? doc.getMinTransactionDate().toString() : null,
+            doc.getMaxTransactionDate() != null ? doc.getMaxTransactionDate().toString() : null,
+            doc.getSuggestedStartPeriod(),
+            doc.getMonthsOfData(),
+            doc.getMonthsCovered() != null ? doc.getMonthsCovered() : List.of(),
+            // Detection info
+            doc.getDetectionResult() != null ? doc.getDetectionResult().name() : null,
+            doc.isFromCache(),
+            doc.getProcessingTimeMs()
         );
     }
 

@@ -58,6 +58,8 @@ public class StagedTransactionEntity {
         private String currency;
         private Type type;
         private Date paidDate;
+        private String merchant;
+        private Double merchantConfidence;
 
         public static OriginalDataDocument fromDomain(OriginalTransactionData data) {
             return OriginalDataDocument.builder()
@@ -69,6 +71,8 @@ public class StagedTransactionEntity {
                     .currency(data.money().getCurrency())
                     .type(data.type())
                     .paidDate(Date.from(data.paidDate().toInstant()))
+                    .merchant(data.merchant())
+                    .merchantConfidence(data.merchantConfidence())
                     .build();
         }
 
@@ -80,7 +84,9 @@ public class StagedTransactionEntity {
                     bankCategory,
                     Money.of(amount.doubleValue(), currency),
                     type,
-                    ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC)
+                    ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC),
+                    merchant,
+                    merchantConfidence
             );
         }
     }
@@ -96,6 +102,8 @@ public class StagedTransactionEntity {
         private String currency;
         private Type type;
         private Date paidDate;
+        private String merchant;
+        private Double merchantConfidence;
 
         public static MappedDataDocument fromDomain(MappedTransactionData data) {
             return MappedDataDocument.builder()
@@ -107,6 +115,8 @@ public class StagedTransactionEntity {
                     .currency(data.money().getCurrency())
                     .type(data.type())
                     .paidDate(Date.from(data.paidDate().toInstant()))
+                    .merchant(data.merchant())
+                    .merchantConfidence(data.merchantConfidence())
                     .build();
         }
 
@@ -118,7 +128,9 @@ public class StagedTransactionEntity {
                     parentCategoryName != null ? new CategoryName(parentCategoryName) : null,
                     Money.of(amount.doubleValue(), currency),
                     type,
-                    ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC)
+                    ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC),
+                    merchant,
+                    merchantConfidence
             );
         }
     }

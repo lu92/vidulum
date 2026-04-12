@@ -3,13 +3,11 @@ package com.multi.vidulum.bank_data_adapter.infrastructure;
 import org.springframework.stereotype.Component;
 
 /**
- * Builds prompts for Claude AI to generate mapping rules from bank CSV samples.
+ * Builds prompts for AI to generate mapping rules from bank CSV samples.
  *
- * Instead of transforming the entire CSV, AI analyzes a small sample and returns
- * reusable mapping rules in JSON format. This approach:
- * - Reduces cost (only process sample, not full file)
- * - Improves privacy (sample is anonymized before sending)
- * - Enables caching (same rules for same bank format)
+ * AI analyzes the sample and returns reusable mapping rules.
+ * Only delimiter is pre-detected (statistically) and passed as hint.
+ * AI determines everything else: headerRowIndex, dateFormat, column mappings.
  */
 @Component
 public class AiMappingRulesPromptBuilder {
@@ -18,66 +16,82 @@ public class AiMappingRulesPromptBuilder {
         You are a bank CSV format analyzer. Analyze the CSV sample and return mapping rules as JSON.
         Your task is to understand the structure and return rules for LOCAL transformation.
         Return ONLY valid JSON - no markdown, no code blocks, no explanations.
+
+        IMPORTANT: You may receive a pre-detected delimiter value.
+        This was detected by statistical analysis of the CSV structure.
+        USE THIS VALUE if provided - it's reliable.
         """;
 
     private static final String USER_PROMPT_TEMPLATE = """
         Analyze this bank CSV sample and return mapping rules to transform it to BankCsvRow format.
 
+        ## DELIMITER HINT
+        %s
+
         ## INPUT CSV SAMPLE (first rows, may be anonymized):
         %s
 
         ## TARGET FORMAT (BankCsvRow):
-        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
 
         ## RETURN JSON with this structure:
         {
           "bankName": "detected bank name",
-          "bankCountry": "PL",
-          "language": "pl",
-          "dateFormat": "dd-MM-yyyy",
-          "delimiter": ",",
+          "bankCountry": "country code (PL, DE, US, etc.)",
+          "language": "language code (pl, de, en, etc.)",
+          "dateFormat": "detected date format (dd.MM.yyyy, yyyy-MM-dd, etc.)",
+          "delimiter": "detected delimiter (; or , or \\t)",
           "encoding": "UTF-8",
-          "headerRowIndex": 6,
-          "metadataRows": 6,
-          "originalHeader": "Data księgowania,Data operacji,...",
+          "headerRowIndex": 0,
+          "metadataRows": 0,
+          "originalHeader": "actual header from CSV",
           "columnMappings": [
             {
-              "sourceColumn": "Data operacji",
-              "sourceIndex": 1,
-              "targetField": "operationDate",
-              "transformationType": "DATE_PARSE",
-              "transformationParams": {"format": "dd-MM-yyyy"},
-              "required": true
-            },
-            {
-              "sourceColumn": "Kwota",
-              "sourceIndex": 3,
-              "targetField": "amount",
-              "transformationType": "AMOUNT_PARSE",
+              "sourceColumn": "original column name",
+              "sourceIndex": 0,
+              "targetField": "target field name",
+              "transformationType": "transformation type",
               "transformationParams": {},
-              "required": true
-            },
-            {
-              "sourceColumn": "Rodzaj operacji",
-              "sourceIndex": 2,
-              "targetField": "bankCategory",
-              "transformationType": "DIRECT",
-              "transformationParams": {},
-              "required": false
-            },
-            {
-              "sourceColumn": "Kwota",
-              "sourceIndex": 3,
-              "targetField": "type",
-              "transformationType": "TYPE_DETECT",
-              "transformationParams": {"amountColumn": "3"},
               "required": true
             }
           ],
           "confidenceScore": 0.95,
           "warnings": [],
-          "sampleInputRow": "31-12-2025,31-12-2025,Opłaty i prowizje,-10,PLN,,,Prowizja...,76047.25",
-          "sampleOutputRow": "NEST_2025-12-31_001,Prowizja...,,...,10,PLN,OUTFLOW,2025-12-31,2025-12-31,,"
+          "sampleInputRow": "example input row",
+          "sampleOutputRow": "example output row"
+        }
+
+        ## EXAMPLES (showing different bank formats):
+
+        ### Example 1: Polish bank with SEMICOLON delimiter
+        CSV sample: "Data księgowania;Data waluty;Nadawca;Kwota operacji;Waluta"
+        {
+          "bankName": "Bank Pekao",
+          "delimiter": ";",
+          "headerRowIndex": 0,
+          "dateFormat": "dd.MM.yyyy",
+          "columnMappings": [...]
+        }
+
+        ### Example 2: International bank with COMMA delimiter
+        CSV sample: "Date,Description,Amount,Currency"
+        {
+          "bankName": "Revolut",
+          "delimiter": ",",
+          "headerRowIndex": 0,
+          "dateFormat": "yyyy-MM-dd",
+          "columnMappings": [...]
+        }
+
+        ### Example 3: Bank with metadata rows before header
+        CSV has metadata lines (account info, date range, etc.) before header:
+        {
+          "bankName": "mBank",
+          "delimiter": ";",
+          "headerRowIndex": 3,
+          "metadataRows": 3,
+          "dateFormat": "dd.MM.yyyy",
+          "columnMappings": [...]
         }
 
         ## TRANSFORMATION TYPES:
@@ -92,6 +106,8 @@ public class AiMappingRulesPromptBuilder {
         - VALUE_MAP: map values using lookup table
         - ID_GENERATE: generate transaction ID
         - SKIP: ignore this column
+        - MERCHANT_EXTRACT: extract merchant name from description
+        - MERCHANT_CONFIDENCE: calculate confidence score for merchant extraction (0.0-1.0)
 
         ## RULES FOR MAPPING:
         1. sourceIndex is 0-based column index
@@ -100,13 +116,73 @@ public class AiMappingRulesPromptBuilder {
         4. Account numbers without country prefix get PL prefix if 26 digits
         5. If no description column, concatenate merchant info columns
         6. bankTransactionId can use ID_GENERATE if bank doesn't provide
+        7. CURRENCY IS REQUIRED - always include currency mapping:
+           - If CSV has currency column → use CURRENCY_EXTRACT
+           - If currency is embedded in amount (e.g., "5000 PLN") → use CURRENCY_EXTRACT with regex
+           - If no currency column → use CURRENCY_EXTRACT with default based on country
 
-        ## DETECTING THE FORMAT:
-        - Look for metadata lines before header (account number, date range, totals)
-        - Header row usually contains: Date, Amount, Description equivalents
-        - Polish banks: "Data", "Kwota", "Tytuł operacji", "Kontrahent"
-        - German banks: "Datum", "Betrag", "Verwendungszweck"
-        - English banks: "Date", "Amount", "Description"
+        8. CRITICAL - TYPE FIELD MAPPING:
+           - The "type" field MUST be either "INFLOW" or "OUTFLOW" - never Polish transaction types!
+           - ALWAYS use "transformationType": "TYPE_DETECT" for the type field
+           - ALWAYS include "amountColumn" parameter pointing to the amount column index
+           - The TYPE_DETECT will determine INFLOW/OUTFLOW based on the SIGN of the amount:
+             * Negative amounts (-100.00) = OUTFLOW (expenses, payments)
+             * Positive amounts (100.00) = INFLOW (income, deposits)
+           - NEVER use "DIRECT" for type field
+           - Example:
+             {
+               "sourceColumn": "Kwota",
+               "sourceIndex": 3,
+               "targetField": "type",
+               "transformationType": "TYPE_DETECT",
+               "transformationParams": {"amountColumn": "3"},
+               "required": true
+             }
+
+        9. CRITICAL - NAME FIELD IS REQUIRED:
+           - The "name" field is MANDATORY - without it rows will be rejected!
+           - Map the counterparty/merchant/recipient column to "name"
+           - Common source columns: "Dane kontrahenta", "Kontrahent", "Nadawca/Odbiorca", "Counterparty", "Merchant"
+           - If no single name column exists, use CONCAT to combine relevant columns
+           - Example:
+             {
+               "sourceColumn": "Dane kontrahenta",
+               "sourceIndex": 5,
+               "targetField": "name",
+               "transformationType": "DIRECT",
+               "transformationParams": {},
+               "required": true
+             }
+
+        10. DESCRIPTION FIELD:
+            - Map transaction title/description to "description"
+            - Common source columns: "Tytuł operacji", "Opis", "Tytuł", "Description", "Reference"
+
+        ## REQUIRED MAPPINGS CHECKLIST:
+        You MUST include mappings for ALL of these fields:
+        - ✓ operationDate (REQUIRED) - use DATE_PARSE
+        - ✓ name (REQUIRED) - use DIRECT or CONCAT
+        - ✓ amount (REQUIRED) - use AMOUNT_PARSE
+        - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
+        - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
+        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
+        - ○ description (optional) - use DIRECT
+        - ○ bookingDate (optional) - use DATE_PARSE
+        - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
+        - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
+        - ○ merchant (optional) - use MERCHANT_EXTRACT
+        - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
+
+        12. BANK CATEGORY MAPPING (IMPORTANT):
+            - bankCategory is the bank's transaction type/category
+            - Common source columns: "Rodzaj operacji", "Typ operacji", "Kategoria", "Transaction Type", "Category"
+            - This is different from type (INFLOW/OUTFLOW) - it's the bank's classification
+            - Examples of bank categories: "Przelewy wychodzące", "Opłaty i prowizje", "Płatności kartą"
+            - If such column exists, you MUST map it to bankCategory
+
+        11. MERCHANT EXTRACTION (for bank intermediary transactions):
+            - When "name" contains bank intermediary, extract real merchant from description
+            - Example: "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → merchant: "NETFLIX"
 
         ## ERROR FORMAT (if cannot parse):
         {
@@ -124,13 +200,42 @@ public class AiMappingRulesPromptBuilder {
         return SYSTEM_PROMPT;
     }
 
-    public String buildUserPrompt(String csvSample, String bankHint) {
-        String prompt = String.format(USER_PROMPT_TEMPLATE, csvSample);
+    /**
+     * Builds user prompt with optional pre-detected delimiter.
+     *
+     * @param csvSample The anonymized CSV sample
+     * @param bankHint Optional hint about the bank name
+     * @param detectedDelimiter Pre-detected delimiter (may be null)
+     * @return Complete user prompt for AI
+     */
+    public String buildUserPrompt(String csvSample, String bankHint, CsvFormatDetector.DetectedDelimiter detectedDelimiter) {
+        String delimiterHint;
+        if (detectedDelimiter != null && detectedDelimiter.confidence() > 0.5) {
+            delimiterHint = String.format(
+                "Pre-detected delimiter: \"%s\" (confidence: %.0f%%). USE THIS VALUE.",
+                detectedDelimiter.delimiter(),
+                detectedDelimiter.confidence() * 100
+            );
+        } else {
+            delimiterHint = "No delimiter pre-detected. Analyze the CSV to determine the delimiter.";
+        }
+
+        String prompt = String.format(USER_PROMPT_TEMPLATE,
+            delimiterHint,
+            csvSample
+        );
 
         if (bankHint != null && !bankHint.isBlank()) {
             prompt = prompt + "\n\n## HINT: The bank is likely: " + bankHint;
         }
 
         return prompt;
+    }
+
+    /**
+     * Backwards-compatible method without detected format.
+     */
+    public String buildUserPrompt(String csvSample, String bankHint) {
+        return buildUserPrompt(csvSample, bankHint, null);
     }
 }

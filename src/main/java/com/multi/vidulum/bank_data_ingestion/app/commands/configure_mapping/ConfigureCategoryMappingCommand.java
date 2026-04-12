@@ -29,13 +29,15 @@ public record ConfigureCategoryMappingCommand(
      * @param parentCategoryName parent category for CREATE_SUBCATEGORY action (nullable)
      * @param categoryType       INFLOW or OUTFLOW
      * @param action             what action to take for this mapping
+     * @param confidence         AI confidence score (0-100), nullable for manual mappings
      */
     public record MappingConfig(
             String bankCategoryName,
             CategoryName targetCategoryName,
             CategoryName parentCategoryName,
             Type categoryType,
-            MappingAction action
+            MappingAction action,
+            Integer confidence
     ) {
     }
 }

@@ -14,6 +14,7 @@ import java.util.*;
 
 /**
  * Processes AI response and extracts MappingRules.
+ * Includes validation against pre-detected format to correct AI mistakes.
  */
 @Slf4j
 @Component
@@ -22,14 +23,87 @@ public class AiMappingRulesProcessor {
 
     private final ObjectMapper objectMapper;
 
+    // Confidence threshold for overriding AI values
+    private static final double OVERRIDE_CONFIDENCE_THRESHOLD = 0.7;
+
     /**
-     * Process AI response and extract MappingRules.
+     * Process AI response with validation against pre-detected delimiter.
+     * If AI returns delimiter that conflicts with high-confidence detection,
+     * the detected value will be used instead.
+     *
+     * @param aiResponse Raw AI response (JSON)
+     * @param bankIdentifier Computed bank identifier for this format
+     * @param detectedDelimiter Pre-detected delimiter for validation (may be null)
+     * @return Parsed and validated mapping rules result
+     */
+    public MappingRulesResult process(String aiResponse, String bankIdentifier,
+                                       CsvFormatDetector.DetectedDelimiter detectedDelimiter) {
+        // First, parse the AI response
+        MappingRulesResult parseResult = parseAiResponse(aiResponse, bankIdentifier);
+
+        if (!parseResult.success()) {
+            return parseResult;
+        }
+
+        // If we have pre-detected delimiter, validate and potentially override
+        if (detectedDelimiter != null && detectedDelimiter.confidence() > 0) {
+            MappingRules validatedRules = validateAndCorrectRules(parseResult.rules(), detectedDelimiter);
+            return MappingRulesResult.success(validatedRules);
+        }
+
+        return parseResult;
+    }
+
+    /**
+     * Process AI response without format validation.
      *
      * @param aiResponse Raw AI response (JSON)
      * @param bankIdentifier Computed bank identifier for this format
      * @return Parsed mapping rules result
      */
     public MappingRulesResult process(String aiResponse, String bankIdentifier) {
+        return process(aiResponse, bankIdentifier, null);
+    }
+
+    /**
+     * Validates AI-generated rules against pre-detected delimiter.
+     * Only delimiter is validated/overridden - AI determines everything else.
+     */
+    private MappingRules validateAndCorrectRules(MappingRules rules,
+                                                   CsvFormatDetector.DetectedDelimiter detectedDelimiter) {
+        List<String> warnings = new ArrayList<>(rules.getWarnings() != null ? rules.getWarnings() : List.of());
+        boolean corrected = false;
+
+        // Validate delimiter - this is the critical check
+        // Wrong delimiter causes 0 rows to be parsed
+        if (!rules.getDelimiter().equals(detectedDelimiter.delimiter())) {
+            if (detectedDelimiter.confidence() >= OVERRIDE_CONFIDENCE_THRESHOLD) {
+                log.warn("AI returned delimiter='{}' but statistical analysis found '{}' (confidence={:.0f}%) - OVERRIDING",
+                    rules.getDelimiter(), detectedDelimiter.delimiter(), detectedDelimiter.confidence() * 100);
+                warnings.add(String.format("Delimiter corrected: AI='%s', using statistically detected '%s'",
+                    rules.getDelimiter(), detectedDelimiter.delimiter()));
+                rules.setDelimiter(detectedDelimiter.delimiter());
+                corrected = true;
+            } else {
+                log.info("Delimiter mismatch (AI='{}', detected='{}') but confidence too low ({:.0f}%) - using AI value",
+                    rules.getDelimiter(), detectedDelimiter.delimiter(), detectedDelimiter.confidence() * 100);
+            }
+        }
+
+        // Update confidence score if we made corrections
+        if (corrected) {
+            double blendedConfidence = (rules.getConfidenceScore() + detectedDelimiter.confidence()) / 2;
+            rules.setConfidenceScore(blendedConfidence);
+        }
+
+        rules.setWarnings(warnings);
+        return rules;
+    }
+
+    /**
+     * Parse AI response into MappingRules.
+     */
+    private MappingRulesResult parseAiResponse(String aiResponse, String bankIdentifier) {
         if (aiResponse == null || aiResponse.isBlank()) {
             return MappingRulesResult.error("Empty AI response");
         }

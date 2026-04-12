@@ -41,7 +41,9 @@ public class CsvParserService {
             "operationDate",
             "bookingDate",
             "sourceAccountNumber",
-            "targetAccountNumber"
+            "targetAccountNumber",
+            "merchant",
+            "merchantConfidence"
     };
 
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
@@ -142,7 +144,9 @@ public class CsvParserService {
                 getRequiredDate(record, "operationDate"),
                 getOptionalDate(record, "bookingDate"),
                 normalizeIban(getOptionalString(record, "sourceAccountNumber"), currency),
-                normalizeIban(getOptionalString(record, "targetAccountNumber"), currency)
+                normalizeIban(getOptionalString(record, "targetAccountNumber"), currency),
+                getOptionalString(record, "merchant"),
+                getOptionalDouble(record, "merchantConfidence")
         );
     }
 
@@ -231,6 +235,20 @@ public class CsvParserService {
             }
             return parseDate(value.trim(), column);
         } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private Double getOptionalDouble(CSVRecord record, String column) {
+        try {
+            String value = record.get(column);
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            // Handle both comma and dot as decimal separator
+            String normalized = value.trim().replace(",", ".");
+            return Double.parseDouble(normalized);
+        } catch (Exception e) {
             return null;
         }
     }
