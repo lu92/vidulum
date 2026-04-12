@@ -291,6 +291,22 @@ public class AiCategorizationPromptBuilder {
             - "pattern" = merchant/vendor name extracted from transaction (e.g., "ZABKA", "NETFLIX", "ORLEN", "XTREME FITNESS")
             - "bankCategory" = generic category assigned by bank (e.g., "TRANSAKCJA KARTĄ PŁATNICZĄ", "PRZELEW", "PŁATNOŚĆ BLIK")
 
+            ⚠️ PATTERN MATCHING RULE - CRITICAL:
+            The "pattern" field MUST be an EXACT SUBSTRING (case-insensitive) of the transaction name!
+            We match patterns using: transactionName.toUpperCase().contains(pattern)
+
+            CORRECT examples:
+            - Transaction: "Urzad skarbowy w Mielcu" → pattern: "URZAD SKARBOWY W MIELCU" ✓
+            - Transaction: "ZUS składki 01/2026" → pattern: "ZUS" ✓
+            - Transaction: "BIEDRONKA WARSZAWA 123" → pattern: "BIEDRONKA" ✓
+
+            WRONG examples (will NOT match!):
+            - Transaction: "Urzad skarbowy w Mielcu" → pattern: "URZAD SKARBOWY MIELCU" ✗ (missing "W")
+            - Transaction: "ZUS składki 01/2026" → pattern: "ZUSSKŁADKI" ✗ (no space)
+
+            Use the SHORTEST pattern that uniquely identifies the merchant/entity.
+            When in doubt, copy the key words EXACTLY as they appear in the transaction name.
+
             In Polish banks, 60%+ of transactions have generic bankCategory like "TRANSAKCJA KARTĄ PŁATNICZĄ".
             This is USELESS for categorization because hundreds of different merchants share the same bankCategory.
 
