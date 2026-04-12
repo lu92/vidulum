@@ -175,6 +175,41 @@ Implications:
 - **Clean slate approach** - when in doubt, wipe data and start fresh
 - **Focus on features, not migrations** - don't waste time on migration scripts
 
+### MongoDB Entity Clearing at Startup
+
+**IMPORTANT**: When creating a new MongoDB entity (class with `@Document`), you MUST add it to `VidulumApplication.clearData()` method!
+
+The `clearData()` method clears all MongoDB collections on application startup to ensure a clean state for development. If you forget to add a new entity, stale data from previous runs may cause issues.
+
+**Checklist for new entity:**
+1. Create entity class with `@Document("collection_name")` annotation
+2. Add `mongoTemplate.dropCollection(NewEntity.class);` to `VidulumApplication.clearData()`
+3. Add appropriate import statement
+
+**Currently cleared collections:**
+```java
+// Security & User
+Token, UserEntity
+
+// Portfolio & Trading
+PortfolioEntity, TradeEntity, OrderEntity
+
+// CashFlow
+CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity
+
+// Bank Data Ingestion
+StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity
+
+// Bank Data Adapter (AI CSV Transformation)
+AiCsvTransformationDocument, MappingRules
+
+// Recurring Rules
+RecurringRuleEntity
+
+// Other
+TaskEntity, PnlHistoryEntity
+```
+
 ## Docker Rebuild (Full Restart)
 
 When the user asks to "restart Docker" or "rebuild Docker image", **ALWAYS** perform a full clean rebuild with volume cleanup:
