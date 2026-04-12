@@ -155,9 +155,19 @@ When writing integration tests, follow these rules:
 - **Kafka**: Broker `kafka:9092`, consumer group `group-id`
 - **Docker**: `docker-compose-final.yml` for local development
 
+## Development Status
+
+**This application is under active development.** There are no production users yet.
+
+Implications:
+- **No data migrations required** - we can freely change database schemas, collection structures, etc.
+- **No backwards compatibility concerns** - breaking changes are acceptable
+- **Clean slate approach** - when in doubt, wipe data and start fresh
+- **Focus on features, not migrations** - don't waste time on migration scripts
+
 ## Docker Rebuild (Full Restart)
 
-When the user asks to "restart Docker" or "rebuild Docker image", perform a **full clean rebuild**:
+When the user asks to "restart Docker" or "rebuild Docker image", **ALWAYS** perform a full clean rebuild with volume cleanup:
 
 ```bash
 # 1. Package the application (create JAR)
@@ -168,21 +178,30 @@ When the user asks to "restart Docker" or "rebuild Docker image", perform a **fu
 # IMPORTANT: Always use vidulum-app:latest (NOT vidulum:latest)
 docker build --no-cache -t vidulum-app:latest .
 
-# 3. Stop and remove all containers
-docker-compose -f docker-compose-final.yml down
+# 3. Stop and remove all containers AND VOLUMES (clean slate)
+# The -v flag removes all volumes (MongoDB data, Kafka data, etc.)
+docker-compose -f docker-compose-final.yml down -v
 
 # 4. Start fresh from scratch
 docker-compose -f docker-compose-final.yml up -d
 ```
 
-**IMPORTANT - Docker Image Naming:**
+**IMPORTANT - Docker Build Rules:**
+- **ALWAYS use `--no-cache`** when building Docker image - ensures latest code is used
+- **ALWAYS use `-v` flag** when stopping containers - removes all volumes for clean slate
 - Always build with tag `vidulum-app:latest`
 - NEVER use `vidulum:latest` - this is an old deprecated name
 - The `docker-compose-final.yml` expects `vidulum-app:latest`
 
+**Why clean volumes every time?**
+- Application is under development - no production data to preserve
+- Eliminates issues with stale data, cached AI transformations, old schemas
+- Ensures reproducible testing environment
+- Avoids "works on my machine" issues caused by leftover data
+
 This ensures:
-- New Docker image is built with latest code changes
-- All containers (MongoDB, Kafka, app) are stopped and removed
+- New Docker image is built with latest code changes (no cache)
+- All data is wiped (MongoDB, Kafka, AI cache)
 - Fresh containers are started with clean state
 
 ## Sound Notification
@@ -283,12 +302,10 @@ This guide covers the full 11-step flow:
 
 **Quick start for fresh test:**
 ```bash
-# Clean Docker volumes (removes MongoDB cache and Kafka data)
-docker-compose -f docker-compose-final.yml down -v
-
-# Rebuild and start
+# Package, build WITHOUT CACHE, and start with CLEAN VOLUMES
 ./mvnw package -DskipTests
-docker build -t vidulum-app:latest .
+docker build --no-cache -t vidulum-app:latest .
+docker-compose -f docker-compose-final.yml down -v
 docker-compose -f docker-compose-final.yml up -d
 ```
 
