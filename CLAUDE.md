@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**File size limit**: Keep this file under 50KB for optimal loading. Current: ~30KB.
+
+## Before Manual Testing
+
+**IMPORTANT**: Before performing manual API testing:
+1. Read the "CSV Import Business Flow" section below for complete endpoint flow
+2. Read the "REST API Endpoints Reference" section for all valid endpoints
+3. **DO NOT invent endpoints** - only use documented ones
+4. If unsure about an endpoint, check the controller source code first
+
 ## Build & Test Commands
 
 ```bash
@@ -313,6 +323,192 @@ docker-compose -f docker-compose-final.yml up -d
 - `paidDate` field is required in staging transactions
 - MappingAction enum values: `CREATE_NEW`, `CREATE_SUBCATEGORY`, `MAP_TO_UNCATEGORIZED` (NOT `MAP_TO_EXISTING`)
 - Use `down -v` to clear AI transformation cache between tests
+
+## Error Handling Guidelines
+
+**IMPORTANT**: Every custom/business exception MUST be handled by `ErrorHttpHandler` with proper `ApiError` response.
+
+### How to Add New Exception Handling
+
+1. Create custom exception class in domain package
+2. Add `@ExceptionHandler` in `ErrorHttpHandler.java`
+3. Define `ErrorCode` in `ErrorCode.java` enum
+4. Return proper `ApiError` response
+
+```java
+// In ErrorHttpHandler.java
+@ExceptionHandler(MyNewException.class)
+public ResponseEntity<ApiError> handleMyException(MyNewException ex) {
+    log.debug("My exception: {}", ex.getMessage());
+    ApiError error = ApiError.of(ErrorCode.MY_ERROR_CODE, ex.getMessage());
+    return ResponseEntity.status(error.httpStatus()).body(error);
+}
+```
+
+### Key Classes
+- `ErrorHttpHandler` - `security/config/ErrorHttpHandler.java` - central exception handler
+- `ApiError` - `common/error/ApiError.java` - error response format
+- `ErrorCode` - `common/error/ErrorCode.java` - all error codes with HTTP statuses
+
+## CSV Import Business Flow (Complete Pipeline)
+
+This is the COMPLETE flow for importing bank CSV and creating CashFlow with forecast.
+
+### Flow Diagram (ASCII)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           CSV IMPORT BUSINESS FLOW                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+1. AUTHENTICATION
+   POST /api/v1/auth/register → { access_token, user_id }
+
+2. CREATE CASHFLOW (with historical periods)
+   POST /cash-flow/with-history → CF_ID
+   Body: { userId, name, bankAccount, startPeriod, initialBalance }
+
+3. AI TRANSFORM CSV (bank format → canonical format)
+   POST /api/v1/bank-data-adapter/transform
+   Form: file=@bank.csv, bankHint="Nest Bank"
+   → { transformationId, detectedBank, rowCount, suggestedStartPeriod }
+
+4. IMPORT TO STAGING (creates staging session)
+   POST /api/v1/bank-data-adapter/{transformationId}/import
+   Body: { cashFlowId: "CF_ID" }
+   → { stagingSessionId }
+
+   ┌──────────────────────────────────────────────────────────────────────┐
+   │ STAGING SESSION STATES:                                              │
+   │  - HAS_UNMAPPED_CATEGORIES → needs AI categorization or mappings    │
+   │  - AI_SUGGESTIONS_READY → after AI categorization                   │
+   │  - READY_FOR_IMPORT → all transactions mapped, can start import     │
+   │  - IMPORTING → import in progress                                   │
+   │  - COMPLETED → import finished                                      │
+   └──────────────────────────────────────────────────────────────────────┘
+
+5. AI CATEGORIZATION (get category suggestions)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
+   → { suggestedStructure, patternSuggestions, bankCategorySuggestions }
+
+6. ACCEPT AI SUGGESTIONS (create categories + mappings)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/accept-ai
+   Body: { acceptedCategories, acceptedMappings, acceptedBankCategoryMappings, saveToCache }
+   → { categoriesCreated, mappingsApplied, validationSummary }
+
+   OR FORCE UNCATEGORIZED (skip categorization)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/force-uncategorized
+   → Maps all unmapped to "Uncategorized" category
+
+7. CHECK STAGING STATUS
+   GET /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}
+   → { status, validationSummary: { readyForImport, unmappedTransactions } }
+
+8. START IMPORT (if readyForImport=true)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
+   Body: { stagingSessionId: "SESSION_ID" }
+   → { jobId, status }
+
+9. ATTEST HISTORICAL IMPORT (activates CashFlow)
+   POST /cash-flow/cf={CF_ID}/attest-historical-import
+   Body: { confirmedBalance: { amount, currency }, createAdjustment: false }
+   → CashFlow changes from SETUP to ACTIVE mode
+
+10. VERIFY CASHFLOW
+    GET /cash-flow/cf={CF_ID}
+    → { status, categories, monthlyStatements }
+
+11. VERIFY FORECAST
+    GET /cash-flow-forecast/cf={CF_ID}
+    → { categorizedOutFlows, categorizedInFlows, balanceEvolution }
+```
+
+### Staging Session Lifecycle
+
+```
+                     ┌─────────────────────┐
+                     │   Upload CSV        │
+                     │   or Import from    │
+                     │   Transformation    │
+                     └──────────┬──────────┘
+                                │
+                                ▼
+               ┌────────────────────────────────┐
+               │    HAS_UNMAPPED_CATEGORIES     │ ◄─── Initial state
+               │   (transactions need mapping)  │
+               └────────────────┬───────────────┘
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            ▼                   ▼                   ▼
+    ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐
+    │ AI Categorize│   │ Manual        │   │ Force            │
+    │ (ai-categorize)│ │ Mappings      │   │ Uncategorized    │
+    └──────┬───────┘   └───────┬───────┘   └────────┬─────────┘
+           │                   │                    │
+           ▼                   │                    │
+    ┌──────────────────┐       │                    │
+    │ AI_SUGGESTIONS   │       │                    │
+    │ _READY           │       │                    │
+    └──────┬───────────┘       │                    │
+           │                   │                    │
+           ▼                   │                    │
+    ┌──────────────────┐       │                    │
+    │ Accept AI        │       │                    │
+    │ (accept-ai)      │       │                    │
+    └──────┬───────────┘       │                    │
+           │                   │                    │
+           └───────────────────┴────────────────────┘
+                                │
+                                ▼
+                  ┌─────────────────────────┐
+                  │   Revalidate Staging    │ ◄─── Applies pattern matching
+                  │   (revalidate)          │      Re-categorizes transactions
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │   READY_FOR_IMPORT      │
+                  │   (readyForImport=true) │
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │   Start Import Job      │
+                  │   (import)              │
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │      COMPLETED          │
+                  └─────────────────────────┘
+```
+
+### Key Endpoints Summary (CSV Import Flow)
+
+| Step | Method | Endpoint | Purpose |
+|------|--------|----------|---------|
+| 1 | POST | `/api/v1/auth/register` | Get TOKEN |
+| 2 | POST | `/cash-flow/with-history` | Create CashFlow → CF_ID |
+| 3 | POST | `/api/v1/bank-data-adapter/transform` | AI transform CSV → transformationId |
+| 4 | POST | `/api/v1/bank-data-adapter/{id}/import` | Create staging → sessionId |
+| 5 | POST | `.../staging/{id}/ai-categorize` | Get AI suggestions |
+| 6 | POST | `.../staging/{id}/accept-ai` | Apply suggestions |
+| 7 | GET | `.../staging/{id}` | Check status |
+| 8 | POST | `.../import` | Start import job |
+| 9 | POST | `/cash-flow/cf={id}/attest-historical-import` | Activate CashFlow |
+| 10 | GET | `/cash-flow/cf={id}` | Verify CashFlow |
+| 11 | GET | `/cash-flow-forecast/cf={id}` | Verify forecast |
+
+### Alternative: Manual CSV Upload (without AI transform)
+
+```
+POST /api/v1/bank-data-ingestion/cf={CF_ID}/upload
+Form: file=@canonical.csv
+
+→ Skips AI transformation, CSV must be in canonical format:
+  date,amount,currency,type,bankCategory,name,description,merchant
+```
 
 ## REST API Endpoints Reference
 
