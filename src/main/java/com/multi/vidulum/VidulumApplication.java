@@ -11,6 +11,7 @@ import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowFore
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.entity.CashFlowForecastStatementEntity;
 import com.multi.vidulum.pnl.infrastructure.entities.PnlHistoryEntity;
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.recurring_rules.infrastructure.RecurringRuleEntity;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.security.token.Token;
@@ -108,6 +109,9 @@ public class VidulumApplication {
         // Bank Data Adapter (AI CSV Transformation)
         mongoTemplate.dropCollection(AiCsvTransformationDocument.class);
         mongoTemplate.dropCollection(MappingRules.class);
+
+        // Recurring Rules
+        mongoTemplate.dropCollection(RecurringRuleEntity.class);
 
         // Other
         mongoTemplate.dropCollection(TaskEntity.class);
