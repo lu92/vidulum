@@ -314,6 +314,92 @@ docker-compose -f docker-compose-final.yml up -d
 - MappingAction enum values: `CREATE_NEW`, `CREATE_SUBCATEGORY`, `MAP_TO_UNCATEGORIZED` (NOT `MAP_TO_EXISTING`)
 - Use `down -v` to clear AI transformation cache between tests
 
+## REST API Endpoints Reference
+
+**IMPORTANT**: When testing manually, ONLY use endpoints listed below. DO NOT invent or guess endpoint paths!
+
+### Authentication (`/api/v1/auth`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Register new user → returns `access_token`, `user_id` |
+| POST | `/api/v1/auth/authenticate` | Login → returns `access_token` |
+| POST | `/api/v1/auth/refresh-token` | Refresh JWT token |
+| POST | `/api/v1/auth/logout` | Logout current session |
+| POST | `/api/v1/auth/logout-all` | Logout all sessions |
+
+### CashFlow (`/cash-flow`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/cash-flow` | Create CashFlow (simple) |
+| POST | `/cash-flow/with-history` | Create CashFlow with historical periods → returns `CF_ID` |
+| GET | `/cash-flow/cf={cashFlowId}` | Get CashFlow details |
+| GET | `/cash-flow?userId={userId}` | List user's CashFlows (query param, NOT path!) |
+| POST | `/cash-flow/cf={cashFlowId}/category` | Add category to CashFlow |
+| POST | `/cash-flow/cf={cashFlowId}/attest-historical-import` | Attest historical import (activates CashFlow) |
+| POST | `/cash-flow/cf={cashFlowId}/rollover` | Rollover to next period |
+| DELETE | `/cash-flow/cf={cashFlowId}/import` | Rollback historical import |
+
+### CashFlow Forecast (`/cash-flow-forecast`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/cash-flow-forecast/cf={cashFlowId}` | Get forecast for CashFlow |
+| GET | `/cash-flow-forecast/cf={cashFlowId}/month-statuses` | Get month statuses |
+
+### AI Bank CSV Adapter (`/api/v1/bank-data-adapter`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/bank-data-adapter/transform` | AI transform CSV → returns `transformationId` |
+| GET | `/api/v1/bank-data-adapter/{transformationId}` | Get transformation details |
+| GET | `/api/v1/bank-data-adapter/{transformationId}/preview` | Preview transformed data |
+| GET | `/api/v1/bank-data-adapter/{transformationId}/download` | Download transformed CSV |
+| POST | `/api/v1/bank-data-adapter/{transformationId}/import` | Import to CashFlow (creates staging) |
+| GET | `/api/v1/bank-data-adapter/history` | List transformation history |
+
+### Bank Data Ingestion (`/api/v1/bank-data-ingestion/cf={cashFlowId}`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/staging` | Create staging session from transformation |
+| GET | `/api/v1/bank-data-ingestion/cf={cfId}/staging` | List staging sessions |
+| GET | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}` | Get staging session details |
+| DELETE | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}` | Delete staging session |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}/revalidate` | Revalidate after mappings |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}/ai-categorize` | AI categorization suggestions |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}/accept-ai` | Accept AI suggestions |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}/force-uncategorized` | Force unmapped to Uncategorized |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/upload` | Upload CSV directly (multipart) |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/mappings` | Create category mappings |
+| GET | `/api/v1/bank-data-ingestion/cf={cfId}/mappings` | List category mappings |
+| DELETE | `/api/v1/bank-data-ingestion/cf={cfId}/mappings/{mappingId}` | Delete mapping |
+| POST | `/api/v1/bank-data-ingestion/cf={cfId}/import` | Start import job |
+| GET | `/api/v1/bank-data-ingestion/cf={cfId}/import/{jobId}` | Get import job status |
+| GET | `/api/v1/bank-data-ingestion/cf={cfId}/import` | List import jobs |
+
+### Recurring Rules (`/api/v1/recurring-rules`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/recurring-rules` | Create recurring rule |
+| GET | `/api/v1/recurring-rules/{ruleId}` | Get rule by ID |
+| GET | `/api/v1/recurring-rules/cash-flow/{cashFlowId}` | Get rules for CashFlow |
+| GET | `/api/v1/recurring-rules/me` | Get current user's rules |
+| GET | `/api/v1/recurring-rules/me/dashboard` | Dashboard with cashFlowId param |
+| PUT | `/api/v1/recurring-rules/{ruleId}` | Update rule |
+| DELETE | `/api/v1/recurring-rules/{ruleId}` | Delete rule |
+
+### Common Patterns
+```bash
+# Path variables use = not /
+/cash-flow/cf={cashFlowId}           # CORRECT
+/cash-flow/cf/{cashFlowId}           # WRONG!
+
+# Query params for filtering
+/cash-flow?userId={userId}           # CORRECT (query param)
+/cash-flow/user={userId}             # ALSO CORRECT (path style)
+/cash-flow/user/{userId}             # WRONG!
+
+# Nested resources
+/api/v1/bank-data-ingestion/cf={cfId}/staging/{sessionId}/ai-categorize  # CORRECT
+```
+
 ### Features Backlog (NOT IMPLEMENTED)
 Files in `docs/features-backlog/` - these are designs waiting for implementation:
 
