@@ -354,6 +354,146 @@ public ResponseEntity<ApiError> handleMyException(MyNewException ex) {
 
 This is the COMPLETE flow for importing bank CSV and creating CashFlow with forecast.
 
+### ⚠️ CRITICAL: Test Data Consistency Rules
+
+When testing manually, data MUST be consistent. Use these values:
+
+#### Test CSV File
+```
+File: src/test/resources/lista_operacji_20260111.csv
+Bank: Nest Bank
+Date range: 2023-01-13 to 2025-12-31 (oldest to newest)
+Transactions: 402
+Currency: PLN
+```
+
+#### CashFlow Creation - MUST Match CSV Dates!
+```json
+{
+  "startPeriod": "2023-01",        // ← Month of OLDEST transaction in CSV!
+  "initialBalance": { "amount": 863.94, "currency": "PLN" }
+}
+```
+
+**Why `startPeriod` matters:**
+- CashFlow creates historical months from `startPeriod` to current month
+- Transactions with `paidDate` BEFORE `startPeriod` will be REJECTED
+- Transactions with `paidDate` in FUTURE will be REJECTED
+- Check AI transform response for `suggestedStartPeriod` field!
+
+#### Valid Polish IBAN for Testing
+```
+PL61109010140000071219812874    ← Use this IBAN
+```
+IBAN validation is STRICT - must be valid Polish IBAN format (PL + 2 check digits + 24 digits).
+
+#### Complete Request Bodies
+
+**1. Register User:**
+```json
+POST /api/v1/auth/register
+{
+  "username": "testuser1",
+  "email": "test@test.com",
+  "password": "SecurePassword123!"
+}
+→ Save: TOKEN, USER_ID
+```
+
+**2. Create CashFlow with History:**
+```json
+POST /cash-flow/with-history
+Authorization: Bearer {TOKEN}
+{
+  "userId": "{USER_ID}",
+  "name": "Konto Nest Bank",
+  "description": "Test import",
+  "bankAccount": {
+    "bankName": "Nest Bank",
+    "bankAccountNumber": {
+      "account": "PL61109010140000071219812874",
+      "denomination": {"id": "PLN"}
+    },
+    "balance": {"amount": 0, "currency": "PLN"}
+  },
+  "startPeriod": "2023-01",
+  "initialBalance": {"amount": 863.94, "currency": "PLN"}
+}
+→ Save: CF_ID (e.g., "CF10000001")
+```
+
+**3. AI Transform CSV:**
+```bash
+POST /api/v1/bank-data-adapter/transform
+Authorization: Bearer {TOKEN}
+Content-Type: multipart/form-data
+
+-F "file=@src/test/resources/lista_operacji_20260111.csv"
+-F "bankHint=Nest Bank"
+
+→ Save: TRANSFORMATION_ID
+→ Check: suggestedStartPeriod should match your startPeriod!
+```
+
+**4. Import to Staging:**
+```json
+POST /api/v1/bank-data-adapter/{TRANSFORMATION_ID}/import
+Authorization: Bearer {TOKEN}
+{
+  "cashFlowId": "{CF_ID}"
+}
+→ Save: SESSION_ID (stagingSessionId)
+```
+
+**5. AI Categorize:**
+```bash
+POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
+Authorization: Bearer {TOKEN}
+(no body)
+```
+
+**6. Accept AI or Force Uncategorized:**
+```bash
+# Option A: Accept AI suggestions (complex)
+POST .../staging/{SESSION_ID}/accept-ai
+Body: { acceptedCategories: [...], acceptedMappings: [...], ... }
+
+# Option B: Force all to Uncategorized (simple, for quick testing)
+POST .../staging/{SESSION_ID}/force-uncategorized
+(no body)
+```
+
+**7. Start Import:**
+```json
+POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
+{
+  "stagingSessionId": "{SESSION_ID}"
+}
+→ Save: JOB_ID
+```
+
+**8. Attest (activate CashFlow):**
+```json
+POST /cash-flow/cf={CF_ID}/attest-historical-import
+{
+  "confirmedBalance": {"amount": 76047.25, "currency": "PLN"},
+  "createAdjustment": false,
+  "forceAttestation": false
+}
+```
+Note: `confirmedBalance` should match the last transaction's "Saldo po operacji" from CSV.
+
+### Common Errors and Fixes
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `IMPORT_DATE_BEFORE_START` | Transaction date < startPeriod | Use earlier startPeriod |
+| `IMPORT_DATE_IN_FUTURE` | Transaction date > today | Check CSV dates |
+| `INVALID_BANK_ACCOUNT` | Bad IBAN format | Use valid IBAN: `PL61109010140000071219812874` |
+| `CASHFLOW_NOT_FOUND` | Wrong CF_ID format | CF_ID starts with "CF" (e.g., CF10000001) |
+| `INGESTION_STAGING_NOT_FOUND` | Session expired or wrong ID | Sessions expire after 24h |
+| `CASHFLOW_BALANCE_MISMATCH` | confirmedBalance wrong | Check CSV's last "Saldo po operacji" |
+
 ### Flow Diagram (ASCII)
 
 ```
