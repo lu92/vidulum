@@ -128,4 +128,30 @@ public record BankCsvRow(
         return merchant != null && !merchant.isBlank()
                 && merchantConfidence != null && merchantConfidence >= 0.7;
     }
+
+    /**
+     * Returns the counterparty account number (the other party's bank account).
+     * AI may put the account in either column, so we check both:
+     * - First, we try the semantically correct column based on type
+     * - If that's empty, we fall back to the other column
+     * For OUTFLOW: prefer targetAccountNumber (recipient), fallback to sourceAccountNumber
+     * For INFLOW: prefer sourceAccountNumber (sender), fallback to targetAccountNumber
+     */
+    public String counterpartyAccount() {
+        if (type == Type.OUTFLOW) {
+            // OUTFLOW: recipient's account should be in targetAccountNumber
+            if (targetAccountNumber != null && !targetAccountNumber.isBlank()) {
+                return targetAccountNumber;
+            }
+            // Fallback: AI might have put it in sourceAccountNumber
+            return sourceAccountNumber;
+        } else {
+            // INFLOW: sender's account should be in sourceAccountNumber
+            if (sourceAccountNumber != null && !sourceAccountNumber.isBlank()) {
+                return sourceAccountNumber;
+            }
+            // Fallback: AI might have put it in targetAccountNumber
+            return targetAccountNumber;
+        }
+    }
 }

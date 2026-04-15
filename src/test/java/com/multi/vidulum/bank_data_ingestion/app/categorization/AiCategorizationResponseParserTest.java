@@ -60,7 +60,8 @@ class AiCategorizationResponseParserTest {
                         5,
                         new BigDecimal("250.00"),
                         "",
-                        List.of("tx1", "tx2", "tx3", "tx4", "tx5")
+                        List.of("tx1", "tx2", "tx3", "tx4", "tx5"),
+                        null // counterpartyAccount
                 )
         );
 
@@ -118,21 +119,21 @@ class AiCategorizationResponseParserTest {
                         "Biedronka", null, null, "",
                         Type.OUTFLOW,
                         1, new BigDecimal("50.00"),
-                        "", List.of("tx1")
+                        "", List.of("tx1"), null
                 ),
                 new PatternDeduplicator.PatternGroup(
                         "XYZ123ABC",
                         "XYZ123ABC", null, null, "",
                         Type.OUTFLOW,
                         2, new BigDecimal("100.00"),
-                        "", List.of("tx2", "tx3")
+                        "", List.of("tx2", "tx3"), null
                 ),
                 new PatternDeduplicator.PatternGroup(
                         "UNKNOWN_REF_999",
                         "Unknown ref", null, null, "",
                         Type.INFLOW,
                         1, new BigDecimal("500.00"),
-                        "", List.of("tx4")
+                        "", List.of("tx4"), null
                 )
         );
 
@@ -180,7 +181,7 @@ class AiCategorizationResponseParserTest {
                         "Test", null, null, "",
                         Type.OUTFLOW,
                         1, new BigDecimal("10.00"),
-                        "", List.of("tx1")
+                        "", List.of("tx1"), null
                 )
         );
 
@@ -241,7 +242,7 @@ class AiCategorizationResponseParserTest {
                         "Test", null, null, "",
                         Type.OUTFLOW,
                         1, new BigDecimal("10.00"),
-                        "", List.of("tx1")
+                        "", List.of("tx1"), null
                 )
         );
 
@@ -315,12 +316,12 @@ class AiCategorizationResponseParserTest {
                 """;
 
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("RESTAURACJA", "Restauracja", null, null, "", Type.OUTFLOW, 2, new BigDecimal("100.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", null, null, "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("ZTM", "ZTM", null, null, "", Type.OUTFLOW, 5, new BigDecimal("50.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("PENSJA", "Pensja", null, null, "", Type.INFLOW, 1, new BigDecimal("5000.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("PREMIA", "Premia", null, null, "", Type.INFLOW, 1, new BigDecimal("1000.00"), "", List.of())
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("RESTAURACJA", "Restauracja", null, null, "", Type.OUTFLOW, 2, new BigDecimal("100.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", null, null, "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("ZTM", "ZTM", null, null, "", Type.OUTFLOW, 5, new BigDecimal("50.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("PENSJA", "Pensja", null, null, "", Type.INFLOW, 1, new BigDecimal("5000.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("PREMIA", "Premia", null, null, "", Type.INFLOW, 1, new BigDecimal("1000.00"), "", List.of(), null)
         );
 
         // when
@@ -362,7 +363,7 @@ class AiCategorizationResponseParserTest {
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
                 new PatternDeduplicator.PatternGroup(
                         "BIEDRONKA", "Biedronka zakupy", null, null, "", Type.OUTFLOW,
-                        5, new BigDecimal("250.00"), "", List.of()
+                        5, new BigDecimal("250.00"), "", List.of(), null
                 )
         );
 
@@ -401,8 +402,8 @@ class AiCategorizationResponseParserTest {
                 """;
 
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of(), null)
         );
 
         // when
@@ -445,8 +446,8 @@ class AiCategorizationResponseParserTest {
 
         // Note: No INFLOW patterns - "Wynagrodzenie" has 0 transactions
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("PIZZERIA", "Pizzeria", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of(), null)
         );
 
         // when
@@ -486,8 +487,8 @@ class AiCategorizationResponseParserTest {
                 """;
 
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of()),
-                new PatternDeduplicator.PatternGroup("LIDL", "Lidl", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of())
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of(), null),
+                new PatternDeduplicator.PatternGroup("LIDL", "Lidl", null, null, "", Type.OUTFLOW, 3, new BigDecimal("150.00"), "", List.of(), null)
         );
 
         // when
@@ -527,7 +528,7 @@ class AiCategorizationResponseParserTest {
 
         // Only "Sklepy spożywcze" has transactions, "Restauracje" has 0
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of())
+                new PatternDeduplicator.PatternGroup("BIEDRONKA", "Biedronka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "", List.of(), null)
         );
 
         // when
@@ -587,8 +588,8 @@ class AiCategorizationResponseParserTest {
 
         // Bank category groups
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("TX1", "Transfer 1", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "Przelewy wychodzące", List.of()),
-                new PatternDeduplicator.PatternGroup("TX2", "Transfer 2", null, null, "", Type.OUTFLOW, 2, new BigDecimal("200.00"), "Przelewy wychodzące", List.of())
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer 1", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "Przelewy wychodzące", List.of(), null),
+                new PatternDeduplicator.PatternGroup("TX2", "Transfer 2", null, null, "", Type.OUTFLOW, 2, new BigDecimal("200.00"), "Przelewy wychodzące", List.of(), null)
         );
 
         // when
@@ -630,7 +631,7 @@ class AiCategorizationResponseParserTest {
                         "ZABKA", "Zabka zakupy", null, null, "",
                         Type.OUTFLOW, 5, new BigDecimal("100.00"),
                         "TRANSAKCJA KARTĄ PŁATNICZĄ",  // ← actual bankCategory from bank
-                        List.of()
+                        List.of(), null
                 )
         );
 
@@ -662,8 +663,8 @@ class AiCategorizationResponseParserTest {
                 """;
 
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("TX1", "Transfer", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of()),
-                new PatternDeduplicator.PatternGroup("TX2", "Salary", null, null, "", Type.INFLOW, 1, new BigDecimal("5000.00"), "WPŁYWY REGULARNE", List.of())
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of(), null),
+                new PatternDeduplicator.PatternGroup("TX2", "Salary", null, null, "", Type.INFLOW, 1, new BigDecimal("5000.00"), "WPŁYWY REGULARNE", List.of(), null)
         );
 
         // when
@@ -713,9 +714,9 @@ class AiCategorizationResponseParserTest {
 
         // All transactions have the same generic bankCategory
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("100.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of()),
-                new PatternDeduplicator.PatternGroup("NETFLIX", "Netflix", null, null, "", Type.OUTFLOW, 3, new BigDecimal("50.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of()),
-                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", null, null, "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of())
+                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("100.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of(), null),
+                new PatternDeduplicator.PatternGroup("NETFLIX", "Netflix", null, null, "", Type.OUTFLOW, 3, new BigDecimal("50.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of(), null),
+                new PatternDeduplicator.PatternGroup("ORLEN", "Orlen", null, null, "", Type.OUTFLOW, 4, new BigDecimal("400.00"), "TRANSAKCJA KARTĄ PŁATNICZĄ", List.of(), null)
         );
 
         // when
@@ -744,7 +745,7 @@ class AiCategorizationResponseParserTest {
                 """;
 
         List<PatternDeduplicator.PatternGroup> patterns = List.of(
-                new PatternDeduplicator.PatternGroup("TX1", "Transfer", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of())
+                new PatternDeduplicator.PatternGroup("TX1", "Transfer", null, null, "", Type.OUTFLOW, 3, new BigDecimal("300.00"), "PRZELEW", List.of(), null)
         );
 
         // when

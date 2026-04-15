@@ -34,8 +34,29 @@ public class AiPromptBuilder {
         - type: INFLOW (positive/credit) or OUTFLOW (negative/debit)
         - operationDate: YYYY-MM-DD format (REQUIRED)
         - bookingDate: YYYY-MM-DD format (same as operationDate if not available)
-        - sourceAccountNumber: sender's IBAN for INFLOW, empty for OUTFLOW (see IBAN NORMALIZATION)
-        - targetAccountNumber: recipient's IBAN for OUTFLOW, empty for INFLOW (see IBAN NORMALIZATION)
+        - sourceAccountNumber: COUNTERPARTY account for INFLOW transactions (the person/company who sent money to you)
+        - targetAccountNumber: COUNTERPARTY account for OUTFLOW transactions (the person/company you paid)
+
+        CRITICAL ACCOUNT NUMBER PLACEMENT RULE (READ CAREFULLY):
+        The bank CSV column "Numer rachunku kontrahenta" contains the counterparty account number.
+        You MUST place it in the CORRECT column based on transaction type:
+
+        IF type=INFLOW (money coming IN to your account):
+          - sourceAccountNumber = counterparty account (who SENT money)
+          - targetAccountNumber = EMPTY (leave blank)
+
+        IF type=OUTFLOW (money going OUT of your account):
+          - sourceAccountNumber = EMPTY (leave blank)
+          - targetAccountNumber = counterparty account (who RECEIVED money)
+
+        EXAMPLES:
+        - INFLOW from MINDBOX (account 82109018830000000109874194):
+          ...,INFLOW,2025-12-11,2025-12-11,PL82109018830000000109874194,,
+          (sourceAccountNumber filled, targetAccountNumber empty)
+
+        - OUTFLOW to ZUS (account 83101010230000261395100000):
+          ...,OUTFLOW,2025-12-11,2025-12-11,,PL83101010230000261395100000,
+          (sourceAccountNumber empty, targetAccountNumber filled)
 
         ## IBAN NORMALIZATION (CRITICAL):
         Account numbers MUST be normalized to full IBAN format with country prefix:
