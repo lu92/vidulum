@@ -26,8 +26,8 @@ public class AiPromptBuilder {
 
         ## COLUMN RULES:
         - bankTransactionId: generate as {BANK}_{YYYY-MM-DD}_{row_number} (e.g., NEST_2025-12-31_001)
-        - name: transaction title (REQUIRED, from "Tytuł operacji" or similar)
-        - description: full description including merchant/counterparty info
+        - name: counterparty name - WHO you paid or WHO paid you (REQUIRED)
+        - description: transaction purpose/title - WHY/WHAT the payment is for (CRITICAL - see POLISH BANK MAPPING below)
         - bankCategory: original category from bank (e.g., "Przelewy wychodzące")
         - amount: ALWAYS POSITIVE decimal number (use absolute value)
         - currency: PLN, EUR, USD (3-letter code)
@@ -36,6 +36,42 @@ public class AiPromptBuilder {
         - bookingDate: YYYY-MM-DD format (same as operationDate if not available)
         - sourceAccountNumber: COUNTERPARTY account for INFLOW transactions (the person/company who sent money to you)
         - targetAccountNumber: COUNTERPARTY account for OUTFLOW transactions (the person/company you paid)
+
+        ## POLISH BANK CSV MAPPING (CRITICAL - READ CAREFULLY):
+
+        Polish banks have specific column names. Map them EXACTLY as follows:
+
+        | Polish Bank Column       | Meaning              | → Maps to   |
+        |--------------------------|----------------------|-------------|
+        | "Dane kontrahenta"       | Counterparty name    | name        |
+        | "Nadawca / Odbiorca"     | Sender / Recipient   | name        |
+        | "Odbiorca" / "Nadawca"   | Recipient / Sender   | name        |
+        | "Tytuł operacji"         | Transaction title    | description |
+        | "Tytułem"                | Transaction title    | description |
+        | "Opis operacji"          | Operation description| description |
+
+        NEST BANK EXAMPLE:
+        Original CSV columns: Data księgowania, Data operacji, Rodzaj operacji, Kwota, Waluta, Dane kontrahenta, Numer rachunku kontrahenta, Tytuł operacji, Saldo
+
+        Original row: 31-12-2025,31-12-2025,Przelewy wychodzące,-3000,PLN,"Lucjan Bik Pekao",PL98124014441111001078171074,"zycie",76057.25
+
+        Correct mapping:
+        - "Dane kontrahenta" = "Lucjan Bik Pekao" → name = "Lucjan Bik Pekao"
+        - "Tytuł operacji" = "zycie" → description = "zycie"
+
+        Result: ...,Lucjan Bik Pekao,zycie,Przelewy wychodzące,...
+
+        MORE EXAMPLES OF "Tytuł operacji" values (MUST go to description):
+        - "zycie" → description (life expenses)
+        - "czynsz Lokal: 00-070..." → description (rent)
+        - "składki ZUS" → description (social insurance)
+        - "rata kredytu" → description (loan installment)
+        - "Faktura VAT nr 8348/11/BR/2025" → description (invoice)
+        - "mieszkanie kredyt" → description (mortgage)
+
+        ⚠️ WARNING: The "Tytuł operacji" column contains CRITICAL categorization information!
+        If you leave description EMPTY, the system cannot properly categorize transactions.
+        ALWAYS extract and preserve the transaction title/purpose in the description field!
 
         CRITICAL ACCOUNT NUMBER PLACEMENT RULE (READ CAREFULLY):
         The bank CSV column "Numer rachunku kontrahenta" contains the counterparty account number.
@@ -82,10 +118,12 @@ public class AiPromptBuilder {
         ## LANGUAGE HANDLING:
         - Input CSV may be in ANY language (Polish, German, English, French, etc.)
         - Detect the language and country automatically
+        - For POLISH banks: see "POLISH BANK CSV MAPPING" section above!
         - Column names vary by language - use semantic understanding:
           - Date columns: "Data", "Datum", "Date", "Fecha", "Data operacji"
           - Amount columns: "Kwota", "Betrag", "Amount", "Montant", "Importo"
-          - Description columns: "Opis", "Verwendungszweck", "Description", "Tytuł"
+          - Counterparty columns: "Dane kontrahenta", "Nadawca / Odbiorca", "Empfänger", "Beneficiary"
+          - Title/Purpose columns: "Tytuł operacji", "Tytułem", "Verwendungszweck", "Reference"
         - Output CSV is ALWAYS in English format (BankCsvRow columns)
         - Keep original transaction descriptions in their original language
         - Detect country from: bank name, IBAN format, currency, language

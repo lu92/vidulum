@@ -139,39 +139,67 @@ public class AiMappingRulesPromptBuilder {
                "required": true
              }
 
-        9. CRITICAL - NAME FIELD IS REQUIRED:
-           - The "name" field is MANDATORY - without it rows will be rejected!
-           - Map the counterparty/merchant/recipient column to "name"
-           - Common source columns: "Dane kontrahenta", "Kontrahent", "Nadawca/Odbiorca", "Counterparty", "Merchant"
-           - If no single name column exists, use CONCAT to combine relevant columns
-           - Example:
-             {
-               "sourceColumn": "Dane kontrahenta",
-               "sourceIndex": 5,
-               "targetField": "name",
-               "transformationType": "DIRECT",
-               "transformationParams": {},
-               "required": true
-             }
+        9. CRITICAL - NAME vs DESCRIPTION DISTINCTION:
 
-        10. DESCRIPTION FIELD:
-            - Map transaction title/description to "description"
-            - Common source columns: "Tytuł operacji", "Opis", "Tytuł", "Description", "Reference"
+           Bank CSVs typically have TWO different text columns that must be mapped correctly:
+
+           "name" = WHO (counterparty)
+           - The person, company, or entity you transacted with
+           - Answer the question: "Who did I pay?" or "Who paid me?"
+           - Examples: "John Smith", "Netflix", "Tax Office", "Landlord LLC"
+
+           "description" = WHY/WHAT (transaction purpose)
+           - The reason, purpose, or reference for the payment
+           - Answer the question: "What is this payment for?"
+           - Examples: "Monthly rent", "Invoice #12345", "Salary January", "Loan payment"
+
+           EXAMPLES OF CORRECT MAPPING:
+           | name (WHO)              | description (WHY/WHAT)                    |
+           |-------------------------|-------------------------------------------|
+           | "John Smith"            | "Rent payment January 2025"               |
+           | "Social Insurance"      | "Monthly contribution"                    |
+           | "Netflix"               | "Subscription fee"                        |
+           | "Tax Authority"         | "Income tax Q4 2024"                      |
+           | "Electric Company"      | "Invoice 2025/01/1234"                    |
+
+           HOW TO IDENTIFY EACH COLUMN:
+           - name column: contains names of people, companies, institutions
+           - description column: contains purposes, references, invoice numbers, payment reasons
+             Look for column names with words like: title, purpose, reference, description, memo, reason
+
+        10. DESCRIPTION FIELD (CRITICAL FOR CATEGORIZATION):
+
+            ⚠️ The description field is ESSENTIAL for AI transaction categorization!
+
+            WITHOUT description, the system cannot distinguish between:
+            - Different types of payments to the same recipient
+            - The actual purpose of generic bank transfers
+            - Subcategories within the same expense type
+
+            EXAMPLE: Two payments to "Social Insurance Office":
+            - description: "retirement contribution" → Category: Retirement
+            - description: "health insurance" → Category: Healthcare
+            Without description, both would go to generic "Other expenses"!
+
+            ALWAYS map the transaction purpose/title/reference column to description.
+            If the CSV has such a column, you MUST include it in columnMappings.
 
         ## REQUIRED MAPPINGS CHECKLIST:
         You MUST include mappings for ALL of these fields:
         - ✓ operationDate (REQUIRED) - use DATE_PARSE
-        - ✓ name (REQUIRED) - use DIRECT or CONCAT
+        - ✓ name (REQUIRED) - WHO you transacted with - use DIRECT or CONCAT
         - ✓ amount (REQUIRED) - use AMOUNT_PARSE
         - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
         - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
         - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
-        - ○ description (optional) - use DIRECT
+        - ✓ description (REQUIRED if exists) - WHY/WHAT the payment is for - use DIRECT
         - ○ bookingDate (optional) - use DATE_PARSE
         - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
         - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
         - ○ merchant (optional) - use MERCHANT_EXTRACT
         - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
+
+        ⚠️ If the CSV has a column with transaction purpose/title/reference, you MUST map it to description!
 
         12. BANK CATEGORY MAPPING (IMPORTANT):
             - bankCategory is the bank's transaction type/category
