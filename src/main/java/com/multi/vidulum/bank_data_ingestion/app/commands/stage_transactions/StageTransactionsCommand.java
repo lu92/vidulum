@@ -32,6 +32,7 @@ public record StageTransactionsCommand(
      * @param paidDate          when the transaction was paid
      * @param merchant          extracted merchant name (nullable) - for bank intermediary transactions
      * @param merchantConfidence confidence score for merchant extraction (0.0-1.0, nullable)
+     * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
      */
     public record BankTransaction(
             String bankTransactionId,
@@ -42,7 +43,8 @@ public record StageTransactionsCommand(
             Type type,
             ZonedDateTime paidDate,
             String merchant,
-            Double merchantConfidence
+            Double merchantConfidence,
+            String counterpartyAccount
     ) {
     }
 }

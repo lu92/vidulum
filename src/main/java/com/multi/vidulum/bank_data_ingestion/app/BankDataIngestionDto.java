@@ -133,6 +133,7 @@ public class BankDataIngestionDto {
         private ZonedDateTime paidDate;
         private String merchant;
         private Double merchantConfidence;
+        private String counterpartyAccount;
     }
 
     @Data

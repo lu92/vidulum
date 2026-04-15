@@ -69,7 +69,8 @@ class AiCategorizationPromptBuilderTest {
                         3,
                         new BigDecimal("150.00"),
                         "Zakupy",
-                        List.of("tx1", "tx2", "tx3")
+                        List.of("tx1", "tx2", "tx3"),
+                        null // counterpartyAccount
                 )
         );
 
@@ -138,7 +139,8 @@ class AiCategorizationPromptBuilderTest {
                         1,
                         new BigDecimal("49.99"),
                         "Subscriptions",
-                        List.of("tx1")
+                        List.of("tx1"),
+                        null // counterpartyAccount
                 ),
                 new PatternDeduplicator.PatternGroup(
                         "WYPLATA",
@@ -150,7 +152,8 @@ class AiCategorizationPromptBuilderTest {
                         1,
                         new BigDecimal("8500.00"),
                         "Przychody",
-                        List.of("tx2")
+                        List.of("tx2"),
+                        null // counterpartyAccount
                 )
         );
 
@@ -180,7 +183,8 @@ class AiCategorizationPromptBuilderTest {
                         1,
                         new BigDecimal("10.00"),
                         "",
-                        List.of("tx1")
+                        List.of("tx1"),
+                        null // counterpartyAccount
                 )
         );
 
@@ -209,7 +213,8 @@ class AiCategorizationPromptBuilderTest {
                         1,
                         new BigDecimal("2500.00"),
                         "Przelewy wychodzące",
-                        List.of("tx1")
+                        List.of("tx1"),
+                        null // counterpartyAccount
                 )
         );
 

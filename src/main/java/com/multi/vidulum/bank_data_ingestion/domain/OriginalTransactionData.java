@@ -17,6 +17,7 @@ import java.time.ZonedDateTime;
  * @param paidDate          when the transaction was paid
  * @param merchant          extracted merchant name (from description for bank intermediary transactions)
  * @param merchantConfidence confidence score for merchant extraction (0.0 - 1.0)
+ * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
  */
 public record OriginalTransactionData(
         String bankTransactionId,
@@ -27,7 +28,8 @@ public record OriginalTransactionData(
         Type type,
         ZonedDateTime paidDate,
         String merchant,
-        Double merchantConfidence
+        Double merchantConfidence,
+        String counterpartyAccount
 ) {
     /**
      * Returns effective merchant (name if merchant is null).

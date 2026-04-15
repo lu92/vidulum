@@ -87,7 +87,8 @@ public class UploadCsvCommandHandler
                 row.type(),
                 paidDate,
                 row.merchant(),
-                row.merchantConfidence()
+                row.merchantConfidence(),
+                row.counterpartyAccount()
         );
     }
 
