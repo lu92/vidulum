@@ -194,12 +194,30 @@ public class AiMappingRulesPromptBuilder {
         - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
         - ✓ description (REQUIRED if exists) - WHY/WHAT the payment is for - use DIRECT
         - ○ bookingDate (optional) - use DATE_PARSE
-        - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
-        - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
+        - ✓ sourceAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - sender account for grouping
+        - ✓ targetAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - recipient account for grouping
         - ○ merchant (optional) - use MERCHANT_EXTRACT
         - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
 
         ⚠️ If the CSV has a column with transaction purpose/title/reference, you MUST map it to description!
+
+        11. ACCOUNT NUMBER MAPPING (IMPORTANT FOR TRANSACTION GROUPING):
+
+            Account numbers help identify unique counterparties for pattern matching.
+            If CSV has columns with account numbers, you MUST map them:
+
+            - sourceAccountNumber: Account that SENT money (for INFLOW transactions)
+              Common column names: "Rachunek źródłowy", "Source Account", "Sender Account", "From Account"
+
+            - targetAccountNumber: Account that RECEIVED money (for OUTFLOW transactions)
+              Common column names: "Rachunek docelowy", "Target Account", "Beneficiary Account", "To Account"
+
+            Note: Some banks use a single "counterparty account" column for both.
+            In that case, map it to BOTH sourceAccountNumber and targetAccountNumber -
+            the system will use the correct one based on transaction type.
+
+            IMPORTANT: Account numbers may have leading apostrophe (') in CSV - this is Excel formatting.
+            Use IBAN_NORMALIZE transformation to clean and normalize account numbers.
 
         12. BANK CATEGORY MAPPING (IMPORTANT):
             - bankCategory is the bank's transaction type/category
