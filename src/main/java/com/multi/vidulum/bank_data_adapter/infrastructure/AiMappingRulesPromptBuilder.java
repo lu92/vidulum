@@ -196,12 +196,12 @@ public class AiMappingRulesPromptBuilder {
         - ○ bookingDate (optional) - use DATE_PARSE
         - ✓ sourceAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - sender account for grouping
         - ✓ targetAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - recipient account for grouping
-        - ○ merchant (optional) - use MERCHANT_EXTRACT
-        - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
+        - ✓ merchant (REQUIRED for card transactions) - use MERCHANT_EXTRACT
+        - ✓ merchantConfidence (REQUIRED when merchant is mapped) - use MERCHANT_CONFIDENCE
 
         ⚠️ If the CSV has a column with transaction purpose/title/reference, you MUST map it to description!
 
-        11. ACCOUNT NUMBER MAPPING (IMPORTANT FOR TRANSACTION GROUPING):
+        14. ACCOUNT NUMBER MAPPING (IMPORTANT FOR TRANSACTION GROUPING):
 
             Account numbers help identify unique counterparties for pattern matching.
             If CSV has columns with account numbers, you MUST map them:
@@ -219,16 +219,71 @@ public class AiMappingRulesPromptBuilder {
             IMPORTANT: Account numbers may have leading apostrophe (') in CSV - this is Excel formatting.
             Use IBAN_NORMALIZE transformation to clean and normalize account numbers.
 
-        12. BANK CATEGORY MAPPING (IMPORTANT):
+        15. BANK CATEGORY MAPPING (IMPORTANT):
             - bankCategory is the bank's transaction type/category
             - Common source columns: "Rodzaj operacji", "Typ operacji", "Kategoria", "Transaction Type", "Category"
             - This is different from type (INFLOW/OUTFLOW) - it's the bank's classification
             - Examples of bank categories: "Przelewy wychodzące", "Opłaty i prowizje", "Płatności kartą"
             - If such column exists, you MUST map it to bankCategory
 
-        11. MERCHANT EXTRACTION (for bank intermediary transactions):
-            - When "name" contains bank intermediary, extract real merchant from description
-            - Example: "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → merchant: "NETFLIX"
+        13. MERCHANT EXTRACTION (CRITICAL FOR CARD TRANSACTIONS):
+
+            ⚠️ THIS IS EXTREMELY IMPORTANT FOR ACCURATE CATEGORIZATION!
+
+            Bank card transactions often show the BANK as the counterparty (name column),
+            while the REAL MERCHANT is hidden in the description/title column.
+
+            EXAMPLES OF BANK INTERMEDIARY PATTERNS (in name column):
+            - "BANK PEKAO S.A." → Card transaction processed by Pekao bank
+            - "BANK MILLENNIUM S.A." → Card transaction processed by Millennium
+            - "BNP PARIBAS BANK POLSKA" → Card transaction processed by BNP
+            - "SANTANDER BANK POLSKA" → Card transaction processed by Santander
+            - "ING BANK ŚLĄSKI" → Card transaction processed by ING
+            - "mBank S.A." → Card transaction processed by mBank
+            - Any pattern containing "ROZLICZENIE TRANSAKCJI" or "TRANSAKCJA KARTĄ"
+
+            WHEN YOU SEE BANK INTERMEDIARY IN NAME COLUMN, YOU MUST:
+            1. Add merchant mapping with MERCHANT_EXTRACT transformation
+            2. Add merchantConfidence mapping with MERCHANT_CONFIDENCE transformation
+            3. Set nameColumn parameter pointing to the name column index
+
+            MERCHANT EXTRACTION EXAMPLE:
+            If CSV has:
+            - Column 2: "Nadawca / Odbiorca" = "BANK PEKAO S.A."
+            - Column 6: "Tytułem" = "ROZLICZENIE... Badoo help@badoo.com Dublin"
+
+            You MUST add these mappings:
+            {
+              "sourceColumn": "Tytułem",
+              "sourceIndex": 6,
+              "targetField": "merchant",
+              "transformationType": "MERCHANT_EXTRACT",
+              "transformationParams": {"nameColumn": "2", "descriptionColumn": "6"},
+              "required": false
+            },
+            {
+              "sourceColumn": "Tytułem",
+              "sourceIndex": 6,
+              "targetField": "merchantConfidence",
+              "transformationType": "MERCHANT_CONFIDENCE",
+              "transformationParams": {"nameColumn": "2", "descriptionColumn": "6"},
+              "required": false
+            }
+
+            The MERCHANT_EXTRACT transformer will:
+            - Check if name column contains bank intermediary
+            - Extract real merchant from description (e.g., "BADOO", "NETFLIX", "UBER")
+            - Return empty if name is already the real merchant
+
+            WITHOUT MERCHANT EXTRACTION:
+            - All card transactions will be grouped under "BANK PEKAO S.A." pattern
+            - System will categorize them ALL as "Other expenses"
+            - User loses visibility into BADOO, NETFLIX, UBER, etc. spending
+
+            WITH MERCHANT EXTRACTION:
+            - Each merchant (BADOO, NETFLIX, UBER) becomes a separate pattern
+            - System can categorize BADOO → Dating, NETFLIX → Streaming, UBER → Transport
+            - User gets accurate spending breakdown by actual merchant
 
         ## ERROR FORMAT (if cannot parse):
         {
