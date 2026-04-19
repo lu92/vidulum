@@ -473,6 +473,25 @@ public class BankDataIngestionHttpActor {
     }
 
     /**
+     * Forces all unmapped transactions to be mapped to "Uncategorized" category.
+     * This skips AI categorization and makes the session ready for import.
+     */
+    public BankDataIngestionDto.ForceUncategorizedResponse forceUncategorized(String cashFlowId, String stagingSessionId) {
+        ResponseEntity<BankDataIngestionDto.ForceUncategorizedResponse> response = restTemplate.exchange(
+                baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId + "/force-uncategorized",
+                HttpMethod.POST,
+                new HttpEntity<>(jsonHeaders()),
+                BankDataIngestionDto.ForceUncategorizedResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        BankDataIngestionDto.ForceUncategorizedResponse body = response.getBody();
+        log.info("Forced uncategorized for session {} in CashFlow {}: transactionsUpdated={}",
+                stagingSessionId, cashFlowId, body.getTransactionsUpdated());
+        return body;
+    }
+
+    /**
      * Uploads a CSV file from classpath resources and stages transactions.
      * The CSV file must be in BankCsvRow format.
      *
@@ -491,6 +510,11 @@ public class BankDataIngestionHttpActor {
             throw new RuntimeException("Failed to read CSV file from classpath: " + resourcePath, e);
         }
 
+        // Extract filename from path
+        String fileName = resourcePath.contains("/")
+                ? resourcePath.substring(resourcePath.lastIndexOf('/') + 1)
+                : resourcePath;
+
         // Build multipart request
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -503,6 +527,8 @@ public class BankDataIngestionHttpActor {
                 fileContent,
                 createFileHeaders(resourcePath)
         ));
+        // Pass originalFileName explicitly to ensure metadata is created in session entity
+        body.add("originalFileName", fileName);
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 

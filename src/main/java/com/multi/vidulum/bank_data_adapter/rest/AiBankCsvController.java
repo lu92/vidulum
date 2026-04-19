@@ -119,13 +119,24 @@ public class AiBankCsvController {
         // Get transformation
         AiCsvTransformationDocument doc = transformService.getTransformation(transformationId, userId);
 
-        // Send to ingestion
+        // Build metadata from transformation document
+        BankDataIngestionClient.TransformationMetadata metadata = new BankDataIngestionClient.TransformationMetadata(
+            doc.getId(),
+            doc.getDetectedLanguage(),
+            doc.getDetectedBank(),
+            doc.getDetectedCountry(),
+            doc.getOriginalFileName(),
+            userId
+        );
+
+        // Send to ingestion with metadata
         String fileName = String.format("ai_transformed_%s.csv", transformationId.substring(0, 8));
         BankDataIngestionClient.UploadCsvResponse uploadResponse = ingestionClient.sendToIngestion(
             request.cashFlowId(),
             doc.getTransformedCsvContent(),
             fileName,
-            authHeader
+            authHeader,
+            metadata
         );
 
         // Extract stagingSessionId from response

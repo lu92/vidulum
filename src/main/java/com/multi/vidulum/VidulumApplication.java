@@ -6,6 +6,7 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappi
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.ImportJobEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.PatternMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagedTransactionEntity;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.entity.CashFlowForecastStatementEntity;
@@ -101,6 +102,7 @@ public class VidulumApplication {
         mongoTemplate.dropCollection(CashFlowForecastStatementEntity.class);
 
         // Bank Data Ingestion
+        mongoTemplate.dropCollection(StagingSessionEntity.class);
         mongoTemplate.dropCollection(StagedTransactionEntity.class);
         mongoTemplate.dropCollection(CategoryMappingEntity.class);
         mongoTemplate.dropCollection(ImportJobEntity.class);

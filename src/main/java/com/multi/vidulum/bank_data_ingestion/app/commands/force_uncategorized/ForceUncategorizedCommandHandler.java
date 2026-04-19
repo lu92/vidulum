@@ -1,9 +1,10 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized;
 
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -33,6 +34,7 @@ public class ForceUncategorizedCommandHandler
     private static final String UNCATEGORIZED_CATEGORY = "Uncategorized";
 
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
     private final Clock clock;
 
@@ -250,6 +252,19 @@ public class ForceUncategorizedCommandHandler
         int pending = (int) transactions.stream().filter(StagedTransaction::isPendingMapping).count();
 
         boolean readyForImport = pending == 0 && invalid == 0;
+
+        // Update StagingSessionEntity
+        StagingSessionEntity sessionEntity = stagingSessionRepository
+                .findBySessionId(command.stagingSessionId().id())
+                .orElse(null);
+        if (sessionEntity != null) {
+            // Mark AI categorization as SKIPPED since user chose to force uncategorized
+            sessionEntity.skipAiCategorization();
+            sessionEntity.updateSummary(total, valid, invalid, duplicates, pending);
+            stagingSessionRepository.save(sessionEntity);
+            log.debug("Updated session entity status after force-uncategorized: {}, aiStatus: {}",
+                    sessionEntity.getStatus(), sessionEntity.getAiCategorizationStatus());
+        }
 
         return new ForceUncategorizedResult(
                 command.cashFlowId(),

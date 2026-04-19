@@ -1,6 +1,8 @@
 package com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview;
 
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Money;
@@ -22,6 +24,7 @@ public class GetStagingPreviewQueryHandler
         implements QueryHandler<GetStagingPreviewQuery, GetStagingPreviewResult> {
 
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final Clock clock;
@@ -44,6 +47,21 @@ public class GetStagingPreviewQueryHandler
             return createExpiredResult(query, expiresAt);
         }
 
+        // Load session metadata
+        StagingSessionEntity sessionEntity = stagingSessionRepository
+                .findBySessionId(query.stagingSessionId().id())
+                .orElse(null);
+
+        GetStagingPreviewResult.SessionMetadata metadata = sessionEntity != null
+                ? new GetStagingPreviewResult.SessionMetadata(
+                        sessionEntity.getTransformationId(),
+                        sessionEntity.getDetectedLanguage(),
+                        sessionEntity.getDetectedBank(),
+                        sessionEntity.getDetectedCountry(),
+                        sessionEntity.getOriginalFileName()
+                )
+                : null;
+
         // Load CashFlow for category breakdown
         CashFlow cashFlow = domainCashFlowRepository.findById(query.cashFlowId())
                 .orElseThrow(() -> new CashFlowDoesNotExistsException(query.cashFlowId()));
@@ -52,7 +70,7 @@ public class GetStagingPreviewQueryHandler
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(query.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        return buildResult(query, stagedTransactions, snapshot, mappingMap, expiresAt);
+        return buildResult(query, stagedTransactions, snapshot, mappingMap, expiresAt, metadata);
     }
 
     private GetStagingPreviewResult createExpiredResult(GetStagingPreviewQuery query, ZonedDateTime expiresAt) {
@@ -62,6 +80,7 @@ public class GetStagingPreviewQueryHandler
                 GetStagingPreviewResult.StagingStatus.EXPIRED,
                 expiresAt,
                 new GetStagingPreviewResult.StagingSummary(0, 0, 0, 0),
+                null,  // no metadata for expired sessions
                 List.of(),
                 List.of(),
                 List.of(),
@@ -74,7 +93,8 @@ public class GetStagingPreviewQueryHandler
             List<StagedTransaction> stagedTransactions,
             CashFlowSnapshot snapshot,
             Map<MappingKey, CategoryMapping> mappingMap,
-            ZonedDateTime expiresAt) {
+            ZonedDateTime expiresAt,
+            GetStagingPreviewResult.SessionMetadata metadata) {
 
         // Calculate summary
         int total = stagedTransactions.size();
@@ -120,6 +140,7 @@ public class GetStagingPreviewQueryHandler
                 status,
                 expiresAt,
                 summary,
+                metadata,
                 transactionPreviews,
                 categoryBreakdown,
                 categoriesToCreate,

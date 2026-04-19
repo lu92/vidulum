@@ -15,11 +15,40 @@ import java.util.List;
  *
  * @param cashFlowId   the CashFlow to stage transactions for
  * @param transactions list of bank transactions to stage
+ * @param metadata     optional session metadata (from AI transformation or manual upload)
  */
 public record StageTransactionsCommand(
         CashFlowId cashFlowId,
-        List<BankTransaction> transactions
+        List<BankTransaction> transactions,
+        SessionMetadata metadata
 ) implements Command {
+
+    /**
+     * Constructor without metadata (for backward compatibility).
+     */
+    public StageTransactionsCommand(CashFlowId cashFlowId, List<BankTransaction> transactions) {
+        this(cashFlowId, transactions, null);
+    }
+
+    /**
+     * Optional metadata about the staging session source.
+     * Populated when session is created from AI transformation.
+     *
+     * @param transformationId  ID of the AI transformation that created this session (nullable)
+     * @param detectedLanguage  language detected by AI (e.g., "pl", "en", "de")
+     * @param detectedBank      bank detected by AI (e.g., "Nest Bank", "PKO BP")
+     * @param detectedCountry   country detected from bank or IBAN (e.g., "PL", "DE")
+     * @param originalFileName  original uploaded file name
+     * @param createdByUserId   user ID who created this session
+     */
+    public record SessionMetadata(
+            String transformationId,
+            String detectedLanguage,
+            String detectedBank,
+            String detectedCountry,
+            String originalFileName,
+            String createdByUserId
+    ) {}
 
     /**
      * A bank transaction to be staged.

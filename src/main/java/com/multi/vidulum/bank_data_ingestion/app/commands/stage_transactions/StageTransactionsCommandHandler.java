@@ -4,6 +4,8 @@ import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -28,6 +31,7 @@ public class StageTransactionsCommandHandler
         implements CommandHandler<StageTransactionsCommand, StageTransactionsResult> {
 
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
@@ -78,8 +82,34 @@ public class StageTransactionsCommandHandler
         // Save all staged transactions (including those pending mapping)
         stagedTransactionRepository.saveAll(stagedTransactions);
 
-        log.info("Staged {} transactions for CashFlow [{}] in session [{}] ({} pattern-matched)",
-                stagedTransactions.size(), command.cashFlowId().id(), stagingSessionId.id(), patternMatchedCount);
+        // Calculate summary counts
+        int totalCount = stagedTransactions.size();
+        int validCount = (int) stagedTransactions.stream().filter(StagedTransaction::isValid).count();
+        int invalidCount = (int) stagedTransactions.stream().filter(StagedTransaction::isInvalid).count();
+        int duplicateCount = (int) stagedTransactions.stream().filter(StagedTransaction::isDuplicate).count();
+        int unmappedCount = (int) stagedTransactions.stream().filter(StagedTransaction::isPendingMapping).count();
+
+        // Create and save StagingSessionEntity
+        Instant expiresAt = now.plusHours(config.getStagingTtlHours()).toInstant();
+        StageTransactionsCommand.SessionMetadata metadata = command.metadata();
+
+        StagingSessionEntity sessionEntity = StagingSessionEntity.create(
+                stagingSessionId.id(),
+                command.cashFlowId().id(),
+                metadata != null ? metadata.transformationId() : null,
+                metadata != null ? metadata.detectedLanguage() : null,
+                metadata != null ? metadata.detectedBank() : null,
+                metadata != null ? metadata.detectedCountry() : null,
+                metadata != null ? metadata.originalFileName() : null,
+                metadata != null ? metadata.createdByUserId() : null,
+                expiresAt,
+                now.toInstant()
+        );
+        sessionEntity.updateSummary(totalCount, validCount, invalidCount, duplicateCount, unmappedCount);
+        stagingSessionRepository.save(sessionEntity);
+
+        log.info("Staged {} transactions for CashFlow [{}] in session [{}] ({} pattern-matched, {} unmapped)",
+                stagedTransactions.size(), command.cashFlowId().id(), stagingSessionId.id(), patternMatchedCount, unmappedCount);
 
         // If there are unmapped categories, return HAS_UNMAPPED_CATEGORIES status
         if (!unmappedCategories.isEmpty()) {

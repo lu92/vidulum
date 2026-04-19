@@ -4,6 +4,8 @@ import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -30,6 +32,7 @@ public class RevalidateStagingCommandHandler
         implements CommandHandler<RevalidateStagingCommand, RevalidateStagingResult> {
 
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
@@ -191,6 +194,16 @@ public class RevalidateStagingCommandHandler
         int valid = (int) updatedTransactions.stream().filter(StagedTransaction::isValid).count();
         int invalid = (int) updatedTransactions.stream().filter(StagedTransaction::isInvalid).count();
         int duplicates = (int) updatedTransactions.stream().filter(StagedTransaction::isDuplicate).count();
+
+        // Update StagingSessionEntity
+        StagingSessionEntity sessionEntity = stagingSessionRepository
+                .findBySessionId(command.stagingSessionId().id())
+                .orElse(null);
+        if (sessionEntity != null) {
+            sessionEntity.updateSummary(total, valid, invalid, duplicates, stillPending);
+            stagingSessionRepository.save(sessionEntity);
+            log.debug("Updated session entity status: {}", sessionEntity.getStatus());
+        }
 
         RevalidateStagingResult.RevalidationSummary summary =
                 new RevalidateStagingResult.RevalidationSummary(

@@ -5,6 +5,8 @@ import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
@@ -34,6 +36,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
     private final ImportJobRepository importJobRepository;
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionEventEmitter eventEmitter;
@@ -137,6 +140,17 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         importJob = importJob.startProcessing(now);
         importJob = importJobRepository.save(importJob);
 
+        // Mark session as IMPORTING
+        StagingSessionEntity sessionEntity = stagingSessionRepository
+                .findBySessionId(command.stagingSessionId().id())
+                .orElse(null);
+        if (sessionEntity != null) {
+            sessionEntity.startImport(importJob.jobId().id());
+            stagingSessionRepository.save(sessionEntity);
+            log.debug("Marked session [{}] as IMPORTING with job [{}]",
+                    command.stagingSessionId().id(), importJob.jobId().id());
+        }
+
         try {
             // Phase 1: Create categories
             importJob = processCreateCategoriesPhase(importJob, categoriesToCreate, now);
@@ -157,6 +171,14 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                     importJob.result().transactionsImported(),
                     importJob.result().categoriesCreated().size());
 
+            // Mark session as COMPLETED
+            if (sessionEntity != null) {
+                sessionEntity.completeImport(importJob.result().transactionsImported());
+                stagingSessionRepository.save(sessionEntity);
+                log.debug("Marked session [{}] as COMPLETED with {} transactions imported",
+                        command.stagingSessionId().id(), importJob.result().transactionsImported());
+            }
+
             // Emit ImportJobCompletedEvent
             eventEmitter.emit(new ImportJobCompletedEvent(
                     importJob.jobId().id(),
@@ -173,6 +195,13 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             ZonedDateTime failedAt = ZonedDateTime.now(clock);
             importJob = importJob.fail(e.getMessage(), failedAt);
             importJob = importJobRepository.save(importJob);
+
+            // Mark session as failed (back to previous state for retry)
+            if (sessionEntity != null) {
+                sessionEntity.failImport();
+                stagingSessionRepository.save(sessionEntity);
+                log.debug("Marked session [{}] import as failed", command.stagingSessionId().id());
+            }
 
             // Emit ImportJobFailedEvent
             eventEmitter.emit(new ImportJobFailedEvent(
