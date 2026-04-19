@@ -89,7 +89,15 @@ public record BankCsvRow(
          * OPTIONAL - null if merchant was not extracted by AI.
          * Higher values indicate more reliable extraction.
          */
-        Double merchantConfidence
+        Double merchantConfidence,
+
+        /**
+         * Payment method used for transaction (HOW payment was made).
+         * OPTIONAL - null defaults to OTHER.
+         * This is separate from bankCategory which describes WHAT was purchased.
+         * Examples: CARD, TRANSFER, BLIK, DIRECT_DEBIT
+         */
+        PaymentMethod paymentMethod
 
 ) {
     /**
@@ -127,6 +135,13 @@ public record BankCsvRow(
     public boolean hasHighConfidenceMerchant() {
         return merchant != null && !merchant.isBlank()
                 && merchantConfidence != null && merchantConfidence >= 0.7;
+    }
+
+    /**
+     * Returns effective payment method (OTHER if null).
+     */
+    public PaymentMethod effectivePaymentMethod() {
+        return paymentMethod != null ? paymentMethod : PaymentMethod.OTHER;
     }
 
     /**

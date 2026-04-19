@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
+import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
@@ -26,13 +27,14 @@ public record StageTransactionsCommand(
      * @param bankTransactionId unique transaction ID from the bank (for deduplication)
      * @param name              transaction name
      * @param description       additional description (nullable)
-     * @param bankCategory      category from bank statement
+     * @param bankCategory      category from bank statement (WHAT was purchased)
      * @param money             transaction amount
      * @param type              INFLOW or OUTFLOW
      * @param paidDate          when the transaction was paid
      * @param merchant          extracted merchant name (nullable) - for bank intermediary transactions
      * @param merchantConfidence confidence score for merchant extraction (0.0-1.0, nullable)
      * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
+     * @param paymentMethod     payment method used (HOW payment was made: CARD, TRANSFER, BLIK, etc.)
      */
     public record BankTransaction(
             String bankTransactionId,
@@ -44,7 +46,8 @@ public record StageTransactionsCommand(
             ZonedDateTime paidDate,
             String merchant,
             Double merchantConfidence,
-            String counterpartyAccount
+            String counterpartyAccount,
+            PaymentMethod paymentMethod
     ) {
     }
 }

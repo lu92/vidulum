@@ -622,7 +622,8 @@ public class BankDataIngestionRestController {
                 json.getPaidDate(),
                 json.getMerchant(),
                 json.getMerchantConfidence(),
-                json.getCounterpartyAccount()
+                json.getCounterpartyAccount(),
+                json.getPaymentMethod()
         );
     }
 

@@ -38,6 +38,24 @@ public class AiCategorizationPromptBuilder {
             7. Only include categories that have actual transactions mapping to them
             8. CATEGORY NAME UNIQUENESS: Names must be unique within each type (INFLOW or OUTFLOW separately). The same name CAN exist in both types if logically justified (e.g., "Inne" for both income and expenses is OK).
             9. HIERARCHY CONSISTENCY FROM CACHE: When CACHED PATTERN INTENTS section is provided, respect intendedParent as a hint for hierarchy. If current structure differs from cached intents, you MAY suggest structureOptimizations to reorganize categories.
+            10. TITLE FIELD ANALYSIS - CRITICAL FOR ACCURATE CATEGORIZATION:
+                The "title" field contains the PURPOSE or REASON for the transaction. This is often MORE important than the merchant name for categorization!
+
+                ALWAYS analyze "title" to understand the transaction's real purpose:
+                - "title: czynsz za styczeń 2026" → This is RENT payment, regardless of recipient
+                - "title: składka ZUS" → This is SOCIAL INSURANCE, even if paid to generic account
+                - "title: darowizna dla schroniska" → This is DONATION/CHARITY
+                - "title: zwrot za bilet" → This is REFUND, not transportation
+                - "title: opłata za przedszkole" → This is CHILDCARE/EDUCATION
+
+                The "name" field shows WHO you transacted with.
+                The "title" field shows WHY/WHAT the payment is for.
+
+                Example: Two payments to the same person "Jan Kowalski":
+                - title: "czynsz za lokal" → Category: "Wynajem" (Rent)
+                - title: "pożyczka" → Category: "Pożyczki" (Loans)
+
+                Without analyzing title, both would incorrectly go to generic "Przelewy"!
 
             Category types:
             - OUTFLOW: Expenses (wydatki)

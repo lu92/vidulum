@@ -32,7 +32,7 @@ public class AiMappingRulesPromptBuilder {
         %s
 
         ## TARGET FORMAT (BankCsvRow):
-        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence,paymentMethod
 
         ## RETURN JSON with this structure:
         {
@@ -108,6 +108,7 @@ public class AiMappingRulesPromptBuilder {
         - SKIP: ignore this column
         - MERCHANT_EXTRACT: extract merchant name from description
         - MERCHANT_CONFIDENCE: calculate confidence score for merchant extraction (0.0-1.0)
+        - PAYMENT_METHOD_NORMALIZE: normalize payment method (CARD, TRANSFER, BLIK, DIRECT_DEBIT, STANDING_ORDER, CASH, OTHER)
 
         ## RULES FOR MAPPING:
         1. sourceIndex is 0-based column index
@@ -191,7 +192,8 @@ public class AiMappingRulesPromptBuilder {
         - ✓ amount (REQUIRED) - use AMOUNT_PARSE
         - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
         - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
-        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
+        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - WHAT was purchased (category column)
+        - ✓ paymentMethod (REQUIRED if exists) - use PAYMENT_METHOD_NORMALIZE - HOW payment was made
         - ✓ description (REQUIRED if exists) - WHY/WHAT the payment is for - use DIRECT
         - ○ bookingDate (optional) - use DATE_PARSE
         - ✓ sourceAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - sender account for grouping
@@ -219,12 +221,59 @@ public class AiMappingRulesPromptBuilder {
             IMPORTANT: Account numbers may have leading apostrophe (') in CSV - this is Excel formatting.
             Use IBAN_NORMALIZE transformation to clean and normalize account numbers.
 
-        15. BANK CATEGORY MAPPING (IMPORTANT):
-            - bankCategory is the bank's transaction type/category
-            - Common source columns: "Rodzaj operacji", "Typ operacji", "Kategoria", "Transaction Type", "Category"
-            - This is different from type (INFLOW/OUTFLOW) - it's the bank's classification
-            - Examples of bank categories: "Przelewy wychodzące", "Opłaty i prowizje", "Płatności kartą"
-            - If such column exists, you MUST map it to bankCategory
+        15. BANK CATEGORY MAPPING vs PAYMENT METHOD (CRITICAL DISTINCTION):
+
+            ⚠️ Banks often have TWO different classification columns. You MUST map them correctly:
+
+            a) bankCategory = WHAT was purchased (transaction category)
+               - Describes the purpose or category of the transaction
+               - Examples: "Zakupy", "Rozrywka", "Rachunki", "Jedzenie", "Transport"
+               - Common column names: "Kategoria", "Category"
+               - This helps AI categorize to user's budget categories
+
+            b) paymentMethod = HOW the payment was made (payment method)
+               - Describes the technical method of payment
+               - Examples: "Płatność kartą", "Przelew", "BLIK", "Zlecenie stałe", "Polecenie zapłaty"
+               - Common column names: "Rodzaj operacji", "Typ operacji", "Operation Type", "Transaction Type"
+               - This does NOT determine categories!
+
+            EXAMPLES OF CORRECT MAPPING:
+            | Column Value            | Maps To       | Reason                          |
+            |-------------------------|---------------|---------------------------------|
+            | "Płatność kartą"        | paymentMethod | HOW - card payment              |
+            | "Przelew wychodzący"    | paymentMethod | HOW - outgoing transfer         |
+            | "BLIK"                  | paymentMethod | HOW - BLIK payment              |
+            | "Zlecenie stałe"        | paymentMethod | HOW - standing order            |
+            | "Polecenie zapłaty"     | paymentMethod | HOW - direct debit              |
+            | "Zakupy"                | bankCategory  | WHAT - shopping                 |
+            | "Rozrywka"              | bankCategory  | WHAT - entertainment            |
+            | "Rachunki"              | bankCategory  | WHAT - bills                    |
+            | "Jedzenie"              | bankCategory  | WHAT - food                     |
+
+            PAYMENT_METHOD_NORMALIZE transformation will convert Polish/other languages to English:
+            - "Płatność kartą" → CARD
+            - "Przelew" / "Przelew wychodzący" / "Przelew przychodzący" → TRANSFER
+            - "BLIK" → BLIK
+            - "Polecenie zapłaty" → DIRECT_DEBIT
+            - "Zlecenie stałe" → STANDING_ORDER
+            - "Wypłata gotówkowa" / "Wpłata gotówkowa" → CASH
+            - Unknown → OTHER
+
+            If bank has separate columns for both, map BOTH fields:
+            {
+              "sourceColumn": "Rodzaj operacji",
+              "sourceIndex": 2,
+              "targetField": "paymentMethod",
+              "transformationType": "PAYMENT_METHOD_NORMALIZE",
+              "required": false
+            },
+            {
+              "sourceColumn": "Kategoria",
+              "sourceIndex": 11,
+              "targetField": "bankCategory",
+              "transformationType": "DIRECT",
+              "required": false
+            }
 
         13. MERCHANT EXTRACTION (CRITICAL FOR CARD TRANSACTIONS):
 

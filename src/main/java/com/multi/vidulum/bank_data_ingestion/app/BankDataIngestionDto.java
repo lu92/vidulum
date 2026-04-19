@@ -2,6 +2,7 @@ package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.Type;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -134,6 +135,7 @@ public class BankDataIngestionDto {
         private String merchant;
         private Double merchantConfidence;
         private String counterpartyAccount;
+        private PaymentMethod paymentMethod;
     }
 
     @Data

@@ -210,7 +210,8 @@ public class StageTransactionsCommandHandler
                 txn.paidDate(),
                 txn.merchant(),
                 txn.merchantConfidence(),
-                txn.counterpartyAccount()
+                txn.counterpartyAccount(),
+                txn.paymentMethod()
         );
 
         // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)

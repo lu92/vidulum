@@ -61,6 +61,7 @@ public class StagedTransactionEntity {
         private String merchant;
         private Double merchantConfidence;
         private String counterpartyAccount;
+        private PaymentMethod paymentMethod;
 
         public static OriginalDataDocument fromDomain(OriginalTransactionData data) {
             return OriginalDataDocument.builder()
@@ -75,6 +76,7 @@ public class StagedTransactionEntity {
                     .merchant(data.merchant())
                     .merchantConfidence(data.merchantConfidence())
                     .counterpartyAccount(data.counterpartyAccount())
+                    .paymentMethod(data.paymentMethod())
                     .build();
         }
 
@@ -89,7 +91,8 @@ public class StagedTransactionEntity {
                     ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC),
                     merchant,
                     merchantConfidence,
-                    counterpartyAccount
+                    counterpartyAccount,
+                    paymentMethod
             );
         }
     }

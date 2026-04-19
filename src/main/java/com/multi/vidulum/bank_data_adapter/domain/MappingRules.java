@@ -253,6 +253,14 @@ public class MappingRules {
          * Calculate confidence score for merchant extraction (0.0-1.0).
          * Higher confidence when merchant is clearly identifiable in description.
          */
-        MERCHANT_CONFIDENCE
+        MERCHANT_CONFIDENCE,
+
+        /**
+         * Normalize payment method from various bank formats to standard enum values.
+         * Converts Polish/other language payment types to English enum:
+         * CARD, TRANSFER, BLIK, DIRECT_DEBIT, STANDING_ORDER, CASH, OTHER.
+         * Used to separate HOW payment was made from WHAT was purchased (bankCategory).
+         */
+        PAYMENT_METHOD_NORMALIZE
     }
 }
