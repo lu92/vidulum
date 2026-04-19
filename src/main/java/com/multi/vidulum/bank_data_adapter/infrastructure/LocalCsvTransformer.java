@@ -26,7 +26,7 @@ public class LocalCsvTransformer {
 
     // BankCsvRow header (must match CsvParserService.HEADERS)
     private static final String OUTPUT_HEADER =
-        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence";
+        "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence,paymentMethod";
 
     /**
      * Transform full CSV using mapping rules.
@@ -137,6 +137,7 @@ public class LocalCsvTransformer {
         output.put("targetAccountNumber", "");
         output.put("merchant", "");
         output.put("merchantConfidence", "");
+        output.put("paymentMethod", "");
 
         // Apply mappings
         for (ColumnMapping mapping : rules.getColumnMappings()) {
@@ -189,7 +190,7 @@ public class LocalCsvTransformer {
         }
 
         // Build output CSV row
-        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
             escapeCsv(output.get("bankTransactionId")),
             escapeCsv(output.get("name")),
             escapeCsv(output.get("description")),
@@ -202,7 +203,8 @@ public class LocalCsvTransformer {
             escapeCsv(output.get("sourceAccountNumber")),
             escapeCsv(output.get("targetAccountNumber")),
             escapeCsv(output.get("merchant")),
-            output.get("merchantConfidence")
+            output.get("merchantConfidence"),
+            output.get("paymentMethod")
         );
     }
 
@@ -237,6 +239,8 @@ public class LocalCsvTransformer {
             case MERCHANT_EXTRACT -> extractMerchant(value, allColumns, mapping.getTransformationParams());
 
             case MERCHANT_CONFIDENCE -> calculateMerchantConfidence(value, allColumns, mapping.getTransformationParams());
+
+            case PAYMENT_METHOD_NORMALIZE -> normalizePaymentMethod(value);
         };
     }
 
@@ -573,6 +577,60 @@ public class LocalCsvTransformer {
                !upper.equals("DLA") && !upper.equals("OD") &&
                !upper.equals("DO") && !upper.equals("NA") &&
                !upper.equals("ZA") && !upper.equals("PRZELEW");
+    }
+
+    /**
+     * Normalize payment method from various bank formats to standard enum values.
+     * Converts Polish/other language payment types to English enum: CARD, TRANSFER, BLIK, etc.
+     */
+    private String normalizePaymentMethod(String value) {
+        if (value == null || value.isBlank()) {
+            return "OTHER";
+        }
+
+        String upper = value.toUpperCase().trim();
+
+        // CARD payments
+        if (upper.contains("KART") || upper.contains("CARD") ||
+            upper.contains("VISA") || upper.contains("MASTERCARD") ||
+            upper.contains("PŁATNOŚĆ KARTĄ") || upper.contains("TRANSAKCJA KARTĄ")) {
+            return "CARD";
+        }
+
+        // BLIK payments
+        if (upper.contains("BLIK")) {
+            return "BLIK";
+        }
+
+        // TRANSFER payments
+        if (upper.contains("PRZELEW") || upper.contains("TRANSFER") ||
+            upper.contains("WIRE") || upper.contains("ELIXIR") ||
+            upper.contains("SORBNET") || upper.contains("SWIFT") ||
+            upper.contains("EXPRESS ELIXIR")) {
+            return "TRANSFER";
+        }
+
+        // DIRECT DEBIT
+        if (upper.contains("POLECENIE ZAPŁATY") || upper.contains("DIRECT DEBIT") ||
+            upper.contains("OBCIĄŻENIE") || upper.contains("INKASO")) {
+            return "DIRECT_DEBIT";
+        }
+
+        // STANDING ORDER
+        if (upper.contains("ZLECENIE STAŁE") || upper.contains("STANDING ORDER") ||
+            upper.contains("RECURRING") || upper.contains("AUTOMATYCZNY PRZELEW")) {
+            return "STANDING_ORDER";
+        }
+
+        // CASH operations
+        if (upper.contains("GOTÓWKA") || upper.contains("CASH") ||
+            upper.contains("WYPŁATA") || upper.contains("WPŁATA") ||
+            upper.contains("WITHDRAWAL") || upper.contains("DEPOSIT") ||
+            upper.contains("BANKOMAT") || upper.contains("ATM")) {
+            return "CASH";
+        }
+
+        return "OTHER";
     }
 
     /**

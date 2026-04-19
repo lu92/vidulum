@@ -26,8 +26,8 @@ class AiCategorizationPromptBuilderTest {
     @Test
     @DisplayName("Should include system prompt with category type guidance")
     void shouldIncludeSystemPromptWithCategoryTypeGuidance() {
-        // when
-        String systemPrompt = promptBuilder.getSystemPrompt();
+        // when - pass language parameter (default Polish)
+        String systemPrompt = promptBuilder.getSystemPrompt("pl");
 
         // then
         assertThat(systemPrompt)
@@ -74,8 +74,8 @@ class AiCategorizationPromptBuilderTest {
                 )
         );
 
-        // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        // when - pass empty cachedPatternIntents and Polish language
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should contain type-separated sections
         assertThat(prompt).contains("EXISTING CATEGORIES");
@@ -99,7 +99,7 @@ class AiCategorizationPromptBuilderTest {
         List<PatternDeduplicator.PatternGroup> patterns = List.of();
 
         // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should include new JSON fields
         assertThat(prompt).contains("isExistingCategory");
@@ -115,7 +115,7 @@ class AiCategorizationPromptBuilderTest {
         List<PatternDeduplicator.PatternGroup> patterns = List.of();
 
         // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should emphasize type matching
         assertThat(prompt).contains("TYPE MATCHING");
@@ -158,7 +158,7 @@ class AiCategorizationPromptBuilderTest {
         );
 
         // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should separate OUTFLOW and INFLOW patterns
         assertThat(prompt).contains("OUTFLOW PATTERNS");
@@ -189,7 +189,7 @@ class AiCategorizationPromptBuilderTest {
         );
 
         // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should not crash and should not include empty sections
         assertThat(prompt).doesNotContain("INFLOW (przychody):");
@@ -219,7 +219,7 @@ class AiCategorizationPromptBuilderTest {
         );
 
         // when
-        String prompt = promptBuilder.buildUserPrompt(patterns, structure);
+        String prompt = promptBuilder.buildUserPrompt(patterns, structure, List.of(), "pl");
 
         // then - should include title from description
         assertThat(prompt).contains("title:");

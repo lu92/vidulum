@@ -11,13 +11,14 @@ import java.time.ZonedDateTime;
  * @param bankTransactionId unique transaction ID from the bank (for deduplication)
  * @param name              transaction name from bank
  * @param description       additional description (nullable)
- * @param bankCategory      category from bank statement
+ * @param bankCategory      category from bank statement (WHAT was purchased)
  * @param money             transaction amount
  * @param type              INFLOW or OUTFLOW
  * @param paidDate          when the transaction was paid
  * @param merchant          extracted merchant name (from description for bank intermediary transactions)
  * @param merchantConfidence confidence score for merchant extraction (0.0 - 1.0)
  * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
+ * @param paymentMethod     payment method used (HOW payment was made: CARD, TRANSFER, BLIK, etc.)
  */
 public record OriginalTransactionData(
         String bankTransactionId,
@@ -29,7 +30,8 @@ public record OriginalTransactionData(
         ZonedDateTime paidDate,
         String merchant,
         Double merchantConfidence,
-        String counterpartyAccount
+        String counterpartyAccount,
+        PaymentMethod paymentMethod
 ) {
     /**
      * Returns effective merchant (name if merchant is null).
@@ -45,5 +47,12 @@ public record OriginalTransactionData(
     public boolean hasHighConfidenceMerchant() {
         return merchant != null && !merchant.isBlank()
                 && merchantConfidence != null && merchantConfidence >= 0.7;
+    }
+
+    /**
+     * Returns effective payment method (OTHER if null).
+     */
+    public PaymentMethod effectivePaymentMethod() {
+        return paymentMethod != null ? paymentMethod : PaymentMethod.OTHER;
     }
 }

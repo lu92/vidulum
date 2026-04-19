@@ -375,12 +375,12 @@ class CsvParserServiceTest {
         // given
         BankCsvRow rowWithNulls = new BankCsvRow(
                 null, "Test", null, null, BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null
+                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null, null
         );
 
         BankCsvRow rowWithValues = new BankCsvRow(
                 "TXN1", "Test", "Desc", "Category", BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), LocalDate.now().plusDays(1), "ACC1", "ACC2", "NETFLIX", 0.95
+                Type.OUTFLOW, LocalDate.now(), LocalDate.now().plusDays(1), "ACC1", "ACC2", "NETFLIX", 0.95, null
         );
 
         // then
@@ -403,7 +403,7 @@ class CsvParserServiceTest {
         // given
         BankCsvRow row = new BankCsvRow(
                 null, "Test", null, "   ", BigDecimal.TEN, "PLN",
-                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null
+                Type.OUTFLOW, LocalDate.now(), null, null, null, null, null, null
         );
 
         // then

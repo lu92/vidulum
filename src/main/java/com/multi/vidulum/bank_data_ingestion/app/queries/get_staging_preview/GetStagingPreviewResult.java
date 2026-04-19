@@ -17,11 +17,24 @@ public record GetStagingPreviewResult(
         StagingStatus status,
         ZonedDateTime expiresAt,
         StagingSummary summary,
+        SessionMetadata metadata,
         List<StagedTransactionPreview> transactions,
         List<CategoryBreakdown> categoryBreakdown,
         List<CategoryToCreate> categoriesToCreate,
         List<MonthlyBreakdown> monthlyBreakdown
 ) {
+
+    /**
+     * Metadata about the staging session source (AI transformation).
+     */
+    public record SessionMetadata(
+            String transformationId,
+            String detectedLanguage,
+            String detectedBank,
+            String detectedCountry,
+            String originalFileName
+    ) {}
+
 
     public enum StagingStatus {
         READY_FOR_IMPORT,

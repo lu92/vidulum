@@ -32,7 +32,7 @@ public class AiMappingRulesPromptBuilder {
         %s
 
         ## TARGET FORMAT (BankCsvRow):
-        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence
+        bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence,paymentMethod
 
         ## RETURN JSON with this structure:
         {
@@ -108,6 +108,7 @@ public class AiMappingRulesPromptBuilder {
         - SKIP: ignore this column
         - MERCHANT_EXTRACT: extract merchant name from description
         - MERCHANT_CONFIDENCE: calculate confidence score for merchant extraction (0.0-1.0)
+        - PAYMENT_METHOD_NORMALIZE: normalize payment method (CARD, TRANSFER, BLIK, DIRECT_DEBIT, STANDING_ORDER, CASH, OTHER)
 
         ## RULES FOR MAPPING:
         1. sourceIndex is 0-based column index
@@ -139,50 +140,199 @@ public class AiMappingRulesPromptBuilder {
                "required": true
              }
 
-        9. CRITICAL - NAME FIELD IS REQUIRED:
-           - The "name" field is MANDATORY - without it rows will be rejected!
-           - Map the counterparty/merchant/recipient column to "name"
-           - Common source columns: "Dane kontrahenta", "Kontrahent", "Nadawca/Odbiorca", "Counterparty", "Merchant"
-           - If no single name column exists, use CONCAT to combine relevant columns
-           - Example:
-             {
-               "sourceColumn": "Dane kontrahenta",
-               "sourceIndex": 5,
-               "targetField": "name",
-               "transformationType": "DIRECT",
-               "transformationParams": {},
-               "required": true
-             }
+        9. CRITICAL - NAME vs DESCRIPTION DISTINCTION:
 
-        10. DESCRIPTION FIELD:
-            - Map transaction title/description to "description"
-            - Common source columns: "Tytuł operacji", "Opis", "Tytuł", "Description", "Reference"
+           Bank CSVs typically have TWO different text columns that must be mapped correctly:
+
+           "name" = WHO (counterparty)
+           - The person, company, or entity you transacted with
+           - Answer the question: "Who did I pay?" or "Who paid me?"
+           - Examples: "John Smith", "Netflix", "Tax Office", "Landlord LLC"
+
+           "description" = WHY/WHAT (transaction purpose)
+           - The reason, purpose, or reference for the payment
+           - Answer the question: "What is this payment for?"
+           - Examples: "Monthly rent", "Invoice #12345", "Salary January", "Loan payment"
+
+           EXAMPLES OF CORRECT MAPPING:
+           | name (WHO)              | description (WHY/WHAT)                    |
+           |-------------------------|-------------------------------------------|
+           | "John Smith"            | "Rent payment January 2025"               |
+           | "Social Insurance"      | "Monthly contribution"                    |
+           | "Netflix"               | "Subscription fee"                        |
+           | "Tax Authority"         | "Income tax Q4 2024"                      |
+           | "Electric Company"      | "Invoice 2025/01/1234"                    |
+
+           HOW TO IDENTIFY EACH COLUMN:
+           - name column: contains names of people, companies, institutions
+           - description column: contains purposes, references, invoice numbers, payment reasons
+             Look for column names with words like: title, purpose, reference, description, memo, reason
+
+        10. DESCRIPTION FIELD (CRITICAL FOR CATEGORIZATION):
+
+            ⚠️ The description field is ESSENTIAL for AI transaction categorization!
+
+            WITHOUT description, the system cannot distinguish between:
+            - Different types of payments to the same recipient
+            - The actual purpose of generic bank transfers
+            - Subcategories within the same expense type
+
+            EXAMPLE: Two payments to "Social Insurance Office":
+            - description: "retirement contribution" → Category: Retirement
+            - description: "health insurance" → Category: Healthcare
+            Without description, both would go to generic "Other expenses"!
+
+            ALWAYS map the transaction purpose/title/reference column to description.
+            If the CSV has such a column, you MUST include it in columnMappings.
 
         ## REQUIRED MAPPINGS CHECKLIST:
         You MUST include mappings for ALL of these fields:
         - ✓ operationDate (REQUIRED) - use DATE_PARSE
-        - ✓ name (REQUIRED) - use DIRECT or CONCAT
+        - ✓ name (REQUIRED) - WHO you transacted with - use DIRECT or CONCAT
         - ✓ amount (REQUIRED) - use AMOUNT_PARSE
         - ✓ currency (REQUIRED) - use CURRENCY_EXTRACT
         - ✓ type (REQUIRED) - use TYPE_DETECT with amountColumn param
-        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - map transaction type/category column
-        - ○ description (optional) - use DIRECT
+        - ✓ bankCategory (REQUIRED if exists) - use DIRECT - WHAT was purchased (category column)
+        - ✓ paymentMethod (REQUIRED if exists) - use PAYMENT_METHOD_NORMALIZE - HOW payment was made
+        - ✓ description (REQUIRED if exists) - WHY/WHAT the payment is for - use DIRECT
         - ○ bookingDate (optional) - use DATE_PARSE
-        - ○ sourceAccountNumber (optional) - use IBAN_NORMALIZE
-        - ○ targetAccountNumber (optional) - use IBAN_NORMALIZE
-        - ○ merchant (optional) - use MERCHANT_EXTRACT
-        - ○ merchantConfidence (optional) - use MERCHANT_CONFIDENCE
+        - ✓ sourceAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - sender account for grouping
+        - ✓ targetAccountNumber (REQUIRED if exists) - use IBAN_NORMALIZE - recipient account for grouping
+        - ✓ merchant (REQUIRED for card transactions) - use MERCHANT_EXTRACT
+        - ✓ merchantConfidence (REQUIRED when merchant is mapped) - use MERCHANT_CONFIDENCE
 
-        12. BANK CATEGORY MAPPING (IMPORTANT):
-            - bankCategory is the bank's transaction type/category
-            - Common source columns: "Rodzaj operacji", "Typ operacji", "Kategoria", "Transaction Type", "Category"
-            - This is different from type (INFLOW/OUTFLOW) - it's the bank's classification
-            - Examples of bank categories: "Przelewy wychodzące", "Opłaty i prowizje", "Płatności kartą"
-            - If such column exists, you MUST map it to bankCategory
+        ⚠️ If the CSV has a column with transaction purpose/title/reference, you MUST map it to description!
 
-        11. MERCHANT EXTRACTION (for bank intermediary transactions):
-            - When "name" contains bank intermediary, extract real merchant from description
-            - Example: "ROZLICZENIE TRANSAKCJI ZAGRANICZNYCH Nadawca: Netflix" → merchant: "NETFLIX"
+        14. ACCOUNT NUMBER MAPPING (IMPORTANT FOR TRANSACTION GROUPING):
+
+            Account numbers help identify unique counterparties for pattern matching.
+            If CSV has columns with account numbers, you MUST map them:
+
+            - sourceAccountNumber: Account that SENT money (for INFLOW transactions)
+              Common column names: "Rachunek źródłowy", "Source Account", "Sender Account", "From Account"
+
+            - targetAccountNumber: Account that RECEIVED money (for OUTFLOW transactions)
+              Common column names: "Rachunek docelowy", "Target Account", "Beneficiary Account", "To Account"
+
+            Note: Some banks use a single "counterparty account" column for both.
+            In that case, map it to BOTH sourceAccountNumber and targetAccountNumber -
+            the system will use the correct one based on transaction type.
+
+            IMPORTANT: Account numbers may have leading apostrophe (') in CSV - this is Excel formatting.
+            Use IBAN_NORMALIZE transformation to clean and normalize account numbers.
+
+        15. BANK CATEGORY MAPPING vs PAYMENT METHOD (CRITICAL DISTINCTION):
+
+            ⚠️ Banks often have TWO different classification columns. You MUST map them correctly:
+
+            a) bankCategory = WHAT was purchased (transaction category)
+               - Describes the purpose or category of the transaction
+               - Examples: "Zakupy", "Rozrywka", "Rachunki", "Jedzenie", "Transport"
+               - Common column names: "Kategoria", "Category"
+               - This helps AI categorize to user's budget categories
+
+            b) paymentMethod = HOW the payment was made (payment method)
+               - Describes the technical method of payment
+               - Examples: "Płatność kartą", "Przelew", "BLIK", "Zlecenie stałe", "Polecenie zapłaty"
+               - Common column names: "Rodzaj operacji", "Typ operacji", "Operation Type", "Transaction Type"
+               - This does NOT determine categories!
+
+            EXAMPLES OF CORRECT MAPPING:
+            | Column Value            | Maps To       | Reason                          |
+            |-------------------------|---------------|---------------------------------|
+            | "Płatność kartą"        | paymentMethod | HOW - card payment              |
+            | "Przelew wychodzący"    | paymentMethod | HOW - outgoing transfer         |
+            | "BLIK"                  | paymentMethod | HOW - BLIK payment              |
+            | "Zlecenie stałe"        | paymentMethod | HOW - standing order            |
+            | "Polecenie zapłaty"     | paymentMethod | HOW - direct debit              |
+            | "Zakupy"                | bankCategory  | WHAT - shopping                 |
+            | "Rozrywka"              | bankCategory  | WHAT - entertainment            |
+            | "Rachunki"              | bankCategory  | WHAT - bills                    |
+            | "Jedzenie"              | bankCategory  | WHAT - food                     |
+
+            PAYMENT_METHOD_NORMALIZE transformation will convert Polish/other languages to English:
+            - "Płatność kartą" → CARD
+            - "Przelew" / "Przelew wychodzący" / "Przelew przychodzący" → TRANSFER
+            - "BLIK" → BLIK
+            - "Polecenie zapłaty" → DIRECT_DEBIT
+            - "Zlecenie stałe" → STANDING_ORDER
+            - "Wypłata gotówkowa" / "Wpłata gotówkowa" → CASH
+            - Unknown → OTHER
+
+            If bank has separate columns for both, map BOTH fields:
+            {
+              "sourceColumn": "Rodzaj operacji",
+              "sourceIndex": 2,
+              "targetField": "paymentMethod",
+              "transformationType": "PAYMENT_METHOD_NORMALIZE",
+              "required": false
+            },
+            {
+              "sourceColumn": "Kategoria",
+              "sourceIndex": 11,
+              "targetField": "bankCategory",
+              "transformationType": "DIRECT",
+              "required": false
+            }
+
+        13. MERCHANT EXTRACTION (CRITICAL FOR CARD TRANSACTIONS):
+
+            ⚠️ THIS IS EXTREMELY IMPORTANT FOR ACCURATE CATEGORIZATION!
+
+            Bank card transactions often show the BANK as the counterparty (name column),
+            while the REAL MERCHANT is hidden in the description/title column.
+
+            EXAMPLES OF BANK INTERMEDIARY PATTERNS (in name column):
+            - "BANK PEKAO S.A." → Card transaction processed by Pekao bank
+            - "BANK MILLENNIUM S.A." → Card transaction processed by Millennium
+            - "BNP PARIBAS BANK POLSKA" → Card transaction processed by BNP
+            - "SANTANDER BANK POLSKA" → Card transaction processed by Santander
+            - "ING BANK ŚLĄSKI" → Card transaction processed by ING
+            - "mBank S.A." → Card transaction processed by mBank
+            - Any pattern containing "ROZLICZENIE TRANSAKCJI" or "TRANSAKCJA KARTĄ"
+
+            WHEN YOU SEE BANK INTERMEDIARY IN NAME COLUMN, YOU MUST:
+            1. Add merchant mapping with MERCHANT_EXTRACT transformation
+            2. Add merchantConfidence mapping with MERCHANT_CONFIDENCE transformation
+            3. Set nameColumn parameter pointing to the name column index
+
+            MERCHANT EXTRACTION EXAMPLE:
+            If CSV has:
+            - Column 2: "Nadawca / Odbiorca" = "BANK PEKAO S.A."
+            - Column 6: "Tytułem" = "ROZLICZENIE... Badoo help@badoo.com Dublin"
+
+            You MUST add these mappings:
+            {
+              "sourceColumn": "Tytułem",
+              "sourceIndex": 6,
+              "targetField": "merchant",
+              "transformationType": "MERCHANT_EXTRACT",
+              "transformationParams": {"nameColumn": "2", "descriptionColumn": "6"},
+              "required": false
+            },
+            {
+              "sourceColumn": "Tytułem",
+              "sourceIndex": 6,
+              "targetField": "merchantConfidence",
+              "transformationType": "MERCHANT_CONFIDENCE",
+              "transformationParams": {"nameColumn": "2", "descriptionColumn": "6"},
+              "required": false
+            }
+
+            The MERCHANT_EXTRACT transformer will:
+            - Check if name column contains bank intermediary
+            - Extract real merchant from description (e.g., "BADOO", "NETFLIX", "UBER")
+            - Return empty if name is already the real merchant
+
+            WITHOUT MERCHANT EXTRACTION:
+            - All card transactions will be grouped under "BANK PEKAO S.A." pattern
+            - System will categorize them ALL as "Other expenses"
+            - User loses visibility into BADOO, NETFLIX, UBER, etc. spending
+
+            WITH MERCHANT EXTRACTION:
+            - Each merchant (BADOO, NETFLIX, UBER) becomes a separate pattern
+            - System can categorize BADOO → Dating, NETFLIX → Streaming, UBER → Transport
+            - User gets accurate spending breakdown by actual merchant
 
         ## ERROR FORMAT (if cannot parse):
         {

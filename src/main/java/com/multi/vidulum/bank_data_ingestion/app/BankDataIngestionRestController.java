@@ -319,16 +319,47 @@ public class BankDataIngestionRestController {
     /**
      * Upload a CSV file with bank transactions in BankCsvRow format.
      * Parses the CSV and stages transactions for import.
+     *
+     * Optional metadata fields can be passed from AI transformation:
+     * - transformationId: ID of the AI transformation that created this CSV
+     * - detectedLanguage: Language detected by AI (e.g., "pl", "en", "de")
+     * - detectedBank: Bank detected by AI (e.g., "Nest Bank", "PKO BP")
+     * - detectedCountry: Country detected from bank or IBAN (e.g., "PL", "DE")
+     * - originalFileName: Original uploaded file name
+     * - userId: User ID who created this session
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public BankDataIngestionDto.UploadCsvResponse uploadCsv(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "transformationId", required = false) String transformationId,
+            @RequestParam(value = "detectedLanguage", required = false) String detectedLanguage,
+            @RequestParam(value = "detectedBank", required = false) String detectedBank,
+            @RequestParam(value = "detectedCountry", required = false) String detectedCountry,
+            @RequestParam(value = "originalFileName", required = false) String originalFileName,
+            @RequestParam(value = "userId", required = false) String userId) {
+
+        // Build metadata if any field is present
+        UploadCsvCommand.SessionMetadata metadata = null;
+        if (transformationId != null || detectedLanguage != null || detectedBank != null ||
+                detectedCountry != null || originalFileName != null || userId != null) {
+            // If no userId provided, try to get from security context
+            String effectiveUserId = userId != null ? userId : getCurrentUserId();
+            metadata = new UploadCsvCommand.SessionMetadata(
+                    transformationId,
+                    detectedLanguage,
+                    detectedBank,
+                    detectedCountry,
+                    originalFileName != null ? originalFileName : file.getOriginalFilename(),
+                    effectiveUserId
+            );
+        }
 
         UploadCsvResult result = commandGateway.send(
                 new UploadCsvCommand(
                         CashFlowId.of(cashFlowId),
-                        file
+                        file,
+                        metadata
                 )
         );
 
@@ -622,7 +653,8 @@ public class BankDataIngestionRestController {
                 json.getPaidDate(),
                 json.getMerchant(),
                 json.getMerchantConfidence(),
-                json.getCounterpartyAccount()
+                json.getCounterpartyAccount(),
+                json.getPaymentMethod()
         );
     }
 

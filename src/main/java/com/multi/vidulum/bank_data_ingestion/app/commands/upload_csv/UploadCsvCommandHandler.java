@@ -56,9 +56,23 @@ public class UploadCsvCommandHandler
                 .map(this::toBankTransaction)
                 .toList();
 
+        // Convert metadata if present
+        StageTransactionsCommand.SessionMetadata stageMetadata = null;
+        if (command.metadata() != null) {
+            UploadCsvCommand.SessionMetadata meta = command.metadata();
+            stageMetadata = new StageTransactionsCommand.SessionMetadata(
+                    meta.transformationId(),
+                    meta.detectedLanguage(),
+                    meta.detectedBank(),
+                    meta.detectedCountry(),
+                    meta.originalFileName(),
+                    meta.createdByUserId()
+            );
+        }
+
         // Delegate directly to StageTransactionsCommandHandler to avoid circular dependency
         StageTransactionsResult stagingResult = stageTransactionsCommandHandler.handle(
-                new StageTransactionsCommand(command.cashFlowId(), transactions)
+                new StageTransactionsCommand(command.cashFlowId(), transactions, stageMetadata)
         );
 
         log.info("CSV upload completed for CashFlow [{}]: {} rows parsed, {} staged",
@@ -88,7 +102,8 @@ public class UploadCsvCommandHandler
                 paidDate,
                 row.merchant(),
                 row.merchantConfidence(),
-                row.counterpartyAccount()
+                row.counterpartyAccount(),
+                row.effectivePaymentMethod()
         );
     }
 

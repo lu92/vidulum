@@ -1,6 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
+import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.Type;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -43,7 +44,8 @@ public class CsvParserService {
             "sourceAccountNumber",
             "targetAccountNumber",
             "merchant",
-            "merchantConfidence"
+            "merchantConfidence",
+            "paymentMethod"
     };
 
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
@@ -146,7 +148,8 @@ public class CsvParserService {
                 normalizeIban(getOptionalString(record, "sourceAccountNumber"), currency),
                 normalizeIban(getOptionalString(record, "targetAccountNumber"), currency),
                 getOptionalString(record, "merchant"),
-                getOptionalDouble(record, "merchantConfidence")
+                getOptionalDouble(record, "merchantConfidence"),
+                getOptionalPaymentMethod(record, "paymentMethod")
         );
     }
 
@@ -248,6 +251,18 @@ public class CsvParserService {
             // Handle both comma and dot as decimal separator
             String normalized = value.trim().replace(",", ".");
             return Double.parseDouble(normalized);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private PaymentMethod getOptionalPaymentMethod(CSVRecord record, String column) {
+        try {
+            String value = record.get(column);
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            return PaymentMethod.valueOf(value.trim().toUpperCase());
         } catch (Exception e) {
             return null;
         }

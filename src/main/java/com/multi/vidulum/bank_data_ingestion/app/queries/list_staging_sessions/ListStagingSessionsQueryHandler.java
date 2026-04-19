@@ -1,24 +1,24 @@
 package com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions;
 
-import com.multi.vidulum.bank_data_ingestion.domain.StagedTransaction;
-import com.multi.vidulum.bank_data_ingestion.domain.StagedTransactionRepository;
 import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionId;
-import com.multi.vidulum.bank_data_ingestion.domain.ValidationStatus;
+import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionStatus;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Handler for listing active staging sessions for a CashFlow.
- * Groups staged transactions by session and returns summary for each.
+ * Uses StagingSessionEntity for efficient querying instead of computing from transactions.
  */
 @Slf4j
 @Component
@@ -26,28 +26,31 @@ import java.util.stream.Collectors;
 public class ListStagingSessionsQueryHandler
         implements QueryHandler<ListStagingSessionsQuery, ListStagingSessionsResult> {
 
-    private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final Clock clock;
 
     @Override
     public ListStagingSessionsResult query(ListStagingSessionsQuery query) {
-        // Get all staged transactions for this CashFlow
-        List<StagedTransaction> allTransactions = stagedTransactionRepository.findByCashFlowId(query.cashFlowId());
+        // Get all staging sessions for this CashFlow (MongoDB TTL index handles expiration)
+        List<StagingSessionEntity> sessions = stagingSessionRepository
+                .findByCashFlowId(query.cashFlowId().id());
 
-        ZonedDateTime now = ZonedDateTime.now(clock);
+        Instant now = Instant.now(clock);
 
-        // Group by staging session and filter out expired sessions
-        Map<StagingSessionId, List<StagedTransaction>> transactionsBySession = allTransactions.stream()
-                .filter(tx -> tx.expiresAt().isAfter(now)) // Only non-expired
-                .collect(Collectors.groupingBy(StagedTransaction::stagingSessionId));
-
-        // Build summary for each session
-        List<ListStagingSessionsResult.StagingSessionSummary> summaries = transactionsBySession.entrySet().stream()
-                .map(entry -> buildSessionSummary(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparing(ListStagingSessionsResult.StagingSessionSummary::createdAt).reversed()) // Most recent first
+        // Build summary for each session, filtering out expired ones
+        // Sort by createdAt descending, then by sessionId descending for stable ordering
+        List<ListStagingSessionsResult.StagingSessionSummary> summaries = sessions.stream()
+                .filter(session -> session.getExpiresAt().isAfter(now)) // Only non-expired
+                .map(this::buildSessionSummary)
+                .sorted(Comparator
+                        .comparing(ListStagingSessionsResult.StagingSessionSummary::createdAt).reversed()
+                        .thenComparing(s -> s.stagingSessionId().id(), Comparator.reverseOrder()))
                 .toList();
 
-        boolean hasPendingImport = !summaries.isEmpty();
+        // Check if there's any session that could be imported (not COMPLETED or IMPORTING)
+        boolean hasPendingImport = summaries.stream()
+                .anyMatch(s -> !s.status().equals(StagingSessionStatus.COMPLETED.name()) &&
+                               !s.status().equals(StagingSessionStatus.IMPORTING.name()));
 
         log.info("Found {} active staging sessions for CashFlow [{}]",
                 summaries.size(), query.cashFlowId().id());
@@ -60,47 +63,23 @@ public class ListStagingSessionsQueryHandler
     }
 
     private ListStagingSessionsResult.StagingSessionSummary buildSessionSummary(
-            StagingSessionId sessionId,
-            List<StagedTransaction> transactions) {
-
-        // Get createdAt and expiresAt from first transaction (all in same session should have same values)
-        StagedTransaction first = transactions.get(0);
-        ZonedDateTime createdAt = first.createdAt();
-        ZonedDateTime expiresAt = first.expiresAt();
-
-        // Count by validation status
-        int total = transactions.size();
-        int valid = (int) transactions.stream()
-                .filter(tx -> tx.validation().status() == ValidationStatus.VALID)
-                .count();
-        int invalid = (int) transactions.stream()
-                .filter(tx -> tx.validation().status() == ValidationStatus.INVALID)
-                .count();
-        int duplicate = (int) transactions.stream()
-                .filter(tx -> tx.validation().status() == ValidationStatus.DUPLICATE)
-                .count();
-
-        // Determine session status
-        String status = determineStatus(valid, invalid, total);
+            StagingSessionEntity session) {
 
         return new ListStagingSessionsResult.StagingSessionSummary(
-                sessionId,
-                status,
-                createdAt,
-                expiresAt,
-                new ListStagingSessionsResult.TransactionCounts(total, valid, invalid, duplicate)
+                new StagingSessionId(session.getSessionId()),
+                session.getStatus().name(),
+                toZonedDateTime(session.getCreatedAt()),
+                toZonedDateTime(session.getExpiresAt()),
+                new ListStagingSessionsResult.TransactionCounts(
+                        session.getTotalTransactions(),
+                        session.getValidTransactions(),
+                        session.getInvalidTransactions(),
+                        session.getDuplicateTransactions()
+                )
         );
     }
 
-    private String determineStatus(int valid, int invalid, int total) {
-        if (valid == total) {
-            return "READY_FOR_IMPORT";
-        } else if (valid > 0) {
-            return "PARTIALLY_VALID";
-        } else if (invalid == total) {
-            return "ALL_INVALID";
-        } else {
-            return "PENDING_REVIEW";
-        }
+    private ZonedDateTime toZonedDateTime(Instant instant) {
+        return instant != null ? instant.atZone(ZoneId.of("UTC")) : null;
     }
 }

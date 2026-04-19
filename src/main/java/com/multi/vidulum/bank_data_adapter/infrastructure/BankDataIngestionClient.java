@@ -43,16 +43,44 @@ public class BankDataIngestionClient {
      * @param csvContent       Transformed CSV content (BankCsvRow format)
      * @param fileName         File name for the upload
      * @param authToken        JWT token for authentication
+     * @param metadata         Optional metadata from AI transformation
      * @return Upload response with staging session ID
      */
-    public UploadCsvResponse sendToIngestion(String cashFlowId, String csvContent, String fileName, String authToken) {
-        log.info("Sending transformed CSV to ingestion: cashFlowId={}, fileName={}, size={}",
-            cashFlowId, fileName, csvContent.length());
+    public UploadCsvResponse sendToIngestion(
+            String cashFlowId,
+            String csvContent,
+            String fileName,
+            String authToken,
+            TransformationMetadata metadata) {
+        log.info("Sending transformed CSV to ingestion: cashFlowId={}, fileName={}, size={}, metadata={}",
+            cashFlowId, fileName, csvContent.length(), metadata != null);
 
         try {
             // Create multipart request
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new NamedByteArrayResource(csvContent.getBytes(StandardCharsets.UTF_8), fileName));
+
+            // Add metadata fields if present
+            if (metadata != null) {
+                if (metadata.transformationId() != null) {
+                    body.add("transformationId", metadata.transformationId());
+                }
+                if (metadata.detectedLanguage() != null) {
+                    body.add("detectedLanguage", metadata.detectedLanguage());
+                }
+                if (metadata.detectedBank() != null) {
+                    body.add("detectedBank", metadata.detectedBank());
+                }
+                if (metadata.detectedCountry() != null) {
+                    body.add("detectedCountry", metadata.detectedCountry());
+                }
+                if (metadata.originalFileName() != null) {
+                    body.add("originalFileName", metadata.originalFileName());
+                }
+                if (metadata.userId() != null) {
+                    body.add("userId", metadata.userId());
+                }
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -139,6 +167,25 @@ public class BankDataIngestionClient {
         String stagingSessionId,
         String cashFlowId,
         String status
+    ) {}
+
+    /**
+     * Backwards-compatible method without metadata.
+     */
+    public UploadCsvResponse sendToIngestion(String cashFlowId, String csvContent, String fileName, String authToken) {
+        return sendToIngestion(cashFlowId, csvContent, fileName, authToken, null);
+    }
+
+    /**
+     * Metadata from AI transformation to be passed to staging session.
+     */
+    public record TransformationMetadata(
+            String transformationId,
+            String detectedLanguage,
+            String detectedBank,
+            String detectedCountry,
+            String originalFileName,
+            String userId
     ) {}
 
     /**

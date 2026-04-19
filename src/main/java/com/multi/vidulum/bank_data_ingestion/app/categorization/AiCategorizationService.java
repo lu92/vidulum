@@ -63,13 +63,15 @@ public class AiCategorizationService {
      * @param transactions       the staged transactions
      * @param cashFlowId         the CashFlow ID (for per-CashFlow pattern isolation)
      * @param categoryStructure  existing categories with type and hierarchy
+     * @param detectedLanguage   language detected by AI transformation (e.g., "pl", "en") - may be null
      * @return categorization result with suggestions
      */
     public AiCategorizationResult categorize(
             StagingSessionId sessionId,
             List<StagedTransaction> transactions,
             String cashFlowId,
-            ExistingCategoryStructure categoryStructure) {
+            ExistingCategoryStructure categoryStructure,
+            String detectedLanguage) {
 
         if (transactions == null || transactions.isEmpty()) {
             log.info("No transactions to categorize for session: {}", sessionId);
@@ -167,7 +169,7 @@ public class AiCategorizationService {
                         uncachedPatterns.size(), patternsForAi.size(), maxPatternsToAi);
             }
 
-            AiCallResult aiResult = callAi(patternsForAi, categoryStructure, cachedPatternIntents);
+            AiCallResult aiResult = callAi(patternsForAi, categoryStructure, cachedPatternIntents, detectedLanguage);
 
             if (aiResult.success) {
                 structure = aiResult.structure;
@@ -240,10 +242,11 @@ public class AiCategorizationService {
      */
     private AiCallResult callAi(List<PatternDeduplicator.PatternGroup> patterns,
                                  ExistingCategoryStructure categoryStructure,
-                                 List<PatternMapping> cachedPatternIntents) {
+                                 List<PatternMapping> cachedPatternIntents,
+                                 String detectedLanguage) {
         try {
-            String systemPrompt = promptBuilder.getSystemPrompt();
-            String userPrompt = promptBuilder.buildUserPrompt(patterns, categoryStructure, cachedPatternIntents);
+            String systemPrompt = promptBuilder.getSystemPrompt(detectedLanguage);
+            String userPrompt = promptBuilder.buildUserPrompt(patterns, categoryStructure, cachedPatternIntents, detectedLanguage);
 
             log.debug("AI prompt size: {} chars", userPrompt.length());
 

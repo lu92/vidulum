@@ -5,6 +5,8 @@ import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.categorization.AiCategorizationService;
 import com.multi.vidulum.bank_data_ingestion.app.categorization.ExistingCategoryStructure;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class AiCategorizeCommandHandler
 
     private final CashFlowServiceClient cashFlowServiceClient;
     private final StagedTransactionRepository stagedTransactionRepository;
+    private final StagingSessionMongoRepository stagingSessionRepository;
     private final AiCategorizationService aiCategorizationService;
 
     @Override
@@ -54,6 +57,15 @@ public class AiCategorizeCommandHandler
 
         log.info("Found {} staged transactions for AI categorization", transactions.size());
 
+        // Step 2b: Mark session as AI categorization in progress
+        StagingSessionEntity sessionEntity = stagingSessionRepository
+                .findBySessionId(command.sessionId().id())
+                .orElse(null);
+        if (sessionEntity != null) {
+            sessionEntity.startAiCategorization();
+            stagingSessionRepository.save(sessionEntity);
+        }
+
         // Step 3: Get existing categories for context (with type and hierarchy)
         CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
         ExistingCategoryStructure categoryStructure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
@@ -64,12 +76,35 @@ public class AiCategorizeCommandHandler
 
         // Step 4: Call AI Categorization Service
         // Pass cashFlowId for per-CashFlow pattern isolation
-        AiCategorizationResult result = aiCategorizationService.categorize(
-                command.sessionId(),
-                transactions,
-                command.cashFlowId().id(),  // cashFlowId for per-CashFlow cache
-                categoryStructure
-        );
+        // Pass detectedLanguage from session entity for language-aware categorization
+        String detectedLanguage = sessionEntity != null ? sessionEntity.getDetectedLanguage() : null;
+
+        AiCategorizationResult result;
+        try {
+            result = aiCategorizationService.categorize(
+                    command.sessionId(),
+                    transactions,
+                    command.cashFlowId().id(),  // cashFlowId for per-CashFlow cache
+                    categoryStructure,
+                    detectedLanguage  // language for category name generation
+            );
+
+            // Step 5: Mark session as AI categorization completed
+            if (sessionEntity != null) {
+                sessionEntity.completeAiCategorization(
+                        result.cost().tokensUsed(),
+                        result.cost().estimatedCost()
+                );
+                stagingSessionRepository.save(sessionEntity);
+            }
+        } catch (Exception e) {
+            // Mark session as AI categorization failed
+            if (sessionEntity != null) {
+                sessionEntity.failAiCategorization();
+                stagingSessionRepository.save(sessionEntity);
+            }
+            throw e;
+        }
 
         log.info("AI categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual",
                 result.stats().totalPatterns(),

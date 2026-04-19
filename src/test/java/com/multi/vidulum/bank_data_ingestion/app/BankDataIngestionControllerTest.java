@@ -1301,8 +1301,9 @@ public class BankDataIngestionControllerTest {
                 csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
 
-        // when: upload CSV
-        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+        // when: upload CSV (pass null for optional metadata parameters)
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(
+                cashFlowId, file, null, null, null, null, null, null);
 
         log.info("Upload CSV response - parsed: {}/{}, staging status: {}",
                 response.getParseSummary().getSuccessfulRows(),
@@ -1340,8 +1341,9 @@ public class BankDataIngestionControllerTest {
                 csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
 
-        // when: upload CSV
-        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+        // when: upload CSV (pass null for optional metadata parameters)
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(
+                cashFlowId, file, null, null, null, null, null, null);
 
         log.info("Upload CSV with PENDING_MAPPING - staging status: {}, unmapped: {}",
                 response.getStagingResult().getStatus(), response.getStagingResult().getUnmappedCategories());
@@ -1377,8 +1379,9 @@ public class BankDataIngestionControllerTest {
                 csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
 
-        // when: upload CSV
-        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+        // when: upload CSV (pass null for optional metadata parameters)
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(
+                cashFlowId, file, null, null, null, null, null, null);
 
         log.info("Upload CSV with errors - successful: {}, failed: {}",
                 response.getParseSummary().getSuccessfulRows(),
@@ -1417,8 +1420,9 @@ public class BankDataIngestionControllerTest {
                 csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
 
-        // when: upload CSV
-        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+        // when: upload CSV (pass null for optional metadata parameters)
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(
+                cashFlowId, file, null, null, null, null, null, null);
 
         // then: transaction should be staged successfully with generated ID
         assertThat(response.getStagingResult()).isNotNull();
@@ -1446,8 +1450,9 @@ public class BankDataIngestionControllerTest {
                 csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8)
         );
 
-        // when: upload CSV
-        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(cashFlowId, file);
+        // when: upload CSV (pass null for optional metadata parameters)
+        BankDataIngestionDto.UploadCsvResponse response = bankDataIngestionRestController.uploadCsv(
+                cashFlowId, file, null, null, null, null, null, null);
 
         log.info("Upload CSV with all failures - errors: {}", response.getParseSummary().getErrors().size());
 

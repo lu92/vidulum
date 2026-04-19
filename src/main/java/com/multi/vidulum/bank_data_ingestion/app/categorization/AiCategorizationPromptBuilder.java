@@ -22,15 +22,23 @@ public class AiCategorizationPromptBuilder {
 
     /**
      * System prompt that defines the AI's role and output format.
+     *
+     * @param detectedLanguage language code (e.g., "pl", "en", "de") or null for default (Polish)
      */
-    public String getSystemPrompt() {
+    public String getSystemPrompt(String detectedLanguage) {
+        String languageName = getLanguageName(detectedLanguage);
+        String languageSpecificGuidelines = getLanguageSpecificGuidelines(detectedLanguage);
+
         return """
-            You are a financial transaction categorization expert for Polish personal finance.
+            You are a financial transaction categorization expert for personal finance.
             Your task is to analyze transaction patterns and suggest an optimal nested category structure.
 
+            IMPORTANT: The detected language of transactions is %s. All category names MUST be in %s.
+
             Guidelines:
+
             1. Create hierarchical categories (parent → subcategories) ONLY when there are 2+ subcategories
-            2. Use Polish category names
+            2. Use category names in the detected language (%s)
             3. Keep structure practical - 5-8 parent categories max
             4. Each subcategory should be specific enough to be useful
             5. Consider transaction frequency and amounts when prioritizing
@@ -38,11 +46,41 @@ public class AiCategorizationPromptBuilder {
             7. Only include categories that have actual transactions mapping to them
             8. CATEGORY NAME UNIQUENESS: Names must be unique within each type (INFLOW or OUTFLOW separately). The same name CAN exist in both types if logically justified (e.g., "Inne" for both income and expenses is OK).
             9. HIERARCHY CONSISTENCY FROM CACHE: When CACHED PATTERN INTENTS section is provided, respect intendedParent as a hint for hierarchy. If current structure differs from cached intents, you MAY suggest structureOptimizations to reorganize categories.
+            10. TITLE FIELD ANALYSIS - CRITICAL FOR ACCURATE CATEGORIZATION:
+                The "title" field contains the PURPOSE or REASON for the transaction. This is often MORE important than the merchant name for categorization!
+
+                ALWAYS analyze "title" to understand the transaction's real purpose:
+                - "title: czynsz za styczeń 2026" → This is RENT payment, regardless of recipient
+                - "title: składka ZUS" → This is SOCIAL INSURANCE, even if paid to generic account
+                - "title: darowizna dla schroniska" → This is DONATION/CHARITY
+                - "title: zwrot za bilet" → This is REFUND, not transportation
+                - "title: opłata za przedszkole" → This is CHILDCARE/EDUCATION
+
+                The "name" field shows WHO you transacted with.
+                The "title" field shows WHY/WHAT the payment is for.
+
+                Example: Two payments to the same person "Jan Kowalski":
+                - title: "czynsz za lokal" → Category: "Wynajem" (Rent)
+                - title: "pożyczka" → Category: "Pożyczki" (Loans)
+
+                Without analyzing title, both would incorrectly go to generic "Przelewy"!
 
             Category types:
             - OUTFLOW: Expenses (wydatki)
             - INFLOW: Income (przychody)
 
+            %s
+
+            You MUST respond with valid JSON only, no markdown, no explanation.
+            """.formatted(languageName, languageName, languageName, languageSpecificGuidelines);
+    }
+
+    /**
+     * Returns language-specific category examples based on detected language.
+     */
+    private String getLanguageSpecificGuidelines(String detectedLanguage) {
+        if ("pl".equalsIgnoreCase(detectedLanguage) || detectedLanguage == null || detectedLanguage.isBlank()) {
+            return """
             Common Polish parent categories for OUTFLOW:
             - "Opłaty obowiązkowe" (rent, utilities, insurance, subscriptions)
             - "Żywność" (groceries, restaurants, delivery)
@@ -59,9 +97,88 @@ public class AiCategorizationPromptBuilder {
             - "Zwroty" (refunds, returns)
             - "Odsetki" (interest, dividends)
             - "Inne przychody" (other income)
-
-            You MUST respond with valid JSON only, no markdown, no explanation.
             """;
+        } else if ("en".equalsIgnoreCase(detectedLanguage)) {
+            return """
+            Common English parent categories for OUTFLOW:
+            - "Bills & Utilities" (rent, utilities, insurance, subscriptions)
+            - "Food & Dining" (groceries, restaurants, delivery)
+            - "Transportation" (fuel, public transport, taxi, car maintenance)
+            - "Health & Medical" (pharmacy, medical visits)
+            - "Entertainment" (entertainment, hobbies, streaming)
+            - "Shopping" (clothing, electronics, home)
+            - "Savings & Investments" (savings, investments)
+            - "Other Expenses" (other, uncategorized)
+
+            Common English parent categories for INFLOW:
+            - "Salary" (salary, bonus)
+            - "Business Income" (freelance, self-employment)
+            - "Refunds" (refunds, returns)
+            - "Interest & Dividends" (interest, dividends)
+            - "Other Income" (other income)
+            """;
+        } else if ("de".equalsIgnoreCase(detectedLanguage)) {
+            return """
+            Common German parent categories for OUTFLOW:
+            - "Fixkosten" (rent, utilities, insurance, subscriptions)
+            - "Lebensmittel & Gastronomie" (groceries, restaurants, delivery)
+            - "Transport" (fuel, public transport, taxi, car maintenance)
+            - "Gesundheit" (pharmacy, medical visits)
+            - "Unterhaltung" (entertainment, hobbies, streaming)
+            - "Einkäufe" (clothing, electronics, home)
+            - "Sparen & Investitionen" (savings, investments)
+            - "Sonstige Ausgaben" (other, uncategorized)
+
+            Common German parent categories for INFLOW:
+            - "Gehalt" (salary, bonus)
+            - "Geschäftseinkommen" (business income)
+            - "Erstattungen" (refunds, returns)
+            - "Zinsen & Dividenden" (interest, dividends)
+            - "Sonstige Einnahmen" (other income)
+            """;
+        } else {
+            // Default to English for unknown languages
+            return """
+            Create category names in %s language.
+
+            Common parent categories for OUTFLOW:
+            - Bills & Utilities (rent, utilities, insurance, subscriptions)
+            - Food & Dining (groceries, restaurants, delivery)
+            - Transportation (fuel, public transport, taxi, car maintenance)
+            - Health & Medical (pharmacy, medical visits)
+            - Entertainment (entertainment, hobbies, streaming)
+            - Shopping (clothing, electronics, home)
+            - Savings & Investments (savings, investments)
+            - Other Expenses (other, uncategorized)
+
+            Common parent categories for INFLOW:
+            - Salary (salary, bonus)
+            - Business Income (freelance, self-employment)
+            - Refunds (refunds, returns)
+            - Interest & Dividends (interest, dividends)
+            - Other Income (other income)
+            """.formatted(getLanguageName(detectedLanguage));
+        }
+    }
+
+    /**
+     * Returns human-readable language name from language code.
+     */
+    private String getLanguageName(String languageCode) {
+        if (languageCode == null || languageCode.isBlank()) {
+            return "Polish"; // Default
+        }
+        return switch (languageCode.toLowerCase()) {
+            case "pl" -> "Polish";
+            case "en" -> "English";
+            case "de" -> "German";
+            case "fr" -> "French";
+            case "es" -> "Spanish";
+            case "it" -> "Italian";
+            case "cs" -> "Czech";
+            case "sk" -> "Slovak";
+            default -> languageCode.toUpperCase() + " language";
+        };
     }
 
     /**
@@ -69,28 +186,20 @@ public class AiCategorizationPromptBuilder {
      *
      * @param patternGroups the deduplicated pattern groups
      * @param categoryStructure existing categories with type and hierarchy
-     * @return the user prompt
-     */
-    public String buildUserPrompt(List<PatternDeduplicator.PatternGroup> patternGroups,
-                                   ExistingCategoryStructure categoryStructure) {
-        return buildUserPrompt(patternGroups, categoryStructure, List.of());
-    }
-
-    /**
-     * Builds the user prompt with pattern groups and cached pattern intents.
-     *
-     * @param patternGroups the deduplicated pattern groups
-     * @param categoryStructure existing categories with type and hierarchy
      * @param cachedPatternIntents patterns from cache with intendedParentCategory hints
+     * @param detectedLanguage language code (e.g., "pl", "en", "de") or null for default (Polish)
      * @return the user prompt
      */
     public String buildUserPrompt(List<PatternDeduplicator.PatternGroup> patternGroups,
                                    ExistingCategoryStructure categoryStructure,
-                                   List<PatternMapping> cachedPatternIntents) {
+                                   List<PatternMapping> cachedPatternIntents,
+                                   String detectedLanguage) {
 
         StringBuilder sb = new StringBuilder();
 
-        sb.append("Analyze these transaction patterns and suggest categories:\n\n");
+        String languageName = getLanguageName(detectedLanguage);
+        sb.append("Analyze these transaction patterns and suggest categories.\n");
+        sb.append("IMPORTANT: All category names MUST be in ").append(languageName).append(".\n\n");
 
         // Add existing categories context WITH TYPE AND HIERARCHY
         if (categoryStructure != null && !categoryStructure.isEmpty()) {
