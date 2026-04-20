@@ -88,6 +88,9 @@ vidulum:
 bank-data-adapter:
   max-file-size-bytes: 5242880  # 5MB
   max-retries: 2
+  enrichment:
+    enabled: true            # Enable enrichment (fills merchant + bankCategory)
+    batch-size: 50           # Transactions per AI call
 
 # Bank Data Ingestion REST client
 bank-data-ingestion:

@@ -1,5 +1,7 @@
 package com.multi.vidulum.bank_data_adapter.app;
 
+import com.multi.vidulum.bank_data_adapter.app.enrichment.EnrichmentResult;
+import com.multi.vidulum.bank_data_adapter.app.enrichment.TransactionEnrichmentService;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
 import com.multi.vidulum.bank_data_adapter.domain.DetectionResult;
@@ -62,6 +64,7 @@ public class AiBankCsvTransformService {
     private final MappingRulesCacheService mappingRulesCacheService;
     private final AiCsvTransformationRepository transformationRepository;
     private final CsvFormatDetector csvFormatDetector;
+    private final TransactionEnrichmentService enrichmentService;
     private final Clock clock;
 
     @Value("${bank-data-adapter.max-file-size-bytes:5242880}")
@@ -189,6 +192,49 @@ public class AiBankCsvTransformService {
         } else {
             // No rules available - use direct AI
             return transformWithDirectAi(document, csvString, bankHint, startTime);
+        }
+
+        // ========== ETAP 2: ENRICHMENT ==========
+        // Fill merchant and bankCategory for all transactions using AI
+        if (enrichmentService.needsEnrichment(transformedCsv)) {
+            log.info("🔄 ENRICHMENT: Starting enrichment for {} rows", rowCount);
+            try {
+                EnrichmentResult enrichmentResult = enrichmentService.enrich(
+                        transformedCsv,
+                        rules.getBankName(),
+                        rules.getLanguage()
+                );
+
+                if (enrichmentResult.isEnrichmentApplied()) {
+                    transformedCsv = enrichmentResult.getEnrichedCsvContent();
+                    warnings.addAll(enrichmentResult.getWarnings());
+
+                    // Update document with enrichment stats
+                    document.setEnrichmentApplied(true);
+                    document.setEnrichedAt(AiCsvTransformationDocument.toDate(ZonedDateTime.now(clock)));
+                    document.setEnrichmentTimeMs(enrichmentResult.getProcessingTimeMs());
+                    document.setEnrichmentAiCalls(enrichmentResult.getAiCallCount());
+                    document.setMerchantsExtracted(enrichmentResult.getMerchantsExtracted());
+                    document.setBankCategoriesInferred(enrichmentResult.getBankCategoriesInferred());
+                    document.setBankCategoriesKept(enrichmentResult.getBankCategoriesKept());
+                    document.setEnrichmentFallbackCount(enrichmentResult.getFallbackCount());
+                    document.setEnrichmentNotes(enrichmentResult.getProcessingNotes());
+
+                    log.info("✅ ENRICHMENT completed: {} merchants extracted, {} categories inferred, {} kept, {}ms",
+                            enrichmentResult.getMerchantsExtracted(),
+                            enrichmentResult.getBankCategoriesInferred(),
+                            enrichmentResult.getBankCategoriesKept(),
+                            enrichmentResult.getProcessingTimeMs());
+                }
+            } catch (Exception e) {
+                log.error("❌ ENRICHMENT failed, continuing with unenriched CSV", e);
+                warnings.add("Enrichment failed: " + e.getMessage());
+                document.setEnrichmentApplied(false);
+                document.setEnrichmentNotes("Enrichment failed: " + e.getMessage());
+            }
+        } else {
+            log.info("⏭️ ENRICHMENT not needed (disabled or no transactions)");
+            document.setEnrichmentApplied(false);
         }
 
         // Complete document

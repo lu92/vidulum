@@ -102,6 +102,17 @@ public class AiCsvTransformationDocument {
     private int monthsOfData;                       // Number of distinct months covered
     private List<String> monthsCovered;             // List of "YYYY-MM" strings in order
 
+    // ========== ENRICHMENT (ETAP 2) ==========
+    private boolean enrichmentApplied;              // Whether enrichment was applied
+    private Date enrichedAt;                        // When enrichment was applied
+    private long enrichmentTimeMs;                  // Enrichment processing time
+    private int enrichmentAiCalls;                  // Number of AI calls for enrichment (batches)
+    private int merchantsExtracted;                 // Number of merchants extracted
+    private int bankCategoriesInferred;             // Number of bank categories inferred (were empty)
+    private int bankCategoriesKept;                 // Number of bank categories kept (were filled)
+    private int enrichmentFallbackCount;            // Number of transactions using fallback
+    private String enrichmentNotes;                 // Processing notes from enrichment
+
     // ========== HELPER METHODS FOR ZONEDDATETIME CONVERSION ==========
 
     public ZonedDateTime getCreatedAtZoned() {
@@ -118,6 +129,14 @@ public class AiCsvTransformationDocument {
 
     public void setImportedAtFromZoned(ZonedDateTime zdt) {
         this.importedAt = zdt != null ? Date.from(zdt.toInstant()) : null;
+    }
+
+    public ZonedDateTime getEnrichedAtZoned() {
+        return enrichedAt != null ? ZonedDateTime.ofInstant(enrichedAt.toInstant(), ZoneOffset.UTC) : null;
+    }
+
+    public void setEnrichedAtFromZoned(ZonedDateTime zdt) {
+        this.enrichedAt = zdt != null ? Date.from(zdt.toInstant()) : null;
     }
 
     public static Date toDate(ZonedDateTime zdt) {

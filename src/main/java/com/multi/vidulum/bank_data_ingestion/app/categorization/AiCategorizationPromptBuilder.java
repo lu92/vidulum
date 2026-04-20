@@ -276,21 +276,45 @@ public class AiCategorizationPromptBuilder {
         if (!uniqueBankCategories.isEmpty()) {
             sb.append("""
 
-                ⚠️ WARNING ABOUT BANK CATEGORIES:
-                The following are ACTUAL bankCategory values from the bank's CSV export.
-                Most Polish banks use GENERIC categories that are NOT useful for categorization:
-                - "TRANSAKCJA KARTĄ PŁATNICZĄ" = card payment (covers 60%+ of all transactions!)
-                - "PRZELEW" / "PRZELEW WYCHODZĄCY" = wire transfer
-                - "PŁATNOŚĆ BLIK" = BLIK payment
+                ⚠️ BANK CATEGORY CLASSIFICATION - CRITICAL:
 
-                DO NOT create bankCategoryMappings for these generic categories!
-                Instead, focus on creating patternMappings for each merchant pattern shown above.
+                Polish banks use TWO types of categories. You MUST handle them differently:
 
-                REMEMBER: bankCategory values are shown in "bank:" field of each pattern above.
-                Only values from that field can be used in bankCategoryMappings!
+                TYPE 1: GENERIC categories (describe HOW payment was made):
+                  Examples: "TRANSAKCJA KARTĄ PŁATNICZĄ", "PRZELEW WYCHODZĄCY",
+                            "PŁATNOŚĆ BLIK", "Przelewy wychodzące", "Przelewy przychodzące",
+                            "Opłaty i prowizje", "Płatności kartą"
+
+                  These are USELESS for categorization - many different purchases share the same category!
+                  → DO NOT create bankCategoryMapping for these
+                  → Use patternMappings based on merchant name instead
+
+                TYPE 2: SEMANTIC categories (describe WHAT was purchased):
+                  Examples: "Artykuły spożywcze", "Restauracje i kawiarnie", "Sport",
+                            "Paliwo", "Transport publiczny", "Opieka medyczna", "Hobby",
+                            "Kino i teatr", "Kosmetyki", "Lekarstwa", "Zakupy przez internet"
+
+                  These are VALUABLE - they tell you exactly what the transaction is for!
+                  → MUST create bankCategoryMapping for EACH semantic category
+                  → Map to matching CashFlow category or suggest creating new one
+
+                HOW TO DETECT:
+                - GENERIC = describes PAYMENT METHOD (card, transfer, BLIK, fees) → IGNORE
+                - SEMANTIC = describes PURCHASE TYPE (food, sport, fuel, healthcare) → MAP IT!
+
+                EXAMPLES:
+                - "Przelewy wychodzące" = GENERIC (just says "outgoing transfer") → NO mapping
+                - "Artykuły spożywcze" = SEMANTIC (means "groceries") → CREATE mapping!
+                - "TRANSAKCJA KARTĄ" = GENERIC (just says "card transaction") → NO mapping
+                - "Restauracje i kawiarnie" = SEMANTIC (means "dining") → CREATE mapping!
+                - "Sport" = SEMANTIC → CREATE mapping!
+                - "Paliwo" = SEMANTIC (means "fuel") → CREATE mapping!
+
+                IMPORTANT: You MUST create a bankCategoryMapping for EVERY semantic category listed below!
+                If you see 30 semantic categories, you should return ~30 bankCategoryMappings.
 
                 """);
-            sb.append("UNIQUE BANK CATEGORIES (create mappings for those not matching existing categories):\n");
+            sb.append("UNIQUE BANK CATEGORIES:\n");
             for (String bankCategory : uniqueBankCategories) {
                 Type categoryType = patternGroups.stream()
                         .filter(pg -> bankCategory.equals(pg.bankCategory()))
@@ -301,10 +325,15 @@ public class AiCategorizationPromptBuilder {
                 boolean directMatch = categoryStructure != null &&
                         categoryStructure.containsCategoryIgnoreCase(bankCategory);
 
+                // Detect if category is GENERIC or SEMANTIC
+                boolean isGeneric = isGenericBankCategory(bankCategory);
+
                 if (directMatch) {
                     sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → DIRECT MATCH (no mapping needed)\n");
+                } else if (isGeneric) {
+                    sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → GENERIC (use patternMappings instead)\n");
                 } else {
-                    sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → NEEDS MAPPING to existing category\n");
+                    sb.append("  - ").append(bankCategory).append(" [").append(categoryType).append("] → SEMANTIC - MUST CREATE bankCategoryMapping!\n");
                 }
             }
             sb.append("\n");
@@ -497,5 +526,43 @@ public class AiCategorizationPromptBuilder {
         if (s == null) return "";
         if (s.length() <= maxLen) return s;
         return s.substring(0, maxLen - 3) + "...";
+    }
+
+    /**
+     * Detects if a bank category is GENERIC (describes payment method) vs SEMANTIC (describes purchase type).
+     * Generic categories are useless for categorization - they should be ignored in favor of pattern matching.
+     * Semantic categories are valuable and should be mapped to CashFlow categories.
+     */
+    private boolean isGenericBankCategory(String bankCategory) {
+        if (bankCategory == null || bankCategory.isBlank()) {
+            return true;
+        }
+
+        String normalized = bankCategory.toUpperCase().trim();
+
+        // List of known GENERIC categories (payment method descriptions)
+        Set<String> genericCategories = Set.of(
+                // Nest Bank style
+                "PRZELEWY WYCHODZĄCE",
+                "PRZELEWY PRZYCHODZĄCE",
+                "OPŁATY I PROWIZJE",
+                "PŁATNOŚCI KARTĄ",
+                // Common generic Polish bank categories
+                "TRANSAKCJA KARTĄ PŁATNICZĄ",
+                "TRANSAKCJA KARTĄ",
+                "PŁATNOŚĆ KARTĄ",
+                "PRZELEW",
+                "PRZELEW WYCHODZĄCY",
+                "PRZELEW PRZYCHODZĄCY",
+                "PRZELEW WEWNĘTRZNY",
+                "PŁATNOŚĆ BLIK",
+                "BLIK",
+                "WYPŁATA Z BANKOMATU",
+                "WPŁATA GOTÓWKI",
+                "ZLECENIE STAŁE",
+                "POLECENIE ZAPŁATY"
+        );
+
+        return genericCategories.contains(normalized);
     }
 }
