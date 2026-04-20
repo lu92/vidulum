@@ -205,7 +205,14 @@ public class AiBankCsvController {
         // Detection info (for UI feedback)
         String detectionResult,         // CANONICAL, CACHED, AI_TRANSFORMED
         boolean fromCache,              // Whether cached mapping rules were used
-        long processingTimeMs           // Processing time in milliseconds
+        long processingTimeMs,          // Processing time in milliseconds
+        // Enrichment stats (Phase 2: merchant extraction + bankCategory inference)
+        boolean enrichmentApplied,      // Whether enrichment was performed
+        int merchantsExtracted,         // Number of merchants extracted by AI
+        int bankCategoriesInferred,     // Number of bankCategories inferred by AI (for banks without categories)
+        int bankCategoriesKept,         // Number of original bankCategories kept
+        long enrichmentTimeMs,          // Time spent on enrichment in milliseconds
+        int enrichmentAiCalls           // Number of AI calls made for enrichment
     ) {}
 
     public record PreviewResponse(
@@ -259,7 +266,14 @@ public class AiBankCsvController {
             // Detection info
             doc.getDetectionResult() != null ? doc.getDetectionResult().name() : null,
             doc.isFromCache(),
-            doc.getProcessingTimeMs()
+            doc.getProcessingTimeMs(),
+            // Enrichment stats
+            doc.isEnrichmentApplied(),
+            doc.getMerchantsExtracted(),
+            doc.getBankCategoriesInferred(),
+            doc.getBankCategoriesKept(),
+            doc.getEnrichmentTimeMs(),
+            doc.getEnrichmentAiCalls()
         );
     }
 

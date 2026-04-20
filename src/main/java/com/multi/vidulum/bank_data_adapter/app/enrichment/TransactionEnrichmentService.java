@@ -11,9 +11,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +45,9 @@ public class TransactionEnrichmentService {
 
     @Value("${bank-data-adapter.enrichment.enabled:true}")
     private boolean enrichmentEnabled;
+
+    @Value("${bank-data-adapter.enrichment.max-parallelism:4}")
+    private int maxParallelism;
 
     /**
      * Check if enrichment is needed for the CSV.
@@ -100,41 +108,24 @@ public class TransactionEnrichmentService {
 
         // Split representatives into batches (not all transactions)
         List<List<TransactionForEnrichment>> batches = partition(representatives, batchSize);
-        log.info("Split into {} batches of up to {} representatives each", batches.size(), batchSize);
+        log.info("Split into {} batches of up to {} representatives each (parallelism: {})",
+                batches.size(), batchSize, maxParallelism);
 
-        // Process each batch (only representatives)
-        List<EnrichedTransaction> enrichedRepresentatives = new ArrayList<>();
-        List<String> allWarnings = new ArrayList<>();
+        // Process batches in parallel
+        List<EnrichedTransaction> enrichedRepresentatives = Collections.synchronizedList(new ArrayList<>());
+        List<String> allWarnings = Collections.synchronizedList(new ArrayList<>());
         StringBuilder processingNotes = new StringBuilder();
         int totalInputTokens = 0;
         int totalOutputTokens = 0;
 
-        for (int i = 0; i < batches.size(); i++) {
-            List<TransactionForEnrichment> batch = batches.get(i);
-            log.info("Processing batch {}/{} ({} representatives)", i + 1, batches.size(), batch.size());
-
-            try {
-                EnrichmentBatchResult batchResult = processBatch(
-                        batch, i + 1, batches.size(), bankName, language);
-
-                List<EnrichedTransaction> enriched = responseProcessor.toDomainObjects(batchResult);
-                enrichedRepresentatives.addAll(enriched);
-
-                if (batchResult.getProcessingNotes() != null && !batchResult.getProcessingNotes().isBlank()) {
-                    processingNotes.append("Batch ").append(i + 1).append(": ")
-                            .append(batchResult.getProcessingNotes()).append("\n");
-                }
-
-                // TODO: Extract token usage from ChatResponse when available
-
-            } catch (Exception e) {
-                log.error("Failed to process batch {}", i + 1, e);
-                allWarnings.add("Batch " + (i + 1) + " failed: " + e.getMessage());
-
-                // Use fallback for failed batch
-                EnrichmentBatchResult fallback = responseProcessor.process(null, batch);
-                enrichedRepresentatives.addAll(responseProcessor.toDomainObjects(fallback));
-            }
+        if (batches.size() == 1) {
+            // Single batch - no parallelism needed
+            processSingleBatch(batches.get(0), 1, 1, bankName, language,
+                    enrichedRepresentatives, allWarnings, processingNotes);
+        } else {
+            // Multiple batches - process in parallel
+            processInParallel(batches, bankName, language,
+                    enrichedRepresentatives, allWarnings, processingNotes);
         }
 
         // Propagate results from representatives to all transactions (with selective bankCategory)
@@ -182,6 +173,111 @@ public class TransactionEnrichmentService {
                 .totalOutputTokens(totalOutputTokens)
                 .processingNotes(processingNotes.toString().trim())
                 .build();
+    }
+
+    /**
+     * Process a single batch synchronously (used when only 1 batch).
+     */
+    private void processSingleBatch(List<TransactionForEnrichment> batch,
+                                     int batchNumber,
+                                     int totalBatches,
+                                     String bankName,
+                                     String language,
+                                     List<EnrichedTransaction> results,
+                                     List<String> warnings,
+                                     StringBuilder notes) {
+        log.info("Processing single batch ({} representatives)", batch.size());
+        try {
+            EnrichmentBatchResult batchResult = processBatch(batch, batchNumber, totalBatches, bankName, language);
+            results.addAll(responseProcessor.toDomainObjects(batchResult));
+            if (batchResult.getProcessingNotes() != null && !batchResult.getProcessingNotes().isBlank()) {
+                synchronized (notes) {
+                    notes.append("Batch 1: ").append(batchResult.getProcessingNotes()).append("\n");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to process batch", e);
+            warnings.add("Batch 1 failed: " + e.getMessage());
+            EnrichmentBatchResult fallback = responseProcessor.process(null, batch);
+            results.addAll(responseProcessor.toDomainObjects(fallback));
+        }
+    }
+
+    /**
+     * Process multiple batches in parallel using CompletableFuture.
+     */
+    private void processInParallel(List<List<TransactionForEnrichment>> batches,
+                                    String bankName,
+                                    String language,
+                                    List<EnrichedTransaction> results,
+                                    List<String> warnings,
+                                    StringBuilder notes) {
+        int effectiveParallelism = Math.min(maxParallelism, batches.size());
+        ExecutorService executor = Executors.newFixedThreadPool(effectiveParallelism);
+
+        log.info("Processing {} batches in parallel (threads: {})", batches.size(), effectiveParallelism);
+        long parallelStart = System.currentTimeMillis();
+
+        try {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (int i = 0; i < batches.size(); i++) {
+                final int batchIndex = i;
+                final List<TransactionForEnrichment> batch = batches.get(i);
+
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                    log.info("Processing batch {}/{} ({} representatives) [thread: {}]",
+                            batchIndex + 1, batches.size(), batch.size(), Thread.currentThread().getName());
+
+                    try {
+                        EnrichmentBatchResult batchResult = processBatch(
+                                batch, batchIndex + 1, batches.size(), bankName, language);
+
+                        results.addAll(responseProcessor.toDomainObjects(batchResult));
+
+                        if (batchResult.getProcessingNotes() != null && !batchResult.getProcessingNotes().isBlank()) {
+                            synchronized (notes) {
+                                notes.append("Batch ").append(batchIndex + 1).append(": ")
+                                        .append(batchResult.getProcessingNotes()).append("\n");
+                            }
+                        }
+
+                        log.info("Batch {}/{} completed", batchIndex + 1, batches.size());
+
+                    } catch (Exception e) {
+                        log.error("Failed to process batch {}", batchIndex + 1, e);
+                        warnings.add("Batch " + (batchIndex + 1) + " failed: " + e.getMessage());
+
+                        // Use fallback for failed batch
+                        EnrichmentBatchResult fallback = responseProcessor.process(null, batch);
+                        results.addAll(responseProcessor.toDomainObjects(fallback));
+                    }
+                }, executor);
+
+                futures.add(future);
+            }
+
+            // Wait for all batches to complete
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .get(5, TimeUnit.MINUTES); // Timeout after 5 minutes
+
+            long parallelTime = System.currentTimeMillis() - parallelStart;
+            log.info("All {} batches completed in {}ms (parallel)", batches.size(), parallelTime);
+
+        } catch (Exception e) {
+            log.error("Parallel batch processing failed", e);
+            warnings.add("Parallel processing error: " + e.getMessage());
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     /**

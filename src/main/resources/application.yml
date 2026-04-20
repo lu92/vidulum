@@ -91,6 +91,7 @@ bank-data-adapter:
   enrichment:
     enabled: true            # Enable enrichment (fills merchant + bankCategory)
     batch-size: 50           # Transactions per AI call
+    max-parallelism: 4       # Max concurrent AI calls (avoid rate limiting)
 
 # Bank Data Ingestion REST client
 bank-data-ingestion:
