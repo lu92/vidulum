@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -45,7 +46,10 @@ public class CsvParserService {
             "targetAccountNumber",
             "merchant",
             "merchantConfidence",
-            "paymentMethod"
+            "paymentMethod",
+            "classification",
+            "classificationReason",
+            "location"
     };
 
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
@@ -149,8 +153,16 @@ public class CsvParserService {
                 normalizeIban(getOptionalString(record, "targetAccountNumber"), currency),
                 getOptionalString(record, "merchant"),
                 getOptionalDouble(record, "merchantConfidence"),
-                getOptionalPaymentMethod(record, "paymentMethod")
+                getOptionalPaymentMethod(record, "paymentMethod"),
+                getOptionalClassification(record, "classification"),
+                getOptionalString(record, "classificationReason"),
+                getOptionalString(record, "location")
         );
+    }
+
+    private TransactionClassification getOptionalClassification(CSVRecord record, String header) {
+        String value = getOptionalString(record, header);
+        return TransactionClassification.fromString(value);
     }
 
     private void validateRow(BankCsvRow row, int rowNumber) {

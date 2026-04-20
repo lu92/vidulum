@@ -2,6 +2,7 @@ package com.multi.vidulum.bank_data_adapter.app.enrichment;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -222,10 +223,13 @@ public class EnrichmentResponseProcessor {
 
         return EnrichmentBatchResult.EnrichedTransactionJson.builder()
                 .rowIndex(original.getRowIndex())
+                .classification("UNKNOWN")  // Default classification for fallback
                 .merchant(fallbackMerchant)
                 .merchantConfidence(0.1)
                 .bankCategory(bankCategory)
                 .bankCategorySource(source)
+                .classificationReason("Fallback - AI processing failed")
+                .location(null)
                 .build();
     }
 
@@ -278,12 +282,19 @@ public class EnrichmentResponseProcessor {
         return batchResult.getEnrichedTransactions().stream()
                 .map(json -> EnrichedTransaction.builder()
                         .rowIndex(json.getRowIndex())
+                        .classification(parseClassification(json.getClassification()))
                         .merchant(json.getMerchant())
                         .merchantConfidence(json.getMerchantConfidence())
                         .bankCategory(json.getBankCategory())
                         .bankCategorySource(parseSource(json.getBankCategorySource()))
+                        .classificationReason(json.getClassificationReason())
+                        .location(json.getLocation())
                         .build())
                 .toList();
+    }
+
+    private TransactionClassification parseClassification(String classification) {
+        return TransactionClassification.fromString(classification);
     }
 
     private EnrichedTransaction.BankCategorySource parseSource(String source) {

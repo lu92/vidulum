@@ -57,16 +57,34 @@ public class EnrichmentBatchResult {
         @JsonProperty("rowIndex")
         private int rowIndex;
 
+        /**
+         * Transaction classification: MERCHANT, BANK_FEE, CASH_WITHDRAWAL, etc.
+         */
+        @JsonProperty("classification")
+        private String classification;
+
         @JsonProperty("merchant")
         private String merchant;
 
         @JsonProperty("merchantConfidence")
-        private double merchantConfidence;
+        private Double merchantConfidence;
 
         @JsonProperty("bankCategory")
         private String bankCategory;
 
         @JsonProperty("bankCategorySource")
         private String bankCategorySource;
+
+        /**
+         * Reason for classification decision.
+         */
+        @JsonProperty("classificationReason")
+        private String classificationReason;
+
+        /**
+         * Location info (for ATM, physical locations).
+         */
+        @JsonProperty("location")
+        private String location;
     }
 }

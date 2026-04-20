@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.domain;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.cashflow.domain.Type;
 
 import java.math.BigDecimal;
@@ -81,6 +82,7 @@ public record BankCsvRow(
          * Extracted merchant name (from description for bank intermediary transactions).
          * OPTIONAL - AI extracts this when name is "BANK PEKAO S.A." etc.
          * Examples: "BADOO", "NETFLIX", "OPENAI", "CLAUDE"
+         * Null for non-merchant transactions (BANK_FEE, CASH_WITHDRAWAL, etc.)
          */
         String merchant,
 
@@ -97,7 +99,28 @@ public record BankCsvRow(
          * This is separate from bankCategory which describes WHAT was purchased.
          * Examples: CARD, TRANSFER, BLIK, DIRECT_DEBIT
          */
-        PaymentMethod paymentMethod
+        PaymentMethod paymentMethod,
+
+        /**
+         * Transaction classification determined by AI enrichment.
+         * Indicates the type of transaction: MERCHANT, BANK_FEE, CASH_WITHDRAWAL, etc.
+         * OPTIONAL - null defaults to UNKNOWN.
+         */
+        TransactionClassification classification,
+
+        /**
+         * Reason why AI chose this classification.
+         * OPTIONAL - useful for debugging and UI display.
+         * Examples: "Card payment at grocery store", "ATM terminal code pattern detected"
+         */
+        String classificationReason,
+
+        /**
+         * Location extracted from transaction (for ATM, physical locations).
+         * OPTIONAL - null if no location detected.
+         * Examples: "WARSZAWA", "KRAKÓW", "UL. MARSZAŁKOWSKA 10"
+         */
+        String location
 
 ) {
     /**
@@ -142,6 +165,38 @@ public record BankCsvRow(
      */
     public PaymentMethod effectivePaymentMethod() {
         return paymentMethod != null ? paymentMethod : PaymentMethod.OTHER;
+    }
+
+    /**
+     * Returns effective classification (UNKNOWN if null).
+     */
+    public TransactionClassification effectiveClassification() {
+        return classification != null ? classification : TransactionClassification.UNKNOWN;
+    }
+
+    /**
+     * Returns true if this transaction should be auto-categorized.
+     * Auto-categorizable transactions (BANK_FEE, CASH_WITHDRAWAL, etc.) already have
+     * their bankCategory from enrichment and should skip AI categorization.
+     */
+    public boolean isAutoCategorizeable() {
+        return effectiveClassification().isAutoCategorizeable();
+    }
+
+    /**
+     * Returns true if this transaction should be included in budget analysis.
+     * Self-transfers should be excluded as they don't represent real income/expense.
+     */
+    public boolean includeInBudget() {
+        return effectiveClassification().includeInBudget();
+    }
+
+    /**
+     * Returns true if this transaction has a meaningful merchant.
+     * Non-merchant transactions (BANK_FEE, CASH_WITHDRAWAL, etc.) have null merchant.
+     */
+    public boolean hasMerchant() {
+        return effectiveClassification().hasMerchant() && merchant != null && !merchant.isBlank();
     }
 
     /**

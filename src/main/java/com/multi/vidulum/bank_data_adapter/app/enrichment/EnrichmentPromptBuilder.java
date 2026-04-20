@@ -11,11 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Builds prompts for transaction enrichment.
+ * Builds prompts for transaction enrichment with classification.
  *
  * Enrichment extracts:
- * 1. MERCHANT - normalized business/person name (always)
- * 2. BANK_CATEGORY - only if original is empty (e.g., Nest Bank)
+ * 1. CLASSIFICATION - transaction type (MERCHANT, BANK_FEE, CASH_WITHDRAWAL, etc.)
+ * 2. MERCHANT - normalized business/person name (only for MERCHANT/UNKNOWN)
+ * 3. BANK_CATEGORY - only if original is empty (e.g., Nest Bank)
+ * 4. LOCATION - for ATM withdrawals and physical locations
  */
 @Slf4j
 @Component
@@ -25,36 +27,94 @@ public class EnrichmentPromptBuilder {
     private final ObjectMapper objectMapper;
 
     /**
-     * System prompt for enrichment.
-     * Contains rules for merchant extraction and category inference.
+     * System prompt for enrichment with classification.
+     * Contains rules for classification, merchant extraction, and category inference.
      */
     public String getSystemPrompt() {
         return """
-            You are a transaction data enrichment specialist for Polish bank statements.
+            You are a transaction data enrichment specialist for bank statements.
 
             ## YOUR TASK
 
-            For each transaction in the input, extract:
-            1. **merchant** - normalized business/person name (WHO the transaction is with)
-            2. **bankCategory** - ONLY if the original is empty, otherwise keep original
+            For each transaction in the input, determine:
 
-            ## MERCHANT EXTRACTION RULES
+            1. **classification** - transaction type (REQUIRED):
+               - MERCHANT: Payment to business/person (extract merchant name)
+               - BANK_FEE: Bank fee, commission, service charge (no merchant)
+               - CASH_WITHDRAWAL: ATM or bank withdrawal (no merchant)
+               - CASH_DEPOSIT: Cash deposit (no merchant)
+               - SELF_TRANSFER: Transfer between own accounts (no merchant)
+               - INTEREST: Interest payment (no merchant)
+               - UNKNOWN: Cannot determine (try to extract merchant anyway)
 
-            Extract the clean, human-recognizable entity name:
+            2. **merchant** - only if classification is MERCHANT or UNKNOWN:
+               - Extract clean, normalized business/person name
+               - UPPERCASE for consistency
+               - Remove legal suffixes (S.A., SP. Z O.O., etc.)
+               - Return null for non-merchant transactions
 
-            | Input name/description | Output merchant |
-            |------------------------|-----------------|
-            | "ŻABKA POLSKA 4521 WARSZAWA UL MARSZALKOWSKA" | "ŻABKA" |
-            | "BIEDRONKA SKLEP 1234 KRAKÓW" | "BIEDRONKA" |
-            | "BANK PEKAO S.A." + desc: "Badoo help@badoo.com Dublin" | "BADOO" |
-            | "Silva Silva, Warszawa" + desc: "czynsz" | "SILVA SILVA" |
+            3. **merchantConfidence** - only if merchant is provided (0.0 to 1.0)
+
+            4. **bankCategory** - only if original is empty, otherwise keep original
+
+            5. **classificationReason** - brief explanation of classification choice
+
+            6. **location** - extracted location info (for ATM, physical locations)
+
+            ## CLASSIFICATION RULES
+
+            ### BANK_FEE (language-agnostic indicators):
+            - Transaction is a fee/commission/charge from the bank itself
+            - No external counterparty - bank is charging the account holder
+            - Keywords: prowizja, opłata, fee, commission, Gebühr, charge
+            - Amount is typically small and negative (OUTFLOW)
+            - Often periodic (monthly, per-transaction)
+            - Examples: "Prowizja za przelew", "Opłata za kartę", "Monthly fee"
+
+            ### CASH_WITHDRAWAL:
+            - ATM terminal codes (numeric patterns like "00146 2703W250H")
+            - Withdrawal-related context
+            - No merchant name, just location/terminal info
+            - Keywords: wypłata, bankomat, ATM, withdrawal, Geldautomat
+            - Examples: "Wypłata z bankomatu", "ATM EURONET"
+
+            ### CASH_DEPOSIT:
+            - Deposit-related context
+            - Positive amount (INFLOW)
+            - No external sender
+            - Keywords: wpłata, deposit, Einzahlung
+            - Examples: "Wpłata gotówkowa", "Cash deposit"
+
+            ### SELF_TRANSFER:
+            - Transfer between own accounts (same owner)
+            - Keywords: przelew własny, own transfer, internal transfer
+            - Same name appears as sender/recipient
+            - Examples: "Przelew własny", "Transfer to savings"
+
+            ### INTEREST:
+            - Interest payment context
+            - From bank to account holder
+            - Keywords: odsetki, interest, Zinsen, kapitalizacja
+            - Examples: "Odsetki od lokaty", "Interest payment"
+
+            ### MERCHANT (default for payments):
+            - Payment to external business or person
+            - Has identifiable counterparty name
+            - Most card transactions, online payments, purchases
+            - Extract clean merchant name
+
+            ## MERCHANT EXTRACTION RULES (for MERCHANT and UNKNOWN only)
+
+            | Input | Output merchant |
+            |-------|-----------------|
+            | "ŻABKA POLSKA 4521 WARSZAWA" | "ŻABKA" |
             | "NETFLIX.COM 866-579-7172" | "NETFLIX" |
+            | "BANK PEKAO S.A." + desc: "Badoo help@badoo.com" | "BADOO" |
+            | "ALLEGRO.PL SP. Z O.O." | "ALLEGRO" |
+            | "BIEDRONKA SKLEP 1234 KRAKÓW" | "BIEDRONKA" |
             | "Przelew od Jan Kowalski" | "JAN KOWALSKI" |
             | "ZUS" | "ZUS" |
             | "SHIVAGO SPOLKA Z OGRANICZONA ODPOWIEDZIALNOSCIA" | "SHIVAGO" |
-            | "ALLEGRO.PL SP. Z O.O." | "ALLEGRO" |
-            | "ORLEN STACJA 1234 WARSZAWA" | "ORLEN" |
-            | "MINDBOX SP Z O O WARSZAWA" | "MINDBOX" |
 
             Rules:
             - UPPERCASE for consistency
@@ -78,7 +138,7 @@ public class EnrichmentPromptBuilder {
             | ZUS, podatek, US, składki, urząd skarbowy | "Podatki i składki" |
             | Netflix, Spotify, HBO, Disney, kino, bilety | "Rozrywka" |
             | Biedronka, Lidl, Żabka, Carrefour, Auchan, sklep | "Zakupy spożywcze" |
-            | prowizja, opłata, fee, bank | "Opłaty bankowe" |
+            | prowizja, opłata, fee, bank (for BANK_FEE) | "Opłaty bankowe" |
             | przelew przychodzący, wpływ, wynagrodzenie | "Przelewy przychodzące" |
             | przelew wychodzący, przelew do | "Przelewy wychodzące" |
             | BLIK | "Płatności BLIK" |
@@ -88,6 +148,9 @@ public class EnrichmentPromptBuilder {
             | apteka, lekarz, szpital, zdrowie | "Zdrowie" |
             | ubezpieczenie, PZU, polisa | "Ubezpieczenia" |
             | telefon, internet, abonament | "Telekomunikacja" |
+            | bankomat, wypłata, ATM (for CASH_WITHDRAWAL) | "Wypłata z bankomatu" |
+            | wpłata, deposit (for CASH_DEPOSIT) | "Wpłata gotówkowa" |
+            | odsetki, interest (for INTEREST) | "Odsetki" |
 
             If cannot determine category, use "Inne".
 
@@ -108,28 +171,46 @@ public class EnrichmentPromptBuilder {
               "enrichedTransactions": [
                 {
                   "rowIndex": 0,
-                  "merchant": "EXTRACTED_NAME",
+                  "classification": "MERCHANT",
+                  "merchant": "ŻABKA",
                   "merchantConfidence": 0.95,
-                  "bankCategory": "Category",
-                  "bankCategorySource": "ORIGINAL" or "AI_INFERRED" or "AI_FALLBACK"
+                  "bankCategory": "Zakupy spożywcze",
+                  "bankCategorySource": "AI_INFERRED",
+                  "classificationReason": "Card payment at grocery store chain",
+                  "location": null
+                },
+                {
+                  "rowIndex": 1,
+                  "classification": "BANK_FEE",
+                  "merchant": null,
+                  "merchantConfidence": null,
+                  "bankCategory": "Opłaty bankowe",
+                  "bankCategorySource": "AI_INFERRED",
+                  "classificationReason": "Express transfer commission - bank internal charge",
+                  "location": null
+                },
+                {
+                  "rowIndex": 2,
+                  "classification": "CASH_WITHDRAWAL",
+                  "merchant": null,
+                  "merchantConfidence": null,
+                  "bankCategory": "Wypłata z bankomatu",
+                  "bankCategorySource": "ORIGINAL",
+                  "classificationReason": "ATM terminal code pattern detected (00146 2703W250H)",
+                  "location": "WARSZAWA"
                 }
               ],
-              "processingNotes": "optional notes about ambiguous cases"
+              "processingNotes": "Processed 3 transactions: 1 merchant, 1 bank fee, 1 ATM withdrawal"
             }
 
             ## ERROR HANDLING
 
-            If you cannot determine merchant, use fallback:
-            - merchant: first recognizable word from name, uppercase
-            - merchantConfidence: 0.3
-            - Add note to processingNotes
-
-            If you cannot determine bankCategory (and original is empty):
-            - bankCategory: "Inne"
-            - bankCategorySource: "AI_FALLBACK"
-
-            NEVER return null or undefined values. Always return valid JSON.
-            ALWAYS include all transactions from input in output (same count).
+            - If cannot determine classification: use UNKNOWN
+            - If cannot determine merchant (for MERCHANT/UNKNOWN): use first recognizable word, confidence 0.3
+            - If cannot determine bankCategory (and original is empty): use "Inne"
+            - NEVER return null for classification - always choose a type
+            - ALWAYS include all transactions from input in output (same count)
+            - For BANK_FEE, CASH_WITHDRAWAL, CASH_DEPOSIT, SELF_TRANSFER, INTEREST: merchant MUST be null
             """;
     }
 
@@ -165,7 +246,7 @@ public class EnrichmentPromptBuilder {
 
             String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
 
-            return "Analyze these " + transactions.size() + " transactions and enrich each one:\n\n" + json;
+            return "Analyze these " + transactions.size() + " transactions, classify each one, and enrich:\n\n" + json;
 
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize transactions for enrichment prompt", e);

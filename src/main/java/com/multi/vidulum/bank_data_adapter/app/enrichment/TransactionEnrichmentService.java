@@ -148,7 +148,7 @@ public class TransactionEnrichmentService {
                 .count();
 
         int fallbackCount = (int) allEnriched.stream()
-                .filter(e -> e.getMerchantConfidence() < 0.3)
+                .filter(e -> e.getMerchantConfidence() != null && e.getMerchantConfidence() < 0.3)
                 .count();
 
         long processingTimeMs = System.currentTimeMillis() - startTime;
@@ -356,6 +356,7 @@ public class TransactionEnrichmentService {
 
     /**
      * Apply enrichment results to CSV.
+     * Adds/updates: merchant, merchantConfidence, bankCategory, classification, classificationReason, location
      */
     private String applyCsvEnrichment(String csvContent, List<EnrichedTransaction> enriched) {
         String[] lines = csvContent.split("\n");
@@ -370,13 +371,28 @@ public class TransactionEnrichmentService {
         int merchantIdx = findIndex(headers, "merchant");
         int merchantConfIdx = findIndex(headers, "merchantConfidence");
         int bankCatIdx = findIndex(headers, "bankCategory");
+        int classificationIdx = findIndex(headers, "classification");
+        int classificationReasonIdx = findIndex(headers, "classificationReason");
+        int locationIdx = findIndex(headers, "location");
+
+        // Check if we need to add new columns to header
+        boolean needsNewColumns = classificationIdx < 0;
+        String newHeaderLine = headerLine;
+
+        if (needsNewColumns) {
+            // Add new columns to header
+            newHeaderLine = headerLine + ",classification,classificationReason,location";
+            classificationIdx = headers.length;
+            classificationReasonIdx = headers.length + 1;
+            locationIdx = headers.length + 2;
+        }
 
         // Build index map for quick lookup
         java.util.Map<Integer, EnrichedTransaction> enrichmentMap = enriched.stream()
                 .collect(Collectors.toMap(EnrichedTransaction::getRowIndex, e -> e));
 
         StringBuilder result = new StringBuilder();
-        result.append(headerLine).append("\n");
+        result.append(newHeaderLine).append("\n");
 
         for (int i = 1; i < lines.length; i++) {
             String line = lines[i].trim();
@@ -388,14 +404,25 @@ public class TransactionEnrichmentService {
             if (enrichment != null) {
                 String[] values = parseRow(line);
 
-                // Update merchant
+                // Expand array if we added new columns
+                if (needsNewColumns) {
+                    String[] expanded = new String[values.length + 3];
+                    System.arraycopy(values, 0, expanded, 0, values.length);
+                    expanded[values.length] = "";
+                    expanded[values.length + 1] = "";
+                    expanded[values.length + 2] = "";
+                    values = expanded;
+                }
+
+                // Update merchant (null for non-merchant classifications)
                 if (merchantIdx >= 0 && merchantIdx < values.length) {
-                    values[merchantIdx] = enrichment.getMerchant();
+                    values[merchantIdx] = enrichment.getMerchant() != null ? enrichment.getMerchant() : "";
                 }
 
                 // Update merchantConfidence
                 if (merchantConfIdx >= 0 && merchantConfIdx < values.length) {
-                    values[merchantConfIdx] = String.valueOf(enrichment.getMerchantConfidence());
+                    values[merchantConfIdx] = enrichment.getMerchantConfidence() != null
+                            ? String.valueOf(enrichment.getMerchantConfidence()) : "";
                 }
 
                 // Update bankCategory only if it was inferred (original was empty)
@@ -405,9 +432,30 @@ public class TransactionEnrichmentService {
                     }
                 }
 
+                // Update classification
+                if (classificationIdx >= 0 && classificationIdx < values.length) {
+                    values[classificationIdx] = enrichment.effectiveClassification().name();
+                }
+
+                // Update classificationReason
+                if (classificationReasonIdx >= 0 && classificationReasonIdx < values.length) {
+                    values[classificationReasonIdx] = enrichment.getClassificationReason() != null
+                            ? enrichment.getClassificationReason() : "";
+                }
+
+                // Update location
+                if (locationIdx >= 0 && locationIdx < values.length) {
+                    values[locationIdx] = enrichment.getLocation() != null ? enrichment.getLocation() : "";
+                }
+
                 result.append(formatRow(values)).append("\n");
             } else {
-                result.append(line).append("\n");
+                // No enrichment for this row - still need to add empty columns if new
+                if (needsNewColumns) {
+                    result.append(line).append(",,,").append("\n");
+                } else {
+                    result.append(line).append("\n");
+                }
             }
         }
 
@@ -567,18 +615,24 @@ public class TransactionEnrichmentService {
                 log.warn("No enrichment result for group: {}", groupKey);
                 allEnriched.add(EnrichedTransaction.builder()
                         .rowIndex(txn.getRowIndex())
+                        .classification(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.UNKNOWN)
                         .merchant(txn.getName())
                         .merchantConfidence(0.1)
                         .bankCategory(txn.getBankCategory() != null && !txn.getBankCategory().isBlank()
                                 ? txn.getBankCategory() : "Inne")
                         .bankCategorySource(EnrichedTransaction.BankCategorySource.AI_FALLBACK)
+                        .classificationReason("Fallback - no group result")
+                        .location(null)
                         .build());
                 continue;
             }
 
-            // Propagate merchant (always)
+            // Propagate classification, merchant, location (always from representative)
+            var classification = representativeResult.getClassification();
             String merchant = representativeResult.getMerchant();
-            double merchantConfidence = representativeResult.getMerchantConfidence();
+            Double merchantConfidence = representativeResult.getMerchantConfidence();
+            String classificationReason = representativeResult.getClassificationReason();
+            String location = representativeResult.getLocation();
 
             // Selective propagation for bankCategory
             String bankCategory;
@@ -596,10 +650,13 @@ public class TransactionEnrichmentService {
 
             allEnriched.add(EnrichedTransaction.builder()
                     .rowIndex(txn.getRowIndex())
+                    .classification(classification)
                     .merchant(merchant)
                     .merchantConfidence(merchantConfidence)
                     .bankCategory(bankCategory)
                     .bankCategorySource(bankCategorySource)
+                    .classificationReason(classificationReason)
+                    .location(location)
                     .build());
         }
 
