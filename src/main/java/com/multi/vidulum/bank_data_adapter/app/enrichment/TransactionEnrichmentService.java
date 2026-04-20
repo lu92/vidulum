@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -87,15 +89,21 @@ public class TransactionEnrichmentService {
             return EnrichmentResult.noEnrichmentNeeded(csvContent, 0);
         }
 
-        log.info("Starting enrichment for {} transactions (bank: {}, language: {})",
-                transactions.size(), bankName, language);
+        // Group transactions by exact match on name (reduces AI calls)
+        Map<String, TransactionGroup> groups = groupTransactions(transactions);
+        List<TransactionForEnrichment> representatives = groups.values().stream()
+                .map(TransactionGroup::getRepresentative)
+                .toList();
 
-        // Split into batches
-        List<List<TransactionForEnrichment>> batches = partition(transactions, batchSize);
-        log.info("Split into {} batches of up to {} transactions each", batches.size(), batchSize);
+        log.info("Starting enrichment for {} transactions ({} unique groups, bank: {}, language: {})",
+                transactions.size(), groups.size(), bankName, language);
 
-        // Process each batch
-        List<EnrichedTransaction> allEnriched = new ArrayList<>();
+        // Split representatives into batches (not all transactions)
+        List<List<TransactionForEnrichment>> batches = partition(representatives, batchSize);
+        log.info("Split into {} batches of up to {} representatives each", batches.size(), batchSize);
+
+        // Process each batch (only representatives)
+        List<EnrichedTransaction> enrichedRepresentatives = new ArrayList<>();
         List<String> allWarnings = new ArrayList<>();
         StringBuilder processingNotes = new StringBuilder();
         int totalInputTokens = 0;
@@ -103,14 +111,14 @@ public class TransactionEnrichmentService {
 
         for (int i = 0; i < batches.size(); i++) {
             List<TransactionForEnrichment> batch = batches.get(i);
-            log.info("Processing batch {}/{} ({} transactions)", i + 1, batches.size(), batch.size());
+            log.info("Processing batch {}/{} ({} representatives)", i + 1, batches.size(), batch.size());
 
             try {
                 EnrichmentBatchResult batchResult = processBatch(
                         batch, i + 1, batches.size(), bankName, language);
 
                 List<EnrichedTransaction> enriched = responseProcessor.toDomainObjects(batchResult);
-                allEnriched.addAll(enriched);
+                enrichedRepresentatives.addAll(enriched);
 
                 if (batchResult.getProcessingNotes() != null && !batchResult.getProcessingNotes().isBlank()) {
                     processingNotes.append("Batch ").append(i + 1).append(": ")
@@ -125,9 +133,12 @@ public class TransactionEnrichmentService {
 
                 // Use fallback for failed batch
                 EnrichmentBatchResult fallback = responseProcessor.process(null, batch);
-                allEnriched.addAll(responseProcessor.toDomainObjects(fallback));
+                enrichedRepresentatives.addAll(responseProcessor.toDomainObjects(fallback));
             }
         }
+
+        // Propagate results from representatives to all transactions (with selective bankCategory)
+        List<EnrichedTransaction> allEnriched = propagateResults(enrichedRepresentatives, groups, transactions);
 
         // Apply enrichment to CSV
         String enrichedCsv = applyCsvEnrichment(csvContent, allEnriched);
@@ -151,8 +162,9 @@ public class TransactionEnrichmentService {
 
         long processingTimeMs = System.currentTimeMillis() - startTime;
 
-        log.info("Enrichment completed: {} merchants extracted, {} categories inferred, {} kept, {} fallbacks, {}ms",
-                merchantsExtracted, bankCategoriesInferred, bankCategoriesKept, fallbackCount, processingTimeMs);
+        log.info("Enrichment completed: {} transactions, {} groups, {} merchants, {} inferred, {} kept, {} fallbacks, {}ms",
+                transactions.size(), groups.size(), merchantsExtracted, bankCategoriesInferred,
+                bankCategoriesKept, fallbackCount, processingTimeMs);
 
         return EnrichmentResult.builder()
                 .enrichmentApplied(true)
@@ -382,5 +394,119 @@ public class TransactionEnrichmentService {
             partitions.add(list.subList(i, Math.min(i + size, list.size())));
         }
         return partitions;
+    }
+
+    /**
+     * Group transactions by exact match on normalized name.
+     * This reduces AI calls by processing only unique transaction patterns.
+     *
+     * @param transactions All transactions to enrich
+     * @return Map of group key to TransactionGroup
+     */
+    Map<String, TransactionGroup> groupTransactions(List<TransactionForEnrichment> transactions) {
+        Map<String, TransactionGroup> groups = new HashMap<>();
+
+        for (TransactionForEnrichment txn : transactions) {
+            String groupKey = normalizeGroupKey(txn.getName());
+
+            TransactionGroup group = groups.computeIfAbsent(groupKey, key ->
+                    TransactionGroup.builder()
+                            .groupKey(key)
+                            .build()
+            );
+
+            group.addTransaction(txn);
+        }
+
+        return groups;
+    }
+
+    /**
+     * Normalize name for grouping (exact match, case-insensitive).
+     */
+    private String normalizeGroupKey(String name) {
+        if (name == null) {
+            return "";
+        }
+        return name.toUpperCase().trim();
+    }
+
+    /**
+     * Propagate enrichment results from representatives to all transactions in groups.
+     * Uses selective propagation for bankCategory (only if original was empty).
+     *
+     * @param enrichedRepresentatives List of enriched representative transactions
+     * @param groups                  Map of group key to TransactionGroup
+     * @param allTransactions         All original transactions
+     * @return List of enriched transactions for all rows
+     */
+    List<EnrichedTransaction> propagateResults(
+            List<EnrichedTransaction> enrichedRepresentatives,
+            Map<String, TransactionGroup> groups,
+            List<TransactionForEnrichment> allTransactions) {
+
+        // Build map of representative rowIndex -> enriched result
+        Map<Integer, EnrichedTransaction> representativeResults = enrichedRepresentatives.stream()
+                .collect(Collectors.toMap(EnrichedTransaction::getRowIndex, e -> e));
+
+        // Build map of groupKey -> representative rowIndex for lookup
+        Map<String, Integer> groupKeyToRepresentativeIdx = new HashMap<>();
+        for (TransactionGroup group : groups.values()) {
+            groupKeyToRepresentativeIdx.put(
+                    group.getGroupKey(),
+                    group.getRepresentative().getRowIndex()
+            );
+        }
+
+        List<EnrichedTransaction> allEnriched = new ArrayList<>();
+
+        for (TransactionForEnrichment txn : allTransactions) {
+            String groupKey = normalizeGroupKey(txn.getName());
+            TransactionGroup group = groups.get(groupKey);
+            Integer representativeIdx = groupKeyToRepresentativeIdx.get(groupKey);
+            EnrichedTransaction representativeResult = representativeResults.get(representativeIdx);
+
+            if (representativeResult == null) {
+                // Fallback: no result for this group (shouldn't happen, but defensive)
+                log.warn("No enrichment result for group: {}", groupKey);
+                allEnriched.add(EnrichedTransaction.builder()
+                        .rowIndex(txn.getRowIndex())
+                        .merchant(txn.getName())
+                        .merchantConfidence(0.1)
+                        .bankCategory(txn.getBankCategory() != null && !txn.getBankCategory().isBlank()
+                                ? txn.getBankCategory() : "Inne")
+                        .bankCategorySource(EnrichedTransaction.BankCategorySource.AI_FALLBACK)
+                        .build());
+                continue;
+            }
+
+            // Propagate merchant (always)
+            String merchant = representativeResult.getMerchant();
+            double merchantConfidence = representativeResult.getMerchantConfidence();
+
+            // Selective propagation for bankCategory
+            String bankCategory;
+            EnrichedTransaction.BankCategorySource bankCategorySource;
+
+            if (group.hadEmptyBankCategory(txn.getRowIndex())) {
+                // Original was empty - use AI result
+                bankCategory = representativeResult.getBankCategory();
+                bankCategorySource = representativeResult.getBankCategorySource();
+            } else {
+                // Original had value - keep it
+                bankCategory = txn.getBankCategory();
+                bankCategorySource = EnrichedTransaction.BankCategorySource.ORIGINAL;
+            }
+
+            allEnriched.add(EnrichedTransaction.builder()
+                    .rowIndex(txn.getRowIndex())
+                    .merchant(merchant)
+                    .merchantConfidence(merchantConfidence)
+                    .bankCategory(bankCategory)
+                    .bankCategorySource(bankCategorySource)
+                    .build());
+        }
+
+        return allEnriched;
     }
 }
