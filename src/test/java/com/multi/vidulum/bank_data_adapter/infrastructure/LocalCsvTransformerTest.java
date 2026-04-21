@@ -1007,4 +1007,280 @@ class LocalCsvTransformerTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("Schema-First: bankCategory vs paymentMethod Distinction")
+    class BankCategoryVsPaymentMethod {
+
+        @Test
+        @DisplayName("Should correctly map Pekao-style CSV with both Kategoria and Typ operacji columns")
+        void shouldCorrectlyMapPekaoStyleCsv() {
+            // given - Pekao-style CSV with both category types:
+            // "Typ operacji" = HOW (payment method) - e.g., "Płatność kartą"
+            // "Kategoria" = WHAT (semantic category) - e.g., "Sport", "Zakupy"
+            String csv = """
+                Data księgowania;Data waluty;Nadawca / Odbiorca;Kwota operacji;Waluta;Typ operacji;Kategoria
+                15.12.2025;15.12.2025;Decathlon Polska;-199.99;PLN;Płatność kartą;Sport
+                16.12.2025;16.12.2025;Biedronka;-85.50;PLN;Płatność kartą;Zakupy
+                17.12.2025;17.12.2025;ZUS;-1200.00;PLN;Przelew wychodzący;Rachunki
+                """;
+
+            // Schema-First approach should produce these mappings:
+            // - Column 5 "Typ operacji" → paymentMethod (PAYMENT_METHOD_NORMALIZE)
+            // - Column 6 "Kategoria" → bankCategory (DIRECT)
+            MappingRules rules = MappingRules.builder()
+                .bankName("Bank Pekao")
+                .bankCountry("PL")
+                .language("pl")
+                .dateFormat("dd.MM.yyyy")
+                .delimiter(";")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data księgowania")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Nadawca / Odbiorca")
+                        .sourceIndex(2)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota operacji")
+                        .sourceIndex(3)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Waluta")
+                        .sourceIndex(4)
+                        .targetField("currency")
+                        .transformationType(TransformationType.CURRENCY_EXTRACT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota operacji")
+                        .sourceIndex(3)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "3"))
+                        .build(),
+                    // THIS IS THE KEY DISTINCTION - Schema-First should produce:
+                    ColumnMapping.builder()
+                        .sourceColumn("Typ operacji")
+                        .sourceIndex(5)
+                        .targetField("paymentMethod")  // HOW payment was made
+                        .transformationType(TransformationType.PAYMENT_METHOD_NORMALIZE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kategoria")
+                        .sourceIndex(6)
+                        .targetField("bankCategory")  // WHAT was purchased
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            assertThat(result.rowCount()).isEqualTo(3);
+
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(4); // header + 3 data rows
+
+            // Verify header contains all expected columns
+            String header = lines[0];
+            assertThat(header).contains("bankCategory");
+            assertThat(header).contains("paymentMethod");
+
+            // Row 1: Decathlon - Sport category, Card payment
+            String row1 = lines[1];
+            assertThat(row1).contains("Decathlon Polska");  // name
+            assertThat(row1).contains("Sport");              // bankCategory = semantic category
+            assertThat(row1).contains("CARD");               // paymentMethod normalized from "Płatność kartą"
+
+            // Row 2: Biedronka - Zakupy category, Card payment
+            String row2 = lines[2];
+            assertThat(row2).contains("Biedronka");
+            assertThat(row2).contains("Zakupy");             // bankCategory = semantic category
+            assertThat(row2).contains("CARD");               // paymentMethod normalized
+
+            // Row 3: ZUS - Rachunki category, Transfer payment
+            String row3 = lines[3];
+            assertThat(row3).contains("ZUS");
+            assertThat(row3).contains("Rachunki");           // bankCategory = semantic category
+            assertThat(row3).contains("TRANSFER");           // paymentMethod normalized from "Przelew wychodzący"
+        }
+
+        @Test
+        @DisplayName("Should correctly map Nest Bank CSV without Kategoria column (only paymentMethod)")
+        void shouldCorrectlyMapNestBankCsv() {
+            // given - Nest Bank CSV without "Kategoria" column
+            // "Rodzaj operacji" = payment method like "Przelewy wychodzące"
+            String csv = """
+                Data księgowania,Data operacji,Rodzaj operacji,Kwota,Waluta,Dane kontrahenta,Tytuł operacji
+                31-12-2025,31-12-2025,Przelewy wychodzące,-3000,PLN,Jan Kowalski,czynsz za mieszkanie
+                30-12-2025,30-12-2025,Przelewy przychodzące,5000,PLN,Firma XYZ,wyplata pensji
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Nest Bank")
+                .bankCountry("PL")
+                .language("pl")
+                .dateFormat("dd-MM-yyyy")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data operacji")
+                        .sourceIndex(1)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Dane kontrahenta")
+                        .sourceIndex(5)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Tytuł operacji")
+                        .sourceIndex(6)
+                        .targetField("description")
+                        .transformationType(TransformationType.DIRECT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(3)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Waluta")
+                        .sourceIndex(4)
+                        .targetField("currency")
+                        .transformationType(TransformationType.CURRENCY_EXTRACT)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(3)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "3"))
+                        .build(),
+                    // Nest Bank: "Rodzaj operacji" is payment method (not category!)
+                    ColumnMapping.builder()
+                        .sourceColumn("Rodzaj operacji")
+                        .sourceIndex(2)
+                        .targetField("paymentMethod")
+                        .transformationType(TransformationType.PAYMENT_METHOD_NORMALIZE)
+                        .build()
+                    // Note: NO bankCategory mapping - Nest Bank doesn't have it
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            assertThat(result.rowCount()).isEqualTo(2);
+
+            String[] lines = result.csvContent().split("\n");
+
+            // Row 1: Jan Kowalski - no bankCategory, Transfer payment method
+            String row1 = lines[1];
+            assertThat(row1).contains("Jan Kowalski");       // name
+            assertThat(row1).contains("czynsz za mieszkanie"); // description
+            assertThat(row1).contains("TRANSFER");            // paymentMethod from "Przelewy wychodzące"
+            assertThat(row1).contains(",OUTFLOW,");           // type from negative amount
+
+            // Row 2: Firma XYZ - Transfer payment, INFLOW
+            String row2 = lines[2];
+            assertThat(row2).contains("Firma XYZ");
+            assertThat(row2).contains("wyplata pensji");
+            assertThat(row2).contains("TRANSFER");            // paymentMethod from "Przelewy przychodzące"
+            assertThat(row2).contains(",INFLOW,");            // type from positive amount
+        }
+
+        @Test
+        @DisplayName("PAYMENT_METHOD_NORMALIZE should correctly normalize Polish payment methods")
+        void shouldNormalizePolishPaymentMethods() {
+            // given - CSV with various Polish payment method names
+            String csv = """
+                Data,Kwota,Typ,Nazwa
+                2023-06-15,-100.00,Płatność kartą,Test1
+                2023-06-16,-200.00,BLIK,Test2
+                2023-06-17,-300.00,Przelew wychodzący,Test3
+                2023-06-18,-400.00,Polecenie zapłaty,Test4
+                2023-06-19,-500.00,Zlecenie stałe,Test5
+                2023-06-20,-600.00,Wypłata gotówkowa,Test6
+                2023-06-21,-700.00,Unknown Payment Type,Test7
+                """;
+
+            MappingRules rules = MappingRules.builder()
+                .bankName("Test Bank")
+                .bankCountry("PL")
+                .dateFormat("yyyy-MM-dd")
+                .delimiter(",")
+                .headerRowIndex(0)
+                .columnMappings(List.of(
+                    ColumnMapping.builder()
+                        .sourceColumn("Data")
+                        .sourceIndex(0)
+                        .targetField("operationDate")
+                        .transformationType(TransformationType.DATE_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("amount")
+                        .transformationType(TransformationType.AMOUNT_PARSE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Kwota")
+                        .sourceIndex(1)
+                        .targetField("type")
+                        .transformationType(TransformationType.TYPE_DETECT)
+                        .transformationParams(Map.of("amountColumn", "1"))
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Typ")
+                        .sourceIndex(2)
+                        .targetField("paymentMethod")
+                        .transformationType(TransformationType.PAYMENT_METHOD_NORMALIZE)
+                        .build(),
+                    ColumnMapping.builder()
+                        .sourceColumn("Nazwa")
+                        .sourceIndex(3)
+                        .targetField("name")
+                        .transformationType(TransformationType.DIRECT)
+                        .build()
+                ))
+                .build();
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines).hasSize(8); // header + 7 data rows
+
+            // Verify each payment method normalization
+            // paymentMethod is the LAST column, so it ends the line (no trailing comma)
+            assertThat(lines[1]).endsWith(",CARD");           // "Płatność kartą" → CARD
+            assertThat(lines[2]).endsWith(",BLIK");           // "BLIK" → BLIK
+            assertThat(lines[3]).endsWith(",TRANSFER");       // "Przelew wychodzący" → TRANSFER
+            assertThat(lines[4]).endsWith(",DIRECT_DEBIT");   // "Polecenie zapłaty" → DIRECT_DEBIT
+            assertThat(lines[5]).endsWith(",STANDING_ORDER"); // "Zlecenie stałe" → STANDING_ORDER
+            assertThat(lines[6]).endsWith(",CASH");           // "Wypłata gotówkowa" → CASH
+            assertThat(lines[7]).endsWith(",OTHER");          // "Unknown Payment Type" → OTHER
+        }
+    }
 }

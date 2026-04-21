@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_adapter.app;
 
+import com.multi.vidulum.bank_data_adapter.app.enrichment.TransactionEnrichmentService;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
 import com.multi.vidulum.bank_data_adapter.domain.DetectionResult;
@@ -10,6 +11,7 @@ import com.multi.vidulum.bank_data_adapter.infrastructure.AiResponseProcessor;
 import com.multi.vidulum.bank_data_adapter.infrastructure.CsvAnonymizer;
 import com.multi.vidulum.bank_data_adapter.infrastructure.CsvFormatDetector;
 import com.multi.vidulum.bank_data_adapter.infrastructure.LocalCsvTransformer;
+import com.multi.vidulum.bank_data_adapter.app.enrichment.TransactionEnrichmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +70,9 @@ class CanonicalCsvDetectionTest {
     @Mock
     private CsvFormatDetector csvFormatDetector;
 
+    @Mock
+    private TransactionEnrichmentService enrichmentService;
+
     private AiBankCsvTransformService service;
 
     private static final Clock FIXED_CLOCK = Clock.fixed(
@@ -87,6 +92,7 @@ class CanonicalCsvDetectionTest {
             mappingRulesCacheService,
             transformationRepository,
             csvFormatDetector,
+            enrichmentService,
             FIXED_CLOCK
         );
         // Set @Value fields via reflection since they're not injected in unit tests

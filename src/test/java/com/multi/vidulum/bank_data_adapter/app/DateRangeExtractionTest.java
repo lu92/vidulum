@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_adapter.app;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
 import com.multi.vidulum.bank_data_adapter.infrastructure.*;
+import com.multi.vidulum.bank_data_adapter.app.enrichment.TransactionEnrichmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -59,6 +60,9 @@ class DateRangeExtractionTest {
     @Mock
     private CsvFormatDetector csvFormatDetector;
 
+    @Mock
+    private TransactionEnrichmentService enrichmentService;
+
     private AiBankCsvTransformService service;
 
     private static final Clock FIXED_CLOCK = Clock.fixed(
@@ -79,6 +83,7 @@ class DateRangeExtractionTest {
             mappingRulesCacheService,
             transformationRepository,
             csvFormatDetector,
+            enrichmentService,
             FIXED_CLOCK
         );
     }
