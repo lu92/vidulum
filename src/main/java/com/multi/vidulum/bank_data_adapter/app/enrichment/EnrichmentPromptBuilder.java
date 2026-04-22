@@ -39,8 +39,8 @@ public class EnrichmentPromptBuilder {
             For each transaction in the input, determine:
 
             1. **classification** - transaction type (REQUIRED):
-               - MERCHANT: Payment to business/person (extract merchant name)
-               - BANK_FEE: Bank fee, commission, service charge (no merchant)
+               - MERCHANT: Payment to business/person/government (extract merchant name)
+               - BANK_FEE: Bank fee, commission, service charge FROM THE BANK ITSELF (no merchant)
                - CASH_WITHDRAWAL: ATM or bank withdrawal (no merchant)
                - CASH_DEPOSIT: Cash deposit (no merchant)
                - SELF_TRANSFER: Transfer between own accounts (no merchant)
@@ -61,47 +61,112 @@ public class EnrichmentPromptBuilder {
 
             6. **location** - extracted location info (for ATM, physical locations)
 
-            ## CLASSIFICATION RULES
+            ## CLASSIFICATION RULES (CHECK IN THIS ORDER!)
 
-            ### BANK_FEE (language-agnostic indicators):
-            - Transaction is a fee/commission/charge from the bank itself
-            - No external counterparty - bank is charging the account holder
-            - Keywords: prowizja, opłata, fee, commission, Gebühr, charge
-            - Amount is typically small and negative (OUTFLOW)
-            - Often periodic (monthly, per-transaction)
-            - Examples: "Prowizja za przelew", "Opłata za kartę", "Monthly fee"
+            ### 1. SELF_TRANSFER (check first!)
+            - Bank category "Przelew wewnętrzny" → ALWAYS SELF_TRANSFER
+            - Keywords: "przelew własny", "own account", "between accounts", "własne konto"
+            - Transfer to/from same person name
+            - merchant = null for all self-transfers
+            - Examples: "Przelew własny", "Transfer to savings", "Przelew wewnętrzny"
 
-            ### CASH_WITHDRAWAL:
+            ### 2. BANK_FEE (STRICT DEFINITION - read carefully!)
+
+            ⚠️ CRITICAL: BANK_FEE means fee charged BY THE BANK ITSELF to the account holder.
+
+            ✅ IS BANK_FEE (bank charges YOU):
+            - "Prowizja za przelew" (transfer commission from your bank)
+            - "Opłata za kartę" (card fee from your bank)
+            - "Opłata za konto" (account fee)
+            - "Prowizja za przelew natychmiastowy" (instant transfer fee)
+            - Name contains only your bank name: "Bank Pekao S.A.", "Nest Bank", "PKO BP"
+            - Transaction where bank is both the source and description indicates fee
+
+            ❌ IS NOT BANK_FEE - these are MERCHANT:
+            - ZUS (Zakład Ubezpieczeń Społecznych) → MERCHANT, government entity
+            - Urząd Skarbowy / US → MERCHANT, tax office
+            - IKANO Bank, IKANO → MERCHANT, loan repayment to external bank
+            - Credit Agricole (rata/rat.) → MERCHANT, loan repayment
+            - Santander Consumer → MERCHANT, loan repayment
+            - Any payment TO an external organization → MERCHANT
+
+            RULE: If money goes TO an external entity (not YOUR bank), it's MERCHANT, not BANK_FEE.
+            RULE: Loan repayments to other banks/finance companies = MERCHANT
+
+            ### 3. CASH_WITHDRAWAL
             - ATM terminal codes (numeric patterns like "00146 2703W250H")
-            - Withdrawal-related context
+            - "BANKOMAT", "ATM", "Wypłata z bankomatu", "EURONET"
             - No merchant name, just location/terminal info
-            - Keywords: wypłata, bankomat, ATM, withdrawal, Geldautomat
-            - Examples: "Wypłata z bankomatu", "ATM EURONET"
+            - merchant = null, extract location
+            - Examples: "Wypłata z bankomatu", "ATM EURONET", "BANKOMAT EURONET"
 
-            ### CASH_DEPOSIT:
-            - Deposit-related context
-            - Positive amount (INFLOW)
-            - No external sender
-            - Keywords: wpłata, deposit, Einzahlung
+            ### 4. CASH_DEPOSIT
+            - "Wpłata gotówkowa", "Cash deposit", "Wpłata własna"
+            - Positive amount (INFLOW), no external sender
+            - merchant = null
             - Examples: "Wpłata gotówkowa", "Cash deposit"
 
-            ### SELF_TRANSFER:
-            - Transfer between own accounts (same owner)
-            - Keywords: przelew własny, own transfer, internal transfer
-            - Same name appears as sender/recipient
-            - Examples: "Przelew własny", "Transfer to savings"
+            ### 5. INTEREST
+            - "Odsetki", "Interest", "Kapitalizacja odsetek"
+            - From bank to account holder (INFLOW)
+            - merchant = null
+            - Examples: "Odsetki od lokaty", "Interest payment", "Kapitalizacja"
 
-            ### INTEREST:
-            - Interest payment context
-            - From bank to account holder
-            - Keywords: odsetki, interest, Zinsen, kapitalizacja
-            - Examples: "Odsetki od lokaty", "Interest payment"
-
-            ### MERCHANT (default for payments):
-            - Payment to external business or person
+            ### 6. MERCHANT (default for most payments)
+            - Payment to external business, person, or government entity
             - Has identifiable counterparty name
             - Most card transactions, online payments, purchases
+            - Government payments (ZUS, taxes, fines)
+            - Loan repayments to external financial institutions
             - Extract clean merchant name
+
+            ### 7. UNKNOWN (last resort only)
+            - Cannot determine type with any confidence
+            - Still try to extract merchant name with low confidence
+
+            ## GOVERNMENT ENTITIES ARE MERCHANTS (NOT BANK_FEE!)
+
+            | Entity | merchant | bankCategory | Notes |
+            |--------|----------|--------------|-------|
+            | ZUS | ZUS | Podatki i składki | Social security - ALWAYS MERCHANT |
+            | Urząd Skarbowy, US | URZAD SKARBOWY | Podatki i składki | Tax payments |
+            | GITD, Inspektorat | GITD | Opłaty urzędowe | Traffic fines |
+            | Urząd Miasta/Gminy | URZAD MIASTA | Opłaty urzędowe | City/municipal fees |
+            | PIT, VAT payments | URZAD SKARBOWY | Podatki i składki | Tax payments |
+
+            ## LOAN/FINANCE COMPANIES ARE MERCHANTS (NOT BANK_FEE!)
+
+            | Pattern | merchant | bankCategory | Notes |
+            |---------|----------|--------------|-------|
+            | IKANO, IKANO BANK | IKANO | Spłata kredytu | Consumer loans |
+            | Santander Consumer | SANTANDER | Spłata kredytu | Consumer finance |
+            | Credit Agricole + rata/rat. | CREDIT AGRICOLE | Spłata kredytu | Loan installment |
+            | Provident | PROVIDENT | Spłata kredytu | Consumer loans |
+            | Alior Bank (rata) | ALIOR | Spłata kredytu | Loan repayment |
+
+            ## KNOWN SUBSCRIPTION SERVICES (always MERCHANT, high confidence)
+
+            | Pattern in name/description | merchant | confidence |
+            |-----------------------------|----------|------------|
+            | Netflix, NETFLIX.COM | NETFLIX | 0.95 |
+            | Spotify, SPOTIFY | SPOTIFY | 0.95 |
+            | Badoo, help@badoo.com, badoo.com | BADOO | 0.95 |
+            | HBO, HBOMAX, HBO MAX | HBO MAX | 0.95 |
+            | Disney+, DISNEYPLUS | DISNEY+ | 0.95 |
+            | YouTube Premium | YOUTUBE | 0.95 |
+            | Apple, iTunes, APPLE.COM | APPLE | 0.95 |
+            | Google Play, GOOGLE | GOOGLE | 0.95 |
+            | Amazon Prime, AMAZON | AMAZON | 0.95 |
+            | Allegro, ALLEGRO.PL | ALLEGRO | 0.95 |
+            | TradingView | TRADINGVIEW | 0.95 |
+
+            When bank name appears (BANK PEKAO, PKO BP) but description contains
+            email domain or service name → extract real merchant from description.
+
+            Example:
+              name: "BANK PEKAO S.A."
+              description: "ROZLICZENIE TRANSAKCJI... Badoo help@badoo.com"
+              → merchant: "BADOO", classification: MERCHANT, confidence: 0.95
 
             ## MERCHANT EXTRACTION RULES (for MERCHANT and UNKNOWN only)
 
@@ -114,6 +179,8 @@ public class EnrichmentPromptBuilder {
             | "BIEDRONKA SKLEP 1234 KRAKÓW" | "BIEDRONKA" |
             | "Przelew od Jan Kowalski" | "JAN KOWALSKI" |
             | "ZUS" | "ZUS" |
+            | "Urząd skarbowy w Mielcu" | "URZAD SKARBOWY" |
+            | "IKANO" | "IKANO" |
             | "SHIVAGO SPOLKA Z OGRANICZONA ODPOWIEDZIALNOSCIA" | "SHIVAGO" |
 
             Rules:
@@ -124,7 +191,7 @@ public class EnrichmentPromptBuilder {
             - If name is bank intermediary (BANK PEKAO, PKO BP, BANK BNP), extract real merchant from description
             - For email domains in description, use company name (help@badoo.com → BADOO)
             - For "Przelew od/do [NAME]" pattern, extract the person/company name
-            - Keep well-known abbreviations: ZUS, US, PZU, PKP
+            - Keep well-known abbreviations: ZUS, US, PZU, PKP, GITD
 
             ## BANK_CATEGORY RULES
 
@@ -135,29 +202,32 @@ public class EnrichmentPromptBuilder {
             | Keywords in name/description | bankCategory |
             |------------------------------|--------------|
             | czynsz, mieszkanie, najem, lokal | "Mieszkanie" |
-            | ZUS, podatek, US, składki, urząd skarbowy | "Podatki i składki" |
+            | ZUS, podatek, US, składki, urząd skarbowy, PIT, VAT | "Podatki i składki" |
+            | IKANO, Credit Agricole rata, Santander Consumer, Provident | "Spłata kredytu" |
             | Netflix, Spotify, HBO, Disney, kino, bilety | "Rozrywka" |
             | Biedronka, Lidl, Żabka, Carrefour, Auchan, sklep | "Zakupy spożywcze" |
-            | prowizja, opłata, fee, bank (for BANK_FEE) | "Opłaty bankowe" |
+            | prowizja, opłata za konto/kartę (ONLY for BANK_FEE) | "Opłaty bankowe" |
             | przelew przychodzący, wpływ, wynagrodzenie | "Przelewy przychodzące" |
             | przelew wychodzący, przelew do | "Przelewy wychodzące" |
+            | przelew wewnętrzny, przelew własny | "Przelew wewnętrzny" |
             | BLIK | "Płatności BLIK" |
             | karta, card, płatność kartą | "Płatności kartą" |
             | paliwo, Orlen, BP, Shell, stacja | "Transport" |
             | restauracja, kawiarnia, bar, jedzenie | "Gastronomia" |
             | apteka, lekarz, szpital, zdrowie | "Zdrowie" |
-            | ubezpieczenie, PZU, polisa | "Ubezpieczenia" |
-            | telefon, internet, abonament | "Telekomunikacja" |
+            | ubezpieczenie, PZU, polisa, Warta | "Ubezpieczenia" |
+            | telefon, internet, abonament, Plus, Orange, T-Mobile | "Telekomunikacja" |
             | bankomat, wypłata, ATM (for CASH_WITHDRAWAL) | "Wypłata z bankomatu" |
             | wpłata, deposit (for CASH_DEPOSIT) | "Wpłata gotówkowa" |
             | odsetki, interest (for INTEREST) | "Odsetki" |
+            | GITD, mandat, kara, inspektorat | "Opłaty urzędowe" |
 
             If cannot determine category, use "Inne".
 
             ## MERCHANT_CONFIDENCE
 
             Score 0.0 to 1.0:
-            - 0.95+ = exact business name found (email domain, known brand like Netflix, Allegro)
+            - 0.95+ = exact business name found (email domain, known brand like Netflix, Allegro, ZUS)
             - 0.8-0.95 = clear company/person name extracted (ŻABKA from "ŻABKA POLSKA 4521")
             - 0.5-0.8 = inferred from context, less certain
             - <0.5 = uncertain, used fallback to cleaned name
@@ -172,11 +242,11 @@ public class EnrichmentPromptBuilder {
                 {
                   "rowIndex": 0,
                   "classification": "MERCHANT",
-                  "merchant": "ŻABKA",
+                  "merchant": "ZUS",
                   "merchantConfidence": 0.95,
-                  "bankCategory": "Zakupy spożywcze",
+                  "bankCategory": "Podatki i składki",
                   "bankCategorySource": "AI_INFERRED",
-                  "classificationReason": "Card payment at grocery store chain",
+                  "classificationReason": "Payment to ZUS - government social security entity",
                   "location": null
                 },
                 {
@@ -191,16 +261,26 @@ public class EnrichmentPromptBuilder {
                 },
                 {
                   "rowIndex": 2,
-                  "classification": "CASH_WITHDRAWAL",
+                  "classification": "SELF_TRANSFER",
                   "merchant": null,
                   "merchantConfidence": null,
-                  "bankCategory": "Wypłata z bankomatu",
+                  "bankCategory": "Przelew wewnętrzny",
                   "bankCategorySource": "ORIGINAL",
-                  "classificationReason": "ATM terminal code pattern detected (00146 2703W250H)",
-                  "location": "WARSZAWA"
+                  "classificationReason": "Bank-categorized as internal transfer (Przelew wewnętrzny)",
+                  "location": null
+                },
+                {
+                  "rowIndex": 3,
+                  "classification": "MERCHANT",
+                  "merchant": "BADOO",
+                  "merchantConfidence": 0.95,
+                  "bankCategory": "Rozrywka",
+                  "bankCategorySource": "AI_INFERRED",
+                  "classificationReason": "Subscription service - extracted from email domain in description",
+                  "location": "DUBLIN"
                 }
               ],
-              "processingNotes": "Processed 3 transactions: 1 merchant, 1 bank fee, 1 ATM withdrawal"
+              "processingNotes": "Processed 4 transactions: 2 merchants, 1 bank fee, 1 self-transfer"
             }
 
             ## ERROR HANDLING

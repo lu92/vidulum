@@ -113,6 +113,20 @@ public class AiCsvTransformationDocument {
     private int enrichmentFallbackCount;            // Number of transactions using fallback
     private String enrichmentNotes;                 // Processing notes from enrichment
 
+    // ========== CLASSIFICATION BREAKDOWN ==========
+    private Integer classificationMerchantCount;        // Number of MERCHANT transactions
+    private Integer classificationBankFeeCount;         // Number of BANK_FEE transactions
+    private Integer classificationCashWithdrawalCount;  // Number of CASH_WITHDRAWAL transactions
+    private Integer classificationCashDepositCount;     // Number of CASH_DEPOSIT transactions
+    private Integer classificationSelfTransferCount;    // Number of SELF_TRANSFER transactions
+    private Integer classificationInterestCount;        // Number of INTEREST transactions
+    private Integer classificationUnknownCount;         // Number of UNKNOWN transactions
+
+    // ========== CONFIDENCE BREAKDOWN ==========
+    private Integer highConfidenceCount;            // >= 0.8
+    private Integer mediumConfidenceCount;          // 0.5 - 0.8
+    private Integer lowConfidenceCount;             // < 0.5
+
     // ========== HELPER METHODS FOR ZONEDDATETIME CONVERSION ==========
 
     public ZonedDateTime getCreatedAtZoned() {

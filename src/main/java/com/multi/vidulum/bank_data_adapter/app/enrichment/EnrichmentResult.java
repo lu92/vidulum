@@ -1,11 +1,14 @@
 package com.multi.vidulum.bank_data_adapter.app.enrichment;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Final result of enrichment process for all transactions.
@@ -87,6 +90,85 @@ public class EnrichmentResult {
      * Processing notes from AI (aggregated from all batches).
      */
     private String processingNotes;
+
+    // ========== CLASSIFICATION BREAKDOWN ==========
+
+    /**
+     * Number of transactions classified as MERCHANT.
+     */
+    private int classificationMerchantCount;
+
+    /**
+     * Number of transactions classified as BANK_FEE.
+     */
+    private int classificationBankFeeCount;
+
+    /**
+     * Number of transactions classified as CASH_WITHDRAWAL.
+     */
+    private int classificationCashWithdrawalCount;
+
+    /**
+     * Number of transactions classified as CASH_DEPOSIT.
+     */
+    private int classificationCashDepositCount;
+
+    /**
+     * Number of transactions classified as SELF_TRANSFER.
+     */
+    private int classificationSelfTransferCount;
+
+    /**
+     * Number of transactions classified as INTEREST.
+     */
+    private int classificationInterestCount;
+
+    /**
+     * Number of transactions classified as UNKNOWN.
+     */
+    private int classificationUnknownCount;
+
+    // ========== CONFIDENCE BREAKDOWN ==========
+
+    /**
+     * Number of transactions with high confidence (>= 0.8).
+     */
+    private int highConfidenceCount;
+
+    /**
+     * Number of transactions with medium confidence (0.5 - 0.8).
+     */
+    private int mediumConfidenceCount;
+
+    /**
+     * Number of transactions with low confidence (< 0.5).
+     */
+    private int lowConfidenceCount;
+
+    /**
+     * Returns classification breakdown as a map.
+     */
+    public Map<TransactionClassification, Integer> getClassificationBreakdown() {
+        Map<TransactionClassification, Integer> breakdown = new EnumMap<>(TransactionClassification.class);
+        breakdown.put(TransactionClassification.MERCHANT, classificationMerchantCount);
+        breakdown.put(TransactionClassification.BANK_FEE, classificationBankFeeCount);
+        breakdown.put(TransactionClassification.CASH_WITHDRAWAL, classificationCashWithdrawalCount);
+        breakdown.put(TransactionClassification.CASH_DEPOSIT, classificationCashDepositCount);
+        breakdown.put(TransactionClassification.SELF_TRANSFER, classificationSelfTransferCount);
+        breakdown.put(TransactionClassification.INTEREST, classificationInterestCount);
+        breakdown.put(TransactionClassification.UNKNOWN, classificationUnknownCount);
+        return breakdown;
+    }
+
+    /**
+     * Returns total of all classification counts (should equal totalTransactions).
+     */
+    public int getTotalClassificationCount() {
+        return classificationMerchantCount + classificationBankFeeCount +
+               classificationCashWithdrawalCount + classificationCashDepositCount +
+               classificationSelfTransferCount + classificationInterestCount +
+               classificationUnknownCount;
+    }
 
     /**
      * Creates a "no enrichment needed" result.

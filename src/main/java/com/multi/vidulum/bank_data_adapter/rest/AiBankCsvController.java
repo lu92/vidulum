@@ -212,7 +212,17 @@ public class AiBankCsvController {
         int bankCategoriesInferred,     // Number of bankCategories inferred by AI (for banks without categories)
         int bankCategoriesKept,         // Number of original bankCategories kept
         long enrichmentTimeMs,          // Time spent on enrichment in milliseconds
-        int enrichmentAiCalls           // Number of AI calls made for enrichment
+        int enrichmentAiCalls,          // Number of AI calls made for enrichment
+        // Classification breakdown (Phase 2.1)
+        Integer classificationMerchantCount,      // MERCHANT transactions
+        Integer classificationBankFeeCount,       // BANK_FEE transactions
+        Integer classificationCashWithdrawalCount,// CASH_WITHDRAWAL transactions
+        Integer classificationSelfTransferCount,  // SELF_TRANSFER transactions
+        Integer classificationUnknownCount,       // UNKNOWN transactions
+        // Confidence breakdown
+        Integer highConfidenceCount,    // merchantConfidence >= 0.8
+        Integer mediumConfidenceCount,  // 0.5 <= merchantConfidence < 0.8
+        Integer lowConfidenceCount      // merchantConfidence < 0.5
     ) {}
 
     public record PreviewResponse(
@@ -273,7 +283,17 @@ public class AiBankCsvController {
             doc.getBankCategoriesInferred(),
             doc.getBankCategoriesKept(),
             doc.getEnrichmentTimeMs(),
-            doc.getEnrichmentAiCalls()
+            doc.getEnrichmentAiCalls(),
+            // Classification breakdown
+            doc.getClassificationMerchantCount(),
+            doc.getClassificationBankFeeCount(),
+            doc.getClassificationCashWithdrawalCount(),
+            doc.getClassificationSelfTransferCount(),
+            doc.getClassificationUnknownCount(),
+            // Confidence breakdown
+            doc.getHighConfidenceCount(),
+            doc.getMediumConfidenceCount(),
+            doc.getLowConfidenceCount()
         );
     }
 
