@@ -220,6 +220,20 @@ public class AiBankCsvTransformService {
                     document.setEnrichmentFallbackCount(enrichmentResult.getFallbackCount());
                     document.setEnrichmentNotes(enrichmentResult.getProcessingNotes());
 
+                    // Classification breakdown
+                    document.setClassificationMerchantCount(enrichmentResult.getClassificationMerchantCount());
+                    document.setClassificationBankFeeCount(enrichmentResult.getClassificationBankFeeCount());
+                    document.setClassificationCashWithdrawalCount(enrichmentResult.getClassificationCashWithdrawalCount());
+                    document.setClassificationCashDepositCount(enrichmentResult.getClassificationCashDepositCount());
+                    document.setClassificationSelfTransferCount(enrichmentResult.getClassificationSelfTransferCount());
+                    document.setClassificationInterestCount(enrichmentResult.getClassificationInterestCount());
+                    document.setClassificationUnknownCount(enrichmentResult.getClassificationUnknownCount());
+
+                    // Confidence breakdown
+                    document.setHighConfidenceCount(enrichmentResult.getHighConfidenceCount());
+                    document.setMediumConfidenceCount(enrichmentResult.getMediumConfidenceCount());
+                    document.setLowConfidenceCount(enrichmentResult.getLowConfidenceCount());
+
                     log.info("✅ ENRICHMENT completed: {} merchants extracted, {} categories inferred, {} kept, {}ms",
                             enrichmentResult.getMerchantsExtracted(),
                             enrichmentResult.getBankCategoriesInferred(),

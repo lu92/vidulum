@@ -153,9 +153,50 @@ public class TransactionEnrichmentService {
 
         long processingTimeMs = System.currentTimeMillis() - startTime;
 
+        // Calculate classification breakdown
+        Map<com.multi.vidulum.bank_data_adapter.domain.TransactionClassification, Long> classificationCounts =
+                allEnriched.stream()
+                        .collect(Collectors.groupingBy(
+                                EnrichedTransaction::effectiveClassification,
+                                Collectors.counting()
+                        ));
+
+        int classificationMerchantCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.MERCHANT, 0L).intValue();
+        int classificationBankFeeCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.BANK_FEE, 0L).intValue();
+        int classificationCashWithdrawalCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.CASH_WITHDRAWAL, 0L).intValue();
+        int classificationCashDepositCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.CASH_DEPOSIT, 0L).intValue();
+        int classificationSelfTransferCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.SELF_TRANSFER, 0L).intValue();
+        int classificationInterestCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.INTEREST, 0L).intValue();
+        int classificationUnknownCount = classificationCounts
+                .getOrDefault(com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.UNKNOWN, 0L).intValue();
+
+        // Calculate confidence breakdown (only for transactions with merchantConfidence)
+        int highConfidenceCount = (int) allEnriched.stream()
+                .filter(e -> e.getMerchantConfidence() != null && e.getMerchantConfidence() >= 0.8)
+                .count();
+        int mediumConfidenceCount = (int) allEnriched.stream()
+                .filter(e -> e.getMerchantConfidence() != null &&
+                             e.getMerchantConfidence() >= 0.5 &&
+                             e.getMerchantConfidence() < 0.8)
+                .count();
+        int lowConfidenceCount = (int) allEnriched.stream()
+                .filter(e -> e.getMerchantConfidence() != null && e.getMerchantConfidence() < 0.5)
+                .count();
+
         log.info("Enrichment completed: {} transactions, {} groups, {} merchants, {} inferred, {} kept, {} fallbacks, {}ms",
                 transactions.size(), groups.size(), merchantsExtracted, bankCategoriesInferred,
                 bankCategoriesKept, fallbackCount, processingTimeMs);
+        log.info("Classification breakdown: MERCHANT={}, BANK_FEE={}, CASH_WITHDRAWAL={}, SELF_TRANSFER={}, UNKNOWN={}",
+                classificationMerchantCount, classificationBankFeeCount, classificationCashWithdrawalCount,
+                classificationSelfTransferCount, classificationUnknownCount);
+        log.info("Confidence breakdown: high={}, medium={}, low={}",
+                highConfidenceCount, mediumConfidenceCount, lowConfidenceCount);
 
         return EnrichmentResult.builder()
                 .enrichmentApplied(true)
@@ -172,6 +213,18 @@ public class TransactionEnrichmentService {
                 .totalInputTokens(totalInputTokens)
                 .totalOutputTokens(totalOutputTokens)
                 .processingNotes(processingNotes.toString().trim())
+                // Classification breakdown
+                .classificationMerchantCount(classificationMerchantCount)
+                .classificationBankFeeCount(classificationBankFeeCount)
+                .classificationCashWithdrawalCount(classificationCashWithdrawalCount)
+                .classificationCashDepositCount(classificationCashDepositCount)
+                .classificationSelfTransferCount(classificationSelfTransferCount)
+                .classificationInterestCount(classificationInterestCount)
+                .classificationUnknownCount(classificationUnknownCount)
+                // Confidence breakdown
+                .highConfidenceCount(highConfidenceCount)
+                .mediumConfidenceCount(mediumConfidenceCount)
+                .lowConfidenceCount(lowConfidenceCount)
                 .build();
     }
 
