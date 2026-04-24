@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure.entity;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
@@ -62,6 +63,7 @@ public class StagedTransactionEntity {
         private Double merchantConfidence;
         private String counterpartyAccount;
         private PaymentMethod paymentMethod;
+        private TransactionClassification classification;
 
         public static OriginalDataDocument fromDomain(OriginalTransactionData data) {
             return OriginalDataDocument.builder()
@@ -77,6 +79,7 @@ public class StagedTransactionEntity {
                     .merchantConfidence(data.merchantConfidence())
                     .counterpartyAccount(data.counterpartyAccount())
                     .paymentMethod(data.paymentMethod())
+                    .classification(data.classification())
                     .build();
         }
 
@@ -92,7 +95,8 @@ public class StagedTransactionEntity {
                     merchant,
                     merchantConfidence,
                     counterpartyAccount,
-                    paymentMethod
+                    paymentMethod,
+                    classification
             );
         }
     }

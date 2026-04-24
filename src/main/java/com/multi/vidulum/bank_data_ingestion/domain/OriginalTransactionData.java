@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.domain;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 
@@ -19,6 +20,7 @@ import java.time.ZonedDateTime;
  * @param merchantConfidence confidence score for merchant extraction (0.0 - 1.0)
  * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
  * @param paymentMethod     payment method used (HOW payment was made: CARD, TRANSFER, BLIK, etc.)
+ * @param classification    transaction classification (MERCHANT, BANK_FEE, CASH_WITHDRAWAL, etc.)
  */
 public record OriginalTransactionData(
         String bankTransactionId,
@@ -31,7 +33,8 @@ public record OriginalTransactionData(
         String merchant,
         Double merchantConfidence,
         String counterpartyAccount,
-        PaymentMethod paymentMethod
+        PaymentMethod paymentMethod,
+        TransactionClassification classification
 ) {
     /**
      * Returns effective merchant (name if merchant is null).
@@ -54,5 +57,37 @@ public record OriginalTransactionData(
      */
     public PaymentMethod effectivePaymentMethod() {
         return paymentMethod != null ? paymentMethod : PaymentMethod.OTHER;
+    }
+
+    /**
+     * Returns effective classification (UNKNOWN if null).
+     */
+    public TransactionClassification effectiveClassification() {
+        return classification != null ? classification : TransactionClassification.UNKNOWN;
+    }
+
+    /**
+     * Returns true if this transaction should be auto-categorized.
+     * Auto-categorizable transactions (BANK_FEE, CASH_WITHDRAWAL, etc.) already have
+     * their bankCategory from enrichment and should skip AI categorization.
+     */
+    public boolean isAutoCategorizeable() {
+        return effectiveClassification().isAutoCategorizeable();
+    }
+
+    /**
+     * Returns true if this transaction should be included in budget analysis.
+     * Self-transfers should be excluded as they don't represent real income/expense.
+     */
+    public boolean includeInBudget() {
+        return effectiveClassification().includeInBudget();
+    }
+
+    /**
+     * Returns true if this transaction has a meaningful merchant.
+     * Non-merchant transactions (BANK_FEE, CASH_WITHDRAWAL, etc.) have null merchant.
+     */
+    public boolean hasMerchant() {
+        return effectiveClassification().hasMerchant() && merchant != null && !merchant.isBlank();
     }
 }

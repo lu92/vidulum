@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.domain;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.cashflow.domain.Type;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public record AiCategorizationResult(
         List<BankCategorySuggestion> bankCategorySuggestions,
         List<UnrecognizedPattern> unrecognizedPatterns,
         List<StructureOptimization> structureOptimizations,
+        List<AutoCategorizableSuggestion> autoCategorizableSuggestions,
         CategorizationStats stats,
         AiCost cost
 ) {
@@ -203,6 +205,40 @@ public record AiCategorizationResult(
     }
 
     /**
+     * Suggestion for auto-categorizable transactions (BANK_FEE, SELF_TRANSFER, etc.)
+     * that don't need AI processing. These are pre-filtered based on TransactionClassification
+     * and mapped to "Zarządzanie kontem" parent category with classification-specific subcategories.
+     */
+    public record AutoCategorizableSuggestion(
+            TransactionClassification classification,
+            String suggestedCategory,         // e.g., "Opłaty bankowe"
+            String parentCategory,            // "Zarządzanie kontem"
+            Type type,
+            int transactionCount,
+            BigDecimal totalAmount,
+            List<String> sampleTransactions   // First few transaction names for context
+    ) {
+        /**
+         * Maps classification to suggested subcategory name (Polish).
+         */
+        public static String categoryForClassification(TransactionClassification classification) {
+            return switch (classification) {
+                case BANK_FEE -> "Opłaty bankowe";
+                case CASH_WITHDRAWAL -> "Wypłaty gotówkowe";
+                case CASH_DEPOSIT -> "Wpłaty gotówkowe";
+                case SELF_TRANSFER -> "Przelewy własne";
+                case INTEREST -> "Odsetki";
+                default -> null;
+            };
+        }
+
+        /**
+         * Default parent category for all auto-categorizable transactions.
+         */
+        public static final String PARENT_CATEGORY = "Zarządzanie kontem";
+    }
+
+    /**
      * Statistics about the categorization process.
      */
     public record CategorizationStats(
@@ -250,6 +286,7 @@ public record AiCategorizationResult(
             List<BankCategorySuggestion> bankCategorySuggestions,
             List<UnrecognizedPattern> unrecognizedPatterns,
             List<StructureOptimization> structureOptimizations,
+            List<AutoCategorizableSuggestion> autoCategorizableSuggestions,
             CategorizationStats stats,
             AiCost cost
     ) {
@@ -261,6 +298,7 @@ public record AiCategorizationResult(
                 bankCategorySuggestions,
                 unrecognizedPatterns,
                 structureOptimizations,
+                autoCategorizableSuggestions,
                 stats,
                 cost
         );
@@ -278,6 +316,7 @@ public record AiCategorizationResult(
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()
         );
@@ -291,6 +330,7 @@ public record AiCategorizationResult(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

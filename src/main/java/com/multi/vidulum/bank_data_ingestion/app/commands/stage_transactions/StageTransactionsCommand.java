@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -64,6 +65,7 @@ public record StageTransactionsCommand(
      * @param merchantConfidence confidence score for merchant extraction (0.0-1.0, nullable)
      * @param counterpartyAccount the other party's bank account number (for OUTFLOW: recipient, for INFLOW: sender)
      * @param paymentMethod     payment method used (HOW payment was made: CARD, TRANSFER, BLIK, etc.)
+     * @param classification    transaction classification (MERCHANT, BANK_FEE, CASH_WITHDRAWAL, etc.)
      */
     public record BankTransaction(
             String bankTransactionId,
@@ -76,7 +78,8 @@ public record StageTransactionsCommand(
             String merchant,
             Double merchantConfidence,
             String counterpartyAccount,
-            PaymentMethod paymentMethod
+            PaymentMethod paymentMethod,
+            TransactionClassification classification
     ) {
     }
 }
