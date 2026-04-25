@@ -167,6 +167,8 @@ public class AiCategorizationService {
         List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
         List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
         List<AiCategorizationResult.StructureOptimization> structureOptimizations = new ArrayList<>();
+        List<AiCategorizationResult.ContextMapping> contextMappings = new ArrayList<>();
+        List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks = new ArrayList<>();
         AiCategorizationResult.SuggestedStructure structure =
                 AiCategorizationResult.SuggestedStructure.empty();
         int tokensUsed = 0;
@@ -191,6 +193,8 @@ public class AiCategorizationService {
                 bankCategorySuggestions = aiResult.bankCategorySuggestions;
                 unrecognizedPatterns = aiResult.unrecognizedPatterns;
                 structureOptimizations = aiResult.structureOptimizations;
+                contextMappings = aiResult.contextMappings;
+                bankCategoryFallbacks = aiResult.bankCategoryFallbacks;
                 tokensUsed = aiResult.tokensUsed;
             } else {
                 log.warn("AI categorization failed: {}", aiResult.errorMessage);
@@ -252,7 +256,7 @@ public class AiCategorizationService {
         log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} auto-categorizable, {} bank category mappings, {} structure optimizations, cost: {}",
                 allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, autoCategorizableCount, bankCategorySuggestions.size(), structureOptimizations.size(), cost.estimatedCost());
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, autoCategorizableSuggestions, stats, cost);
+        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, autoCategorizableSuggestions, contextMappings, bankCategoryFallbacks, stats, cost);
     }
 
     /**
@@ -293,16 +297,18 @@ public class AiCategorizationService {
                         parseResult.bankCategorySuggestions(),
                         parseResult.unrecognizedPatterns(),
                         parseResult.structureOptimizations(),
+                        parseResult.contextMappings(),
+                        parseResult.bankCategoryFallbacks(),
                         tokensUsed,
                         null
                 );
             } else {
-                return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
+                return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
             }
 
         } catch (Exception e) {
             log.error("AI categorization error", e);
-            return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, e.getMessage());
+            return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, e.getMessage());
         }
     }
 
@@ -313,6 +319,8 @@ public class AiCategorizationService {
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             List<AiCategorizationResult.StructureOptimization> structureOptimizations,
+            List<AiCategorizationResult.ContextMapping> contextMappings,
+            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks,
             int tokensUsed,
             String errorMessage
     ) {}

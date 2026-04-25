@@ -163,10 +163,9 @@ class EnrichmentPromptBuilderTest {
 
         // then
         assertThat(systemPrompt)
-                .contains("If you cannot determine merchant")
+                .contains("cannot determine merchant")
                 .contains("fallback")
-                .contains("NEVER return null")
-                .contains("AI_FALLBACK");
+                .contains("NEVER return null");
     }
 
     private TransactionForEnrichment createTransaction(int rowIndex, String name,

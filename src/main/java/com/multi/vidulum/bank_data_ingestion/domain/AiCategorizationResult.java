@@ -19,6 +19,8 @@ public record AiCategorizationResult(
         List<UnrecognizedPattern> unrecognizedPatterns,
         List<StructureOptimization> structureOptimizations,
         List<AutoCategorizableSuggestion> autoCategorizableSuggestions,
+        List<ContextMapping> contextMappings,
+        List<BankCategoryFallback> bankCategoryFallbacks,
         CategorizationStats stats,
         AiCost cost
 ) {
@@ -239,6 +241,42 @@ public record AiCategorizationResult(
     }
 
     /**
+     * Unified mapping for a (merchant, bankCategory) context pair.
+     * Each group in the AI prompt is a unique (pattern, bankCategory) combination,
+     * so the AI produces one contextMapping per group.
+     */
+    public record ContextMapping(
+            String pattern,
+            String bankCategory,
+            String suggestedCategory,
+            String parentCategory,
+            Type type,
+            int confidence,
+            String dominantSignal,
+            boolean isExistingCategory,
+            String reason,
+            int transactionCount,
+            BigDecimal totalAmount
+    ) {
+        public boolean isAutoAccepted() { return confidence >= 90; }
+        public boolean needsConfirmation() { return confidence >= 50 && confidence < 90; }
+    }
+
+    /**
+     * Default fallback mapping for a semantic bankCategory.
+     * Used when a transaction has a known bankCategory but unknown/weak merchant.
+     * AI MUST generate one fallback per semantic bankCategory (skipping generic ones like "Inne").
+     */
+    public record BankCategoryFallback(
+            String bankCategory,
+            String defaultTarget,
+            String parentCategory,
+            Type type,
+            int confidence,
+            String reason
+    ) {}
+
+    /**
      * Statistics about the categorization process.
      */
     public record CategorizationStats(
@@ -287,6 +325,8 @@ public record AiCategorizationResult(
             List<UnrecognizedPattern> unrecognizedPatterns,
             List<StructureOptimization> structureOptimizations,
             List<AutoCategorizableSuggestion> autoCategorizableSuggestions,
+            List<ContextMapping> contextMappings,
+            List<BankCategoryFallback> bankCategoryFallbacks,
             CategorizationStats stats,
             AiCost cost
     ) {
@@ -299,6 +339,8 @@ public record AiCategorizationResult(
                 unrecognizedPatterns,
                 structureOptimizations,
                 autoCategorizableSuggestions,
+                contextMappings,
+                bankCategoryFallbacks,
                 stats,
                 cost
         );
@@ -317,6 +359,8 @@ public record AiCategorizationResult(
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
+                List.of(),
                 CategorizationStats.empty(),
                 AiCost.free()
         );
@@ -330,6 +374,8 @@ public record AiCategorizationResult(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

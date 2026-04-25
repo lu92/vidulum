@@ -605,6 +605,8 @@ public class BankDataIngestionDto {
         private List<AiPatternSuggestionJson> patternSuggestions;
         private List<AiBankCategorySuggestionJson> bankCategorySuggestions;
         private List<AiAutoCategorizableSuggestionJson> autoCategorizableSuggestions;
+        private List<AiContextMappingJson> contextMappings;
+        private List<AiBankCategoryFallbackJson> bankCategoryFallbacks;
         private AiCategorizationStatsJson stats;
         private AiCostJson cost;
     }
@@ -703,6 +705,45 @@ public class BankDataIngestionDto {
         private int transactionCount;
         private double totalAmount;
         private List<String> sampleTransactions;
+    }
+
+    /**
+     * Context mapping from three-signal categorization.
+     * Maps a (merchant, bankCategory) pair to a target category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiContextMappingJson {
+        private String pattern;
+        private String bankCategory;
+        private String suggestedCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private String dominantSignal;
+        private boolean isExistingCategory;
+        private String reason;
+        private int transactionCount;
+        private double totalAmount;
+    }
+
+    /**
+     * Bank category fallback — default mapping for a semantic bankCategory.
+     * Used when transaction has a known bankCategory but unknown merchant.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiBankCategoryFallbackJson {
+        private String bankCategory;
+        private String defaultTarget;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private String reason;
     }
 
     /**

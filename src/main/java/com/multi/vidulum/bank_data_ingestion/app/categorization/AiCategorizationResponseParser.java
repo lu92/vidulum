@@ -78,7 +78,13 @@ public class AiCategorizationResponseParser {
             // where filtering leaves only 1 child)
             AiCategorizationResult.SuggestedStructure finalStructure = flattenSingleChildCategories(enrichedStructure);
 
-            return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized, structureOptimizations);
+            // Convert context mappings and bank category fallbacks (new three-signal format)
+            List<AiCategorizationResult.ContextMapping> contextMappings =
+                    convertContextMappings(dto.contextMappings, patternGroups);
+            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks =
+                    convertBankCategoryFallbacks(dto.bankCategoryFallbacks, patternGroups);
+
+            return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized, structureOptimizations, contextMappings, bankCategoryFallbacks);
 
         } catch (Exception e) {
             log.error("Failed to parse AI categorization response: {}", e.getMessage(), e);
@@ -629,6 +635,93 @@ public class AiCategorizationResponseParser {
         return result;
     }
 
+    // ============ Context mapping conversion (three-signal) ============
+
+    private List<AiCategorizationResult.ContextMapping> convertContextMappings(
+            List<ContextMappingDto> dtos,
+            List<PatternDeduplicator.PatternGroup> patternGroups) {
+        if (dtos == null || dtos.isEmpty()) {
+            return List.of();
+        }
+
+        List<AiCategorizationResult.ContextMapping> result = new ArrayList<>();
+        for (ContextMappingDto dto : dtos) {
+            if (dto.suggestedCategory == null || dto.suggestedCategory.isBlank()) continue;
+
+            Type type = "INFLOW".equalsIgnoreCase(dto.type) ? Type.INFLOW : Type.OUTFLOW;
+
+            // Find matching pattern group for transaction count
+            int txnCount = 0;
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            for (PatternDeduplicator.PatternGroup pg : patternGroups) {
+                if (pg.pattern().equalsIgnoreCase(dto.pattern) && pg.type() == type
+                        && matchesBankCategory(pg.bankCategory(), dto.bankCategory)) {
+                    txnCount += pg.transactionCount();
+                    totalAmount = totalAmount.add(pg.totalAmount());
+                }
+            }
+
+            result.add(new AiCategorizationResult.ContextMapping(
+                    dto.pattern,
+                    dto.bankCategory != null ? dto.bankCategory : "",
+                    dto.suggestedCategory,
+                    dto.parentCategory,
+                    type,
+                    dto.confidence,
+                    dto.dominantSignal != null ? dto.dominantSignal : "MERCHANT",
+                    Boolean.TRUE.equals(dto.isExistingCategory),
+                    dto.reason,
+                    txnCount,
+                    totalAmount
+            ));
+        }
+        return result;
+    }
+
+    private boolean matchesBankCategory(String groupBankCat, String dtoBankCat) {
+        if (groupBankCat == null && dtoBankCat == null) return true;
+        if (groupBankCat == null || dtoBankCat == null) return false;
+        return groupBankCat.equalsIgnoreCase(dtoBankCat);
+    }
+
+    private List<AiCategorizationResult.BankCategoryFallback> convertBankCategoryFallbacks(
+            List<BankCategoryFallbackDto> dtos,
+            List<PatternDeduplicator.PatternGroup> patternGroups) {
+        if (dtos == null || dtos.isEmpty()) {
+            return List.of();
+        }
+
+        // Build set of actual bank categories from transaction data for validation
+        Set<String> actualBankCategories = patternGroups.stream()
+                .map(PatternDeduplicator.PatternGroup::bankCategory)
+                .filter(bc -> bc != null && !bc.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        List<AiCategorizationResult.BankCategoryFallback> result = new ArrayList<>();
+        for (BankCategoryFallbackDto dto : dtos) {
+            if (dto.bankCategory == null || dto.defaultTarget == null) continue;
+
+            // Validate that this bankCategory actually exists in our data
+            if (!actualBankCategories.contains(dto.bankCategory.toLowerCase())) {
+                log.warn("Filtering invalid bankCategoryFallback: '{}' not found in transaction data", dto.bankCategory);
+                continue;
+            }
+
+            Type type = "INFLOW".equalsIgnoreCase(dto.type) ? Type.INFLOW : Type.OUTFLOW;
+
+            result.add(new AiCategorizationResult.BankCategoryFallback(
+                    dto.bankCategory,
+                    dto.defaultTarget,
+                    dto.parentCategory,
+                    type,
+                    dto.confidence,
+                    dto.reason
+            ));
+        }
+        return result;
+    }
+
     // ============ DTOs for JSON parsing ============
 
     @Data
@@ -637,6 +730,8 @@ public class AiCategorizationResponseParser {
         private CategoryStructureDto categoryStructure;
         private List<PatternMappingDto> patternMappings;
         private List<BankCategoryMappingDto> bankCategoryMappings;
+        private List<ContextMappingDto> contextMappings;
+        private List<BankCategoryFallbackDto> bankCategoryFallbacks;
         private List<UnrecognizedPatternDto> unrecognizedPatterns;
         private List<StructureOptimizationDto> structureOptimizations;
     }
@@ -697,6 +792,31 @@ public class AiCategorizationResponseParser {
         private String reason;
     }
 
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ContextMappingDto {
+        private String pattern;
+        private String bankCategory;
+        private String suggestedCategory;
+        private String parentCategory;
+        private String type;
+        private int confidence;
+        private String dominantSignal;
+        private Boolean isExistingCategory;
+        private String reason;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BankCategoryFallbackDto {
+        private String bankCategory;
+        private String defaultTarget;
+        private String parentCategory;
+        private String type;
+        private int confidence;
+        private String reason;
+    }
+
     // ============ Result wrapper ============
 
     public record ParseResult(
@@ -706,6 +826,8 @@ public class AiCategorizationResponseParser {
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             List<AiCategorizationResult.StructureOptimization> structureOptimizations,
+            List<AiCategorizationResult.ContextMapping> contextMappings,
+            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks,
             String errorMessage
     ) {
         public static ParseResult success(
@@ -713,14 +835,18 @@ public class AiCategorizationResponseParser {
                 List<AiCategorizationResult.PatternSuggestion> suggestions,
                 List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
                 List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
-                List<AiCategorizationResult.StructureOptimization> structureOptimizations) {
-            return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, null);
+                List<AiCategorizationResult.StructureOptimization> structureOptimizations,
+                List<AiCategorizationResult.ContextMapping> contextMappings,
+                List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks) {
+            return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, contextMappings, bankCategoryFallbacks, null);
         }
 
         public static ParseResult error(String message) {
             return new ParseResult(
                     false,
                     AiCategorizationResult.SuggestedStructure.empty(),
+                    List.of(),
+                    List.of(),
                     List.of(),
                     List.of(),
                     List.of(),
