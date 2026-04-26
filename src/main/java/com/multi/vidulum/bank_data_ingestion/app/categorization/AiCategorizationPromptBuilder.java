@@ -69,6 +69,32 @@ public class AiCategorizationPromptBuilder {
             - OUTFLOW: Expenses (wydatki)
             - INFLOW: Income (przychody)
 
+            THREE-SIGNAL CATEGORIZATION:
+            Each transaction group has three signals. Assess their quality to make better categorization decisions:
+
+            MERCHANT SIGNAL (merchantConfidence):
+            - STRONG (≥0.8): Recognized company (ZABKA, NETFLIX, UBER) — reliable WHO
+            - MEDIUM (0.5-0.7): Probable company, noisy name — use with caution
+            - WEAK (≤0.3): Address/terminal/code (UL. JAGIELLONCZYKA) — ignore as identifier
+
+            BANK CATEGORY SIGNAL:
+            - SEMANTIC: "Artykuły spożywcze", "Restauracje", "Sport" — reliable WHAT
+            - CHANNEL: "Internet, TV, telefon", "Zakupy przez internet" — describes HOW, not WHAT
+            - GENERIC: "Inne", "Bez kategorii" — useless for categorization
+
+            DESCRIPTION SIGNAL:
+            - SEMANTIC: "czynsz za styczeń", "składki ZUS" — reliable WHY
+            - TECHNICAL: "*********0015010", "BLIK REF 91769951500" — useless
+
+            DECISION RULES:
+            - When merchant + bankCategory AGREE → high confidence (95+)
+            - When merchant STRONG + bankCategory GENERIC → merchant decides
+            - When merchant WEAK + bankCategory SEMANTIC → bankCategory decides
+            - When signals CONFLICT → description is the tiebreaker
+            - When bankCategory is CHANNEL (e.g., "Internet, TV, telefon") → verify with description
+            - Bank categories can be WRONG due to MCC codes (e.g., monastery classified as cinema)
+              → if merchant name clearly contradicts bankCategory, trust the merchant and override
+
             %s
 
             You MUST respond with valid JSON only, no markdown, no explanation.
@@ -379,6 +405,29 @@ public class AiCategorizationPromptBuilder {
                   "reason": "Bank's generic income category maps to specific salary category"
                 }
               ],
+              "contextMappings": [
+                {
+                  "pattern": "ZABKA",
+                  "bankCategory": "Artykuły spożywcze",
+                  "suggestedCategory": "Zakupy spożywcze",
+                  "parentCategory": "Żywność",
+                  "type": "OUTFLOW",
+                  "confidence": 98,
+                  "dominantSignal": "BOTH_AGREE",
+                  "isExistingCategory": false,
+                  "reason": "Grocery store confirmed by bank category"
+                }
+              ],
+              "bankCategoryFallbacks": [
+                {
+                  "bankCategory": "Artykuły spożywcze",
+                  "defaultTarget": "Zakupy spożywcze",
+                  "parentCategory": "Żywność",
+                  "type": "OUTFLOW",
+                  "confidence": 90,
+                  "reason": "Default mapping for grocery bank category"
+                }
+              ],
               "unrecognizedPatterns": [
                 {
                   "pattern": "XYZ123456",
@@ -451,10 +500,23 @@ public class AiCategorizationPromptBuilder {
             MANDATORY RULES:
             1. You MUST create a patternMapping for EVERY pattern shown in OUTFLOW/INFLOW PATTERNS section!
                If you see 45 patterns, you should return ~40-45 patternMappings (unless some are truly unrecognizable).
-            2. bankCategoryMappings should ONLY contain values from the "bank:" field shown in patterns!
+            2. bankCategoryMappings should ONLY contain values from the "bankCategory:" field shown in patterns!
                DO NOT use merchant names (like "ZABKA", "NETFLIX") as bankCategory - these belong in patternMappings!
             3. For generic bankCategories like "TRANSAKCJA KARTĄ PŁATNICZĄ", do NOT create bankCategoryMapping.
                Instead, categorize via patternMappings based on merchant names.
+
+            CONTEXT MAPPINGS (three-signal):
+            4. You MUST also create a contextMapping for EVERY pattern group, using BOTH merchant and bankCategory
+               as inputs. Set dominantSignal to one of: BOTH_AGREE, MERCHANT, BANK_CATEGORY, DESCRIPTION.
+            5. When merchant is WEAK and bankCategory is SEMANTIC → dominantSignal = BANK_CATEGORY
+            6. When merchant is STRONG and bankCategory is GENERIC → dominantSignal = MERCHANT
+            7. When merchant contradicts bankCategory → check description, use DESCRIPTION or MERCHANT
+
+            BANK CATEGORY FALLBACKS (safety net):
+            8. You MUST create a bankCategoryFallback for EVERY SEMANTIC bankCategory present in the data.
+               This ensures transactions with unknown merchants but known bank categories still get categorized.
+            9. DO NOT create fallbacks for GENERIC categories ("Inne", "Bez kategorii", "Uncategorized").
+            10. The defaultTarget in bankCategoryFallback MUST exist in your categoryStructure.
             """);
 
         return sb.toString();
@@ -482,37 +544,65 @@ public class AiCategorizationPromptBuilder {
         String amountStr = formatAmount(pg.totalAmount());
         StringBuilder sb = new StringBuilder();
 
-        // First line: count, amount, pattern
-        sb.append(String.format("  [%d txns, %s] %s\n",
+        // First line: count, amount, pattern + bankCategory context
+        String bankCatDisplay = (pg.bankCategory() != null && !pg.bankCategory().isBlank())
+                ? pg.bankCategory() : "-";
+        sb.append(String.format("  [%d txns, %s] %s | %s\n",
                 pg.transactionCount(),
                 amountStr,
-                pg.pattern()));
+                pg.pattern(),
+                bankCatDisplay));
 
         // Second line: sample name (original bank name)
         sb.append(String.format("    | name: \"%s\"\n",
                 truncate(pg.sampleTransaction(), 50)));
 
-        // Third line: merchant with confidence (if extracted by AI)
-        // This is the KEY IMPROVEMENT for bank intermediary transactions
+        // Third line: merchant with confidence and signal strength
         if (pg.sampleMerchant() != null && !pg.sampleMerchant().isBlank()) {
+            String signalStrength = classifyMerchantSignal(pg.averageMerchantConfidence());
             String confidenceStr = pg.averageMerchantConfidence() != null
                     ? String.format(" (%.0f%%)", pg.averageMerchantConfidence() * 100)
                     : "";
-            sb.append(String.format("    | merchant: \"%s\"%s\n",
-                    pg.sampleMerchant(), confidenceStr));
+            sb.append(String.format("    | merchant: \"%s\"%s — %s\n",
+                    pg.sampleMerchant(), confidenceStr, signalStrength));
         }
 
-        // Fourth line: title/description (if available)
+        // Fourth line: title/description with signal classification
         if (pg.sampleDescription() != null && !pg.sampleDescription().isBlank()) {
-            sb.append(String.format("    | title: \"%s\"\n",
-                    truncate(pg.sampleDescription(), 70)));
+            String descSignal = classifyDescriptionSignal(pg.sampleDescription());
+            sb.append(String.format("    | title: \"%s\" — %s\n",
+                    truncate(pg.sampleDescription(), 70), descSignal));
         }
 
-        // Fifth line: bank category
-        sb.append(String.format("    | bank: %s\n",
-                pg.bankCategory() != null && !pg.bankCategory().isBlank() ? pg.bankCategory() : "-"));
+        // Fifth line: bank category with signal classification
+        String bankCatSignal = classifyBankCategorySignal(pg.bankCategory());
+        sb.append(String.format("    | bankCategory: %s — %s\n",
+                bankCatDisplay, bankCatSignal));
 
         return sb.toString();
+    }
+
+    private String classifyMerchantSignal(Double confidence) {
+        if (confidence == null) return "NONE";
+        if (confidence >= 0.8) return "STRONG";
+        if (confidence >= 0.5) return "MEDIUM";
+        return "WEAK";
+    }
+
+    private String classifyDescriptionSignal(String description) {
+        if (description == null || description.isBlank()) return "EMPTY";
+        if (description.matches("^\\*+\\d+$") || description.startsWith("BLIK REF")
+                || description.startsWith("/OPT/")) return "TECHNICAL";
+        return "SEMANTIC";
+    }
+
+    private String classifyBankCategorySignal(String bankCategory) {
+        if (bankCategory == null || bankCategory.isBlank()) return "NONE";
+        if (isGenericBankCategory(bankCategory)) return "GENERIC";
+        // Check for channel-type categories
+        String upper = bankCategory.toUpperCase().trim();
+        if (upper.contains("INTERNET") || upper.contains("ZAKUPY PRZEZ")) return "CHANNEL";
+        return "SEMANTIC";
     }
 
     private String formatAmount(BigDecimal amount) {

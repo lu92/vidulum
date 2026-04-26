@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.cashflow.domain.Type;
 import lombok.RequiredArgsConstructor;
@@ -81,12 +82,25 @@ public class AiCategorizationService {
         log.info("Starting AI categorization for session: {}, cashFlowId: {}, transactions: {}",
                 sessionId, cashFlowId, transactions.size());
 
-        // Step 1: Deduplicate into patterns
-        List<PatternDeduplicator.PatternGroup> patternGroups = deduplicator.deduplicate(transactions);
-        log.info("Deduplicated {} transactions into {} unique patterns",
-                transactions.size(), patternGroups.size());
+        // Step 0: Pre-filter auto-categorizable transactions (BANK_FEE, SELF_TRANSFER, etc.)
+        PreFilterResult preFilterResult = preFilterAutoCategorizableTransactions(transactions);
+        List<StagedTransaction> transactionsForAi = preFilterResult.remainingTransactions();
+        List<AiCategorizationResult.AutoCategorizableSuggestion> autoCategorizableSuggestions =
+                preFilterResult.suggestions();
 
-        if (patternGroups.isEmpty()) {
+        log.info("Pre-filtered {} auto-categorizable transactions ({}), {} remaining for AI/cache",
+                transactions.size() - transactionsForAi.size(),
+                autoCategorizableSuggestions.stream()
+                        .map(s -> s.classification().name() + ":" + s.transactionCount())
+                        .collect(Collectors.joining(", ")),
+                transactionsForAi.size());
+
+        // Step 1: Deduplicate remaining transactions into patterns
+        List<PatternDeduplicator.PatternGroup> patternGroups = deduplicator.deduplicate(transactionsForAi);
+        log.info("Deduplicated {} transactions into {} unique patterns",
+                transactionsForAi.size(), patternGroups.size());
+
+        if (patternGroups.isEmpty() && autoCategorizableSuggestions.isEmpty()) {
             return AiCategorizationResult.noPatterns(sessionId);
         }
 
@@ -153,6 +167,8 @@ public class AiCategorizationService {
         List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
         List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
         List<AiCategorizationResult.StructureOptimization> structureOptimizations = new ArrayList<>();
+        List<AiCategorizationResult.ContextMapping> contextMappings = new ArrayList<>();
+        List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks = new ArrayList<>();
         AiCategorizationResult.SuggestedStructure structure =
                 AiCategorizationResult.SuggestedStructure.empty();
         int tokensUsed = 0;
@@ -177,6 +193,8 @@ public class AiCategorizationService {
                 bankCategorySuggestions = aiResult.bankCategorySuggestions;
                 unrecognizedPatterns = aiResult.unrecognizedPatterns;
                 structureOptimizations = aiResult.structureOptimizations;
+                contextMappings = aiResult.contextMappings;
+                bankCategoryFallbacks = aiResult.bankCategoryFallbacks;
                 tokensUsed = aiResult.tokensUsed;
             } else {
                 log.warn("AI categorization failed: {}", aiResult.errorMessage);
@@ -231,10 +249,14 @@ public class AiCategorizationService {
                 ? AiCategorizationResult.AiCost.estimated(tokensUsed)
                 : AiCategorizationResult.AiCost.free();
 
-        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} bank category mappings, {} structure optimizations, cost: {}",
-                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, bankCategorySuggestions.size(), structureOptimizations.size(), cost.estimatedCost());
+        int autoCategorizableCount = autoCategorizableSuggestions.stream()
+                .mapToInt(AiCategorizationResult.AutoCategorizableSuggestion::transactionCount)
+                .sum();
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, stats, cost);
+        log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} auto-categorizable, {} bank category mappings, {} structure optimizations, cost: {}",
+                allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, autoCategorizableCount, bankCategorySuggestions.size(), structureOptimizations.size(), cost.estimatedCost());
+
+        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, autoCategorizableSuggestions, contextMappings, bankCategoryFallbacks, stats, cost);
     }
 
     /**
@@ -275,16 +297,18 @@ public class AiCategorizationService {
                         parseResult.bankCategorySuggestions(),
                         parseResult.unrecognizedPatterns(),
                         parseResult.structureOptimizations(),
+                        parseResult.contextMappings(),
+                        parseResult.bankCategoryFallbacks(),
                         tokensUsed,
                         null
                 );
             } else {
-                return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
+                return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, parseResult.errorMessage());
             }
 
         } catch (Exception e) {
             log.error("AI categorization error", e);
-            return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), 0, e.getMessage());
+            return new AiCallResult(false, null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, e.getMessage());
         }
     }
 
@@ -295,7 +319,85 @@ public class AiCategorizationService {
             List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
             List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
             List<AiCategorizationResult.StructureOptimization> structureOptimizations,
+            List<AiCategorizationResult.ContextMapping> contextMappings,
+            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks,
             int tokensUsed,
             String errorMessage
     ) {}
+
+    /**
+     * Result of pre-filtering auto-categorizable transactions.
+     */
+    private record PreFilterResult(
+            List<StagedTransaction> remainingTransactions,
+            List<AiCategorizationResult.AutoCategorizableSuggestion> suggestions
+    ) {}
+
+    /**
+     * Pre-filters transactions that can be auto-categorized based on TransactionClassification.
+     * These transactions (BANK_FEE, SELF_TRANSFER, CASH_WITHDRAWAL, etc.) don't need AI
+     * and are mapped to "Zarządzanie kontem" category with classification-specific subcategories.
+     */
+    private PreFilterResult preFilterAutoCategorizableTransactions(List<StagedTransaction> transactions) {
+        // Separate auto-categorizable from normal transactions
+        Map<Boolean, List<StagedTransaction>> partitioned = transactions.stream()
+                .collect(Collectors.partitioningBy(txn -> txn.originalData().isAutoCategorizeable()));
+
+        List<StagedTransaction> autoCategorizeable = partitioned.get(true);
+        List<StagedTransaction> remaining = partitioned.get(false);
+
+        if (autoCategorizeable.isEmpty()) {
+            return new PreFilterResult(transactions, List.of());
+        }
+
+        // Group by classification and type to create suggestions
+        Map<TransactionClassification, Map<Type, List<StagedTransaction>>> grouped = autoCategorizeable.stream()
+                .collect(Collectors.groupingBy(
+                        txn -> txn.originalData().effectiveClassification(),
+                        Collectors.groupingBy(txn -> txn.originalData().type())
+                ));
+
+        List<AiCategorizationResult.AutoCategorizableSuggestion> suggestions = new ArrayList<>();
+
+        for (var classificationEntry : grouped.entrySet()) {
+            TransactionClassification classification = classificationEntry.getKey();
+            String suggestedCategory = AiCategorizationResult.AutoCategorizableSuggestion
+                    .categoryForClassification(classification);
+
+            if (suggestedCategory == null) {
+                // Unknown classification - shouldn't happen, but handle gracefully
+                remaining.addAll(classificationEntry.getValue().values().stream()
+                        .flatMap(List::stream)
+                        .toList());
+                continue;
+            }
+
+            for (var typeEntry : classificationEntry.getValue().entrySet()) {
+                Type type = typeEntry.getKey();
+                List<StagedTransaction> txns = typeEntry.getValue();
+
+                int count = txns.size();
+                BigDecimal totalAmount = txns.stream()
+                        .map(t -> t.originalData().money().getAmount())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                List<String> samples = txns.stream()
+                        .limit(3)
+                        .map(t -> t.originalData().name())
+                        .toList();
+
+                suggestions.add(new AiCategorizationResult.AutoCategorizableSuggestion(
+                        classification,
+                        suggestedCategory,
+                        AiCategorizationResult.AutoCategorizableSuggestion.PARENT_CATEGORY,
+                        type,
+                        count,
+                        totalAmount,
+                        samples
+                ));
+            }
+        }
+
+        return new PreFilterResult(remaining, suggestions);
+    }
 }

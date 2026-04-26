@@ -755,4 +755,177 @@ class AiCategorizationResponseParserTest {
         assertThat(result.success()).isTrue();
         assertThat(result.bankCategorySuggestions()).hasSize(1); // should match case-insensitively
     }
+
+    // ============ Three-Signal: contextMappings + bankCategoryFallbacks tests ============
+
+    @Test
+    @DisplayName("Should parse contextMappings with dominantSignal")
+    void shouldParseContextMappingsWithDominantSignal() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [{"name": "Żywność", "subCategories": ["Zakupy spożywcze"]}],
+                    "inflow": []
+                  },
+                  "patternMappings": [],
+                  "bankCategoryMappings": [],
+                  "contextMappings": [
+                    {
+                      "pattern": "ZABKA",
+                      "bankCategory": "Artykuły spożywcze",
+                      "suggestedCategory": "Zakupy spożywcze",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 98,
+                      "dominantSignal": "BOTH_AGREE",
+                      "isExistingCategory": false,
+                      "reason": "Grocery store confirmed by bank category"
+                    },
+                    {
+                      "pattern": "BADOO",
+                      "bankCategory": "Inne",
+                      "suggestedCategory": "Zakupy spożywcze",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 80,
+                      "dominantSignal": "MERCHANT",
+                      "isExistingCategory": false,
+                      "reason": "Merchant decides, bank category is generic"
+                    }
+                  ],
+                  "bankCategoryFallbacks": [],
+                  "unrecognizedPatterns": [],
+                  "structureOptimizations": []
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka zakupy", "ZABKA", 0.95, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "Artykuły spożywcze", List.of("tx1"), null),
+                new PatternDeduplicator.PatternGroup("BADOO", "Badoo", "BADOO", 0.95, "", Type.OUTFLOW, 3, new BigDecimal("66.00"), "Inne", List.of("tx2"), null)
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        assertThat(result.contextMappings()).hasSize(2);
+
+        AiCategorizationResult.ContextMapping zabka = result.contextMappings().get(0);
+        assertThat(zabka.pattern()).isEqualTo("ZABKA");
+        assertThat(zabka.bankCategory()).isEqualTo("Artykuły spożywcze");
+        assertThat(zabka.suggestedCategory()).isEqualTo("Zakupy spożywcze");
+        assertThat(zabka.dominantSignal()).isEqualTo("BOTH_AGREE");
+        assertThat(zabka.confidence()).isEqualTo(98);
+        assertThat(zabka.transactionCount()).isEqualTo(5);
+
+        AiCategorizationResult.ContextMapping badoo = result.contextMappings().get(1);
+        assertThat(badoo.dominantSignal()).isEqualTo("MERCHANT");
+        assertThat(badoo.confidence()).isEqualTo(80);
+    }
+
+    @Test
+    @DisplayName("Should parse bankCategoryFallbacks and validate against actual bank categories")
+    void shouldParseBankCategoryFallbacks() {
+        // given
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [{"name": "Żywność", "subCategories": ["Zakupy spożywcze", "Restauracje"]}],
+                    "inflow": []
+                  },
+                  "patternMappings": [],
+                  "bankCategoryMappings": [],
+                  "contextMappings": [],
+                  "bankCategoryFallbacks": [
+                    {
+                      "bankCategory": "Artykuły spożywcze",
+                      "defaultTarget": "Zakupy spożywcze",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 90,
+                      "reason": "Default grocery mapping"
+                    },
+                    {
+                      "bankCategory": "Restauracje i kawiarnie",
+                      "defaultTarget": "Restauracje",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 90,
+                      "reason": "Default dining mapping"
+                    },
+                    {
+                      "bankCategory": "NONEXISTENT CATEGORY",
+                      "defaultTarget": "Something",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 90,
+                      "reason": "Should be filtered out"
+                    }
+                  ],
+                  "unrecognizedPatterns": [],
+                  "structureOptimizations": []
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "Artykuły spożywcze", List.of(), null),
+                new PatternDeduplicator.PatternGroup("MCDONALDS", "McDonalds", null, null, "", Type.OUTFLOW, 3, new BigDecimal("75.00"), "Restauracje i kawiarnie", List.of(), null)
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        // "NONEXISTENT CATEGORY" should be filtered out
+        assertThat(result.bankCategoryFallbacks()).hasSize(2);
+        assertThat(result.bankCategoryFallbacks().get(0).bankCategory()).isEqualTo("Artykuły spożywcze");
+        assertThat(result.bankCategoryFallbacks().get(0).defaultTarget()).isEqualTo("Zakupy spożywcze");
+        assertThat(result.bankCategoryFallbacks().get(1).bankCategory()).isEqualTo("Restauracje i kawiarnie");
+    }
+
+    @Test
+    @DisplayName("Should return empty contextMappings when AI response uses legacy format only")
+    void shouldReturnEmptyContextMappingsWhenLegacyFormat() {
+        // given - response with only patternMappings, no contextMappings
+        String aiResponse = """
+                {
+                  "categoryStructure": {
+                    "outflow": [{"name": "Żywność", "subCategories": ["Zakupy spożywcze"]}],
+                    "inflow": []
+                  },
+                  "patternMappings": [
+                    {
+                      "pattern": "ZABKA",
+                      "suggestedCategory": "Zakupy spożywcze",
+                      "parentCategory": "Żywność",
+                      "type": "OUTFLOW",
+                      "confidence": 95,
+                      "isExistingCategory": false,
+                      "reason": "Grocery store"
+                    }
+                  ],
+                  "bankCategoryMappings": [],
+                  "unrecognizedPatterns": [],
+                  "structureOptimizations": []
+                }
+                """;
+
+        List<PatternDeduplicator.PatternGroup> patterns = List.of(
+                new PatternDeduplicator.PatternGroup("ZABKA", "Zabka", null, null, "", Type.OUTFLOW, 5, new BigDecimal("250.00"), "Artykuły spożywcze", List.of("tx1"), null)
+        );
+
+        // when
+        AiCategorizationResponseParser.ParseResult result = parser.parse(aiResponse, patterns);
+
+        // then
+        assertThat(result.success()).isTrue();
+        // Legacy patternMappings still work
+        assertThat(result.suggestions()).hasSize(1);
+        // contextMappings and bankCategoryFallbacks are empty (not provided by AI)
+        assertThat(result.contextMappings()).isEmpty();
+        assertThat(result.bankCategoryFallbacks()).isEmpty();
+    }
 }

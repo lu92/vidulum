@@ -103,7 +103,8 @@ public class UploadCsvCommandHandler
                 row.merchant(),
                 row.merchantConfidence(),
                 row.counterpartyAccount(),
-                row.effectivePaymentMethod()
+                row.effectivePaymentMethod(),
+                row.effectiveClassification()
         );
     }
 

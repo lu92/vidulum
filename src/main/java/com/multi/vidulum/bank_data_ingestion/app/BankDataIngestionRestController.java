@@ -461,11 +461,33 @@ public class BankDataIngestionRestController {
                 .bankCategorySuggestions(result.bankCategorySuggestions().stream()
                         .map(this::toBankCategorySuggestionJson)
                         .toList())
+                .autoCategorizableSuggestions(result.autoCategorizableSuggestions().stream()
+                        .map(this::toAutoCategorizableSuggestionJson)
+                        .toList())
+                .contextMappings(result.contextMappings().stream()
+                        .map(this::toContextMappingJson)
+                        .toList())
+                .bankCategoryFallbacks(result.bankCategoryFallbacks().stream()
+                        .map(this::toBankCategoryFallbackJson)
+                        .toList())
                 .stats(toCategorizationStatsJson(result.stats()))
                 .cost(BankDataIngestionDto.AiCostJson.builder()
                         .tokensUsed(result.cost().tokensUsed())
                         .estimatedCost(result.cost().estimatedCost())
                         .build())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiAutoCategorizableSuggestionJson toAutoCategorizableSuggestionJson(
+            AiCategorizationResult.AutoCategorizableSuggestion suggestion) {
+        return BankDataIngestionDto.AiAutoCategorizableSuggestionJson.builder()
+                .classification(suggestion.classification().name())
+                .suggestedCategory(suggestion.suggestedCategory())
+                .parentCategory(suggestion.parentCategory())
+                .type(suggestion.type())
+                .transactionCount(suggestion.transactionCount())
+                .totalAmount(suggestion.totalAmount().doubleValue())
+                .sampleTransactions(suggestion.sampleTransactions())
                 .build();
     }
 
@@ -480,6 +502,35 @@ public class BankDataIngestionRestController {
                 .transactionCount(suggestion.transactionCount())
                 .totalAmount(suggestion.totalAmount().doubleValue())
                 .reason(suggestion.reason())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiContextMappingJson toContextMappingJson(
+            AiCategorizationResult.ContextMapping mapping) {
+        return BankDataIngestionDto.AiContextMappingJson.builder()
+                .pattern(mapping.pattern())
+                .bankCategory(mapping.bankCategory())
+                .suggestedCategory(mapping.suggestedCategory())
+                .parentCategory(mapping.parentCategory())
+                .type(mapping.type())
+                .confidence(mapping.confidence())
+                .dominantSignal(mapping.dominantSignal())
+                .isExistingCategory(mapping.isExistingCategory())
+                .reason(mapping.reason())
+                .transactionCount(mapping.transactionCount())
+                .totalAmount(mapping.totalAmount().doubleValue())
+                .build();
+    }
+
+    private BankDataIngestionDto.AiBankCategoryFallbackJson toBankCategoryFallbackJson(
+            AiCategorizationResult.BankCategoryFallback fallback) {
+        return BankDataIngestionDto.AiBankCategoryFallbackJson.builder()
+                .bankCategory(fallback.bankCategory())
+                .defaultTarget(fallback.defaultTarget())
+                .parentCategory(fallback.parentCategory())
+                .type(fallback.type())
+                .confidence(fallback.confidence())
+                .reason(fallback.reason())
                 .build();
     }
 
@@ -654,7 +705,8 @@ public class BankDataIngestionRestController {
                 json.getMerchant(),
                 json.getMerchantConfidence(),
                 json.getCounterpartyAccount(),
-                json.getPaymentMethod()
+                json.getPaymentMethod(),
+                json.getClassification()
         );
     }
 

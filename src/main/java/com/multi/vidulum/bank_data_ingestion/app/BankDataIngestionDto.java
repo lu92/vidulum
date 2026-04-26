@@ -1,6 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -136,6 +137,7 @@ public class BankDataIngestionDto {
         private Double merchantConfidence;
         private String counterpartyAccount;
         private PaymentMethod paymentMethod;
+        private TransactionClassification classification;
     }
 
     @Data
@@ -602,6 +604,9 @@ public class BankDataIngestionDto {
         private AiSuggestedStructureJson suggestedStructure;
         private List<AiPatternSuggestionJson> patternSuggestions;
         private List<AiBankCategorySuggestionJson> bankCategorySuggestions;
+        private List<AiAutoCategorizableSuggestionJson> autoCategorizableSuggestions;
+        private List<AiContextMappingJson> contextMappings;
+        private List<AiBankCategoryFallbackJson> bankCategoryFallbacks;
         private AiCategorizationStatsJson stats;
         private AiCostJson cost;
     }
@@ -682,6 +687,63 @@ public class BankDataIngestionDto {
     public static class AiCostJson {
         private int tokensUsed;
         private String estimatedCost;
+    }
+
+    /**
+     * Auto-categorizable transaction suggestion (BANK_FEE, SELF_TRANSFER, etc.)
+     * These are pre-filtered transactions that don't need AI processing.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiAutoCategorizableSuggestionJson {
+        private String classification;      // BANK_FEE, CASH_WITHDRAWAL, etc.
+        private String suggestedCategory;   // Opłaty bankowe, Wypłaty gotówkowe, etc.
+        private String parentCategory;      // Zarządzanie kontem
+        private Type type;
+        private int transactionCount;
+        private double totalAmount;
+        private List<String> sampleTransactions;
+    }
+
+    /**
+     * Context mapping from three-signal categorization.
+     * Maps a (merchant, bankCategory) pair to a target category.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiContextMappingJson {
+        private String pattern;
+        private String bankCategory;
+        private String suggestedCategory;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private String dominantSignal;
+        private boolean isExistingCategory;
+        private String reason;
+        private int transactionCount;
+        private double totalAmount;
+    }
+
+    /**
+     * Bank category fallback — default mapping for a semantic bankCategory.
+     * Used when transaction has a known bankCategory but unknown merchant.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AiBankCategoryFallbackJson {
+        private String bankCategory;
+        private String defaultTarget;
+        private String parentCategory;
+        private Type type;
+        private int confidence;
+        private String reason;
     }
 
     /**

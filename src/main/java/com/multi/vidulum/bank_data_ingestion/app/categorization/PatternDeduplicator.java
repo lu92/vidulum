@@ -65,7 +65,8 @@ public class PatternDeduplicator {
             String normalizedPattern = normalizer.normalize(patternSource);
             Type type = transaction.originalData().type();
 
-            PatternKey key = new PatternKey(normalizedPattern, type);
+            String normalizedBankCat = normalizeBankCategory(transaction.originalData().bankCategory());
+            PatternKey key = new PatternKey(normalizedPattern, type, normalizedBankCat);
 
             groups.computeIfAbsent(key, k -> new ArrayList<>())
                     .add(new TransactionInfo(
@@ -131,14 +132,8 @@ public class PatternDeduplicator {
                 .map(TransactionInfo::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Get most common bank category
-        String mostCommonBankCategory = transactions.stream()
-                .filter(t -> t.bankCategory() != null)
-                .collect(Collectors.groupingBy(TransactionInfo::bankCategory, Collectors.counting()))
-                .entrySet().stream()
-                .max(Comparator.comparingLong(Map.Entry::getValue))
-                .map(Map.Entry::getKey)
-                .orElse("");
+        // Bank category comes from the grouping key (homogeneous within group)
+        String groupBankCategory = key.bankCategory() != null ? key.bankCategory() : "";
 
         // Collect all transaction IDs
         List<String> transactionIds = transactions.stream()
@@ -164,7 +159,7 @@ public class PatternDeduplicator {
                 key.type(),
                 transactions.size(),
                 totalAmount,
-                mostCommonBankCategory,
+                groupBankCategory,
                 transactionIds,
                 mostCommonCounterpartyAccount
         );
@@ -191,7 +186,7 @@ public class PatternDeduplicator {
 
         for (PatternGroup group : groups) {
             if (group.counterpartyAccount() != null && !group.counterpartyAccount().isBlank()) {
-                AccountKey key = new AccountKey(group.counterpartyAccount(), group.type());
+                AccountKey key = new AccountKey(group.counterpartyAccount(), group.type(), group.bankCategory());
                 groupsByAccount.computeIfAbsent(key, k -> new ArrayList<>()).add(group);
             } else {
                 groupsWithoutAccount.add(group);
@@ -220,7 +215,7 @@ public class PatternDeduplicator {
     /**
      * Key for grouping by counterpartyAccount.
      */
-    private record AccountKey(String account, Type type) {
+    private record AccountKey(String account, Type type, String bankCategory) {
     }
 
     /**
@@ -259,17 +254,8 @@ public class PatternDeduplicator {
                 .flatMap(g -> g.transactionIds().stream())
                 .toList();
 
-        // Use most common bank category across all groups
-        String mostCommonBankCategory = groups.stream()
-                .filter(g -> g.bankCategory() != null && !g.bankCategory().isBlank())
-                .collect(Collectors.groupingBy(
-                        PatternGroup::bankCategory,
-                        Collectors.summingInt(PatternGroup::transactionCount)
-                ))
-                .entrySet().stream()
-                .max(Comparator.comparingInt(Map.Entry::getValue))
-                .map(Map.Entry::getKey)
-                .orElse(dominantGroup.bankCategory());
+        // Bank category comes from the AccountKey (homogeneous within merged group)
+        String mergedBankCategory = key.bankCategory() != null ? key.bankCategory() : dominantGroup.bankCategory();
 
         // Calculate weighted average merchant confidence
         double totalWeightedConfidence = groups.stream()
@@ -293,7 +279,7 @@ public class PatternDeduplicator {
                 key.type(),
                 totalTransactionCount,
                 totalAmount,
-                mostCommonBankCategory,
+                mergedBankCategory,
                 allTransactionIds,
                 key.account()
         );
@@ -328,10 +314,15 @@ public class PatternDeduplicator {
         return first.substring(0, prefixLength).trim();
     }
 
+    private String normalizeBankCategory(String bankCategory) {
+        if (bankCategory == null || bankCategory.isBlank()) return "";
+        return bankCategory.trim();
+    }
+
     /**
      * Key for grouping transactions.
      */
-    private record PatternKey(String pattern, Type type) {
+    private record PatternKey(String pattern, Type type, String bankCategory) {
     }
 
     /**
