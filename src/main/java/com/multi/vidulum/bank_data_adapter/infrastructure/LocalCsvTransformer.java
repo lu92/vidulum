@@ -365,15 +365,25 @@ public class LocalCsvTransformer {
         return "OUTFLOW"; // Default to outflow for safety (most bank transactions are expenses)
     }
 
+    private static final Set<String> VALID_ISO_CURRENCIES = Set.of(
+            "PLN", "EUR", "USD", "GBP", "CHF", "CZK", "SEK", "NOK", "DKK", "HUF",
+            "RON", "BGN", "HRK", "RUB", "UAH", "TRY", "JPY", "CNY", "AUD", "CAD",
+            "NZD", "ZAR", "BRL", "MXN", "INR", "KRW", "SGD", "HKD", "THB", "ILS"
+    );
+
     private String extractCurrency(String value, Map<String, String> params) {
         if (value == null || value.isBlank()) {
             return params != null ? params.getOrDefault("default", "PLN") : "PLN";
         }
 
-        // Extract currency code from value
+        // Extract 3-letter code and validate against ISO 4217
         Matcher matcher = Pattern.compile("([A-Z]{3})").matcher(value.toUpperCase());
         if (matcher.find()) {
-            return matcher.group(1);
+            String candidate = matcher.group(1);
+            if (VALID_ISO_CURRENCIES.contains(candidate)) {
+                return candidate;
+            }
+            log.warn("Rejected invalid currency code '{}' extracted from '{}', using default", candidate, value);
         }
 
         return params != null ? params.getOrDefault("default", "PLN") : "PLN";

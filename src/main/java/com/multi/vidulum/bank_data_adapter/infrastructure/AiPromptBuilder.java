@@ -30,7 +30,7 @@ public class AiPromptBuilder {
         - description: transaction purpose/title - WHY/WHAT the payment is for (CRITICAL - see POLISH BANK MAPPING below)
         - bankCategory: original category from bank (e.g., "Przelewy wychodzące")
         - amount: ALWAYS POSITIVE decimal number (use absolute value)
-        - currency: PLN, EUR, USD (3-letter code)
+        - currency: valid ISO 4217 code (e.g., PLN, EUR, USD, GBP, CHF, CZK). Determine currency ONCE from file context (metadata rows, currency column, or bank country). Apply the SAME code to ALL rows. NEVER extract currency by taking a substring of a column header name.
         - type: INFLOW (positive/credit) or OUTFLOW (negative/debit)
         - operationDate: YYYY-MM-DD format (REQUIRED)
         - bookingDate: YYYY-MM-DD format (same as operationDate if not available)
@@ -107,8 +107,12 @@ public class AiPromptBuilder {
         - IBAN lengths per country: PL=28, DE=22, GB=22, FR=27, ES=24, IT=27, NL=18
 
         ## TRANSFORMATION RULES:
-        1. SKIP metadata header lines (account info, date ranges, totals, summaries)
-        2. Find actual column headers row (contains "Data", "Kwota", etc.)
+        1. SKIP all non-data rows: metadata AND column headers.
+           - METADATA rows contain account info, date ranges, totals, summaries.
+           - COLUMN HEADER rows contain field names (in any language) — they are NOT transactions.
+           - A DATA ROW has: a parseable date, a numeric amount, and a text name/description.
+           - NEVER output metadata or column header rows as transactions.
+        2. Detect the actual column header row to understand column mapping, then SKIP it from output.
         3. Convert dates: DD-MM-YYYY or DD.MM.YYYY → YYYY-MM-DD
         4. Replace "|" characters with spaces (used as line breaks in Polish banks)
         5. Negative amount = OUTFLOW, positive = INFLOW
