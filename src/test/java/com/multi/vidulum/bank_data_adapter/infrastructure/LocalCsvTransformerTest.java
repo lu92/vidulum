@@ -1283,4 +1283,80 @@ class LocalCsvTransformerTest {
             assertThat(lines[7]).endsWith(",OTHER");          // "Unknown Payment Type" → OTHER
         }
     }
+
+    @Nested
+    @DisplayName("Currency ISO 4217 Validation")
+    class CurrencyIsoValidation {
+
+        @Test
+        @DisplayName("Should reject invalid currency code extracted from header name (e.g., WAL from Waluta)")
+        void shouldRejectInvalidCurrencyCode() {
+            // given - CSV where currency column contains "WAL" (substring of "Waluta" header)
+            MappingRules rules = MappingRules.builder()
+                    .bankName("Test Bank").bankCountry("PL")
+                    .dateFormat("yyyy-MM-dd").delimiter(",").headerRowIndex(0)
+                    .columnMappings(List.of(
+                            ColumnMapping.builder().sourceColumn("Date").sourceIndex(0)
+                                    .targetField("operationDate").transformationType(TransformationType.DATE_PARSE)
+                                    .transformationParams(Map.of("format", "yyyy-MM-dd")).build(),
+                            ColumnMapping.builder().sourceColumn("Amount").sourceIndex(1)
+                                    .targetField("amount").transformationType(TransformationType.AMOUNT_PARSE).build(),
+                            ColumnMapping.builder().sourceColumn("Amount").sourceIndex(1)
+                                    .targetField("type").transformationType(TransformationType.TYPE_DETECT)
+                                    .transformationParams(Map.of("amountColumn", "1")).build(),
+                            ColumnMapping.builder().sourceColumn("Currency").sourceIndex(2)
+                                    .targetField("currency").transformationType(TransformationType.CURRENCY_EXTRACT).build(),
+                            ColumnMapping.builder().sourceColumn("Name").sourceIndex(3)
+                                    .targetField("name").transformationType(TransformationType.DIRECT).build()
+                    )).build();
+
+            String csv = """
+                    Date,Amount,Currency,Name
+                    2025-01-15,-100,WAL,Test Transaction""";
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            // WAL is not a valid ISO 4217 code → should fallback to PLN
+            assertThat(lines[1]).contains(",PLN,");
+        }
+
+        @Test
+        @DisplayName("Should accept valid ISO 4217 currency codes")
+        void shouldAcceptValidIsoCurrencyCodes() {
+            // given
+            MappingRules rules = MappingRules.builder()
+                    .bankName("Test Bank").bankCountry("DE")
+                    .dateFormat("yyyy-MM-dd").delimiter(",").headerRowIndex(0)
+                    .columnMappings(List.of(
+                            ColumnMapping.builder().sourceColumn("Date").sourceIndex(0)
+                                    .targetField("operationDate").transformationType(TransformationType.DATE_PARSE)
+                                    .transformationParams(Map.of("format", "yyyy-MM-dd")).build(),
+                            ColumnMapping.builder().sourceColumn("Amount").sourceIndex(1)
+                                    .targetField("amount").transformationType(TransformationType.AMOUNT_PARSE).build(),
+                            ColumnMapping.builder().sourceColumn("Amount").sourceIndex(1)
+                                    .targetField("type").transformationType(TransformationType.TYPE_DETECT)
+                                    .transformationParams(Map.of("amountColumn", "1")).build(),
+                            ColumnMapping.builder().sourceColumn("Currency").sourceIndex(2)
+                                    .targetField("currency").transformationType(TransformationType.CURRENCY_EXTRACT).build(),
+                            ColumnMapping.builder().sourceColumn("Name").sourceIndex(3)
+                                    .targetField("name").transformationType(TransformationType.DIRECT).build()
+                    )).build();
+
+            String csv = """
+                    Date,Amount,Currency,Name
+                    2025-01-15,-100,EUR,Test Transaction""";
+
+            // when
+            LocalCsvTransformer.TransformResult result = transformer.transform(csv, rules);
+
+            // then
+            assertThat(result.success()).isTrue();
+            String[] lines = result.csvContent().split("\n");
+            assertThat(lines[1]).contains(",EUR,");
+        }
+    }
 }

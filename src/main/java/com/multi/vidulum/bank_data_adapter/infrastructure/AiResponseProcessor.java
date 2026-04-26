@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +26,12 @@ public class AiResponseProcessor {
 
     private static final Pattern ERROR_CODE_PATTERN = Pattern.compile("ERROR: (\\w+)");
     private static final Pattern ERROR_MESSAGE_PATTERN = Pattern.compile("MESSAGE: (.+)");
+
+    private static final Set<String> VALID_ISO_CURRENCIES = Set.of(
+            "PLN", "EUR", "USD", "GBP", "CHF", "CZK", "SEK", "NOK", "DKK", "HUF",
+            "RON", "BGN", "HRK", "RUB", "UAH", "TRY", "JPY", "CNY", "AUD", "CAD",
+            "NZD", "ZAR", "BRL", "MXN", "INR", "KRW", "SGD", "HKD", "THB", "ILS"
+    );
 
     public AiTransformResult process(String aiResponse) {
         if (aiResponse == null || aiResponse.isBlank()) {
@@ -63,6 +70,10 @@ public class AiResponseProcessor {
             log.warn("Header mismatch. Expected: {}, Got: {}", EXPECTED_HEADER, header);
             // Allow it but log warning - AI might have slightly different spacing
         }
+
+        // Sanitize CSV: remove header rows parsed as data, fix invalid currencies
+        csvContent = sanitizeCsvContent(csvContent);
+        lines = csvContent.split("\n");
 
         // Count data rows (excluding header)
         int rowCount = lines.length - 1;
@@ -127,5 +138,132 @@ public class AiResponseProcessor {
             return matcher.group(1).trim();
         }
         return defaultValue;
+    }
+
+    /**
+     * Sanitizes AI-generated CSV content:
+     * - Removes header rows that AI mistakenly included as data
+     * - Validates and fixes currency column
+     */
+    private String sanitizeCsvContent(String csvContent) {
+        String[] lines = csvContent.split("\n");
+        if (lines.length < 2) return csvContent;
+
+        StringBuilder result = new StringBuilder(lines[0]).append("\n"); // keep CSV header
+        int removed = 0;
+        int currencyFixed = 0;
+        String detectedCurrency = detectDominantCurrency(lines);
+
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty()) continue;
+
+            String[] fields = parseCsvRow(line);
+
+            // Skip rows that look like original CSV column headers (not data)
+            if (isLikelyHeaderRow(fields)) {
+                log.info("Sanitizer: skipping likely header row at line {}: {}", i, line.substring(0, Math.min(80, line.length())));
+                removed++;
+                continue;
+            }
+
+            // Fix invalid currency (column index 5)
+            if (fields.length > 5) {
+                String currency = fields[5].trim();
+                if (!currency.isEmpty() && !VALID_ISO_CURRENCIES.contains(currency.toUpperCase())) {
+                    log.warn("Sanitizer: invalid currency '{}' at line {}, replacing with '{}'", currency, i, detectedCurrency);
+                    fields[5] = detectedCurrency;
+                    currencyFixed++;
+                    line = toCsvLine(fields);
+                }
+            }
+
+            result.append(line).append("\n");
+        }
+
+        if (removed > 0 || currencyFixed > 0) {
+            log.info("Sanitizer: removed {} header rows, fixed {} invalid currencies (dominant: {})",
+                    removed, currencyFixed, detectedCurrency);
+        }
+
+        return result.toString().trim();
+    }
+
+    /**
+     * Detects the most common valid currency in the CSV data.
+     */
+    private String detectDominantCurrency(String[] lines) {
+        java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+        for (int i = 1; i < lines.length; i++) {
+            String[] fields = parseCsvRow(lines[i]);
+            if (fields.length > 5) {
+                String c = fields[5].trim().toUpperCase();
+                if (VALID_ISO_CURRENCIES.contains(c)) {
+                    counts.merge(c, 1, Integer::sum);
+                }
+            }
+        }
+        return counts.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElse("PLN");
+    }
+
+    /**
+     * Checks if a row is likely a column header that was mistakenly processed as data.
+     * A data row must have a parseable date and a numeric amount.
+     */
+    private boolean isLikelyHeaderRow(String[] fields) {
+        if (fields.length < 8) return false;
+
+        String amountField = fields.length > 4 ? fields[4].trim() : "";
+        String dateField = fields.length > 7 ? fields[7].trim() : "";
+
+        // A data row has a numeric amount and a YYYY-MM-DD date
+        boolean hasNumericAmount = !amountField.isEmpty() && amountField.matches("[\\d.,]+");
+        boolean hasParseableDate = !dateField.isEmpty() && dateField.matches("\\d{4}-\\d{2}-\\d{2}");
+
+        // If NEITHER amount is numeric NOR date is parseable → likely header
+        return !hasNumericAmount && !hasParseableDate;
+    }
+
+    /**
+     * Parses a CSV row respecting quoted fields.
+     */
+    private String[] parseCsvRow(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                values.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        values.add(current.toString());
+        return values.toArray(new String[0]);
+    }
+
+    /**
+     * Converts fields back to a CSV line, quoting fields that contain commas.
+     */
+    private String toCsvLine(String[] fields) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < fields.length; i++) {
+            if (i > 0) sb.append(',');
+            String field = fields[i];
+            if (field.contains(",") || field.contains("\"")) {
+                sb.append('"').append(field.replace("\"", "\"\"")).append('"');
+            } else {
+                sb.append(field);
+            }
+        }
+        return sb.toString();
     }
 }
