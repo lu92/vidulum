@@ -3,7 +3,8 @@ services:
   # MongoDB 8.0 - Latest Stable (matches Testcontainers 1.19.7+ with mongosh support)
   # ============================================
   mongodb:
-    image: mongo:8.0
+    # Pinned to 8.0.4: latest 8.0.x refuses to start on Linux kernel >= 6.19 (SERVER-121912)
+    image: mongo:8.0.4
     container_name: "mongodb"
     ports:
       - "27017:27017"

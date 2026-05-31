@@ -18,7 +18,8 @@ services:
   # MongoDB 8.0 with Replica Set
   # ============================================
   mongodb:
-    image: mongo:8.0
+    # Pinned to 8.0.4: latest 8.0.x refuses to start on Linux kernel >= 6.19 (SERVER-121912)
+    image: mongo:8.0.4
     restart: unless-stopped
     volumes:
       - mongodb_data:/data/db
