@@ -761,32 +761,124 @@ In the long run this might be folded into `MANUAL` (with `linkedCashFlowId` set 
 creation) so `source` records only user-intent acts. Decision deferred — track as
 follow-up.
 
+## UI Mockup (Phase 3 reference)
+
+Visual reference for the onboarding flow + CashFlow picker + quick-add dialog is in
+[`../design/VID-161-onboarding-bank-accounts-mockup.html`](../design/VID-161-onboarding-bank-accounts-mockup.html).
+It includes:
+
+- Annotated visual mockups of the 3 screens (onboarding form, picker dropdown, quick-add modal)
+- REST API integration table mapping each UI action to the exact endpoint
+- Request/response examples for `POST /owned-accounts/bulk` and CashFlow creation with `ownedAccountIban`
+- Error-code → UI handling table
+- End-to-end flow diagram (UI events ↔ backend events)
+
+Open the file in a browser to see the rendered design.
+
+## Implementation Decisions — Phase 1c (account-first backend support, 2026-06-04)
+
+Decisions confirmed during implementation of bulk endpoint, available-for-cashflow
+endpoint, `ownedAccountIban` field, and Kafka listener:
+
+- **C.4 dropped — `ownedAccountIban` field removed as redundant.** Initially the design
+  added an explicit `ownedAccountIban` reference to the CashFlow creation payload to
+  signal "this IBAN comes from the registry, not freshly typed". After implementing
+  C.5 (Kafka listener with idempotent `claimOrLinkAccountForCashFlow`), the listener
+  does the right thing in both cases purely from `bankAccount.iban` — it either links
+  to an existing OwnedBankAccount or claims as new. The extra field added complexity
+  (strict-match validation, doc surface) without adding any backend behavior, so it
+  was removed before deployment. UI keeps the picker UX; it simply pre-fills the
+  `bankAccount` payload from the chosen registry entry — no extra field needed.
+- **C.5 listener semantics**: single idempotent method
+  `claimOrLinkAccountForCashFlow(userId, bankAccount, cashFlowId)`. If IBAN already in
+  profile (any source) → update `linkedCashFlowId`. If not in profile → create new
+  entry with `source=CASHFLOW`. Replays safe: re-processing the same event sets the
+  same `linkedCashFlowId` (no-op when equal).
+- **C.5 event coverage**: listener handles both `CashFlowCreatedEvent` and
+  `CashFlowWithHistoryCreatedEvent`. Resolves prior inconsistency where only the
+  with-history variant triggered registry claim.
+- **C.5 consumer group**: `owned_accounts_group` (separate from the forecast processor's
+  `group_id7` so both listeners receive the same events on the `cash_flow` topic).
+- **C.2 bulk atomicity**: validate-all-before-save. Parse every IBAN through
+  `IbanNumber`, detect duplicates within the batch, detect collisions with existing
+  registry entries. If any error → throw before any persistence. If all OK → save the
+  profile once, emit N `OwnedBankAccountAddedEvent` events. No MongoDB transactions
+  required because validation happens entirely before the write.
+- **C.3 filter scope**: `GET /owned-accounts/available-for-cashflow` returns all
+  accounts where `status=ACTIVE` AND `linkedCashFlowId IS NULL`. No currency filter —
+  the UI can filter client-side if needed.
+- **CashFlow delete lifecycle**: out-of-scope in this iteration. When a CashFlow is
+  removed, the linked OwnedBankAccount currently keeps a dangling `linkedCashFlowId`.
+  A future ticket should add a `CashFlowDeletedEvent` and have the listener clear the
+  link. Tracked in TODO Phase 2 below.
+- **`linkedCashFlowId` protection broadened**: the "cannot remove CashFlow-linked
+  account" rule now applies to *any* source (not only `CASHFLOW`). This matters when
+  a user manually adds an IBAN during onboarding and later creates a CashFlow for it
+  — the manual entry becomes linked and is then protected from removal while active.
+
 ## Implementation Status (2026-06-04)
 
-### ✅ DONE — Phase 1 MVP (UserFinancialProfile foundation)
+### ✅ DONE — Phase 1 MVP + Phase 1c (account-first backend)
 
-Implemented in `com.multi.vidulum.user_financial_profile`:
+All in `com.multi.vidulum.user_financial_profile`:
 
-- **Domain**: `UserFinancialProfile` aggregate, `OwnedBankAccount` value object, `AccountStatus`/`AccountSource` enums, sealed `UserFinancialProfileEvent` hierarchy with 5 records (`Created`, `Added`, `Closed`, `Reactivated`, `Removed`), domain repository interface, 4 business exceptions.
-- **Infrastructure**: `UserFinancialProfileEntity` (@Document `user_financial_profiles`) with nested `OwnedBankAccountDocument`, MongoDB repository + domain repo bridge, `UserFinancialProfileEventEmitter` publishing to Kafka topic `user_financial_profile`.
-- **App**: `UserFinancialProfileService` (plain service, no CQRS), `UserFinancialProfileRestController` with `GET/POST/DELETE /api/v1/user/owned-accounts`, DTOs with `@Valid` request validation.
-- **Wiring**:
-  - `RegisterUserCommandHandler` → inline `createEmptyProfile()` so every newly-registered user has a non-null profile document immediately
-  - `CreateCashFlowWithHistoryCommandHandler` → `onCashFlowCreated()` auto-adds the CashFlow's IBAN with `source=CASHFLOW`, `linkedCashFlowId` set
-  - `KafkaTopicConfig` — new `NewTopic("user_financial_profile", 1, 1)` + producer/consumer/container factories
-  - `ErrorCode` — 6 new codes (`OWNED_ACCOUNT_*`)
-  - `ErrorHttpHandler` — 4 new `@ExceptionHandler` mapping business exceptions to proper HTTP status codes (400/404/409/422)
-  - `VidulumApplication.clearData()` — drops the new collection on startup
-- **Tests**: `UserFinancialProfileHttpIntegrationTest` (14 scenarios, T1–T9 positive + E1–E8 errors) passing, plus `UserFinancialProfileHttpActor` for HTTP encapsulation. Manual end-to-end HTTP testing also passed with DB + Kafka verification.
+**Domain layer**
+- `UserFinancialProfile` aggregate (`addAccount`, `removeAccount`, `linkCashFlow`, `ownsAccount`, queries)
+- `OwnedBankAccount` value record (immutable IBAN + currency + bankName + label + status + source + linkedCashFlowId)
+- `AccountStatus` enum (`ACTIVE`, `CLOSED`)
+- `AccountSource` enum (`ONBOARDING`, `CASHFLOW`, `SUGGESTION_ACCEPTED`, `MANUAL`)
+- `UserFinancialProfileEvent` sealed interface with 5 record events
+- `DomainUserFinancialProfileRepository` interface
+- 4 business exceptions (`BankAccountAlreadyOwned`, `OwnedAccountNotFound`, `UserFinancialProfileNotFound`, `CannotRemoveLinkedCashFlowAccount`)
 
-**Behavior currently working**:
-- Empty profile auto-created at user registration
-- IBAN auto-added at CashFlow creation (source=CASHFLOW)
-- Manual add/list/delete via REST with full JWT auth
-- Hard delete (no soft-delete preserved record)
-- Account linked to active CashFlow cannot be deleted (422)
+**Infrastructure layer**
+- `UserFinancialProfileEntity` (@Document `user_financial_profiles`) with nested `OwnedBankAccountDocument`
+- `UserFinancialProfileMongoRepository` (Spring Data) + `DomainUserFinancialProfileRepositoryImpl` (bridge)
+- `UserFinancialProfileEventEmitter` → Kafka topic `user_financial_profile`
+
+**App layer**
+- `UserFinancialProfileService` — plain service exposing: `createEmptyProfile`, `addAccount`, `addAccounts` (bulk), `claimOrLinkAccountForCashFlow`, `removeAccount`, `listAccounts`, `listAccountsAvailableForCashFlow`, `ownsAccount`
+- `UserFinancialProfileRestController` — endpoints below
+- `UserFinancialProfileCashFlowListener` — Kafka listener on `cash_flow` topic, handles both `CashFlowCreatedEvent` and `CashFlowWithHistoryCreatedEvent` via idempotent `claimOrLinkAccountForCashFlow`
+- DTOs with `@Valid` / `@NotBlank` / `@NotEmpty` field validation
+
+**REST endpoints (all authenticated via JWT, userId resolved from token)**
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/user/owned-accounts` | List all owned accounts for the authenticated user |
+| `POST` | `/api/v1/user/owned-accounts` | Add a single account (source = MANUAL) |
+| `POST` | `/api/v1/user/owned-accounts/bulk` | Onboarding bulk add (source = ONBOARDING, validate-all-before-save) |
+| `GET` | `/api/v1/user/owned-accounts/available-for-cashflow` | List accounts ready to be picked for a new CashFlow (status=ACTIVE, linkedCashFlowId=null) |
+| `DELETE` | `/api/v1/user/owned-accounts/{iban}` | Remove an account (hard delete; protected if linked to active CashFlow) |
+
+**Wiring into existing code**
+- `RegisterUserCommandHandler` → inline `createEmptyProfile()` after `userRepository.save()` — every registered user has an empty profile document immediately
+- `CreateCashFlowJson` + `CreateCashFlowWithHistoryJson` — new optional field `ownedAccountIban`; strict-match validation in controller
+- `CashFlowRestController.validateOwnedAccountIbanMatches()` — helper enforcing `ownedAccountIban == bankAccount.iban` if both provided
+- `CreateCashFlowWithHistoryCommandHandler` — **no inline call** to profile service; claim/link happens via Kafka listener
+- `KafkaTopicConfig` — `NewTopic("user_financial_profile", 1, 1)` + producer/consumer/container factories
+- `ErrorCode` — 6 new codes (`OWNED_ACCOUNT_*`)
+- `ErrorHttpHandler` — 4 new `@ExceptionHandler` mapping business exceptions to HTTP (400/404/409/422)
+- `VidulumApplication.clearData()` — drops `UserFinancialProfileEntity` collection on startup
+
+**Tests**
+- `UserFinancialProfileHttpIntegrationTest` (14 scenarios: T1, T2, T3, T5, T6, T7, T9 positive + E1-E8 error) — all green
+- `UserFinancialProfileHttpActor` — HTTP encapsulation following project's Actor pattern
+- T3, T6 (E6), T7, T9 use `Awaitility.await()` because claim/link is now eventually consistent via Kafka
+
+**End-to-end behaviour available today**
+- Empty profile auto-created at user registration (synchronous)
+- Single account add via REST (`source=MANUAL`)
+- Bulk add via onboarding (`source=ONBOARDING`, all-or-nothing validation)
+- IBAN claimed automatically when CashFlow is created (eventual consistency through `cash_flow` Kafka topic + dedicated listener, both `CashFlowCreatedEvent` and `CashFlowWithHistoryCreatedEvent` covered)
+- IBAN already in profile when CashFlow is created → existing entry gets `linkedCashFlowId` updated (no duplicate, source preserved)
+- Available-for-cashflow query returns accounts not yet linked
+- Hard delete via REST; protected if `linkedCashFlowId != null && status == ACTIVE` (regardless of source)
 - Cross-user isolation (same IBAN allowed across different users)
-- Kafka events emitted for every state transition
+- Kafka events emitted for every state transition (`Created`, `Added`, `Removed`)
+- All business exceptions mapped to proper HTTP status codes with `ApiError` body
+- UI mockup with REST integration guide at `docs/design/VID-161-onboarding-bank-accounts-mockup.html`
 
 ### ⏸ TODO — Phase 1b: Self-Transfer Detection Wiring (next)
 
@@ -810,6 +902,18 @@ The profile registry exists but **does not yet influence transaction categorizat
   - Add separate informational section to `CashFlowMonthlyForecast` (optional but useful for UI)
   - Same treatment for `CashChangeConfirmedEvent`, `CashChangeEditedEvent` paths
 - **Decision still open**: what to do with existing heuristic SELF_TRANSFER in `bank_data_adapter` (AI enrichment) — keep as pre-suggestion vs. let IBAN-match be sole source of truth. Documented in original design Section "Suggestion Heuristic".
+
+### ⏸ TODO — CashFlow deletion lifecycle (cross-cutting)
+
+When a CashFlow is deleted, the OwnedBankAccount currently keeps a dangling
+`linkedCashFlowId` pointing to a non-existent CashFlow. Required follow-up:
+
+- Emit `CashFlowDeletedEvent` on the `cash_flow` topic when a CashFlow is removed
+- Extend `UserFinancialProfileCashFlowListener` to clear `linkedCashFlowId` on the
+  matching OwnedBankAccount (account itself stays — user still owns the IBAN, just
+  no longer has a CashFlow for it)
+- Update the "cannot remove linked account" protection: this stays as-is (an account
+  with `linkedCashFlowId == null` can be removed regardless of past history)
 
 ### ⏸ TODO — Phase 2: Suggestions + Recategorization
 
@@ -845,26 +949,21 @@ The profile registry exists but **does not yet influence transaction categorizat
 - Budget view with self-transfers in separate section (excluded from main expense total)
 - Forecast view annotated with "Real expenses" vs "Self-transfers" averages
 
-### ⏸ TODO — Backend support for account-first UX (Phase 1c)
+### ✅ DONE — Backend support for account-first UX (Phase 1c, 2026-06-04)
 
-Required before/alongside the UI work above:
-
-- **`AccountSource.ONBOARDING`** enum value
-- **`POST /api/v1/user/owned-accounts/bulk`** — accept array of `AddOwnedAccountRequest`,
-  validate all-or-nothing, emit one `OwnedBankAccountAddedEvent` per persisted account
-- **`GET /api/v1/user/owned-accounts/available-for-cashflow`** — filter `status=ACTIVE`
-  AND `linkedCashFlowId IS NULL`
-- **Extend CashFlow creation** (`POST /cash-flow/with-history` and the simple variant)
-  to accept `ownedAccountIban` reference as alternative to the full `bankAccount` payload.
-  When `ownedAccountIban` is used: backend looks up the OwnedBankAccount, builds the
-  internal `BankAccount` from it, links the resulting CashFlow back to the registry entry.
-- **Refactor `claimAccountFromCashFlow`** into a Kafka listener on the `cash_flow` topic
-  so both `CashFlowCreatedEvent` and `CashFlowWithHistoryCreatedEvent` route through the
-  same path (resolves the inline-coupling TODO in `CreateCashFlowWithHistoryCommandHandler`
-  and naturally extends to the simple `CreateCashFlowCommandHandler` which is currently
-  not wired in at all).
-- **Decide on `source=CASHFLOW` future** — keep as historical marker, or fold into
-  `MANUAL` once all CashFlow creations go through "pick existing or quick-add" UI.
+- ✅ **`AccountSource.ONBOARDING`** enum value added
+- ✅ **`POST /api/v1/user/owned-accounts/bulk`** — validate-all-before-save, emits one
+  `OwnedBankAccountAddedEvent` per added account on success
+- ✅ **`GET /api/v1/user/owned-accounts/available-for-cashflow`** — filters
+  `status=ACTIVE && linkedCashFlowId IS NULL`
+- ❌ **`ownedAccountIban` field** — dropped as redundant after C.5 made the listener
+  idempotent (see decision note above). CashFlow creation payload unchanged from MVP.
+- ✅ **`claimOrLinkAccountForCashFlow`** Kafka listener (`UserFinancialProfileCashFlowListener`)
+  on the `cash_flow` topic — handles both `CashFlowCreatedEvent` and
+  `CashFlowWithHistoryCreatedEvent`. Single idempotent path replaces the previous
+  inline call.
+- ⏸ **`source=CASHFLOW` migration decision** — deferred; revisit after Phase 3 UI
+  is deployed and we can measure how often source=CASHFLOW still occurs.
 
 ### ⏸ TODO — Lifecycle (skipped in MVP)
 

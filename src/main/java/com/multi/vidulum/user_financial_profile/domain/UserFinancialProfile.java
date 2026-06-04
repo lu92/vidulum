@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Data
@@ -40,12 +41,37 @@ public class UserFinancialProfile {
         this.lastModified = now;
     }
 
+    /**
+     * Idempotent — if existing entry already has the same linkedCashFlowId, no-op.
+     * Otherwise replaces the entry with a copy carrying the new linkedCashFlowId.
+     */
+    public void linkCashFlow(String iban, CashFlowId cashFlowId, ZonedDateTime now) {
+        OwnedBankAccount existing = findByIban(iban)
+                .orElseThrow(() -> new OwnedAccountNotFoundException(userId, iban));
+        if (Objects.equals(existing.linkedCashFlowId(), cashFlowId)) {
+            return;
+        }
+        OwnedBankAccount updated = new OwnedBankAccount(
+                existing.bankAccountNumber(),
+                existing.bankName(),
+                existing.label(),
+                existing.status(),
+                existing.source(),
+                cashFlowId,
+                existing.addedAt(),
+                existing.closedAt()
+        );
+        ownedAccounts.remove(existing);
+        ownedAccounts.add(updated);
+        this.lastModified = now;
+    }
+
     public void removeAccount(String iban, ZonedDateTime now) {
         OwnedBankAccount existing = findByIban(iban)
                 .orElseThrow(() -> new OwnedAccountNotFoundException(userId, iban));
-        if (existing.source() == AccountSource.CASHFLOW
-                && existing.linkedCashFlowId() != null
-                && existing.isActive()) {
+        // Protection applies to any account currently linked to a CashFlow, regardless of how
+        // the account entered the registry (CASHFLOW, MANUAL+linked-later, etc.).
+        if (existing.linkedCashFlowId() != null && existing.isActive()) {
             throw new CannotRemoveLinkedCashFlowAccountException(userId, iban, existing.linkedCashFlowId());
         }
         ownedAccounts.remove(existing);

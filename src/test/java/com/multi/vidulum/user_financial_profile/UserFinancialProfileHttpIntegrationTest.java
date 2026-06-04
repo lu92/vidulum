@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Duration;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 @Slf4j
 public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIntegrationTest {
@@ -116,13 +118,10 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     }
 
     @Test
-    @DisplayName("T3: should auto-add bank account when creating CashFlow with history")
+    @DisplayName("T3: should auto-add bank account when creating CashFlow with history (via Kafka listener)")
     void shouldAutoAddBankAccountWhenCreatingCashFlowWithHistory() {
         String cashFlowId = createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
 
-        UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
-
-        assertThat(list.getAccounts()).hasSize(1);
         UserFinancialProfileDto.OwnedAccountJson expected = new UserFinancialProfileDto.OwnedAccountJson(
                 VALID_IBAN_NEST,
                 "PLN",
@@ -134,9 +133,14 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
                 FIXED_NOW,
                 null
         );
-        assertThat(list.getAccounts().get(0))
-                .usingRecursiveComparison()
-                .isEqualTo(expected);
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
+            assertThat(list.getAccounts()).hasSize(1);
+            assertThat(list.getAccounts().get(0))
+                    .usingRecursiveComparison()
+                    .isEqualTo(expected);
+        });
     }
 
     @Test
@@ -182,6 +186,11 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     void shouldHandleCompleteLifecycleScenario() {
         String cashFlowId = createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
 
+        // Wait for Kafka listener to pick up the CashFlow event and claim the Nest IBAN
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            assertThat(actor.listAccounts().getAccounts()).hasSize(1);
+        });
+
         actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pekao"
         ));
@@ -213,17 +222,22 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     }
 
     @Test
-    @DisplayName("T9: idempotent auto-add when CashFlow IBAN already in profile")
-    void shouldNotDuplicateAutoAddWhenIbanAlreadyInProfile() {
+    @DisplayName("T9: pre-existing manual account is linked (not duplicated) when CashFlow created for same IBAN")
+    void shouldLinkExistingManualAccountWhenCashFlowCreatedForSameIban() {
         actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
                 VALID_IBAN_NEST, "PLN", "Nest Bank", "Manual nest"
         ));
 
-        createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
+        String cashFlowId = createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
 
-        UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
-        assertThat(list.getAccounts()).hasSize(1);
-        assertThat(list.getAccounts().get(0).getSource()).isEqualTo("MANUAL");
+        // Listener should LINK the existing manual entry (set linkedCashFlowId), not add new entry
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
+            assertThat(list.getAccounts()).hasSize(1);
+            UserFinancialProfileDto.OwnedAccountJson acc = list.getAccounts().get(0);
+            assertThat(acc.getSource()).isEqualTo("MANUAL");          // immutable source
+            assertThat(acc.getLinkedCashFlowId()).isEqualTo(cashFlowId);  // newly set link
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -299,6 +313,11 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     @DisplayName("E6: should reject removing CashFlow-linked account with 422")
     void shouldRejectRemovingCashFlowLinkedAccount() {
         createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
+
+        // Wait until Kafka listener has claimed the account (linkedCashFlowId is set)
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            assertThat(actor.listAccounts().getAccounts()).hasSize(1);
+        });
 
         ResponseEntity<ApiError> response = actor.deleteAccountExpectingError(VALID_IBAN_NEST);
 

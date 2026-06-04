@@ -6,7 +6,6 @@ import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,7 +24,6 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
     private final CashFlowEventEmitter cashFlowEventEmitter;
     private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
-    private final UserFinancialProfileService userFinancialProfileService;
 
     @Override
     public CashFlowSnapshot handle(CreateCashFlowWithHistoryCommand command) {
@@ -59,22 +57,15 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
         CashFlow savedCashFlow = domainCashFlowRepository.save(cashFlow);
         log.info("Cash flow with history [{}] has been created in SETUP mode!", savedCashFlow.getSnapshot());
 
-        // Use emitWithKey to ensure event ordering within the same CashFlow
+        // Use emitWithKey to ensure event ordering within the same CashFlow.
+        // The user_financial_profile module listens to this topic and claims/links the IBAN
+        // to the user's owned-accounts registry (see UserFinancialProfileCashFlowListener).
         cashFlowEventEmitter.emitWithKey(
                 event.cashFlowId(),
                 CashFlowUnifiedEvent.builder()
                         .metadata(Map.of("event", CashFlowEvent.CashFlowWithHistoryCreatedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
-        );
-
-
-        // TODO: refactor to Kafka listener on cash_flow topic so both CreateCashFlowCommand
-        // and CreateCashFlowWithHistoryCommand trigger the same claim flow (see VID-161 Phase 2 notes)
-        userFinancialProfileService.claimAccountFromCashFlow(
-                command.userId(),
-                command.bankAccount(),
-                event.cashFlowId()
         );
 
         return savedCashFlow.getSnapshot();

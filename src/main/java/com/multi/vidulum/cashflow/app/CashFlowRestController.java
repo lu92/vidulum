@@ -77,7 +77,6 @@ public class CashFlowRestController {
      */
     @PostMapping("/with-history")
     public String createCashFlowWithHistory(@Valid @RequestBody CashFlowDto.CreateCashFlowWithHistoryJson request) {
-
         CashFlowSnapshot snapshot = commandGateway.send(
                 new CreateCashFlowWithHistoryCommand(
                         UserId.of(request.getUserId()),

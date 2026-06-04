@@ -2,7 +2,9 @@ package com.multi.vidulum.user_financial_profile.app;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.multi.vidulum.user_financial_profile.domain.OwnedBankAccount;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -56,6 +58,30 @@ public class UserFinancialProfileDto {
                     .linkedCashFlowId(account.linkedCashFlowId() != null ? account.linkedCashFlowId().id() : null)
                     .addedAt(account.addedAt())
                     .closedAt(account.closedAt())
+                    .build();
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BulkAddOwnedAccountsRequest {
+        @NotEmpty(message = "accounts list must not be empty")
+        @Valid
+        private List<AddOwnedAccountRequest> accounts;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BulkAddOwnedAccountsResponse {
+        private List<OwnedAccountJson> added;
+
+        public static BulkAddOwnedAccountsResponse of(List<OwnedBankAccount> accounts) {
+            return BulkAddOwnedAccountsResponse.builder()
+                    .added(accounts.stream().map(OwnedAccountJson::from).collect(Collectors.toList()))
                     .build();
         }
     }

@@ -8,6 +8,7 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.user_financial_profile.domain.AccountSource;
 import com.multi.vidulum.user_financial_profile.domain.AccountStatus;
+import com.multi.vidulum.user_financial_profile.domain.BankAccountAlreadyOwnedException;
 import com.multi.vidulum.user_financial_profile.domain.DomainUserFinancialProfileRepository;
 import com.multi.vidulum.user_financial_profile.domain.OwnedBankAccount;
 import com.multi.vidulum.user_financial_profile.domain.UserFinancialProfile;
@@ -20,7 +21,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -74,30 +78,106 @@ public class UserFinancialProfileService {
         return account;
     }
 
-    public void claimAccountFromCashFlow(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
+    /**
+     * Bulk add multiple accounts in one operation.
+     * Validate-all-before-save: any invalid IBAN, any duplicate within batch, or any
+     * collision with already-owned accounts aborts the whole batch (nothing persisted).
+     * On success: profile saved once, one event emitted per added account.
+     */
+    public List<OwnedBankAccount> addAccounts(
+            UserId userId,
+            List<BulkAccountRequest> requests,
+            AccountSource source
+    ) {
+        UserFinancialProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new UserFinancialProfileNotFoundException(userId));
+
+        // Pre-validate: parse all IBANs (throws on invalid) + detect intra-batch duplicates
+        Set<String> ibansInBatch = new HashSet<>();
+        List<OwnedBankAccount> toAdd = new ArrayList<>();
+        ZonedDateTime now = ZonedDateTime.now(clock);
+
+        for (BulkAccountRequest req : requests) {
+            BankAccountNumber bankAccountNumber = BankAccountNumber.fromIban(req.iban(), Currency.of(req.currency()));
+            String rawIban = bankAccountNumber.fetchRawIban();
+            if (!ibansInBatch.add(rawIban)) {
+                throw new BankAccountAlreadyOwnedException(userId, rawIban);
+            }
+            if (profile.containsIban(rawIban)) {
+                throw new BankAccountAlreadyOwnedException(userId, rawIban);
+            }
+            toAdd.add(new OwnedBankAccount(
+                    bankAccountNumber,
+                    new BankName(req.bankName()),
+                    req.label(),
+                    AccountStatus.ACTIVE,
+                    source,
+                    null,
+                    now,
+                    null
+            ));
+        }
+
+        // All validated → persist + emit
+        for (OwnedBankAccount account : toAdd) {
+            profile.addAccount(account, now);
+        }
+        repository.save(profile);
+
+        for (OwnedBankAccount account : toAdd) {
+            eventEmitter.emit(new UserFinancialProfileEvent.OwnedBankAccountAddedEvent(
+                    userId, account.rawIban(), account.bankName(), source, null, now
+            ));
+        }
+        log.info("Bulk-added [{}] accounts to profile of user [{}] (source={})",
+                toAdd.size(), userId.getId(), source);
+        return toAdd;
+    }
+
+    public record BulkAccountRequest(String iban, String currency, String bankName, String label) {}
+
+    /**
+     * Idempotent handler for "user created a CashFlow with bankAccount X". Called from
+     * the Kafka listener on the cash_flow topic.
+     * - If X.iban already in profile  → set linkedCashFlowId on existing entry
+     * - If X.iban not in profile      → create new entry with source=CASHFLOW
+     */
+    public void claimOrLinkAccountForCashFlow(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
         String iban = bankAccount.bankAccountNumber().fetchRawIban();
         UserFinancialProfile profile = repository.findByUserId(userId)
                 .orElseThrow(() -> new UserFinancialProfileNotFoundException(userId));
 
+        ZonedDateTime now = ZonedDateTime.now(clock);
+
         if (profile.ownsAccount(iban)) {
-            log.debug("CashFlow IBAN [{}] already in profile of user [{}] - skipping auto-add",
-                    iban, userId.getId());
+            profile.linkCashFlow(iban, cashFlowId, now);
+            repository.save(profile);
+            log.info("Linked existing owned account [{}] to CashFlow [{}] for user [{}]",
+                    iban, cashFlowId.id(), userId.getId());
             return;
         }
 
         String bankName = bankAccount.bankName() != null
                 ? bankAccount.bankName().name()
                 : "Unknown bank";
-        String label = bankName;
         addAccount(
                 userId,
                 iban,
                 bankAccount.bankAccountNumber().denomination().getId(),
                 bankName,
-                label,
+                bankName,
                 AccountSource.CASHFLOW,
                 cashFlowId
         );
+    }
+
+    public List<OwnedBankAccount> listAccountsAvailableForCashFlow(UserId userId) {
+        UserFinancialProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new UserFinancialProfileNotFoundException(userId));
+        return profile.getOwnedAccounts().stream()
+                .filter(OwnedBankAccount::isActive)
+                .filter(a -> a.linkedCashFlowId() == null)
+                .toList();
     }
 
     public void removeAccount(UserId userId, String iban) {
