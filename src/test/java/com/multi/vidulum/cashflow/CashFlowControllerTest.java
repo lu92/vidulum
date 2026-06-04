@@ -16,8 +16,12 @@ import com.multi.vidulum.cashflow_forecast_processor.app.TransactionDetails;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -26,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.multi.vidulum.cashflow.domain.CashChangeStatus.*;
@@ -40,6 +45,24 @@ public class CashFlowControllerTest extends IntegrationTest {
 
     @Autowired
     private CashFlowRestController cashFlowRestController;
+
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    private String registeredUserId;
+
+    @BeforeEach
+    void registerTestUser() {
+        // Register a fresh user per test so UserFinancialProfile exists when the cash_flow
+        // Kafka listener processes CashFlow creation events (eventually consistent claim).
+        String username = "cashflow_test_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.registeredUserId = auth.getUserId();
+    }
 
     private String uniqueCashFlowName() {
         return "CashFlow-" + NAME_COUNTER.incrementAndGet();
@@ -57,8 +80,27 @@ public class CashFlowControllerTest extends IntegrationTest {
         return "NormalCF-" + NAME_COUNTER.incrementAndGet();
     }
 
+    /**
+     * Returns the userId registered for the current test. Despite the legacy name "unique",
+     * a single registered user is used per test (registered in @BeforeEach). Multiple calls
+     * within a test return the same id.
+     */
     private String uniqueUserId() {
-        return TestIds.nextUserId().getId();
+        return registeredUserId;
+    }
+
+    /**
+     * Registers an additional user on the fly. Use this in tests that need more than one
+     * user (e.g. cross-user isolation scenarios).
+     */
+    private String registerAdditionalUser() {
+        String username = "cashflow_test_extra_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        return auth.getUserId();
     }
 
     /**
@@ -895,7 +937,7 @@ public class CashFlowControllerTest extends IntegrationTest {
         );
 
         // Create cash flow for different user (should not be returned)
-        String otherUserId = uniqueUserId();
+        String otherUserId = registerAdditionalUser();
         String cashFlowId3 = cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
                         .userId(otherUserId)

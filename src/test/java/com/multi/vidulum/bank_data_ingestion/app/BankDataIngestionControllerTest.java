@@ -23,6 +23,9 @@ import com.multi.vidulum.common.events.BankDataIngestionUnifiedEvent;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -53,6 +56,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -130,7 +134,12 @@ public class BankDataIngestionControllerTest {
     @Autowired
     private ImportJobMongoRepository importJobMongoRepository;
 
+    @Autowired
+    private AuthenticationService authenticationService;
+
     private JsonFormatter jsonFormatter = new JsonFormatter();
+
+    private String userId;
 
     @BeforeEach
     public void beforeTest() {
@@ -141,6 +150,16 @@ public class BankDataIngestionControllerTest {
         importJobMongoRepository.deleteAll();
         cashFlowMongoRepository.deleteAll();
         cashFlowForecastMongoRepository.deleteAll();
+
+        // Register a fresh user per test so UserFinancialProfile exists when the cash_flow
+        // Kafka listener processes the CashFlow creation event (eventually consistent claim).
+        String username = "ingestion_test_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.userId = auth.getUserId();
     }
 
     @Test
@@ -1572,7 +1591,7 @@ public class BankDataIngestionControllerTest {
     private String createCashFlowWithHistory() {
         String cashFlowId = cashFlowRestController.createCashFlowWithHistory(
                 CashFlowDto.CreateCashFlowWithHistoryJson.builder()
-                        .userId("U10000013")
+                        .userId(this.userId)
                         .name("Test CashFlow")
                         .description("CashFlow for testing category mappings")
                         .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(
