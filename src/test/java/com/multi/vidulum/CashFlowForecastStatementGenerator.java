@@ -11,11 +11,15 @@ import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,12 +47,28 @@ public class CashFlowForecastStatementGenerator extends IntegrationTest {
     private static final int ITERATIONS_PER_PERIOD = 10;
     private static final int NUMBER_OF_ATTESTED_MONTHS = 8;
 
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    private String userId;
+
+    @BeforeEach
+    void registerUser() {
+        String username = "forecast_gen_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.userId = auth.getUserId();
+    }
+
     @SneakyThrows
     @Test
     void test() {
         Random random = new Random();
 
-        CashFlowId cashFlowId = actor.createCashFlow();
+        CashFlowId cashFlowId = actor.createCashFlow(userId);
         log.info("generated cashflowId by actor: {}", cashFlowId);
 
         Map<CashChangeId, CashChangeStatus> statusMap = new HashMap<>();
@@ -139,10 +159,10 @@ class Actor {
     private CashFlowRestController cashFlowRestController;
     private CommandGateway commandGateway;
 
-    CashFlowId createCashFlow() {
+    CashFlowId createCashFlow(String userId) {
         return new CashFlowId(cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000011")
+                        .userId(userId)
                         .name("cash-flow name")
                         .description("cash-flow description")
                         .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(

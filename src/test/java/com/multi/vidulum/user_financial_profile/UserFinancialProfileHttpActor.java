@@ -72,6 +72,38 @@ public class UserFinancialProfileHttpActor {
         );
     }
 
+    public ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> bulkAddAccounts(
+            UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
+    ) {
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/user/owned-accounts/bulk",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders()),
+                UserFinancialProfileDto.BulkAddOwnedAccountsResponse.class
+        );
+    }
+
+    public ResponseEntity<ApiError> bulkAddAccountsExpectingError(
+            UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
+    ) {
+        return restTemplate.exchange(
+                baseUrl + "/api/v1/user/owned-accounts/bulk",
+                HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders()),
+                ApiError.class
+        );
+    }
+
+    public UserFinancialProfileDto.OwnedAccountsListJson availableForCashFlow() {
+        ResponseEntity<UserFinancialProfileDto.OwnedAccountsListJson> response = restTemplate.exchange(
+                baseUrl + "/api/v1/user/owned-accounts/available-for-cashflow",
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders()),
+                UserFinancialProfileDto.OwnedAccountsListJson.class
+        );
+        return response.getBody();
+    }
+
     public ResponseEntity<Void> deleteAccount(String iban) {
         return restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts/" + iban,

@@ -16,10 +16,14 @@ import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -55,7 +59,22 @@ public class DualCashflowStatementGenerator extends IntegrationTest {
     private static final int MIN_MONTHS = 30;
     private static final int MAX_MONTHS = 36;
     private static final int ATTESTED_MONTHS_OFFSET = 6;
-    private static final String USER_ID = "U10000004";
+
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    private String USER_ID;
+
+    @BeforeEach
+    void registerUser() {
+        String username = "dual_cf_test_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.USER_ID = auth.getUserId();
+    }
 
     @Test
     public void generateDualCashflows() {

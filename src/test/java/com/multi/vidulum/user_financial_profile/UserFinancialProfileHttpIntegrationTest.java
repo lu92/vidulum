@@ -241,6 +241,147 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    //  ONBOARDING — bulk + available-for-cashflow
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("T10: bulk add 3 accounts during onboarding → all saved, all events emitted")
+    void shouldBulkAddOnboardingAccounts() {
+        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
+                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_PEKAO, "PLN", "Bank Pekao S.A.", "Pekao - życie"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_MBANK, "PLN", "mBank S.A.", "mBank - kredyt"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_ING, "PLN", "ING Bank Śląski", "ING - oszczędności")
+                ));
+
+        ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> response =
+                actor.bulkAddAccounts(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getAdded()).hasSize(3);
+
+        // All three should be ONBOARDING source
+        assertThat(response.getBody().getAdded())
+                .allSatisfy(a -> assertThat(a.getSource()).isEqualTo("ONBOARDING"));
+        assertThat(response.getBody().getAdded())
+                .allSatisfy(a -> assertThat(a.getLinkedCashFlowId()).isNull());
+
+        // Verify all three persisted in DB
+        UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
+        assertThat(entity.getOwnedAccounts()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("T11: bulk with duplicate IBAN within batch → 409, nothing saved")
+    void shouldRejectBulkWithDuplicateIbanWithinBatch() {
+        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
+                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "First Pekao"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Second Pekao (duplicate)")
+                ));
+
+        ResponseEntity<ApiError> response = actor.bulkAddAccountsExpectingError(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().code()).isEqualTo("OWNED_ACCOUNT_ALREADY_EXISTS");
+
+        // Atomicity: nothing persisted
+        UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
+        assertThat(entity.getOwnedAccounts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T12: bulk with invalid IBAN in middle of batch → 400, nothing saved")
+    void shouldRejectBulkWithInvalidIbanAndPersistNothing() {
+        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
+                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pekao"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                "PL00000000000000000000000000", "PLN", "Bad Bank", "Bad"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_ING, "PLN", "ING", "ING")
+                ));
+
+        ResponseEntity<ApiError> response = actor.bulkAddAccountsExpectingError(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().code()).isEqualTo("INVALID_BANK_ACCOUNT");
+
+        // Atomicity: the first valid Pekao must NOT be persisted because the second one failed
+        UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
+        assertThat(entity.getOwnedAccounts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T13: bulk that collides with already-owned account → 409, nothing newly saved")
+    void shouldRejectBulkWithIbanAlreadyInProfile() {
+        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+                VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pre-existing Pekao"));
+
+        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
+                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_MBANK, "PLN", "mBank", "mBank"),
+                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                                VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Duplicate Pekao")
+                ));
+
+        ResponseEntity<ApiError> response = actor.bulkAddAccountsExpectingError(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        // mBank from the failed batch must NOT be persisted (atomicity)
+        UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
+        assertThat(entity.getOwnedAccounts()).hasSize(1);
+        assertThat(entity.getOwnedAccounts().get(0).getIban()).isEqualTo(VALID_IBAN_PEKAO);
+    }
+
+    @Test
+    @DisplayName("T14: available-for-cashflow returns empty for fresh profile")
+    void shouldReturnEmptyAvailableForCashFlowOnFreshProfile() {
+        UserFinancialProfileDto.OwnedAccountsListJson list = actor.availableForCashFlow();
+
+        assertThat(list.getUserId()).isEqualTo(userId);
+        assertThat(list.getAccounts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("T15: available-for-cashflow returns only ACTIVE without linkedCashFlowId")
+    void shouldFilterAvailableByLinkStatus() {
+        // 1) Onboard 3 accounts (all unlinked initially)
+        actor.bulkAddAccounts(new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
+                new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        VALID_IBAN_PEKAO, "PLN", "Pekao", "Pekao"),
+                new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        VALID_IBAN_MBANK, "PLN", "mBank", "mBank"),
+                new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        VALID_IBAN_ING, "PLN", "ING", "ING")
+        )));
+
+        // 2) All 3 should appear as available
+        assertThat(actor.availableForCashFlow().getAccounts()).hasSize(3);
+
+        // 3) Create a CashFlow for the Pekao IBAN → listener links → Pekao becomes unavailable
+        createCashFlowWithHistory(VALID_IBAN_PEKAO, "Bank Pekao");
+
+        // 4) Wait for listener, then verify available shrinks to 2
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            UserFinancialProfileDto.OwnedAccountsListJson list = actor.availableForCashFlow();
+            assertThat(list.getAccounts()).hasSize(2);
+            List<String> ibans = list.getAccounts().stream()
+                    .map(UserFinancialProfileDto.OwnedAccountJson::getIban)
+                    .toList();
+            assertThat(ibans).containsExactlyInAnyOrder(VALID_IBAN_MBANK, VALID_IBAN_ING);
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     //  ERROR SCENARIOS
     // ─────────────────────────────────────────────────────────────────────
 
