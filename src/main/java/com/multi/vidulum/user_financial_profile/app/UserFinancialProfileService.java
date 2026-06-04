@@ -74,7 +74,7 @@ public class UserFinancialProfileService {
         return account;
     }
 
-    public void onCashFlowCreated(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
+    public void claimAccountFromCashFlow(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
         String iban = bankAccount.bankAccountNumber().fetchRawIban();
         UserFinancialProfile profile = repository.findByUserId(userId)
                 .orElseThrow(() -> new UserFinancialProfileNotFoundException(userId));

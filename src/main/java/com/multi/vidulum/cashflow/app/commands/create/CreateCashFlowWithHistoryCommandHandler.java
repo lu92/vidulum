@@ -68,7 +68,10 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
                         .build()
         );
 
-        userFinancialProfileService.onCashFlowCreated(
+
+        // TODO: refactor to Kafka listener on cash_flow topic so both CreateCashFlowCommand
+        // and CreateCashFlowWithHistoryCommand trigger the same claim flow (see VID-161 Phase 2 notes)
+        userFinancialProfileService.claimAccountFromCashFlow(
                 command.userId(),
                 command.bankAccount(),
                 event.cashFlowId()

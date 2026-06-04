@@ -631,6 +631,136 @@ Combined:
   Budget correction: ~435,000 PLN of false "expenses" removed from reports
 ```
 
+## Refined Business Model: Account-First Architecture (2026-06-04)
+
+After implementing Phase 1 MVP we recognized that the original design conflates two
+unrelated concerns under the word "profile". The refined model separates them and
+puts **owned bank accounts** at the centre of the user's financial identity, with
+CashFlow becoming a *view* over an account rather than the source of truth about it.
+
+### Two distinct operations, one previously-confusing name
+
+| Operation | When | Frequency |
+|---|---|---|
+| **Create profile** (empty container) | At user registration (`/auth/register`) | Exactly once per user |
+| **Claim a bank account** (add IBAN to `ownedAccounts[]`) | Onboarding, manual add, accepted suggestion, CashFlow creation | 0…N per user |
+
+These are different lifecycle events. Method names should reflect this — the original
+`onCashFlowCreated` was renamed to `claimAccountFromCashFlow` to drop the misleading
+"event handler" prefix and describe the actual semantics.
+
+### Why owned-accounts is the primary entity (not derivable from CashFlows)
+
+A naive design might compute `ownedAccounts` on-the-fly: "every IBAN that has a
+CashFlow belongs to the user". That model breaks in three real scenarios:
+
+1. **Accounts without a CashFlow** — user mentions an account during onboarding ("yes,
+   I also have an ING savings account, single deposit") but never imports its CSV into
+   Vidulum. Account is owned for self-transfer detection but no CashFlow exists.
+2. **Closed accounts (Phase 2)** — user closed the ING account at the bank in 2024,
+   the CashFlow is no longer used, but historical transactions in their Nest CSV
+   from 2021-2024 referencing that IBAN must still be recognized as self-transfers.
+3. **Suggestion-accepted accounts** — system suggests "this IBAN you transfer to
+   looks like yours", user confirms. No CashFlow is created from that — just the claim.
+
+Hence `owned_bank_accounts` is a first-class entity, and CashFlow is one of several
+ways an account becomes claimed.
+
+### Account sources after refinement
+
+```
+AccountSource:
+  ONBOARDING            ← user added during initial onboarding wizard (NEW)
+  MANUAL                ← added later via Settings → My Bank Accounts
+  SUGGESTION_ACCEPTED   ← system detected likely self-transfer, user confirmed
+  CASHFLOW              ← (legacy/transitional) implicit claim when CashFlow created
+                          with previously-unknown IBAN. In the target UI flow this
+                          path should be rare because CashFlow creation picks from
+                          existing accounts; see "UI flow" section below.
+```
+
+`source` is **immutable** after creation (it records *how* the claim happened).
+`linkedCashFlowId` is **mutable** (a CashFlow can be created/deleted later for an
+already-owned account, regardless of source).
+
+### UI flow: account-first CashFlow creation
+
+The intended end-state UX:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ONBOARDING (immediately after registration, ~2 min, skippable)           │
+│                                                                          │
+│ "Tell us about your bank accounts so we can detect transfers between    │
+│  them and keep your budget accurate."                                    │
+│                                                                          │
+│ For each account: [IBAN] [Bank name auto-detected from bank code]       │
+│                   [Label, e.g. "Pekao - życie"]                          │
+│                                                                          │
+│ Submit → POST /api/v1/user/owned-accounts/bulk                          │
+│          source = ONBOARDING                                             │
+└──────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ CREATING A CASHFLOW (sometime later)                                     │
+│                                                                          │
+│ "Which account is this CashFlow for?"                                   │
+│                                                                          │
+│   [✓] Pekao - życie (PL98 1240 ...)         ← from registry             │
+│   [ ] mBank kredyt (PL20 1140 ...)          ← from registry             │
+│   [ ] ING oszczędności (PL44 1050 ...)      ← from registry             │
+│   [ ] + Add a new bank account              ← inline quick-add          │
+│                                                                          │
+│ Pick existing → iban/currency/bankName auto-filled, read-only           │
+│   User only enters: startPeriod, initialBalance                          │
+│   Submit → CashFlow created, OwnedBankAccount.linkedCashFlowId updated  │
+│                                                                          │
+│ + Add new → modal dialog: same form as onboarding (single account)      │
+│   On submit:                                                             │
+│     POST /api/v1/user/owned-accounts (source = MANUAL)                  │
+│     UI refreshes the dropdown list                                      │
+│     UI automatically selects the just-added account                     │
+│     User continues with CashFlow creation (no re-typing)                │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Important UX contract**: the "+ Add a new bank account" flow inside CashFlow
+creation must not lose the user's CashFlow form state. After the inline dialog
+closes the new account, the UI refreshes the available-accounts list, selects the
+just-created entry, and lets the user continue filling in `startPeriod` and
+`initialBalance` without restarting the wizard.
+
+### Backend implications of the account-first model
+
+What is needed beyond Phase 1 MVP to support this UX:
+
+1. **New `AccountSource.ONBOARDING`** — distinguishes onboarding-time entries from
+   later manual additions for analytics ("did onboarding cover most accounts?").
+2. **`POST /api/v1/user/owned-accounts/bulk`** — array of `AddOwnedAccountRequest`.
+   Atomically validates and persists all entries (or none); emits one
+   `OwnedBankAccountAddedEvent` per accepted account so downstream consumers can
+   react. Onboarding submits the whole list in one call.
+3. **`GET /api/v1/user/owned-accounts/available-for-cashflow`** — returns accounts
+   where `status == ACTIVE && linkedCashFlowId == null`. Drives the dropdown in
+   the CashFlow-creation UI.
+4. **Extend CashFlow creation payload** — accept either:
+   - `ownedAccountIban: "PL98..."` (pick from registry; backend resolves bankAccount
+     details from the profile, attaches `linkedCashFlowId` to the existing entry)
+   - or `bankAccount: { ... }` (current shape; backend internally claims as new
+     `source=CASHFLOW` entry)
+5. **`linkedCashFlowId` becomes mutable** — set on link, cleared when a CashFlow is
+   removed (note: today's E6 still applies — *active* CashFlow's linked account
+   cannot be removed from the registry).
+
+### Migration of `source=CASHFLOW` (open question)
+
+With the account-first model, `source=CASHFLOW` should only occur when a user creates
+a CashFlow with an IBAN they never declared (skip onboarding, never used quick-add).
+In the long run this might be folded into `MANUAL` (with `linkedCashFlowId` set on
+creation) so `source` records only user-intent acts. Decision deferred — track as
+follow-up.
+
 ## Implementation Status (2026-06-04)
 
 ### ✅ DONE — Phase 1 MVP (UserFinancialProfile foundation)
@@ -693,13 +823,48 @@ The profile registry exists but **does not yet influence transaction categorizat
   - On `OwnedBankAccountRemovedEvent`: reverse — `selfTransfer: true→false`, restore previous category (or "Inne")
 - **New domain event** `CashChangeRecategorizedEvent` on the `cash_flow` topic so the forecast read-model picks up changes
 
-### ⏸ TODO — Phase 3: UX Integration
+### ⏸ TODO — Phase 3: UX Integration (account-first model)
 
-- "My Bank Accounts" settings page (list/add/remove, see `linkedCashFlowId`)
-- Post-import suggestion dialog (show suggested IBANs with confidence, accept/skip)
+- **Onboarding wizard** (immediately post-registration, ~2 min, skippable)
+  - Free-form list of bank accounts: IBAN + auto-detected bank name + user label
+  - Uses `POST /api/v1/user/owned-accounts/bulk` with `source=ONBOARDING`
+  - Motivation copy: "we use this to detect transfers between your accounts so
+    your budget shows real spending"
+- **CashFlow creation picker** (driven by `GET /owned-accounts/available-for-cashflow`)
+  - Dropdown shows existing ACTIVE accounts not yet linked to a CashFlow
+  - Pick existing → iban/currency/bankName auto-filled, read-only
+  - "+ Add new bank account" → inline dialog (same shape as onboarding entry)
+  - **Critical UX requirement**: after inline add, UI must refresh the dropdown,
+    auto-select the newly added account, and let the user continue with the
+    CashFlow form without restarting (no state loss)
+- **"My Bank Accounts" settings page** — list/add/remove with `linkedCashFlowId`
+  badge and source indicator (ONBOARDING / MANUAL / SUGGESTION_ACCEPTED / CASHFLOW)
+- **Post-import suggestion dialog** — show suggested IBANs with confidence and
+  sample transactions (powered by Phase 2 suggestion service)
 - 🔄 self-transfer badge on transaction rows
 - Budget view with self-transfers in separate section (excluded from main expense total)
 - Forecast view annotated with "Real expenses" vs "Self-transfers" averages
+
+### ⏸ TODO — Backend support for account-first UX (Phase 1c)
+
+Required before/alongside the UI work above:
+
+- **`AccountSource.ONBOARDING`** enum value
+- **`POST /api/v1/user/owned-accounts/bulk`** — accept array of `AddOwnedAccountRequest`,
+  validate all-or-nothing, emit one `OwnedBankAccountAddedEvent` per persisted account
+- **`GET /api/v1/user/owned-accounts/available-for-cashflow`** — filter `status=ACTIVE`
+  AND `linkedCashFlowId IS NULL`
+- **Extend CashFlow creation** (`POST /cash-flow/with-history` and the simple variant)
+  to accept `ownedAccountIban` reference as alternative to the full `bankAccount` payload.
+  When `ownedAccountIban` is used: backend looks up the OwnedBankAccount, builds the
+  internal `BankAccount` from it, links the resulting CashFlow back to the registry entry.
+- **Refactor `claimAccountFromCashFlow`** into a Kafka listener on the `cash_flow` topic
+  so both `CashFlowCreatedEvent` and `CashFlowWithHistoryCreatedEvent` route through the
+  same path (resolves the inline-coupling TODO in `CreateCashFlowWithHistoryCommandHandler`
+  and naturally extends to the simple `CreateCashFlowCommandHandler` which is currently
+  not wired in at all).
+- **Decide on `source=CASHFLOW` future** — keep as historical marker, or fold into
+  `MANUAL` once all CashFlow creations go through "pick existing or quick-add" UI.
 
 ### ⏸ TODO — Lifecycle (skipped in MVP)
 
