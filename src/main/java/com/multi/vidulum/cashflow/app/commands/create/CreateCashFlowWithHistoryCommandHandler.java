@@ -6,6 +6,7 @@ import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
     private final CashFlowEventEmitter cashFlowEventEmitter;
     private final BusinessIdGenerator businessIdGenerator;
     private final Clock clock;
+    private final UserFinancialProfileService userFinancialProfileService;
 
     @Override
     public CashFlowSnapshot handle(CreateCashFlowWithHistoryCommand command) {
@@ -64,6 +66,12 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
                         .metadata(Map.of("event", CashFlowEvent.CashFlowWithHistoryCreatedEvent.class.getSimpleName()))
                         .content(JsonContent.asPrettyJson(event))
                         .build()
+        );
+
+        userFinancialProfileService.onCashFlowCreated(
+                command.userId(),
+                command.bankAccount(),
+                event.cashFlowId()
         );
 
         return savedCashFlow.getSnapshot();

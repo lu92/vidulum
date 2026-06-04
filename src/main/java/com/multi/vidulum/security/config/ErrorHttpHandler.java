@@ -18,6 +18,10 @@ import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.FieldError;
 import com.multi.vidulum.security.auth.*;
 import com.multi.vidulum.security.auth.EmailAlreadyTakenException;
+import com.multi.vidulum.user_financial_profile.domain.BankAccountAlreadyOwnedException;
+import com.multi.vidulum.user_financial_profile.domain.CannotRemoveLinkedCashFlowAccountException;
+import com.multi.vidulum.user_financial_profile.domain.OwnedAccountNotFoundException;
+import com.multi.vidulum.user_financial_profile.domain.UserFinancialProfileNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
@@ -624,6 +628,36 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleIngestionServiceError(IngestionServiceException ex) {
         log.error("Ingestion service error: {}", ex.getMessage());
         ApiError error = ApiError.of(ErrorCode.AI_ADAPTER_INGESTION_SERVICE_ERROR, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    // ============ User Financial Profile (Owned Bank Accounts) ============
+
+    @ExceptionHandler(BankAccountAlreadyOwnedException.class)
+    public ResponseEntity<ApiError> handleAccountAlreadyOwned(BankAccountAlreadyOwnedException ex) {
+        log.debug("Bank account already owned: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.OWNED_ACCOUNT_ALREADY_EXISTS, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(OwnedAccountNotFoundException.class)
+    public ResponseEntity<ApiError> handleOwnedAccountNotFound(OwnedAccountNotFoundException ex) {
+        log.debug("Owned account not found: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.OWNED_ACCOUNT_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(UserFinancialProfileNotFoundException.class)
+    public ResponseEntity<ApiError> handleProfileNotFound(UserFinancialProfileNotFoundException ex) {
+        log.debug("User financial profile not found: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.OWNED_ACCOUNT_PROFILE_NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
+
+    @ExceptionHandler(CannotRemoveLinkedCashFlowAccountException.class)
+    public ResponseEntity<ApiError> handleCashFlowLinkedAccount(CannotRemoveLinkedCashFlowAccountException ex) {
+        log.debug("Cannot remove CashFlow-linked account: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.OWNED_ACCOUNT_CASHFLOW_LINKED, ex.getMessage());
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

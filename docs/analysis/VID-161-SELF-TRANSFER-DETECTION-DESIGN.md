@@ -631,6 +631,90 @@ Combined:
   Budget correction: ~435,000 PLN of false "expenses" removed from reports
 ```
 
+## Implementation Status (2026-06-04)
+
+### ✅ DONE — Phase 1 MVP (UserFinancialProfile foundation)
+
+Implemented in `com.multi.vidulum.user_financial_profile`:
+
+- **Domain**: `UserFinancialProfile` aggregate, `OwnedBankAccount` value object, `AccountStatus`/`AccountSource` enums, sealed `UserFinancialProfileEvent` hierarchy with 5 records (`Created`, `Added`, `Closed`, `Reactivated`, `Removed`), domain repository interface, 4 business exceptions.
+- **Infrastructure**: `UserFinancialProfileEntity` (@Document `user_financial_profiles`) with nested `OwnedBankAccountDocument`, MongoDB repository + domain repo bridge, `UserFinancialProfileEventEmitter` publishing to Kafka topic `user_financial_profile`.
+- **App**: `UserFinancialProfileService` (plain service, no CQRS), `UserFinancialProfileRestController` with `GET/POST/DELETE /api/v1/user/owned-accounts`, DTOs with `@Valid` request validation.
+- **Wiring**:
+  - `RegisterUserCommandHandler` → inline `createEmptyProfile()` so every newly-registered user has a non-null profile document immediately
+  - `CreateCashFlowWithHistoryCommandHandler` → `onCashFlowCreated()` auto-adds the CashFlow's IBAN with `source=CASHFLOW`, `linkedCashFlowId` set
+  - `KafkaTopicConfig` — new `NewTopic("user_financial_profile", 1, 1)` + producer/consumer/container factories
+  - `ErrorCode` — 6 new codes (`OWNED_ACCOUNT_*`)
+  - `ErrorHttpHandler` — 4 new `@ExceptionHandler` mapping business exceptions to proper HTTP status codes (400/404/409/422)
+  - `VidulumApplication.clearData()` — drops the new collection on startup
+- **Tests**: `UserFinancialProfileHttpIntegrationTest` (14 scenarios, T1–T9 positive + E1–E8 errors) passing, plus `UserFinancialProfileHttpActor` for HTTP encapsulation. Manual end-to-end HTTP testing also passed with DB + Kafka verification.
+
+**Behavior currently working**:
+- Empty profile auto-created at user registration
+- IBAN auto-added at CashFlow creation (source=CASHFLOW)
+- Manual add/list/delete via REST with full JWT auth
+- Hard delete (no soft-delete preserved record)
+- Account linked to active CashFlow cannot be deleted (422)
+- Cross-user isolation (same IBAN allowed across different users)
+- Kafka events emitted for every state transition
+
+### ⏸ TODO — Phase 1b: Self-Transfer Detection Wiring (next)
+
+The profile registry exists but **does not yet influence transaction categorization**. Required to deliver the actual business value:
+
+- **CashChange field** `boolean selfTransfer` — add to:
+  - `CashChange` domain record
+  - `CashChangeSnapshot`
+  - `CashChangeEntity` persistence
+  - `CashFlowEvent.HistoricalCashChangeImportedEvent` payload (and any other CashChange-creating event)
+  - `CashFlow.apply(...)` methods that construct CashChange instances
+- **Detection in staging** — `StageTransactionsCommandHandler.processTransaction(...)`:
+  - Add **Priority 0** check before existing bankCategory/pattern/mapping priorities
+  - Inject `UserFinancialProfileService`; query `ownsAccount(userId, counterpartyAccount)`
+  - On match → set `mappedData.categoryName = "Przelewy własne"`, mark transaction so import phase sets `selfTransfer=true`
+- **Detection in import** — `StartImportJobCommandHandler` / `ImportHistoricalCashChangeCommandHandler`:
+  - Propagate `selfTransfer` flag through `ImportTransactionRequest` → event → CashChange
+- **Auto-create category** "Przelewy własne" under "Zarządzanie kontem" when first self-transfer arrives
+- **Forecast exclusion** — modify forecast handlers:
+  - `PaidCashChangeAppendedEventHandler` and `ExpectedCashChangeAppendedEventHandler` skip `categorizedInFlows`/`categorizedOutFlows` for `selfTransfer==true`
+  - Add separate informational section to `CashFlowMonthlyForecast` (optional but useful for UI)
+  - Same treatment for `CashChangeConfirmedEvent`, `CashChangeEditedEvent` paths
+- **Decision still open**: what to do with existing heuristic SELF_TRANSFER in `bank_data_adapter` (AI enrichment) — keep as pre-suggestion vs. let IBAN-match be sole source of truth. Documented in original design Section "Suggestion Heuristic".
+
+### ⏸ TODO — Phase 2: Suggestions + Recategorization
+
+- **`SelfTransferSuggestionService`** — after each import, analyze counterparty accounts using heuristics from Section "Suggestion Heuristic — When to Suggest" (frequency, owner-name match, bank-name hint, official-payment exclusion). Persist suggestions for user review.
+- **REST endpoints**:
+  - `GET    /api/v1/user/owned-accounts/suggestions?cashFlowId={cfId}`
+  - `POST   /api/v1/user/owned-accounts/suggestions/accept` body `{ ibans: [...] }`
+  - `POST   /api/v1/user/owned-accounts/recategorize` (manual trigger)
+- **`RecategorizationListener`** — Kafka consumer on topic `user_financial_profile`:
+  - On `OwnedBankAccountAddedEvent`: find all CashChanges across user's CashFlows with matching `counterpartyAccount`, recategorize to "Przelewy własne", set `selfTransfer=true`, trigger forecast recalculation
+  - On `OwnedBankAccountRemovedEvent`: reverse — `selfTransfer: true→false`, restore previous category (or "Inne")
+- **New domain event** `CashChangeRecategorizedEvent` on the `cash_flow` topic so the forecast read-model picks up changes
+
+### ⏸ TODO — Phase 3: UX Integration
+
+- "My Bank Accounts" settings page (list/add/remove, see `linkedCashFlowId`)
+- Post-import suggestion dialog (show suggested IBANs with confidence, accept/skip)
+- 🔄 self-transfer badge on transaction rows
+- Budget view with self-transfers in separate section (excluded from main expense total)
+- Forecast view annotated with "Real expenses" vs "Self-transfers" averages
+
+### ⏸ TODO — Lifecycle (skipped in MVP)
+
+- `AccountStatus.CLOSED` state — user closes account at bank but historical transactions still need detection
+- `closeAccount(iban)` / `reactivateAccount(iban)` service methods
+- Auto-close when linked CashFlow is closed (via `linkedCashFlowId`)
+- UI to display/manage closed accounts
+
+### ⏸ TODO — Optional improvements
+
+- IBAN → BankName resolver from Polish bank code (top 15 PL banks) so `bankName` can default sensibly when user doesn't provide
+- Currency detection from IBAN country code (PL→PLN, DE→EUR) as default
+- Pagination on `GET /owned-accounts` if a user accumulates many accounts
+- Migration script for existing users without profiles (not needed today — no production users, `clearData()` wipes on startup)
+
 ## Related Documents
 
 - [VID-158-TROUBLESHOOTING-ENRICHMENT-QUALITY.md](VID-158-TROUBLESHOOTING-ENRICHMENT-QUALITY.md) — Original self-transfer problem discovery

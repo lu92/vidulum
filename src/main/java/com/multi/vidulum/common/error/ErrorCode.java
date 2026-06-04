@@ -134,7 +134,15 @@ public enum ErrorCode {
     AI_ADAPTER_AI_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "AI service returned an error"),
     AI_ADAPTER_AI_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI service is temporarily unavailable"),
     AI_ADAPTER_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI API rate limit exceeded"),
-    AI_ADAPTER_INGESTION_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "Bank data ingestion service returned an error");
+    AI_ADAPTER_INGESTION_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "Bank data ingestion service returned an error"),
+
+    // ============ User Financial Profile (Owned Bank Accounts) ============
+    OWNED_ACCOUNT_INVALID_IBAN(HttpStatus.BAD_REQUEST, "Invalid IBAN format"),
+    OWNED_ACCOUNT_INVALID_CURRENCY(HttpStatus.BAD_REQUEST, "Unknown currency code"),
+    OWNED_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "Bank account already in user's profile"),
+    OWNED_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "Bank account not found in profile"),
+    OWNED_ACCOUNT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "User financial profile not found"),
+    OWNED_ACCOUNT_CASHFLOW_LINKED(HttpStatus.UNPROCESSABLE_ENTITY, "Cannot remove account linked to active CashFlow");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;
