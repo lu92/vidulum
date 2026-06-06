@@ -4,6 +4,8 @@ import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.springframework.http.HttpStatus;
@@ -41,6 +43,23 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         actor.setJwtToken(accessToken);
     }
 
+    /**
+     * Registers an additional user on the fly via real /api/v1/auth/register flow.
+     * Used in tests that need a second user (e.g. cross-user CashFlow name uniqueness).
+     */
+    private String registerAdditionalUser() {
+        String username = "errhandling_extra_" + UUID.randomUUID().toString().substring(0, 8);
+        ResponseEntity<AuthenticationResponse> resp = restTemplate.postForEntity(
+                "/api/v1/auth/register",
+                RegisterRequest.builder()
+                        .username(username)
+                        .email(username + "@test.com")
+                        .password("SecurePassword123!")
+                        .build(),
+                AuthenticationResponse.class);
+        return resp.getBody().getUserId();
+    }
+
     @Nested
     @DisplayName("Attestation - Balance Mismatch Error")
     class AttestationBalanceMismatchError {
@@ -49,7 +68,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with CASHFLOW_BALANCE_MISMATCH error when balance does not match")
         void shouldReturn409ConflictWhenBalanceMismatch() {
             // given - create CashFlow with history
-            String userId = TestIds.nextUserId().getId();
             String cashFlowName = "Balance Mismatch Test";
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "USD");
@@ -102,7 +120,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 200 OK when attestation succeeds with correct balance")
         void shouldReturn200OkWhenBalanceMatches() {
             // given - create CashFlow with history
-            String userId = TestIds.nextUserId().getId();
             String cashFlowName = "Attestation Test Flow";
             YearMonth startPeriod = YearMonth.of(2021, 10);
             Money initialBalance = Money.of(500, "PLN");
@@ -175,7 +192,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 404 NOT_FOUND with CASHCHANGE_NOT_FOUND when CashChange does not exist")
         void shouldReturn404WhenCashChangeNotFound() {
             // given - create CashFlow first
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String nonExistentCashChangeId = TestIds.nonExistentCashChangeId();
 
@@ -199,7 +215,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 404 NOT_FOUND with CATEGORY_NOT_FOUND when archiving non-existent category")
         void shouldReturn404WhenCategoryNotFoundOnArchive() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to archive non-existent category
@@ -223,7 +238,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 404 NOT_FOUND with BUDGETING_NOT_FOUND when updating non-existent budgeting")
         void shouldReturn404WhenBudgetingNotFound() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to update budgeting that was never set
@@ -254,7 +268,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with CASHFLOW_NAME_ALREADY_EXISTS when creating CashFlow with duplicate name")
         void shouldReturn409WhenCashFlowNameAlreadyExists() {
             // given - create first CashFlow
-            String userId = TestIds.nextUserId().getId();
             String duplicateName = "Duplicate Budget Name";
             actor.createCashFlow(userId, duplicateName, "USD");
 
@@ -280,7 +293,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with CASHFLOW_NAME_ALREADY_EXISTS when creating CashFlow with history with duplicate name")
         void shouldReturn409WhenCashFlowWithHistoryNameAlreadyExists() {
             // given - create first CashFlow with history
-            String userId = TestIds.nextUserId().getId();
             String duplicateName = "Duplicate History Budget";
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "PLN");
@@ -309,7 +321,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT when standard CashFlow exists and creating CashFlow with history with same name")
         void shouldReturn409WhenMixingCashFlowTypes() {
             // given - create standard CashFlow
-            String userId = TestIds.nextUserId().getId();
             String duplicateName = "Mixed Type Budget";
             actor.createCashFlow(userId, duplicateName, "EUR");
 
@@ -333,9 +344,9 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @Test
         @DisplayName("Should allow same CashFlow name for different users")
         void shouldAllowSameCashFlowNameForDifferentUsers() {
-            // given - create CashFlow for first user
-            String userId1 = TestIds.nextUserId().getId();
-            String userId2 = TestIds.nextUserId().getId();
+            // given - first user is already registered (from @BeforeEach)
+            String userId1 = userId;
+            String userId2 = registerAdditionalUser();
             String sameName = "Family Budget";
 
             actor.createCashFlow(userId1, sameName, "USD");
@@ -354,7 +365,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with CATEGORY_ALREADY_EXISTS when creating duplicate category")
         void shouldReturn409WhenCategoryAlreadyExists() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "MyCategory", INFLOW);
 
@@ -379,7 +389,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with BUDGETING_ALREADY_EXISTS when setting duplicate budgeting")
         void shouldReturn409WhenBudgetingAlreadyExists() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.setBudgeting(cashFlowId, "Uncategorized", INFLOW, Money.of(1000, "USD"));
 
@@ -404,7 +413,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 409 CONFLICT with CATEGORY_UNARCHIVE_CONFLICT when unarchiving with active duplicate")
         void shouldReturn409WhenCannotUnarchiveCategory() {
             // given - create category, archive it, create new one with same name
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "TestCategory", OUTFLOW);
             actor.archiveCategory(cashFlowId, "TestCategory", OUTFLOW, false);
@@ -438,7 +446,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when appending expected cash change in SETUP mode")
         void shouldReturn400WhenAppendExpectedInSetupMode() {
             // given - create CashFlow with history (SETUP mode)
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -465,7 +472,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when appending paid cash change in SETUP mode")
         void shouldReturn400WhenAppendPaidInSetupMode() {
             // given
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -489,7 +495,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when editing cash change in SETUP mode")
         void shouldReturn400WhenEditInSetupMode() {
             // given
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -511,7 +516,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when confirming cash change in SETUP mode")
         void shouldReturn400WhenConfirmInSetupMode() {
             // given
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -531,7 +535,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when importing to FORECASTED month in OPEN mode")
         void shouldReturn400WhenImportToForecastedMonth() {
             // given - create standard CashFlow (OPEN mode, activePeriod = 2022-01)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
             // when - try to import to a FORECASTED month (2022-02 is after activePeriod 2022-01)
@@ -555,7 +558,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when attesting non-SETUP mode CashFlow")
         void shouldReturn400WhenAttestationNotAllowedInNonSetupMode() {
             // given - create standard CashFlow (OPEN mode)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
             // when - try to attest
@@ -575,7 +577,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when rolling back non-SETUP mode CashFlow")
         void shouldReturn400WhenRollbackNotAllowedInNonSetupMode() {
             // given - create standard CashFlow (OPEN mode)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Open CashFlow", "USD");
 
             // when - try to rollback
@@ -594,7 +595,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when confirming already confirmed cash change")
         void shouldReturn400WhenCashChangeNotPending() {
             // given - create CashFlow and add+confirm a cash change
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Note: FixedClockConfig sets clock to 2022-01-01, so we use dates in January 2022
@@ -627,7 +627,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when paid date is in future")
         void shouldReturn400WhenPaidDateInFuture() {
             // given - FixedClockConfig sets clock to 2022-01-01
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to add paid cash change with future date
@@ -651,7 +650,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when paid date not in active period")
         void shouldReturn400WhenPaidDateNotInActivePeriod() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to add paid cash change with date in December 2021 (past month)
@@ -675,7 +673,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when start period is in future")
         void shouldReturn400WhenStartPeriodInFuture() {
             // given - FixedClockConfig sets clock to 2022-01-01
-            String userId = TestIds.nextUserId().getId();
 
             // when - try to create CashFlow with future start period
             ResponseEntity<ApiError> response = actor.createCashFlowWithHistoryExpectingError(
@@ -705,7 +702,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when import date is before start period")
         void shouldReturn400WhenImportDateBeforeStartPeriod() {
             // given - start period is 2021-09
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -730,7 +726,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when import date is in active or future period")
         void shouldReturn400WhenImportDateOutsideSetupPeriod() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = TestIds.nextUserId().getId();
             YearMonth startPeriod = YearMonth.of(2021, 9);
             String cashFlowId = actor.createCashFlowWithHistory(userId, "Setup CashFlow", startPeriod, Money.of(1000, "USD"));
 
@@ -754,7 +749,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on append")
         void shouldReturn400WhenDueDateBeforeActivePeriodOnAppend() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to append expected cash change with dueDate in December 2021 (before active period)
@@ -778,7 +772,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         void shouldReturn400WhenDueDateTooFarInFutureOnAppend() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Allowed range: 2022-01 to 2022-12 (activePeriod + 11 months)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to append expected cash change with dueDate in January 2023 (> 11 months ahead)
@@ -801,7 +794,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is before activePeriod on edit")
         void shouldReturn400WhenDueDateBeforeActivePeriodOnEdit() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create a valid cash change first
@@ -829,7 +821,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when dueDate is more than 11 months ahead on edit")
         void shouldReturn400WhenDueDateTooFarInFutureOnEdit() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create a valid cash change first
@@ -858,7 +849,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         void shouldAcceptDueDateAtMaxBoundary() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Max allowed month: 2022-12 (activePeriod + 11 months)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - append with dueDate in December 2022 (exactly at boundary)
@@ -884,7 +874,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should successfully edit cash change to different category")
         void shouldEditCashChangeToDifferentCategory() {
             // given - create CashFlow with two categories
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "Salary", INFLOW);
             actor.createCategory(cashFlowId, "Bonus", INFLOW);
@@ -916,7 +905,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         void shouldEditCashChangeToDifferentMonth() {
             // given - FixedClockConfig sets clock to 2022-01-01, active period is 2022-01
             // Allowed range: 2022-01 to 2022-12
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // Create cash change in January
@@ -944,7 +932,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should successfully edit cash change to last allowed month (activePeriod + 11)")
         void shouldEditCashChangeToLastAllowedMonth() {
             // given - FixedClockConfig sets clock to 2022-01-01, max allowed is 2022-12
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             String cashChangeId = actor.appendExpectedCashChange(
@@ -970,7 +957,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when editing cash change to archived category")
         void shouldReturn400WhenEditingToArchivedCategory() {
             // given - create CashFlow with one active and one archived category
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "ActiveCategory", INFLOW);
             actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
@@ -1000,7 +986,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 404 NOT_FOUND when editing cash change to non-existent category")
         void shouldReturn404WhenEditingToNonExistentCategory() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             String cashChangeId = actor.appendExpectedCashChange(
@@ -1033,7 +1018,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when adding cash change to archived category")
         void shouldReturn400WhenCategoryIsArchived() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             actor.createCategory(cashFlowId, "ArchivedCategory", INFLOW);
             actor.archiveCategory(cashFlowId, "ArchivedCategory", INFLOW, false);
@@ -1058,7 +1042,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when archiving system category")
         void shouldReturn400WhenCannotArchiveSystemCategory() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             // when - try to archive system category "Uncategorized"
@@ -1088,7 +1071,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow name is too short (less than 5 characters)")
         void shouldReturn400WhenCashFlowNameTooShort() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String shortName = "Test"; // 4 characters - too short
 
             // when
@@ -1113,7 +1095,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow name is too long (more than 30 characters)")
         void shouldReturn400WhenCashFlowNameTooLong() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String longName = "A".repeat(31); // 31 characters - too long
 
             // when
@@ -1138,7 +1119,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow with history name is too short")
         void shouldReturn400WhenCashFlowWithHistoryNameTooShort() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String shortName = "Ab"; // 2 characters - too short
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "PLN");
@@ -1166,7 +1146,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 VALIDATION_ERROR when CashFlow with history name is too long")
         void shouldReturn400WhenCashFlowWithHistoryNameTooLong() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String longName = "Very Long CashFlow Name That Exceeds Limit"; // > 30 characters
             YearMonth startPeriod = YearMonth.of(2021, 9);
             Money initialBalance = Money.of(1000, "EUR");
@@ -1194,7 +1173,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept CashFlow name at minimum length (5 characters)")
         void shouldAcceptCashFlowNameAtMinLength() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String minLengthName = "Budge"; // Exactly 5 characters
 
             // when
@@ -1210,7 +1188,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept CashFlow name at maximum length (30 characters)")
         void shouldAcceptCashFlowNameAtMaxLength() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String maxLengthName = "A".repeat(30); // Exactly 30 characters
 
             // when
@@ -1373,7 +1350,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept edit with null description (optional field)")
         void shouldAcceptEditWithNullDescription() {
             // given - create CashFlow and cash change first
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String cashChangeId = actor.appendExpectedCashChange(
                     cashFlowId, "Uncategorized", "Original Name", "Original Description",
@@ -1460,7 +1436,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category is null")
         void shouldReturn400WhenCategoryIsNull() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
@@ -1490,7 +1465,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category is blank")
         void shouldReturn400WhenCategoryIsBlank() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
@@ -1519,7 +1493,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when type is null")
         void shouldReturn400WhenTypeIsNull() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
 
             CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
@@ -1549,7 +1522,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST with VALIDATION_ERROR when category exceeds 50 characters")
         void shouldReturn400WhenCategoryTooLong() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String longCategory = "X".repeat(51);  // 51 characters - exceeds max
 
@@ -1580,7 +1552,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept category at maximum length (50 characters)")
         void shouldAcceptCategoryAtMaxLength() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlow(userId, "Test CashFlow", "USD");
             String maxLengthCategory = "X".repeat(50);  // Exactly 50 characters
 
@@ -1669,8 +1640,8 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @Test
         @DisplayName("Should accept valid userId format (UXXXXXXXX)")
         void shouldAcceptValidUserIdFormat() {
-            // given - valid userId format
-            String validUserId = TestIds.nextUserId().getId();
+            // given - the registered user (real, has a profile)
+            String validUserId = userId;
             String cashFlowName = "Test CashFlow";
             YearMonth startPeriod = YearMonth.of(2022, 1);
             Money initialBalance = Money.of(1000, "EUR");
@@ -1700,7 +1671,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when IBAN has invalid format")
         void shouldReturn400WhenIbanFormatInvalid() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String invalidIban = "INVALID_IBAN";
 
             // when
@@ -1725,7 +1695,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when IBAN has invalid checksum")
         void shouldReturn400WhenIbanChecksumInvalid() {
             // given - valid format but wrong checksum (last digit changed)
-            String userId = TestIds.nextUserId().getId();
             String invalidIban = "PL61109010140000071219812875"; // Wrong checksum
 
             // when
@@ -1748,7 +1717,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when IBAN is too short")
         void shouldReturn400WhenIbanTooShort() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String shortIban = "PL12";
 
             // when
@@ -1768,7 +1736,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST when SWIFT/BIC is invalid")
         void shouldReturn400WhenSwiftBicInvalid() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String validIban = "DE89370400440532013000";
             String invalidBic = "INVALID";
 
@@ -1793,7 +1760,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept valid Polish IBAN")
         void shouldAcceptValidPolishIban() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String validIban = "PL61109010140000071219812874";
 
             // when
@@ -1809,7 +1775,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept valid German IBAN")
         void shouldAcceptValidGermanIban() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String validIban = "DE89370400440532013000";
 
             // when
@@ -1825,7 +1790,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept valid IBAN with spaces (normalization)")
         void shouldAcceptIbanWithSpaces() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String ibanWithSpaces = "PL 61 1090 1014 0000 0712 1981 2874";
 
             // when
@@ -1841,7 +1805,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept valid IBAN with SWIFT/BIC")
         void shouldAcceptValidIbanWithSwift() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String validIban = "PL61109010140000071219812874";
             String validBic = "BPKOPLPW";
 
@@ -1858,7 +1821,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should accept valid IBAN without SWIFT/BIC (optional)")
         void shouldAcceptValidIbanWithoutSwift() {
             // given
-            String userId = TestIds.nextUserId().getId();
             String validIban = "GB29NWBK60161331926819";
 
             // when
@@ -1881,7 +1843,6 @@ class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
         @DisplayName("Should return 400 BAD_REQUEST with CASHFLOW_ROLLOVER_NOT_ALLOWED when CashFlow is in SETUP mode")
         void shouldReturn400WhenRolloverOnSetupModeCashFlow() {
             // given - create CashFlow with history (will be in SETUP mode)
-            String userId = TestIds.nextUserId().getId();
             String cashFlowId = actor.createCashFlowWithHistory(
                     userId,
                     "Setup Mode CashFlow",

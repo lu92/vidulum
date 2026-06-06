@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VID-161 — Onboarding: Bank Accounts Mockup</title>
+    <style>
+        :root {
+            --primary: #1976D2;
+            --primary-dark: #1565C0;
+            --primary-light: #BBDEFB;
+            --success: #4CAF50;
+            --success-light: #E8F5E9;
+            --warning: #FFA000;
+            --warning-light: #FFF3E0;
+            --error: #D32F2F;
+            --error-light: #FFEBEE;
+            --gray-100: #F5F5F5;
+            --gray-200: #EEEEEE;
+            --gray-300: #E0E0E0;
+            --gray-500: #9E9E9E;
+            --gray-700: #616161;
+            --gray-900: #212121;
+            --white: #FFFFFF;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            line-height: 1.5;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h1, h2, h3 { margin-bottom: 16px; }
+        h1 {
+            font-size: 28px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px;
+            margin-bottom: 24px;
+        }
+        h2 { font-size: 22px; color: var(--gray-700); margin-top: 48px; }
+        h3 { font-size: 16px; color: var(--gray-700); margin-top: 16px; }
+        p { margin-bottom: 12px; color: var(--gray-700); }
+
+        /* Section boxes */
+        .section {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .why-box {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+        }
+        .why-box strong { color: var(--primary-dark); }
+
+        /* Side-by-side comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 0;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .compare-cell {
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .compare-bad { background: var(--error-light); border: 1px solid var(--error); }
+        .compare-good { background: var(--success-light); border: 1px solid var(--success); }
+        .compare-arrow { font-size: 24px; text-align: center; color: var(--gray-500); }
+        .compare-bad strong { color: var(--error); }
+        .compare-good strong { color: var(--success); }
+        .compare-cell .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 8px; }
+        .compare-cell .value { font-size: 22px; font-weight: 600; }
+        .compare-cell .desc { font-size: 13px; margin-top: 4px; color: var(--gray-700); }
+
+        /* Mockup Frame (browser-like) */
+        .mockup-frame {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            margin: 24px 0;
+            overflow: hidden;
+            border: 1px solid var(--gray-300);
+        }
+        .mockup-header {
+            background: var(--gray-100);
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--gray-700);
+        }
+        .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .mockup-dot.red { background: #ff5f56; }
+        .mockup-dot.yellow { background: #ffbd2e; }
+        .mockup-dot.green { background: #27c93f; }
+        .mockup-url {
+            margin-left: 12px;
+            padding: 3px 12px;
+            background: var(--white);
+            border-radius: 4px;
+            border: 1px solid var(--gray-200);
+            flex: 1;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        .mockup-body { padding: 32px; background: var(--white); min-height: 400px; }
+
+        /* Onboarding screen layout */
+        .onboarding-screen {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .onb-progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        .onb-progress-step {
+            height: 4px;
+            flex: 1;
+            background: var(--gray-200);
+            border-radius: 2px;
+        }
+        .onb-progress-step.active { background: var(--primary); }
+        .onb-progress-step.done { background: var(--success); }
+        .onb-step-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+        .onb-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 12px;
+        }
+        .onb-subtitle {
+            font-size: 16px;
+            color: var(--gray-700);
+            margin-bottom: 24px;
+        }
+        .onb-info-card {
+            background: var(--primary-light);
+            border-radius: 8px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .onb-info-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+        .onb-info-text {
+            font-size: 14px;
+            color: var(--primary-dark);
+        }
+
+        /* Account row form */
+        .account-row {
+            border: 1px solid var(--gray-300);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: var(--white);
+            position: relative;
+        }
+        .account-row.with-warning {
+            border-color: var(--warning);
+            background: var(--warning-light);
+        }
+        .account-row.with-error {
+            border-color: var(--error);
+            background: var(--error-light);
+        }
+        .account-row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .account-row-header h4 {
+            font-size: 14px;
+            color: var(--gray-900);
+            font-weight: 600;
+        }
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: var(--gray-500);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .field-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+        }
+        .field label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+        .field input, .field select {
+            padding: 10px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--white);
+        }
+        .field input:focus { outline: none; border-color: var(--primary); }
+        .field input.iban {
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            letter-spacing: 0.5px;
+        }
+        .field-hint {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .field-hint.success { color: var(--success); }
+        .field-hint.warning { color: var(--warning); }
+        .field-hint.error { color: var(--error); }
+        .field-row-full { grid-column: 1 / -1; }
+
+        /* Bank badge (auto-detected) */
+        .bank-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--success-light);
+            color: var(--success);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-top: 6px;
+        }
+
+        /* Add another */
+        .add-another {
+            border: 2px dashed var(--gray-300);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 500;
+            background: transparent;
+            width: 100%;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .add-another:hover { background: var(--gray-100); border-color: var(--primary); }
+
+        /* Footer actions */
+        .onb-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 24px;
+            margin-top: 24px;
+            border-top: 1px solid var(--gray-200);
+        }
+        .btn-link {
+            background: transparent;
+            border: none;
+            color: var(--gray-700);
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+        /* Modal dialog (quick-add during CashFlow creation) */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 24px;
+            border-radius: 12px;
+            position: relative;
+        }
+        .modal-dialog {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .modal-subtitle {
+            font-size: 14px;
+            color: var(--gray-700);
+            margin-bottom: 20px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* CashFlow creation picker */
+        .picker-list {
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .picker-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            background: var(--white);
+        }
+        .picker-item:last-child { border-bottom: none; }
+        .picker-item:hover { background: var(--gray-100); }
+        .picker-item.selected {
+            background: var(--primary-light);
+            border-left: 3px solid var(--primary);
+        }
+        .picker-item.add-new {
+            color: var(--primary);
+            font-weight: 500;
+            justify-content: center;
+        }
+        .picker-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: inline-block;
+            position: relative;
+        }
+        .picker-item.selected .picker-radio {
+            border-color: var(--primary);
+        }
+        .picker-item.selected .picker-radio::after {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 8px; height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+        .picker-content { flex: 1; }
+        .picker-label { font-weight: 500; }
+        .picker-iban {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--gray-700);
+            margin-top: 2px;
+        }
+        .picker-meta { font-size: 12px; color: var(--gray-500); }
+
+        /* API integration table */
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .api-table th, .api-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-200);
+            vertical-align: top;
+        }
+        .api-table th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .method-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: monospace;
+            color: var(--white);
+        }
+        .method-get { background: #4CAF50; }
+        .method-post { background: #2196F3; }
+        .method-delete { background: #F44336; }
+        .endpoint {
+            font-family: monospace;
+            font-size: 12px;
+            background: var(--gray-100);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--gray-900);
+        }
+
+        /* Code block */
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .key { color: #9cdcfe; }
+
+        /* Flow diagram */
+        .flow-step {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .flow-step:last-child { border-bottom: none; }
+        .flow-num {
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .flow-content { flex: 1; }
+        .flow-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .flow-desc {
+            font-size: 13px;
+            color: var(--gray-700);
+        }
+
+        /* Annotations */
+        .annotation {
+            background: var(--warning-light);
+            border-left: 3px solid var(--warning);
+            padding: 10px 14px;
+            margin: 12px 0;
+            font-size: 13px;
+            color: var(--gray-700);
+            border-radius: 4px;
+        }
+        .annotation strong { color: var(--warning); }
+
+        /* Help text */
+        .help-text {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>VID-161 — Onboarding: Bank Accounts</h1>
+
+    <!-- ==================== WHY ==================== -->
+    <section class="section">
+        <h2 style="margin-top: 0;">Why we ask</h2>
+        <p>
+            When a user transfers money between their own bank accounts (e.g. Nest → Pekao for monthly savings),
+            it looks like a regular expense in their CashFlow. Without knowing that the destination IBAN belongs
+            to the user, the system inflates "expenses" by these transfer amounts and makes the budget unreliable.
+        </p>
+
+        <div class="comparison">
+            <div class="compare-cell compare-bad">
+                <div class="label">Without onboarding</div>
+                <div class="value">22,500 PLN / month</div>
+                <div class="desc">Inflated by ~9,000 PLN of fake "expenses" (self-transfers)</div>
+            </div>
+            <div class="compare-arrow">→</div>
+            <div class="compare-cell compare-good">
+                <div class="label">With declared accounts</div>
+                <div class="value">13,500 PLN / month</div>
+                <div class="desc">Real expenses only — transfers excluded from budget</div>
+            </div>
+        </div>
+
+        <div class="why-box">
+            <strong>Real-world impact:</strong> in our Nest Bank test data, 111 out of 402 transactions (50.7%) are
+            self-transfers to user's own Pekao / mBank / ING accounts. A 2-minute onboarding eliminates this noise
+            on day one, before the first CSV import.
+        </div>
+
+        <h3>Why ask upfront (not later via suggestions)?</h3>
+        <ul style="margin-left: 20px; color: var(--gray-700); font-size: 14px;">
+            <li><strong>Immediate value</strong> — first CSV import already shows correct budget, no "Inne" pollution</li>
+            <li><strong>Educational moment</strong> — user understands <em>why</em> the system asks, increases buy-in</li>
+            <li><strong>DRY for CashFlow creation</strong> — IBAN entered once, reusable for any future CashFlow</li>
+            <li><strong>Deterministic detection</strong> — IBAN matching needs no heuristics, zero false positives</li>
+        </ul>
+    </section>
+
+    <!-- ==================== MOCKUP 1: ONBOARDING SCREEN ==================== -->
+    <h2>1. Onboarding screen (immediately after registration)</h2>
+    <p>
+        Shown once, right after the user completes <code>/api/v1/auth/register</code>.
+        Whole flow takes ~2 minutes. Skippable.
+    </p>
+
+    <div class="mockup-frame">
+        <div class="mockup-header">
+            <span class="mockup-dot red"></span>
+            <span class="mockup-dot yellow"></span>
+            <span class="mockup-dot green"></span>
+            <span class="mockup-url">https://app.vidulum.com/onboarding/bank-accounts</span>
+        </div>
+        <div class="mockup-body">
+            <div class="onboarding-screen">
+
+                <div class="onb-progress">
+                    <div class="onb-progress-step done"></div>
+                    <div class="onb-progress-step active"></div>
+                    <div class="onb-progress-step"></div>
+                </div>
+                <div class="onb-step-label">Step 2 of 3 — Bank accounts</div>
+
+                <h2 class="onb-title">Tell us about your bank accounts</h2>
+                <p class="onb-subtitle">
+                    This helps Vidulum detect transfers between your own accounts and keep your budget accurate.
+                </p>
+
+                <div class="onb-info-card">
+                    <span class="onb-info-icon">💡</span>
+                    <div class="onb-info-text">
+                        Add every bank account you use — even ones you won't import into Vidulum.
+                        Transfers <em>to</em> these accounts won't count as expenses.
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 24px;">Your accounts</h3>
+
+                <!-- Account row 1: filled correctly with auto-detection -->
+                <div class="account-row">
+                    <div class="account-row-header">
+                        <h4>Account 1</h4>
+                        <button class="remove-btn">✕</button>
+                    </div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>IBAN</label>
+                            <input class="iban" type="text" value="PL98 1240 1444 1111 0010 7817 1074">
+                            <span class="bank-badge">✓ Bank Pekao S.A. (auto-detected)</span>
+                        </div>
+                        <div class="field">
+                            <label>Currency</label>
+                            <select>
+                                <option selected>PLN</option>
+                                <option>EUR</option>
+                                <option>USD</option>
+                                <option>GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field-row-full">
+                        <div class="field">
+                            <label>Label (your name for it)</label>
+                            <input type="text" value="Pekao — życie">
+                            <span class="help-text">A short name to help you recognize this account in lists</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account row 2: filled correctly -->
+                <div class="account-row">
+                    <div class="account-row-header">
+                        <h4>Account 2</h4>
+                        <button class="remove-btn">✕</button>
+                    </div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>IBAN</label>
+                            <input class="iban" type="text" value="PL20 1140 2004 0000 3702 8319 0287">
+                            <span class="bank-badge">✓ mBank S.A. (auto-detected)</span>
+                        </div>
+                        <div class="field">
+                            <label>Currency</label>
+                            <select>
+                                <option selected>PLN</option>
+                                <option>EUR</option>
+                                <option>USD</option>
+                                <option>GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field-row-full">
+                        <div class="field">
+                            <label>Label</label>
+                            <input type="text" value="mBank — kredyt hipoteczny">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account row 3: with validation error example -->
+                <div class="account-row with-error">
+                    <div class="account-row-header">
+                        <h4>Account 3</h4>
+                        <button class="remove-btn">✕</button>
+                    </div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>IBAN</label>
+                            <input class="iban" type="text" value="PL44 1050 1445 1000 0097 2835 0310">
+                            <span class="field-hint error">✗ Invalid IBAN checksum — please verify the number</span>
+                        </div>
+                        <div class="field">
+                            <label>Currency</label>
+                            <select>
+                                <option selected>PLN</option>
+                                <option>EUR</option>
+                                <option>USD</option>
+                                <option>GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field-row-full">
+                        <div class="field">
+                            <label>Label</label>
+                            <input type="text" value="ING">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="add-another">+ Add another bank account</button>
+
+                <div class="onb-footer">
+                    <button class="btn-link">Skip — I'll add accounts later</button>
+                    <button class="btn-primary">Save and continue →</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation">
+        <strong>UX notes:</strong>
+        IBAN validation is live (debounced on blur) and uses backend's iban4j validation through a lightweight
+        client-side library or a dedicated validate-only endpoint. Bank name is auto-derived from the IBAN's
+        bank code (positions 5-8 in PL IBAN). User can override the auto-detected bank name. The
+        <em>"Save and continue"</em> button is disabled until all rows are valid OR the list is empty
+        (skip case).
+    </div>
+
+    <!-- ==================== MOCKUP 2: CASHFLOW PICKER ==================== -->
+    <h2>2. CashFlow creation — picker (later, when user adds a CashFlow)</h2>
+    <p>
+        Reuses accounts declared during onboarding. User picks from the list instead of re-typing IBAN.
+        If a needed account is missing, an inline <em>"+ Add new bank account"</em> dialog is offered
+        (see Mockup 3).
+    </p>
+
+    <div class="mockup-frame">
+        <div class="mockup-header">
+            <span class="mockup-dot red"></span>
+            <span class="mockup-dot yellow"></span>
+            <span class="mockup-dot green"></span>
+            <span class="mockup-url">https://app.vidulum.com/cash-flow/new</span>
+        </div>
+        <div class="mockup-body">
+            <div class="onboarding-screen">
+                <h2 class="onb-title">Create a CashFlow</h2>
+                <p class="onb-subtitle">A CashFlow tracks income and expenses for one bank account.</p>
+
+                <h3>Which account is this CashFlow for?</h3>
+
+                <div class="picker-list">
+                    <div class="picker-item selected">
+                        <span class="picker-radio"></span>
+                        <div class="picker-content">
+                            <div class="picker-label">Pekao — życie</div>
+                            <div class="picker-iban">PL98 1240 1444 1111 0010 7817 1074 · PLN</div>
+                        </div>
+                        <div class="picker-meta">Pekao S.A.</div>
+                    </div>
+                    <div class="picker-item">
+                        <span class="picker-radio"></span>
+                        <div class="picker-content">
+                            <div class="picker-label">mBank — kredyt hipoteczny</div>
+                            <div class="picker-iban">PL20 1140 2004 0000 3702 8319 0287 · PLN</div>
+                        </div>
+                        <div class="picker-meta">mBank S.A.</div>
+                    </div>
+                    <div class="picker-item">
+                        <span class="picker-radio"></span>
+                        <div class="picker-content">
+                            <div class="picker-label">ING — oszczędności</div>
+                            <div class="picker-iban">PL44 1050 1445 1000 0097 2835 0316 · PLN</div>
+                        </div>
+                        <div class="picker-meta">ING Bank Śląski</div>
+                    </div>
+                    <div class="picker-item add-new">
+                        + Add a new bank account
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 24px;">CashFlow details</h3>
+                <div class="field-grid">
+                    <div class="field">
+                        <label>Name</label>
+                        <input type="text" value="Konto Pekao - życie">
+                    </div>
+                    <div class="field">
+                        <label>Start period</label>
+                        <input type="text" value="2024-01">
+                    </div>
+                </div>
+                <div class="field" style="margin-top: 12px;">
+                    <label>Initial balance</label>
+                    <input type="text" value="0.00 PLN">
+                </div>
+
+                <div class="onb-footer">
+                    <button class="btn-link">Cancel</button>
+                    <button class="btn-primary">Create CashFlow</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation">
+        <strong>Critical UX contract:</strong> when user picks an account from the picker, the UI pre-fills
+        the CashFlow creation payload's <code>bankAccount</code> with that account's data
+        (iban, currency, bankName). Nothing else is needed — backend's Kafka listener resolves the link
+        automatically: if the IBAN is already in the profile, it sets <code>linkedCashFlowId</code> on the
+        existing entry; if not, it claims as a new entry with <code>source=CASHFLOW</code>.
+    </div>
+
+    <!-- ==================== MOCKUP 3: QUICK-ADD DIALOG ==================== -->
+    <h2>3. Quick-add dialog (during CashFlow creation, when account missing)</h2>
+    <p>
+        If user clicks <em>"+ Add a new bank account"</em> in the picker, a modal opens with the same fields
+        as the onboarding row. On confirm: account is saved to profile (source=MANUAL), picker list refreshes,
+        the new account is auto-selected, and the user continues with the CashFlow form without losing state.
+    </p>
+
+    <div class="mockup-frame">
+        <div class="mockup-header">
+            <span class="mockup-dot red"></span>
+            <span class="mockup-dot yellow"></span>
+            <span class="mockup-dot green"></span>
+            <span class="mockup-url">https://app.vidulum.com/cash-flow/new (modal open)</span>
+        </div>
+        <div class="mockup-body" style="background: #f5f5f5;">
+            <div class="modal-overlay">
+                <div class="modal-dialog">
+                    <h3 class="modal-title">Add a new bank account</h3>
+                    <p class="modal-subtitle">
+                        We'll save it to your profile so you can reuse it for other CashFlows
+                        and so we can detect transfers to/from it.
+                    </p>
+
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>IBAN</label>
+                            <input class="iban" type="text" value="PL74 2490 0005 0000 4000 0590 5136">
+                            <span class="bank-badge">✓ Alior Bank S.A. (auto-detected)</span>
+                        </div>
+                        <div class="field">
+                            <label>Currency</label>
+                            <select>
+                                <option selected>PLN</option>
+                                <option>EUR</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field" style="margin-top: 12px;">
+                        <label>Label</label>
+                        <input type="text" value="Alior — konto oszczędnościowe">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn-secondary">Cancel</button>
+                        <button class="btn-primary">Save and use this account</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation">
+        <strong>State preservation:</strong> the CashFlow form (name, startPeriod, initialBalance) keeps its
+        values while the modal is open. After dialog success, UI must NOT navigate away or reset — it just
+        refreshes the picker list and auto-selects the new entry.
+    </div>
+
+    <!-- ==================== BACKEND INTEGRATION ==================== -->
+    <h2>4. Backend integration — REST APIs used</h2>
+
+    <h3>Authentication</h3>
+    <p>All endpoints below require a valid JWT in the <code>Authorization: Bearer &lt;token&gt;</code> header.
+       The token is obtained from <code>POST /api/v1/auth/register</code> (during the auth step that precedes onboarding).
+       The user's identity is derived from the token — the UI does not need to pass <code>userId</code> explicitly.</p>
+
+    <h3>Endpoints used by the onboarding + picker flow</h3>
+    <table class="api-table">
+        <thead>
+        <tr>
+            <th style="width: 70px;">Method</th>
+            <th style="width: 35%;">Endpoint</th>
+            <th>Purpose / when called</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td><span class="method-badge method-post">POST</span></td>
+            <td><span class="endpoint">/api/v1/auth/register</span></td>
+            <td>
+                <strong>Step 1 of onboarding — user signs up.</strong> Backend creates the User and an empty
+                <code>UserFinancialProfile</code> document atomically. UI captures <code>access_token</code> for subsequent calls.
+            </td>
+        </tr>
+        <tr>
+            <td><span class="method-badge method-post">POST</span></td>
+            <td><span class="endpoint">/api/v1/user/owned-accounts/bulk</span></td>
+            <td>
+                <strong>Onboarding "Save and continue" button.</strong> Submits all accounts in one call.
+                Backend validates every IBAN (all-or-nothing) and on success emits one
+                <code>OwnedBankAccountAddedEvent</code> per account on the <code>user_financial_profile</code> Kafka topic.
+                <br><br>
+                Source on backend side is <code>ONBOARDING</code>.
+            </td>
+        </tr>
+        <tr>
+            <td><span class="method-badge method-get">GET</span></td>
+            <td><span class="endpoint">/api/v1/user/owned-accounts/available-for-cashflow</span></td>
+            <td>
+                <strong>CashFlow picker dropdown.</strong> Returns accounts where <code>status=ACTIVE</code>
+                AND <code>linkedCashFlowId IS NULL</code> (i.e. owned but not yet attached to any CashFlow).
+                Called when the "Create CashFlow" screen opens AND after the quick-add modal closes successfully.
+            </td>
+        </tr>
+        <tr>
+            <td><span class="method-badge method-post">POST</span></td>
+            <td><span class="endpoint">/api/v1/user/owned-accounts</span></td>
+            <td>
+                <strong>Quick-add modal "Save and use" button.</strong> Adds a single account. Source is
+                <code>MANUAL</code>. Returns the new <code>OwnedAccountJson</code> including the assigned IBAN
+                (normalized). UI uses this IBAN to refresh the picker and auto-select.
+            </td>
+        </tr>
+        <tr>
+            <td><span class="method-badge method-post">POST</span></td>
+            <td><span class="endpoint">/cash-flow/with-history</span></td>
+            <td>
+                <strong>CashFlow "Create" button.</strong> Standard payload — <code>bankAccount</code> with
+                the IBAN that the user picked (or quick-added). Backend creates the CashFlow and emits a
+                <code>CashFlowWithHistoryCreatedEvent</code> on the <code>cash_flow</code> topic; the
+                <code>UserFinancialProfileCashFlowListener</code> auto-links the IBAN to an existing
+                OwnedBankAccount in the profile, or claims it as a new entry if missing
+                (eventually consistent — typical lag &lt; 500ms).
+            </td>
+        </tr>
+        <tr>
+            <td><span class="method-badge method-get">GET</span></td>
+            <td><span class="endpoint">/api/v1/user/owned-accounts</span></td>
+            <td>
+                <strong>Optional — used by "My Bank Accounts" settings page (Phase 3).</strong> Returns the
+                full list with all statuses and source markers. Not directly part of the onboarding flow but
+                useful for confirming the saved data.
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>Example: bulk add request body</h3>
+    <div class="code-block">
+<span class="keyword">POST</span> /api/v1/user/owned-accounts/bulk
+<span class="key">Authorization:</span> <span class="string">Bearer &lt;jwt-token&gt;</span>
+<span class="key">Content-Type:</span> <span class="string">application/json</span>
+
+{
+  <span class="key">"accounts"</span>: [
+    {
+      <span class="key">"iban"</span>: <span class="string">"PL98124014441111001078171074"</span>,
+      <span class="key">"currency"</span>: <span class="string">"PLN"</span>,
+      <span class="key">"bankName"</span>: <span class="string">"Bank Pekao S.A."</span>,
+      <span class="key">"label"</span>: <span class="string">"Pekao - życie"</span>
+    },
+    {
+      <span class="key">"iban"</span>: <span class="string">"PL20114020040000370283190287"</span>,
+      <span class="key">"currency"</span>: <span class="string">"PLN"</span>,
+      <span class="key">"bankName"</span>: <span class="string">"mBank S.A."</span>,
+      <span class="key">"label"</span>: <span class="string">"mBank - kredyt hipoteczny"</span>
+    }
+  ]
+}
+
+<span class="comment">// Response: 201 Created</span>
+{
+  <span class="key">"added"</span>: [
+    {<span class="key">"iban"</span>: <span class="string">"PL98124014441111001078171074"</span>, <span class="key">"source"</span>: <span class="string">"ONBOARDING"</span>, <span class="key">"linkedCashFlowId"</span>: <span class="keyword">null</span>, ...},
+    {<span class="key">"iban"</span>: <span class="string">"PL20114020040000370283190287"</span>, <span class="key">"source"</span>: <span class="string">"ONBOARDING"</span>, <span class="key">"linkedCashFlowId"</span>: <span class="keyword">null</span>, ...}
+  ]
+}</div>
+
+    <h3>Example: CashFlow creation (IBAN picked from onboarded accounts)</h3>
+    <div class="code-block">
+<span class="keyword">POST</span> /cash-flow/with-history
+<span class="key">Authorization:</span> <span class="string">Bearer &lt;jwt-token&gt;</span>
+
+{
+  <span class="key">"userId"</span>: <span class="string">"U10000003"</span>,
+  <span class="key">"name"</span>: <span class="string">"Konto Pekao - życie"</span>,
+  <span class="key">"description"</span>: <span class="string">"Daily account"</span>,
+  <span class="key">"bankAccount"</span>: {                         <span class="comment">// UI pre-fills from picked account</span>
+    <span class="key">"bankName"</span>: <span class="string">"Bank Pekao S.A."</span>,
+    <span class="key">"bankAccountNumber"</span>: {
+      <span class="key">"account"</span>: <span class="string">"PL98124014441111001078171074"</span>,
+      <span class="key">"denomination"</span>: { <span class="key">"id"</span>: <span class="string">"PLN"</span> }
+    },
+    <span class="key">"balance"</span>: { <span class="key">"amount"</span>: 0, <span class="key">"currency"</span>: <span class="string">"PLN"</span> }
+  },
+  <span class="key">"startPeriod"</span>: <span class="string">"2024-01"</span>,
+  <span class="key">"initialBalance"</span>: { <span class="key">"amount"</span>: 0, <span class="key">"currency"</span>: <span class="string">"PLN"</span> }
+}
+
+<span class="comment">// Response: 200 OK</span>
+<span class="string">"CF10000001"</span>
+
+<span class="comment">// Behind the scenes (eventually consistent, ~500ms):</span>
+<span class="comment">//   1. CashFlowWithHistoryCreatedEvent → kafka topic "cash_flow"</span>
+<span class="comment">//   2. UserFinancialProfileCashFlowListener picks it up</span>
+<span class="comment">//   3. claimOrLinkAccountForCashFlow looks up IBAN PL98... in user's profile</span>
+<span class="comment">//      - IBAN found (added during onboarding) → sets linkedCashFlowId = "CF10000001"</span>
+<span class="comment">//        source stays as "ONBOARDING" — immutable</span>
+<span class="comment">//      - IBAN not in profile → claims as new entry with source = "CASHFLOW"</span></div>
+
+    <h3>Error handling — what the UI must surface</h3>
+    <table class="api-table">
+        <thead>
+        <tr>
+            <th>HTTP status</th>
+            <th>ErrorCode</th>
+            <th>When / UI handling</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>400</td>
+            <td><span class="endpoint">VALIDATION_ERROR</span></td>
+            <td>Missing required field (iban / currency / bankName / label is blank). Show inline field error from <code>fieldErrors[]</code>.</td>
+        </tr>
+        <tr>
+            <td>400</td>
+            <td><span class="endpoint">INVALID_BANK_ACCOUNT</span></td>
+            <td>IBAN checksum invalid. Show inline "Invalid IBAN" hint on the offending row.</td>
+        </tr>
+        <tr>
+            <td>409</td>
+            <td><span class="endpoint">OWNED_ACCOUNT_ALREADY_EXISTS</span></td>
+            <td>IBAN duplicate within the bulk batch OR collision with an account already in the user's profile. Show "You've already added this account" and let user remove duplicate.</td>
+        </tr>
+        <tr>
+            <td>422</td>
+            <td><span class="endpoint">OWNED_ACCOUNT_CASHFLOW_LINKED</span></td>
+            <td>User tried to delete an account currently linked to an active CashFlow. Show "Delete the CashFlow first" with a link to that CashFlow.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- ==================== END-TO-END FLOW ==================== -->
+    <h2>5. End-to-end flow (UI events ↔ backend events)</h2>
+
+    <div class="section" style="padding: 16px;">
+        <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div class="flow-content">
+                <div class="flow-title">User registers</div>
+                <div class="flow-desc">
+                    <code>POST /api/v1/auth/register</code> → backend creates User + empty
+                    <code>UserFinancialProfile</code>. UI receives <code>access_token</code> +
+                    <code>user_id</code>. Stores token, navigates to onboarding.
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div class="flow-content">
+                <div class="flow-title">User fills the onboarding form</div>
+                <div class="flow-desc">
+                    UI maintains local state of the account rows. On IBAN blur: client-side IBAN validation
+                    + bank-name auto-detect (table lookup on bank code). User can add/remove rows freely.
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">3</div>
+            <div class="flow-content">
+                <div class="flow-title">User clicks "Save and continue"</div>
+                <div class="flow-desc">
+                    UI calls <code>POST /api/v1/user/owned-accounts/bulk</code> with the array of accounts.
+                    Disable the button while in-flight. On 201: navigate to the next onboarding step (or dashboard).
+                    On 4xx: show the relevant error inline (see error table above).
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">4</div>
+            <div class="flow-content">
+                <div class="flow-title">User skips onboarding</div>
+                <div class="flow-desc">
+                    No API call. Profile stays empty. User can add accounts later from Settings or via the
+                    inline quick-add inside CashFlow creation. The motivation copy on the onboarding screen
+                    should make the trade-off clear ("you can add later, but your first imports will be less
+                    accurate until you do").
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">5</div>
+            <div class="flow-content">
+                <div class="flow-title">Later: user creates a CashFlow</div>
+                <div class="flow-desc">
+                    UI calls <code>GET /api/v1/user/owned-accounts/available-for-cashflow</code> to populate
+                    the picker dropdown. User picks one. UI pre-fills the <code>bankAccount</code> payload from
+                    the picked account's data.
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">6</div>
+            <div class="flow-content">
+                <div class="flow-title">User clicks "+ Add new bank account" in the picker</div>
+                <div class="flow-desc">
+                    Modal opens. UI keeps the CashFlow form state intact. On modal submit:
+                    <code>POST /api/v1/user/owned-accounts</code> (source=MANUAL). On 201: close modal,
+                    re-call <code>GET /available-for-cashflow</code>, auto-select the newly added entry,
+                    keep CashFlow form visible.
+                </div>
+            </div>
+        </div>
+        <div class="flow-step">
+            <div class="flow-num">7</div>
+            <div class="flow-content">
+                <div class="flow-title">User clicks "Create CashFlow"</div>
+                <div class="flow-desc">
+                    UI calls <code>POST /cash-flow/with-history</code> with the full <code>bankAccount</code>
+                    payload. Returns CashFlow ID. UI navigates to the new CashFlow page.
+                    Meanwhile (async, ~500ms): the listener on <code>cash_flow</code> topic looks up the IBAN
+                    in the user's profile and either sets <code>linkedCashFlowId</code> on the existing entry
+                    or claims it as a new entry. User does not see this — it's purely backend bookkeeping
+                    for future self-transfer detection.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== APPENDIX ==================== -->
+    <h2>6. Out of scope (Phase 2+)</h2>
+    <ul style="margin-left: 20px; color: var(--gray-700); font-size: 14px;">
+        <li><strong>Post-import suggestions</strong> — system analyses CSV counterparty accounts and suggests
+            "this IBAN you transferred to looks like yours". User accepts/dismisses. Documented in VID-161
+            Phase 2 TODO.</li>
+        <li><strong>CashFlow delete lifecycle</strong> — when a CashFlow is removed, <code>linkedCashFlowId</code>
+            should be cleared on the OwnedBankAccount. Tracked as separate TODO.</li>
+        <li><strong>Closed accounts</strong> — distinguishing "account closed at bank but historical
+            transactions still reference it" from "active account". Not part of onboarding.</li>
+        <li><strong>Multi-currency UX</strong> — current mockup defaults to PLN. Multi-currency dropdown
+            shown but no smart inference. Acceptable for Phase 1.</li>
+    </ul>
+
+</div>
+</body>
+</html>

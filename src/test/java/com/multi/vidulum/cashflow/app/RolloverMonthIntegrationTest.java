@@ -2,7 +2,6 @@ package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthCommand;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
-import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
@@ -10,9 +9,13 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -20,6 +23,7 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -48,12 +52,30 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
     @Autowired
     private Clock clock;
 
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    private String registeredUserId;
+
+    @BeforeEach
+    void registerTestUser() {
+        // Register a fresh user so UserFinancialProfile exists when the cash_flow
+        // Kafka listener processes CashFlow creation events.
+        String username = "rollover_test_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.registeredUserId = auth.getUserId();
+    }
+
     private String uniqueCashFlowName() {
         return "RolloverCF-" + NAME_COUNTER.incrementAndGet();
     }
 
     private String uniqueUserId() {
-        return TestIds.nextUserId().getId();
+        return registeredUserId;
     }
 
     @Test

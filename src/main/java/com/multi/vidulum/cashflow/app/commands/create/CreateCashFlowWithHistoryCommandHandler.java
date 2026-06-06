@@ -57,7 +57,9 @@ public class CreateCashFlowWithHistoryCommandHandler implements CommandHandler<C
         CashFlow savedCashFlow = domainCashFlowRepository.save(cashFlow);
         log.info("Cash flow with history [{}] has been created in SETUP mode!", savedCashFlow.getSnapshot());
 
-        // Use emitWithKey to ensure event ordering within the same CashFlow
+        // Use emitWithKey to ensure event ordering within the same CashFlow.
+        // The user_financial_profile module listens to this topic and claims/links the IBAN
+        // to the user's owned-accounts registry (see UserFinancialProfileCashFlowListener).
         cashFlowEventEmitter.emitWithKey(
                 event.cashFlowId(),
                 CashFlowUnifiedEvent.builder()

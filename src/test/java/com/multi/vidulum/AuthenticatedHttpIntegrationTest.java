@@ -83,7 +83,9 @@ public abstract class AuthenticatedHttpIntegrationTest {
 
     static {
         // Initialize MongoDB container
-        mongoDBContainer = new MongoDBContainer("mongo:8.0");
+        // mongo:8.0 (latest 8.0.x) refuses to start on Linux kernel >= 6.19 (SERVER-121912,
+        // TCMalloc/rseq incompatibility). 8.0.4 predates the guard and runs fine on this host.
+        mongoDBContainer = new MongoDBContainer("mongo:8.0.4");
         mongoDBContainer.start();
 
         // Initialize Kafka container

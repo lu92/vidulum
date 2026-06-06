@@ -24,6 +24,7 @@ import com.multi.vidulum.task.infrastructure.TaskEntity;
 import com.multi.vidulum.trading.infrastructure.OrderEntity;
 import com.multi.vidulum.trading.infrastructure.TradeEntity;
 import com.multi.vidulum.user.infrastructure.UserEntity;
+import com.multi.vidulum.user_financial_profile.infrastructure.UserFinancialProfileEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -90,6 +91,7 @@ public class VidulumApplication {
         // Security & User
         mongoTemplate.dropCollection(Token.class);
         mongoTemplate.dropCollection(UserEntity.class);
+        mongoTemplate.dropCollection(UserFinancialProfileEntity.class);
 
         // Portfolio & Trading
         mongoTemplate.dropCollection(PortfolioEntity.class);

@@ -13,10 +13,14 @@ import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.security.auth.AuthenticationResponse;
+import com.multi.vidulum.security.auth.AuthenticationService;
+import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,6 +47,22 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
     private static final int MAX_MONTHS = 36;
     private static final int ATTESTED_MONTHS_OFFSET = 6;
 
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    private String userId;
+
+    @BeforeEach
+    void registerUser() {
+        String username = "ai_gen_" + UUID.randomUUID().toString().substring(0, 8);
+        AuthenticationResponse auth = authenticationService.register(RegisterRequest.builder()
+                .username(username)
+                .email(username + "@test.com")
+                .password("SecurePassword123!")
+                .build());
+        this.userId = auth.getUserId();
+    }
+
     @Test
     public void generate() {
         Random random = new Random();
@@ -51,7 +71,7 @@ public class CashflowStatementViaAIGenerator extends IntegrationTest {
 
         log.info("Generating cashflow for {} months, {} attested", numberOfMonths, numberOfAttestedMonths);
 
-        CashFlowId cashFlowId = actor.createCashFlow();
+        CashFlowId cashFlowId = actor.createCashFlow(userId);
         log.info("Created cashflow: {}", cashFlowId);
 
         // Create home budget categories - INFLOW
@@ -739,10 +759,10 @@ class HomeBudgetActor {
     private CashFlowRestController cashFlowRestController;
     private CommandGateway commandGateway;
 
-    CashFlowId createCashFlow() {
+    CashFlowId createCashFlow(String userId) {
         return new CashFlowId(cashFlowRestController.createCashFlow(
                 CashFlowDto.CreateCashFlowJson.builder()
-                        .userId("U10000005")
+                        .userId(userId)
                         .name("Home Budget")
                         .description("Comprehensive home budget with multiple categories")
                         .bankAccount(CashFlowDto.BankAccountJson.from(BankAccount.fromIban(

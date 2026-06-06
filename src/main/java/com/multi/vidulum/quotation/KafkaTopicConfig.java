@@ -6,6 +6,7 @@ import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.common.events.OrderFilledEvent;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
 import com.multi.vidulum.common.events.UserCreatedEvent;
+import com.multi.vidulum.common.events.UserFinancialProfileUnifiedEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.DegiroBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
@@ -298,6 +299,49 @@ public class KafkaTopicConfig {
         ConcurrentKafkaListenerContainerFactory<String, BankDataIngestionUnifiedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(bankDataIngestionConsumerFactory());
+        return factory;
+    }
+
+
+    //    ******* User Financial Profile Events *******
+
+    @Bean
+    public NewTopic userFinancialProfileTopic() {
+        return new NewTopic("user_financial_profile", 1, (short) 1);
+    }
+
+    @Bean
+    public ProducerFactory<String, UserFinancialProfileUnifiedEvent> userFinancialProfileProducerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, UserFinancialProfileUnifiedEvent> userFinancialProfileKafkaTemplate() {
+        return new KafkaTemplate<>(userFinancialProfileProducerFactory());
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserFinancialProfileUnifiedEvent> userFinancialProfileConsumerFactory() {
+        Map<String, Object> configProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(
+                configProps,
+                new StringDeserializer(),
+                new JsonDeserializer<>(UserFinancialProfileUnifiedEvent.class));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserFinancialProfileUnifiedEvent> userFinancialProfileContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserFinancialProfileUnifiedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(userFinancialProfileConsumerFactory());
         return factory;
     }
 
