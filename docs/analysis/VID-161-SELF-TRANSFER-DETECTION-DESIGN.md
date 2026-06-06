@@ -979,6 +979,124 @@ When a CashFlow is deleted, the OwnedBankAccount currently keeps a dangling
 - Pagination on `GET /owned-accounts` if a user accumulates many accounts
 - Migration script for existing users without profiles (not needed today — no production users, `clearData()` wipes on startup)
 
+## Manual End-to-End Verification Results (2026-06-06)
+
+Real-data manual test run against fresh Docker stack with Anthropic AI key, using both
+CSV samples from `~/Pulpit/bank-csv-samples/`.
+
+### Test data
+
+| CSV | Bank | Transactions | Months | AI SELF_TRANSFER detected |
+|---|---|---|---|---|
+| `nestbank_lista_operacji_20260111.csv` | Nest Bank | 402 | 36 (2023-01 → 2025-12) | **2** (keyword "Przelew środków") |
+| `pekao_sa_Lista_operacji_20260111_013400.csv` | Pekao S.A. | 791 | 13 (2025-01 → 2026-01) | **30** (bank category "Przelew wewnętrzny") |
+
+### User setup tested
+
+- Onboarding: bulk-added both IBANs (Nest + Pekao) with `source=ONBOARDING`
+- Created 2 CashFlows — listener LINKED both existing entries (not duplicate CASHFLOW source)
+- Final profile state: both IBANs with `linkedCashFlowId` set, `source` immutable as `ONBOARDING`
+
+### Pipeline that worked
+
+CSV upload → AI transform → staging → force-uncategorized → import job (402/402 in 11s) → attestation → forecast (53 months, 37 with PAID data, totals ≈ 1.21M PLN both sides).
+
+### Critical finding: Phase 1 foundation works, but problem NOT solved yet
+
+In Nest CashFlow forecast (Uncategorized bucket) there are **106 transactions whose
+counterparty name contains "Pekao" or "mBank"**. These transactions:
+
+- Have `counterpartyAccount = PL98...` (Pekao IBAN) on the original CSV row
+- The Pekao IBAN IS in the user's `UserFinancialProfile.ownedAccounts`
+- Therefore deterministic IBAN-match detection would catch them as self-transfers
+- **But the staging/import pipeline does NOT do this cross-reference today**
+- All 106 are counted as real expenses in the budget, contributing to the original
+  "50.7% Inne pollution" problem documented in [VID-159](VID-159-THREE-SIGNAL-RESULTS-2026-04-26.md)
+
+### Gap map — registry exists, but detection wiring is missing
+
+```
+DATA IN:                                         CODE PATH:
+─────────────────                                ───────────────────────────────────
+CSV Nest, transaction:                           ✅ BankCsvRow.counterpartyAccount() extracts IBAN
+  counterpartyAccount = PL98... (Pekao)
+       │
+       ▼
+StagedTransaction.originalData                   ✅ Persists counterpartyAccount in Mongo
+       │
+       ▼
+StageTransactionsCommandHandler                  ❌ DOES NOT call profile.ownsAccount(counterpartyAccount)
+.processTransaction()                                MISSING: priority-0 IBAN cross-reference
+       │
+       ▼
+ImportHistoricalCashChangeCommand                ❌ Does not carry selfTransfer flag
+       │
+       ▼
+CashChange (domain record)                       ❌ Has no `selfTransfer` field
+       │
+       ▼
+HistoricalCashChangeImportedEvent                ❌ Event payload has no flag
+       │
+       ▼
+PaidCashChangeAppendedEventHandler               ❌ Does not filter by selfTransfer
+       │
+       ▼
+Forecast.categorizedOutFlows[Uncategorized]      ❌ 106 self-transfers inflate the budget
+       │
+       ▼
+"Total spending: 1.21M PLN" inflated             ❌ Original 50.7% Inne problem persists
+```
+
+### Implementation status table (post-manual-test)
+
+| Component | Status | Evidence |
+|---|---|---|
+| UserFinancialProfile registry | ✅ DONE | Both IBANs in DB with correct source/linkedCashFlowId |
+| Auto-add at CashFlow creation | ✅ DONE | Kafka listener LINKED existing onboarding entries |
+| Bulk onboarding endpoint | ✅ DONE | 2 accounts added atomically + 2 Kafka events |
+| available-for-cashflow filter | ✅ DONE | Returns empty after both CashFlows linked |
+| Kafka listener idempotency | ✅ DONE | Pre-existing ONBOARDING entry linked, not duplicated as CASHFLOW |
+| Bulk validate-all-before-save | ✅ DONE | Both 409 (duplicate) and 400 (invalid IBAN) leave profile unchanged |
+| 422 protection for linked accounts | ✅ DONE | Cannot delete Nest IBAN while linked to CF10000001 |
+| **`CashChange.selfTransfer` flag** | **❌ TODO Phase 1b** | Field doesn't exist on the record |
+| **Detection in `StageTransactionsCommandHandler`** | **❌ TODO Phase 1b** | No call to `profile.ownsAccount(...)` |
+| **`selfTransfer` propagation through events** | **❌ TODO Phase 1b** | No event carries the flag |
+| **Forecast exclusion of self-transfers** | **❌ TODO Phase 1b** | Handlers add all CashChanges to categorizedFlows |
+| Auto-create "Przelewy własne" category | ❌ TODO Phase 1b | Not implemented |
+| `SelfTransferSuggestionService` | ❌ TODO Phase 2 | Suggestions for IBANs outside profile |
+| UI (onboarding wizard, picker, badge) | ❌ TODO Phase 3 | Only mockup exists |
+
+### Verdict: NOT solved — Phase 1b required
+
+Phase 1 (MVP foundation) and Phase 1c (account-first backend support) are complete and
+verified, but **the registry isn't yet consulted during staging/import**. The actual
+business problem — 50.7% "Inne" pollution and inflated budget — persists in the
+real-data forecast we generated.
+
+### Estimated impact of Phase 1b (based on actual data in CF10000001)
+
+- 106 transactions in Nest CF Uncategorized have counterparty matching profile IBAN
+- Average per month over 36 months ≈ 9–12k PLN of fake "expenses"
+- Total budget correction ≈ **350–430k PLN** false outflows would be removed
+- "Inne"/Uncategorized expected to drop from 50.7% to ~23% (matching original VID-159 prediction)
+
+### What Phase 1b requires concretely (already in the TODO section above)
+
+1. Add `boolean selfTransfer` to `CashChange`, `CashChangeSnapshot`, `CashChangeEntity`
+2. Add the flag to relevant `CashFlowEvent` payloads (at minimum `HistoricalCashChangeImportedEvent`)
+3. **Priority-0 check** in `StageTransactionsCommandHandler.processTransaction()`:
+   inject `UserFinancialProfileService`, call `ownsAccount(userId, counterpartyAccount)`,
+   short-circuit to `categoryName = "Przelewy własne"` + `selfTransfer = true`
+4. Auto-create the "Przelewy własne" category (parent "Zarządzanie kontem") on first match
+5. Propagate the flag through `ImportTransactionRequest` → `ImportHistoricalCashChangeCommandHandler`
+6. Modify `PaidCashChangeAppendedEventHandler` / `ExpectedCashChangeAppendedEventHandler` /
+   `CashChangeConfirmedEventHandler` / `CashChangeEditedEventHandler` to skip CashChanges
+   where `selfTransfer == true` when populating `categorizedInFlows` / `categorizedOutFlows`
+   (or place them in a separate informational section)
+7. Re-run the manual flow with the same CSV; expect ~106 transactions in Nest CF to move
+   from Uncategorized to "Przelewy własne" with `selfTransfer=true` and budget totals
+   to drop by the corresponding amount.
+
 ## Related Documents
 
 - [VID-158-TROUBLESHOOTING-ENRICHMENT-QUALITY.md](VID-158-TROUBLESHOOTING-ENRICHMENT-QUALITY.md) — Original self-transfer problem discovery
