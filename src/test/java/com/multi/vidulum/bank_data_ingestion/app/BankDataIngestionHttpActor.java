@@ -187,6 +187,13 @@ public class BankDataIngestionHttpActor {
     public String importHistoricalTransaction(String cashFlowId, String categoryName, String name,
                                               String description, Money money, Type type,
                                               ZonedDateTime dueDate, ZonedDateTime paidDate) {
+        return importHistoricalTransaction(cashFlowId, categoryName, name, description, money, type, dueDate, paidDate, false);
+    }
+
+    public String importHistoricalTransaction(String cashFlowId, String categoryName, String name,
+                                              String description, Money money, Type type,
+                                              ZonedDateTime dueDate, ZonedDateTime paidDate,
+                                              boolean selfTransfer) {
         CashFlowDto.ImportHistoricalCashChangeJson request = CashFlowDto.ImportHistoricalCashChangeJson.builder()
                 .category(categoryName)
                 .name(name)
@@ -195,6 +202,7 @@ public class BankDataIngestionHttpActor {
                 .type(type)
                 .dueDate(dueDate)
                 .paidDate(paidDate)
+                .selfTransfer(selfTransfer)
                 .build();
 
         ResponseEntity<String> response = restTemplate.exchange(

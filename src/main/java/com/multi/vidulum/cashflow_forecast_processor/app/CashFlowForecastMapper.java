@@ -40,6 +40,8 @@ public class CashFlowForecastMapper {
                 .cashFlowStats(mapCashFlowStats(forecast.getCashFlowStats()))
                 .categorizedInFlows(mapCashCategories(forecast.getCategorizedInFlows()))
                 .categorizedOutFlows(mapCashCategories(forecast.getCategorizedOutFlows()))
+                .selfTransferInFlows(mapCashCategories(forecast.getSelfTransferInFlows()))
+                .selfTransferOutFlows(mapCashCategories(forecast.getSelfTransferOutFlows()))
                 .status(forecast.getStatus().name())
                 .attestation(mapAttestation(forecast.getAttestation()))
                 .build();
@@ -64,6 +66,9 @@ public class CashFlowForecastMapper {
     }
 
     private List<CashFlowForecastDto.CashCategoryJson> mapCashCategories(List<CashCategory> categories) {
+        if (categories == null) {
+            return new java.util.ArrayList<>();
+        }
         List<CashFlowForecastDto.CashCategoryJson> result = new java.util.ArrayList<>();
         for (int i = 0; i < categories.size(); i++) {
             result.add(mapCashCategory(categories.get(i), i));

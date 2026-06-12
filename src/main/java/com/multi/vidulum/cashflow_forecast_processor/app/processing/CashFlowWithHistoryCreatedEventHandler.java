@@ -125,6 +125,8 @@ public class CashFlowWithHistoryCreatedEventHandler implements CashFlowEventHand
                 CashFlowStats.justBalance(currency),
                 categorizedInflows,
                 categorizedOutflows,
+                new LinkedList<>(),
+                new LinkedList<>(),
                 status,
                 null
         );

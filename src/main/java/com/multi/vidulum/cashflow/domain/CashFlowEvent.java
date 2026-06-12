@@ -104,7 +104,8 @@ public sealed interface CashFlowEvent extends DomainEvent
             CategoryName categoryName,
             ZonedDateTime dueDate,
             ZonedDateTime paidDate,
-            ZonedDateTime importedAt
+            ZonedDateTime importedAt,
+            boolean selfTransfer
     ) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
@@ -214,7 +215,7 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     record ExpectedCashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
                                    Money money, Type type, ZonedDateTime created, CategoryName categoryName,
-                                   ZonedDateTime dueDate, String sourceRuleId) implements CashFlowEvent {
+                                   ZonedDateTime dueDate, String sourceRuleId, boolean selfTransfer) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return created;
@@ -223,7 +224,7 @@ public sealed interface CashFlowEvent extends DomainEvent
 
     record PaidCashChangeAppendedEvent(CashFlowId cashFlowId, CashChangeId cashChangeId, Name name, Description description,
                                        Money money, Type type, ZonedDateTime created, CategoryName categoryName,
-                                       ZonedDateTime dueDate, ZonedDateTime paidDate) implements CashFlowEvent {
+                                       ZonedDateTime dueDate, ZonedDateTime paidDate, boolean selfTransfer) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {
             return created;

@@ -89,7 +89,7 @@
                   "PAID": [
                     {
                       "cashChangeId": {
-                    "id": "CC1000000001"
+                        "id": "CC1000000001"
                       },
                       "name": {
                         "name": "Main product purchase"
@@ -184,7 +184,7 @@
                   "PAID": [
                     {
                       "cashChangeId": {
-                    "id": "CC1000000001"
+                        "id": "CC1000000001"
                       },
                       "name": {
                         "name": "Morgan Stanley fee"
@@ -222,7 +222,9 @@
         }
       ],
       "status": "ACTIVE",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-07": {
       "period": "2021-07",
@@ -395,7 +397,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-08": {
       "period": "2021-08",
@@ -568,7 +572,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-09": {
       "period": "2021-09",
@@ -741,7 +747,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-10": {
       "period": "2021-10",
@@ -914,7 +922,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-11": {
       "period": "2021-11",
@@ -1087,7 +1097,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2021-12": {
       "period": "2021-12",
@@ -1260,7 +1272,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2022-01": {
       "period": "2022-01",
@@ -1433,7 +1447,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2022-02": {
       "period": "2022-02",
@@ -1606,7 +1622,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2022-03": {
       "period": "2022-03",
@@ -1779,7 +1797,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2022-04": {
       "period": "2022-04",
@@ -1952,7 +1972,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     },
     "2022-05": {
       "period": "2022-05",
@@ -2125,7 +2147,9 @@
         }
       ],
       "status": "FORECASTED",
-      "attestation": null
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
     }
   },
   "bankAccountNumber": {

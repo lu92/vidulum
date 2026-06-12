@@ -279,6 +279,7 @@ public final class CashFlowDto {
         private Type type;
         private ZonedDateTime dueDate;
         private ZonedDateTime paidDate;
+        private boolean selfTransfer;
     }
 
     /**

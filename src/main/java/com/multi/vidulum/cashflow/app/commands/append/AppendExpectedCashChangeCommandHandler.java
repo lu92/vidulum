@@ -60,7 +60,8 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
                 command.created(),
                 command.categoryName(),
                 command.dueDate(),
-                command.sourceRuleId()
+                command.sourceRuleId(),
+                false
         );
         cashFlow.apply(event);
 

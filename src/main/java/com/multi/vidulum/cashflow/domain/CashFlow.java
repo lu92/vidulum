@@ -147,6 +147,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                         .created(cashChangeSnapshot.created())
                         .dueDate(cashChangeSnapshot.dueDate())
                         .endDate(cashChangeSnapshot.endDate())
+                        .sourceRuleId(cashChangeSnapshot.sourceRuleId())
+                        .selfTransfer(cashChangeSnapshot.selfTransfer())
                         .build())
                 .collect(Collectors.toMap(
                         CashChange::getCashChangeId,
@@ -239,7 +241,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.created(),
                 event.dueDate(),
                 null,
-                event.sourceRuleId()
+                event.sourceRuleId(),
+                event.selfTransfer()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
         add(event);
@@ -263,7 +266,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.created(),
                 event.dueDate(),
                 event.paidDate(),
-                null
+                null,
+                event.selfTransfer()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -294,7 +298,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.importedAt(),
                 event.dueDate(),
                 event.paidDate(),
-                null
+                null,
+                event.selfTransfer()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -328,7 +333,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     event.attestedAt(),
                     event.attestedAt(),
                     event.attestedAt(),
-                    null
+                    null,
+                    false
             );
             cashChanges.put(adjustmentCashChange.getCashChangeId(), adjustmentCashChange);
         }

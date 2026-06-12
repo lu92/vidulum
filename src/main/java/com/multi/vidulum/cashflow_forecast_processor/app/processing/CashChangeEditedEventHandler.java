@@ -48,6 +48,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
         CategoryName oldCategory = location.categoryName();
         CategoryName newCategory = event.categoryName();
         Type type = location.type();
+        boolean selfTransfer = location.selfTransfer();
         Transaction oldTransaction = location.transaction();
         PaymentStatus paymentStatus = oldTransaction.paymentStatus();
 
@@ -66,10 +67,10 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
 
         if (monthChanged || categoryChanged) {
             // Move transaction: either month changed, category changed, or both
-            handleMoveTransaction(statement, type, oldMonth, newMonth, oldCategory, newCategory, oldTransaction, newTransaction);
+            handleMoveTransaction(statement, type, oldMonth, newMonth, oldCategory, newCategory, oldTransaction, newTransaction, selfTransfer);
         } else {
             // Simple case: just update transaction in place with proper stats diff calculation
-            handleSimpleEdit(statement, type, oldMonth, oldCategory, oldTransaction, newTransaction);
+            handleSimpleEdit(statement, type, oldMonth, oldCategory, oldTransaction, newTransaction, selfTransfer);
         }
 
         statement.updateStats();
@@ -84,10 +85,12 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
     /**
      * Handles simple edit where only name, description, or money changes.
      * Updates statistics by calculating the difference between old and new money.
+     * VID-161 Phase 1b: when selfTransfer, operates on selfTransfer sections and does NOT update stats.
      */
     private void handleSimpleEdit(CashFlowForecastStatement statement, Type type,
                                    YearMonth month, CategoryName category,
-                                   Transaction oldTransaction, Transaction newTransaction) {
+                                   Transaction oldTransaction, Transaction newTransaction,
+                                   boolean selfTransfer) {
         CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
         PaymentStatus paymentStatus = oldTransaction.paymentStatus();
         Money oldMoney = oldTransaction.transactionDetails().getMoney();
@@ -95,29 +98,40 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
         Money diff = newMoney.minus(oldMoney);
 
         // Find and update the transaction in the category
-        CashCategory cashCategory = findCategory(forecast, type, category);
+        CashCategory cashCategory = findCategory(forecast, type, category, selfTransfer);
         cashCategory.getGroupedTransactions().replace(
                 new GroupedTransactions.ReplacementFrom(paymentStatus, oldTransaction.transactionDetails()),
                 new GroupedTransactions.ReplacementTo(paymentStatus, newTransaction.transactionDetails())
         );
 
-        // Update statistics with the difference (not overwrite!)
-        updateStatsWithDiff(forecast, type, paymentStatus, diff);
+        // Self-transfers are not in budget stats — skip diff update (Q2/Q7 decision)
+        if (!selfTransfer) {
+            updateStatsWithDiff(forecast, type, paymentStatus, diff);
+        }
     }
 
     /**
      * Handles transaction move when category or month changes.
      * Removes from old location and adds to new location.
+     * VID-161 Phase 1b: when selfTransfer, the move stays within selfTransfer sections.
      */
     private void handleMoveTransaction(CashFlowForecastStatement statement, Type type,
                                         YearMonth oldMonth, YearMonth newMonth,
                                         CategoryName oldCategory, CategoryName newCategory,
-                                        Transaction oldTransaction, Transaction newTransaction) {
+                                        Transaction oldTransaction, Transaction newTransaction,
+                                        boolean selfTransfer) {
         CashFlowMonthlyForecast oldForecast = statement.getForecasts().get(oldMonth);
         CashFlowMonthlyForecast newForecast = statement.getForecasts().get(newMonth);
 
-        // Remove from old location
-        if (Type.INFLOW.equals(type)) {
+        if (selfTransfer) {
+            if (Type.INFLOW.equals(type)) {
+                oldForecast.removeFromSelfTransferInflows(oldCategory, oldTransaction);
+                newForecast.addToSelfTransferInflows(newCategory, newTransaction);
+            } else {
+                oldForecast.removeFromSelfTransferOutflows(oldCategory, oldTransaction);
+                newForecast.addToSelfTransferOutflows(newCategory, newTransaction);
+            }
+        } else if (Type.INFLOW.equals(type)) {
             oldForecast.removeFromInflows(oldCategory, oldTransaction);
             newForecast.addToInflows(newCategory, newTransaction);
         } else {
@@ -128,8 +142,20 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
 
     /**
      * Finds a category in the forecast by type and name.
+     * VID-161 Phase 1b: when selfTransfer, searches selfTransfer sections.
      */
-    private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName) {
+    private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName, boolean selfTransfer) {
+        if (selfTransfer) {
+            if (Type.INFLOW.equals(type)) {
+                return forecast.findCategoryInSelfTransferInflowsByName(categoryName)
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Cannot find self-transfer inflow category [%s]", categoryName)));
+            } else {
+                return forecast.findCategoryInSelfTransferOutflowsByName(categoryName)
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Cannot find self-transfer outflow category [%s]", categoryName)));
+            }
+        }
         if (Type.INFLOW.equals(type)) {
             return forecast.findCategoryInflowsByCategoryName(categoryName)
                     .orElseThrow(() -> new IllegalStateException(

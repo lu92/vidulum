@@ -55,7 +55,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -76,7 +77,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -145,7 +147,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -166,7 +169,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -238,7 +242,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month - will be in July after attestation
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -270,7 +275,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special category"),
                         ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -284,7 +290,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -298,7 +305,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Overhead costs"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in June
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -326,7 +334,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z"),  // dueDate in August
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -416,7 +425,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Inflows"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -430,7 +440,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Outflows"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -534,7 +545,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Bank fees"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -548,7 +560,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Main product"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -562,7 +575,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Sales"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -633,7 +647,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        false
                 ));
 
         Checksum lastEventChecksum = emit(
@@ -647,7 +662,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-20T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-20T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-20T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -703,7 +719,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        false
                 ));
 
         Checksum lastEventChecksum = emit(
@@ -717,7 +734,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -774,7 +792,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-05T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         // Add paid cash change (already CONFIRMED)
@@ -789,7 +808,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -857,7 +877,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -918,7 +939,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         emit(
@@ -932,7 +954,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback the import (clear transactions but keep categories)
@@ -1026,7 +1049,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback with category deletion
@@ -1111,7 +1135,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback
@@ -1136,7 +1161,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:35:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:35:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -1213,7 +1239,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-03-05T00:00:00Z"),  // due in March
-                        null
+                        null,
+                        false
                 ));
 
         // Transaction due in April
@@ -1228,7 +1255,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-04-05T00:00:00Z"),  // due in April
-                        null
+                        null,
+                        false
                 ));
 
         // Transaction due in May
@@ -1243,7 +1271,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-05-05T00:00:00Z"),  // due in May
-                        null
+                        null,
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -1347,7 +1376,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Bills"),
                 ZonedDateTime.parse("2026-03-10T00:00:00Z"),
-                null
+                null,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1360,7 +1390,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Bills"),
                 ZonedDateTime.parse("2026-03-15T00:00:00Z"),
-                null
+                null,
+                false
         ));
 
         // Delete the first one
@@ -1446,7 +1477,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-03-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1459,7 +1491,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-04-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1472,7 +1505,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-05-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         // Batch delete (simulating recurring rule deletion)
@@ -1554,7 +1588,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-03-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1567,7 +1602,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-04-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1580,7 +1616,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-05-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         // Batch update - change amount to 6000 PLN and name (simulating recurring rule update with raise)
@@ -1748,7 +1785,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-03-15T00:00:00Z"),
-                        null
+                        null,
+                        false
                 ));
 
         // Confirm the cash change (this triggers updateTotalPaidValue)

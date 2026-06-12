@@ -36,6 +36,7 @@ class ExistingCategoryStructureTest {
         // given
         CashFlowInfo cashFlowInfo = new CashFlowInfo(
                 "CF123",
+                "U10000001",
                 CashFlowInfo.CashFlowStatus.OPEN,
                 null, null,
                 List.of(
@@ -87,6 +88,7 @@ class ExistingCategoryStructureTest {
         // given
         CashFlowInfo cashFlowInfo = new CashFlowInfo(
                 "CF123",
+                "U10000001",
                 CashFlowInfo.CashFlowStatus.OPEN,
                 null, null,
                 List.of(
@@ -119,6 +121,7 @@ class ExistingCategoryStructureTest {
         // given
         CashFlowInfo cashFlowInfo = new CashFlowInfo(
                 "CF123",
+                "U10000001",
                 CashFlowInfo.CashFlowStatus.OPEN,
                 null, null,
                 List.of(
@@ -145,6 +148,7 @@ class ExistingCategoryStructureTest {
         // given
         CashFlowInfo cashFlowInfo = new CashFlowInfo(
                 "CF123",
+                "U10000001",
                 CashFlowInfo.CashFlowStatus.OPEN,
                 null, null,
                 List.of(
@@ -172,6 +176,7 @@ class ExistingCategoryStructureTest {
         // given
         CashFlowInfo cashFlowInfo = new CashFlowInfo(
                 "CF123",
+                "U10000001",
                 CashFlowInfo.CashFlowStatus.OPEN,
                 null, null,
                 List.of(),

@@ -64,7 +64,8 @@ public class AppendPaidCashChangeCommandHandler implements CommandHandler<Append
                 command.created(),
                 command.categoryName(),
                 command.dueDate(),
-                command.paidDate()
+                command.paidDate(),
+                false
         );
         cashFlow.apply(event);
 

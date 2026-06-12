@@ -27,6 +27,7 @@ public record ImportHistoricalCashChangeCommand(
         Money money,
         Type type,
         ZonedDateTime dueDate,
-        ZonedDateTime paidDate
+        ZonedDateTime paidDate,
+        boolean selfTransfer
 ) implements Command {
 }

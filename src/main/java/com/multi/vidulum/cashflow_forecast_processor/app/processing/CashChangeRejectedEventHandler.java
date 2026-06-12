@@ -27,7 +27,14 @@ public class CashChangeRejectedEventHandler implements CashFlowEventHandler<Cash
         statement.getForecasts().compute(location.yearMonth(), (yearMonth1, cashFlowMonthlyForecast) -> {
             assert cashFlowMonthlyForecast != null;
 
-            if (Type.INFLOW.equals(location.type())) {
+            // VID-161 Phase 1b: route via locate's selfTransfer flag
+            if (location.selfTransfer()) {
+                if (Type.INFLOW.equals(location.type())) {
+                    cashFlowMonthlyForecast.removeFromSelfTransferInflows(location.categoryName(), location.transaction());
+                } else {
+                    cashFlowMonthlyForecast.removeFromSelfTransferOutflows(location.categoryName(), location.transaction());
+                }
+            } else if (Type.INFLOW.equals(location.type())) {
                 cashFlowMonthlyForecast.removeFromInflows(location.categoryName(), location.transaction());
             } else {
                 cashFlowMonthlyForecast.removeFromOutflows(location.categoryName(), location.transaction());

@@ -29,7 +29,24 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
 
             // for now there is only one 'Uncategorized' category for both inflow/outflow
             CashCategory uncategorizedCashCategory;
-            if (Type.INFLOW.equals(event.type())) {
+            // VID-161 Phase 1b: route self-transfers to dedicated bucket (auto-create on first use)
+            if (event.selfTransfer()) {
+                TransactionDetails details = new TransactionDetails(
+                        event.cashChangeId(),
+                        event.name(),
+                        event.money(),
+                        event.created(),
+                        event.dueDate(),
+                        null
+                );
+                Transaction txn = new Transaction(details, EXPECTED);
+                if (Type.INFLOW.equals(event.type())) {
+                    cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
+                } else {
+                    cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
+                }
+                return cashFlowMonthlyForecast;  // already added via add*Flows
+            } else if (Type.INFLOW.equals(event.type())) {
                 uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in INFLOWS", event.categoryName())));
                 CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();

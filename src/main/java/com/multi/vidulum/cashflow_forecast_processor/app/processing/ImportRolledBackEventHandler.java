@@ -77,6 +77,17 @@ public class ImportRolledBackEventHandler implements CashFlowEventHandler<CashFl
         for (CashCategory category : forecast.getCategorizedOutFlows()) {
             count += countTransactionsInCategory(category);
         }
+        // VID-161 Phase 1b: count self-transfers too so rollback reports include them
+        if (forecast.getSelfTransferInFlows() != null) {
+            for (CashCategory category : forecast.getSelfTransferInFlows()) {
+                count += countTransactionsInCategory(category);
+            }
+        }
+        if (forecast.getSelfTransferOutFlows() != null) {
+            for (CashCategory category : forecast.getSelfTransferOutFlows()) {
+                count += countTransactionsInCategory(category);
+            }
+        }
         return count;
     }
 
@@ -98,10 +109,19 @@ public class ImportRolledBackEventHandler implements CashFlowEventHandler<CashFl
             // Reset to just Uncategorized category
             forecast.setCategorizedInFlows(createEmptyUncategorizedList(currency));
             forecast.setCategorizedOutFlows(createEmptyUncategorizedList(currency));
+            // VID-161 Phase 1b: drop self-transfer categories entirely on full reset
+            forecast.setSelfTransferInFlows(new LinkedList<>());
+            forecast.setSelfTransferOutFlows(new LinkedList<>());
         } else {
             // Keep existing categories but clear their transactions
             clearTransactionsFromCategories(forecast.getCategorizedInFlows(), currency);
             clearTransactionsFromCategories(forecast.getCategorizedOutFlows(), currency);
+            if (forecast.getSelfTransferInFlows() != null) {
+                clearTransactionsFromCategories(forecast.getSelfTransferInFlows(), currency);
+            }
+            if (forecast.getSelfTransferOutFlows() != null) {
+                clearTransactionsFromCategories(forecast.getSelfTransferOutFlows(), currency);
+            }
         }
     }
 

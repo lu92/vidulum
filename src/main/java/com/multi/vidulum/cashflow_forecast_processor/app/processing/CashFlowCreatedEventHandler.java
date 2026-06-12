@@ -66,6 +66,8 @@ public class CashFlowCreatedEventHandler implements CashFlowEventHandler<CashFlo
                             CashFlowStats.justBalance(initialBalance),
                             categorizedInflows,
                             categorizedOutflows,
+                            new LinkedList<>(),
+                            new LinkedList<>(),
                             CashFlowMonthlyForecast.Status.FORECASTED,
                             null
                     );

@@ -23,6 +23,16 @@ public class CashFlowMonthlyForecast {
     private CashFlowStats cashFlowStats;
     private List<CashCategory> categorizedInFlows;
     private List<CashCategory> categorizedOutFlows;
+    /**
+     * Self-transfers (transfers between user's own bank accounts) bucketed separately
+     * so they don't pollute budget aggregates. Routing is decided by the
+     * {@code selfTransfer} flag carried on the CashFlowEvent / CashChange — see VID-161 Phase 1b.
+     * <p>
+     * Per VID-161 Q7: routing only, no separate stats — UI can sum these client-side.
+     * Per VID-161 Q2: separate informational section, not excluded from snapshot.
+     */
+    private List<CashCategory> selfTransferInFlows;
+    private List<CashCategory> selfTransferOutFlows;
     private Status status;
     private Attestation attestation;
 
@@ -103,6 +113,83 @@ public class CashFlowMonthlyForecast {
                 );
     }
 
+    // ===== Self-transfer routing (VID-161 Phase 1b) =====
+    // These methods place transactions into the dedicated self-transfer buckets and
+    // intentionally DO NOT touch cashFlowStats.inflowStats / outflowStats — self-transfers
+    // are out-of-budget by design (Q2 + Q7).
+
+    public void addToSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
+        ensureSelfTransferListsInitialized();
+        CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferInFlows)
+                .orElseGet(() -> autoCreateSelfTransferCategory(categoryName, selfTransferInFlows,
+                        transaction.transactionDetails().getMoney().getCurrency()));
+        cashCategory.getGroupedTransactions().addTransaction(transaction);
+    }
+
+    public void removeFromSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
+        ensureSelfTransferListsInitialized();
+        CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferInFlows).orElseThrow();
+        cashCategory.getGroupedTransactions().removeTransaction(transaction);
+    }
+
+    public void addToSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
+        ensureSelfTransferListsInitialized();
+        CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferOutFlows)
+                .orElseGet(() -> autoCreateSelfTransferCategory(categoryName, selfTransferOutFlows,
+                        transaction.transactionDetails().getMoney().getCurrency()));
+        cashCategory.getGroupedTransactions().addTransaction(transaction);
+    }
+
+    public void removeFromSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
+        ensureSelfTransferListsInitialized();
+        CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferOutFlows).orElseThrow();
+        cashCategory.getGroupedTransactions().removeTransaction(transaction);
+    }
+
+    /**
+     * VID-161 Phase 1b: lazy-creates the self-transfer category entry in the read model
+     * the first time a transaction lands in it. Self-transfer categories are bucketed
+     * separately from the regular categorizedIn/OutFlows (which are populated by
+     * CategoryCreatedEvent), so the read model needs its own structure built on demand.
+     */
+    private CashCategory autoCreateSelfTransferCategory(CategoryName categoryName, List<CashCategory> list, String currency) {
+        CashCategory newCategory = CashCategory.builder()
+                .categoryName(categoryName)
+                .category(new Category(categoryName.name()))
+                .subCategories(new LinkedList<>())
+                .groupedTransactions(new GroupedTransactions())
+                .totalPaidValue(Money.zero(currency))
+                .build();
+        list.add(newCategory);
+        return newCategory;
+    }
+
+    public Optional<CashCategory> findCategoryInSelfTransferInflowsByName(CategoryName categoryName) {
+        return findCategoryByCategoryName(categoryName, selfTransferInFlows);
+    }
+
+    public Optional<CashCategory> findCategoryInSelfTransferOutflowsByName(CategoryName categoryName) {
+        return findCategoryByCategoryName(categoryName, selfTransferOutFlows);
+    }
+
+    /**
+     * Lazy initialization for Mongo-deserialized snapshots that may not have the new
+     * VID-161 Phase 1b fields populated (pre-existing documents would have null lists).
+     */
+    private void ensureSelfTransferListsInitialized() {
+        if (selfTransferInFlows == null) {
+            selfTransferInFlows = new LinkedList<>();
+        }
+        if (selfTransferOutFlows == null) {
+            selfTransferOutFlows = new LinkedList<>();
+        }
+    }
+
+    public Optional<CashCategory> findSelfTransferCashCategoryForCashChange(CashChangeId cashChangeId, Type type) {
+        List<CashCategory> source = Type.INFLOW.equals(type) ? selfTransferInFlows : selfTransferOutFlows;
+        return findCashCategoryForCashChange(cashChangeId, source);
+    }
+
     /**
      * Diff between all incomes and outcomes
      */
@@ -137,6 +224,9 @@ public class CashFlowMonthlyForecast {
     }
 
     private Optional<CashCategory> findCategoryByCategoryName(CategoryName categoryName, List<CashCategory> cashCategories) {
+        if (cashCategories == null) {
+            return Optional.empty();
+        }
         Stack<CashCategory> stack = new Stack<>();
         cashCategories.forEach(stack::push);
         while (!stack.isEmpty()) {
@@ -194,6 +284,12 @@ public class CashFlowMonthlyForecast {
 
         visit(categorizedInFlows, updateTotalPaid);
         visit(categorizedOutFlows, updateTotalPaid);
+        if (selfTransferInFlows != null) {
+            visit(selfTransferInFlows, updateTotalPaid);
+        }
+        if (selfTransferOutFlows != null) {
+            visit(selfTransferOutFlows, updateTotalPaid);
+        }
     }
 
     private void visit(List<CashCategory> cashCategories, Consumer<CashCategory> action) {
@@ -208,7 +304,8 @@ public class CashFlowMonthlyForecast {
 
     public record CashChangeLocation(CashChangeId cashChangeId, YearMonth yearMonth, Type type,
                                      Transaction transaction,
-                                     CategoryName categoryName) {
+                                     CategoryName categoryName,
+                                     boolean selfTransfer) {
     }
 
     /**

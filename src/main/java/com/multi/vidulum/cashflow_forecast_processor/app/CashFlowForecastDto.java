@@ -37,6 +37,9 @@ public final class CashFlowForecastDto {
         private CashFlowStatsJson cashFlowStats;
         private List<CashCategoryJson> categorizedInFlows;
         private List<CashCategoryJson> categorizedOutFlows;
+        /** VID-161 Phase 1b: self-transfers bucketed separately from budget aggregates. */
+        private List<CashCategoryJson> selfTransferInFlows;
+        private List<CashCategoryJson> selfTransferOutFlows;
         private String status;
         private AttestationJson attestation;
     }

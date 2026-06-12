@@ -11,7 +11,9 @@ import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -37,6 +39,7 @@ public class StageTransactionsCommandHandler
     private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
+    private final UserFinancialProfileService userFinancialProfileService;
 
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
@@ -245,6 +248,45 @@ public class StageTransactionsCommandHandler
                 txn.classification()
         );
 
+        // Priority -1 (highest): self-transfer detection via UserFinancialProfile registry.
+        // Deterministic check: if counterpartyAccount IBAN belongs to one of the user's owned
+        // bank accounts, this is a transfer between own accounts — flag it and route to the
+        // dedicated "Przelewy własne" category. Short-circuits all other priorities below.
+        // See VID-161 Phase 1b for design rationale (Q1 decision: registry-only, no heuristics).
+        String counterpartyAccount = txn.counterpartyAccount();
+        if (counterpartyAccount != null && !counterpartyAccount.isBlank()
+                && userFinancialProfileService.ownsAccount(
+                        UserId.of(cashFlowInfo.userId()), counterpartyAccount)) {
+
+            MappedTransactionData mappedData = new MappedTransactionData(
+                    txn.name(),
+                    txn.description(),
+                    new CategoryName("Przelewy własne"),
+                    new CategoryName("Zarządzanie kontem"),
+                    txn.money(),
+                    txn.type(),
+                    txn.paidDate(),
+                    txn.merchant(),
+                    txn.merchantConfidence(),
+                    true
+            );
+
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+
+            log.debug("Transaction [{}] detected as self-transfer (counterpartyAccount [{}] owned by user [{}])",
+                    txn.name(), counterpartyAccount, cashFlowInfo.userId());
+
+            return StagedTransaction.create(
+                    cashFlowId,
+                    stagingSessionId,
+                    originalData,
+                    mappedData,
+                    validation,
+                    now,
+                    config.getStagingTtlHours()
+            );
+        }
+
         // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
         // This is most useful for banks like Pekao that provide detailed category names
         // (e.g., "Artykuły spożywcze", "Transport") which can directly match user categories
@@ -263,7 +305,8 @@ public class StageTransactionsCommandHandler
                     txn.type(),
                     txn.paidDate(),
                     txn.merchant(),
-                    txn.merchantConfidence()
+                    txn.merchantConfidence(),
+                    false
             );
 
             // Validate transaction
@@ -301,7 +344,8 @@ public class StageTransactionsCommandHandler
                     txn.type(),
                     txn.paidDate(),
                     txn.merchant(),
-                    txn.merchantConfidence()
+                    txn.merchantConfidence(),
+                    false
             );
 
             // Validate transaction
@@ -352,7 +396,8 @@ public class StageTransactionsCommandHandler
                     txn.type(),
                     txn.paidDate(),
                     txn.merchant(),
-                    txn.merchantConfidence()
+                    txn.merchantConfidence(),
+                    false
             );
         }
 

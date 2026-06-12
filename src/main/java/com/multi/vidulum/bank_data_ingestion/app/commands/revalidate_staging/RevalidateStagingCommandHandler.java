@@ -285,7 +285,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate
@@ -328,7 +329,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate
@@ -363,7 +365,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate

@@ -70,10 +70,21 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
             );
             Transaction newTransaction = new Transaction(newDetails, paymentStatus);
 
+            // VID-161 Phase 1b: route via locate's selfTransfer flag — preserves self-transfer status across batch edits
+            boolean selfTransfer = location.selfTransfer();
+
             // Handle category change if needed
             if (newCategoryName != null && !newCategoryName.equals(location.categoryName())) {
                 // Move transaction to new category
-                if (Type.INFLOW.equals(location.type())) {
+                if (selfTransfer) {
+                    if (Type.INFLOW.equals(location.type())) {
+                        forecast.removeFromSelfTransferInflows(location.categoryName(), oldTransaction);
+                        forecast.addToSelfTransferInflows(newCategoryName, newTransaction);
+                    } else {
+                        forecast.removeFromSelfTransferOutflows(location.categoryName(), oldTransaction);
+                        forecast.addToSelfTransferOutflows(newCategoryName, newTransaction);
+                    }
+                } else if (Type.INFLOW.equals(location.type())) {
                     forecast.removeFromInflows(location.categoryName(), oldTransaction);
                     forecast.addToInflows(newCategoryName, newTransaction);
                 } else {
@@ -82,16 +93,16 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
                 }
             } else {
                 // Update in place
-                CashCategory category = findCategory(forecast, location.type(), location.categoryName());
+                CashCategory category = findCategory(forecast, location.type(), location.categoryName(), selfTransfer);
                 if (category != null) {
                     category.getGroupedTransactions().replace(
                             new GroupedTransactions.ReplacementFrom(paymentStatus, oldDetails),
                             new GroupedTransactions.ReplacementTo(paymentStatus, newDetails)
                     );
 
-                    // Update statistics with the difference
+                    // Update statistics with the difference (self-transfers are not in budget — skip)
                     Money diff = newMoney.minus(oldDetails.getMoney());
-                    if (!diff.getAmount().equals(java.math.BigDecimal.ZERO)) {
+                    if (!selfTransfer && !diff.getAmount().equals(java.math.BigDecimal.ZERO)) {
                         updateStatsWithDiff(forecast, location.type(), paymentStatus, diff);
                     }
                 }
@@ -110,7 +121,14 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
                 updatedCount, event.cashFlowId().id(), event.sourceRuleId(), event.changes().keySet());
     }
 
-    private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName) {
+    private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName, boolean selfTransfer) {
+        if (selfTransfer) {
+            if (Type.INFLOW.equals(type)) {
+                return forecast.findCategoryInSelfTransferInflowsByName(categoryName).orElse(null);
+            } else {
+                return forecast.findCategoryInSelfTransferOutflowsByName(categoryName).orElse(null);
+            }
+        }
         if (Type.INFLOW.equals(type)) {
             return forecast.findCategoryInflowsByCategoryName(categoryName).orElse(null);
         } else {

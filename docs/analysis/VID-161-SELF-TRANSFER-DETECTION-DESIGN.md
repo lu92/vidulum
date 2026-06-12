@@ -880,28 +880,80 @@ All in `com.multi.vidulum.user_financial_profile`:
 - All business exceptions mapped to proper HTTP status codes with `ApiError` body
 - UI mockup with REST integration guide at `docs/design/VID-161-onboarding-bank-accounts-mockup.html`
 
-### ⏸ TODO — Phase 1b: Self-Transfer Detection Wiring (next)
+### ⏸ TODO — Phase 1b: Self-Transfer Detection Wiring (next, design decisions confirmed 2026-06-07)
 
-The profile registry exists but **does not yet influence transaction categorization**. Required to deliver the actual business value:
+The profile registry exists but **does not yet influence transaction categorization**. Required to deliver the actual business value.
 
-- **CashChange field** `boolean selfTransfer` — add to:
-  - `CashChange` domain record
-  - `CashChangeSnapshot`
-  - `CashChangeEntity` persistence
-  - `CashFlowEvent.HistoricalCashChangeImportedEvent` payload (and any other CashChange-creating event)
-  - `CashFlow.apply(...)` methods that construct CashChange instances
-- **Detection in staging** — `StageTransactionsCommandHandler.processTransaction(...)`:
-  - Add **Priority 0** check before existing bankCategory/pattern/mapping priorities
-  - Inject `UserFinancialProfileService`; query `ownsAccount(userId, counterpartyAccount)`
-  - On match → set `mappedData.categoryName = "Przelewy własne"`, mark transaction so import phase sets `selfTransfer=true`
-- **Detection in import** — `StartImportJobCommandHandler` / `ImportHistoricalCashChangeCommandHandler`:
-  - Propagate `selfTransfer` flag through `ImportTransactionRequest` → event → CashChange
-- **Auto-create category** "Przelewy własne" under "Zarządzanie kontem" when first self-transfer arrives
-- **Forecast exclusion** — modify forecast handlers:
-  - `PaidCashChangeAppendedEventHandler` and `ExpectedCashChangeAppendedEventHandler` skip `categorizedInFlows`/`categorizedOutFlows` for `selfTransfer==true`
-  - Add separate informational section to `CashFlowMonthlyForecast` (optional but useful for UI)
-  - Same treatment for `CashChangeConfirmedEvent`, `CashChangeEditedEvent` paths
-- **Decision still open**: what to do with existing heuristic SELF_TRANSFER in `bank_data_adapter` (AI enrichment) — keep as pre-suggestion vs. let IBAN-match be sole source of truth. Documented in original design Section "Suggestion Heuristic".
+#### Strategic decisions for Phase 1b (settled before implementation)
+
+| # | Question | Decision |
+|---|---|---|
+| **Q1** | Detection source of truth: registry IBAN-match vs existing AI `TransactionClassification.SELF_TRANSFER` heuristic in the adapter? | **Registry IBAN-match ONLY.** The new `selfTransfer` flag on `CashChange` is set exclusively when `counterpartyAccount ∈ profile.ownedAccounts`. The AI adapter's keyword-based classification (`Przelew środków`, `Przelew wewnętrzny`) is preserved as a historical artifact inside `bank_data_adapter` but **does not influence** the new flag. Rationale: deterministic, zero false positives, single source of truth, easier to reason about. AI classification stays as an internal enrichment signal only. |
+| **Q2** | Forecast: exclude self-transfers entirely from budget, or display in a separate informational section? | **Separate informational section.** `CashFlowMonthlyForecast` gets a dedicated `selfTransfers` field (or analogous structure) carrying these CashChanges. They do NOT appear in `categorizedInFlows`/`categorizedOutFlows` (so budget totals are correct), but the data is still visible for the UI to render under "Self-transfers" in a dedicated panel. |
+| **Q3** | Historical backfill of existing CashChanges (created before Phase 1b)? | **No backfill.** Fresh-start policy aligned with `CLAUDE.md` ("no production users yet, no data migrations required"). After Phase 1b deploys, only new imports get correct detection. Anyone wanting clean numbers wipes and re-imports (`docker compose down -v && up -d`). No migration script, no batch recategorizer, no admin endpoint. |
+| **Q4** | Recategorize historical CashChanges when user adds a new owned account after import? | **Deferred (Phase 2 candidate).** Not in Phase 1b scope. Means: if a user imports CSVs first and adds an owned IBAN later, transactions to that IBAN stay categorized as before — they are NOT retro-flagged as self-transfers. The Phase 3 onboarding wizard is the primary mitigation (user declares accounts *before* importing). See "TODO — Reactive recategorization (Q4)" below for the full scope to revisit later. |
+| **Q5** | Auto-create when "Przelewy własne" was previously archived by user? | **Silent skip + create new active.** `Category` model supports versioning (archived + active with same name). The new active one starts fresh; the archived one preserves history. User keeps full control to archive again if desired. |
+| **Q6** | What `CategoryOrigin` to use for auto-created "Przelewy własne" / "Zarządzanie kontem"? | **`USER_CREATED`** (default). Not `SYSTEM` — user must be able to edit/archive these categories. The auto-creation is a convenience, not a system-enforced contract. |
+| **Q7** | Implement separate `selfTransferStats` aggregation (analogous to `CashSummary`) in this iteration? | **No — routing only.** Transactions land in the new `selfTransferInFlows`/`selfTransferOutFlows` lists; UI can sum client-side. Reduces blast radius on `CashFlowMonthlyForecast` and avoids changing existing `CashFlowStats` shape beyond ensuring it excludes self-transfers. |
+| **Q8** | `CashChangeEditedEvent` and `CashChangeConfirmedEvent` don't carry `selfTransfer` in payload. Extend payloads, or extend `locate()` to check both sections? | **Extend `locate()`.** Smaller blast radius (no event schema changes, no upstream producer updates). `CashFlowForecastStatement.locate(CashChangeId)` learns to look in `selfTransferInFlows`/`selfTransferOutFlows` and the returned `CashChangeLocation` gains a `boolean selfTransfer` field so handlers route correctly. |
+
+#### Concrete implementation tasks (in suggested execution order)
+
+1. **Domain model** — add `boolean selfTransfer` to:
+   - `CashChange` record
+   - `CashChangeSnapshot`
+   - `CashChangeEntity` (Mongo persistence; default `false` for deserialization of pre-Phase-1b documents — but per Q3 we wipe, so this is just defensive)
+   - `CashFlowEvent.HistoricalCashChangeImportedEvent` payload
+   - Other CashChange-creating events: audit `PaidCashChangeAppendedEvent`, `ExpectedCashChangeAppendedEvent`, `CashChangeEditedEvent`, `CashChangeConfirmedEvent`
+   - `CashFlow.apply(...)` methods that build CashChange instances
+
+2. **Auto-create category** "Przelewy własne" (parent: "Zarządzanie kontem")
+   - Created lazily in `StartImportJobCommandHandler.processCreateCategoriesPhase()` if a staged transaction in the batch is flagged as self-transfer
+   - Idempotent — skip if already exists (case-insensitive name match)
+
+3. **Detection in staging** — `StageTransactionsCommandHandler.processTransaction(...)`:
+   - Inject `UserFinancialProfileService`
+   - **Priority 0**, before any existing bankCategory/pattern/mapping priority:
+     ```
+     if userFinancialProfileService.ownsAccount(userId, counterpartyAccount):
+         mappedData.categoryName = "Przelewy własne"
+         mark transaction so import sets selfTransfer = true
+         return (short-circuit)
+     ```
+   - Q1 implication: do NOT consult `originalData.classification == SELF_TRANSFER` here. Registry is the only signal.
+
+4. **Propagation through import** — `StartImportJobCommandHandler` → `ImportTransactionRequest` → `ImportHistoricalCashChangeCommandHandler`:
+   - Add `selfTransfer` to `ImportTransactionRequest`
+   - Pass through to `HistoricalCashChangeImportedEvent`
+   - `CashFlow.apply(HistoricalCashChangeImportedEvent)` sets the flag on the resulting `CashChange`
+
+5. **Forecast — separate section** (Q2 decision):
+   - `CashFlowMonthlyForecast` gets new field(s) — e.g. `List<CashCategory> selfTransferOutFlows` and `List<CashCategory> selfTransferInFlows`, or a `Map<Type, List<CashCategory>>`. To be finalized in implementation.
+   - `PaidCashChangeAppendedEventHandler` / `ExpectedCashChangeAppendedEventHandler` / `CashChangeConfirmedEventHandler` / `CashChangeEditedEventHandler`: route CashChanges with `selfTransfer==true` to the new self-transfers section instead of `categorizedInFlows`/`categorizedOutFlows`
+   - `CashFlowStats` must NOT count self-transfers in inflow/outflow actual/expected/gapToForecast
+   - Optionally add a `SelfTransferStats` snapshot for the UI
+
+6. **Manual end-to-end re-verification** (against current data baseline)
+   - Re-run the manual flow from "Manual End-to-End Verification Results (2026-06-06)" with the same Nest + Pekao CSVs
+   - Expected: ~106 transactions in Nest CF Uncategorized move to "Przelewy własne" with `selfTransfer=true`
+   - Expected: budget totals drop by ~9–12k PLN/month, "Inne"/Uncategorized share drops from ~50% toward ~23%
+   - Expected: forecast snapshot exposes a new `selfTransfers` section per month
+
+### ⏸ TODO — Reactive recategorization (Q4 — deferred)
+
+When a user adds an IBAN to their profile *after* importing CSVs, the historical
+transactions to that IBAN remain categorized as regular expenses. Phase 1b will not
+handle this. Revisit in a later iteration; the work split if/when picked up:
+
+- Consume `OwnedBankAccountAddedEvent` (already emitted today on `user_financial_profile` topic)
+- For each owning user, scan all `CashChanges` across their CashFlows where
+  `originalData.counterpartyAccount == event.iban` AND `selfTransfer == false`
+- Mark them `selfTransfer = true` and recategorize to "Przelewy własne"
+- Emit a `CashChangeRecategorizedEvent` so the forecast read-model updates
+- Symmetric reversal on `OwnedBankAccountRemovedEvent`: flip back to original category, `selfTransfer = false`
+- Idempotency required (event may replay)
+- Decide on UI surface: silent recategorization vs notification banner "X transactions reclassified"
+- Phase 3 onboarding wizard reduces how often this matters in practice (user declares accounts first)
 
 ### ⏸ TODO — CashFlow deletion lifecycle (cross-cutting)
 

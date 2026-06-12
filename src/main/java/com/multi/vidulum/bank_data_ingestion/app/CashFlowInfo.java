@@ -15,6 +15,7 @@ import java.util.Set;
  */
 public record CashFlowInfo(
         String cashFlowId,
+        String userId,
         CashFlowStatus status,
         YearMonth activePeriod,
         YearMonth startPeriod,

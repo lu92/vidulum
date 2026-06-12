@@ -156,7 +156,8 @@ public class ForceUncategorizedCommandHandler
                         st.originalData().type(),
                         st.originalData().paidDate(),
                         st.originalData().merchant(),
-                        st.originalData().merchantConfidence()
+                        st.originalData().merchantConfidence(),
+                        false
                 );
 
                 // Validate transaction

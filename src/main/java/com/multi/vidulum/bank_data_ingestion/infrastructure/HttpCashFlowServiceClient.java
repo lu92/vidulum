@@ -201,7 +201,8 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                     new MoneyDto(request.amount(), request.currency()),
                     request.type(),
                     request.dueDate().atStartOfDay(ZoneId.systemDefault()),
-                    request.paidDate().atStartOfDay(ZoneId.systemDefault())
+                    request.paidDate().atStartOfDay(ZoneId.systemDefault()),
+                    request.selfTransfer()
             );
 
             String cashChangeId = restClient.post()
@@ -275,7 +276,8 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             MoneyDto money,
             Type type,
             ZonedDateTime dueDate,
-            ZonedDateTime paidDate
+            ZonedDateTime paidDate,
+            boolean selfTransfer
     ) {
     }
 
@@ -328,6 +330,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     private CashFlowInfo mapToInfo(CashFlowResponse response, Map<String, String> monthStatuses) {
         return new CashFlowInfo(
                 response.cashFlowId(),
+                response.userId(),
                 mapStatus(response.status()),
                 response.activePeriod(),
                 response.startPeriod(),

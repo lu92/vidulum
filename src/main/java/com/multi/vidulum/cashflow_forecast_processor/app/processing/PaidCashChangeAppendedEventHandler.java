@@ -27,7 +27,28 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
             CashCategory cashCategory;
-            if (Type.INFLOW.equals(event.type())) {
+            // VID-161 Phase 1b: route self-transfers to dedicated bucket (no inflow/outflow stats update).
+            // addToSelfTransfer*flows auto-creates the bucket category on first use.
+            if (event.selfTransfer()) {
+                TransactionDetails details = new TransactionDetails(
+                        event.cashChangeId(),
+                        event.name(),
+                        event.money(),
+                        event.created(),
+                        event.dueDate(),
+                        event.paidDate()
+                );
+                Transaction txn = new Transaction(details, PAID);
+                if (Type.INFLOW.equals(event.type())) {
+                    cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
+                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferInflowsByName(event.categoryName()).orElseThrow();
+                } else {
+                    cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
+                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferOutflowsByName(event.categoryName()).orElseThrow();
+                }
+                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
+                return cashFlowMonthlyForecast;  // already added via add*Flows
+            } else if (Type.INFLOW.equals(event.type())) {
                 cashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in INFLOWS", event.categoryName())));
                 CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
