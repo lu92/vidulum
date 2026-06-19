@@ -22,6 +22,7 @@ public class TradeSnapshot implements EntitySnapshot<TradeId> {
     Quantity quantity;
     Price price;
     FeeSnapshot fee;
+    ExchangeRate exchangeCurrencyRate;
     Money localValue; // value expressed in local currency [reference to price's currency]
     Money value; // value expressed in original currency of portfolio
     Money totalValue; // value + totalFee
