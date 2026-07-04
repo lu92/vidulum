@@ -254,37 +254,38 @@ public class StageTransactionsCommandHandler
         // dedicated "Przelewy własne" category. Short-circuits all other priorities below.
         // See VID-161 Phase 1b for design rationale (Q1 decision: registry-only, no heuristics).
         String counterpartyAccount = txn.counterpartyAccount();
-        if (counterpartyAccount != null && !counterpartyAccount.isBlank()
-                && userFinancialProfileService.ownsAccount(
-                        UserId.of(cashFlowInfo.userId()), counterpartyAccount)) {
+        if (counterpartyAccount != null && !counterpartyAccount.isBlank()) {
+            boolean ownsCounterpartyAccount = userFinancialProfileService.ownsAccount(
+                    UserId.of(cashFlowInfo.userId()), counterpartyAccount);
+            if (ownsCounterpartyAccount) {
+                log.info("Self-transfer detected: txn=[{}], counterpartyAccount=[{}], userId=[{}]",
+                        txn.name(), counterpartyAccount, cashFlowInfo.userId());
 
-            MappedTransactionData mappedData = new MappedTransactionData(
-                    txn.name(),
-                    txn.description(),
-                    new CategoryName("Przelewy własne"),
-                    new CategoryName("Zarządzanie kontem"),
-                    txn.money(),
-                    txn.type(),
-                    txn.paidDate(),
-                    txn.merchant(),
-                    txn.merchantConfidence(),
-                    true
-            );
+                MappedTransactionData mappedData = new MappedTransactionData(
+                        txn.name(),
+                        txn.description(),
+                        new CategoryName("Przelewy własne"),
+                        new CategoryName("Zarządzanie kontem"),
+                        txn.money(),
+                        txn.type(),
+                        txn.paidDate(),
+                        txn.merchant(),
+                        txn.merchantConfidence(),
+                        true
+                );
 
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
 
-            log.debug("Transaction [{}] detected as self-transfer (counterpartyAccount [{}] owned by user [{}])",
-                    txn.name(), counterpartyAccount, cashFlowInfo.userId());
-
-            return StagedTransaction.create(
-                    cashFlowId,
-                    stagingSessionId,
-                    originalData,
-                    mappedData,
-                    validation,
-                    now,
-                    config.getStagingTtlHours()
-            );
+                return StagedTransaction.create(
+                        cashFlowId,
+                        stagingSessionId,
+                        originalData,
+                        mappedData,
+                        validation,
+                        now,
+                        config.getStagingTtlHours()
+                );
+            }
         }
 
         // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
