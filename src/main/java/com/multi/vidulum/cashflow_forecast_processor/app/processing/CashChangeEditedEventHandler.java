@@ -58,7 +58,8 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
                 event.money(),
                 oldTransaction.transactionDetails().getCreated(),
                 event.dueDate(),
-                oldTransaction.transactionDetails().getEndDate()
+                oldTransaction.transactionDetails().getEndDate(),
+                oldTransaction.transactionDetails().isSelfTransfer()
         );
         Transaction newTransaction = new Transaction(newTransactionDetails, paymentStatus);
 

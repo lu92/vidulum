@@ -114,6 +114,7 @@ public class CashFlowForecastMapper {
                 .created(details.getCreated())
                 .dueDate(details.getDueDate())
                 .endDate(details.getEndDate())
+                .selfTransfer(details.isSelfTransfer())
                 .build();
     }
 

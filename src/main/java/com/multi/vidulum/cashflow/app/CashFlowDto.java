@@ -467,6 +467,7 @@ public final class CashFlowDto {
         private ZonedDateTime dueDate;
         private ZonedDateTime endDate;
         private String sourceRuleId;
+        private boolean selfTransfer;
     }
 
     @Data

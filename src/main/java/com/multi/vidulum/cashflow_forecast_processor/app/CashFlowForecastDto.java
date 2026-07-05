@@ -112,6 +112,7 @@ public final class CashFlowForecastDto {
         private ZonedDateTime created;
         private ZonedDateTime dueDate;
         private ZonedDateTime endDate;
+        private boolean selfTransfer;
     }
 
     @Data

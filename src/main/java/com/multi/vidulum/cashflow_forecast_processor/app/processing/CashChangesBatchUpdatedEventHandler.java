@@ -66,7 +66,8 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
                     newMoney,
                     oldDetails.getCreated(),
                     oldDetails.getDueDate(),
-                    oldDetails.getEndDate()
+                    oldDetails.getEndDate(),
+                    oldDetails.isSelfTransfer()
             );
             Transaction newTransaction = new Transaction(newDetails, paymentStatus);
 

@@ -137,7 +137,8 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                         event.money(),
                         event.importedAt(),
                         event.dueDate(),
-                        event.paidDate()
+                        event.paidDate(),
+                        true
                 );
                 Transaction txn = new Transaction(details, PAID);
                 if (Type.INFLOW.equals(event.type())) {
@@ -192,7 +193,8 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                                     event.money(),
                                     event.importedAt(),
                                     event.dueDate(),
-                                    event.paidDate()
+                                    event.paidDate(),
+                                    false
                             )
                     );
             return cashFlowMonthlyForecast;

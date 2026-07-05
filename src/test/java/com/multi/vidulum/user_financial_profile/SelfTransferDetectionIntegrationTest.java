@@ -98,7 +98,8 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
                 Money.of(3000, "USD"),
                 null, // created — ignored
                 ZonedDateTime.parse("2021-01-15T00:00:00Z"),
-                ZonedDateTime.parse("2021-01-15T00:00:00Z")
+                ZonedDateTime.parse("2021-01-15T00:00:00Z"),
+                true
         );
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
@@ -187,7 +188,8 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
                 Money.of(150, "USD"),
                 null,
                 ZonedDateTime.parse("2021-03-15T00:00:00Z"),
-                ZonedDateTime.parse("2021-03-15T00:00:00Z")
+                ZonedDateTime.parse("2021-03-15T00:00:00Z"),
+                false
         );
 
         CashSummary expectedOutflowStats = new CashSummary(
@@ -247,7 +249,8 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
                 Money.of(2000, "USD"),
                 null,
                 ZonedDateTime.parse("2021-04-10T00:00:00Z"),
-                ZonedDateTime.parse("2021-04-10T00:00:00Z")
+                ZonedDateTime.parse("2021-04-10T00:00:00Z"),
+                true
         );
 
         CashSummary expectedInflowStats = new CashSummary(

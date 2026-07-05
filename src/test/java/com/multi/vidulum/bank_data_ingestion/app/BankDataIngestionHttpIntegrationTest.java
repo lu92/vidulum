@@ -426,105 +426,105 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
                 Map.entry(salaryJuly, new CashFlowDto.CashChangeSummaryJson(
                         salaryJuly, "July Salary", "Monthly salary payment",
                         Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15, null, false)),
                 Map.entry(rentJuly, new CashFlowDto.CashChangeSummaryJson(
                         rentJuly, "July Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july15, july15, null, false)),
                 Map.entry(groceriesJuly, new CashFlowDto.CashChangeSummaryJson(
                         groceriesJuly, "Weekly groceries", "Biedronka shopping",
                         Money.of(250.0, "PLN"), Type.OUTFLOW, "Groceries",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, july25, july25, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, july25, july25, null, false)),
 
                 // === August 2021 ===
                 Map.entry(salaryAug, new CashFlowDto.CashChangeSummaryJson(
                         salaryAug, "August Salary", "Monthly salary payment",
                         Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug10, aug10, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug10, aug10, null, false)),
                 Map.entry(rentAug, new CashFlowDto.CashChangeSummaryJson(
                         rentAug, "August Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug15, aug15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug15, aug15, null, false)),
                 Map.entry(utilitiesAug, new CashFlowDto.CashChangeSummaryJson(
                         utilitiesAug, "Electricity bill", "PGE electricity",
                         Money.of(180.0, "PLN"), Type.OUTFLOW, "Utilities",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20, null, false)),
                 Map.entry(restaurantAug, new CashFlowDto.CashChangeSummaryJson(
                         restaurantAug, "Dinner out", "Restaurant visit",
                         Money.of(150.0, "PLN"), Type.OUTFLOW, "Restaurants",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, aug20, aug20, null, false)),
 
                 // === September 2021 ===
                 Map.entry(salarySep, new CashFlowDto.CashChangeSummaryJson(
                         salarySep, "September Salary", "Monthly salary payment",
                         Money.of(5000.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep5, sep5, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep5, sep5, null, false)),
                 Map.entry(bonusSep, new CashFlowDto.CashChangeSummaryJson(
                         bonusSep, "Q3 Bonus", "Quarterly performance bonus",
                         Money.of(2000.0, "PLN"), Type.INFLOW, "Bonus",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep28, sep28, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep28, sep28, null, false)),
                 Map.entry(rentSep, new CashFlowDto.CashChangeSummaryJson(
                         rentSep, "September Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15, null, false)),
                 Map.entry(transportSep, new CashFlowDto.CashChangeSummaryJson(
                         transportSep, "Fuel", "Orlen gas station",
                         Money.of(200.0, "PLN"), Type.OUTFLOW, "Transportation",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, sep15, sep15, null, false)),
 
                 // === October 2021 ===
                 Map.entry(salaryOct, new CashFlowDto.CashChangeSummaryJson(
                         salaryOct, "October Salary", "Monthly salary payment",
                         Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null, false)),
                 Map.entry(rentOct, new CashFlowDto.CashChangeSummaryJson(
                         rentOct, "October Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null, false)),
                 Map.entry(groceriesOct1, new CashFlowDto.CashChangeSummaryJson(
                         groceriesOct1, "Weekly groceries #1", "Lidl shopping",
                         Money.of(180.0, "PLN"), Type.OUTFLOW, "Groceries",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct10, oct10, null, false)),
                 Map.entry(groceriesOct2, new CashFlowDto.CashChangeSummaryJson(
                         groceriesOct2, "Weekly groceries #2", "Carrefour shopping",
                         Money.of(220.0, "PLN"), Type.OUTFLOW, "Groceries",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct25, oct25, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, oct25, oct25, null, false)),
 
                 // === November 2021 ===
                 Map.entry(salaryNov, new CashFlowDto.CashChangeSummaryJson(
                         salaryNov, "November Salary", "Monthly salary payment",
                         Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov5, nov5, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov5, nov5, null, false)),
                 Map.entry(rentNov, new CashFlowDto.CashChangeSummaryJson(
                         rentNov, "November Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov15, nov15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov15, nov15, null, false)),
                 Map.entry(utilitiesNov, new CashFlowDto.CashChangeSummaryJson(
                         utilitiesNov, "Gas bill", "PGNiG gas",
                         Money.of(120.0, "PLN"), Type.OUTFLOW, "Utilities",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov20, nov20, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, nov20, nov20, null, false)),
 
                 // === December 2021 ===
                 Map.entry(salaryDec, new CashFlowDto.CashChangeSummaryJson(
                         salaryDec, "December Salary", "Monthly salary payment",
                         Money.of(5200.0, "PLN"), Type.INFLOW, "Salary",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec10, dec10, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec10, dec10, null, false)),
                 Map.entry(bonusDec, new CashFlowDto.CashChangeSummaryJson(
                         bonusDec, "Christmas Bonus", "End of year bonus",
                         Money.of(3000.0, "PLN"), Type.INFLOW, "Bonus",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24, null, false)),
                 Map.entry(rentDec, new CashFlowDto.CashChangeSummaryJson(
                         rentDec, "December Rent", "Monthly rent payment",
                         Money.of(1500.0, "PLN"), Type.OUTFLOW, "Rent",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec15, dec15, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec15, dec15, null, false)),
                 Map.entry(groceriesDec, new CashFlowDto.CashChangeSummaryJson(
                         groceriesDec, "Christmas shopping", "Holiday groceries",
                         Money.of(500.0, "PLN"), Type.OUTFLOW, "Groceries",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24, null)),
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec24, dec24, null, false)),
                 Map.entry(restaurantDec, new CashFlowDto.CashChangeSummaryJson(
                         restaurantDec, "Christmas dinner", "Family dinner restaurant",
                         Money.of(400.0, "PLN"), Type.OUTFLOW, "Restaurants",
-                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec28, dec28, null))
+                        CashChangeStatus.CONFIRMED, FIXED_NOW, dec28, dec28, null, false))
         );
 
         // Validate each transaction with full recursive comparison

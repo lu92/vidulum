@@ -37,7 +37,8 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                         event.money(),
                         event.created(),
                         event.dueDate(),
-                        null
+                        null,
+                        true
                 );
                 Transaction txn = new Transaction(details, EXPECTED);
                 if (Type.INFLOW.equals(event.type())) {
@@ -80,7 +81,8 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                                     event.money(),
                                     event.created(),
                                     event.dueDate(),
-                                    null
+                                    null,
+                                    false
                             )
                     );
             return cashFlowMonthlyForecast;

@@ -36,7 +36,8 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
                         event.money(),
                         event.created(),
                         event.dueDate(),
-                        event.paidDate()
+                        event.paidDate(),
+                        true
                 );
                 Transaction txn = new Transaction(details, PAID);
                 if (Type.INFLOW.equals(event.type())) {
@@ -88,7 +89,8 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
                                     event.money(),
                                     event.created(),
                                     event.dueDate(),
-                                    event.paidDate()
+                                    event.paidDate(),
+                                    false
                             )
                     );
             return cashFlowMonthlyForecast;

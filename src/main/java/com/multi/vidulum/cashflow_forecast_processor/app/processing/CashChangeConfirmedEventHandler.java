@@ -33,7 +33,8 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                             currentTransaction.transactionDetails().getMoney(),
                             currentTransaction.transactionDetails().getCreated(),
                             currentTransaction.transactionDetails().getDueDate(),
-                            event.endDate()),
+                            event.endDate(),
+                            currentTransaction.transactionDetails().isSelfTransfer()),
                     PAID
             );
 

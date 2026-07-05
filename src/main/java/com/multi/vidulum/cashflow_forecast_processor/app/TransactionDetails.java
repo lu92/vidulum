@@ -19,4 +19,5 @@ public class TransactionDetails {
     private ZonedDateTime created;
     private ZonedDateTime dueDate;
     private ZonedDateTime endDate;
+    private boolean selfTransfer;
 }
