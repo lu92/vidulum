@@ -309,6 +309,72 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    //  T23: CSV upload → force-uncategorized → import preserves selfTransfer
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("T23: self-transfer survives full CSV pipeline (upload → force-uncategorized → import) without being overwritten by revalidation")
+    void shouldPreserveSelfTransferThroughFullCsvPipeline() {
+        // Setup: register Pekao IBAN as owned account
+        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+                PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao"));
+
+        // Create CashFlow
+        String cashFlowId = ingestionActor.createCashFlowWithHistory(
+                userId, uniqueCashFlowName(),
+                YearMonth.of(2021, 1),
+                Money.of(0, "USD"));
+
+        // Create the self-transfer category hierarchy (auto-creation during staging is TODO)
+        ingestionActor.createCategory(cashFlowId, "Zarządzanie kontem", Type.OUTFLOW);
+        ingestionActor.createCategory(cashFlowId, "Przelewy własne", "Zarządzanie kontem", Type.OUTFLOW);
+
+        // Upload CSV with a self-transfer (to Pekao) and a regular transaction
+        String csv = "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence,paymentMethod,classification,classificationReason,location\n"
+                + "TXN-ST-001,Lucjan Bik Pekao,zycie,,3000,USD,OUTFLOW,2021-01-15,,,PL98124014441111001078171074,,,,,,\n"
+                + "TXN-REG-001,Sklep Biedronka,zakupy spozywcze,,150,USD,OUTFLOW,2021-01-20,,,,Biedronka,0.9,,MERCHANT,,\n";
+
+        var uploadResult = ingestionActor.uploadCsvContent(
+                cashFlowId, "test_self_transfer.csv", csv.getBytes());
+
+        String sessionId = uploadResult.getStagingResult().getStagingSessionId();
+
+        // Verify staging detected the self-transfer
+        assertThat(uploadResult.getStagingResult().getCategoryBreakdown())
+                .anyMatch(cb -> "Przelewy własne".equals(cb.getTargetCategory()));
+
+        // Force uncategorized (triggers revalidation internally) — this is the step that was
+        // overwriting selfTransfer=true with false in the bug
+        ingestionActor.forceUncategorized(cashFlowId, sessionId);
+
+        // Start import
+        var importResult = ingestionActor.startImport(cashFlowId, sessionId);
+        assertThat(importResult.getStatus()).isEqualTo("COMPLETED");
+
+        // Verify: self-transfer transaction lands in selfTransferOutFlows (not categorizedOutFlows)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 1));
+
+            // Self-transfer in selfTransferOutFlows
+            TransactionDetails selfTransferTxn = paidTransactionInSelfTransferOutFlows(
+                    cashFlowId, YearMonth.of(2021, 1), "Przelewy własne");
+            assertThat(selfTransferTxn.getName().name()).isEqualTo("Lucjan Bik Pekao");
+            assertThat(selfTransferTxn.isSelfTransfer()).isTrue();
+
+            // Regular transaction in categorizedOutFlows
+            assertThat(monthly.getCategorizedOutFlows())
+                    .anyMatch(cat -> cat.getCategoryName().name().equals("Uncategorized"));
+
+            // Self-transfer NOT in categorizedOutFlows
+            assertNoSelfTransferLeakageToCategorizedOutFlows(cashFlowId, YearMonth.of(2021, 1));
+
+            // Budget excludes self-transfer (only 150 PLN from Biedronka)
+            CashSummary outflowStats = monthly.getCashFlowStats().getOutflowStats();
+            assertThat(outflowStats.actual().getAmount()).isEqualByComparingTo("150.0");
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     //  E5: IBAN normalization at profile entry
     // ─────────────────────────────────────────────────────────────────────
 

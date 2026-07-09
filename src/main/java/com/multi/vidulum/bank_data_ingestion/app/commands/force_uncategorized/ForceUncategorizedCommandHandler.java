@@ -145,6 +145,12 @@ public class ForceUncategorizedCommandHandler
         int updatedCount = 0;
 
         for (StagedTransaction st : stagedTransactions) {
+            // Self-transfers are never overridden — they were detected by IBAN match
+            if (st.mappedData() != null && st.mappedData().selfTransfer()) {
+                updatedTransactions.add(st);
+                continue;
+            }
+
             if (st.isPendingMapping()) {
                 // Create mapped data with Uncategorized
                 MappedTransactionData mappedData = new MappedTransactionData(
