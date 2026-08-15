@@ -32,15 +32,17 @@ class GroupedTransactionsTest {
     }
 
     @Test
-    @DisplayName("addTransaction should reject duplicate cashChangeId in same status group (idempotent)")
-    void shouldRejectDuplicateCashChangeId() {
+    @DisplayName("addTransaction should reject duplicate cashChangeId and return false")
+    void shouldRejectDuplicateCashChangeIdAndReturnFalse() {
         GroupedTransactions gt = new GroupedTransactions();
         Transaction txn1 = paidTransaction("CC1000000001", 100);
         Transaction txn2 = paidTransaction("CC1000000001", 100); // same cashChangeId
 
-        gt.addTransaction(txn1);
-        gt.addTransaction(txn2); // should be silently skipped
+        boolean firstAdd = gt.addTransaction(txn1);
+        boolean secondAdd = gt.addTransaction(txn2);
 
+        assertThat(firstAdd).as("First add should succeed").isTrue();
+        assertThat(secondAdd).as("Duplicate add should return false").isFalse();
         assertThat(gt.get(PAID))
                 .as("Duplicate cashChangeId should not produce a second entry")
                 .hasSize(1);

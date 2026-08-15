@@ -2363,6 +2363,188 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 });
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    //  Kafka redelivery idempotency: stats must not inflate on duplicate events
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Simulates Kafka at-least-once redelivery of HistoricalCashChangeImportedEvent.
+     * The same event emitted twice must result in exactly 1 transaction and stats
+     * reflecting a single transaction's amount.
+     */
+    @Test
+    public void shouldNotInflateStatsOnHistoricalImportRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Redelivery Test"),
+                new Description("Testing stats idempotency"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(0, "USD"), null),
+                YearMonth.parse("2021-01"),
+                YearMonth.parse("2021-06"),
+                Money.of(0, "USD"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z")
+        ));
+
+        CashFlowEvent.HistoricalCashChangeImportedEvent event =
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Sklep"),
+                        new Description("zakupy"),
+                        Money.of(500, "USD"),
+                        OUTFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
+                );
+
+        // Emit same event TWICE (simulating Kafka redelivery)
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast march = statement.getForecasts().get(YearMonth.parse("2021-03"));
+                    assertThat(march).isNotNull();
+
+                    // Only 1 transaction, not 2
+                    CashCategory cat = march.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                            .as("Redelivered event must not produce duplicate transaction")
+                            .hasSize(1);
+
+                    // Stats reflect single transaction only
+                    assertThat(march.getCashFlowStats().getOutflowStats().actual())
+                            .as("outflowStats.actual must be 500 USD, not 1000 USD (no inflation from redelivery)")
+                            .isEqualTo(Money.of(500, "USD"));
+
+                    assertThat(cat.getTotalPaidValue())
+                            .as("totalPaidValue must be 500 USD, not 1000 USD")
+                            .isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Simulates Kafka redelivery of PaidCashChangeAppendedEvent.
+     */
+    @Test
+    public void shouldNotInflateStatsOnPaidCashChangeRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Paid Redelivery Test"),
+                new Description("Testing stats idempotency for paid events"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        CashFlowEvent.PaidCashChangeAppendedEvent event =
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Salary"),
+                        new Description("monthly salary"),
+                        Money.of(5000, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        false
+                );
+
+        // Emit same event TWICE
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    CashCategory cat = june.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+
+                    assertThat(june.getCashFlowStats().getInflowStats().actual())
+                            .as("inflowStats.actual must be 5000 USD, not 10000 USD")
+                            .isEqualTo(Money.of(5000, "USD"));
+                });
+    }
+
+    /**
+     * Simulates Kafka redelivery of ExpectedCashChangeAppendedEvent.
+     */
+    @Test
+    public void shouldNotInflateStatsOnExpectedCashChangeRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Expected Redelivery Test"),
+                new Description("Testing stats idempotency for expected events"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        CashFlowEvent.ExpectedCashChangeAppendedEvent event =
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Rent"),
+                        new Description("monthly rent"),
+                        Money.of(2000, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        null,
+                        false
+                );
+
+        // Emit same event TWICE
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    CashCategory cat = june.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
+
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected())
+                            .as("outflowStats.expected must be 2000 USD, not 4000 USD")
+                            .isEqualTo(Money.of(2000, "USD"));
+                });
+    }
+
     /**
      * Recursively verify that all category currencies are correct.
      */

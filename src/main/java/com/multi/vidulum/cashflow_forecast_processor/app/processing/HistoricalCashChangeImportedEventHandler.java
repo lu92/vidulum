@@ -141,51 +141,31 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                         true
                 );
                 Transaction txn = new Transaction(details, PAID);
+                boolean added;
                 if (Type.INFLOW.equals(event.type())) {
-                    cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
+                    added = cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
                     cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferInflowsByName(event.categoryName()).orElseThrow();
                 } else {
-                    cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
+                    added = cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
                     cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferOutflowsByName(event.categoryName()).orElseThrow();
                 }
-                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
-                // Transaction already added via add*Flows above — skip the generic add below
+                if (added) {
+                    cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
+                }
                 return cashFlowMonthlyForecast;
             } else if (Type.INFLOW.equals(event.type())) {
                 cashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format(
                                 "Cannot find cash-category with name %s in INFLOWS", event.categoryName())));
-                CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
-                CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
-                // update stats - directly to actual since this is historical (already paid) data
-                currentCashFlowStats.setInflowStats(
-                        new CashSummary(
-                                inflowCashSummary.actual().plus(event.money()),
-                                inflowCashSummary.expected(),
-                                inflowCashSummary.gapToForecast()
-                        )
-                );
-                // update total paid value for category
-                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             } else {
                 cashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format(
                                 "Cannot find cash-category with name %s in OUTFLOWS", event.categoryName())));
-                CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
-                // update stats - directly to actual since this is historical (already paid) data
-                cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
-                        new CashSummary(
-                                outflowCashSummary.actual().plus(event.money()),
-                                outflowCashSummary.expected(),
-                                outflowCashSummary.gapToForecast()
-                        )
-                );
-                // update total paid value for category
-                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             }
 
-            // Add transaction to PAID group (historical data is already confirmed)
-            cashCategory.getGroupedTransactions().addTransaction(new Transaction(
+            // Add transaction to PAID group (historical data is already confirmed).
+            // addTransaction is idempotent — returns false on Kafka redelivery.
+            boolean added = cashCategory.getGroupedTransactions().addTransaction(new Transaction(
                     new TransactionDetails(
                             event.cashChangeId(),
                             event.name(),
@@ -195,6 +175,33 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                             event.paidDate(),
                             false
                     ), PAID));
+
+            // Only update stats and totalPaidValue if the transaction was actually added
+            // (skip on Kafka redelivery to prevent inflated stats).
+            if (added) {
+                if (Type.INFLOW.equals(event.type())) {
+                    CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                    CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
+                    currentCashFlowStats.setInflowStats(
+                            new CashSummary(
+                                    inflowCashSummary.actual().plus(event.money()),
+                                    inflowCashSummary.expected(),
+                                    inflowCashSummary.gapToForecast()
+                            )
+                    );
+                } else {
+                    CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+                    cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
+                            new CashSummary(
+                                    outflowCashSummary.actual().plus(event.money()),
+                                    outflowCashSummary.expected(),
+                                    outflowCashSummary.gapToForecast()
+                            )
+                    );
+                }
+                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
+            }
+
             return cashFlowMonthlyForecast;
         });
 

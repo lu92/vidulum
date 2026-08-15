@@ -118,12 +118,15 @@ public class CashFlowMonthlyForecast {
     // intentionally DO NOT touch cashFlowStats.inflowStats / outflowStats — self-transfers
     // are out-of-budget by design (Q2 + Q7).
 
-    public void addToSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
+    /**
+     * @return {@code true} if the transaction was added, {@code false} if duplicate (Kafka redelivery)
+     */
+    public boolean addToSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferInFlows)
                 .orElseGet(() -> autoCreateSelfTransferCategory(categoryName, selfTransferInFlows,
                         transaction.transactionDetails().getMoney().getCurrency()));
-        cashCategory.getGroupedTransactions().addTransaction(transaction);
+        return cashCategory.getGroupedTransactions().addTransaction(transaction);
     }
 
     public void removeFromSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
@@ -132,12 +135,15 @@ public class CashFlowMonthlyForecast {
         cashCategory.getGroupedTransactions().removeTransaction(transaction);
     }
 
-    public void addToSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
+    /**
+     * @return {@code true} if the transaction was added, {@code false} if duplicate (Kafka redelivery)
+     */
+    public boolean addToSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferOutFlows)
                 .orElseGet(() -> autoCreateSelfTransferCategory(categoryName, selfTransferOutFlows,
                         transaction.transactionDetails().getMoney().getCurrency()));
-        cashCategory.getGroupedTransactions().addTransaction(transaction);
+        return cashCategory.getGroupedTransactions().addTransaction(transaction);
     }
 
     public void removeFromSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {

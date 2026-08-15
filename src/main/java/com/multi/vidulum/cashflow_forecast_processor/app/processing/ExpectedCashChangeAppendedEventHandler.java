@@ -46,34 +46,17 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                 } else {
                     cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
                 }
-                return cashFlowMonthlyForecast;  // already added via add*Flows
+                return cashFlowMonthlyForecast;
             } else if (Type.INFLOW.equals(event.type())) {
                 uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in INFLOWS", event.categoryName())));
-                CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
-                CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
-                // update stats
-                currentCashFlowStats.setInflowStats(
-                        new CashSummary(
-                                inflowCashSummary.actual(),
-                                inflowCashSummary.expected().plus(event.money()),
-                                inflowCashSummary.gapToForecast()
-                        )
-                );
             } else {
                 uncategorizedCashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in OUTFLOWS", event.categoryName())));
-                CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
-                // update stats
-                cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
-                        new CashSummary(
-                                outflowCashSummary.actual(),
-                                outflowCashSummary.expected().plus(event.money()),
-                                outflowCashSummary.gapToForecast()
-                        )
-                );
             }
-            uncategorizedCashCategory.getGroupedTransactions().addTransaction(new Transaction(
+
+            // addTransaction is idempotent — returns false on Kafka redelivery.
+            boolean added = uncategorizedCashCategory.getGroupedTransactions().addTransaction(new Transaction(
                     new TransactionDetails(
                             event.cashChangeId(),
                             event.name(),
@@ -83,6 +66,30 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                             null,
                             false
                     ), EXPECTED));
+
+            if (added) {
+                if (Type.INFLOW.equals(event.type())) {
+                    CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                    CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
+                    currentCashFlowStats.setInflowStats(
+                            new CashSummary(
+                                    inflowCashSummary.actual(),
+                                    inflowCashSummary.expected().plus(event.money()),
+                                    inflowCashSummary.gapToForecast()
+                            )
+                    );
+                } else {
+                    CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+                    cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
+                            new CashSummary(
+                                    outflowCashSummary.actual(),
+                                    outflowCashSummary.expected().plus(event.money()),
+                                    outflowCashSummary.gapToForecast()
+                            )
+                    );
+                }
+            }
+
             return cashFlowMonthlyForecast;
         });
 
