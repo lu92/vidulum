@@ -1860,6 +1860,509 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 });
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    //  VID-161 Phase 1b: Self-transfer routing through event handlers
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Scenario 1: PaidCashChangeAppendedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows, does NOT update outflowStats.
+     */
+    @Test
+    public void shouldRoutePaidSelfTransferOutflowToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Self Transfer Test"),
+                new Description("Testing paid self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Self-transfer OUTFLOW (3000 USD)
+        emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                true
+        ));
+
+        // Regular OUTFLOW (500 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Zakupy"),
+                new Description("groceries"),
+                Money.of(500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getCategoryName().name()).isEqualTo("Przelewy własne");
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    assertThat(selfTransferCat.getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+
+                    // Regular in categorizedOutFlows
+                    CashCategory regularCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isFalse();
+
+                    // outflowStats excludes self-transfer
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Scenario 1b: PaidCashChangeAppendedEvent INFLOW with selfTransfer=true routes to
+     * selfTransferInFlows, does NOT update inflowStats.
+     */
+    @Test
+    public void shouldRoutePaidSelfTransferInflowToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Self Transfer Inflow Test"),
+                new Description("Testing paid self-transfer inflow routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        Checksum lastEventChecksum = emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Transfer from Pekao"),
+                new Description("rebalance"),
+                Money.of(2000, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                true
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferInFlows
+                    assertThat(june.getSelfTransferInFlows()).hasSize(1);
+                    assertThat(june.getSelfTransferInFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    assertThat(june.getSelfTransferInFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(2000, "USD"));
+
+                    // inflowStats excludes self-transfer
+                    assertThat(june.getCashFlowStats().getInflowStats().actual()).isEqualTo(Money.zero("USD"));
+                });
+    }
+
+    /**
+     * Scenario 2: ExpectedCashChangeAppendedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows, does NOT update expected stats.
+     */
+    @Test
+    public void shouldRouteExpectedSelfTransferToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Expected Self Transfer Test"),
+                new Description("Testing expected self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Expected self-transfer (3000 USD)
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Planned transfer to Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                true
+        ));
+
+        // Regular expected (500 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Rachunki"),
+                new Description("bills"),
+                Money.of(500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows with EXPECTED status
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).isSelfTransfer()).isTrue();
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getEndDate()).isNull();
+
+                    // outflowStats.expected excludes self-transfer
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected()).isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Scenario 3: CashChangeConfirmedEvent on an expected self-transfer keeps it within
+     * the self-transfer section and does NOT update budget stats.
+     */
+    @Test
+    public void shouldConfirmSelfTransferWithinSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Confirm Self Transfer Test"),
+                new Description("Testing self-transfer confirmation routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Step 1: Expected self-transfer
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Planned transfer to Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                true
+        ));
+
+        // Step 2: Confirm (pay) the self-transfer
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeConfirmedEvent(
+                cashFlowId,
+                selfTransferId,
+                ZonedDateTime.parse("2021-06-15T16:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Transaction moved from EXPECTED to PAID within selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).isEmpty();
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+
+                    TransactionDetails confirmed = selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(confirmed.isSelfTransfer()).isTrue();
+                    assertThat(confirmed.getEndDate()).isEqualTo(ZonedDateTime.parse("2021-06-15T16:30:00Z"));
+
+                    // Budget stats remain zero — self-transfer doesn't touch actual or expected
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected()).isEqualTo(Money.zero("USD"));
+
+                    // NOT in categorizedOutFlows
+                    june.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .as("Self-transfer must not leak to categorizedOutFlows")
+                                    .noneMatch(td -> td.getName().name().equals("Planned transfer to Pekao")));
+                });
+    }
+
+    /**
+     * Scenario 4: CashChangeEditedEvent on a self-transfer (same month) updates details
+     * within selfTransferOutFlows and does NOT change budget stats.
+     */
+    @Test
+    public void shouldEditSelfTransferWithinSameMonth() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Edit Self Transfer Test"),
+                new Description("Testing self-transfer edit routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Import a historical self-transfer (3000 USD)
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Edit: change amount to 5000 USD (same month, same category)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeEditedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao edited"),
+                new Description("zycie updated"),
+                Money.of(5000, "USD"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),   // dueDate stays in June
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Updated transaction in selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    TransactionDetails edited = june.getSelfTransferOutFlows().get(0)
+                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(edited.getMoney()).isEqualTo(Money.of(5000, "USD"));
+                    assertThat(edited.getName().name()).isEqualTo("Lucjan Bik Pekao edited");
+                    assertThat(edited.isSelfTransfer()).isTrue();
+
+                    // Budget stats unchanged (was 0, stays 0 — self-transfers excluded)
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+                });
+    }
+
+    /**
+     * Scenario 5: CashChangeEditedEvent moves a self-transfer to a different month.
+     * Transaction removed from old month's selfTransferOutFlows and added to new month's,
+     * never touching categorizedOutFlows or budget stats.
+     */
+    @Test
+    public void shouldMoveSelfTransferBetweenMonths() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Move Self Transfer Test"),
+                new Description("Testing self-transfer cross-month move"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Import self-transfer in June
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Edit: move to July (dueDate changed to July)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeEditedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-07-10T00:00:00Z"),   // dueDate moved to July
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // June: selfTransferOutFlows empty (transaction moved away)
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+                    assertThat(june.getSelfTransferOutFlows())
+                            .as("June selfTransferOutFlows should be empty after move")
+                            .allSatisfy(cat -> assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID)).isEmpty());
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+
+                    // July: selfTransferOutFlows contains the moved transaction
+                    CashFlowMonthlyForecast july = statement.getForecasts().get(YearMonth.parse("2021-07"));
+                    assertThat(july).isNotNull();
+                    assertThat(july.getSelfTransferOutFlows()).hasSize(1);
+                    TransactionDetails moved = july.getSelfTransferOutFlows().get(0)
+                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(moved.getName().name()).isEqualTo("Lucjan Bik Pekao");
+                    assertThat(moved.isSelfTransfer()).isTrue();
+                    assertThat(july.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+
+                    // Neither month has self-transfer in categorizedOutFlows
+                    june.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
+                    july.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
+                });
+    }
+
+    /**
+     * Scenario 6: HistoricalCashChangeImportedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows. Verifies the same handler path as scenarios 1-5 but for the
+     * historical import handler specifically (which includes retry logic).
+     */
+    @Test
+    public void shouldRouteHistoricalSelfTransferToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Historical Self Transfer Test"),
+                new Description("Testing historical self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(0, "USD"), null),
+                YearMonth.parse("2021-01"),
+                YearMonth.parse("2021-06"),
+                Money.of(0, "USD"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z")
+        ));
+
+        // Historical self-transfer (3000 USD)
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Regular historical (200 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Sklep"),
+                new Description("zakupy"),
+                Money.of(200, "USD"),
+                OUTFLOW,
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast march = statement.getForecasts().get(YearMonth.parse("2021-03"));
+                    assertThat(march).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows
+                    assertThat(march.getSelfTransferOutFlows()).hasSize(1);
+                    assertThat(march.getSelfTransferOutFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+                    assertThat(march.getSelfTransferOutFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+
+                    // Regular in categorizedOutFlows
+                    CashCategory regularCat = march.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(regularCat.getTotalPaidValue()).isEqualTo(Money.of(200, "USD"));
+
+                    // outflowStats excludes self-transfer
+                    assertThat(march.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.of(200, "USD"));
+                });
+    }
+
     /**
      * Recursively verify that all category currencies are correct.
      */
