@@ -219,6 +219,11 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
     /**
      * Determine which categories need to be created based on mappings and existing categories.
+     * <p>
+     * Uses {@link CashFlowInfo.TypedCategoryKey} to check existence per (name, type) pair.
+     * A category "Inne" existing as OUTFLOW does NOT satisfy an INFLOW transaction that
+     * needs "Inne" — both must be created independently.
+     * <p>
      * Parents are inserted BEFORE their children in the result list to satisfy
      * {@code CashFlow.apply(CategoryCreatedEvent)} which throws when a parent is missing.
      */
@@ -226,8 +231,8 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
             List<StagedTransaction> validTransactions,
             CashFlowInfo cashFlowInfo) {
 
-        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
-        Set<String> categoriesToCreateSet = new HashSet<>();
+        Set<CashFlowInfo.TypedCategoryKey> existingCategories = cashFlowInfo.getAllTypedCategoryKeys();
+        Set<CashFlowInfo.TypedCategoryKey> categoriesToCreateSet = new HashSet<>();
         List<CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : validTransactions) {
@@ -239,17 +244,18 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
             // Ensure parent exists first (for self-transfer "Przelewy własne" the parent
             // is "Zarządzanie kontem"; for other categories parent may be null/root)
-            if (parentName != null
-                    && !existingCategories.contains(parentName)
-                    && !categoriesToCreateSet.contains(parentName + ":" + type)) {
-                result.add(new CategoryToCreate(parentName, null, type));
-                categoriesToCreateSet.add(parentName + ":" + type);
+            if (parentName != null) {
+                CashFlowInfo.TypedCategoryKey parentKey = new CashFlowInfo.TypedCategoryKey(parentName, type);
+                if (!existingCategories.contains(parentKey) && !categoriesToCreateSet.contains(parentKey)) {
+                    result.add(new CategoryToCreate(parentName, null, type));
+                    categoriesToCreateSet.add(parentKey);
+                }
             }
 
-            String categoryKey = childName + ":" + type;
-            if (!existingCategories.contains(childName) && !categoriesToCreateSet.contains(categoryKey)) {
+            CashFlowInfo.TypedCategoryKey childKey = new CashFlowInfo.TypedCategoryKey(childName, type);
+            if (!existingCategories.contains(childKey) && !categoriesToCreateSet.contains(childKey)) {
                 result.add(new CategoryToCreate(childName, parentName, type));
-                categoriesToCreateSet.add(categoryKey);
+                categoriesToCreateSet.add(childKey);
             }
         }
 

@@ -115,6 +115,39 @@ public record CashFlowInfo(
     }
 
     /**
+     * A category name qualified by its flow type (INFLOW/OUTFLOW).
+     * <p>
+     * In a CashFlow, "Inne" as OUTFLOW and "Inne" as INFLOW are <b>separate categories</b>
+     * — each requires its own {@code CategoryCreatedEvent}. A bare {@code String} name
+     * is ambiguous when the same name exists in both flow types. This record makes the
+     * distinction explicit and prevents bugs where a category existing in one type
+     * is mistakenly treated as existing in the other.
+     *
+     * @see #getAllTypedCategoryKeys()
+     */
+    public record TypedCategoryKey(String name, Type type) {}
+
+    /**
+     * Get all category keys qualified by type (INFLOW/OUTFLOW), including subcategories.
+     * <p>
+     * Use this instead of {@link #getAllCategoryNames()} when you need to know whether
+     * a category exists <b>for a specific type</b>.
+     */
+    public Set<TypedCategoryKey> getAllTypedCategoryKeys() {
+        Set<TypedCategoryKey> keys = new java.util.HashSet<>();
+        collectTypedCategoryKeys(inflowCategories, Type.INFLOW, keys);
+        collectTypedCategoryKeys(outflowCategories, Type.OUTFLOW, keys);
+        return keys;
+    }
+
+    private void collectTypedCategoryKeys(List<CategoryInfo> categories, Type type, Set<TypedCategoryKey> keys) {
+        for (CategoryInfo cat : categories) {
+            keys.add(new TypedCategoryKey(cat.name(), type));
+            collectTypedCategoryKeys(cat.subCategories(), type, keys);
+        }
+    }
+
+    /**
      * Get all category names (flat list including subcategories).
      */
     public Set<String> getAllCategoryNames() {

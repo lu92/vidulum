@@ -375,6 +375,58 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    //  T24: Same category name used as both INFLOW and OUTFLOW
+    //       Regression test for bug where determineCategoriesToCreate()
+    //       used flat Set<String> without type — a category existing as
+    //       OUTFLOW would prevent creation of the same name as INFLOW.
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("T24: category existing as OUTFLOW is also created as INFLOW when transactions of both types need it")
+    void shouldCreateCategoryForBothInflowAndOutflowWhenSameNameUsed() {
+        String cashFlowId = ingestionActor.createCashFlowWithHistory(
+                userId, uniqueCashFlowName(),
+                YearMonth.of(2021, 1),
+                Money.of(0, "USD"));
+
+        // Upload CSV with "Inne" as BOTH OUTFLOW and INFLOW
+        String csv = "bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber,merchant,merchantConfidence,paymentMethod,classification,classificationReason,location\n"
+                + "TXN-OUT-001,Sklep ABC,zakupy,Inne,500,USD,OUTFLOW,2021-01-10,,,,,,,,,,\n"
+                + "TXN-OUT-002,Sklep XYZ,artykuly,Inne,300,USD,OUTFLOW,2021-01-12,,,,,,,,,,\n"
+                + "TXN-IN-001,Zwrot z Allegro,zwrot,Inne,200,USD,INFLOW,2021-01-15,,,,,,,,,,\n"
+                + "TXN-IN-002,Premia kwartalna,premia,Inne,1000,USD,INFLOW,2021-01-20,,,,,,,,,,\n";
+
+        var uploadResult = ingestionActor.uploadCsvContent(
+                cashFlowId, "test_same_category_both_types.csv", csv.getBytes());
+
+        String sessionId = uploadResult.getStagingResult().getStagingSessionId();
+
+        // Force uncategorized for unmapped categories, then import
+        ingestionActor.forceUncategorized(cashFlowId, sessionId);
+        var importResult = ingestionActor.startImport(cashFlowId, sessionId);
+        assertThat(importResult.getStatus()).isEqualTo("COMPLETED");
+
+        // Verify: both INFLOW and OUTFLOW transactions appear in forecast
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 1));
+
+            // OUTFLOW "Inne" or "Uncategorized" should have the 2 outflow transactions
+            CashSummary outflowStats = monthly.getCashFlowStats().getOutflowStats();
+            assertThat(outflowStats.actual().getAmount())
+                    .as("Outflow stats should include both OUTFLOW transactions (500 + 300 = 800)")
+                    .isEqualByComparingTo("800.0");
+
+            // INFLOW should have the 2 inflow transactions — this was the bug:
+            // before the fix, "Inne" category was not created for INFLOW,
+            // so the handler would fail to find it and skip these events.
+            CashSummary inflowStats = monthly.getCashFlowStats().getInflowStats();
+            assertThat(inflowStats.actual().getAmount())
+                    .as("Inflow stats should include both INFLOW transactions (200 + 1000 = 1200)")
+                    .isEqualByComparingTo("1200.0");
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     //  E5: IBAN normalization at profile entry
     // ─────────────────────────────────────────────────────────────────────
 
