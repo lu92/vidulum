@@ -73,18 +73,16 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                         )
                 );
             }
-            uncategorizedCashCategory.getGroupedTransactions().get(EXPECTED)
-                    .add(
-                            new TransactionDetails(
-                                    event.cashChangeId(),
-                                    event.name(),
-                                    event.money(),
-                                    event.created(),
-                                    event.dueDate(),
-                                    null,
-                                    false
-                            )
-                    );
+            uncategorizedCashCategory.getGroupedTransactions().addTransaction(new Transaction(
+                    new TransactionDetails(
+                            event.cashChangeId(),
+                            event.name(),
+                            event.money(),
+                            event.created(),
+                            event.dueDate(),
+                            null,
+                            false
+                    ), EXPECTED));
             return cashFlowMonthlyForecast;
         });
 

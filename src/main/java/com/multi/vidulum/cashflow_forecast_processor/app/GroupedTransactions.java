@@ -43,8 +43,21 @@ public class GroupedTransactions {
         transactions.get(transaction.paymentStatus()).remove(transaction.transactionDetails());
     }
 
+    /**
+     * Adds a transaction to the appropriate status group.
+     * <p>
+     * <b>Idempotent</b>: if a transaction with the same {@code cashChangeId} already exists
+     * in the target status group, the call is a no-op. This guards against Kafka
+     * at-least-once redelivery producing duplicate entries in the forecast read model.
+     */
     public void addTransaction(Transaction transaction) {
-        transactions.get(transaction.paymentStatus()).add(transaction.transactionDetails());
+        List<TransactionDetails> list = transactions.get(transaction.paymentStatus());
+        boolean alreadyExists = list.stream()
+                .anyMatch(td -> td.getCashChangeId().equals(
+                        transaction.transactionDetails().getCashChangeId()));
+        if (!alreadyExists) {
+            list.add(transaction.transactionDetails());
+        }
     }
 
     public void replace(ReplacementFrom from, ReplacementTo to) {

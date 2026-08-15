@@ -80,19 +80,17 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
                 cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             }
 
-            // Add transaction directly to PAID group
-            cashCategory.getGroupedTransactions().get(PAID)
-                    .add(
-                            new TransactionDetails(
-                                    event.cashChangeId(),
-                                    event.name(),
-                                    event.money(),
-                                    event.created(),
-                                    event.dueDate(),
-                                    event.paidDate(),
-                                    false
-                            )
-                    );
+            // Add transaction to PAID group
+            cashCategory.getGroupedTransactions().addTransaction(new Transaction(
+                    new TransactionDetails(
+                            event.cashChangeId(),
+                            event.name(),
+                            event.money(),
+                            event.created(),
+                            event.dueDate(),
+                            event.paidDate(),
+                            false
+                    ), PAID));
             return cashFlowMonthlyForecast;
         });
 

@@ -184,19 +184,17 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                 cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             }
 
-            // Add transaction directly to PAID group (historical data is already confirmed)
-            cashCategory.getGroupedTransactions().get(PAID)
-                    .add(
-                            new TransactionDetails(
-                                    event.cashChangeId(),
-                                    event.name(),
-                                    event.money(),
-                                    event.importedAt(),
-                                    event.dueDate(),
-                                    event.paidDate(),
-                                    false
-                            )
-                    );
+            // Add transaction to PAID group (historical data is already confirmed)
+            cashCategory.getGroupedTransactions().addTransaction(new Transaction(
+                    new TransactionDetails(
+                            event.cashChangeId(),
+                            event.name(),
+                            event.money(),
+                            event.importedAt(),
+                            event.dueDate(),
+                            event.paidDate(),
+                            false
+                    ), PAID));
             return cashFlowMonthlyForecast;
         });
 
