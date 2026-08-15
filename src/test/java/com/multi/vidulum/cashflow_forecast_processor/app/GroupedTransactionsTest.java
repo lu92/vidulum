@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,6 +88,31 @@ class GroupedTransactionsTest {
         Transaction txnUpdated = new Transaction(transactionDetails("CC1000000001", 200), PAID);
         gt.addTransaction(txnUpdated);
         assertThat(gt.get(PAID)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("get() should return unmodifiable list — direct add bypassing addTransaction must throw")
+    void getShouldReturnUnmodifiableList() {
+        GroupedTransactions gt = new GroupedTransactions();
+
+        List<TransactionDetails> paidList = gt.get(PAID);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                paidList.add(transactionDetails("CC1000000001", 100))
+        ).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("getTransactions() should return unmodifiable map and lists")
+    void getTransactionsShouldReturnUnmodifiableMapAndLists() {
+        GroupedTransactions gt = new GroupedTransactions();
+        gt.addTransaction(paidTransaction("CC1000000001", 100));
+
+        var txMap = gt.getTransactions();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                txMap.get(PAID).add(transactionDetails("CC1000000002", 200))
+        ).isInstanceOf(UnsupportedOperationException.class);
     }
 
     private Transaction paidTransaction(String cashChangeId, double amount) {

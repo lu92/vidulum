@@ -2,13 +2,22 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.*;
 
 import static com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus.*;
 
-@Data
+/**
+ * Groups transactions by payment status (PAID, EXPECTED, FORECAST).
+ * <p>
+ * <b>Mutation contract</b>: all additions go through {@link #addTransaction(Transaction)}
+ * which enforces idempotency (duplicate {@code cashChangeId} within the same status group
+ * is silently skipped). Public accessors ({@link #get(PaymentStatus)}, {@link #values()},
+ * {@link #getTransactions()}) return <b>unmodifiable views</b> to prevent bypassing
+ * the business methods.
+ */
+@EqualsAndHashCode
 @AllArgsConstructor
 public class GroupedTransactions {
     private Map<PaymentStatus, List<TransactionDetails>> transactions;
@@ -19,6 +28,23 @@ public class GroupedTransactions {
                 EXPECTED, new LinkedList<>(),
                 FORECAST, new LinkedList<>()
         );
+    }
+
+    /**
+     * Returns the backing map wrapped in unmodifiable views (both the map and each list).
+     * Used by serialization / mapping layers that need the full structure.
+     */
+    public Map<PaymentStatus, List<TransactionDetails>> getTransactions() {
+        Map<PaymentStatus, List<TransactionDetails>> result = new LinkedHashMap<>();
+        transactions.forEach((status, list) -> result.put(status, Collections.unmodifiableList(list)));
+        return Collections.unmodifiableMap(result);
+    }
+
+    /**
+     * Needed by MongoDB deserialization (Spring Data expects a setter matching the getter).
+     */
+    public void setTransactions(Map<PaymentStatus, List<TransactionDetails>> transactions) {
+        this.transactions = transactions;
     }
 
     public Optional<Transaction> fetchTransaction(CashChangeId cashChangeId) {
@@ -65,12 +91,21 @@ public class GroupedTransactions {
         transactions.get(to.status).add(to.transactionDetails);
     }
 
+    /**
+     * Returns an unmodifiable view of transaction lists grouped by status.
+     */
     public Collection<List<TransactionDetails>> values() {
-        return transactions.values();
+        return transactions.values().stream()
+                .map(Collections::unmodifiableList)
+                .toList();
     }
 
+    /**
+     * Returns an unmodifiable view of the transaction list for the given status.
+     * To add transactions, use {@link #addTransaction(Transaction)}.
+     */
     public List<TransactionDetails> get(PaymentStatus paymentStatus) {
-        return transactions.get(paymentStatus);
+        return Collections.unmodifiableList(transactions.get(paymentStatus));
     }
 
     public record ReplacementFrom(PaymentStatus status, TransactionDetails transactionDetails) {
