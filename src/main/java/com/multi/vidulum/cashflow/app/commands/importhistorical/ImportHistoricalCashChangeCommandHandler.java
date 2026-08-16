@@ -82,7 +82,8 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                 command.categoryName(),
                 command.dueDate(),
                 command.paidDate(),
-                now
+                now,
+                command.selfTransfer()
         );
 
         cashFlow.apply(event);

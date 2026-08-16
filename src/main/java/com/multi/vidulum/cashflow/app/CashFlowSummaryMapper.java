@@ -71,6 +71,7 @@ public class CashFlowSummaryMapper {
                 .dueDate(snapshot.dueDate())
                 .endDate(snapshot.endDate())
                 .sourceRuleId(snapshot.sourceRuleId())
+                .selfTransfer(snapshot.selfTransfer())
                 .build();
     }
 }

@@ -219,30 +219,43 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
     /**
      * Determine which categories need to be created based on mappings and existing categories.
+     * <p>
+     * Uses {@link CashFlowInfo.TypedCategoryKey} to check existence per (name, type) pair.
+     * A category "Inne" existing as OUTFLOW does NOT satisfy an INFLOW transaction that
+     * needs "Inne" — both must be created independently.
+     * <p>
+     * Parents are inserted BEFORE their children in the result list to satisfy
+     * {@code CashFlow.apply(CategoryCreatedEvent)} which throws when a parent is missing.
      */
     private List<CategoryToCreate> determineCategoriesToCreate(
             List<StagedTransaction> validTransactions,
             CashFlowInfo cashFlowInfo) {
 
-        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
-        Set<String> categoriesToCreateSet = new HashSet<>();
+        Set<CashFlowInfo.TypedCategoryKey> existingCategories = cashFlowInfo.getAllTypedCategoryKeys();
+        Set<CashFlowInfo.TypedCategoryKey> categoriesToCreateSet = new HashSet<>();
         List<CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : validTransactions) {
-            String categoryKey = st.mappedData().categoryName().name() + ":" + st.mappedData().type();
+            String childName = st.mappedData().categoryName().name();
+            String parentName = st.mappedData().parentCategoryName() != null
+                    ? st.mappedData().parentCategoryName().name()
+                    : null;
+            Type type = st.mappedData().type();
 
-            // If category doesn't exist in CashFlow, we need to create it
-            // This handles both CREATE_NEW mappings and MAP_TO_EXISTING when category is missing
-            if (!existingCategories.contains(st.mappedData().categoryName().name()) &&
-                    !categoriesToCreateSet.contains(categoryKey)) {
+            // Ensure parent exists first (for self-transfer "Przelewy własne" the parent
+            // is "Zarządzanie kontem"; for other categories parent may be null/root)
+            if (parentName != null) {
+                CashFlowInfo.TypedCategoryKey parentKey = new CashFlowInfo.TypedCategoryKey(parentName, type);
+                if (!existingCategories.contains(parentKey) && !categoriesToCreateSet.contains(parentKey)) {
+                    result.add(new CategoryToCreate(parentName, null, type));
+                    categoriesToCreateSet.add(parentKey);
+                }
+            }
 
-                result.add(new CategoryToCreate(
-                        st.mappedData().categoryName().name(),
-                        st.mappedData().parentCategoryName() != null
-                                ? st.mappedData().parentCategoryName().name() : null,
-                        st.mappedData().type()
-                ));
-                categoriesToCreateSet.add(categoryKey);
+            CashFlowInfo.TypedCategoryKey childKey = new CashFlowInfo.TypedCategoryKey(childName, type);
+            if (!existingCategories.contains(childKey) && !categoriesToCreateSet.contains(childKey)) {
+                result.add(new CategoryToCreate(childName, parentName, type));
+                categoriesToCreateSet.add(childKey);
             }
         }
 
@@ -335,7 +348,8 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                                 st.mappedData().money().getCurrency(),
                                 st.mappedData().type(),
                                 st.mappedData().paidDate().toLocalDate(),  // dueDate
-                                st.mappedData().paidDate().toLocalDate()   // paidDate
+                                st.mappedData().paidDate().toLocalDate(),  // paidDate
+                                st.mappedData().selfTransfer()
                         );
 
                 String cashChangeId = cashFlowServiceClient.importHistoricalTransaction(

@@ -108,7 +108,8 @@ public class CashFlowRestController {
                         request.getMoney(),
                         request.getType(),
                         request.getDueDate(),
-                        request.getPaidDate()
+                        request.getPaidDate(),
+                        request.isSelfTransfer()
                 )
         );
         return cashChangeId.id();

@@ -102,6 +102,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
                 .type(request.type())
                 .dueDate(request.dueDate().atStartOfDay(ZoneId.systemDefault()))
                 .paidDate(request.paidDate().atStartOfDay(ZoneId.systemDefault()))
+                .selfTransfer(request.selfTransfer())
                 .build();
 
         HttpHeaders headers = new HttpHeaders();
@@ -151,6 +152,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
 
         return new CashFlowInfo(
                 summary.getCashFlowId(),
+                summary.getUserId(),
                 status,
                 summary.getActivePeriod(),
                 summary.getStartPeriod(),

@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.cashflow.domain.CashChangeId;
 import com.multi.vidulum.cashflow.domain.CashFlowId;
 import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -79,66 +80,65 @@ public class CashFlowForecastStatement {
 
     public Optional<CashFlowMonthlyForecast.CashChangeLocation> locate(CashChangeId cashChangeId) {
         return forecasts.values().stream()
-                .map(cashFlowMonthlyForecast -> {
-                    Optional<CashFlowMonthlyForecast.CashChangeLocation> inflowCashChangeLocation =
-                            flattenCategories(cashFlowMonthlyForecast.getCategorizedInFlows()).stream()
-                                    .map(cashCategory -> {
-                                        CategoryName categoryName = cashCategory.getCategoryName();
-                                        return cashCategory.getGroupedTransactions().getTransactions().entrySet()
-                                                .stream()
-                                                .map(entries -> {
-                                                    PaymentStatus paymentStatus = entries.getKey();
-                                                    List<TransactionDetails> transactionDetails = entries.getValue();
-                                                    return transactionDetails.stream()
-                                                            .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
-                                                            .findFirst()
-                                                            .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                                                    transactionDetail.getCashChangeId(),
-                                                                    cashFlowMonthlyForecast.getPeriod(),
-                                                                    INFLOW,
-                                                                    new Transaction(transactionDetail, paymentStatus),
-                                                                    categoryName));
-                                                })
-                                                .filter(Optional::isPresent)
-                                                .map(Optional::get)
-                                                .findFirst();
-                                    })
-                                    .filter(Optional::isPresent)
-                                    .findFirst()
-                                    .orElse(Optional.empty());
-
-                    Optional<CashFlowMonthlyForecast.CashChangeLocation> outflowCashChangeLocation =
-                            flattenCategories(cashFlowMonthlyForecast.getCategorizedOutFlows()).stream()
-                                    .map(cashCategory -> {
-                                        CategoryName categoryName = cashCategory.getCategoryName();
-                                        return cashCategory.getGroupedTransactions().getTransactions().entrySet()
-                                                .stream()
-                                                .map(entries -> {
-                                                    PaymentStatus paymentStatus = entries.getKey();
-                                                    List<TransactionDetails> transactionDetails = entries.getValue();
-                                                    return transactionDetails.stream()
-                                                            .filter(transactionDetail -> cashChangeId.equals(transactionDetail.getCashChangeId()))
-                                                            .findFirst()
-                                                            .map(transactionDetail -> new CashFlowMonthlyForecast.CashChangeLocation(
-                                                                    transactionDetail.getCashChangeId(),
-                                                                    cashFlowMonthlyForecast.getPeriod(),
-                                                                    OUTFLOW,
-                                                                    new Transaction(transactionDetail, paymentStatus),
-                                                                    categoryName));
-                                                })
-                                                .filter(Optional::isPresent)
-                                                .map(Optional::get)
-                                                .findFirst();
-                                    })
-                                    .filter(Optional::isPresent)
-                                    .findFirst()
-                                    .orElse(Optional.empty());
-
-                    return inflowCashChangeLocation.or(() -> outflowCashChangeLocation);
-                })
+                .map(monthly -> locateInMonthly(monthly, cashChangeId))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+    private Optional<CashFlowMonthlyForecast.CashChangeLocation> locateInMonthly(
+            CashFlowMonthlyForecast monthly, CashChangeId cashChangeId) {
+        Optional<CashFlowMonthlyForecast.CashChangeLocation> found =
+                searchInCategories(monthly, cashChangeId, monthly.getCategorizedInFlows(), INFLOW, false);
+        if (found.isPresent()) return found;
+
+        found = searchInCategories(monthly, cashChangeId, monthly.getCategorizedOutFlows(), OUTFLOW, false);
+        if (found.isPresent()) return found;
+
+        // VID-161: search self-transfer sections (Q8: locate-based routing)
+        if (monthly.getSelfTransferInFlows() != null) {
+            found = searchInCategories(monthly, cashChangeId, monthly.getSelfTransferInFlows(), INFLOW, true);
+            if (found.isPresent()) return found;
+        }
+        if (monthly.getSelfTransferOutFlows() != null) {
+            found = searchInCategories(monthly, cashChangeId, monthly.getSelfTransferOutFlows(), OUTFLOW, true);
+            if (found.isPresent()) return found;
+        }
+        return Optional.empty();
+    }
+
+    private Optional<CashFlowMonthlyForecast.CashChangeLocation> searchInCategories(
+            CashFlowMonthlyForecast monthly,
+            CashChangeId cashChangeId,
+            List<CashCategory> categories,
+            Type type,
+            boolean selfTransfer) {
+        return flattenCategories(categories).stream()
+                .map(cashCategory -> {
+                    CategoryName categoryName = cashCategory.getCategoryName();
+                    return cashCategory.getGroupedTransactions().getTransactions().entrySet()
+                            .stream()
+                            .map(entries -> {
+                                PaymentStatus paymentStatus = entries.getKey();
+                                List<TransactionDetails> transactionDetails = entries.getValue();
+                                return transactionDetails.stream()
+                                        .filter(td -> cashChangeId.equals(td.getCashChangeId()))
+                                        .findFirst()
+                                        .map(td -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                td.getCashChangeId(),
+                                                monthly.getPeriod(),
+                                                type,
+                                                new Transaction(td, paymentStatus),
+                                                categoryName,
+                                                selfTransfer));
+                            })
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .findFirst();
+                })
+                .filter(Optional::isPresent)
+                .findFirst()
+                .orElse(Optional.empty());
     }
 
     private List<CashCategory> flattenCategories(List<CashCategory> cashCategories) {
@@ -197,6 +197,8 @@ public class CashFlowForecastStatement {
                         CashFlowStats.justBalance(beginningBalance),
                         categorizedInflows,
                         categorizedOutflows,
+                        new LinkedList<>(),
+                        new LinkedList<>(),
                         CashFlowMonthlyForecast.Status.FORECASTED,
                         null
                 )

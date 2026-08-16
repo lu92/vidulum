@@ -27,49 +27,76 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
             CashCategory cashCategory;
-            if (Type.INFLOW.equals(event.type())) {
+            // VID-161 Phase 1b: route self-transfers to dedicated bucket (no inflow/outflow stats update).
+            // addToSelfTransfer*flows auto-creates the bucket category on first use.
+            if (event.selfTransfer()) {
+                TransactionDetails details = new TransactionDetails(
+                        event.cashChangeId(),
+                        event.name(),
+                        event.money(),
+                        event.created(),
+                        event.dueDate(),
+                        event.paidDate(),
+                        true
+                );
+                Transaction txn = new Transaction(details, PAID);
+                boolean added;
+                if (Type.INFLOW.equals(event.type())) {
+                    added = cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
+                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferInflowsByName(event.categoryName()).orElseThrow();
+                } else {
+                    added = cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
+                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferOutflowsByName(event.categoryName()).orElseThrow();
+                }
+                if (added) {
+                    cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
+                }
+                return cashFlowMonthlyForecast;
+            } else if (Type.INFLOW.equals(event.type())) {
                 cashCategory = cashFlowMonthlyForecast.findCategoryInflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in INFLOWS", event.categoryName())));
-                CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
-                CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
-                // update stats - directly to actual since it's already paid
-                currentCashFlowStats.setInflowStats(
-                        new CashSummary(
-                                inflowCashSummary.actual().plus(event.money()),
-                                inflowCashSummary.expected(),
-                                inflowCashSummary.gapToForecast()
-                        )
-                );
-                // update total paid value for category
-                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             } else {
                 cashCategory = cashFlowMonthlyForecast.findCategoryOutflowsByCategoryName(event.categoryName())
                         .orElseThrow(() -> new IllegalStateException(String.format("Cannot find cash-category with name %s in OUTFLOWS", event.categoryName())));
-                CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
-                // update stats - directly to actual since it's already paid
-                cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
-                        new CashSummary(
-                                outflowCashSummary.actual().plus(event.money()),
-                                outflowCashSummary.expected(),
-                                outflowCashSummary.gapToForecast()
-                        )
-                );
-                // update total paid value for category
+            }
+
+            // Add transaction to PAID group.
+            // addTransaction is idempotent — returns false on Kafka redelivery.
+            boolean added = cashCategory.getGroupedTransactions().addTransaction(new Transaction(
+                    new TransactionDetails(
+                            event.cashChangeId(),
+                            event.name(),
+                            event.money(),
+                            event.created(),
+                            event.dueDate(),
+                            event.paidDate(),
+                            false
+                    ), PAID));
+
+            if (added) {
+                if (Type.INFLOW.equals(event.type())) {
+                    CashFlowStats currentCashFlowStats = cashFlowMonthlyForecast.getCashFlowStats();
+                    CashSummary inflowCashSummary = currentCashFlowStats.getInflowStats();
+                    currentCashFlowStats.setInflowStats(
+                            new CashSummary(
+                                    inflowCashSummary.actual().plus(event.money()),
+                                    inflowCashSummary.expected(),
+                                    inflowCashSummary.gapToForecast()
+                            )
+                    );
+                } else {
+                    CashSummary outflowCashSummary = cashFlowMonthlyForecast.getCashFlowStats().getOutflowStats();
+                    cashFlowMonthlyForecast.getCashFlowStats().setOutflowStats(
+                            new CashSummary(
+                                    outflowCashSummary.actual().plus(event.money()),
+                                    outflowCashSummary.expected(),
+                                    outflowCashSummary.gapToForecast()
+                            )
+                    );
+                }
                 cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             }
 
-            // Add transaction directly to PAID group
-            cashCategory.getGroupedTransactions().get(PAID)
-                    .add(
-                            new TransactionDetails(
-                                    event.cashChangeId(),
-                                    event.name(),
-                                    event.money(),
-                                    event.created(),
-                                    event.dueDate(),
-                                    event.paidDate()
-                            )
-                    );
             return cashFlowMonthlyForecast;
         });
 

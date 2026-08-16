@@ -183,6 +183,7 @@ public class CashCategoryEntity {
         private Date created;
         private Date dueDate;
         private Date endDate;
+        private boolean selfTransfer;
 
         public static TransactionEntry fromDomain(TransactionDetails details) {
             if (details == null) {
@@ -195,6 +196,7 @@ public class CashCategoryEntity {
                     .created(details.getCreated() != null ? Date.from(details.getCreated().toInstant()) : null)
                     .dueDate(details.getDueDate() != null ? Date.from(details.getDueDate().toInstant()) : null)
                     .endDate(details.getEndDate() != null ? Date.from(details.getEndDate().toInstant()) : null)
+                    .selfTransfer(details.isSelfTransfer())
                     .build();
         }
 
@@ -216,6 +218,7 @@ public class CashCategoryEntity {
                     .created(createdDateTime)
                     .dueDate(dueDateDateTime)
                     .endDate(endDateDateTime)
+                    .selfTransfer(selfTransfer)
                     .build();
         }
     }

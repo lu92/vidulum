@@ -28,6 +28,7 @@ public record MappedTransactionData(
         Type type,
         ZonedDateTime paidDate,
         String merchant,
-        Double merchantConfidence
+        Double merchantConfidence,
+        boolean selfTransfer
 ) {
 }

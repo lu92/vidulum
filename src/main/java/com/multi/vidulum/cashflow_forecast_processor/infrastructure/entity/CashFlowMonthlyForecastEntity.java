@@ -21,6 +21,9 @@ public class CashFlowMonthlyForecastEntity {
     private CashFlowStatsEntity cashFlowStats;
     private List<CashCategoryEntity> categorizedInFlows;
     private List<CashCategoryEntity> categorizedOutFlows;
+    /** VID-161 Phase 1b: self-transfers bucketed separately from budget aggregates. */
+    private List<CashCategoryEntity> selfTransferInFlows;
+    private List<CashCategoryEntity> selfTransferOutFlows;
     private String status;
     private AttestationEntity attestation;
 
@@ -41,11 +44,25 @@ public class CashFlowMonthlyForecastEntity {
                     .collect(Collectors.toList())
                 : new LinkedList<>();
 
+        List<CashCategoryEntity> selfTransferInEntities = forecast.getSelfTransferInFlows() != null
+                ? forecast.getSelfTransferInFlows().stream()
+                    .map(CashCategoryEntity::fromDomain)
+                    .collect(Collectors.toList())
+                : new LinkedList<>();
+
+        List<CashCategoryEntity> selfTransferOutEntities = forecast.getSelfTransferOutFlows() != null
+                ? forecast.getSelfTransferOutFlows().stream()
+                    .map(CashCategoryEntity::fromDomain)
+                    .collect(Collectors.toList())
+                : new LinkedList<>();
+
         return CashFlowMonthlyForecastEntity.builder()
                 .period(forecast.getPeriod().toString())
                 .cashFlowStats(CashFlowStatsEntity.fromDomain(forecast.getCashFlowStats()))
                 .categorizedInFlows(inflowEntities)
                 .categorizedOutFlows(outflowEntities)
+                .selfTransferInFlows(selfTransferInEntities)
+                .selfTransferOutFlows(selfTransferOutEntities)
                 .status(forecast.getStatus() != null ? forecast.getStatus().name() : null)
                 .attestation(AttestationEntity.fromDomain(forecast.getAttestation()))
                 .build();
@@ -64,11 +81,25 @@ public class CashFlowMonthlyForecastEntity {
                     .collect(Collectors.toCollection(LinkedList::new))
                 : new LinkedList<>();
 
+        List<CashCategory> selfTransferInCategories = selfTransferInFlows != null
+                ? selfTransferInFlows.stream()
+                    .map(CashCategoryEntity::toDomain)
+                    .collect(Collectors.toCollection(LinkedList::new))
+                : new LinkedList<>();
+
+        List<CashCategory> selfTransferOutCategories = selfTransferOutFlows != null
+                ? selfTransferOutFlows.stream()
+                    .map(CashCategoryEntity::toDomain)
+                    .collect(Collectors.toCollection(LinkedList::new))
+                : new LinkedList<>();
+
         return CashFlowMonthlyForecast.builder()
                 .period(YearMonth.parse(period))
                 .cashFlowStats(cashFlowStats != null ? cashFlowStats.toDomain() : null)
                 .categorizedInFlows(inflowCategories)
                 .categorizedOutFlows(outflowCategories)
+                .selfTransferInFlows(selfTransferInCategories)
+                .selfTransferOutFlows(selfTransferOutCategories)
                 .status(status != null ? CashFlowMonthlyForecast.Status.valueOf(status) : null)
                 .attestation(attestation != null ? attestation.toDomain() : null)
                 .build();

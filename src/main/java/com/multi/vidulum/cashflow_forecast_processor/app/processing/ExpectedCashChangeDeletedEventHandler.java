@@ -36,7 +36,14 @@ public class ExpectedCashChangeDeletedEventHandler implements CashFlowEventHandl
         Transaction transaction = location.transaction();
 
         // Remove from the appropriate category based on type
-        if (Type.INFLOW.equals(location.type())) {
+        // VID-161 Phase 1b: route via locate's selfTransfer flag
+        if (location.selfTransfer()) {
+            if (Type.INFLOW.equals(location.type())) {
+                forecast.removeFromSelfTransferInflows(location.categoryName(), transaction);
+            } else {
+                forecast.removeFromSelfTransferOutflows(location.categoryName(), transaction);
+            }
+        } else if (Type.INFLOW.equals(location.type())) {
             forecast.removeFromInflows(location.categoryName(), transaction);
         } else {
             forecast.removeFromOutflows(location.categoryName(), transaction);

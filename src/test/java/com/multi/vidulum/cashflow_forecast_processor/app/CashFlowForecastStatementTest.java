@@ -183,6 +183,8 @@ class CashFlowForecastStatementTest {
                 ),
                 new ArrayList<>(inflows),
                 new ArrayList<>(outflows),
+                new ArrayList<>(),
+                new ArrayList<>(),
                 CashFlowMonthlyForecast.Status.ACTIVE,
                 null
         );

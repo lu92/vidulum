@@ -72,7 +72,8 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
                         Money.of(request.amount(), request.currency()),
                         request.type(),
                         request.dueDate().atStartOfDay(ZoneId.systemDefault()),
-                        request.paidDate().atStartOfDay(ZoneId.systemDefault())
+                        request.paidDate().atStartOfDay(ZoneId.systemDefault()),
+                        request.selfTransfer()
                 ));
         log.debug("Imported historical transaction {} for CashFlow {}", cashChangeId.id(), cashFlowId);
         return cashChangeId.id();
@@ -106,6 +107,7 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
 
         return new CashFlowInfo(
                 snapshot.cashFlowId().id(),
+                snapshot.userId().getId(),
                 status,
                 snapshot.activePeriod(),
                 snapshot.startPeriod(),

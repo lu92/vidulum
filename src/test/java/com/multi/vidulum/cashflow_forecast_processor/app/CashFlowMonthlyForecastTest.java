@@ -121,6 +121,40 @@ class CashFlowMonthlyForecastTest {
     }
 
     @Test
+    void calcNetChange_shouldExcludeSelfTransfersFromNetChange() {
+        // given - regular outflow + self-transfer outflow
+        CashCategory regularOutflow = createCategoryWithTransactions("Expenses", 500.0);
+        CashCategory selfTransferOutflow = createCategoryWithTransactions("Przelewy własne", 3000.0);
+        CashCategory regularInflow = createCategoryWithTransactions("Salary", 8000.0);
+
+        CashFlowMonthlyForecast forecast = new CashFlowMonthlyForecast(
+                YearMonth.of(2024, 1),
+                new CashFlowStats(
+                        Money.zero("USD"),
+                        Money.zero("USD"),
+                        Money.zero("USD"),
+                        new CashSummary(Money.zero("USD"), Money.zero("USD"), Money.zero("USD")),
+                        new CashSummary(Money.zero("USD"), Money.zero("USD"), Money.zero("USD"))
+                ),
+                new ArrayList<>(List.of(regularInflow)),
+                new ArrayList<>(List.of(regularOutflow)),
+                new ArrayList<>(),                          // selfTransferInFlows empty
+                new ArrayList<>(List.of(selfTransferOutflow)),  // selfTransferOutFlows with 3000 USD
+                CashFlowMonthlyForecast.Status.ACTIVE,
+                null
+        );
+
+        // when
+        Money netChange = forecast.calcNetChange();
+
+        // then
+        // inflows: 8000
+        // outflows: 500 (NOT 3500 — self-transfer excluded)
+        // net change: 8000 - 500 = 7500
+        assertThat(netChange.getAmount()).isEqualByComparingTo("7500");
+    }
+
+    @Test
     void calcNetChange_shouldReturnZeroForEmptyCategories() {
         // given
         CashCategory emptyInflow = createCategoryWithTransactions("Uncategorized");
@@ -150,6 +184,8 @@ class CashFlowMonthlyForecastTest {
                 ),
                 new ArrayList<>(inflows),
                 new ArrayList<>(outflows),
+                new ArrayList<>(),
+                new ArrayList<>(),
                 CashFlowMonthlyForecast.Status.ACTIVE,
                 null
         );

@@ -55,7 +55,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -76,7 +77,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -145,7 +147,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -166,7 +169,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-15T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -238,7 +242,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month - will be in July after attestation
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -270,7 +275,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special category"),
                         ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -284,7 +290,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-07-05T06:30:00Z"),  // dueDate in July (for attestation test)
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -298,7 +305,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Overhead costs"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in June
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -326,7 +334,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-03T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-08-15T06:30:00Z"),  // dueDate in August
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -416,7 +425,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Inflows"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -430,7 +440,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Special Category For Outflows"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -534,7 +545,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Bank fees"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -548,7 +560,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Main product"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -562,7 +575,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                         new CategoryName("Sales"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),  // dueDate in same month as created
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         emit(
@@ -633,7 +647,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-15T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        false
                 ));
 
         Checksum lastEventChecksum = emit(
@@ -647,7 +662,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-20T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-20T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-20T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -703,7 +719,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        false
                 ));
 
         Checksum lastEventChecksum = emit(
@@ -717,7 +734,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -774,7 +792,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-05T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-15T06:30:00Z"),
-                        null // sourceRuleId
+                        null, // sourceRuleId
+                        false
                 ));
 
         // Add paid cash change (already CONFIRMED)
@@ -789,7 +808,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-06-10T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-10T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-10T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -857,7 +877,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2021-06-25T06:30:00Z"),
-                        ZonedDateTime.parse("2021-06-25T06:30:00Z")
+                        ZonedDateTime.parse("2021-06-25T06:30:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -918,7 +939,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         emit(
@@ -932,7 +954,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback the import (clear transactions but keep categories)
@@ -1026,7 +1049,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback with category deletion
@@ -1111,7 +1135,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:00:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
                 ));
 
         // Rollback
@@ -1136,7 +1161,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         new CategoryName("Uncategorized"),
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
-                        ZonedDateTime.parse("2021-06-15T12:35:00Z")
+                        ZonedDateTime.parse("2021-06-15T12:35:00Z"),
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -1213,7 +1239,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-03-05T00:00:00Z"),  // due in March
-                        null
+                        null,
+                        false
                 ));
 
         // Transaction due in April
@@ -1228,7 +1255,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-04-05T00:00:00Z"),  // due in April
-                        null
+                        null,
+                        false
                 ));
 
         // Transaction due in May
@@ -1243,7 +1271,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,  // created in February
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-05-05T00:00:00Z"),  // due in May
-                        null
+                        null,
+                        false
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -1347,7 +1376,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Bills"),
                 ZonedDateTime.parse("2026-03-10T00:00:00Z"),
-                null
+                null,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1360,7 +1390,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Bills"),
                 ZonedDateTime.parse("2026-03-15T00:00:00Z"),
-                null
+                null,
+                false
         ));
 
         // Delete the first one
@@ -1446,7 +1477,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-03-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1459,7 +1491,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-04-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1472,7 +1505,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-05-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         // Batch delete (simulating recurring rule deletion)
@@ -1554,7 +1588,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-03-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1567,7 +1602,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-04-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
@@ -1580,7 +1616,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 createdDate,
                 new CategoryName("Salary"),
                 ZonedDateTime.parse("2026-05-05T00:00:00Z"),
-                sourceRuleId
+                sourceRuleId,
+                false
         ));
 
         // Batch update - change amount to 6000 PLN and name (simulating recurring rule update with raise)
@@ -1748,7 +1785,8 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                         createdDate,
                         new CategoryName("Salary"),
                         ZonedDateTime.parse("2026-03-15T00:00:00Z"),
-                        null
+                        null,
+                        false
                 ));
 
         // Confirm the cash change (this triggers updateTotalPaidValue)
@@ -1819,6 +1857,691 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     assertThat(salaryCategory.getTotalPaidValue())
                             .as("Salary category totalPaidValue should be 3000 EUR")
                             .isEqualTo(Money.of(3000, "EUR"));
+                });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  VID-161 Phase 1b: Self-transfer routing through event handlers
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Scenario 1: PaidCashChangeAppendedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows, does NOT update outflowStats.
+     */
+    @Test
+    public void shouldRoutePaidSelfTransferOutflowToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Self Transfer Test"),
+                new Description("Testing paid self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Self-transfer OUTFLOW (3000 USD)
+        emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                true
+        ));
+
+        // Regular OUTFLOW (500 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Zakupy"),
+                new Description("groceries"),
+                Money.of(500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-20T06:30:00Z"),
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getCategoryName().name()).isEqualTo("Przelewy własne");
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    assertThat(selfTransferCat.getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+
+                    // Regular in categorizedOutFlows
+                    CashCategory regularCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isFalse();
+
+                    // outflowStats excludes self-transfer
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Scenario 1b: PaidCashChangeAppendedEvent INFLOW with selfTransfer=true routes to
+     * selfTransferInFlows, does NOT update inflowStats.
+     */
+    @Test
+    public void shouldRoutePaidSelfTransferInflowToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Self Transfer Inflow Test"),
+                new Description("Testing paid self-transfer inflow routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        Checksum lastEventChecksum = emit(new CashFlowEvent.PaidCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Transfer from Pekao"),
+                new Description("rebalance"),
+                Money.of(2000, "USD"),
+                INFLOW,
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                true
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferInFlows
+                    assertThat(june.getSelfTransferInFlows()).hasSize(1);
+                    assertThat(june.getSelfTransferInFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    assertThat(june.getSelfTransferInFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(2000, "USD"));
+
+                    // inflowStats excludes self-transfer
+                    assertThat(june.getCashFlowStats().getInflowStats().actual()).isEqualTo(Money.zero("USD"));
+                });
+    }
+
+    /**
+     * Scenario 2: ExpectedCashChangeAppendedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows, does NOT update expected stats.
+     */
+    @Test
+    public void shouldRouteExpectedSelfTransferToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Expected Self Transfer Test"),
+                new Description("Testing expected self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Expected self-transfer (3000 USD)
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Planned transfer to Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                true
+        ));
+
+        // Regular expected (500 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Rachunki"),
+                new Description("bills"),
+                Money.of(500, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows with EXPECTED status
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).isSelfTransfer()).isTrue();
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getEndDate()).isNull();
+
+                    // outflowStats.expected excludes self-transfer
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected()).isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Scenario 3: CashChangeConfirmedEvent on an expected self-transfer keeps it within
+     * the self-transfer section and does NOT update budget stats.
+     */
+    @Test
+    public void shouldConfirmSelfTransferWithinSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Confirm Self Transfer Test"),
+                new Description("Testing self-transfer confirmation routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Step 1: Expected self-transfer
+        emit(new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Planned transfer to Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                null,
+                true
+        ));
+
+        // Step 2: Confirm (pay) the self-transfer
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeConfirmedEvent(
+                cashFlowId,
+                selfTransferId,
+                ZonedDateTime.parse("2021-06-15T16:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Transaction moved from EXPECTED to PAID within selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).isEmpty();
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+
+                    TransactionDetails confirmed = selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(confirmed.isSelfTransfer()).isTrue();
+                    assertThat(confirmed.getEndDate()).isEqualTo(ZonedDateTime.parse("2021-06-15T16:30:00Z"));
+
+                    // Budget stats remain zero — self-transfer doesn't touch actual or expected
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected()).isEqualTo(Money.zero("USD"));
+
+                    // NOT in categorizedOutFlows
+                    june.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .as("Self-transfer must not leak to categorizedOutFlows")
+                                    .noneMatch(td -> td.getName().name().equals("Planned transfer to Pekao")));
+                });
+    }
+
+    /**
+     * Scenario 4: CashChangeEditedEvent on a self-transfer (same month) updates details
+     * within selfTransferOutFlows and does NOT change budget stats.
+     */
+    @Test
+    public void shouldEditSelfTransferWithinSameMonth() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Edit Self Transfer Test"),
+                new Description("Testing self-transfer edit routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Import a historical self-transfer (3000 USD)
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Edit: change amount to 5000 USD (same month, same category)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeEditedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao edited"),
+                new Description("zycie updated"),
+                Money.of(5000, "USD"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),   // dueDate stays in June
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    // Updated transaction in selfTransferOutFlows
+                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
+                    TransactionDetails edited = june.getSelfTransferOutFlows().get(0)
+                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(edited.getMoney()).isEqualTo(Money.of(5000, "USD"));
+                    assertThat(edited.getName().name()).isEqualTo("Lucjan Bik Pekao edited");
+                    assertThat(edited.isSelfTransfer()).isTrue();
+
+                    // Budget stats unchanged (was 0, stays 0 — self-transfers excluded)
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+                });
+    }
+
+    /**
+     * Scenario 5: CashChangeEditedEvent moves a self-transfer to a different month.
+     * Transaction removed from old month's selfTransferOutFlows and added to new month's,
+     * never touching categorizedOutFlows or budget stats.
+     */
+    @Test
+    public void shouldMoveSelfTransferBetweenMonths() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Move Self Transfer Test"),
+                new Description("Testing self-transfer cross-month move"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        // Import self-transfer in June
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Edit: move to July (dueDate changed to July)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.CashChangeEditedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-07-10T00:00:00Z"),   // dueDate moved to July
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    // June: selfTransferOutFlows empty (transaction moved away)
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+                    assertThat(june.getSelfTransferOutFlows())
+                            .as("June selfTransferOutFlows should be empty after move")
+                            .allSatisfy(cat -> assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID)).isEmpty());
+                    assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+
+                    // July: selfTransferOutFlows contains the moved transaction
+                    CashFlowMonthlyForecast july = statement.getForecasts().get(YearMonth.parse("2021-07"));
+                    assertThat(july).isNotNull();
+                    assertThat(july.getSelfTransferOutFlows()).hasSize(1);
+                    TransactionDetails moved = july.getSelfTransferOutFlows().get(0)
+                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    assertThat(moved.getName().name()).isEqualTo("Lucjan Bik Pekao");
+                    assertThat(moved.isSelfTransfer()).isTrue();
+                    assertThat(july.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
+
+                    // Neither month has self-transfer in categorizedOutFlows
+                    june.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
+                    july.getCategorizedOutFlows().forEach(cat ->
+                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
+                });
+    }
+
+    /**
+     * Scenario 6: HistoricalCashChangeImportedEvent with selfTransfer=true routes to
+     * selfTransferOutFlows. Verifies the same handler path as scenarios 1-5 but for the
+     * historical import handler specifically (which includes retry logic).
+     */
+    @Test
+    public void shouldRouteHistoricalSelfTransferToSelfTransferSection() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId selfTransferId = TestIds.nextCashChangeId();
+        CashChangeId regularId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Historical Self Transfer Test"),
+                new Description("Testing historical self-transfer routing"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(0, "USD"), null),
+                YearMonth.parse("2021-01"),
+                YearMonth.parse("2021-06"),
+                Money.of(0, "USD"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z")
+        ));
+
+        // Historical self-transfer (3000 USD)
+        emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                selfTransferId,
+                new Name("Lucjan Bik Pekao"),
+                new Description("zycie"),
+                Money.of(3000, "USD"),
+                OUTFLOW,
+                new CategoryName("Przelewy własne"),
+                ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                true
+        ));
+
+        // Regular historical (200 USD)
+        Checksum lastEventChecksum = emit(new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                cashFlowId,
+                regularId,
+                new Name("Sklep"),
+                new Description("zakupy"),
+                Money.of(200, "USD"),
+                OUTFLOW,
+                new CategoryName("Uncategorized"),
+                ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                ZonedDateTime.parse("2021-03-20T10:00:00Z"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                false
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast march = statement.getForecasts().get(YearMonth.parse("2021-03"));
+                    assertThat(march).isNotNull();
+
+                    // Self-transfer in selfTransferOutFlows
+                    assertThat(march.getSelfTransferOutFlows()).hasSize(1);
+                    assertThat(march.getSelfTransferOutFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+                    assertThat(march.getSelfTransferOutFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+
+                    // Regular in categorizedOutFlows
+                    CashCategory regularCat = march.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(regularCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    assertThat(regularCat.getTotalPaidValue()).isEqualTo(Money.of(200, "USD"));
+
+                    // outflowStats excludes self-transfer
+                    assertThat(march.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.of(200, "USD"));
+                });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Kafka redelivery idempotency: stats must not inflate on duplicate events
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Simulates Kafka at-least-once redelivery of HistoricalCashChangeImportedEvent.
+     * The same event emitted twice must result in exactly 1 transaction and stats
+     * reflecting a single transaction's amount.
+     */
+    @Test
+    public void shouldNotInflateStatsOnHistoricalImportRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowWithHistoryCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Redelivery Test"),
+                new Description("Testing stats idempotency"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(0, "USD"), null),
+                YearMonth.parse("2021-01"),
+                YearMonth.parse("2021-06"),
+                Money.of(0, "USD"),
+                ZonedDateTime.parse("2021-06-15T12:00:00Z")
+        ));
+
+        CashFlowEvent.HistoricalCashChangeImportedEvent event =
+                new CashFlowEvent.HistoricalCashChangeImportedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Sklep"),
+                        new Description("zakupy"),
+                        Money.of(500, "USD"),
+                        OUTFLOW,
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-03-15T10:00:00Z"),
+                        ZonedDateTime.parse("2021-06-15T12:00:00Z"),
+                        false
+                );
+
+        // Emit same event TWICE (simulating Kafka redelivery)
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast march = statement.getForecasts().get(YearMonth.parse("2021-03"));
+                    assertThat(march).isNotNull();
+
+                    // Only 1 transaction, not 2
+                    CashCategory cat = march.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
+                            .as("Redelivered event must not produce duplicate transaction")
+                            .hasSize(1);
+
+                    // Stats reflect single transaction only
+                    assertThat(march.getCashFlowStats().getOutflowStats().actual())
+                            .as("outflowStats.actual must be 500 USD, not 1000 USD (no inflation from redelivery)")
+                            .isEqualTo(Money.of(500, "USD"));
+
+                    assertThat(cat.getTotalPaidValue())
+                            .as("totalPaidValue must be 500 USD, not 1000 USD")
+                            .isEqualTo(Money.of(500, "USD"));
+                });
+    }
+
+    /**
+     * Simulates Kafka redelivery of PaidCashChangeAppendedEvent.
+     */
+    @Test
+    public void shouldNotInflateStatsOnPaidCashChangeRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Paid Redelivery Test"),
+                new Description("Testing stats idempotency for paid events"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        CashFlowEvent.PaidCashChangeAppendedEvent event =
+                new CashFlowEvent.PaidCashChangeAppendedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Salary"),
+                        new Description("monthly salary"),
+                        Money.of(5000, "USD"),
+                        INFLOW,
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        false
+                );
+
+        // Emit same event TWICE
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    CashCategory cat = june.findCategoryInflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+
+                    assertThat(june.getCashFlowStats().getInflowStats().actual())
+                            .as("inflowStats.actual must be 5000 USD, not 10000 USD")
+                            .isEqualTo(Money.of(5000, "USD"));
+                });
+    }
+
+    /**
+     * Simulates Kafka redelivery of ExpectedCashChangeAppendedEvent.
+     */
+    @Test
+    public void shouldNotInflateStatsOnExpectedCashChangeRedelivery() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId cashChangeId = TestIds.nextCashChangeId();
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Expected Redelivery Test"),
+                new Description("Testing stats idempotency for expected events"),
+                BankAccount.fromIban("bank", "GB29NWBK60161331926819",
+                        Currency.of("USD"), Money.of(10000, "USD"), null),
+                ZonedDateTime.parse("2021-06-01T06:30:00Z")
+        ));
+
+        CashFlowEvent.ExpectedCashChangeAppendedEvent event =
+                new CashFlowEvent.ExpectedCashChangeAppendedEvent(
+                        cashFlowId,
+                        cashChangeId,
+                        new Name("Rent"),
+                        new Description("monthly rent"),
+                        Money.of(2000, "USD"),
+                        OUTFLOW,
+                        ZonedDateTime.parse("2021-06-01T06:30:00Z"),
+                        new CategoryName("Uncategorized"),
+                        ZonedDateTime.parse("2021-06-15T06:30:00Z"),
+                        null,
+                        false
+                );
+
+        // Emit same event TWICE
+        emit(event);
+        Checksum lastChecksum = emit(event);
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
+                    assertThat(june).isNotNull();
+
+                    CashCategory cat = june.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();
+                    assertThat(cat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
+
+                    assertThat(june.getCashFlowStats().getOutflowStats().expected())
+                            .as("outflowStats.expected must be 2000 USD, not 4000 USD")
+                            .isEqualTo(Money.of(2000, "USD"));
                 });
     }
 

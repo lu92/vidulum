@@ -75,7 +75,8 @@ public interface CashFlowServiceClient {
             String currency,
             Type type,
             LocalDate dueDate,
-            LocalDate paidDate
+            LocalDate paidDate,
+            boolean selfTransfer
     ) {}
 
     /**

@@ -16,5 +16,6 @@ public record CashChangeSnapshot(
         ZonedDateTime created,
         ZonedDateTime dueDate,
         ZonedDateTime endDate,
-        String sourceRuleId) {
+        String sourceRuleId,
+        boolean selfTransfer) {
 }

@@ -33,11 +33,21 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                             currentTransaction.transactionDetails().getMoney(),
                             currentTransaction.transactionDetails().getCreated(),
                             currentTransaction.transactionDetails().getDueDate(),
-                            event.endDate()),
+                            event.endDate(),
+                            currentTransaction.transactionDetails().isSelfTransfer()),
                     PAID
             );
 
-            if (Type.INFLOW.equals(location.type())) {
+            // VID-161 Phase 1b: route via locate's selfTransfer flag (Q8 decision)
+            if (location.selfTransfer()) {
+                if (Type.INFLOW.equals(location.type())) {
+                    cashFlowMonthlyForecast.removeFromSelfTransferInflows(location.categoryName(), currentTransaction);
+                    cashFlowMonthlyForecast.addToSelfTransferInflows(location.categoryName(), updatedTransaction);
+                } else {
+                    cashFlowMonthlyForecast.removeFromSelfTransferOutflows(location.categoryName(), currentTransaction);
+                    cashFlowMonthlyForecast.addToSelfTransferOutflows(location.categoryName(), updatedTransaction);
+                }
+            } else if (Type.INFLOW.equals(location.type())) {
                 cashFlowMonthlyForecast.removeFromInflows(location.categoryName(), currentTransaction);
                 cashFlowMonthlyForecast.addToInflows(location.categoryName(), updatedTransaction);
 

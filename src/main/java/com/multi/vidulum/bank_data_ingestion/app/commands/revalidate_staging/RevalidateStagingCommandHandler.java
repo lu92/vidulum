@@ -96,6 +96,14 @@ public class RevalidateStagingCommandHandler
         int patternMatchedCount = 0;
         int reCategorizedCount = 0;
         for (StagedTransaction st : stagedTransactions) {
+            // Priority -1 (absolute highest): self-transfers are never re-categorized.
+            // They were detected by IBAN match in StageTransactionsCommandHandler and must
+            // remain as-is regardless of pattern matching results.
+            if (st.mappedData() != null && st.mappedData().selfTransfer()) {
+                updatedTransactions.add(st);
+                continue;
+            }
+
             String bankCategory = st.originalData().bankCategory();
 
             // PRIORITY 1 (HIGHEST): Try pattern matching FIRST for ALL transactions
@@ -285,7 +293,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate
@@ -328,7 +337,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate
@@ -363,7 +373,8 @@ public class RevalidateStagingCommandHandler
                 original.originalData().type(),
                 original.originalData().paidDate(),
                 original.originalData().merchant(),
-                original.originalData().merchantConfidence()
+                original.originalData().merchantConfidence(),
+                false
         );
 
         // Validate

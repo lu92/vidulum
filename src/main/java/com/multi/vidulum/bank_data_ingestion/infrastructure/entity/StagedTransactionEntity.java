@@ -114,6 +114,7 @@ public class StagedTransactionEntity {
         private Date paidDate;
         private String merchant;
         private Double merchantConfidence;
+        private boolean selfTransfer;
 
         public static MappedDataDocument fromDomain(MappedTransactionData data) {
             return MappedDataDocument.builder()
@@ -127,6 +128,7 @@ public class StagedTransactionEntity {
                     .paidDate(Date.from(data.paidDate().toInstant()))
                     .merchant(data.merchant())
                     .merchantConfidence(data.merchantConfidence())
+                    .selfTransfer(data.selfTransfer())
                     .build();
         }
 
@@ -140,7 +142,8 @@ public class StagedTransactionEntity {
                     type,
                     ZonedDateTime.ofInstant(paidDate.toInstant(), ZoneOffset.UTC),
                     merchant,
-                    merchantConfidence
+                    merchantConfidence,
+                    selfTransfer
             );
         }
     }
