@@ -37,8 +37,11 @@ public final class CashFlowForecastDto {
         private CashFlowStatsJson cashFlowStats;
         private List<CashCategoryJson> categorizedInFlows;
         private List<CashCategoryJson> categorizedOutFlows;
-        /** VID-161 Phase 1b: self-transfers bucketed separately from budget aggregates. */
+        /** @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag. */
+        @Deprecated
         private List<CashCategoryJson> selfTransferInFlows;
+        /** @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag. */
+        @Deprecated
         private List<CashCategoryJson> selfTransferOutFlows;
         private String status;
         private AttestationJson attestation;
@@ -54,6 +57,16 @@ public final class CashFlowForecastDto {
         private Money netChange;
         private CashSummaryJson inflowStats;
         private CashSummaryJson outflowStats;
+        private SelfTransferStatsJson selfTransferStats;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SelfTransferStatsJson {
+        private Money outflow;
+        private Money inflow;
     }
 
     @Data
@@ -91,6 +104,8 @@ public final class CashFlowForecastDto {
         private ZonedDateTime validTo;
         /** Origin of this category (SYSTEM, IMPORTED, USER_CREATED) */
         private String origin;
+        /** Whether this category holds self-transfer transactions (excluded from budget stats) */
+        private boolean selfTransferCategory;
     }
 
     @Data

@@ -26,6 +26,7 @@ public class CashCategoryEntity {
     private Date validFrom;
     private Date validTo;
     private String origin;
+    private boolean selfTransferCategory;
 
     public static CashCategoryEntity fromDomain(CashCategory cashCategory) {
         if (cashCategory == null) {
@@ -57,6 +58,7 @@ public class CashCategoryEntity {
                 .validFrom(validFromDate)
                 .validTo(validToDate)
                 .origin(cashCategory.getOrigin() != null ? cashCategory.getOrigin().name() : null)
+                .selfTransferCategory(cashCategory.isSelfTransferCategory())
                 .build();
     }
 
@@ -88,6 +90,7 @@ public class CashCategoryEntity {
                 .validFrom(validFromDateTime)
                 .validTo(validToDateTime)
                 .origin(originValue)
+                .selfTransferCategory(selfTransferCategory)
                 .build();
     }
 

@@ -68,7 +68,7 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("T4: import with selfTransfer=true routes the transaction to selfTransferOutFlows")
+    @DisplayName("T4: import with selfTransfer=true routes the transaction to categorizedOutFlows with selfTransferCategory flag")
     void shouldRouteSelfTransferImportToSelfTransferOutflows() {
         profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
                 PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao - życie"));
@@ -103,14 +103,17 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
         );
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            TransactionDetails actual = paidTransactionInSelfTransferOutFlows(cashFlowId, YearMonth.of(2021, 1), "Przelewy własne");
+            CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 1));
+            TransactionDetails actual = paidTransactionInCategorizedOutFlowsDeep(monthly, "Przelewy własne");
             assertThat(actual)
                     .usingRecursiveComparison()
                     .ignoringFields("created")
                     .isEqualTo(expectedDetails);
-        });
 
-        assertNoSelfTransferLeakageToCategorizedOutFlows(cashFlowId, YearMonth.of(2021, 1));
+            // Category must be marked as selfTransferCategory
+            CashCategory selfTransferCat = findCategoryInTreeByName(monthly.getCategorizedOutFlows(), "Przelewy własne");
+            assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -202,7 +205,7 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
             CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 3));
 
             // Whole-object comparison of the transaction in regular category
-            TransactionDetails actualDetails = paidTransactionInCategorizedOutFlows(monthly, "Wydatki");
+            TransactionDetails actualDetails = paidTransactionInCategorizedOutFlowsDeep(monthly, "Wydatki");
             assertThat(actualDetails)
                     .usingRecursiveComparison()
                     .ignoringFields("created")
@@ -262,11 +265,15 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 4));
 
-            TransactionDetails actualDetails = paidTransactionInSelfTransferInFlows(monthly, "Przelewy własne");
+            TransactionDetails actualDetails = paidTransactionInCategorizedInflowsDeep(monthly, "Przelewy własne");
             assertThat(actualDetails)
                     .usingRecursiveComparison()
                     .ignoringFields("created")
                     .isEqualTo(expectedDetails);
+
+            // Category must be marked as selfTransferCategory
+            CashCategory selfTransferCat = findCategoryInTreeByName(monthly.getCategorizedInFlows(), "Przelewy własne");
+            assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
 
             assertThat(monthly.getCashFlowStats().getInflowStats())
                     .usingRecursiveComparison()
@@ -351,22 +358,22 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
         var importResult = ingestionActor.startImport(cashFlowId, sessionId);
         assertThat(importResult.getStatus()).isEqualTo("COMPLETED");
 
-        // Verify: self-transfer transaction lands in selfTransferOutFlows (not categorizedOutFlows)
+        // Verify: self-transfer transaction lands in categorizedOutFlows under "Przelewy własne" with selfTransferCategory flag
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, YearMonth.of(2021, 1));
 
-            // Self-transfer in selfTransferOutFlows
-            TransactionDetails selfTransferTxn = paidTransactionInSelfTransferOutFlows(
-                    cashFlowId, YearMonth.of(2021, 1), "Przelewy własne");
+            // Self-transfer in categorizedOutFlows tree (under "Przelewy własne")
+            TransactionDetails selfTransferTxn = paidTransactionInCategorizedOutFlowsDeep(monthly, "Przelewy własne");
             assertThat(selfTransferTxn.getName().name()).isEqualTo("Lucjan Bik Pekao");
             assertThat(selfTransferTxn.isSelfTransfer()).isTrue();
+
+            // Category marked as selfTransferCategory
+            CashCategory selfTransferCat = findCategoryInTreeByName(monthly.getCategorizedOutFlows(), "Przelewy własne");
+            assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
 
             // Regular transaction in categorizedOutFlows
             assertThat(monthly.getCategorizedOutFlows())
                     .anyMatch(cat -> cat.getCategoryName().name().equals("Uncategorized"));
-
-            // Self-transfer NOT in categorizedOutFlows
-            assertNoSelfTransferLeakageToCategorizedOutFlows(cashFlowId, YearMonth.of(2021, 1));
 
             // Budget excludes self-transfer (only 150 PLN from Biedronka)
             CashSummary outflowStats = monthly.getCashFlowStats().getOutflowStats();
@@ -471,39 +478,8 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
         return monthly;
     }
 
-    private TransactionDetails paidTransactionInSelfTransferOutFlows(String cashFlowId, YearMonth period, String categoryName) {
-        CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, period);
-        CashCategory cat = monthly.getSelfTransferOutFlows().stream()
-                .filter(c -> c.getCategoryName().name().equals(categoryName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Self-transfer outflow category not found: " + categoryName));
-        List<TransactionDetails> paid = cat.getGroupedTransactions().getTransactions().get(PaymentStatus.PAID);
-        if (paid == null || paid.isEmpty()) {
-            throw new IllegalStateException("No PAID transactions in self-transfer outflow category " + categoryName);
-        }
-        return paid.get(0);
-    }
-
-    private TransactionDetails paidTransactionInSelfTransferInFlows(CashFlowMonthlyForecast monthly, String categoryName) {
-        CashCategory cat = monthly.getSelfTransferInFlows().stream()
-                .filter(c -> c.getCategoryName().name().equals(categoryName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Self-transfer inflow category not found: " + categoryName));
-        List<TransactionDetails> paid = cat.getGroupedTransactions().getTransactions().get(PaymentStatus.PAID);
-        if (paid == null || paid.isEmpty()) {
-            throw new IllegalStateException("No PAID transactions in self-transfer inflow category " + categoryName);
-        }
-        return paid.get(0);
-    }
-
-    private TransactionDetails paidTransactionInCategorizedOutFlows(CashFlowMonthlyForecast monthly, String categoryName) {
-        CashCategory cat = monthly.getCategorizedOutFlows().stream()
-                .filter(c -> c.getCategoryName().name().equals(categoryName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Categorized outflow category not found: " + categoryName));
+    private TransactionDetails paidTransactionInCategorizedOutFlowsDeep(CashFlowMonthlyForecast monthly, String categoryName) {
+        CashCategory cat = findCategoryInTreeByName(monthly.getCategorizedOutFlows(), categoryName);
         List<TransactionDetails> paid = cat.getGroupedTransactions().getTransactions().get(PaymentStatus.PAID);
         if (paid == null || paid.isEmpty()) {
             throw new IllegalStateException("No PAID transactions in categorized outflow category " + categoryName);
@@ -511,10 +487,25 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
         return paid.get(0);
     }
 
-    private void assertNoSelfTransferLeakageToCategorizedOutFlows(String cashFlowId, YearMonth period) {
-        CashFlowMonthlyForecast monthly = monthlyForecast(cashFlowId, period);
-        assertThat(monthly.getCategorizedOutFlows())
-                .as("Self-transfer must not appear in regular categorized outflows for period %s", period)
-                .noneMatch(cat -> cat.getCategoryName().name().equals("Przelewy własne"));
+    private TransactionDetails paidTransactionInCategorizedInflowsDeep(CashFlowMonthlyForecast monthly, String categoryName) {
+        CashCategory cat = findCategoryInTreeByName(monthly.getCategorizedInFlows(), categoryName);
+        List<TransactionDetails> paid = cat.getGroupedTransactions().getTransactions().get(PaymentStatus.PAID);
+        if (paid == null || paid.isEmpty()) {
+            throw new IllegalStateException("No PAID transactions in categorized inflow category " + categoryName);
+        }
+        return paid.get(0);
+    }
+
+    private CashCategory findCategoryInTreeByName(List<CashCategory> categories, String name) {
+        java.util.Stack<CashCategory> stack = new java.util.Stack<>();
+        categories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory cat = stack.pop();
+            if (cat.getCategoryName().name().equals(name)) {
+                return cat;
+            }
+            cat.getSubCategories().forEach(stack::push);
+        }
+        throw new IllegalStateException("Category not found in tree: " + name);
     }
 }

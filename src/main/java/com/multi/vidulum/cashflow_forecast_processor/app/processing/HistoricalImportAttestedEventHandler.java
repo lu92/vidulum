@@ -32,6 +32,7 @@ public class HistoricalImportAttestedEventHandler implements CashFlowEventHandle
         // Change all IMPORT_PENDING months to IMPORTED
         for (CashFlowMonthlyForecast forecast : statement.getForecasts().values()) {
             if (forecast.getStatus() == CashFlowMonthlyForecast.Status.IMPORT_PENDING) {
+                forecast.updateTotalPaidValue();
                 forecast.setStatus(CashFlowMonthlyForecast.Status.IMPORTED);
                 updatedCount++;
             }

@@ -126,11 +126,13 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
 
         if (selfTransfer) {
             if (Type.INFLOW.equals(type)) {
-                oldForecast.removeFromSelfTransferInflows(oldCategory, oldTransaction);
-                newForecast.addToSelfTransferInflows(newCategory, newTransaction);
+                oldForecast.removeFromInflowsWithoutStats(oldCategory, oldTransaction);
+                newForecast.addToInflowsWithoutStats(newCategory, newTransaction);
+                newForecast.markCategoryAsSelfTransfer(newCategory, Type.INFLOW);
             } else {
-                oldForecast.removeFromSelfTransferOutflows(oldCategory, oldTransaction);
-                newForecast.addToSelfTransferOutflows(newCategory, newTransaction);
+                oldForecast.removeFromOutflowsWithoutStats(oldCategory, oldTransaction);
+                newForecast.addToOutflowsWithoutStats(newCategory, newTransaction);
+                newForecast.markCategoryAsSelfTransfer(newCategory, Type.OUTFLOW);
             }
         } else if (Type.INFLOW.equals(type)) {
             oldForecast.removeFromInflows(oldCategory, oldTransaction);
@@ -141,22 +143,7 @@ public class CashChangeEditedEventHandler implements CashFlowEventHandler<CashFl
         }
     }
 
-    /**
-     * Finds a category in the forecast by type and name.
-     * VID-161 Phase 1b: when selfTransfer, searches selfTransfer sections.
-     */
     private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName, boolean selfTransfer) {
-        if (selfTransfer) {
-            if (Type.INFLOW.equals(type)) {
-                return forecast.findCategoryInSelfTransferInflowsByName(categoryName)
-                        .orElseThrow(() -> new IllegalStateException(
-                                String.format("Cannot find self-transfer inflow category [%s]", categoryName)));
-            } else {
-                return forecast.findCategoryInSelfTransferOutflowsByName(categoryName)
-                        .orElseThrow(() -> new IllegalStateException(
-                                String.format("Cannot find self-transfer outflow category [%s]", categoryName)));
-            }
-        }
         if (Type.INFLOW.equals(type)) {
             return forecast.findCategoryInflowsByCategoryName(categoryName)
                     .orElseThrow(() -> new IllegalStateException(

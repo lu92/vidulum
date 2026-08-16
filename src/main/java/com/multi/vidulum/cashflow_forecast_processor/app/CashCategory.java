@@ -41,6 +41,9 @@ public class CashCategory {
     /** Origin of this category (SYSTEM, IMPORTED, USER_CREATED) */
     private CategoryOrigin origin;
 
+    /** Whether this category holds self-transfer transactions (excluded from budget stats) */
+    private boolean selfTransferCategory;
+
     /**
      * Archive this category, marking it as hidden for new transactions.
      */

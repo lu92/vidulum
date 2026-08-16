@@ -79,11 +79,13 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
                 // Move transaction to new category
                 if (selfTransfer) {
                     if (Type.INFLOW.equals(location.type())) {
-                        forecast.removeFromSelfTransferInflows(location.categoryName(), oldTransaction);
-                        forecast.addToSelfTransferInflows(newCategoryName, newTransaction);
+                        forecast.removeFromInflowsWithoutStats(location.categoryName(), oldTransaction);
+                        forecast.addToInflowsWithoutStats(newCategoryName, newTransaction);
+                        forecast.markCategoryAsSelfTransfer(newCategoryName, Type.INFLOW);
                     } else {
-                        forecast.removeFromSelfTransferOutflows(location.categoryName(), oldTransaction);
-                        forecast.addToSelfTransferOutflows(newCategoryName, newTransaction);
+                        forecast.removeFromOutflowsWithoutStats(location.categoryName(), oldTransaction);
+                        forecast.addToOutflowsWithoutStats(newCategoryName, newTransaction);
+                        forecast.markCategoryAsSelfTransfer(newCategoryName, Type.OUTFLOW);
                     }
                 } else if (Type.INFLOW.equals(location.type())) {
                     forecast.removeFromInflows(location.categoryName(), oldTransaction);
@@ -123,13 +125,6 @@ public class CashChangesBatchUpdatedEventHandler implements CashFlowEventHandler
     }
 
     private CashCategory findCategory(CashFlowMonthlyForecast forecast, Type type, CategoryName categoryName, boolean selfTransfer) {
-        if (selfTransfer) {
-            if (Type.INFLOW.equals(type)) {
-                return forecast.findCategoryInSelfTransferInflowsByName(categoryName).orElse(null);
-            } else {
-                return forecast.findCategoryInSelfTransferOutflowsByName(categoryName).orElse(null);
-            }
-        }
         if (Type.INFLOW.equals(type)) {
             return forecast.findCategoryInflowsByCategoryName(categoryName).orElse(null);
         } else {

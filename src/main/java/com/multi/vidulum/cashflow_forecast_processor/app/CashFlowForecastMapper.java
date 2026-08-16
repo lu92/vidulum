@@ -1,10 +1,14 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
+import com.multi.vidulum.common.Money;
 import org.springframework.stereotype.Component;
 
 import java.time.YearMonth;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
@@ -37,7 +41,7 @@ public class CashFlowForecastMapper {
     private CashFlowForecastDto.CashFlowMonthlyForecastJson mapMonthlyForecast(CashFlowMonthlyForecast forecast) {
         return CashFlowForecastDto.CashFlowMonthlyForecastJson.builder()
                 .period(forecast.getPeriod().toString())
-                .cashFlowStats(mapCashFlowStats(forecast.getCashFlowStats()))
+                .cashFlowStats(mapCashFlowStats(forecast.getCashFlowStats(), forecast))
                 .categorizedInFlows(mapCashCategories(forecast.getCategorizedInFlows()))
                 .categorizedOutFlows(mapCashCategories(forecast.getCategorizedOutFlows()))
                 .selfTransferInFlows(mapCashCategories(forecast.getSelfTransferInFlows()))
@@ -47,13 +51,14 @@ public class CashFlowForecastMapper {
                 .build();
     }
 
-    private CashFlowForecastDto.CashFlowStatsJson mapCashFlowStats(CashFlowStats stats) {
+    private CashFlowForecastDto.CashFlowStatsJson mapCashFlowStats(CashFlowStats stats, CashFlowMonthlyForecast forecast) {
         return CashFlowForecastDto.CashFlowStatsJson.builder()
                 .start(stats.getStart())
                 .end(stats.getEnd())
                 .netChange(stats.getNetChange())
                 .inflowStats(mapCashSummary(stats.getInflowStats()))
                 .outflowStats(mapCashSummary(stats.getOutflowStats()))
+                .selfTransferStats(computeSelfTransferStats(forecast, stats.getStart().getCurrency()))
                 .build();
     }
 
@@ -89,6 +94,7 @@ public class CashFlowForecastMapper {
                 .validFrom(category.getValidFrom())
                 .validTo(category.getValidTo())
                 .origin(ofNullable(category.getOrigin()).map(Enum::name).orElse(null))
+                .selfTransferCategory(category.isSelfTransferCategory())
                 .build();
     }
 
@@ -168,5 +174,32 @@ public class CashFlowForecastMapper {
                 .validTo(node.getValidTo())
                 .origin(ofNullable(node.getOrigin()).map(Enum::name).orElse(null))
                 .build();
+    }
+
+    private CashFlowForecastDto.SelfTransferStatsJson computeSelfTransferStats(CashFlowMonthlyForecast forecast, String currency) {
+        Money outflow = flattenCategories(forecast.getCategorizedOutFlows()).stream()
+                .filter(CashCategory::isSelfTransferCategory)
+                .map(CashCategory::getTotalPaidValue)
+                .reduce(Money.zero(currency), Money::plus);
+        Money inflow = flattenCategories(forecast.getCategorizedInFlows()).stream()
+                .filter(CashCategory::isSelfTransferCategory)
+                .map(CashCategory::getTotalPaidValue)
+                .reduce(Money.zero(currency), Money::plus);
+        return new CashFlowForecastDto.SelfTransferStatsJson(outflow, inflow);
+    }
+
+    private List<CashCategory> flattenCategories(List<CashCategory> cashCategories) {
+        if (cashCategories == null) {
+            return new LinkedList<>();
+        }
+        Stack<CashCategory> stack = new Stack<>();
+        List<CashCategory> outcome = new LinkedList<>();
+        cashCategories.forEach(stack::push);
+        while (!stack.isEmpty()) {
+            CashCategory takenCashCategory = stack.pop();
+            outcome.add(takenCashCategory);
+            takenCashCategory.getSubCategories().forEach(stack::push);
+        }
+        return outcome;
     }
 }
