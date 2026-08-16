@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VID-151: Data Flow Diagram - CSV Import to CashFlow Forecast</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d9ff;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        .legend-preserved { background: #2ecc71; }
+        .legend-lost { background: #e74c3c; }
+        .legend-partial { background: #f39c12; }
+        .legend-new { background: #9b59b6; }
+
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .step {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00d9ff, #0066ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00d9ff;
+        }
+
+        .step-class {
+            font-size: 12px;
+            color: #888;
+            font-family: 'Consolas', monospace;
+            margin-top: 4px;
+        }
+
+        .fields-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .field {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field-preserved {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid rgba(46, 204, 113, 0.5);
+        }
+
+        .field-lost {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.5);
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .field-partial {
+            background: rgba(243, 156, 18, 0.2);
+            border: 1px solid rgba(243, 156, 18, 0.5);
+        }
+
+        .field-new {
+            background: rgba(155, 89, 182, 0.2);
+            border: 1px solid rgba(155, 89, 182, 0.5);
+        }
+
+        .field-icon {
+            font-size: 14px;
+        }
+
+        .arrow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+            color: #00d9ff;
+            font-size: 24px;
+        }
+
+        .arrow-label {
+            font-size: 11px;
+            color: #888;
+            margin-left: 10px;
+        }
+
+        .data-loss-alert {
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .data-loss-alert strong {
+            color: #e74c3c;
+        }
+
+        .improvement-section {
+            background: rgba(46, 204, 113, 0.1);
+            border: 2px solid rgba(46, 204, 113, 0.4);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 40px;
+        }
+
+        .improvement-section h2 {
+            color: #2ecc71;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .improvement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .improvement-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .improvement-card h3 {
+            color: #00d9ff;
+            font-size: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .improvement-card p {
+            font-size: 13px;
+            color: #bbb;
+            line-height: 1.5;
+        }
+
+        .impact-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .impact-high {
+            background: #2ecc71;
+            color: #000;
+        }
+
+        .impact-medium {
+            background: #f39c12;
+            color: #000;
+        }
+
+        .impact-low {
+            background: #3498db;
+            color: #fff;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .problem-highlight {
+            background: linear-gradient(90deg, rgba(231, 76, 60, 0.3), transparent);
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .problem-highlight h4 {
+            color: #e74c3c;
+            margin-bottom: 8px;
+        }
+
+        .solution-highlight {
+            background: linear-gradient(90deg, rgba(46, 204, 113, 0.3), transparent);
+            border-left: 4px solid #2ecc71;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .solution-highlight h4 {
+            color: #2ecc71;
+            margin-bottom: 8px;
+        }
+
+        .mindbox-example {
+            background: rgba(155, 89, 182, 0.15);
+            border: 1px solid rgba(155, 89, 182, 0.4);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .mindbox-example h3 {
+            color: #9b59b6;
+            margin-bottom: 10px;
+        }
+
+        .mindbox-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .mindbox-table th, .mindbox-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mindbox-table th {
+            color: #9b59b6;
+            font-weight: 600;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+        }
+
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .before {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .after {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .before h4 { color: #e74c3c; }
+        .after h4 { color: #2ecc71; }
+
+        @media (max-width: 768px) {
+            .fields-container {
+                grid-template-columns: 1fr;
+            }
+            .before-after {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 VID-151: Data Flow Analysis</h1>
+    <p class="subtitle">CSV Import → Bank Data Ingestion → CashFlow → Forecast | Analiza traconych danych</p>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box legend-preserved"></div>
+            <span>Pole zachowane</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box legend-lost"></div>
+            <span>Pole tracone</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box legend-partial"></div>
+            <span>Pole częściowo użyte</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box legend-new"></div>
+            <span>Pole wyliczone/dodane</span>
+        </div>
+    </div>
+
+    <div class="flow-container">
+        <!-- STEP 1: CSV File -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <div>
+                    <div class="step-title">📄 Bank CSV File (Nest Bank)</div>
+                    <div class="step-class">lista_operacji_20260111.csv</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-preserved">✓ Data operacji</div>
+                <div class="field field-preserved">✓ Data księgowania</div>
+                <div class="field field-preserved">✓ Typ operacji</div>
+                <div class="field field-preserved">✓ Kwota</div>
+                <div class="field field-preserved">✓ Waluta</div>
+                <div class="field field-preserved">✓ Tytuł operacji</div>
+                <div class="field field-preserved">✓ <strong>Numer rachunku</strong></div>
+                <div class="field field-preserved">✓ Opis dodatkowy</div>
+                <div class="field field-preserved">✓ Saldo po operacji</div>
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">AI Transform (AiBankCsvTransformService)</span></div>
+
+        <!-- STEP 2: BankCsvRow -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <div>
+                    <div class="step-title">🔄 BankCsvRow (Canonical Format)</div>
+                    <div class="step-class">CsvParserService.parseRow()</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-preserved">✓ bankTransactionId</div>
+                <div class="field field-preserved">✓ name</div>
+                <div class="field field-preserved">✓ description</div>
+                <div class="field field-preserved">✓ bankCategory</div>
+                <div class="field field-preserved">✓ amount</div>
+                <div class="field field-preserved">✓ currency</div>
+                <div class="field field-preserved">✓ type (INFLOW/OUTFLOW)</div>
+                <div class="field field-preserved">✓ operationDate</div>
+                <div class="field field-preserved">✓ bookingDate</div>
+                <div class="field field-preserved"><strong>✓ sourceAccountNumber</strong></div>
+                <div class="field field-preserved"><strong>✓ targetAccountNumber</strong></div>
+                <div class="field field-new">+ merchant (AI extracted)</div>
+                <div class="field field-new">+ merchantConfidence</div>
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">StageTransactionsCommand</span></div>
+
+        <!-- STEP 3: BankTransaction -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <div>
+                    <div class="step-title">⚠️ StageTransactionsCommand.BankTransaction</div>
+                    <div class="step-class">StageTransactionsCommandHandler</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-preserved">✓ bankTransactionId</div>
+                <div class="field field-preserved">✓ name</div>
+                <div class="field field-preserved">✓ description</div>
+                <div class="field field-preserved">✓ bankCategory</div>
+                <div class="field field-preserved">✓ money (amount+currency)</div>
+                <div class="field field-preserved">✓ type</div>
+                <div class="field field-partial">⚡ paidDate (from operationDate)</div>
+                <div class="field field-preserved">✓ merchant</div>
+                <div class="field field-preserved">✓ merchantConfidence</div>
+                <div class="field field-lost">✗ sourceAccountNumber</div>
+                <div class="field field-lost">✗ targetAccountNumber</div>
+                <div class="field field-lost">✗ bookingDate</div>
+            </div>
+            <div class="data-loss-alert">
+                <strong>🚨 CRITICAL DATA LOSS:</strong> sourceAccountNumber i targetAccountNumber są tracone tutaj!
+                To uniemożliwia grupowanie transakcji po numerze konta kontrahenta (np. wszystkie przelewy od Mindbox).
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">PatternDeduplicator.deduplicate()</span></div>
+
+        <!-- STEP 4: PatternGroup -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">4</div>
+                <div>
+                    <div class="step-title">🔍 PatternDeduplicator → PatternGroup</div>
+                    <div class="step-class">Grupowanie transakcji dla AI Categorization</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-new">+ pattern (normalized)</div>
+                <div class="field field-preserved">✓ sampleTransaction (name)</div>
+                <div class="field field-preserved">✓ sampleMerchant</div>
+                <div class="field field-preserved">✓ avgMerchantConfidence</div>
+                <div class="field field-preserved">✓ sampleDescription</div>
+                <div class="field field-preserved">✓ type</div>
+                <div class="field field-new">+ transactionCount</div>
+                <div class="field field-new">+ totalAmount</div>
+                <div class="field field-preserved">✓ bankCategory</div>
+                <div class="field field-new">+ transactionIds[]</div>
+                <div class="field field-lost">✗ counterpartyAccount</div>
+            </div>
+
+            <div class="problem-highlight">
+                <h4>🎯 Problem: Brak grupowania po numerze konta</h4>
+                <p>PatternDeduplicator grupuje po <code>effectiveMerchant()</code> (merchant lub name), ale nie ma dostępu do numeru konta.
+                Transakcje Mindbox z różnymi nazwami firmowymi trafiają do różnych grup mimo tego samego numeru konta!</p>
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">AiCategorizationPromptBuilder</span></div>
+
+        <!-- STEP 5: AI Prompt -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">5</div>
+                <div>
+                    <div class="step-title">🤖 AI Categorization Prompt</div>
+                    <div class="step-class">AiCategorizationService.categorize()</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-preserved">✓ pattern</div>
+                <div class="field field-preserved">✓ sampleTransaction</div>
+                <div class="field field-preserved">✓ sampleMerchant</div>
+                <div class="field field-preserved">✓ sampleDescription</div>
+                <div class="field field-preserved">✓ type</div>
+                <div class="field field-preserved">✓ transactionCount</div>
+                <div class="field field-preserved">✓ totalAmount</div>
+                <div class="field field-preserved">✓ bankCategory</div>
+                <div class="field field-lost">✗ counterpartyAccount</div>
+            </div>
+
+            <div class="problem-highlight">
+                <h4>🎯 Problem: AI nie wie o powiązaniu transakcji</h4>
+                <p>AI widzi 3 osobne pattern dla Mindbox zamiast jednej grupy.
+                Gdyby miał <code>counterpartyAccount</code>, mógłby je połączyć!</p>
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">ImportTransactionRequest</span></div>
+
+        <!-- STEP 6: CashFlow Import -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">6</div>
+                <div>
+                    <div class="step-title">💾 CashFlow Import (CashChange)</div>
+                    <div class="step-class">StartImportJobCommandHandler → CashFlowServiceClient</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-new">+ categoryName (from mapping)</div>
+                <div class="field field-preserved">✓ name</div>
+                <div class="field field-preserved">✓ description</div>
+                <div class="field field-preserved">✓ amount</div>
+                <div class="field field-preserved">✓ currency</div>
+                <div class="field field-preserved">✓ type</div>
+                <div class="field field-preserved">✓ dueDate (paidDate)</div>
+                <div class="field field-preserved">✓ paidDate</div>
+                <div class="field field-lost">✗ merchant</div>
+                <div class="field field-lost">✗ merchantConfidence</div>
+                <div class="field field-lost">✗ bankTransactionId</div>
+                <div class="field field-lost">✗ bankCategory</div>
+            </div>
+            <div class="data-loss-alert">
+                <strong>🚨 MORE DATA LOSS:</strong> merchant i merchantConfidence są tracone przy imporcie do CashFlow!
+                ImportTransactionRequest ich nie zawiera mimo że były dostępne w MappedTransactionData.
+            </div>
+        </div>
+
+        <div class="arrow">↓ <span class="arrow-label">Kafka Events → CashFlowForecastProcessor</span></div>
+
+        <!-- STEP 7: Forecast -->
+        <div class="step">
+            <div class="step-header">
+                <div class="step-number">7</div>
+                <div>
+                    <div class="step-title">📈 CashFlow Forecast Statement</div>
+                    <div class="step-class">TransactionDetails (minimal data)</div>
+                </div>
+            </div>
+            <div class="fields-container">
+                <div class="field field-new">+ cashChangeId</div>
+                <div class="field field-preserved">✓ name</div>
+                <div class="field field-preserved">✓ money</div>
+                <div class="field field-preserved">✓ created</div>
+                <div class="field field-preserved">✓ dueDate</div>
+                <div class="field field-preserved">✓ endDate</div>
+                <div class="field field-lost">✗ description</div>
+                <div class="field field-lost">✗ categoryName (as key only)</div>
+                <div class="field field-lost">✗ merchant</div>
+                <div class="field field-lost">✗ bankTransactionId</div>
+                <div class="field field-lost">✗ counterpartyAccount</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MINDBOX EXAMPLE -->
+    <div class="mindbox-example">
+        <h3>📋 Przykład: Transakcje Mindbox (51 rekordów, 1 numer konta)</h3>
+        <table class="mindbox-table">
+            <tr>
+                <th>Pole CSV</th>
+                <th>Wartości (różne)</th>
+                <th>Problem w kategoryzacji</th>
+            </tr>
+            <tr>
+                <td><code>name</code></td>
+                <td>
+                    "MINDBOX SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ..."<br>
+                    "MINDBOX SPÓŁKA AKCYJNA..."<br>
+                    "Mindbox S.A."
+                </td>
+                <td>PatternDeduplicator tworzy 3 różne grupy!</td>
+            </tr>
+            <tr>
+                <td><code>sourceAccountNumber</code></td>
+                <td><strong>82109018830000000109874194</strong> (ZAWSZE TEN SAM)</td>
+                <td>To pole jest TRACONE przed PatternDeduplicator!</td>
+            </tr>
+            <tr>
+                <td>Obecny wynik</td>
+                <td colspan="2" style="color: #e74c3c;">
+                    AI widzi 3 grupy → może zasugerować 3 różne kategorie<br>
+                    Pattern 1: "MINDBOX SPÓŁKA OGRANICZONĄ" → Wynagrodzenie?<br>
+                    Pattern 2: "MINDBOX SPÓŁKA AKCYJNA" → Przychody z działalności?<br>
+                    Pattern 3: "MINDBOX S.A." → Inne?
+                </td>
+            </tr>
+            <tr>
+                <td>Po naprawie</td>
+                <td colspan="2" style="color: #2ecc71;">
+                    AI widzi 1 grupę (51 txn, ten sam counterpartyAccount) → 1 spójna kategoria<br>
+                    Pattern: "MINDBOX" (grouped by account 82109018830000000109874194) → Wynagrodzenie ✓
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-value" style="color: #e74c3c;">4</div>
+            <div class="stat-label">Pola tracone w kroku 3<br>(sourceAccount, targetAccount, bookingDate)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: #e74c3c;">4</div>
+            <div class="stat-label">Pola tracone w kroku 6<br>(merchant, confidence, bankTxnId, bankCategory)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: #f39c12;">68%</div>
+            <div class="stat-label">Transakcji trafia do "Uncategorized"<br>(obecny stan)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: #2ecc71;">~15%</div>
+            <div class="stat-label">Prognoza po naprawie<br>(z grupowaniem po koncie)</div>
+        </div>
+    </div>
+
+    <!-- IMPROVEMENT SECTION -->
+    <div class="improvement-section">
+        <h2>🚀 Propozycje Usprawnień</h2>
+
+        <div class="improvement-grid">
+            <div class="improvement-card">
+                <h3>
+                    1. Dodaj counterpartyAccount do przepływu
+                    <span class="impact-badge impact-high">HIGH IMPACT</span>
+                </h3>
+                <p>
+                    Dodaj pole <code>counterpartyAccountNumber</code> do:<br>
+                    • StageTransactionsCommand.BankTransaction<br>
+                    • OriginalTransactionData<br>
+                    • PatternDeduplicator (jako klucz grupowania)<br><br>
+                    <strong>Efekt:</strong> Wszystkie transakcje od tego samego kontrahenta (np. Mindbox)
+                    będą automatycznie grupowane razem, niezależnie od różnic w nazwie firmy.
+                </p>
+            </div>
+
+            <div class="improvement-card">
+                <h3>
+                    2. Grupowanie hybrydowe w PatternDeduplicator
+                    <span class="impact-badge impact-high">HIGH IMPACT</span>
+                </h3>
+                <p>
+                    Nowy algorytm grupowania:<br>
+                    <code>GroupKey = (counterpartyAccount || normalizedPattern, type)</code><br><br>
+                    Priorytet: counterpartyAccount > merchant > name<br><br>
+                    <strong>Efekt:</strong> Transakcje z tym samym kontem kontrahenta trafiają do jednej grupy,
+                    nawet jeśli nazwy/opisy są różne.
+                </p>
+            </div>
+
+            <div class="improvement-card">
+                <h3>
+                    3. Rozszerz AI prompt o counterpartyAccount
+                    <span class="impact-badge impact-medium">MEDIUM</span>
+                </h3>
+                <p>
+                    Dodaj do promptu:<br>
+                    <code>| counterparty: PL82109018830000000109874194</code><br><br>
+                    AI będzie wiedział, że różne nazwy = ten sam kontrahent<br><br>
+                    <strong>Efekt:</strong> Lepsze sugestie kategorii dla powtarzalnych przelewów.
+                </p>
+            </div>
+
+            <div class="improvement-card">
+                <h3>
+                    4. Dodaj MINDBOX do known patterns
+                    <span class="impact-badge impact-low">QUICK FIX</span>
+                </h3>
+                <p>
+                    W <code>TransactionNameNormalizer.KNOWN_SINGLE_WORD_PATTERNS</code>:<br>
+                    <code>"MINDBOX"</code><br><br>
+                    <strong>Efekt:</strong> Szybka naprawa dla Mindbox, ale nie rozwiązuje problemu systemowo.
+                </p>
+            </div>
+
+            <div class="improvement-card">
+                <h3>
+                    5. Zachowaj merchant w CashChange
+                    <span class="impact-badge impact-medium">MEDIUM</span>
+                </h3>
+                <p>
+                    Rozszerz model CashChange o pola:<br>
+                    • <code>merchant: String</code><br>
+                    • <code>merchantConfidence: Double</code><br>
+                    • <code>counterpartyAccount: String</code><br><br>
+                    <strong>Efekt:</strong> Możliwość analizy i raportowania po merchantach.
+                </p>
+            </div>
+
+            <div class="improvement-card">
+                <h3>
+                    6. Pattern cache z counterpartyAccount
+                    <span class="impact-badge impact-high">HIGH IMPACT</span>
+                </h3>
+                <p>
+                    Rozszerz PatternMapping o:<br>
+                    <code>counterpartyAccount: String</code><br><br>
+                    Matching: jeśli transakcja ma ten sam counterpartyAccount co cached pattern,
+                    automatycznie przypisz kategorię bez AI.<br><br>
+                    <strong>Efekt:</strong> Zero AI calls dla znanych kontrahentów.
+                </p>
+            </div>
+        </div>
+
+        <div class="before-after">
+            <div class="before">
+                <h4>❌ PRZED (obecny stan)</h4>
+                <pre style="font-size: 11px; overflow-x: auto;">
+Transakcje Mindbox (51 rekordów):
+
+PatternGroup 1: "MINDBOX SPÓŁKA OGRANICZONĄ"
+  → 23 transakcji, ~750k PLN
+  → AI: "Wynagrodzenie"?
+
+PatternGroup 2: "MINDBOX SPÓŁKA AKCYJNA"
+  → 25 transakcji, ~800k PLN
+  → AI: "Przychody z działalności"?
+
+PatternGroup 3: "MINDBOX S.A."
+  → 3 transakcji, ~400 PLN (faktury)
+  → AI: "Opłaty"?
+
+WYNIK: 3 różne kategorie dla tego samego kontrahenta!
+                </pre>
+            </div>
+            <div class="after">
+                <h4>✅ PO (z counterpartyAccount)</h4>
+                <pre style="font-size: 11px; overflow-x: auto;">
+Transakcje Mindbox (51 rekordów):
+
+PatternGroup 1: account=PL82109018830000000109874194
+  → 51 transakcji (wszystkie!)
+  → type=INFLOW: 48 txn, ~1.5M PLN → "Wynagrodzenie"
+  → type=OUTFLOW: 3 txn, ~400 PLN → "Opłaty/Prowizje"
+
+Lub z podziałem na type:
+
+PatternGroup 1a: account=...874194, INFLOW
+  → 48 transakcji, ~1.5M PLN
+  → AI: "Wynagrodzenie" ✓
+
+PatternGroup 1b: account=...874194, OUTFLOW
+  → 3 transakcji, ~400 PLN
+  → AI: "Opłaty bankowe" ✓
+
+WYNIK: Spójne kategorie dla kontrahenta!
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+        <h3 style="color: #00d9ff; margin-bottom: 15px;">📊 Szacowany wpływ na kategoryzację</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <th style="text-align: left; padding: 10px;">Strategia</th>
+                <th style="text-align: center; padding: 10px;">Effort</th>
+                <th style="text-align: center; padding: 10px;">Obecne "Uncategorized"</th>
+                <th style="text-align: center; padding: 10px;">Po wdrożeniu</th>
+                <th style="text-align: center; padding: 10px;">Poprawa</th>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px;">Baseline (obecny stan)</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center; color: #e74c3c;">68% (539/791)</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px;">+ Quick fixes (A+B+C z backlogu)</td>
+                <td style="text-align: center;">5h</td>
+                <td style="text-align: center;">68%</td>
+                <td style="text-align: center; color: #f39c12;">~19%</td>
+                <td style="text-align: center; color: #2ecc71;">-49%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px;">+ counterpartyAccount grouping</td>
+                <td style="text-align: center;">4-6h</td>
+                <td style="text-align: center;">~19%</td>
+                <td style="text-align: center; color: #2ecc71;">~10%</td>
+                <td style="text-align: center; color: #2ecc71;">-9%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 10px;">+ Pattern cache z account</td>
+                <td style="text-align: center;">3-4h</td>
+                <td style="text-align: center;">~10%</td>
+                <td style="text-align: center; color: #2ecc71;">~5%</td>
+                <td style="text-align: center; color: #2ecc71;">-5%</td>
+            </tr>
+            <tr style="background: rgba(46, 204, 113, 0.1);">
+                <td style="padding: 10px;"><strong>TOTAL (wszystkie strategie)</strong></td>
+                <td style="text-align: center;"><strong>~15h</strong></td>
+                <td style="text-align: center; color: #e74c3c;"><strong>68%</strong></td>
+                <td style="text-align: center; color: #2ecc71;"><strong>~5%</strong></td>
+                <td style="text-align: center; color: #2ecc71;"><strong>-63%</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <footer style="margin-top: 40px; text-align: center; color: #666; font-size: 12px;">
+        VID-151 Data Flow Analysis | Generated: 2026-04-15 | Vidulum Project
+    </footer>
+</body>
+</html>

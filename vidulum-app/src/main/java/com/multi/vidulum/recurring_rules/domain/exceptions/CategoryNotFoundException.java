@@ -1,0 +1,33 @@
+package com.multi.vidulum.recurring_rules.domain.exceptions;
+
+import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.error.ErrorCode;
+
+/**
+ * Thrown when a category is not found in the target cash flow.
+ */
+public class CategoryNotFoundException extends RecurringRuleException {
+
+    private final CashFlowId cashFlowId;
+    private final CategoryName categoryName;
+
+    public CategoryNotFoundException(CashFlowId cashFlowId, CategoryName categoryName) {
+        super(String.format("Category [%s] not found in CashFlow [%s]", categoryName.name(), cashFlowId.id()));
+        this.cashFlowId = cashFlowId;
+        this.categoryName = categoryName;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.RECURRING_RULE_CATEGORY_NOT_FOUND;
+    }
+
+    public CashFlowId getCashFlowId() {
+        return cashFlowId;
+    }
+
+    public CategoryName getCategoryName() {
+        return categoryName;
+    }
+}

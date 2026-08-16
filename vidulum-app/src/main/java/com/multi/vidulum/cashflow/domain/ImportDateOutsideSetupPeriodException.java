@@ -1,0 +1,44 @@
+package com.multi.vidulum.cashflow.domain;
+
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+import java.time.YearMonth;
+import java.time.ZonedDateTime;
+
+/**
+ * Exception thrown when attempting to import historical data to a month that is not in IMPORT_PENDING status.
+ * Historical imports are only allowed to months between startPeriod and activePeriod-1.
+ */
+public class ImportDateOutsideSetupPeriodException extends BusinessException {
+
+    private final ZonedDateTime importDate;
+    private final YearMonth targetPeriod;
+    private final YearMonth activePeriod;
+
+    public ImportDateOutsideSetupPeriodException(ZonedDateTime importDate, YearMonth targetPeriod, YearMonth activePeriod) {
+        super(String.format("Cannot import historical transaction with date [%s] (period [%s]). " +
+                        "Historical imports are only allowed to months before the active period [%s].",
+                importDate, targetPeriod, activePeriod));
+        this.importDate = importDate;
+        this.targetPeriod = targetPeriod;
+        this.activePeriod = activePeriod;
+    }
+
+    public ZonedDateTime getImportDate() {
+        return importDate;
+    }
+
+    public YearMonth getTargetPeriod() {
+        return targetPeriod;
+    }
+
+    public YearMonth getActivePeriod() {
+        return activePeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.IMPORT_DATE_OUTSIDE_SETUP_PERIOD;
+    }
+}
