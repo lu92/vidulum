@@ -1,11 +1,12 @@
 package com.multi.vidulum.user.domain;
 
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.auth.AuthenticatableUserRepository;
 import com.multi.vidulum.shared.ddd.DomainRepository;
 
 import java.util.Optional;
 
-public interface DomainUserRepository extends DomainRepository<UserId, User> {
+public interface DomainUserRepository extends DomainRepository<UserId, User>, AuthenticatableUserRepository {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);

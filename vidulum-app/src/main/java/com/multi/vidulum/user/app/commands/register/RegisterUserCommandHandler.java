@@ -2,6 +2,7 @@ package com.multi.vidulum.user.app.commands.register;
 
 import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.auth.RegisterUserCommand;
 import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.security.Role;
 import com.multi.vidulum.shared.UserCreatedEventEmitter;

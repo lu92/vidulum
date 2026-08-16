@@ -2,16 +2,19 @@ package com.multi.vidulum.user.domain;
 
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.PortfolioId;
+import com.multi.vidulum.common.auth.AuthenticatableUser;
 import com.multi.vidulum.security.Role;
 import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.Builder;
 import lombok.Data;
+import org.springframework.security.core.GrantedAuthority;
 
+import java.util.Collection;
 import java.util.List;
 
 @Data
 @Builder
-public class User implements Aggregate<UserId, UserSnapshot> {
+public class User implements Aggregate<UserId, UserSnapshot>, AuthenticatableUser {
 
     private UserId userId;
     private String username;
@@ -48,5 +51,17 @@ public class User implements Aggregate<UserId, UserSnapshot> {
 
     public void registerPortfolio(PortfolioId portfolioId) {
         portfolios.add(portfolioId);
+    }
+
+    // AuthenticatableUser implementation
+
+    @Override
+    public String getAuthUserId() {
+        return userId.getId();
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return role.getAuthorities();
     }
 }
