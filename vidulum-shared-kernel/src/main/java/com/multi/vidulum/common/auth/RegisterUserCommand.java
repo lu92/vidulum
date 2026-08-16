@@ -1,4 +1,4 @@
-package com.multi.vidulum.user.app.commands.register;
+package com.multi.vidulum.common.auth;
 
 import com.multi.vidulum.shared.cqrs.commands.Command;
 import lombok.Builder;

@@ -1,6 +1,6 @@
 package com.multi.vidulum.security.config;
 
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatableUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -33,19 +33,19 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(User user) {
+    public String generateToken(AuthenticatableUser user) {
         return generateToken(new HashMap<>(), user);
     }
 
-    public String generateToken(Map<String, Object> extraClaims, User user) {
+    public String generateToken(Map<String, Object> extraClaims, AuthenticatableUser user) {
         return buildToken(extraClaims, user, jwtExpiration);
     }
 
-    public String generateRefreshToken(User user) {
+    public String generateRefreshToken(AuthenticatableUser user) {
         return buildToken(new HashMap<>(), user, refreshExpiration);
     }
 
-    private String buildToken(Map<String, Object> extraClaims, User user, long expiration) {
+    private String buildToken(Map<String, Object> extraClaims, AuthenticatableUser user, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
                 .id(java.util.UUID.randomUUID().toString())

@@ -1,7 +1,7 @@
 package com.multi.vidulum.security.config;
 
-import com.multi.vidulum.user.domain.DomainUserRepository;
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatableUser;
+import com.multi.vidulum.common.auth.AuthenticatableUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +22,7 @@ import java.util.Collection;
 @RequiredArgsConstructor
 public class ApplicationConfig {
 
-    private final DomainUserRepository userRepository;
+    private final AuthenticatableUserRepository userRepository;
 
     @Bean
     public UserDetailsService userDetailsService() {
@@ -47,12 +47,12 @@ public class ApplicationConfig {
         return new BCryptPasswordEncoder();
     }
 
-    private UserDetails toUserDetails(User user) {
+    private UserDetails toUserDetails(AuthenticatableUser user) {
         return new UserDetails() {
 
             @Override
             public Collection<? extends GrantedAuthority> getAuthorities() {
-                return user.getRole().getAuthorities();
+                return user.getAuthorities();
             }
 
             @Override
