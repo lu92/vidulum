@@ -1,9 +1,11 @@
 package com.multi.vidulum.bank_data_adapter.domain.exceptions;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class DuplicateFileException extends RuntimeException {
+public class DuplicateFileException extends BusinessException {
 
     private final String fileHash;
     private final String existingTransformationId;
@@ -13,5 +15,10 @@ public class DuplicateFileException extends RuntimeException {
             fileHash, existingTransformationId));
         this.fileHash = fileHash;
         this.existingTransformationId = existingTransformationId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.AI_ADAPTER_DUPLICATE_FILE;
     }
 }

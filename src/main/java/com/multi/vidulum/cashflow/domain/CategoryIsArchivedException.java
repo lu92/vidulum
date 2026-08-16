@@ -4,7 +4,10 @@ package com.multi.vidulum.cashflow.domain;
  * Exception thrown when attempting to add a cash change to an archived category.
  * Archived categories are read-only and cannot accept new transactions.
  */
-public class CategoryIsArchivedException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class CategoryIsArchivedException extends BusinessException {
 
     private final CategoryName categoryName;
 
@@ -15,5 +18,10 @@ public class CategoryIsArchivedException extends RuntimeException {
 
     public CategoryName getCategoryName() {
         return categoryName;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CATEGORY_IS_ARCHIVED;
     }
 }

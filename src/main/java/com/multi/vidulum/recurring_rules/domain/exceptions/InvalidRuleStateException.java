@@ -1,5 +1,6 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
+import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RuleStatus;
 
@@ -17,6 +18,11 @@ public class InvalidRuleStateException extends RecurringRuleException {
         this.ruleId = ruleId;
         this.currentStatus = currentStatus;
         this.operation = operation;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.RECURRING_RULE_INVALID_STATE;
     }
 
     public RecurringRuleId getRuleId() {

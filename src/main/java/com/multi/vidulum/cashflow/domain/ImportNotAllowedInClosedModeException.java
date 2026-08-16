@@ -1,11 +1,14 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 /**
  * Exception thrown when attempting to import a transaction to a CLOSED CashFlow.
  * <p>
  * Once a CashFlow is closed, no more transactions can be imported.
  */
-public class ImportNotAllowedInClosedModeException extends RuntimeException {
+public class ImportNotAllowedInClosedModeException extends BusinessException {
 
     private final CashFlowId cashFlowId;
 
@@ -16,5 +19,10 @@ public class ImportNotAllowedInClosedModeException extends RuntimeException {
 
     public CashFlowId getCashFlowId() {
         return cashFlowId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_CLOSED;
     }
 }

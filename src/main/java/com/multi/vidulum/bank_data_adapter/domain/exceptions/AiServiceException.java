@@ -1,9 +1,11 @@
 package com.multi.vidulum.bank_data_adapter.domain.exceptions;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class AiServiceException extends RuntimeException {
+public class AiServiceException extends BusinessException {
 
     private final String aiErrorCode;
     private final String aiErrorMessage;
@@ -22,5 +24,10 @@ public class AiServiceException extends RuntimeException {
         this.aiErrorCode = "UNKNOWN";
         this.aiErrorMessage = message;
         this.retryCount = 0;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.AI_ADAPTER_AI_SERVICE_ERROR;
     }
 }

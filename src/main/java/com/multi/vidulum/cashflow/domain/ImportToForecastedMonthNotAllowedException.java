@@ -1,5 +1,8 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.YearMonth;
 
 /**
@@ -8,7 +11,7 @@ import java.time.YearMonth;
  * FORECASTED months represent future periods and cannot receive imported transactions.
  * Only ACTIVE, ROLLED_OVER, and IMPORTED months allow bank data import.
  */
-public class ImportToForecastedMonthNotAllowedException extends RuntimeException {
+public class ImportToForecastedMonthNotAllowedException extends BusinessException {
 
     private final CashFlowId cashFlowId;
     private final YearMonth targetPeriod;
@@ -34,5 +37,10 @@ public class ImportToForecastedMonthNotAllowedException extends RuntimeException
 
     public YearMonth getActivePeriod() {
         return activePeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.IMPORT_TO_FORECASTED_MONTH_NOT_ALLOWED;
     }
 }

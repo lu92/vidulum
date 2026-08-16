@@ -13,7 +13,10 @@ package com.multi.vidulum.cashflow.domain;
  * they can unarchive to restore it. Once a new category with the same name is created,
  * the old archived category cannot be unarchived anymore.
  */
-public class CannotUnarchiveCategoryException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class CannotUnarchiveCategoryException extends BusinessException {
 
     private final CategoryName categoryName;
 
@@ -27,5 +30,10 @@ public class CannotUnarchiveCategoryException extends RuntimeException {
 
     public CategoryName getCategoryName() {
         return categoryName;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CATEGORY_UNARCHIVE_CONFLICT;
     }
 }

@@ -1,9 +1,12 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 /**
  * Exception thrown when attempting to import historical data to a CashFlow that is not in SETUP mode.
  */
-public class ImportNotAllowedInNonSetupModeException extends RuntimeException {
+public class ImportNotAllowedInNonSetupModeException extends BusinessException {
 
     private final CashFlowId cashFlowId;
     private final CashFlow.CashFlowStatus currentStatus;
@@ -21,5 +24,10 @@ public class ImportNotAllowedInNonSetupModeException extends RuntimeException {
 
     public CashFlow.CashFlowStatus getCurrentStatus() {
         return currentStatus;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_IMPORT_NOT_ALLOWED;
     }
 }

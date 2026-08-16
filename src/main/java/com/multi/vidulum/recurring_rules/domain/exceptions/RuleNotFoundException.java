@@ -1,5 +1,6 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
+import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 
 /**
@@ -12,6 +13,11 @@ public class RuleNotFoundException extends RecurringRuleException {
     public RuleNotFoundException(RecurringRuleId ruleId) {
         super("Recurring rule not found: " + ruleId.id());
         this.ruleId = ruleId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.RECURRING_RULE_NOT_FOUND;
     }
 
     public RecurringRuleId getRuleId() {

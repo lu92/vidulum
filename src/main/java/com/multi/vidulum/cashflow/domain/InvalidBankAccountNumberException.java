@@ -1,12 +1,15 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 /**
  * Exception thrown when an invalid bank account number is provided.
  * This can occur when:
  * - IBAN format is invalid (wrong length, bad checksum)
  * - SWIFT/BIC format is invalid
  */
-public class InvalidBankAccountNumberException extends RuntimeException {
+public class InvalidBankAccountNumberException extends BusinessException {
 
     private final String invalidAccount;
     private final AccountType accountType;
@@ -31,5 +34,10 @@ public class InvalidBankAccountNumberException extends RuntimeException {
 
     public AccountType getAccountType() {
         return accountType;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.INVALID_BANK_ACCOUNT;
     }
 }

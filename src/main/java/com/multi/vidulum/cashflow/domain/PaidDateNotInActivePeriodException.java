@@ -1,9 +1,12 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 
-public class PaidDateNotInActivePeriodException extends RuntimeException {
+public class PaidDateNotInActivePeriodException extends BusinessException {
 
     private final ZonedDateTime paidDate;
     private final YearMonth activePeriod;
@@ -20,5 +23,10 @@ public class PaidDateNotInActivePeriodException extends RuntimeException {
 
     public YearMonth getActivePeriod() {
         return activePeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.PAID_DATE_OUTSIDE_ACTIVE_PERIOD;
     }
 }

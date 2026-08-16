@@ -1,5 +1,6 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
+import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import lombok.Getter;
@@ -18,5 +19,10 @@ public class AmountChangeNotFoundException extends RecurringRuleException {
                 amountChangeId.id(), ruleId.id()));
         this.ruleId = ruleId;
         this.amountChangeId = amountChangeId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.AMOUNT_CHANGE_NOT_FOUND;
     }
 }

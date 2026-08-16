@@ -8,8 +8,6 @@ import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
 import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException;
-import com.multi.vidulum.recurring_rules.domain.exceptions.RecurringRuleException;
-import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
 import jakarta.validation.Valid;
@@ -37,7 +35,7 @@ public class RecurringRulesController {
     public ResponseEntity<Map<String, String>> createRule(
             @Valid @RequestBody CreateRuleRequest request,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         CreateRuleCommand command = new CreateRuleCommand(
@@ -62,7 +60,7 @@ public class RecurringRulesController {
     }
 
     @GetMapping("/{ruleId}")
-    public ResponseEntity<RecurringRuleResponse> getRule(@PathVariable String ruleId) throws RuleNotFoundException {
+    public ResponseEntity<RecurringRuleResponse> getRule(@PathVariable String ruleId) {
         GetRuleQuery query = new GetRuleQuery(ruleId);
         RecurringRuleSnapshot snapshot = ruleService.handle(query);
         return ResponseEntity.ok(RecurringRuleResponse.fromSnapshot(snapshot));
@@ -142,7 +140,7 @@ public class RecurringRulesController {
             @PathVariable String ruleId,
             @Valid @RequestBody UpdateRuleRequest request,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         UpdateRuleCommand command = new UpdateRuleCommand(
@@ -168,7 +166,7 @@ public class RecurringRulesController {
             @PathVariable String ruleId,
             @RequestBody PauseRuleRequest request,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         PauseRuleCommand command = new PauseRuleCommand(
@@ -185,7 +183,7 @@ public class RecurringRulesController {
     public ResponseEntity<Void> resumeRule(
             @PathVariable String ruleId,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         ResumeRuleCommand command = new ResumeRuleCommand(ruleId);
@@ -198,7 +196,7 @@ public class RecurringRulesController {
             @PathVariable String ruleId,
             @RequestBody(required = false) DeleteRuleRequest request,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
         String reason = request != null ? request.getReason() : "User requested deletion";
 
@@ -211,7 +209,7 @@ public class RecurringRulesController {
     public ResponseEntity<DeleteImpactPreviewResponse> getDeleteImpactPreview(
             @PathVariable String ruleId,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         PreviewDeleteImpactQuery query = new PreviewDeleteImpactQuery(ruleId, authToken);
@@ -224,7 +222,7 @@ public class RecurringRulesController {
     public ResponseEntity<Void> regenerateExpectedCashChanges(
             @PathVariable String ruleId,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         GenerateExpectedCashChangesCommand command = new GenerateExpectedCashChangesCommand(ruleId);
@@ -239,7 +237,7 @@ public class RecurringRulesController {
             @PathVariable String ruleId,
             @Valid @RequestBody AddAmountChangeRequest request,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         AddAmountChangeCommand command = new AddAmountChangeCommand(
@@ -258,7 +256,7 @@ public class RecurringRulesController {
     @GetMapping("/{ruleId}/amount-changes")
     public ResponseEntity<List<AmountChangeResponse>> getAmountChanges(
             @PathVariable String ruleId
-    ) throws RuleNotFoundException {
+    ) {
         GetRuleQuery query = new GetRuleQuery(ruleId);
         RecurringRuleSnapshot snapshot = ruleService.handle(query);
 
@@ -274,7 +272,7 @@ public class RecurringRulesController {
             @PathVariable String ruleId,
             @PathVariable String amountChangeId,
             @RequestHeader("Authorization") String authHeader
-    ) throws RecurringRuleException {
+    ) {
         String authToken = extractToken(authHeader);
 
         RemoveAmountChangeCommand command = new RemoveAmountChangeCommand(ruleId, amountChangeId);

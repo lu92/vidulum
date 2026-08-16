@@ -10,7 +10,10 @@ package com.multi.vidulum.cashflow.domain;
  *   <li>CashFlow is CLOSED</li>
  * </ul>
  */
-public class RolloverNotAllowedException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class RolloverNotAllowedException extends BusinessException {
 
     private final CashFlowId cashFlowId;
 
@@ -21,5 +24,10 @@ public class RolloverNotAllowedException extends RuntimeException {
 
     public CashFlowId getCashFlowId() {
         return cashFlowId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_ROLLOVER_NOT_ALLOWED;
     }
 }

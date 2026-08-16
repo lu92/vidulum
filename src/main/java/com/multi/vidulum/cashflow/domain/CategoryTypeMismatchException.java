@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 /**
@@ -7,7 +9,7 @@ import lombok.Getter;
  * INFLOW categories can only have INFLOW parents, OUTFLOW categories can only have OUTFLOW parents.
  */
 @Getter
-public class CategoryTypeMismatchException extends RuntimeException {
+public class CategoryTypeMismatchException extends BusinessException {
     private final CategoryName categoryName;
     private final Type categoryType;
     private final CategoryName targetParentName;
@@ -21,5 +23,10 @@ public class CategoryTypeMismatchException extends RuntimeException {
         this.categoryType = categoryType;
         this.targetParentName = targetParentName;
         this.targetParentType = targetParentType;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CANNOT_CHANGE_CATEGORY_TYPE;
     }
 }

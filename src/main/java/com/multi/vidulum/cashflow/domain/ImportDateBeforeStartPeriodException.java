@@ -1,5 +1,8 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 
@@ -7,7 +10,7 @@ import java.time.ZonedDateTime;
  * Exception thrown when attempting to import historical data to a month before the startPeriod.
  * Historical imports are only allowed to months between startPeriod and activePeriod-1.
  */
-public class ImportDateBeforeStartPeriodException extends RuntimeException {
+public class ImportDateBeforeStartPeriodException extends BusinessException {
 
     private final ZonedDateTime importDate;
     private final YearMonth targetPeriod;
@@ -32,5 +35,10 @@ public class ImportDateBeforeStartPeriodException extends RuntimeException {
 
     public YearMonth getStartPeriod() {
         return startPeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.IMPORT_DATE_BEFORE_START;
     }
 }

@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 /**
@@ -7,7 +9,7 @@ import lombok.Getter;
  * This is a no-op and indicates a client-side validation issue.
  */
 @Getter
-public class CategoryMoveToSameParentException extends RuntimeException {
+public class CategoryMoveToSameParentException extends BusinessException {
     private final CategoryName categoryName;
     private final CategoryName parentName;
 
@@ -16,5 +18,10 @@ public class CategoryMoveToSameParentException extends RuntimeException {
                 + (parentName.isDefined() ? parentName.name() : "root") + "]");
         this.categoryName = categoryName;
         this.parentName = parentName;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CATEGORY_MOVE_TO_SAME_PARENT;
     }
 }

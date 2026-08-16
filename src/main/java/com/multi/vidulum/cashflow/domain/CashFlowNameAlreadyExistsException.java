@@ -1,12 +1,14 @@
 package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 
 /**
  * Exception thrown when attempting to create a CashFlow with a name that already exists
  * for the given user.
  */
-public class CashFlowNameAlreadyExistsException extends RuntimeException {
+public class CashFlowNameAlreadyExistsException extends BusinessException {
 
     private final String cashFlowName;
     private final UserId userId;
@@ -25,5 +27,10 @@ public class CashFlowNameAlreadyExistsException extends RuntimeException {
 
     public UserId getUserId() {
         return userId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_NAME_ALREADY_EXISTS;
     }
 }

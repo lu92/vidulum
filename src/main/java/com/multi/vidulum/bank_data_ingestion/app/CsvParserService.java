@@ -4,6 +4,8 @@ import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -385,9 +387,14 @@ public class CsvParserService {
     /**
      * Exception thrown when CSV parsing fails completely.
      */
-    public static class CsvParseException extends RuntimeException {
+    public static class CsvParseException extends BusinessException {
         public CsvParseException(String message, Throwable cause) {
             super(message, cause);
+        }
+
+        @Override
+        public ErrorCode getErrorCode() {
+            return ErrorCode.INGESTION_INVALID_CSV;
         }
     }
 }

@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow.domain;
 
-public class OperationNotAllowedInSetupModeException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class OperationNotAllowedInSetupModeException extends BusinessException {
 
     private final String operationName;
     private final CashFlowId cashFlowId;
@@ -18,5 +21,10 @@ public class OperationNotAllowedInSetupModeException extends RuntimeException {
 
     public CashFlowId getCashFlowId() {
         return cashFlowId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_OPERATION_NOT_ALLOWED_IN_SETUP;
     }
 }

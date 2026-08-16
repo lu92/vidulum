@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow.domain;
 
-public class CashChangeIsNotOpenedException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class CashChangeIsNotOpenedException extends BusinessException {
 
     private CashChangeId id;
     private Type type;
@@ -8,5 +11,10 @@ public class CashChangeIsNotOpenedException extends RuntimeException {
         super(String.format("Cash change [%s] [%s] is not opened", type, id));
         this.id = id;
         this.type = type;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHCHANGE_NOT_PENDING;
     }
 }

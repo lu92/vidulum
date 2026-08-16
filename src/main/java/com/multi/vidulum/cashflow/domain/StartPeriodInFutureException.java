@@ -1,8 +1,11 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.YearMonth;
 
-public class StartPeriodInFutureException extends RuntimeException {
+public class StartPeriodInFutureException extends BusinessException {
 
     private final YearMonth startPeriod;
     private final YearMonth activePeriod;
@@ -20,5 +23,10 @@ public class StartPeriodInFutureException extends RuntimeException {
 
     public YearMonth getActivePeriod() {
         return activePeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.START_PERIOD_IN_FUTURE;
     }
 }

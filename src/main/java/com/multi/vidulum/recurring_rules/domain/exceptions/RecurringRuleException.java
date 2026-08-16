@@ -1,16 +1,18 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
-/**
- * Base checked exception for all recurring rule domain errors.
- * This is intentionally a checked exception to force explicit error handling.
- */
-public class RecurringRuleException extends Exception {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 
-    public RecurringRuleException(String message) {
+/**
+ * Base exception for all recurring rule domain errors.
+ */
+public abstract class RecurringRuleException extends BusinessException {
+
+    protected RecurringRuleException(String message) {
         super(message);
     }
 
-    public RecurringRuleException(String message, Throwable cause) {
+    protected RecurringRuleException(String message, Throwable cause) {
         super(message, cause);
     }
 }

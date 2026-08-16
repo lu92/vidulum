@@ -7,7 +7,10 @@ package com.multi.vidulum.cashflow.domain;
  * Multiple archived categories with the same name are allowed (different validity periods),
  * but only one active category with a given name can exist at any time.
  */
-public class CategoryAlreadyExistsException extends RuntimeException {
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
+public class CategoryAlreadyExistsException extends BusinessException {
 
     private final CategoryName categoryName;
 
@@ -21,5 +24,10 @@ public class CategoryAlreadyExistsException extends RuntimeException {
 
     public CategoryName getCategoryName() {
         return categoryName;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CATEGORY_ALREADY_EXISTS;
     }
 }

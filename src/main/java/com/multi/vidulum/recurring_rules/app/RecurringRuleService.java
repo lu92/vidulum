@@ -11,7 +11,11 @@ import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
-import com.multi.vidulum.recurring_rules.domain.exceptions.*;
+import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException;
+import com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException;
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDateRangeException;
+import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException;
+import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +47,7 @@ public class RecurringRuleService {
 
     // Command Handlers
 
-    public RecurringRuleId handle(CreateRuleCommand command, String authToken) throws RecurringRuleException {
+    public RecurringRuleId handle(CreateRuleCommand command, String authToken) {
         CashFlowId cashFlowId = CashFlowId.of(command.cashFlowId());
 
         // Validate CashFlow exists
@@ -95,7 +99,7 @@ public class RecurringRuleService {
     }
 
 
-    public void handle(UpdateRuleCommand command, String authToken) throws RecurringRuleException {
+    public void handle(UpdateRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -148,7 +152,7 @@ public class RecurringRuleService {
     }
 
 
-    public void handle(PauseRuleCommand command, String authToken) throws RecurringRuleException {
+    public void handle(PauseRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -171,7 +175,7 @@ public class RecurringRuleService {
     }
 
 
-    public void handle(ResumeRuleCommand command, String authToken) throws RecurringRuleException {
+    public void handle(ResumeRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -226,7 +230,7 @@ public class RecurringRuleService {
         return ruleRepository.findPausedRulesWithResumeDateOnOrBefore(date);
     }
 
-    public void handle(DeleteRuleCommand command, String authToken) throws RecurringRuleException {
+    public void handle(DeleteRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -244,7 +248,7 @@ public class RecurringRuleService {
     }
 
 
-    public void handle(GenerateExpectedCashChangesCommand command, String authToken) throws RecurringRuleException {
+    public void handle(GenerateExpectedCashChangesCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -257,7 +261,7 @@ public class RecurringRuleService {
         generateExpectedCashChanges(rule, authToken);
     }
 
-    public AmountChangeId handle(AddAmountChangeCommand command, String authToken) throws RecurringRuleException {
+    public AmountChangeId handle(AddAmountChangeCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -289,7 +293,7 @@ public class RecurringRuleService {
         return changeId;
     }
 
-    public void handle(RemoveAmountChangeCommand command, String authToken) throws RecurringRuleException {
+    public void handle(RemoveAmountChangeCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -313,7 +317,7 @@ public class RecurringRuleService {
     // Query Handlers
 
 
-    public RecurringRuleSnapshot handle(GetRuleQuery query) throws RuleNotFoundException {
+    public RecurringRuleSnapshot handle(GetRuleQuery query)  {
         RecurringRuleId ruleId = RecurringRuleId.of(query.ruleId());
         return findRuleOrThrow(ruleId).getSnapshot();
     }
@@ -334,7 +338,7 @@ public class RecurringRuleService {
                 .toList();
     }
 
-    public DeleteImpactPreviewResponse handle(PreviewDeleteImpactQuery query) throws RecurringRuleException {
+    public DeleteImpactPreviewResponse handle(PreviewDeleteImpactQuery query) {
         RecurringRuleId ruleId = RecurringRuleId.of(query.ruleId());
         RecurringRule rule = findRuleOrThrow(ruleId);
 
@@ -621,7 +625,7 @@ public class RecurringRuleService {
 
     // Private helper methods
 
-    private RecurringRule findRuleOrThrow(RecurringRuleId ruleId) throws RuleNotFoundException {
+    private RecurringRule findRuleOrThrow(RecurringRuleId ruleId)  {
         return ruleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuleNotFoundException(ruleId));
     }
@@ -631,7 +635,7 @@ public class RecurringRuleService {
             CategoryName categoryName,
             boolean isInflow,
             CashFlowId cashFlowId
-    ) throws CategoryNotFoundException {
+    )  {
         List<CategoryName> categories = isInflow
                 ? cashFlowInfo.inflowCategories()
                 : cashFlowInfo.outflowCategories();
@@ -645,7 +649,7 @@ public class RecurringRuleService {
     }
 
     private void generateExpectedCashChanges(RecurringRule rule, String authToken)
-            throws CashFlowCommunicationException {
+             {
         LocalDate fromDate = LocalDate.now(clock);
         YearMonth currentMonth = YearMonth.from(fromDate);
         LocalDate toDate = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
@@ -702,7 +706,7 @@ public class RecurringRuleService {
     }
 
     private void clearGeneratedCashChanges(RecurringRule rule, String authToken)
-            throws CashFlowCommunicationException {
+             {
         List<CashChangeId> toDelete = rule.getGeneratedCashChangeIds();
 
         if (toDelete.isEmpty()) {

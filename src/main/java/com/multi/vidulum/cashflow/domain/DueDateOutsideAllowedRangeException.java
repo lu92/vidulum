@@ -1,5 +1,8 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 
@@ -14,7 +17,7 @@ import java.time.ZonedDateTime;
  *   <li>Setting dueDate to months that don't exist in forecast (more than 11 months ahead)</li>
  * </ul>
  */
-public class DueDateOutsideAllowedRangeException extends RuntimeException {
+public class DueDateOutsideAllowedRangeException extends BusinessException {
 
     private final ZonedDateTime dueDate;
     private final YearMonth activePeriod;
@@ -42,5 +45,10 @@ public class DueDateOutsideAllowedRangeException extends RuntimeException {
 
     public YearMonth getMaxAllowedPeriod() {
         return maxAllowedPeriod;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.DUE_DATE_OUTSIDE_ALLOWED_RANGE;
     }
 }

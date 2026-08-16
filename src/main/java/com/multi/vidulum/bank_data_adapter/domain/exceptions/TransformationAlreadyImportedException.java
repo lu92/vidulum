@@ -1,9 +1,11 @@
 package com.multi.vidulum.bank_data_adapter.domain.exceptions;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 @Getter
-public class TransformationAlreadyImportedException extends RuntimeException {
+public class TransformationAlreadyImportedException extends BusinessException {
 
     private final String transformationId;
     private final String stagingSessionId;
@@ -13,5 +15,10 @@ public class TransformationAlreadyImportedException extends RuntimeException {
             transformationId, stagingSessionId));
         this.transformationId = transformationId;
         this.stagingSessionId = stagingSessionId;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.AI_ADAPTER_ALREADY_IMPORTED;
     }
 }

@@ -1,12 +1,14 @@
 package com.multi.vidulum.cashflow.domain;
 
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 
 /**
  * Exception thrown when the confirmed balance does not match the calculated balance during activation.
  * This indicates that either imports are incomplete or the confirmed balance is incorrect.
  */
-public class BalanceMismatchException extends RuntimeException {
+public class BalanceMismatchException extends BusinessException {
 
     private final CashFlowId cashFlowId;
     private final Name cashFlowName;
@@ -43,5 +45,10 @@ public class BalanceMismatchException extends RuntimeException {
 
     public Money getDifference() {
         return difference;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.CASHFLOW_BALANCE_MISMATCH;
     }
 }

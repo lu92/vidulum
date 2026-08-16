@@ -1,9 +1,12 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+
 /**
  * Thrown when dashboard query parameters are invalid.
  */
-public class InvalidDashboardParameterException extends RuntimeException {
+public class InvalidDashboardParameterException extends BusinessException {
 
     private final String parameterName;
     private final Object providedValue;
@@ -16,6 +19,11 @@ public class InvalidDashboardParameterException extends RuntimeException {
         this.providedValue = providedValue;
         this.minValue = minValue;
         this.maxValue = maxValue;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.RECURRING_RULE_INVALID_PARAMETER;
     }
 
     public String getParameterName() {

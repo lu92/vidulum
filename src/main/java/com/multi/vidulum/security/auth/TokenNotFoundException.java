@@ -1,5 +1,7 @@
 package com.multi.vidulum.security.auth;
 
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;
 
 /**
@@ -7,7 +9,7 @@ import lombok.Getter;
  * Results in HTTP 404 NOT_FOUND.
  */
 @Getter
-public class TokenNotFoundException extends RuntimeException {
+public class TokenNotFoundException extends BusinessException {
 
     private final String tokenPrefix;
 
@@ -16,5 +18,10 @@ public class TokenNotFoundException extends RuntimeException {
         this.tokenPrefix = token != null && token.length() > 20
                 ? token.substring(0, 20) + "..."
                 : "unknown";
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.AUTH_TOKEN_NOT_FOUND;
     }
 }

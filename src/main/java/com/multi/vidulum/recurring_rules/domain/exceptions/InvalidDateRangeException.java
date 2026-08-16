@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
+import com.multi.vidulum.common.error.ErrorCode;
+
 import java.time.LocalDate;
 
 /**
@@ -14,6 +16,11 @@ public class InvalidDateRangeException extends RecurringRuleException {
         super(String.format("Invalid date range: start [%s] must be before or equal to end [%s]", startDate, endDate));
         this.startDate = startDate;
         this.endDate = endDate;
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.RECURRING_RULE_INVALID_DATE_RANGE;
     }
 
     public LocalDate getStartDate() {
