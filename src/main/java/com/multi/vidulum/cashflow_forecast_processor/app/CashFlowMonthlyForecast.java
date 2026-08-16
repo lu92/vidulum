@@ -24,14 +24,12 @@ public class CashFlowMonthlyForecast {
     private List<CashCategory> categorizedInFlows;
     private List<CashCategory> categorizedOutFlows;
     /**
-     * Self-transfers (transfers between user's own bank accounts) bucketed separately
-     * so they don't pollute budget aggregates. Routing is decided by the
-     * {@code selfTransfer} flag carried on the CashFlowEvent / CashChange — see VID-161 Phase 1b.
-     * <p>
-     * Per VID-161 Q7: routing only, no separate stats — UI can sum these client-side.
-     * Per VID-161 Q2: separate informational section, not excluded from snapshot.
+     * @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag.
      */
+    @Deprecated
     private List<CashCategory> selfTransferInFlows;
+    /** @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag. */
+    @Deprecated
     private List<CashCategory> selfTransferOutFlows;
     private Status status;
     private Attestation attestation;
@@ -72,6 +70,43 @@ public class CashFlowMonthlyForecast {
                                 FORECAST.equals(transaction.paymentStatus()) ? inflowStatsToDecrease.gapToForecast().minus(transaction.transactionDetails().getMoney()) : inflowStatsToDecrease.gapToForecast()
                         )
                 );
+    }
+
+    public boolean addToInflowsWithoutStats(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryInflowsByCategoryName(categoryName)
+                .orElseGet(() -> autoCreateCategoryInList(categoryName, categorizedInFlows,
+                        transaction.transactionDetails().getMoney().getCurrency()));
+        return cashCategory.getGroupedTransactions().addTransaction(transaction);
+    }
+
+    public boolean addToOutflowsWithoutStats(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryOutflowsByCategoryName(categoryName)
+                .orElseGet(() -> autoCreateCategoryInList(categoryName, categorizedOutFlows,
+                        transaction.transactionDetails().getMoney().getCurrency()));
+        return cashCategory.getGroupedTransactions().addTransaction(transaction);
+    }
+
+    public void removeFromInflowsWithoutStats(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryInflowsByCategoryName(categoryName).orElseThrow();
+        cashCategory.getGroupedTransactions().removeTransaction(transaction);
+    }
+
+    public void removeFromOutflowsWithoutStats(CategoryName categoryName, Transaction transaction) {
+        CashCategory cashCategory = findCategoryOutflowsByCategoryName(categoryName).orElseThrow();
+        cashCategory.getGroupedTransactions().removeTransaction(transaction);
+    }
+
+    private CashCategory autoCreateCategoryInList(CategoryName categoryName, List<CashCategory> list, String currency) {
+        CashCategory newCategory = CashCategory.builder()
+                .categoryName(categoryName)
+                .category(new Category(categoryName.name()))
+                .subCategories(new LinkedList<>())
+                .groupedTransactions(new GroupedTransactions())
+                .totalPaidValue(Money.zero(currency))
+                .selfTransferCategory(true)
+                .build();
+        list.add(newCategory);
+        return newCategory;
     }
 
     public void addToOutflows(CategoryName categoryName, Transaction transaction) {
@@ -119,8 +154,10 @@ public class CashFlowMonthlyForecast {
     // are out-of-budget by design (Q2 + Q7).
 
     /**
+     * @deprecated Use addToInflowsWithoutStats + markCategoryAsSelfTransfer instead.
      * @return {@code true} if the transaction was added, {@code false} if duplicate (Kafka redelivery)
      */
+    @Deprecated
     public boolean addToSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferInFlows)
@@ -129,6 +166,7 @@ public class CashFlowMonthlyForecast {
         return cashCategory.getGroupedTransactions().addTransaction(transaction);
     }
 
+    @Deprecated
     public void removeFromSelfTransferInflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferInFlows).orElseThrow();
@@ -136,8 +174,10 @@ public class CashFlowMonthlyForecast {
     }
 
     /**
+     * @deprecated Use addToOutflowsWithoutStats + markCategoryAsSelfTransfer instead.
      * @return {@code true} if the transaction was added, {@code false} if duplicate (Kafka redelivery)
      */
+    @Deprecated
     public boolean addToSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferOutFlows)
@@ -146,6 +186,7 @@ public class CashFlowMonthlyForecast {
         return cashCategory.getGroupedTransactions().addTransaction(transaction);
     }
 
+    @Deprecated
     public void removeFromSelfTransferOutflows(CategoryName categoryName, Transaction transaction) {
         ensureSelfTransferListsInitialized();
         CashCategory cashCategory = findCategoryByCategoryName(categoryName, selfTransferOutFlows).orElseThrow();
@@ -153,11 +194,9 @@ public class CashFlowMonthlyForecast {
     }
 
     /**
-     * VID-161 Phase 1b: lazy-creates the self-transfer category entry in the read model
-     * the first time a transaction lands in it. Self-transfer categories are bucketed
-     * separately from the regular categorizedIn/OutFlows (which are populated by
-     * CategoryCreatedEvent), so the read model needs its own structure built on demand.
+     * @deprecated Self-transfers are now routed to categorized lists.
      */
+    @Deprecated
     private CashCategory autoCreateSelfTransferCategory(CategoryName categoryName, List<CashCategory> list, String currency) {
         CashCategory newCategory = CashCategory.builder()
                 .categoryName(categoryName)
@@ -170,18 +209,18 @@ public class CashFlowMonthlyForecast {
         return newCategory;
     }
 
+    @Deprecated
     public Optional<CashCategory> findCategoryInSelfTransferInflowsByName(CategoryName categoryName) {
         return findCategoryByCategoryName(categoryName, selfTransferInFlows);
     }
 
+    @Deprecated
     public Optional<CashCategory> findCategoryInSelfTransferOutflowsByName(CategoryName categoryName) {
         return findCategoryByCategoryName(categoryName, selfTransferOutFlows);
     }
 
-    /**
-     * Lazy initialization for Mongo-deserialized snapshots that may not have the new
-     * VID-161 Phase 1b fields populated (pre-existing documents would have null lists).
-     */
+    /** @deprecated Self-transfers are now routed to categorized lists. */
+    @Deprecated
     private void ensureSelfTransferListsInitialized() {
         if (selfTransferInFlows == null) {
             selfTransferInFlows = new LinkedList<>();
@@ -191,6 +230,13 @@ public class CashFlowMonthlyForecast {
         }
     }
 
+    public void markCategoryAsSelfTransfer(CategoryName categoryName, Type type) {
+        List<CashCategory> categories = Type.INFLOW.equals(type) ? categorizedInFlows : categorizedOutFlows;
+        findCategoryByCategoryName(categoryName, categories)
+                .ifPresent(cat -> cat.setSelfTransferCategory(true));
+    }
+
+    @Deprecated
     public Optional<CashCategory> findSelfTransferCashCategoryForCashChange(CashChangeId cashChangeId, Type type) {
         List<CashCategory> source = Type.INFLOW.equals(type) ? selfTransferInFlows : selfTransferOutFlows;
         return findCashCategoryForCashChange(cashChangeId, source);
@@ -202,6 +248,7 @@ public class CashFlowMonthlyForecast {
     public Money calcNetChange() {
         Currency inFlowCurrency = Currency.of(categorizedInFlows.get(0).getTotalPaidValue().getCurrency());
         Money totalIncomeValue = flattenCategories(categorizedInFlows).stream()
+                .filter(cat -> !cat.isSelfTransferCategory())
                 .map(CashCategory::getGroupedTransactions)
                 .map(GroupedTransactions::values)
                 .flatMap(Collection::stream)
@@ -211,6 +258,7 @@ public class CashFlowMonthlyForecast {
 
         Currency outFlowCurrency = Currency.of(categorizedOutFlows.get(0).getTotalPaidValue().getCurrency());
         Money totalOutcomeValue = flattenCategories(categorizedOutFlows).stream()
+                .filter(cat -> !cat.isSelfTransferCategory())
                 .map(CashCategory::getGroupedTransactions)
                 .map(GroupedTransactions::values)
                 .flatMap(Collection::stream)

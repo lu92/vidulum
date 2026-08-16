@@ -1923,10 +1923,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
 
-                    // Self-transfer in selfTransferOutFlows
-                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
-                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
-                    assertThat(selfTransferCat.getCategoryName().name()).isEqualTo("Przelewy własne");
+                    // Self-transfer in categorizedOutFlows under "Przelewy własne" with selfTransferCategory=true
+                    CashCategory selfTransferCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
                     assertThat(selfTransferCat.getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
@@ -1983,10 +1982,11 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
 
-                    // Self-transfer in selfTransferInFlows
-                    assertThat(june.getSelfTransferInFlows()).hasSize(1);
-                    assertThat(june.getSelfTransferInFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
-                    assertThat(june.getSelfTransferInFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(2000, "USD"));
+                    // Self-transfer in categorizedInFlows under "Przelewy własne" with selfTransferCategory=true
+                    CashCategory selfTransferCat = june.findCategoryInflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    assertThat(selfTransferCat.getTotalPaidValue()).isEqualTo(Money.of(2000, "USD"));
 
                     // inflowStats excludes self-transfer
                     assertThat(june.getCashFlowStats().getInflowStats().actual()).isEqualTo(Money.zero("USD"));
@@ -2052,9 +2052,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
 
-                    // Self-transfer in selfTransferOutFlows with EXPECTED status
-                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
-                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    // Self-transfer in categorizedOutFlows under "Przelewy własne" with selfTransferCategory=true
+                    CashCategory selfTransferCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).hasSize(1);
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).isSelfTransfer()).isTrue();
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED).get(0).getEndDate()).isNull();
@@ -2114,9 +2114,9 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
 
-                    // Transaction moved from EXPECTED to PAID within selfTransferOutFlows
-                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
-                    CashCategory selfTransferCat = june.getSelfTransferOutFlows().get(0);
+                    // Transaction moved from EXPECTED to PAID within categorizedOutFlows "Przelewy własne"
+                    CashCategory selfTransferCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.EXPECTED)).isEmpty();
                     assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
 
@@ -2127,12 +2127,6 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     // Budget stats remain zero — self-transfer doesn't touch actual or expected
                     assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
                     assertThat(june.getCashFlowStats().getOutflowStats().expected()).isEqualTo(Money.zero("USD"));
-
-                    // NOT in categorizedOutFlows
-                    june.getCategorizedOutFlows().forEach(cat ->
-                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
-                                    .as("Self-transfer must not leak to categorizedOutFlows")
-                                    .noneMatch(td -> td.getName().name().equals("Planned transfer to Pekao")));
                 });
     }
 
@@ -2191,10 +2185,10 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
 
-                    // Updated transaction in selfTransferOutFlows
-                    assertThat(june.getSelfTransferOutFlows()).hasSize(1);
-                    TransactionDetails edited = june.getSelfTransferOutFlows().get(0)
-                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    // Updated transaction in categorizedOutFlows "Przelewy własne"
+                    CashCategory selfTransferCat = june.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
+                    TransactionDetails edited = selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0);
                     assertThat(edited.getMoney()).isEqualTo(Money.of(5000, "USD"));
                     assertThat(edited.getName().name()).isEqualTo("Lucjan Bik Pekao edited");
                     assertThat(edited.isSelfTransfer()).isTrue();
@@ -2257,31 +2251,23 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                 .isPresent()
                 .get()
                 .satisfies(statement -> {
-                    // June: selfTransferOutFlows empty (transaction moved away)
+                    // June: "Przelewy własne" category empty (transaction moved away)
                     CashFlowMonthlyForecast june = statement.getForecasts().get(YearMonth.parse("2021-06"));
                     assertThat(june).isNotNull();
-                    assertThat(june.getSelfTransferOutFlows())
-                            .as("June selfTransferOutFlows should be empty after move")
-                            .allSatisfy(cat -> assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID)).isEmpty());
+                    CashCategory juneSelfTransfer = june.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(juneSelfTransfer.getGroupedTransactions().get(PaymentStatus.PAID)).isEmpty();
                     assertThat(june.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
 
-                    // July: selfTransferOutFlows contains the moved transaction
+                    // July: "Przelewy własne" category contains the moved transaction
                     CashFlowMonthlyForecast july = statement.getForecasts().get(YearMonth.parse("2021-07"));
                     assertThat(july).isNotNull();
-                    assertThat(july.getSelfTransferOutFlows()).hasSize(1);
-                    TransactionDetails moved = july.getSelfTransferOutFlows().get(0)
-                            .getGroupedTransactions().get(PaymentStatus.PAID).get(0);
+                    CashCategory julySelfTransfer = july.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(julySelfTransfer.isSelfTransferCategory()).isTrue();
+                    assertThat(julySelfTransfer.getGroupedTransactions().get(PaymentStatus.PAID)).hasSize(1);
+                    TransactionDetails moved = julySelfTransfer.getGroupedTransactions().get(PaymentStatus.PAID).get(0);
                     assertThat(moved.getName().name()).isEqualTo("Lucjan Bik Pekao");
                     assertThat(moved.isSelfTransfer()).isTrue();
                     assertThat(july.getCashFlowStats().getOutflowStats().actual()).isEqualTo(Money.zero("USD"));
-
-                    // Neither month has self-transfer in categorizedOutFlows
-                    june.getCategorizedOutFlows().forEach(cat ->
-                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
-                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
-                    july.getCategorizedOutFlows().forEach(cat ->
-                            assertThat(cat.getGroupedTransactions().get(PaymentStatus.PAID))
-                                    .noneMatch(td -> td.getName().name().equals("Lucjan Bik Pekao")));
                 });
     }
 
@@ -2348,10 +2334,11 @@ class CashFlowForecastProcessorTest extends IntegrationTest {
                     CashFlowMonthlyForecast march = statement.getForecasts().get(YearMonth.parse("2021-03"));
                     assertThat(march).isNotNull();
 
-                    // Self-transfer in selfTransferOutFlows
-                    assertThat(march.getSelfTransferOutFlows()).hasSize(1);
-                    assertThat(march.getSelfTransferOutFlows().get(0).getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
-                    assertThat(march.getSelfTransferOutFlows().get(0).getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
+                    // Self-transfer in categorizedOutFlows under "Przelewy własne" with selfTransferCategory=true
+                    CashCategory selfTransferCat = march.findCategoryOutflowsByCategoryName(new CategoryName("Przelewy własne")).orElseThrow();
+                    assertThat(selfTransferCat.isSelfTransferCategory()).isTrue();
+                    assertThat(selfTransferCat.getTotalPaidValue()).isEqualTo(Money.of(3000, "USD"));
+                    assertThat(selfTransferCat.getGroupedTransactions().get(PaymentStatus.PAID).get(0).isSelfTransfer()).isTrue();
 
                     // Regular in categorizedOutFlows
                     CashCategory regularCat = march.findCategoryOutflowsByCategoryName(new CategoryName("Uncategorized")).orElseThrow();

@@ -89,13 +89,13 @@ public class CashFlowForecastStatement {
     private Optional<CashFlowMonthlyForecast.CashChangeLocation> locateInMonthly(
             CashFlowMonthlyForecast monthly, CashChangeId cashChangeId) {
         Optional<CashFlowMonthlyForecast.CashChangeLocation> found =
-                searchInCategories(monthly, cashChangeId, monthly.getCategorizedInFlows(), INFLOW, false);
+                searchInCategoriesWithSelfTransferDetection(monthly, cashChangeId, monthly.getCategorizedInFlows(), INFLOW);
         if (found.isPresent()) return found;
 
-        found = searchInCategories(monthly, cashChangeId, monthly.getCategorizedOutFlows(), OUTFLOW, false);
+        found = searchInCategoriesWithSelfTransferDetection(monthly, cashChangeId, monthly.getCategorizedOutFlows(), OUTFLOW);
         if (found.isPresent()) return found;
 
-        // VID-161: search self-transfer sections (Q8: locate-based routing)
+        // Legacy: search deprecated self-transfer sections for backward compatibility
         if (monthly.getSelfTransferInFlows() != null) {
             found = searchInCategories(monthly, cashChangeId, monthly.getSelfTransferInFlows(), INFLOW, true);
             if (found.isPresent()) return found;
@@ -131,6 +131,40 @@ public class CashFlowForecastStatement {
                                                 new Transaction(td, paymentStatus),
                                                 categoryName,
                                                 selfTransfer));
+                            })
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .findFirst();
+                })
+                .filter(Optional::isPresent)
+                .findFirst()
+                .orElse(Optional.empty());
+    }
+
+    private Optional<CashFlowMonthlyForecast.CashChangeLocation> searchInCategoriesWithSelfTransferDetection(
+            CashFlowMonthlyForecast monthly,
+            CashChangeId cashChangeId,
+            List<CashCategory> categories,
+            Type type) {
+        return flattenCategories(categories).stream()
+                .map(cashCategory -> {
+                    CategoryName categoryName = cashCategory.getCategoryName();
+                    boolean isSelfTransfer = cashCategory.isSelfTransferCategory();
+                    return cashCategory.getGroupedTransactions().getTransactions().entrySet()
+                            .stream()
+                            .map(entries -> {
+                                PaymentStatus paymentStatus = entries.getKey();
+                                List<TransactionDetails> transactionDetails = entries.getValue();
+                                return transactionDetails.stream()
+                                        .filter(td -> cashChangeId.equals(td.getCashChangeId()))
+                                        .findFirst()
+                                        .map(td -> new CashFlowMonthlyForecast.CashChangeLocation(
+                                                td.getCashChangeId(),
+                                                monthly.getPeriod(),
+                                                type,
+                                                new Transaction(td, paymentStatus),
+                                                categoryName,
+                                                isSelfTransfer));
                             })
                             .filter(Optional::isPresent)
                             .map(Optional::get)

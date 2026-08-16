@@ -29,7 +29,6 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
 
             // for now there is only one 'Uncategorized' category for both inflow/outflow
             CashCategory uncategorizedCashCategory;
-            // VID-161 Phase 1b: route self-transfers to dedicated bucket (auto-create on first use)
             if (event.selfTransfer()) {
                 TransactionDetails details = new TransactionDetails(
                         event.cashChangeId(),
@@ -42,9 +41,11 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
                 );
                 Transaction txn = new Transaction(details, EXPECTED);
                 if (Type.INFLOW.equals(event.type())) {
-                    cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.addToInflowsWithoutStats(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.markCategoryAsSelfTransfer(event.categoryName(), Type.INFLOW);
                 } else {
-                    cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.addToOutflowsWithoutStats(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.markCategoryAsSelfTransfer(event.categoryName(), Type.OUTFLOW);
                 }
                 return cashFlowMonthlyForecast;
             } else if (Type.INFLOW.equals(event.type())) {

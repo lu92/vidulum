@@ -21,8 +21,11 @@ public class CashFlowMonthlyForecastEntity {
     private CashFlowStatsEntity cashFlowStats;
     private List<CashCategoryEntity> categorizedInFlows;
     private List<CashCategoryEntity> categorizedOutFlows;
-    /** VID-161 Phase 1b: self-transfers bucketed separately from budget aggregates. */
+    /** @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag. */
+    @Deprecated
     private List<CashCategoryEntity> selfTransferInFlows;
+    /** @deprecated Self-transfers are now routed to categorized lists with selfTransferCategory=true flag. */
+    @Deprecated
     private List<CashCategoryEntity> selfTransferOutFlows;
     private String status;
     private AttestationEntity attestation;

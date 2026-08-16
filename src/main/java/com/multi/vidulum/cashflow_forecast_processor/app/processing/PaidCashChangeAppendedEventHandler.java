@@ -27,8 +27,6 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
         statement.getForecasts().compute(yearMonth, (yearMonth1, cashFlowMonthlyForecast) -> {
 
             CashCategory cashCategory;
-            // VID-161 Phase 1b: route self-transfers to dedicated bucket (no inflow/outflow stats update).
-            // addToSelfTransfer*flows auto-creates the bucket category on first use.
             if (event.selfTransfer()) {
                 TransactionDetails details = new TransactionDetails(
                         event.cashChangeId(),
@@ -42,14 +40,14 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
                 Transaction txn = new Transaction(details, PAID);
                 boolean added;
                 if (Type.INFLOW.equals(event.type())) {
-                    added = cashFlowMonthlyForecast.addToSelfTransferInflows(event.categoryName(), txn);
-                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferInflowsByName(event.categoryName()).orElseThrow();
+                    added = cashFlowMonthlyForecast.addToInflowsWithoutStats(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.markCategoryAsSelfTransfer(event.categoryName(), Type.INFLOW);
                 } else {
-                    added = cashFlowMonthlyForecast.addToSelfTransferOutflows(event.categoryName(), txn);
-                    cashCategory = cashFlowMonthlyForecast.findCategoryInSelfTransferOutflowsByName(event.categoryName()).orElseThrow();
+                    added = cashFlowMonthlyForecast.addToOutflowsWithoutStats(event.categoryName(), txn);
+                    cashFlowMonthlyForecast.markCategoryAsSelfTransfer(event.categoryName(), Type.OUTFLOW);
                 }
                 if (added) {
-                    cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
+                    cashFlowMonthlyForecast.updateTotalPaidValue();
                 }
                 return cashFlowMonthlyForecast;
             } else if (Type.INFLOW.equals(event.type())) {
@@ -94,9 +92,9 @@ public class PaidCashChangeAppendedEventHandler implements CashFlowEventHandler<
                             )
                     );
                 }
-                cashCategory.setTotalPaidValue(cashCategory.getTotalPaidValue().plus(event.money()));
             }
 
+            cashFlowMonthlyForecast.updateTotalPaidValue();
             return cashFlowMonthlyForecast;
         });
 

@@ -38,14 +38,13 @@ public class CashChangeConfirmedEventHandler implements CashFlowEventHandler<Cas
                     PAID
             );
 
-            // VID-161 Phase 1b: route via locate's selfTransfer flag (Q8 decision)
             if (location.selfTransfer()) {
                 if (Type.INFLOW.equals(location.type())) {
-                    cashFlowMonthlyForecast.removeFromSelfTransferInflows(location.categoryName(), currentTransaction);
-                    cashFlowMonthlyForecast.addToSelfTransferInflows(location.categoryName(), updatedTransaction);
+                    cashFlowMonthlyForecast.removeFromInflowsWithoutStats(location.categoryName(), currentTransaction);
+                    cashFlowMonthlyForecast.addToInflowsWithoutStats(location.categoryName(), updatedTransaction);
                 } else {
-                    cashFlowMonthlyForecast.removeFromSelfTransferOutflows(location.categoryName(), currentTransaction);
-                    cashFlowMonthlyForecast.addToSelfTransferOutflows(location.categoryName(), updatedTransaction);
+                    cashFlowMonthlyForecast.removeFromOutflowsWithoutStats(location.categoryName(), currentTransaction);
+                    cashFlowMonthlyForecast.addToOutflowsWithoutStats(location.categoryName(), updatedTransaction);
                 }
             } else if (Type.INFLOW.equals(location.type())) {
                 cashFlowMonthlyForecast.removeFromInflows(location.categoryName(), currentTransaction);
