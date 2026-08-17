@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -29,11 +29,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Uses existing test infrastructure (@SpringBootTest + Testcontainers) instead of WireMock
  * to test the real HTTP stack.
  *
- * This test class extends AuthenticatedHttpIntegrationTest which has
+ * This test class extends CashFlowIntegrationTest which has
  * security ENABLED (real JWT authentication).
  */
 @Slf4j
-class HttpCashFlowServiceClientIntegrationTest extends AuthenticatedHttpIntegrationTest {
+class HttpCashFlowServiceClientIntegrationTest extends CashFlowIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 

@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_adapter.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.common.error.ApiError;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @DisplayName("AI Bank CSV Adapter - Error Handling")
-class AiBankCsvAdapterErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
+class AiBankCsvAdapterErrorHandlingTest extends CashFlowIntegrationTest {
 
     private AiBankCsvAdapterHttpActor actor;
 

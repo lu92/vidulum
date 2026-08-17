@@ -1,6 +1,6 @@
 package com.multi.vidulum.recurring_rules.app;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
 import com.multi.vidulum.cashflow.domain.CashFlow;
@@ -48,7 +48,7 @@ import static org.awaitility.Awaitility.await;
  */
 @Slf4j
 @Import(RecurringRulesHttpIntegrationTest.TestCashFlowHttpClientConfig.class)
-public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class RecurringRulesHttpIntegrationTest extends CashFlowIntegrationTest {
 
     /**
      * Test configuration that provides a CashFlowHttpClient configured with the local test server port.
@@ -82,9 +82,6 @@ public class RecurringRulesHttpIntegrationTest extends AuthenticatedHttpIntegrat
             return "http://localhost:" + port;
         }
     }
-
-    @Autowired
-    private CashFlowForecastStatementRepository statementRepository;
 
     @Autowired
     private RecurringRuleMongoRepository recurringRuleMongoRepository;

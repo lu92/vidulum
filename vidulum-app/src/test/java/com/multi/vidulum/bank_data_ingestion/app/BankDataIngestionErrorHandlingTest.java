@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
@@ -22,12 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * Pattern follows CashFlowErrorHandlingTest for consistency.
  *
- * This test class extends AuthenticatedHttpIntegrationTest which has
+ * This test class extends CashFlowIntegrationTest which has
  * security ENABLED (real JWT authentication).
  */
 @Slf4j
 @DisplayName("Bank Data Ingestion - Error Handling")
-class BankDataIngestionErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
+class BankDataIngestionErrorHandlingTest extends CashFlowIntegrationTest {
 
     private BankDataIngestionHttpActor actor;
 

@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_adapter.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationRepository;
 import com.multi.vidulum.bank_data_adapter.rest.UnifiedCsvImportController;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @DisplayName("Unified CSV Import - Integration Tests")
-class UnifiedCsvImportIntegrationTest extends AuthenticatedHttpIntegrationTest {
+class UnifiedCsvImportIntegrationTest extends CashFlowIntegrationTest {
 
     @Autowired
     private AiCsvTransformationRepository transformationRepository;

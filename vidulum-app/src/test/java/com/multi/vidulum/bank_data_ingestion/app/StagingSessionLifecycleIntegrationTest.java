@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.domain.AiCategorizationStatus;
 import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionStatus;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @Import({StagingSessionLifecycleIntegrationTest.TestCashFlowServiceClientConfig.class})
-public class StagingSessionLifecycleIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
@@ -65,12 +65,6 @@ public class StagingSessionLifecycleIntegrationTest extends AuthenticatedHttpInt
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
     }
-
-    @Autowired
-    private CashFlowMongoRepository cashFlowMongoRepository;
-
-    @Autowired
-    private CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
 
     @Autowired
     private CategoryMappingMongoRepository categoryMappingMongoRepository;

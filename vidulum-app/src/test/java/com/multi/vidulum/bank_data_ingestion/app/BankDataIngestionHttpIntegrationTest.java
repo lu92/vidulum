@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Integration test verifying REST API communication between bank-data-ingestion
  * and cashflow-service endpoints WITH JWT AUTHENTICATION ENABLED.
  *
- * This test extends AuthenticatedHttpIntegrationTest to verify security is working:
+ * This test extends CashFlowIntegrationTest to verify security is working:
  * - All requests include JWT Bearer token
  * - Endpoints properly validate authentication
  *
@@ -58,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @Import({BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
-public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
@@ -82,12 +82,6 @@ public class BankDataIngestionHttpIntegrationTest extends AuthenticatedHttpInteg
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
     }
-
-    @Autowired
-    private CashFlowMongoRepository cashFlowMongoRepository;
-
-    @Autowired
-    private CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
 
     @Autowired
     private CategoryMappingMongoRepository categoryMappingMongoRepository;

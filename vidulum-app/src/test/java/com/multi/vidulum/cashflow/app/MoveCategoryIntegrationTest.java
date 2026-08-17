@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.common.CashFlowId;
@@ -44,7 +44,7 @@ import static org.awaitility.Awaitility.await;
  * - Forecast processing (categories properly updated in forecast statement)
  */
 @Slf4j
-public class MoveCategoryIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class MoveCategoryIntegrationTest extends CashFlowIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
