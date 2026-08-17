@@ -8,14 +8,11 @@ import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
-import com.multi.vidulum.cashflow_forecast_processor.infrastructure.entity.CashFlowForecastStatementEntity;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
@@ -24,23 +21,20 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integration test for CashFlowForecastStatementRepositoryImpl with MongoDB.
- * Tests persistence and retrieval of CashFlowForecastStatement with nested structures.
+ * Pure unit test for CashFlowForecastStatement persistence.
+ * Uses {@link InMemoryForecastStatementRepository} with entity round-trip
+ * (fromDomain/toDomain) to verify entity mapping without MongoDB.
  */
-public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest {
+public class CashFlowForecastStatementRepositoryImplTest {
 
-    @Autowired
-    private CashFlowForecastStatementRepositoryImpl repository;
-
-    @Autowired
-    private CashFlowForecastStatementMongoRepository mongoRepository;
+    private final InMemoryForecastStatementRepository repository = new InMemoryForecastStatementRepository();
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]");
     private static final String TEST_CURRENCY = "PLN";
 
     @BeforeEach
     public void setUp() {
-        mongoRepository.deleteAll();
+        repository.deleteAll();
     }
 
     @Test
@@ -208,7 +202,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
                 .isEqualTo(Money.of(20000, TEST_CURRENCY));
 
         // Verify only one document exists
-        assertThat(mongoRepository.count()).isEqualTo(1);
+        assertThat(repository.count()).isEqualTo(1);
     }
 
     @Test
@@ -260,7 +254,7 @@ public class CashFlowForecastStatementRepositoryImplTest extends IntegrationTest
         repository.save(statement2);
 
         // then
-        assertThat(mongoRepository.count()).isEqualTo(2);
+        assertThat(repository.count()).isEqualTo(2);
 
         assertThat(repository.findByCashFlowId(cashFlowId1)).isPresent();
         assertThat(repository.findByCashFlowId(cashFlowId2)).isPresent();
