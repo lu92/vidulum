@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMapping;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingRepository;
@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @Import({PatternMatchingIntegrationTest.TestCashFlowServiceClientConfig.class})
-public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
@@ -58,12 +58,6 @@ public class PatternMatchingIntegrationTest extends AuthenticatedHttpIntegration
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
     }
-
-    @Autowired
-    private CashFlowMongoRepository cashFlowMongoRepository;
-
-    @Autowired
-    private CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
 
     @Autowired
     private CategoryMappingMongoRepository categoryMappingMongoRepository;

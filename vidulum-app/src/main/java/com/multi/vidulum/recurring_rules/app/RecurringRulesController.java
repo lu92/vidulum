@@ -8,15 +8,12 @@ import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
 import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDashboardParameterException;
-import com.multi.vidulum.user.domain.DomainUserRepository;
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,7 +26,7 @@ import java.util.Map;
 public class RecurringRulesController {
 
     private final RecurringRuleService ruleService;
-    private final DomainUserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> createRule(
@@ -282,14 +279,7 @@ public class RecurringRulesController {
     }
 
     private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            String username = authentication.getName();
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new IllegalStateException("User not found: " + username));
-            return user.getUserId().getId();
-        }
-        throw new IllegalStateException("No authenticated user found");
+        return authenticatedUserProvider.getCurrentUserId().getId();
     }
 
     private String extractToken(String authHeader) {

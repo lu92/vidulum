@@ -36,12 +36,19 @@ public class UserFinancialProfileService {
     private final Clock clock;
 
     public UserFinancialProfile createEmptyProfile(UserId userId) {
-        ZonedDateTime now = ZonedDateTime.now(clock);
-        UserFinancialProfile profile = UserFinancialProfile.createEmpty(userId, now);
-        UserFinancialProfile saved = repository.save(profile);
-        eventEmitter.emit(new UserFinancialProfileEvent.UserFinancialProfileCreatedEvent(userId, now));
-        log.info("User financial profile created for user [{}]", userId.getId());
-        return saved;
+        return repository.findByUserId(userId)
+                .map(existing -> {
+                    log.debug("Financial profile already exists for user [{}], skipping creation", userId.getId());
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    ZonedDateTime now = ZonedDateTime.now(clock);
+                    UserFinancialProfile profile = UserFinancialProfile.createEmpty(userId, now);
+                    UserFinancialProfile saved = repository.save(profile);
+                    eventEmitter.emit(new UserFinancialProfileEvent.UserFinancialProfileCreatedEvent(userId, now));
+                    log.info("User financial profile created for user [{}]", userId.getId());
+                    return saved;
+                });
     }
 
     public OwnedBankAccount addAccount(
@@ -145,7 +152,7 @@ public class UserFinancialProfileService {
     public void claimOrLinkAccountForCashFlow(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
         String iban = bankAccount.bankAccountNumber().fetchRawIban();
         UserFinancialProfile profile = repository.findByUserId(userId)
-                .orElseThrow(() -> new UserFinancialProfileNotFoundException(userId));
+                .orElseGet(() -> createEmptyProfile(userId));
 
         ZonedDateTime now = ZonedDateTime.now(clock);
 

@@ -4,14 +4,18 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.CannotUnlockAssetException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
+import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
-import com.multi.vidulum.trading.domain.IntegrationTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Set;
@@ -19,8 +23,16 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Pure unit test for Portfolio aggregate — no Spring context, no Testcontainers.
+ * Uses {@link InMemoryPortfolioRepository} with entity round-trip.
+ */
 @Slf4j
-class PortfolioTest extends IntegrationTest {
+class PortfolioTest {
+
+    private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    private final PortfolioFactory portfolioFactory = new PortfolioFactory();
+    private final DomainPortfolioRepository portfolioRepository = new InMemoryPortfolioRepository(clock);
 
     private static final UserId USER_ID = new UserId("U10000001");
     private static final Broker BROKER = Broker.of("Broker");

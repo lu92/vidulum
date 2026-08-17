@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Invalid JWT tokens return 403 Forbidden
  * - Authenticated requests succeed
  *
- * This test class extends AuthenticatedHttpIntegrationTest which has
+ * This test class extends CashFlowIntegrationTest which has
  * security ENABLED (real JWT authentication).
  */
 @Slf4j
-class CashFlowSecurityTest extends AuthenticatedHttpIntegrationTest {
+class CashFlowSecurityTest extends CashFlowIntegrationTest {
 
     private CashFlowHttpActor authenticatedActor;
 

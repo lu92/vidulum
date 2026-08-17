@@ -19,7 +19,7 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class CashFlowControllerTest extends IntegrationTest {
+public class CashFlowControllerTest extends CashFlowIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 

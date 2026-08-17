@@ -17,7 +17,7 @@ import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-public class CashflowStatementViaAIGenerator extends IntegrationTest {
+public class CashflowStatementViaAIGenerator extends CashFlowIntegrationTest {
 
     @Autowired
     private HomeBudgetActor actor;

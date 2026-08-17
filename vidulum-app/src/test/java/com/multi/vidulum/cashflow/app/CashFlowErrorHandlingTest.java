@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
@@ -25,11 +25,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * HTTP integration tests for CashFlow error handling WITH JWT AUTHENTICATION ENABLED.
  * Tests that domain exceptions are properly mapped to HTTP responses with correct status codes and ApiError bodies.
  *
- * This class extends AuthenticatedHttpIntegrationTest to ensure all requests
+ * This class extends CashFlowIntegrationTest to ensure all requests
  * are properly authenticated with JWT tokens.
  */
 @Slf4j
-class CashFlowErrorHandlingTest extends AuthenticatedHttpIntegrationTest {
+class CashFlowErrorHandlingTest extends CashFlowIntegrationTest {
 
     private CashFlowHttpActor actor;
 

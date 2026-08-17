@@ -1,15 +1,11 @@
 package com.multi.vidulum.user_financial_profile.app;
 
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.security.config.JwtService;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.user.app.queries.GetUserByUsernameQuery;
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.user_financial_profile.domain.AccountSource;
 import com.multi.vidulum.user_financial_profile.domain.OwnedBankAccount;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,14 +25,11 @@ import java.util.List;
 public class UserFinancialProfileRestController {
 
     private final UserFinancialProfileService service;
-    private final JwtService jwtService;
-    private final QueryGateway queryGateway;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @GetMapping
-    public UserFinancialProfileDto.OwnedAccountsListJson list(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader
-    ) {
-        UserId userId = resolveUserIdFromToken(authHeader);
+    public UserFinancialProfileDto.OwnedAccountsListJson list() {
+        UserId userId = authenticatedUserProvider.getCurrentUserId();
         return UserFinancialProfileDto.OwnedAccountsListJson.of(
                 userId.getId(),
                 service.listAccounts(userId)
@@ -45,10 +38,9 @@ public class UserFinancialProfileRestController {
 
     @PostMapping
     public ResponseEntity<UserFinancialProfileDto.OwnedAccountJson> add(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @Valid @RequestBody UserFinancialProfileDto.AddOwnedAccountRequest request
     ) {
-        UserId userId = resolveUserIdFromToken(authHeader);
+        UserId userId = authenticatedUserProvider.getCurrentUserId();
         OwnedBankAccount account = service.addAccount(
                 userId,
                 request.getIban(),
@@ -64,10 +56,9 @@ public class UserFinancialProfileRestController {
 
     @PostMapping("/bulk")
     public ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> addBulk(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @Valid @RequestBody UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
     ) {
-        UserId userId = resolveUserIdFromToken(authHeader);
+        UserId userId = authenticatedUserProvider.getCurrentUserId();
         List<UserFinancialProfileService.BulkAccountRequest> bulkReqs = request.getAccounts().stream()
                 .map(r -> new UserFinancialProfileService.BulkAccountRequest(
                         r.getIban(), r.getCurrency(), r.getBankName(), r.getLabel()))
@@ -78,10 +69,8 @@ public class UserFinancialProfileRestController {
     }
 
     @GetMapping("/available-for-cashflow")
-    public UserFinancialProfileDto.OwnedAccountsListJson availableForCashFlow(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader
-    ) {
-        UserId userId = resolveUserIdFromToken(authHeader);
+    public UserFinancialProfileDto.OwnedAccountsListJson availableForCashFlow() {
+        UserId userId = authenticatedUserProvider.getCurrentUserId();
         return UserFinancialProfileDto.OwnedAccountsListJson.of(
                 userId.getId(),
                 service.listAccountsAvailableForCashFlow(userId)
@@ -90,18 +79,11 @@ public class UserFinancialProfileRestController {
 
     @DeleteMapping("/{iban}")
     public ResponseEntity<Void> delete(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @PathVariable("iban") String iban
     ) {
-        UserId userId = resolveUserIdFromToken(authHeader);
+        UserId userId = authenticatedUserProvider.getCurrentUserId();
         service.removeAccount(userId, iban);
         return ResponseEntity.noContent().build();
     }
 
-    private UserId resolveUserIdFromToken(String authHeader) {
-        String jwt = authHeader.substring(7);
-        String username = jwtService.extractUsername(jwt);
-        User user = queryGateway.send(GetUserByUsernameQuery.of(username));
-        return user.getUserId();
-    }
 }

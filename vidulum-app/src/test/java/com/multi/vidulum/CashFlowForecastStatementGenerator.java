@@ -15,7 +15,7 @@ import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-public class CashFlowForecastStatementGenerator extends IntegrationTest {
+public class CashFlowForecastStatementGenerator extends CashFlowIntegrationTest {
 
     @Autowired
     private Actor actor;
