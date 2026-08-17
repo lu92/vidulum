@@ -2,14 +2,11 @@ package com.multi.vidulum.bank_data_adapter.rest;
 
 import com.multi.vidulum.bank_data_adapter.app.AiBankCsvTransformService;
 import com.multi.vidulum.bank_data_adapter.domain.AiCsvTransformationDocument;
-import com.multi.vidulum.user.domain.DomainUserRepository;
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,7 +33,7 @@ import java.util.List;
 public class UnifiedCsvImportController {
 
     private final AiBankCsvTransformService transformService;
-    private final DomainUserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     /**
      * Upload and process a CSV file.
@@ -76,14 +73,7 @@ public class UnifiedCsvImportController {
     // ========== Helper Methods ==========
 
     private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            String username = authentication.getName();
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new IllegalStateException("User not found: " + username));
-            return user.getUserId().getId();
-        }
-        throw new IllegalStateException("No authenticated user found");
+        return authenticatedUserProvider.getCurrentUserId().getId();
     }
 
     // ========== Response DTOs ==========

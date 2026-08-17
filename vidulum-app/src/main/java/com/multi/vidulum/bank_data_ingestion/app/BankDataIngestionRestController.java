@@ -37,8 +37,7 @@ import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.L
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.user.domain.DomainUserRepository;
-import com.multi.vidulum.user.domain.User;
+import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.cashflow.domain.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -46,8 +45,6 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -64,7 +61,7 @@ public class BankDataIngestionRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
-    private final DomainUserRepository userRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     /**
      * Configure category mappings for bank data ingestion.
@@ -435,17 +432,8 @@ public class BankDataIngestionRestController {
         return toForceUncategorizedResponse(result);
     }
 
-    // ============ User ID helper ============
-
     private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            String username = authentication.getName();
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new IllegalStateException("User not found: " + username));
-            return user.getUserId().getId();
-        }
-        throw new IllegalStateException("No authenticated user found");
+        return authenticatedUserProvider.getCurrentUserId().getId();
     }
 
     // ============ AI Categorization mapping helpers ============
