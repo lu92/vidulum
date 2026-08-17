@@ -2,12 +2,6 @@ package com.multi.vidulum.trading.domain;
 
 
 import com.multi.vidulum.JsonFormatter;
-import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
-import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
-import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
-import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
-import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -135,12 +129,6 @@ public abstract class IntegrationTest {
     protected DomainPnlRepository pnlRepository;
 
     @Autowired
-    protected DomainCashFlowRepository domainCashFlowRepository;
-
-    @Autowired
-    protected CashFlowMongoRepository cashFlowMongoRepository;
-
-    @Autowired
     protected RiskManagementRestController riskManagementRestController;
 
     @Autowired
@@ -154,15 +142,6 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected OrderFactory orderFactory;
-
-    @Autowired
-    protected CashFlowForecastMongoRepository cashFlowForecastMongoRepository;
-
-    @Autowired
-    protected CashFlowForecastStatementRepository statementRepository;
-
-    @Autowired
-    protected CashFlowEventEmitter cashFlowEventEmitter;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
 
@@ -348,12 +327,6 @@ public abstract class IntegrationTest {
                                     asset.getFree().equals(expectedFree))
                     .orElse(false);
         });
-    }
-
-    protected boolean lastEventIsProcessed(CashFlowId cashFlowId, Checksum lastEventChecksum) {
-        return statementRepository.findByCashFlowId(cashFlowId)
-                .map(statement -> statement.getLastMessageChecksum().equals(lastEventChecksum))
-                .orElse(false);
     }
 
     @Value

@@ -7,7 +7,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStateme
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ import static org.awaitility.Awaitility.await;
  * </ol>
  */
 @Slf4j
-public class DualCashflowStatementGeneratorWithRolledOver extends IntegrationTest {
+public class DualCashflowStatementGeneratorWithRolledOver extends CashFlowIntegrationTest {
 
     @Autowired
     private CashFlowRestController cashFlowRestController;

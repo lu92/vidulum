@@ -6,7 +6,7 @@ import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.util.DigestUtils;
 
@@ -20,7 +20,7 @@ import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-class CashFlowForecastProcessorTest extends IntegrationTest {
+class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
 
     @Test
     public void processInflows() {

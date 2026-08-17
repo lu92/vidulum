@@ -12,7 +12,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +36,7 @@ import static org.awaitility.Awaitility.await;
  * then attests the import and continues with regular transaction generation.
  */
 @Slf4j
-public class DualCashflowStatementGeneratorWithHistory extends IntegrationTest {
+public class DualCashflowStatementGeneratorWithHistory extends CashFlowIntegrationTest {
 
     @Autowired
     private DualBudgetActor actor;

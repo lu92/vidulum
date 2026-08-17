@@ -13,7 +13,7 @@ import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ import static org.awaitility.Awaitility.await;
  * Tests the ROLLED_OVER status and related flows.
  */
 @Slf4j
-public class RolloverMonthIntegrationTest extends IntegrationTest {
+public class RolloverMonthIntegrationTest extends CashFlowIntegrationTest {
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
 
@@ -45,9 +45,6 @@ public class RolloverMonthIntegrationTest extends IntegrationTest {
 
     @Autowired
     private CommandGateway commandGateway;
-
-    @Autowired
-    private DomainCashFlowRepository domainCashFlowRepository;
 
     @Autowired
     private Clock clock;
