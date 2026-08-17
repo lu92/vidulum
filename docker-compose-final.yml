@@ -14,15 +14,18 @@ services:
     healthcheck:
       test: >
         mongosh --quiet --eval "
-        try { rs.status(); }
-        catch(e) {
+        try {
+          var status = rs.status();
+          if (status.myState !== 1) { quit(1); }
+        } catch(e) {
           rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]});
+          quit(1);
         }
         " || exit 1
-      interval: 5s
+      interval: 3s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 10s
 
   # ============================================
   # Kafka 7.8.1 (KRaft Mode) - NO Zookeeper!
@@ -117,8 +120,10 @@ services:
       SPRING_AI_OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dummy-not-used}
       SPRING_AI_OPENAI_CHAT_ENABLED: ${OPENAI_ENABLED:-false}
     depends_on:
-      - kafka
-      - mongodb
+      kafka:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
 
   # ============================================
   # WebSocket Gateway (commented out - image not built yet)
