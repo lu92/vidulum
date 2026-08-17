@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
+import com.multi.vidulum.user_financial_profile.infrastructure.UserFinancialProfileMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashSummary;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
@@ -50,9 +51,16 @@ public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpInteg
     @Autowired
     private CashFlowForecastStatementRepository statementRepository;
 
+    @Autowired
+    private UserFinancialProfileMongoRepository profileMongoRepository;
+
     @BeforeEach
     void setupActors() {
         registerAndAuthenticate();
+        waitForKafkaListeners();
+        // Wait for async profile creation (UserFinancialProfileUserCreatedListener)
+        await().atMost(Duration.ofSeconds(10))
+                .until(() -> profileMongoRepository.findById(userId).isPresent());
         profileActor = new UserFinancialProfileHttpActor(restTemplate, port);
         profileActor.setJwtToken(accessToken);
         ingestionActor = new BankDataIngestionHttpActor(restTemplate, port);

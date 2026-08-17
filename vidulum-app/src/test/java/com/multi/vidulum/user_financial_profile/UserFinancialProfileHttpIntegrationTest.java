@@ -51,6 +51,10 @@ public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIn
     @BeforeEach
     void setupActor() {
         registerAndAuthenticate();
+        waitForKafkaListeners();
+        // Wait for async profile creation (UserFinancialProfileUserCreatedListener)
+        await().atMost(Duration.ofSeconds(10))
+                .until(() -> profileMongoRepository.findById(userId).isPresent());
         actor = new UserFinancialProfileHttpActor(restTemplate, port);
         actor.setJwtToken(accessToken);
     }
