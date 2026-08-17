@@ -1,0 +1,43 @@
+# Test-specific configuration for Spring Boot 3.5.2+
+# This helps with graceful shutdown when using Testcontainers
+
+# Disable AI providers for tests (no API keys, use mock ChatModel from TestAiConfig)
+vidulum:
+  ai:
+    enabled: false
+
+spring:
+  # Disable ALL AI auto-configuration for tests (no API keys available)
+  autoconfigure:
+    exclude:
+      # OpenAI - all models
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+      # Anthropic - all models
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
+  lifecycle:
+    # Reduce the graceful shutdown timeout for tests
+    timeout-per-shutdown-phase: 5s
+  kafka:
+    listener:
+      # Prevent long waits during container shutdown
+      immediate-stop: true
+    consumer:
+      # Reduce poll timeout for faster test teardown
+      properties:
+        max.poll.interval.ms: 10000
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+    producer:
+      properties:
+        # Reduce timeouts for faster test teardown
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        linger.ms: 0
+
+server:
+  shutdown: graceful

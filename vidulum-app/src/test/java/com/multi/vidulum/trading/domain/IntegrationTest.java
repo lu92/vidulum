@@ -2,6 +2,8 @@ package com.multi.vidulum.trading.domain;
 
 
 import com.multi.vidulum.JsonFormatter;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -36,7 +38,10 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
@@ -56,9 +61,19 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Slf4j
 @SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
-@Import({PortfolioAppConfig.class, TradingAppConfig.class})
+@Import({PortfolioAppConfig.class, TradingAppConfig.class, IntegrationTest.TestCashFlowServiceClientConfig.class})
 @ActiveProfiles("test")
 public abstract class IntegrationTest {
+
+    @TestConfiguration
+    static class TestCashFlowServiceClientConfig {
+        @Bean
+        public CashFlowServiceClient cashFlowServiceClient(
+                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
+                @Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
+            return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
+    }
 
     // Shared reusable containers - started once and reused across all tests
     protected static final MongoDBContainer mongoDBContainer;

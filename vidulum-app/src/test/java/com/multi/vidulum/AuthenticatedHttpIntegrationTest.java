@@ -63,10 +63,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestRestTemplate
 public abstract class AuthenticatedHttpIntegrationTest {
 
-    /**
-     * Test configuration that provides CashFlowServiceClient using direct gateway calls.
-     * Uses @Lazy on CommandGateway to break circular dependency.
-     */
     @TestConfiguration
     static class TestCashFlowServiceClientConfig {
         @Bean

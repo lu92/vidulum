@@ -1,0 +1,1865 @@
+{
+  "cashFlowId": {
+    "id": "CF10000001"
+  },
+  "forecasts": {
+    "2021-06": {
+      "period": "2021-06",
+      "cashFlowStats": {
+        "start": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 89.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 89.0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 100.0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 11.0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": [
+                {
+                  "cashChangeId": {
+                    "id": "CC1000000001"
+                  },
+                  "name": {
+                    "name": "cash change name"
+                  },
+                  "money": {
+                    "amount": 100.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-01T06:30:00Z",
+                  "dueDate": "2021-06-10T06:30:00Z",
+                  "endDate": "2021-06-15T16:30:00Z"
+                }
+              ]
+            }
+          },
+          "totalPaidValue": {
+            "amount": 100.0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": [
+                {
+                  "cashChangeId": {
+                    "id": "CC1000000001"
+                  },
+                  "name": {
+                    "name": "Cost 1"
+                  },
+                  "money": {
+                    "amount": 11.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-01T06:30:00Z",
+                  "dueDate": "2021-06-10T06:30:00Z",
+                  "endDate": "2021-06-15T16:30:00Z"
+                }
+              ]
+            }
+          },
+          "totalPaidValue": {
+            "amount": 11.0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "ATTESTED",
+      "attestation": {
+        "bankAccountBalance": {
+          "amount": 75.0,
+          "currency": "USD"
+        },
+        "type": "MANUAL",
+        "dateTime": "2021-07-15T06:30:00Z"
+      },
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-07": {
+      "period": "2021-07",
+      "cashFlowStats": {
+        "start": {
+          "amount": 89.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 264.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 175.0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 200.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 25.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [
+                {
+                  "cashChangeId": {
+                    "id": "CC1000000001"
+                  },
+                  "name": {
+                    "name": "cash change for new category 1"
+                  },
+                  "money": {
+                    "amount": 200.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-01T06:30:00Z",
+                  "dueDate": "2021-07-05T06:30:00Z",
+                  "endDate": null
+                }
+              ],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [
+                {
+                  "cashChangeId": {
+                    "id": "CC1000000001"
+                  },
+                  "name": {
+                    "name": "cash change name 2"
+                  },
+                  "money": {
+                    "amount": 25.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-01T06:30:00Z",
+                  "dueDate": "2021-07-05T06:30:00Z",
+                  "endDate": null
+                }
+              ],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "ACTIVE",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-08": {
+      "period": "2021-08",
+      "cashFlowStats": {
+        "start": {
+          "amount": 264.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 120.0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 120.0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [
+                {
+                  "cashChangeId": {
+                    "id": "CC1000000001"
+                  },
+                  "name": {
+                    "name": "cash change name 3 edited"
+                  },
+                  "money": {
+                    "amount": 120.0,
+                    "currency": "USD"
+                  },
+                  "created": "2021-06-03T06:30:00Z",
+                  "dueDate": "2021-08-12T00:00:00Z",
+                  "endDate": null
+                }
+              ],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-09": {
+      "period": "2021-09",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-10": {
+      "period": "2021-10",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-11": {
+      "period": "2021-11",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2021-12": {
+      "period": "2021-12",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-01": {
+      "period": "2022-01",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-02": {
+      "period": "2022-02",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-03": {
+      "period": "2022-03",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-04": {
+      "period": "2022-04",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-05": {
+      "period": "2022-05",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    },
+    "2022-06": {
+      "period": "2022-06",
+      "cashFlowStats": {
+        "start": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "end": {
+          "amount": 384.0,
+          "currency": "USD"
+        },
+        "netChange": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "inflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        "outflowStats": {
+          "actual": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "expected": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "gapToForecast": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      },
+      "categorizedInFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Special category"
+          },
+          "category": {
+            "category": "Special category"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "categorizedOutFlows": [
+        {
+          "categoryName": {
+            "name": "Uncategorized"
+          },
+          "category": {
+            "category": "Uncategorized"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        },
+        {
+          "categoryName": {
+            "name": "Overhead costs"
+          },
+          "category": {
+            "category": "Overhead costs"
+          },
+          "subCategories": [],
+          "groupedTransactions": {
+            "transactions": {
+              "FORECAST": [],
+              "EXPECTED": [],
+              "PAID": []
+            }
+          },
+          "totalPaidValue": {
+            "amount": 0,
+            "currency": "USD"
+          }
+        }
+      ],
+      "status": "FORECASTED",
+      "attestation": null,
+      "selfTransferInFlows": [],
+      "selfTransferOutFlows": []
+    }
+  },
+  "bankAccountNumber": {
+    "iban": {
+      "value": "GB29NWBK60161331926819"
+    },
+    "denomination": {
+      "id": "USD"
+    }
+  },
+  "categoryStructure": {
+    "inflowCategoryStructure": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "nodes": []
+      },
+      {
+        "categoryName": {
+          "name": "Special category"
+        },
+        "nodes": []
+      }
+    ],
+    "outflowCategoryStructure": [
+      {
+        "categoryName": {
+          "name": "Uncategorized"
+        },
+        "nodes": []
+      },
+      {
+        "categoryName": {
+          "name": "Overhead costs"
+        },
+        "nodes": []
+      }
+    ],
+    "lastUpdated": "2022-01-01T00:00:00Z"
+  },
+  "lastMessageChecksum": {
+    "checksum": "2cc8f44453fd6561839052549dab0b84"
+  }
+}

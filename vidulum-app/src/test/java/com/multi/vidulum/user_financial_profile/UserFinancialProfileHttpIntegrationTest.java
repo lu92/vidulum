@@ -1,6 +1,6 @@
 package com.multi.vidulum.user_financial_profile;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.common.Currency;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-public class UserFinancialProfileHttpIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegrationTest {
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
