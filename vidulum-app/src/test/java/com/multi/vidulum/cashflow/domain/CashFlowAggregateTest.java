@@ -1,19 +1,14 @@
 package com.multi.vidulum.cashflow.domain;
-import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
+
 import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.trading.domain.IntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
-import java.time.YearMonth;
-import java.time.ZonedDateTime;
-import java.util.LinkedList;
+import java.time.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,17 +22,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests for CashFlow aggregate event sourcing and projection.
  *
- * <p>Note: This test class extends IntegrationTest which uses shared Testcontainers
- * with parallel test execution. Each test uses unique IDs from TestIds (atomic counters)
- * so no cleanup is needed between tests - each CashFlow has its own unique ID.
+ * <p>Pure unit test — no Spring context, no Testcontainers.
+ * Uses {@link InMemoryCashFlowRepository} which round-trips through
+ * {@code CashFlowEntity} (fromSnapshot/toSnapshot) to verify entity mapping.</p>
  */
-class CashFlowAggregateTest extends IntegrationTest {
+class CashFlowAggregateTest {
 
-    @Autowired
-    private Clock clock;
-
-    @Autowired
-    private CashFlowAggregateProjector cashFlowAggregateProjector;
+    private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    private final DomainCashFlowRepository domainCashFlowRepository = new InMemoryCashFlowRepository(clock);
+    private final CashFlowAggregateProjector cashFlowAggregateProjector = new CashFlowAggregateProjector();
 
     private Checksum calculateChecksum(CashFlowEvent event) {
         String jsonizedEvent = JsonContent.asJson(event).content();

@@ -6,13 +6,24 @@ import com.multi.vidulum.trading.domain.Order.OrderExecution;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Pure unit test for Order aggregate — no Spring context, no Testcontainers.
+ * Uses {@link InMemoryOrderRepository} with entity round-trip.
+ */
 @Slf4j
-class OrderTest extends IntegrationTest {
+class OrderTest {
+
+    private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    private final OrderFactory orderFactory = new OrderFactory();
+    private final DomainOrderRepository orderRepository = new InMemoryOrderRepository(clock);
 
     private static final Broker BROKER = Broker.of("Broker");
 
