@@ -3,7 +3,7 @@ package com.multi.vidulum.trading.domain;
 
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;

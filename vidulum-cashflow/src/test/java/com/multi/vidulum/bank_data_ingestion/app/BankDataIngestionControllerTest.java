@@ -1,4 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.app;
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.common.CashFlowId;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.JsonFormatter;

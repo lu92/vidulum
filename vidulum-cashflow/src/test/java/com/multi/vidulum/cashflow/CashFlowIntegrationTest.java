@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow;
 
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;

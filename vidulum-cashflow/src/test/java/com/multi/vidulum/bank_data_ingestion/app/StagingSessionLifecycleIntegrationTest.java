@@ -12,17 +12,11 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -44,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 4. Import job tracking works correctly
  */
 @Slf4j
-@Import({StagingSessionLifecycleIntegrationTest.TestCashFlowServiceClientConfig.class})
 public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
@@ -54,16 +47,6 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
 
     private String uniqueCashFlowName() {
         return "Lifecycle-Test-" + NAME_COUNTER.incrementAndGet();
-    }
-
-    @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                QueryGateway queryGateway,
-                @Lazy CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
     }
 
     @Autowired
