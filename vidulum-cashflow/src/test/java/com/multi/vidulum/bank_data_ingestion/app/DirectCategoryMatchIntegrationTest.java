@@ -12,17 +12,11 @@ import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -47,21 +41,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * without requiring any mapping configuration.
  */
 @Slf4j
-@Import({DirectCategoryMatchIntegrationTest.TestCashFlowServiceClientConfig.class})
 public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest {
 
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
-
-    @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                QueryGateway queryGateway,
-                @Lazy CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
-    }
 
     @Autowired
     private CategoryMappingMongoRepository categoryMappingMongoRepository;

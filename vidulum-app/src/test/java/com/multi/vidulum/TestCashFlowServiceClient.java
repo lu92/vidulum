@@ -1,4 +1,9 @@
-package com.multi.vidulum.bank_data_ingestion.app;
+package com.multi.vidulum;
+
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.ImportTransactionRequest;
+import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.RollbackResult;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;

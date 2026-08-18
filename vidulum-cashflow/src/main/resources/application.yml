@@ -1,0 +1,51 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000 # a day
+      refresh-token:
+        expiration: 604800000 # 7 days
+
+# CashFlow HTTP client configuration (used by recurring_rules module)
+cashflow:
+  service:
+    url: http://localhost:8080
+
+# Bank Data Ingestion configuration
+vidulum:
+  cashflow-service:
+    # Base URL for cashflow-service REST API
+    base-url: http://localhost:8080
+    # Connection timeout in milliseconds
+    connect-timeout-ms: 5000
+    # Read timeout in milliseconds
+    read-timeout-ms: 30000
+  ingestion:
+    staging:
+      ttl-hours: 24
+    rollback:
+      window-hours: 1
+    processing:
+      batch-size: 50
+      progress-update-interval: 10
+
+# Bank Data Adapter (AI CSV transformation)
+bank-data-adapter:
+  max-file-size-bytes: 5242880  # 5MB
+  max-retries: 2
+  enrichment:
+    enabled: true            # Enable enrichment (fills merchant + bankCategory)
+    batch-size: 50           # Transactions per AI call
+    max-parallelism: 4       # Max concurrent AI calls (avoid rate limiting)
+
+# Bank Data Ingestion REST client
+bank-data-ingestion:
+  base-url: http://localhost:8080

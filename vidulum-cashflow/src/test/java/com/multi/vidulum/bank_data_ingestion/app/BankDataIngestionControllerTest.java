@@ -1,4 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.app;
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.common.CashFlowId;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.JsonFormatter;
@@ -22,11 +23,9 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.events.BankDataIngestionUnifiedEvent;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -70,7 +69,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionNotFoundExcept
  */
 @Slf4j
 @SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
+@Import({BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
 @org.springframework.test.context.ActiveProfiles("test")
 public class BankDataIngestionControllerTest {
 

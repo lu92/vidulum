@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow;
 
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
@@ -11,12 +11,10 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
-import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.trading.app.TradingAppConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -66,7 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         classes = {FixedClockConfig.class, TestAiConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, CashFlowIntegrationTest.TestCashFlowServiceClientConfig.class})
+@Import({CashFlowIntegrationTest.TestCashFlowServiceClientConfig.class})
 @ActiveProfiles("test")
 @AutoConfigureTestRestTemplate
 public abstract class CashFlowIntegrationTest {

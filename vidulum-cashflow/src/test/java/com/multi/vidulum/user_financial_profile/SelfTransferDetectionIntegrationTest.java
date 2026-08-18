@@ -1,6 +1,6 @@
 package com.multi.vidulum.user_financial_profile;
 
-import com.multi.vidulum.AuthenticatedHttpIntegrationTest;
+import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionHttpActor;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
@@ -39,7 +39,7 @@ import static org.awaitility.Awaitility.await;
  * (TransactionDetails, CashSummary) — new fields are auto-detected by comparison failures.
  */
 @Slf4j
-public class SelfTransferDetectionIntegrationTest extends AuthenticatedHttpIntegrationTest {
+public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTest {
 
     private static final String PEKAO_IBAN = "PL98124014441111001078171074";
 

@@ -1,7 +1,7 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.TestCashFlowServiceClient;
+import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
@@ -63,10 +63,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestRestTemplate
 public abstract class AuthenticatedHttpIntegrationTest {
 
-    /**
-     * Test configuration that provides CashFlowServiceClient using direct gateway calls.
-     * Uses @Lazy on CommandGateway to break circular dependency.
-     */
     @TestConfiguration
     static class TestCashFlowServiceClientConfig {
         @Bean

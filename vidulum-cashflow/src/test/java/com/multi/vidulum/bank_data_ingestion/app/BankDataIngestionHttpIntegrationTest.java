@@ -17,17 +17,11 @@ import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -57,7 +51,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Uses BankDataIngestionHttpActor for cleaner test code following the DualBudgetActor pattern.
  */
 @Slf4j
-@Import({BankDataIngestionHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
 public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTest {
 
     // FixedClockConfig sets clock to 2022-01-01T00:00:00Z
@@ -67,20 +60,6 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
 
     private String uniqueCashFlowName() {
         return "Ingestion-" + NAME_COUNTER.incrementAndGet();
-    }
-
-    /**
-     * Test configuration that provides CashFlowServiceClient using direct gateway calls.
-     * Uses @Lazy on CommandGateway to break circular dependency.
-     */
-    @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                QueryGateway queryGateway,
-                @Lazy CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
     }
 
     @Autowired

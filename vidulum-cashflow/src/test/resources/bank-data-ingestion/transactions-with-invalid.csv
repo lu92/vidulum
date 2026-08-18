@@ -1,0 +1,4 @@
+bankTransactionId,name,description,bankCategory,amount,currency,type,operationDate,bookingDate,sourceAccountNumber,targetAccountNumber
+TXN-2021-08-001,Valid Transaction,Monthly salary,Wpływy regularne,5000.00,PLN,INFLOW,2021-08-10,2021-08-10,,PL12345678901234567890123456
+TXN-2021-08-002,Valid Outflow,Regular rent,Mieszkanie,1500.00,PLN,OUTFLOW,2021-08-15,2021-08-15,PL12345678901234567890123456,PL98765432109876543210987654
+TXN-2020-01-001,Too Old Transaction,Before start period,Wpływy regularne,2000.00,PLN,INFLOW,2020-01-15,2020-01-15,,PL12345678901234567890123456
