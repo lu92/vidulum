@@ -1,4 +1,4 @@
-package com.multi.vidulum.shared;
+package com.multi.vidulum.trading.infrastructure;
 
 import com.multi.vidulum.common.events.OrderFilledEvent;
 import lombok.AllArgsConstructor;

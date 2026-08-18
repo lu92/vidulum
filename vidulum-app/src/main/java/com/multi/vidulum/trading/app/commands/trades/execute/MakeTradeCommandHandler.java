@@ -2,7 +2,7 @@ package com.multi.vidulum.trading.app.commands.trades.execute;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.events.TradeCapturedEvent;
-import com.multi.vidulum.shared.TradeCapturedEventEmitter;
+import com.multi.vidulum.trading.infrastructure.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.*;
 import lombok.AllArgsConstructor;

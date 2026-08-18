@@ -5,7 +5,7 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.RegisterUserCommand;
 import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.security.Role;
-import com.multi.vidulum.shared.UserCreatedEventEmitter;
+import com.multi.vidulum.user.infrastructure.UserCreatedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;

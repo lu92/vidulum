@@ -2,7 +2,7 @@ package com.multi.vidulum.trading.app.commands.orders.fill;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.shared.OrderFilledEventEmitter;
+import com.multi.vidulum.trading.infrastructure.OrderFilledEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;

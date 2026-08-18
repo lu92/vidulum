@@ -1,4 +1,4 @@
-package com.multi.vidulum.shared;
+package com.multi.vidulum.user.infrastructure;
 
 import com.multi.vidulum.common.events.UserCreatedEvent;
 import lombok.AllArgsConstructor;
