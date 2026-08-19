@@ -14,25 +14,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Test Commands
 
+### Incremental builds (use during development)
+
+**IMPORTANT**: When modifying code, build and test ONLY the affected module — not the entire project. This is significantly faster.
+
 ```bash
-# Build the project
-./mvnw clean compile
+# Compile only the module you changed (~1-3s each)
+./mvnw compile -pl vidulum-cashflow
+./mvnw compile -pl vidulum-wealth
+./mvnw compile -pl vidulum-app
 
-# Run all tests (requires Docker for Testcontainers)
-./mvnw test
+# Test only the class you changed
+./mvnw test -pl vidulum-cashflow -Dtest=CashFlowAggregateTest           # 0.2s
+./mvnw test -pl vidulum-wealth -Dtest=PortfolioTest                     # 0.1s
+./mvnw test -pl vidulum-app -Dtest=UserPortfolioOnboardingTest          # ~7s
 
-# Run a single test class
-./mvnw test -Dtest=CashFlowControllerTest
+# Test a specific method
+./mvnw test -pl vidulum-cashflow -Dtest=CashFlowControllerTest#shouldCreateCashFlow
 
-# Run a specific test method
-./mvnw test -Dtest=CashFlowControllerTest#shouldCreateCashFlow
+# Test entire module
+./mvnw test -pl vidulum-cashflow      # ~8min (723 tests)
+./mvnw test -pl vidulum-wealth        # ~11s (23 tests)
+./mvnw test -pl vidulum-app           # ~2min (32 tests)
+```
+
+### Full project builds (before PR or after cross-module changes)
+
+```bash
+# Full build — all modules
+./mvnw clean test                     # ~12min (778 tests total)
+
+# Install shared-kernel after changing it (other modules depend on it)
+./mvnw install -pl vidulum-shared-kernel -DskipTests
 
 # Package the application
 ./mvnw package -DskipTests
 
 # Run the application
-./mvnw spring-boot:run
+./mvnw spring-boot:run -pl vidulum-app
 ```
+
+### When to rebuild which module
+
+| Changed file location | Command |
+|----------------------|---------|
+| `vidulum-shared-kernel/` | `./mvnw install -pl vidulum-shared-kernel -DskipTests` then rebuild dependent modules |
+| `vidulum-cashflow/src/main/` | `./mvnw compile -pl vidulum-cashflow` |
+| `vidulum-cashflow/src/test/` | `./mvnw test -pl vidulum-cashflow -Dtest=YourTestClass` |
+| `vidulum-wealth/src/main/` | `./mvnw compile -pl vidulum-wealth` |
+| `vidulum-wealth/src/test/` | `./mvnw test -pl vidulum-wealth -Dtest=YourTestClass` |
+| `vidulum-app/src/main/` | `./mvnw compile -pl vidulum-app` |
+| `vidulum-app/src/test/` | `./mvnw test -pl vidulum-app -Dtest=YourTestClass` |
 
 Note: Java 21 with preview features is required (`--enable-preview` is configured in pom.xml).
 
@@ -40,23 +72,38 @@ Note: Java 21 with preview features is required (`--enable-preview` is configure
 
 Vidulum is a multi-portfolio financial application built with Spring Boot 4.0.0, MongoDB, and Kafka. It follows **Domain-Driven Design (DDD)** and **CQRS** (Command Query Responsibility Segregation) patterns.
 
-### Package Structure
+### Maven Module Structure
 
 ```
-com.multi.vidulum/
-├── cashflow/                    # Cash flow management (bank accounts, transactions)
-├── cashflow_forecast_processor/ # Kafka event-driven forecast generation
-├── portfolio/                   # Portfolio and asset management
-├── trading/                     # Orders and trade execution
-├── user/                        # User management
-├── pnl/                         # Profit & Loss calculations
-├── risk_management/             # Risk assessment (RAG status, stop-loss)
-├── quotation/                   # Price quotations
-├── task/                        # Task tracking
-├── security/                    # JWT authentication & RBAC
-├── common/                      # Shared value objects (Money, Ticker, etc.)
-└── shared/                      # CQRS & DDD base infrastructure
+vidulum/
+├── vidulum-shared-kernel/       # Common types, security, CQRS infrastructure
+│   └── common/                  #   Money, Ticker, UserId, events, errors
+│   └── security/                #   JWT auth, SecurityContextUserProvider
+│   └── shared/                  #   DDD base classes, DataCleaner interface
+│
+├── vidulum-cashflow/            # CashFlow domain module (723 tests)
+│   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
+│   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
+│   └── bank_data_ingestion/     #   CSV import staging, category mapping
+│   └── bank_data_adapter/       #   AI CSV transformation
+│   └── recurring_rules/         #   Recurring transaction rules
+│   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
+│
+├── vidulum-wealth/              # Wealth management domain module (23 tests)
+│   └── portfolio/               #   Portfolios, assets, deposit/withdraw
+│   └── trading/                 #   Orders, trades, execution
+│   └── pnl/                     #   Profit & Loss snapshots
+│   └── risk_management/         #   Risk assessment (RAG status, stop-loss)
+│   └── quotation/               #   Price quotations, broker providers
+│
+└── vidulum-app/                 # Bootstrap & cross-module integration (32 tests)
+    └── user/                    #   User registration, activation
+    └── task/                    #   Task tracking
+    └── config/                  #   Application configuration
+    └── VidulumApplication       #   @SpringBootApplication entry point
 ```
+
+**Dependency flow**: `shared-kernel` ← `cashflow` / `wealth` ← `app` (no circular dependencies).
 
 ### CQRS Pattern
 
@@ -105,12 +152,18 @@ Aggregates use snapshot-based persistence with `fromSnapshot()` and `getSnapshot
 
 ## Testing
 
-Tests use **Testcontainers** for MongoDB and Kafka. Base class: `IntegrationTest` (in `trading.domain` package).
+Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own integration test base class:
+
+| Module | Base class | Description |
+|--------|-----------|-------------|
+| vidulum-cashflow | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers |
+| vidulum-wealth | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs |
+| vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
 Key patterns:
-- `@SpringBootTest` + `@Testcontainers` for integration tests
+- `@SpringBootTest` + Testcontainers for integration tests
 - `Awaitility.await()` for async Kafka processing assertions
-- Helper methods: `createUser()`, `depositMoney()`, `placeOrder()`, `makeTrade()`
+- In-memory repository stubs for pure unit tests (e.g., `InMemoryCashFlowRepository`)
 
 ### Integration Test Guidelines
 
@@ -177,38 +230,22 @@ Implications:
 
 ### MongoDB Entity Clearing at Startup
 
-**IMPORTANT**: When creating a new MongoDB entity (class with `@Document`), you MUST add it to `VidulumApplication.clearData()` method!
+**IMPORTANT**: When creating a new MongoDB entity (class with `@Document`), you MUST add it to the appropriate `DataCleaner` implementation!
 
-The `clearData()` method clears all MongoDB collections on application startup to ensure a clean state for development. If you forget to add a new entity, stale data from previous runs may cause issues.
+Each Maven module has its own `DataCleaner` that clears its MongoDB collections on startup. `VidulumApplication` collects all `DataCleaner` beans via `List<DataCleaner>`.
 
 **Checklist for new entity:**
 1. Create entity class with `@Document("collection_name")` annotation
-2. Add `mongoTemplate.dropCollection(NewEntity.class);` to `VidulumApplication.clearData()`
+2. Add `mongoTemplate.dropCollection(NewEntity.class);` to the `DataCleaner` in the entity's module
 3. Add appropriate import statement
 
-**Currently cleared collections:**
-```java
-// Security & User
-Token, UserEntity
+**DataCleaner implementations:**
 
-// Portfolio & Trading
-PortfolioEntity, TradeEntity, OrderEntity
-
-// CashFlow
-CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity
-
-// Bank Data Ingestion
-StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity
-
-// Bank Data Adapter (AI CSV Transformation)
-AiCsvTransformationDocument, MappingRules
-
-// Recurring Rules
-RecurringRuleEntity
-
-// Other
-TaskEntity, PnlHistoryEntity
-```
+| Module | Class | Collections |
+|--------|-------|-------------|
+| vidulum-cashflow | `CashFlowDataCleaner` | CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity, StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity, AiCsvTransformationDocument, MappingRules, RecurringRuleEntity, UserFinancialProfileEntity |
+| vidulum-wealth | `WealthDataCleaner` | PortfolioEntity, OrderEntity, TradeEntity, PnlHistoryEntity |
+| vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
 ## Docker Rebuild (Full Restart)
 
