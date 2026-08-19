@@ -31,6 +31,7 @@ public class TestPortfolioRestClient implements PortfolioRestClient {
     public PortfolioId createPortfolio(String name, UserId userId, Broker broker, Currency allowedDepositCurrency) {
         Portfolio portfolio = commandGateway.send(
                 CreateEmptyPortfolioCommand.builder()
+                        .portfolioId(PortfolioId.generate())
                         .name(name)
                         .userId(userId)
                         .broker(broker)

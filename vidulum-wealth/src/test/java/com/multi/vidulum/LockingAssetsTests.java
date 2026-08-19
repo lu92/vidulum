@@ -11,7 +11,6 @@ import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.trading.app.TradingDto;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
@@ -25,7 +24,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@Disabled("WIP: WealthIntegrationTest context setup — NPE in DomainPortfolioRepositoryImpl.save()")
 class LockingAssetsTests extends WealthIntegrationTest {
 
     @Test
