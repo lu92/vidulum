@@ -18,6 +18,7 @@
 	<modules>
 		<module>vidulum-shared-kernel</module>
 		<module>vidulum-cashflow</module>
+		<module>vidulum-wealth</module>
 		<module>vidulum-app</module>
 	</modules>
 

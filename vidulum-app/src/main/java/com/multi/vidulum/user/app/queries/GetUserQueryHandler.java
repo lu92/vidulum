@@ -1,7 +1,7 @@
 package com.multi.vidulum.user.app.queries;
 
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
-import com.multi.vidulum.user.app.UserNotFoundException;
+import com.multi.vidulum.common.UserNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;

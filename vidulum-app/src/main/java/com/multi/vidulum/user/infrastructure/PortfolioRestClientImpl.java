@@ -12,7 +12,7 @@ import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler
 import com.multi.vidulum.portfolio.app.queries.*;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
-import com.multi.vidulum.user.domain.PortfolioRestClient;
+import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
