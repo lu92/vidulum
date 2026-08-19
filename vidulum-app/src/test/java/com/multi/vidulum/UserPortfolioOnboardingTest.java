@@ -1,14 +1,12 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.common.*;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.PortfolioId;
+import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.trading.domain.IntegrationTest;
 import com.multi.vidulum.user.app.UserDto;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Verifies integration between user domain (vidulum-app) and wealth domain (vidulum-wealth).
  */
 @Slf4j
-class UserPortfolioOnboardingTest extends IntegrationTest {
+class UserPortfolioOnboardingTest extends AppIntegrationTest {
 
     @Test
     void shouldRegisterUserActivateAndCreatePortfolioWithDeposit() {

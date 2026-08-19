@@ -2,7 +2,7 @@ package com.multi.vidulum;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
 import com.multi.vidulum.security.auth.RegisterRequest;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.AppIntegrationTest;
 import com.multi.vidulum.user.app.UserDto;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.UUID;
 
-class UserServiceTest extends IntegrationTest {
+class UserServiceTest extends AppIntegrationTest {
 
     @Test
     void shouldRegisterUser() {

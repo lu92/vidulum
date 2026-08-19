@@ -2,7 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.task.TaskDto;
 import com.multi.vidulum.task.domain.TaskStatus;
-import com.multi.vidulum.trading.domain.IntegrationTest;
+import com.multi.vidulum.AppIntegrationTest;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TaskTest extends IntegrationTest {
+public class TaskTest extends AppIntegrationTest {
 
     private final ZonedDateTime _01_01_2022 = ZonedDateTime.parse("2022-01-01T00:00Z");
 
