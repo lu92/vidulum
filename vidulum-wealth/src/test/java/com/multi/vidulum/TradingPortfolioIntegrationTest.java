@@ -28,7 +28,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-class VidulumApplicationTests extends WealthIntegrationTest {
+class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
 
     @Test
     void shouldBuyBitcoinTest() {
