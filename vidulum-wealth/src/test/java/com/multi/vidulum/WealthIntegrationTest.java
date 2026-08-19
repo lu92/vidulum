@@ -2,6 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.pnl.app.commands.SetupPnlHistoryCommand;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -14,6 +15,7 @@ import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.infrastructure.PnlMongoRepository;
 import com.multi.vidulum.trading.app.OrderRestController;
 import com.multi.vidulum.trading.app.TradeRestController;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.OrderFactory;
@@ -121,6 +123,9 @@ public abstract class WealthIntegrationTest {
     protected PortfolioRestClient portfolioRestClient;
 
     @Autowired
+    protected CommandGateway commandGateway;
+
+    @Autowired
     protected InMemoryAuthenticatableUserRepository testUserRepository;
 
     protected JsonFormatter jsonFormatter = new JsonFormatter();
@@ -151,6 +156,11 @@ public abstract class WealthIntegrationTest {
 
         InMemoryAuthenticatableUserRepository.TestUser user =
                 testUserRepository.saveUser(uniqueUsername, password, uniqueEmail);
+
+        // Setup PnL history (normally done by UserCreatedEventListener via Kafka)
+        commandGateway.send(SetupPnlHistoryCommand.builder()
+                .userId(new UserId(user.userId()))
+                .build());
 
         return new TestUserSummary(user.userId(), uniqueUsername, uniqueEmail);
     }
