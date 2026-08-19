@@ -1,7 +1,7 @@
 package com.multi.vidulum.user.app.commands.deactivate;
 
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.user.app.UserNotFoundException;
+import com.multi.vidulum.common.UserNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
 import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;
