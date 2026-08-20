@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.CategoryName;
+
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
 import lombok.Getter;

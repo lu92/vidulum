@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.domain;
+package com.multi.vidulum.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 

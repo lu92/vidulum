@@ -4,7 +4,7 @@ import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;

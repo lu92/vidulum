@@ -1,7 +1,7 @@
 package com.multi.vidulum.recurring_rules.domain.exceptions;
 
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.error.ErrorCode;
 
 /**

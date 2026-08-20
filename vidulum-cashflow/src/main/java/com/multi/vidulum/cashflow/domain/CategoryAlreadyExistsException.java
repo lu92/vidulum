@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.CategoryName;
+
 /**
  * Exception thrown when attempting to create a category with a name that already exists
  * and is currently active (not archived).

@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.app.commands.importhistorical;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 

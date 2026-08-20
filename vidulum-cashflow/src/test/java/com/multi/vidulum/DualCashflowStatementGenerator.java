@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationComm
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.edit.EditCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastDto;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastRestController;
