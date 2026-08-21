@@ -1,6 +1,7 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -49,6 +50,12 @@ public abstract class AppIntegrationTest {
                 com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
                 @Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
+
+        @Bean
+        public OwnedAccountClient ownedAccountClient(
+                com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService userFinancialProfileService) {
+            return new TestOwnedAccountClient(userFinancialProfileService);
         }
     }
 

@@ -2,6 +2,8 @@ package com.multi.vidulum.cashflow;
 
 import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
+import com.multi.vidulum.bank_data_ingestion.infrastructure.HttpOwnedAccountClient;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
@@ -76,6 +78,32 @@ public abstract class CashFlowIntegrationTest {
                 QueryGateway queryGateway,
                 @Lazy CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
+        }
+
+        @Bean
+        @Lazy
+        public OwnedAccountClient ownedAccountClient(
+                org.springframework.core.env.Environment environment) {
+            return userId -> {
+                String port = environment.getProperty("local.server.port", "8080");
+                org.springframework.web.client.RestClient restClient = org.springframework.web.client.RestClient.builder()
+                        .baseUrl("http://localhost:" + port)
+                        .requestInterceptor((request, body, execution) -> {
+                            try {
+                                var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
+                                        org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+                                if (attrs != null) {
+                                    String auth = attrs.getRequest().getHeader("Authorization");
+                                    if (auth != null) {
+                                        request.getHeaders().add("Authorization", auth);
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                            return execution.execute(request, body);
+                        })
+                        .build();
+                return new HttpOwnedAccountClient(restClient).loadForUser(userId);
+            };
         }
     }
 

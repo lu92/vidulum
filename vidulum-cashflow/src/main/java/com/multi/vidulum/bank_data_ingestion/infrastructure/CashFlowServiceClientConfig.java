@@ -1,6 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -8,10 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 /**
- * Configuration for CashFlowServiceClient.
+ * Configuration for HTTP service clients used by bank-data-ingestion.
  *
- * Uses HttpCashFlowServiceClient which communicates with cashflow-service via REST API.
- * This enables bank-data-ingestion to run as a separate microservice.
+ * Provides HTTP implementations for:
+ * - CashFlowServiceClient (cashflow-service REST API)
+ * - OwnedAccountClient (user-financial-profile REST API)
  *
  * Configuration properties:
  * - vidulum.cashflow-service.base-url: Base URL for cashflow-service (default: http://localhost:8080)
@@ -50,5 +52,45 @@ public class CashFlowServiceClientConfig {
                 });
 
         return new HttpCashFlowServiceClient(configuredBuilder, baseUrl);
+    }
+
+    /**
+     * HTTP implementation for owned account lookups.
+     * Calls user-financial-profile REST API for self-transfer detection.
+     *
+     * Disabled when vidulum.cashflow-service.enabled=false (integration tests provide their own stub).
+     */
+    @Bean
+    @ConditionalOnProperty(
+            name = "vidulum.cashflow-service.enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public OwnedAccountClient ownedAccountClient(RestClient.Builder restClientBuilder) {
+        RestClient restClient = restClientBuilder
+                .baseUrl(baseUrl)
+                .requestInterceptor((request, body, execution) -> {
+                    String authHeader = extractAuthorizationHeader();
+                    if (authHeader != null) {
+                        request.getHeaders().add("Authorization", authHeader);
+                    }
+                    return execution.execute(request, body);
+                })
+                .build();
+
+        return new HttpOwnedAccountClient(restClient);
+    }
+
+    private String extractAuthorizationHeader() {
+        try {
+            var attributes = (org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                return attributes.getRequest().getHeader("Authorization");
+            }
+        } catch (Exception e) {
+            // No request context available
+        }
+        return null;
     }
 }

@@ -3,6 +3,8 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
+import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountRegistry;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -10,10 +12,10 @@ import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.BankAccountId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,7 +41,7 @@ public class StageTransactionsCommandHandler
     private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
-    private final UserFinancialProfileService userFinancialProfileService;
+    private final OwnedAccountClient ownedAccountClient;
 
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
@@ -53,6 +55,9 @@ public class StageTransactionsCommandHandler
 
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();
+
+        // Load owned accounts for self-transfer detection (single call per session)
+        OwnedAccountRegistry ownedAccounts = ownedAccountClient.loadForUser(UserId.of(cashFlowInfo.userId()));
 
         // Load all category mappings for this CashFlow
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
@@ -78,7 +83,7 @@ public class StageTransactionsCommandHandler
             }
             StagedTransaction staged = processTransaction(
                     txn, command.cashFlowId(), stagingSessionId, cashFlowInfo,
-                    mappingMap, patternMatch, existingBankTransactionIds, now);
+                    mappingMap, patternMatch, existingBankTransactionIds, ownedAccounts, now);
             stagedTransactions.add(staged);
         }
 
@@ -231,6 +236,7 @@ public class StageTransactionsCommandHandler
             Map<MappingKey, CategoryMapping> mappingMap,
             PatternMatchResult patternMatch,
             Set<String> existingBankTransactionIds,
+            OwnedAccountRegistry ownedAccounts,
             ZonedDateTime now) {
 
         OriginalTransactionData originalData = new OriginalTransactionData(
@@ -248,15 +254,14 @@ public class StageTransactionsCommandHandler
                 txn.classification()
         );
 
-        // Priority -1 (highest): self-transfer detection via UserFinancialProfile registry.
+        // Priority -1 (highest): self-transfer detection via owned account registry.
         // Deterministic check: if counterpartyAccount IBAN belongs to one of the user's owned
         // bank accounts, this is a transfer between own accounts — flag it and route to the
         // dedicated "Przelewy własne" category. Short-circuits all other priorities below.
         // See VID-161 Phase 1b for design rationale (Q1 decision: registry-only, no heuristics).
         String counterpartyAccount = txn.counterpartyAccount();
         if (counterpartyAccount != null && !counterpartyAccount.isBlank()) {
-            boolean ownsCounterpartyAccount = userFinancialProfileService.ownsAccount(
-                    UserId.of(cashFlowInfo.userId()), counterpartyAccount);
+            boolean ownsCounterpartyAccount = ownedAccounts.isOwnedAccount(new BankAccountId(counterpartyAccount));
             if (ownsCounterpartyAccount) {
                 log.info("Self-transfer detected: txn=[{}], counterpartyAccount=[{}], userId=[{}]",
                         txn.name(), counterpartyAccount, cashFlowInfo.userId());
