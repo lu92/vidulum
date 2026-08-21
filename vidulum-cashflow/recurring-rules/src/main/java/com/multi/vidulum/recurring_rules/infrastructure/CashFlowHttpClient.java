@@ -2,7 +2,7 @@ package com.multi.vidulum.recurring_rules.infrastructure;
 
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException;

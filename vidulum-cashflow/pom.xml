@@ -12,7 +12,7 @@
 
     <artifactId>vidulum-cashflow</artifactId>
     <name>Vidulum CashFlow Module</name>
-    <description>CashFlow domain: cashflow, forecast, bank data ingestion/adapter, recurring rules, user financial profile</description>
+    <description>CashFlow domain: cashflow, forecast, bank data ingestion/adapter, user financial profile</description>
 
     <dependencies>
         <!-- Shared Kernel -->
@@ -20,6 +20,20 @@
             <groupId>com.multi</groupId>
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- Recurring Rules -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-recurring-rules</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-recurring-rules</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
 
         <!-- Spring Boot -->

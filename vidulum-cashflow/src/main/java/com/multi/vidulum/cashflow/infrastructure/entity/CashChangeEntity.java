@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.infrastructure.entity;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.Money;
 import lombok.Builder;

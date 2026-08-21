@@ -38,7 +38,7 @@ import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.L
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;

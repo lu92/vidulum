@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.move;
 
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CannotChangeCategoryTypeException;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;

@@ -3,7 +3,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;

@@ -6,6 +6,7 @@ import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.app.commands.archive.CannotArchiveSystemCategoryException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CannotUnarchiveCategoryException;
 import com.multi.vidulum.cashflow.domain.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;

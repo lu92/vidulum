@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

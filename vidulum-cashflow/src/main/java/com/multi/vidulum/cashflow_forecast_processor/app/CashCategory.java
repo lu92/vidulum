@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.common.Money;
 import lombok.Builder;

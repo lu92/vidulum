@@ -3,7 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.infrastructure.entity;
 import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import lombok.Builder;

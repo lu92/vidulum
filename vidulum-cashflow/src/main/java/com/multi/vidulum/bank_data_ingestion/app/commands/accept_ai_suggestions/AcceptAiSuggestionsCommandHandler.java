@@ -8,7 +8,7 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.Rev
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;

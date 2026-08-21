@@ -1,6 +1,7 @@
 package com.multi.vidulum.cashflow.app.commands.append;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;

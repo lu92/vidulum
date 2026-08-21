@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow.infrastructure.entity;
 
 import com.multi.vidulum.cashflow.domain.Category;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import lombok.Builder;
 import lombok.Getter;

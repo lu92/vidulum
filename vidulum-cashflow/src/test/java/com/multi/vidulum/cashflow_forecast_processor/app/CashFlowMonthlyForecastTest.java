@@ -2,7 +2,7 @@ package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.TestIds;
 import com.multi.vidulum.common.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.common.Money;
 import org.junit.jupiter.api.Test;

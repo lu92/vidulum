@@ -27,6 +27,7 @@ import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateResult;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.BusinessIdGenerator;
 import com.multi.vidulum.common.Money;

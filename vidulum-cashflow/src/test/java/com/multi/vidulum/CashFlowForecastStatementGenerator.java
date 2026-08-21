@@ -6,6 +6,7 @@ import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCo
 import com.multi.vidulum.cashflow.app.commands.attest.MakeMonthlyAttestationCommand;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.common.Currency;

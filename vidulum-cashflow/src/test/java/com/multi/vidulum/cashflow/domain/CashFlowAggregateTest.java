@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.CategoryName;
+
 import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;

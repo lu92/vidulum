@@ -3,6 +3,7 @@ import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.Cas
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastDto;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastRestController;

@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryComm
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;

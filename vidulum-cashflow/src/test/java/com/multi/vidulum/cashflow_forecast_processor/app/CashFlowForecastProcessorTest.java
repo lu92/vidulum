@@ -3,6 +3,7 @@ import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.Cas
 import com.multi.vidulum.ContentReader;
 import com.multi.vidulum.TestIds;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;

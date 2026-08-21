@@ -10,7 +10,7 @@ import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Category;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;

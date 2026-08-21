@@ -1,6 +1,6 @@
 package com.multi.vidulum.recurring_rules.app;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CategoryName;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.dto.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;

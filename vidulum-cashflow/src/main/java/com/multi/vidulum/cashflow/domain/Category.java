@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.CategoryName;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
