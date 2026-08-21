@@ -35,7 +35,7 @@ public class HttpOwnedAccountClient implements OwnedAccountClient {
                     .body(OwnedAccountsResponse.class);
 
             if (response == null || response.accounts == null) {
-                log.debug("No owned accounts found for user [{}]", userId.getId());
+                log.info("No owned accounts found for user [{}]", userId.getId());
                 return OwnedAccountRegistry.EMPTY;
             }
 
@@ -43,10 +43,10 @@ public class HttpOwnedAccountClient implements OwnedAccountClient {
                     .map(a -> new BankAccountId(a.iban))
                     .collect(Collectors.toSet());
 
-            log.debug("Loaded {} owned accounts for user [{}]", ownedIbans.size(), userId.getId());
+            log.info("Loaded {} owned accounts for user [{}]: {}", ownedIbans.size(), userId.getId(), ownedIbans);
             return new OwnedAccountRegistry(ownedIbans);
         } catch (Exception e) {
-            log.warn("Failed to load owned accounts for user [{}]: {}", userId.getId(), e.getMessage());
+            log.warn("Failed to load owned accounts for user [{}]: {} ({})", userId.getId(), e.getMessage(), e.getClass().getSimpleName());
             return OwnedAccountRegistry.EMPTY;
         }
     }
