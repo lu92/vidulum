@@ -81,6 +81,12 @@ public class BankDataIngestionControllerTest {
                 @org.springframework.context.annotation.Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
+
+        @org.springframework.context.annotation.Bean
+        public com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient ownedAccountClient(
+                com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService userFinancialProfileService) {
+            return new com.multi.vidulum.TestOwnedAccountClient(userFinancialProfileService);
+        }
     }
 
     // Shared containers - started manually without @Container to avoid premature shutdown
