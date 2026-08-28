@@ -6,7 +6,7 @@ import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
-import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileDto;
+import com.multi.vidulum.user_financial_profile.api.*;
 import com.multi.vidulum.user_financial_profile.infrastructure.UserFinancialProfileEntity;
 import com.multi.vidulum.user_financial_profile.infrastructure.UserFinancialProfileMongoRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +59,8 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
         return "OwnedAccTest-" + COUNTER.incrementAndGet();
     }
 
-    private UserFinancialProfileDto.AddOwnedAccountRequest validRequest(String iban) {
-        return new UserFinancialProfileDto.AddOwnedAccountRequest(
+    private AddOwnedAccountRequest validRequest(String iban) {
+        return new AddOwnedAccountRequest(
                 iban, "PLN", "Bank Pekao S.A.", "Pekao - życie"
         );
     }
@@ -72,11 +72,11 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T1: should create empty profile on user registration")
     void shouldCreateEmptyProfileOnUserRegistration() {
-        UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
+        OwnedAccountsListJson list = actor.listAccounts();
 
         assertThat(list).isNotNull();
-        assertThat(list.getUserId()).isEqualTo(userId);
-        assertThat(list.getAccounts()).isEmpty();
+        assertThat(list.userId()).isEqualTo(userId);
+        assertThat(list.accounts()).isEmpty();
 
         UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
         assertThat(entity.getOwnedAccounts()).isEmpty();
@@ -87,16 +87,16 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T2: should add bank account manually with all parameters")
     void shouldAddBankAccountManuallyWithAllParameters() {
-        UserFinancialProfileDto.AddOwnedAccountRequest request =
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+        AddOwnedAccountRequest request =
+                new AddOwnedAccountRequest(
                         VALID_IBAN_PEKAO, "PLN", "Bank Pekao S.A.", "Pekao - życie"
                 );
 
-        ResponseEntity<UserFinancialProfileDto.OwnedAccountJson> response = actor.addAccount(request);
+        ResponseEntity<OwnedAccountJson> response = actor.addAccount(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-        UserFinancialProfileDto.OwnedAccountJson expected = new UserFinancialProfileDto.OwnedAccountJson(
+        OwnedAccountJson expected = new OwnedAccountJson(
                 VALID_IBAN_PEKAO,
                 "PLN",
                 "Bank Pekao S.A.",
@@ -122,7 +122,7 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     void shouldAutoAddBankAccountWhenCreatingCashFlowWithHistory() {
         String cashFlowId = createCashFlowWithHistory(VALID_IBAN_NEST, "Nest Bank");
 
-        UserFinancialProfileDto.OwnedAccountJson expected = new UserFinancialProfileDto.OwnedAccountJson(
+        OwnedAccountJson expected = new OwnedAccountJson(
                 VALID_IBAN_NEST,
                 "PLN",
                 "Nest Bank",
@@ -135,9 +135,9 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
         );
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
-            assertThat(list.getAccounts()).hasSize(1);
-            assertThat(list.getAccounts().get(0))
+            OwnedAccountsListJson list = actor.listAccounts();
+            assertThat(list.accounts()).hasSize(1);
+            assertThat(list.accounts().get(0))
                     .usingRecursiveComparison()
                     .isEqualTo(expected);
         });
@@ -158,7 +158,7 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
         String user2Id = userId;
 
         // user2 adds same IBAN
-        ResponseEntity<UserFinancialProfileDto.OwnedAccountJson> resp = actor2.addAccount(validRequest(VALID_IBAN_PEKAO));
+        ResponseEntity<OwnedAccountJson> resp = actor2.addAccount(validRequest(VALID_IBAN_PEKAO));
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
         // both profiles exist independently
@@ -188,43 +188,43 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
 
         // Wait for Kafka listener to pick up the CashFlow event and claim the Nest IBAN
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            assertThat(actor.listAccounts().getAccounts()).hasSize(1);
+            assertThat(actor.listAccounts().accounts()).hasSize(1);
         });
 
-        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.addAccount(new AddOwnedAccountRequest(
                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pekao"
         ));
-        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.addAccount(new AddOwnedAccountRequest(
                 VALID_IBAN_MBANK, "PLN", "mBank", "mBank kredyt"
         ));
-        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.addAccount(new AddOwnedAccountRequest(
                 VALID_IBAN_ING, "PLN", "ING", "ING oszczędności"
         ));
 
-        UserFinancialProfileDto.OwnedAccountsListJson before = actor.listAccounts();
-        assertThat(before.getAccounts()).hasSize(4);
+        OwnedAccountsListJson before = actor.listAccounts();
+        assertThat(before.accounts()).hasSize(4);
 
         actor.deleteAccount(VALID_IBAN_MBANK);
 
-        UserFinancialProfileDto.OwnedAccountsListJson after = actor.listAccounts();
-        assertThat(after.getAccounts()).hasSize(3);
+        OwnedAccountsListJson after = actor.listAccounts();
+        assertThat(after.accounts()).hasSize(3);
 
-        List<String> ibansAfter = after.getAccounts().stream()
-                .map(UserFinancialProfileDto.OwnedAccountJson::getIban)
+        List<String> ibansAfter = after.accounts().stream()
+                .map(OwnedAccountJson::iban)
                 .toList();
         assertThat(ibansAfter).containsExactlyInAnyOrder(VALID_IBAN_NEST, VALID_IBAN_PEKAO, VALID_IBAN_ING);
 
-        UserFinancialProfileDto.OwnedAccountJson cashFlowAccount = after.getAccounts().stream()
-                .filter(a -> a.getIban().equals(VALID_IBAN_NEST))
+        OwnedAccountJson cashFlowAccount = after.accounts().stream()
+                .filter(a -> a.iban().equals(VALID_IBAN_NEST))
                 .findFirst().orElseThrow();
-        assertThat(cashFlowAccount.getSource()).isEqualTo("CASHFLOW");
-        assertThat(cashFlowAccount.getLinkedCashFlowId()).isEqualTo(cashFlowId);
+        assertThat(cashFlowAccount.source()).isEqualTo("CASHFLOW");
+        assertThat(cashFlowAccount.linkedCashFlowId()).isEqualTo(cashFlowId);
     }
 
     @Test
     @DisplayName("T9: pre-existing manual account is linked (not duplicated) when CashFlow created for same IBAN")
     void shouldLinkExistingManualAccountWhenCashFlowCreatedForSameIban() {
-        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.addAccount(new AddOwnedAccountRequest(
                 VALID_IBAN_NEST, "PLN", "Nest Bank", "Manual nest"
         ));
 
@@ -232,11 +232,11 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
 
         // Listener should LINK the existing manual entry (set linkedCashFlowId), not add new entry
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
-            assertThat(list.getAccounts()).hasSize(1);
-            UserFinancialProfileDto.OwnedAccountJson acc = list.getAccounts().get(0);
-            assertThat(acc.getSource()).isEqualTo("MANUAL");          // immutable source
-            assertThat(acc.getLinkedCashFlowId()).isEqualTo(cashFlowId);  // newly set link
+            OwnedAccountsListJson list = actor.listAccounts();
+            assertThat(list.accounts()).hasSize(1);
+            OwnedAccountJson acc = list.accounts().get(0);
+            assertThat(acc.source()).isEqualTo("MANUAL");          // immutable source
+            assertThat(acc.linkedCashFlowId()).isEqualTo(cashFlowId);  // newly set link
         });
     }
 
@@ -247,27 +247,27 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T10: bulk add 3 accounts during onboarding → all saved, all events emitted")
     void shouldBulkAddOnboardingAccounts() {
-        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
-                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+        BulkAddOwnedAccountsRequest request =
+                new BulkAddOwnedAccountsRequest(List.of(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao S.A.", "Pekao - życie"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_MBANK, "PLN", "mBank S.A.", "mBank - kredyt"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_ING, "PLN", "ING Bank Śląski", "ING - oszczędności")
                 ));
 
-        ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> response =
+        ResponseEntity<BulkAddOwnedAccountsResponse> response =
                 actor.bulkAddAccounts(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody().getAdded()).hasSize(3);
+        assertThat(response.getBody().added()).hasSize(3);
 
         // All three should be ONBOARDING source
-        assertThat(response.getBody().getAdded())
-                .allSatisfy(a -> assertThat(a.getSource()).isEqualTo("ONBOARDING"));
-        assertThat(response.getBody().getAdded())
-                .allSatisfy(a -> assertThat(a.getLinkedCashFlowId()).isNull());
+        assertThat(response.getBody().added())
+                .allSatisfy(a -> assertThat(a.source()).isEqualTo("ONBOARDING"));
+        assertThat(response.getBody().added())
+                .allSatisfy(a -> assertThat(a.linkedCashFlowId()).isNull());
 
         // Verify all three persisted in DB
         UserFinancialProfileEntity entity = profileMongoRepository.findById(userId).orElseThrow();
@@ -277,11 +277,11 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T11: bulk with duplicate IBAN within batch → 409, nothing saved")
     void shouldRejectBulkWithDuplicateIbanWithinBatch() {
-        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
-                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+        BulkAddOwnedAccountsRequest request =
+                new BulkAddOwnedAccountsRequest(List.of(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "First Pekao"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Second Pekao (duplicate)")
                 ));
 
@@ -298,13 +298,13 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T12: bulk with invalid IBAN in middle of batch → 400, nothing saved")
     void shouldRejectBulkWithInvalidIbanAndPersistNothing() {
-        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
-                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+        BulkAddOwnedAccountsRequest request =
+                new BulkAddOwnedAccountsRequest(List.of(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pekao"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 "PL00000000000000000000000000", "PLN", "Bad Bank", "Bad"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_ING, "PLN", "ING", "ING")
                 ));
 
@@ -321,14 +321,14 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T13: bulk that collides with already-owned account → 409, nothing newly saved")
     void shouldRejectBulkWithIbanAlreadyInProfile() {
-        actor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.addAccount(new AddOwnedAccountRequest(
                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pre-existing Pekao"));
 
-        UserFinancialProfileDto.BulkAddOwnedAccountsRequest request =
-                new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+        BulkAddOwnedAccountsRequest request =
+                new BulkAddOwnedAccountsRequest(List.of(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_MBANK, "PLN", "mBank", "mBank"),
-                        new UserFinancialProfileDto.AddOwnedAccountRequest(
+                        new AddOwnedAccountRequest(
                                 VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Duplicate Pekao")
                 ));
 
@@ -345,37 +345,37 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("T14: available-for-cashflow returns empty for fresh profile")
     void shouldReturnEmptyAvailableForCashFlowOnFreshProfile() {
-        UserFinancialProfileDto.OwnedAccountsListJson list = actor.availableForCashFlow();
+        OwnedAccountsListJson list = actor.availableForCashFlow();
 
-        assertThat(list.getUserId()).isEqualTo(userId);
-        assertThat(list.getAccounts()).isEmpty();
+        assertThat(list.userId()).isEqualTo(userId);
+        assertThat(list.accounts()).isEmpty();
     }
 
     @Test
     @DisplayName("T15: available-for-cashflow returns only ACTIVE without linkedCashFlowId")
     void shouldFilterAvailableByLinkStatus() {
         // 1) Onboard 3 accounts (all unlinked initially)
-        actor.bulkAddAccounts(new UserFinancialProfileDto.BulkAddOwnedAccountsRequest(List.of(
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+        actor.bulkAddAccounts(new BulkAddOwnedAccountsRequest(List.of(
+                new AddOwnedAccountRequest(
                         VALID_IBAN_PEKAO, "PLN", "Pekao", "Pekao"),
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+                new AddOwnedAccountRequest(
                         VALID_IBAN_MBANK, "PLN", "mBank", "mBank"),
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+                new AddOwnedAccountRequest(
                         VALID_IBAN_ING, "PLN", "ING", "ING")
         )));
 
         // 2) All 3 should appear as available
-        assertThat(actor.availableForCashFlow().getAccounts()).hasSize(3);
+        assertThat(actor.availableForCashFlow().accounts()).hasSize(3);
 
         // 3) Create a CashFlow for the Pekao IBAN → listener links → Pekao becomes unavailable
         createCashFlowWithHistory(VALID_IBAN_PEKAO, "Bank Pekao");
 
         // 4) Wait for listener, then verify available shrinks to 2
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            UserFinancialProfileDto.OwnedAccountsListJson list = actor.availableForCashFlow();
-            assertThat(list.getAccounts()).hasSize(2);
-            List<String> ibans = list.getAccounts().stream()
-                    .map(UserFinancialProfileDto.OwnedAccountJson::getIban)
+            OwnedAccountsListJson list = actor.availableForCashFlow();
+            assertThat(list.accounts()).hasSize(2);
+            List<String> ibans = list.accounts().stream()
+                    .map(OwnedAccountJson::iban)
                     .toList();
             assertThat(ibans).containsExactlyInAnyOrder(VALID_IBAN_MBANK, VALID_IBAN_ING);
         });
@@ -388,8 +388,8 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("E1: should reject invalid IBAN format")
     void shouldRejectInvalidIbanFormat() {
-        UserFinancialProfileDto.AddOwnedAccountRequest request =
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+        AddOwnedAccountRequest request =
+                new AddOwnedAccountRequest(
                         "PL00000000000000000000000000",
                         "PLN", "Bank Pekao", "Bad"
                 );
@@ -414,8 +414,8 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("E3: should reject missing bankName with 400 validation error")
     void shouldRejectMissingBankNameWithValidationError() {
-        UserFinancialProfileDto.AddOwnedAccountRequest request =
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+        AddOwnedAccountRequest request =
+                new AddOwnedAccountRequest(
                         VALID_IBAN_PEKAO, "PLN", "", "label"
                 );
 
@@ -428,8 +428,8 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("E4: should reject unknown currency with 400")
     void shouldRejectUnknownCurrency() {
-        UserFinancialProfileDto.AddOwnedAccountRequest request =
-                new UserFinancialProfileDto.AddOwnedAccountRequest(
+        AddOwnedAccountRequest request =
+                new AddOwnedAccountRequest(
                         VALID_IBAN_PEKAO, "PLN", "Bank Pekao", "Pekao"
                 );
         actor.addAccount(request);
@@ -437,8 +437,8 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
         // Currency is just a wrapper around the string; we test the IBAN validation path instead
         // for the validation, since Currency.of(...) does not validate. The check on this scenario
         // is covered by ensuring valid currency string passes (PLN).
-        UserFinancialProfileDto.OwnedAccountsListJson list = actor.listAccounts();
-        assertThat(list.getAccounts()).hasSize(1);
+        OwnedAccountsListJson list = actor.listAccounts();
+        assertThat(list.accounts()).hasSize(1);
     }
 
     @Test
@@ -457,7 +457,7 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
 
         // Wait until Kafka listener has claimed the account (linkedCashFlowId is set)
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-            assertThat(actor.listAccounts().getAccounts()).hasSize(1);
+            assertThat(actor.listAccounts().accounts()).hasSize(1);
         });
 
         ResponseEntity<ApiError> response = actor.deleteAccountExpectingError(VALID_IBAN_NEST);
@@ -469,7 +469,7 @@ public class UserFinancialProfileHttpIntegrationTest extends CashFlowIntegration
     @Test
     @DisplayName("E7+E8: should reject unauthenticated request with 401/403")
     void shouldRejectUnauthenticatedRequest() {
-        ResponseEntity<UserFinancialProfileDto.OwnedAccountsListJson> response = actor.tryListAccounts(null);
+        ResponseEntity<OwnedAccountsListJson> response = actor.tryListAccounts(null);
 
         // Spring Security returns 401 or 403 for missing auth
         assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);

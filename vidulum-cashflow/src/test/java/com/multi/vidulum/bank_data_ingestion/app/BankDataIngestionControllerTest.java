@@ -82,31 +82,9 @@ public class BankDataIngestionControllerTest {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
 
-        @org.springframework.context.annotation.Lazy
-        @org.springframework.context.annotation.Bean
-        public com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient ownedAccountClient(
-                org.springframework.core.env.Environment environment) {
-            return userId -> {
-                String port = environment.getProperty("local.server.port", "8080");
-                org.springframework.web.client.RestClient restClient = org.springframework.web.client.RestClient.builder()
-                        .baseUrl("http://localhost:" + port)
-                        .requestInterceptor((request, body, execution) -> {
-                            try {
-                                var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
-                                        org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-                                if (attrs != null) {
-                                    String auth = attrs.getRequest().getHeader("Authorization");
-                                    if (auth != null) {
-                                        request.getHeaders().add("Authorization", auth);
-                                    }
-                                }
-                            } catch (Exception ignored) {}
-                            return execution.execute(request, body);
-                        })
-                        .build();
-                return new com.multi.vidulum.bank_data_ingestion.infrastructure.HttpOwnedAccountClient(restClient).loadForUser(userId);
-            };
-        }
+        // UserFinancialProfileApi bean is provided by the RestController itself
+        // (UserFinancialProfileRestController implements UserFinancialProfileApi)
+        // No RANDOM_PORT in this test — direct bean injection is sufficient.
     }
 
     // Shared containers - started manually without @Container to avoid premature shutdown

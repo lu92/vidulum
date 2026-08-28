@@ -15,7 +15,7 @@ import com.multi.vidulum.cashflow_forecast_processor.app.CashSummary;
 import com.multi.vidulum.cashflow_forecast_processor.app.PaymentStatus;
 import com.multi.vidulum.cashflow_forecast_processor.app.TransactionDetails;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileDto;
+import com.multi.vidulum.user_financial_profile.api.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -78,7 +78,7 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
     @Test
     @DisplayName("T4: import with selfTransfer=true routes the transaction to categorizedOutFlows with selfTransferCategory flag")
     void shouldRouteSelfTransferImportToSelfTransferOutflows() {
-        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        profileActor.addAccount(new AddOwnedAccountRequest(
                 PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao - życie"));
 
         String cashFlowId = ingestionActor.createCashFlowWithHistory(
@@ -131,7 +131,7 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
     @Test
     @DisplayName("T14+T17: outflowStats reflects only regular expenses; self-transfer excluded from budget")
     void shouldExcludeSelfTransfersFromOutflowStats() {
-        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        profileActor.addAccount(new AddOwnedAccountRequest(
                 PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao"));
 
         String cashFlowId = ingestionActor.createCashFlowWithHistory(
@@ -236,7 +236,7 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
     @Test
     @DisplayName("T16: INFLOW selfTransfer=true routes to selfTransferInFlows and excludes from inflow budget")
     void shouldRouteInflowSelfTransferToSelfTransferInflows() {
-        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        profileActor.addAccount(new AddOwnedAccountRequest(
                 PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao"));
 
         String cashFlowId = ingestionActor.createCashFlowWithHistory(
@@ -331,7 +331,7 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
     @DisplayName("T23: self-transfer survives full CSV pipeline (upload → force-uncategorized → import) without being overwritten by revalidation")
     void shouldPreserveSelfTransferThroughFullCsvPipeline() {
         // Setup: register Pekao IBAN as owned account
-        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        profileActor.addAccount(new AddOwnedAccountRequest(
                 PEKAO_IBAN, "PLN", "Bank Pekao", "Pekao"));
 
         // Create CashFlow
@@ -448,10 +448,10 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
     @Test
     @DisplayName("E5: IBAN with spaces/case is normalized when stored in profile (matching during detection is case-sensitive on normalized form)")
     void shouldNormalizeIbanWhenStoredInProfile() {
-        profileActor.addAccount(new UserFinancialProfileDto.AddOwnedAccountRequest(
+        profileActor.addAccount(new AddOwnedAccountRequest(
                 "pl98 1240 1444 1111 0010 7817 1074", "PLN", "Bank Pekao", "Pekao"));
 
-        UserFinancialProfileDto.OwnedAccountJson expected = new UserFinancialProfileDto.OwnedAccountJson(
+        OwnedAccountJson expected = new OwnedAccountJson(
                 PEKAO_IBAN,
                 "PLN",
                 "Bank Pekao",
@@ -463,8 +463,8 @@ public class SelfTransferDetectionIntegrationTest extends CashFlowIntegrationTes
                 null
         );
 
-        UserFinancialProfileDto.OwnedAccountsListJson list = profileActor.listAccounts();
-        assertThat(list.getAccounts())
+        OwnedAccountsListJson list = profileActor.listAccounts();
+        assertThat(list.accounts())
                 .singleElement()
                 .usingRecursiveComparison()
                 .ignoringFields("addedAt")

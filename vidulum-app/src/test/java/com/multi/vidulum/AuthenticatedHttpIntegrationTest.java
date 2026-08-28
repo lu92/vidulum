@@ -1,7 +1,7 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.HttpOwnedAccountClient;
+import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
 import com.multi.vidulum.portfolio.app.PortfolioAppConfig;
@@ -72,31 +72,8 @@ public abstract class AuthenticatedHttpIntegrationTest {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
 
-        @Lazy
-        @Bean
-        public com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient ownedAccountClient(
-                org.springframework.core.env.Environment environment) {
-            return userId -> {
-                String port = environment.getProperty("local.server.port", "8080");
-                org.springframework.web.client.RestClient restClient = org.springframework.web.client.RestClient.builder()
-                        .baseUrl("http://localhost:" + port)
-                        .requestInterceptor((request, body, execution) -> {
-                            try {
-                                var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
-                                        org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-                                if (attrs != null) {
-                                    String auth = attrs.getRequest().getHeader("Authorization");
-                                    if (auth != null) {
-                                        request.getHeaders().add("Authorization", auth);
-                                    }
-                                }
-                            } catch (Exception ignored) {}
-                            return execution.execute(request, body);
-                        })
-                        .build();
-                return new HttpOwnedAccountClient(restClient).loadForUser(userId);
-            };
-        }
+        // UserFinancialProfileApi bean is provided by UserFinancialProfileRestController
+        // which implements the interface — Spring auto-detects it as a bean.
     }
 
     // Shared reusable containers - started once and reused across all tests

@@ -1,24 +1,25 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
+import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.support.RestClientAdapter;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 /**
  * Configuration for HTTP service clients used by bank-data-ingestion.
  *
  * Provides HTTP implementations for:
  * - CashFlowServiceClient (cashflow-service REST API)
- * - OwnedAccountClient (user-financial-profile REST API)
+ * - UserFinancialProfileApi (user-financial-profile REST API via @HttpExchange proxy)
  *
  * Configuration properties:
- * - vidulum.cashflow-service.base-url: Base URL for cashflow-service (default: http://localhost:8080)
- * - vidulum.cashflow-service.connect-timeout-ms: Connection timeout (default: 5000)
- * - vidulum.cashflow-service.read-timeout-ms: Read timeout (default: 30000)
+ * - vidulum.cashflow-service.base-url: Base URL (default: http://localhost:8080)
+ * - vidulum.cashflow-service.enabled: Set to false to disable HTTP clients (integration tests)
  */
 @Configuration
 public class CashFlowServiceClientConfig {
@@ -55,10 +56,11 @@ public class CashFlowServiceClientConfig {
     }
 
     /**
-     * HTTP implementation for owned account lookups.
-     * Calls user-financial-profile REST API for self-transfer detection.
+     * HTTP proxy for user-financial-profile REST API.
+     * Generated from {@link UserFinancialProfileApi} @HttpExchange interface.
+     * Propagates Authorization header from incoming request context.
      *
-     * Disabled when vidulum.cashflow-service.enabled=false (integration tests provide their own stub).
+     * Disabled when vidulum.cashflow-service.enabled=false (integration tests provide their own).
      */
     @Bean
     @ConditionalOnProperty(
@@ -66,7 +68,7 @@ public class CashFlowServiceClientConfig {
             havingValue = "true",
             matchIfMissing = true
     )
-    public OwnedAccountClient ownedAccountClient(RestClient.Builder restClientBuilder) {
+    public UserFinancialProfileApi userFinancialProfileApi(RestClient.Builder restClientBuilder) {
         RestClient restClient = restClientBuilder
                 .baseUrl(baseUrl)
                 .requestInterceptor((request, body, execution) -> {
@@ -78,7 +80,10 @@ public class CashFlowServiceClientConfig {
                 })
                 .build();
 
-        return new HttpOwnedAccountClient(restClient);
+        return HttpServiceProxyFactory
+                .builderFor(RestClientAdapter.create(restClient))
+                .build()
+                .createClient(UserFinancialProfileApi.class);
     }
 
     private String extractAuthorizationHeader() {
