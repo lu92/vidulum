@@ -1,5 +1,7 @@
 package com.multi.vidulum.cashflow.domain;
 
+import com.multi.vidulum.common.BankName;
+
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 

@@ -11,7 +11,6 @@ import com.multi.vidulum.cashflow.infrastructure.entity.CashFlowEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.entity.CashFlowForecastStatementEntity;
 import com.multi.vidulum.shared.DataCleaner;
-import com.multi.vidulum.user_financial_profile.infrastructure.UserFinancialProfileEntity;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
@@ -36,7 +35,5 @@ public class CashFlowDataCleaner implements DataCleaner {
         mongoTemplate.dropCollection(AiCsvTransformationDocument.class);
         mongoTemplate.dropCollection(MappingRules.class);
 
-        // User Financial Profile
-        mongoTemplate.dropCollection(UserFinancialProfileEntity.class);
     }
 }

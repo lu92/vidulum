@@ -4,7 +4,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
-import com.multi.vidulum.cashflow.domain.BankName;
+import com.multi.vidulum.common.BankName;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
