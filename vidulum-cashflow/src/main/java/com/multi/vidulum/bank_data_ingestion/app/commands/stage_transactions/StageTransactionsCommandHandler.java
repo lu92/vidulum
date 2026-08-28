@@ -3,8 +3,8 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
 import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountRegistry;
+import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -41,7 +41,7 @@ public class StageTransactionsCommandHandler
     private final CashFlowServiceClient cashFlowServiceClient;
     private final BankDataIngestionConfig config;
     private final Clock clock;
-    private final OwnedAccountClient ownedAccountClient;
+    private final UserFinancialProfileApi userFinancialProfileApi;
 
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
@@ -56,8 +56,8 @@ public class StageTransactionsCommandHandler
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();
 
-        // Load owned accounts for self-transfer detection (single call per session)
-        OwnedAccountRegistry ownedAccounts = ownedAccountClient.loadForUser(UserId.of(cashFlowInfo.userId()));
+        // Load owned accounts for self-transfer detection (single HTTP call per session)
+        OwnedAccountRegistry ownedAccounts = OwnedAccountRegistry.from(userFinancialProfileApi, UserId.of(cashFlowInfo.userId()));
 
         // Load all category mappings for this CashFlow
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());

@@ -1,7 +1,7 @@
 package com.multi.vidulum.user_financial_profile;
 
 import com.multi.vidulum.common.error.ApiError;
-import com.multi.vidulum.user_financial_profile.app.UserFinancialProfileDto;
+import com.multi.vidulum.user_financial_profile.api.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpEntity;
@@ -26,17 +26,17 @@ public class UserFinancialProfileHttpActor {
         this.jwtToken = token;
     }
 
-    public UserFinancialProfileDto.OwnedAccountsListJson listAccounts() {
-        ResponseEntity<UserFinancialProfileDto.OwnedAccountsListJson> response = restTemplate.exchange(
+    public OwnedAccountsListJson listAccounts() {
+        ResponseEntity<OwnedAccountsListJson> response = restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts",
                 HttpMethod.GET,
                 new HttpEntity<>(authHeaders()),
-                UserFinancialProfileDto.OwnedAccountsListJson.class
+                OwnedAccountsListJson.class
         );
         return response.getBody();
     }
 
-    public ResponseEntity<UserFinancialProfileDto.OwnedAccountsListJson> tryListAccounts(String token) {
+    public ResponseEntity<OwnedAccountsListJson> tryListAccounts(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (token != null) {
@@ -46,23 +46,23 @@ public class UserFinancialProfileHttpActor {
                 baseUrl + "/api/v1/user/owned-accounts",
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                UserFinancialProfileDto.OwnedAccountsListJson.class
+                OwnedAccountsListJson.class
         );
     }
 
-    public ResponseEntity<UserFinancialProfileDto.OwnedAccountJson> addAccount(
-            UserFinancialProfileDto.AddOwnedAccountRequest request
+    public ResponseEntity<OwnedAccountJson> addAccount(
+            AddOwnedAccountRequest request
     ) {
         return restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts",
                 HttpMethod.POST,
                 new HttpEntity<>(request, authHeaders()),
-                UserFinancialProfileDto.OwnedAccountJson.class
+                OwnedAccountJson.class
         );
     }
 
     public ResponseEntity<ApiError> addAccountExpectingError(
-            UserFinancialProfileDto.AddOwnedAccountRequest request
+            AddOwnedAccountRequest request
     ) {
         return restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts",
@@ -72,19 +72,19 @@ public class UserFinancialProfileHttpActor {
         );
     }
 
-    public ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> bulkAddAccounts(
-            UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
+    public ResponseEntity<BulkAddOwnedAccountsResponse> bulkAddAccounts(
+            BulkAddOwnedAccountsRequest request
     ) {
         return restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts/bulk",
                 HttpMethod.POST,
                 new HttpEntity<>(request, authHeaders()),
-                UserFinancialProfileDto.BulkAddOwnedAccountsResponse.class
+                BulkAddOwnedAccountsResponse.class
         );
     }
 
     public ResponseEntity<ApiError> bulkAddAccountsExpectingError(
-            UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
+            BulkAddOwnedAccountsRequest request
     ) {
         return restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts/bulk",
@@ -94,12 +94,12 @@ public class UserFinancialProfileHttpActor {
         );
     }
 
-    public UserFinancialProfileDto.OwnedAccountsListJson availableForCashFlow() {
-        ResponseEntity<UserFinancialProfileDto.OwnedAccountsListJson> response = restTemplate.exchange(
+    public OwnedAccountsListJson availableForCashFlow() {
+        ResponseEntity<OwnedAccountsListJson> response = restTemplate.exchange(
                 baseUrl + "/api/v1/user/owned-accounts/available-for-cashflow",
                 HttpMethod.GET,
                 new HttpEntity<>(authHeaders()),
-                UserFinancialProfileDto.OwnedAccountsListJson.class
+                OwnedAccountsListJson.class
         );
         return response.getBody();
     }

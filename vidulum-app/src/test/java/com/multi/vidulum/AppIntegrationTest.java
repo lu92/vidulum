@@ -1,7 +1,6 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountClient;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -52,11 +51,8 @@ public abstract class AppIntegrationTest {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
 
-        @Bean
-        public OwnedAccountClient ownedAccountClient(
-                com.multi.vidulum.user_financial_profile.app.UserFinancialProfileService userFinancialProfileService) {
-            return new TestOwnedAccountClient(userFinancialProfileService);
-        }
+        // UserFinancialProfileApi bean is provided by the RestController itself
+        // (UserFinancialProfileRestController implements UserFinancialProfileApi)
     }
 
     protected static final MongoDBContainer mongoDBContainer;

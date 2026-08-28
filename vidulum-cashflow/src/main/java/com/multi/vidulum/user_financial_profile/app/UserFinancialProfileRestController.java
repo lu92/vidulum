@@ -2,88 +2,96 @@ package com.multi.vidulum.user_financial_profile.app;
 
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
+import com.multi.vidulum.user_financial_profile.api.AddOwnedAccountRequest;
+import com.multi.vidulum.user_financial_profile.api.BulkAddOwnedAccountsRequest;
+import com.multi.vidulum.user_financial_profile.api.BulkAddOwnedAccountsResponse;
+import com.multi.vidulum.user_financial_profile.api.OwnedAccountJson;
+import com.multi.vidulum.user_financial_profile.api.OwnedAccountsListJson;
+import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.user_financial_profile.domain.AccountSource;
 import com.multi.vidulum.user_financial_profile.domain.OwnedBankAccount;
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/user/owned-accounts")
 @AllArgsConstructor
-public class UserFinancialProfileRestController {
+public class UserFinancialProfileRestController implements UserFinancialProfileApi {
 
     private final UserFinancialProfileService service;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
-    @GetMapping
-    public UserFinancialProfileDto.OwnedAccountsListJson list() {
+    @Override
+    public OwnedAccountsListJson list() {
         UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return UserFinancialProfileDto.OwnedAccountsListJson.of(
+        return new OwnedAccountsListJson(
                 userId.getId(),
-                service.listAccounts(userId)
+                mapAccounts(service.listAccounts(userId))
         );
     }
 
-    @PostMapping
-    public ResponseEntity<UserFinancialProfileDto.OwnedAccountJson> add(
-            @Valid @RequestBody UserFinancialProfileDto.AddOwnedAccountRequest request
-    ) {
+    @Override
+    @ResponseStatus(HttpStatus.CREATED)
+    public OwnedAccountJson add(AddOwnedAccountRequest request) {
         UserId userId = authenticatedUserProvider.getCurrentUserId();
         OwnedBankAccount account = service.addAccount(
                 userId,
-                request.getIban(),
-                request.getCurrency(),
-                request.getBankName(),
-                request.getLabel(),
+                request.iban(),
+                request.currency(),
+                request.bankName(),
+                request.label(),
                 AccountSource.MANUAL,
                 null
         );
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(UserFinancialProfileDto.OwnedAccountJson.from(account));
+        return mapAccount(account);
     }
 
-    @PostMapping("/bulk")
-    public ResponseEntity<UserFinancialProfileDto.BulkAddOwnedAccountsResponse> addBulk(
-            @Valid @RequestBody UserFinancialProfileDto.BulkAddOwnedAccountsRequest request
-    ) {
+    @Override
+    @ResponseStatus(HttpStatus.CREATED)
+    public BulkAddOwnedAccountsResponse addBulk(BulkAddOwnedAccountsRequest request) {
         UserId userId = authenticatedUserProvider.getCurrentUserId();
-        List<UserFinancialProfileService.BulkAccountRequest> bulkReqs = request.getAccounts().stream()
+        List<UserFinancialProfileService.BulkAccountRequest> bulkReqs = request.accounts().stream()
                 .map(r -> new UserFinancialProfileService.BulkAccountRequest(
-                        r.getIban(), r.getCurrency(), r.getBankName(), r.getLabel()))
+                        r.iban(), r.currency(), r.bankName(), r.label()))
                 .toList();
         List<OwnedBankAccount> added = service.addAccounts(userId, bulkReqs, AccountSource.ONBOARDING);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(UserFinancialProfileDto.BulkAddOwnedAccountsResponse.of(added));
+        return new BulkAddOwnedAccountsResponse(mapAccounts(added));
     }
 
-    @GetMapping("/available-for-cashflow")
-    public UserFinancialProfileDto.OwnedAccountsListJson availableForCashFlow() {
+    @Override
+    public OwnedAccountsListJson availableForCashFlow() {
         UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return UserFinancialProfileDto.OwnedAccountsListJson.of(
+        return new OwnedAccountsListJson(
                 userId.getId(),
-                service.listAccountsAvailableForCashFlow(userId)
+                mapAccounts(service.listAccountsAvailableForCashFlow(userId))
         );
     }
 
-    @DeleteMapping("/{iban}")
-    public ResponseEntity<Void> delete(
-            @PathVariable("iban") String iban
-    ) {
+    @Override
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(String iban) {
         UserId userId = authenticatedUserProvider.getCurrentUserId();
         service.removeAccount(userId, iban);
-        return ResponseEntity.noContent().build();
     }
 
+    private List<OwnedAccountJson> mapAccounts(List<OwnedBankAccount> accounts) {
+        return accounts.stream().map(this::mapAccount).toList();
+    }
+
+    private OwnedAccountJson mapAccount(OwnedBankAccount account) {
+        return new OwnedAccountJson(
+                account.bankAccountNumber().fetchRawIban(),
+                account.bankAccountNumber().denomination().getId(),
+                account.bankName() != null ? account.bankName().name() : null,
+                account.label(),
+                account.status().name(),
+                account.source().name(),
+                account.linkedCashFlowId() != null ? account.linkedCashFlowId().id() : null,
+                account.addedAt(),
+                account.closedAt()
+        );
+    }
 }

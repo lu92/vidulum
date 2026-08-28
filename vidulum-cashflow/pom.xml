@@ -28,6 +28,13 @@
             <artifactId>vidulum-recurring-rules</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- User Financial Profile API (contract) -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-user-financial-profile-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-recurring-rules</artifactId>
