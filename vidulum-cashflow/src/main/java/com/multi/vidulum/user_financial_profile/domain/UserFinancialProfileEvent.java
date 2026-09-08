@@ -1,6 +1,6 @@
 package com.multi.vidulum.user_financial_profile.domain;
 
-import com.multi.vidulum.cashflow.domain.BankName;
+import com.multi.vidulum.common.BankName;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.UserId;
 
