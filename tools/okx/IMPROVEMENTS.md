@@ -342,6 +342,13 @@ Do tego skala: syntetyczne zlecenie miało 27 pól, prawdziwa ramka ma 71.
   SL w starym stylu, ochrona częściowa) są **jawnie oznaczone jako syntetyczne**, żeby nikt nie
   wziął ich za dowód.
 
+Kontrakt niesie też **dwa osobne opisy** na pole: `docs` to słowa OKX przepisane z dokumentacji,
+`note` to nasze ustalenia. Żaden nie zastępuje drugiego — pomiar na 71 polach: w **26** bogatszy
+jest opis OKX (reguły jednostek, warunki stosowalności, np. `fillSz` i `rebate`), w **22** nasza
+notatka (fakty, których dokumentacja nie podaje, np. że `uTime` nie jest podbijany przy zmianie
+doczepionej ochrony albo że `ordId` przekracza `2^53`). Jedyne pole bez opisu OKX to `slippage`,
+którego dokumentacja w ogóle nie wymienia.
+
 Kontrakt niesie dwie osobne listy wartości na pole: `observed` (co faktycznie przyszło w sesji)
 i `documented` (pełna enumeracja, gdy jest opublikowana). Enumeracje udało się zdobyć dla ośmiu pól
 cyklu życia; dla `execType`, `category`, `cancelSource`, `amendResult`, `amendSource`, `stpMode`,

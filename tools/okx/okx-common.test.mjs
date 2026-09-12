@@ -63,6 +63,10 @@ console.log("\nKONTRAKT (dane prawdziwe)");
     `pol z enumeracja: ${withEnum}`);
   const undocumented = Object.entries(ORDER_FIELDS).filter(([, f]) => f.note.startsWith("UNDOCUMENTED"));
   check("pola obecne na lączu, a nieopisane przez OKX", undocumented.map(([k]) => k), ["slippage"]);
+  check("brak opisu OKX dokladnie tam, gdzie brak dokumentacji",
+    Object.entries(ORDER_FIELDS).filter(([, f]) => f.docs === null).map(([k]) => k), ["slippage"]);
+  checkThat("kazde pole ma wlasny opis i wlasna notatke",
+    Object.values(ORDER_FIELDS).every((f) => f.note && (f.docs === null || f.docs !== f.note)));
 
   check("kod anulowania tlumaczony na tekst", explainCode("cancelSource", "1"), "canceled by user");
   check("kod wyniku zmiany tlumaczony na tekst", explainCode("amendResult", "0"), "success");
