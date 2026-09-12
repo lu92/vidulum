@@ -36,3 +36,9 @@ build/
 .env
 .env.local
 .env.*.local
+
+### OKX tools (secrets + wyniki eksportu) ###
+tools/okx/.env.*
+!tools/okx/.env.example
+tools/okx/*.json
+!tools/okx/package.json
