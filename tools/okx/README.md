@@ -1,61 +1,70 @@
 # tools/okx
 
-Dwa samodzielne skrypty (ESM, Node >= 22, **zero zależności npm**) do read-only wglądu w konto OKX:
+Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-only access to an OKX account:
 
-| Plik | Co robi |
-|------|---------|
-| `okx-readonly-export-2.mjs` | Eksport REST: uid/uprawnienia klucza, salda Trading + Funding, wpłaty, wypłaty, fills, bills |
-| `okx-ws-listener-3.mjs` | Nasłuch prywatnego WebSocketu (`orders`, `balance_and_position`, `account`, opcjonalnie `fills`) |
+| File | What it does |
+|------|--------------|
+| `okx-readonly-export.mjs` | REST export: uid / key permissions, Trading + Funding balances, deposits, withdrawals, fills, bills |
+| `okx-ws-listener.mjs` | Private WebSocket listener (`orders`, `balance_and_position`, `account`, optionally `fills`) |
 
-## Przygotowanie `.env`
+## Setting up `.env`
 
 ```bash
-cp .env.example .env.prod   # klucz live  -> OKX_*
-cp .env.example .env.demo   # klucz Demo  -> OKX_DEMO_*
+cp .env.example .env.prod   # live key -> OKX_*
+cp .env.example .env.demo   # demo key -> OKX_DEMO_*
 ```
 
-Uzupełnij `KEY` / `SECRET` / `PASSPHRASE` w każdym pliku. Konto EEA (`my.okx.com`) wymaga
-`OKX_DOMAIN=eea.okx.com` — bez tego REST idzie na `openapi.okx.com` i zwraca `60032`.
-Klucze rób **read-only**; skrypt eksportu ostrzega, jeśli klucz ma szersze uprawnienia.
-`.env.prod` i `.env.demo` są w `.gitignore`, `.env.example` nie.
+Fill in `KEY` / `SECRET` / `PASSPHRASE` in each file. An EEA account (`my.okx.com`) requires
+`OKX_DOMAIN=eea.okx.com` - without it REST goes to `openapi.okx.com` and returns `60032`.
+Create the keys as **read-only**; the export script warns if a key has broader permissions.
+`.env.prod` and `.env.demo` are in `.gitignore`; `.env.example` is not.
 
-## Uruchamianie
+## Running
 
 ```bash
-npm run check:demo         # smoke test poświadczeń: --verbose, okno od wczoraj -> check-demo.json
-npm run check:prod         # to samo na kluczu live -> check-prod.json
+npm run check:demo         # credential smoke test: --verbose, window from yesterday -> check-demo.json
+npm run check:prod         # same against the live key -> check-prod.json
 
-npm run export:demo        # pełny eksport (90 dni wstecz) -> demo.json
-npm run export:prod        #                              -> prod.json
-npm run export:demo:quick  # jw. z --skip-bills (szybciej, bez dziennika konta)
+npm run export:demo        # full export (90 days back) -> demo.json
+npm run export:prod        #                            -> prod.json
+npm run export:demo:quick  # same with --skip-bills (faster, no account journal)
 npm run export:prod:quick
 
-npm run ws:demo            # WS demo, region eea (wseeapap.okx.com)
-npm run ws:prod            # WS live, region eea (wseea.okx.com)
+npm run ws:demo            # demo WS, eea region (wseeapap.okx.com)
+npm run ws:prod            # live WS, eea region (wseea.okx.com)
 ```
 
-Każdy skrypt npm ładuje właściwy plik przez `node --env-file=`. Argumenty można dokładać po `--`:
+Each npm script loads the matching file via `node --env-file=`. Extra arguments go after `--`:
 
 ```bash
 npm run export:prod -- --from 2026-01-01 --to 2026-06-30 --out h1.json
 npm run ws:prod -- --channels orders,fills,deposit-info
 ```
 
-Pełna lista flag jest w nagłówkowym komentarzu każdego `.mjs`.
+The full flag list lives in the header comment of each `.mjs` file.
 
-## Ograniczenia i pułapki
+## Limitations and gotchas
 
-- **`fills-history` sięga 3 miesiące wstecz.** Starsze `--from` nie zwróci transakcji — po prostu
-  ich tam nie ma. To samo dotyczy `bills-archive` (3 mies.); `asset/bills` (Funding) to tylko 1 miesiąc.
-- **Kanał WS `fills` wymaga VIP5+.** Żyje na endpoincie `/ws/v5/business`, a subskrypcja na niższym
-  poziomie zostanie odrzucona. Domyślne kanały (`orders`, `balance_and_position`, `account`) działają
-  na każdym koncie.
-- **`orders` to kanał powiadomień, nie źródło prawdy.** Dostajesz zmiany stanu zlecenia
-  (`state=filled` itd.); pełną historię wykonań i tak trzeba dobrać przez REST (`fills-history`).
-- **`60032` (REST) / `50119` (WS login) = zły region.** Klucz z `my.okx.com` działa wyłącznie na
-  `eea.okx.com` + `wseea.okx.com` / `wseeapap.okx.com` (demo). Ten sam klucz na domenie globalnej
-  wygląda jak „nieistniejący API key".
-- **Passphrase ze znakiem `#` musi być w cudzysłowach** w pliku `.env` (`OKX_PASSPHRASE='moja#fraza'`). `node --env-file` obcina niecytowaną wartość na `#`, a OKX zwraca wtedy `50105 OK-ACCESS-PASSPHRASE incorrect`. Dotyczy też spacji w wartości.
-- Profil `demo` automatycznie dokłada nagłówek `x-simulated-trading: 1`; kluczy demo i live nie da
-  się mieszać między profilami.
-- Pliki wynikowe (`*.json`) są ignorowane przez git — `package.json` jest wyjątkiem.
+- **`fills-history` only goes back 3 months.** An older `--from` will not return trades -
+  they simply are not there. The same applies to `bills-archive` (3 months); `asset/bills`
+  (Funding) covers only 1 month.
+- **The WS `fills` channel requires VIP5+.** It lives on the `/ws/v5/business` endpoint and the
+  subscription is rejected below that tier. The default channels (`orders`,
+  `balance_and_position`, `account`) work on any account.
+- **`orders` is a notification channel, not a source of truth.** You get order state changes
+  (`state=filled` and so on); the full execution history still has to come from REST
+  (`fills-history`).
+- **`60032` (REST) / `50119` (WS login) means the wrong region.** A key from `my.okx.com` only
+  works against `eea.okx.com` + `wseea.okx.com` / `wseeapap.okx.com` (demo). The same key on a
+  global domain looks like a non-existent API key.
+- **A passphrase containing `#` must be quoted** in the `.env` file (`OKX_PASSPHRASE='my#phrase'`).
+  `node --env-file` truncates an unquoted value at the `#`, and OKX then returns
+  `50105 OK-ACCESS-PASSPHRASE incorrect`. The same applies to values containing spaces.
+- The `demo` profile adds the `x-simulated-trading: 1` header automatically; demo and live keys
+  cannot be mixed between profiles.
+- Output files (`*.json`) are git-ignored - `package.json` is the exception.
+
+## Related documents
+
+- `OKX-CONTEXT.md` - integration context: business goals, verified API findings, target backend design.
+- `IMPROVEMENTS.md` - backlog of known weaknesses in both scripts, prioritised.

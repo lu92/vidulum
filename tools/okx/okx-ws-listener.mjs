@@ -2,25 +2,25 @@
 /**
  * OKX private WebSocket listener
  * ------------------------------
- * Loguje się do prywatnych WS OKX i wypisuje eventy z kanałów orders, fills,
- * balance_and_position, account (+ opcjonalnie deposit-info / withdrawal-info).
+ * Logs into the OKX private WebSocket and prints events from the orders, fills,
+ * balance_and_position and account channels (+ optionally deposit-info / withdrawal-info).
  *
- * OKX rozdziela kanały na dwa endpointy:
+ * OKX splits channels across two endpoints:
  *   /ws/v5/private  -> orders, account, positions, balance_and_position, deposit-info, withdrawal-info
- *   /ws/v5/business -> fills (tylko VIP5+, bez instType), algo orders, grid
- * Skrypt otwiera osobne połączenie dla każdego endpointu, którego potrzebuje.
+ *   /ws/v5/business -> fills (VIP5+ only, no instType), algo orders, grid
+ * The script opens a separate connection for each endpoint it needs.
  *
- * Wymaga Node.js >= 22 (natywny WebSocket). Na Node 18/20: `npm i ws` i odkomentuj import.
+ * Requires Node.js >= 22 (native WebSocket). On Node 18/20: `npm i ws` and uncomment the import.
  *
- * Profile / regiony:
+ * Profiles / regions:
  *   --profile prod|demo   (env: OKX_* / OKX_DEMO_*)
- *   --region global|eea|us  albo env OKX_REGION / OKX_DEMO_REGION (domyślnie global)
+ *   --region global|eea|us  or env OKX_REGION / OKX_DEMO_REGION (defaults to global)
  *     global: ws.okx.com      / demo: wspap.okx.com
- *     eea:    wseea.okx.com   / demo: wseeapap.okx.com   (konta z my.okx.com)
+ *     eea:    wseea.okx.com   / demo: wseeapap.okx.com   (my.okx.com accounts)
  *     us:     wsus.okx.com    / demo: wsuspap.okx.com
- *   --ws-url wss://host:8443   nadpisuje bazę (bez ścieżki), np. --ws-url wss://wseeapap.okx.com:8443
+ *   --ws-url wss://host:8443   overrides the base URL (without path), e.g. --ws-url wss://wseeapap.okx.com:8443
  *
- * Użycie:
+ * Usage:
  *   node okx-ws-listener.mjs --profile demo --region eea
  *   node okx-ws-listener.mjs --profile prod --region eea --channels orders,fills,deposit-info
  */
@@ -44,11 +44,11 @@ const PROFILES = { prod: { prefix: "OKX_", demo: false }, demo: { prefix: "OKX_D
 
 const profileName = args.demo ? "demo" : (args.profile ?? process.env.OKX_PROFILE ?? "prod");
 const profile = PROFILES[profileName];
-if (!profile) { console.error(`Nieznany profil ${profileName}`); process.exit(1); }
+if (!profile) { console.error(`Unknown profile ${profileName}`); process.exit(1); }
 const env = (n) => process.env[profile.prefix + n];
 
 const region = args.region ?? env("REGION") ?? "global";
-if (!HOSTS[region]) { console.error(`Nieznany region ${region}. Dostępne: ${Object.keys(HOSTS).join(", ")}`); process.exit(1); }
+if (!HOSTS[region]) { console.error(`Unknown region ${region}. Available: ${Object.keys(HOSTS).join(", ")}`); process.exit(1); }
 
 const base = (args["ws-url"] ?? env("WS_URL") ?? `wss://${HOSTS[region][profile.demo ? "demo" : "live"]}:8443`).replace(/\/ws\/v5\/.*$/, "");
 const cfg = {
@@ -56,10 +56,10 @@ const cfg = {
   channels: (args.channels ?? "orders,balance_and_position,account").split(","),
 };
 if (!cfg.key || !cfg.secret || !cfg.passphrase) {
-  console.error(`Brak ${profile.prefix}KEY / SECRET / PASSPHRASE`); process.exit(1);
+  console.error(`Missing ${profile.prefix}KEY / SECRET / PASSPHRASE`); process.exit(1);
 }
 
-// Które kanały żyją na którym endpoincie
+// Which channels live on which endpoint
 const BUSINESS_CHANNELS = new Set(["fills", "orders-algo", "algo-advance", "grid-orders-spot", "grid-orders-contract"]);
 const NEEDS_INST_TYPE = new Set(["orders", "orders-algo", "algo-advance", "positions"]);
 
@@ -70,12 +70,12 @@ for (const channel of cfg.channels) {
 }
 
 function loginPayload() {
-  const timestamp = String(Math.floor(Date.now() / 1000)); // sekundy, nie ISO!
+  const timestamp = String(Math.floor(Date.now() / 1000)); // seconds, not ISO!
   const sign = createHmac("sha256", cfg.secret).update(timestamp + "GET" + "/users/self/verify").digest("base64");
   return { op: "login", args: [{ apiKey: cfg.key, passphrase: cfg.passphrase, timestamp, sign }] };
 }
 
-// ---------- jedno połączenie = jeden endpoint ----------
+// ---------- one connection = one endpoint ----------
 function createConnection(endpoint, subscribeArgs) {
   const url = `${base}/ws/v5/${endpoint}`;
   let ws, pingTimer, pongTimeout, backoff = 1000;
@@ -83,7 +83,7 @@ function createConnection(endpoint, subscribeArgs) {
 
   const resetPongTimeout = () => {
     clearTimeout(pongTimeout);
-    pongTimeout = setTimeout(() => { console.warn(`[${tag}] brak odpowiedzi 50 s, zamykam`); ws.close(); }, 50_000);
+    pongTimeout = setTimeout(() => { console.warn(`[${tag}] no response for 50 s, closing`); ws.close(); }, 50_000);
   };
   const schedulePing = () => {
     clearInterval(pingTimer);
@@ -92,7 +92,7 @@ function createConnection(endpoint, subscribeArgs) {
   };
 
   const connect = () => {
-    console.log(`[${tag}] łączę: ${url}`);
+    console.log(`[${tag}] connecting: ${url}`);
     ws = new WebSocket(url);
     ws.onopen = () => { backoff = 1000; ws.send(JSON.stringify(loginPayload())); schedulePing(); };
     ws.onmessage = ({ data }) => {
@@ -101,18 +101,18 @@ function createConnection(endpoint, subscribeArgs) {
       const msg = JSON.parse(data);
       if (msg.event === "login") {
         if (msg.code !== "0") { console.error(`[${tag}] login failed:`, msg); ws.close(); return; }
-        console.log(`[${tag}] zalogowano, subskrybuję: ${subscribeArgs.map((a) => a.channel).join(", ")}`);
+        console.log(`[${tag}] logged in, subscribing: ${subscribeArgs.map((a) => a.channel).join(", ")}`);
         ws.send(JSON.stringify({ op: "subscribe", args: subscribeArgs }));
         return;
       }
       if (msg.event === "subscribe") { console.log(`[${tag}] subscribed: ${msg.arg.channel}`); return; }
       if (msg.event === "error") { console.error(`[${tag}] WS error:`, msg); return; }
-      if (msg.event === "notice") { console.warn(`[${tag}] notice:`, msg.msg); return; } // 64008 = serwer zaraz rozłączy
+      if (msg.event === "notice") { console.warn(`[${tag}] notice:`, msg.msg); return; } // 64008 = server is about to disconnect
       for (const item of msg.data ?? []) handleEvent(msg.arg?.channel, item);
     };
     ws.onclose = (e) => {
       clearInterval(pingTimer); clearTimeout(pongTimeout);
-      console.warn(`[${tag}] rozłączono (${e.code}), reconnect za ${backoff} ms`);
+      console.warn(`[${tag}] disconnected (${e.code}), reconnecting in ${backoff} ms`);
       setTimeout(connect, backoff);
       backoff = Math.min(backoff * 2, 30_000);
     };
@@ -121,13 +121,13 @@ function createConnection(endpoint, subscribeArgs) {
   connect();
 }
 
-// ---------- tu podłączasz swoją logikę ----------
+// ---------- hook your own logic in here ----------
 function handleEvent(channel, d) {
   const t = new Date(Number(d.uTime ?? d.ts ?? Date.now())).toISOString();
   switch (channel) {
     case "orders":
       console.log(`[orders] ${t} ${d.instId} ${d.side} state=${d.state} filled=${d.accFillSz}/${d.sz} avgPx=${d.avgPx} ordId=${d.ordId}`);
-      if (d.state === "filled") console.log("  -> ZLECENIE WYKONANE – tu odpal swoją operację");
+      if (d.state === "filled") console.log("  -> ORDER FILLED - trigger your own operation here");
       break;
     case "fills":
       console.log(`[fills] ${t} ${d.instId} ${d.side} px=${d.fillPx} sz=${d.fillSz} fee=${d.fee}${d.feeCcy ?? ""} tradeId=${d.tradeId}`);

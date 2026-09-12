@@ -3,18 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Read-only narzędzia do OKX: eksport REST i nasłuch prywatnego WebSocketu (bez zależności npm).",
+  "description": "Read-only OKX tooling: REST export and private WebSocket listener (no npm dependencies).",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "export:demo": "node --env-file=.env.demo okx-readonly-export-2.mjs --profile demo --out demo.json",
-    "export:prod": "node --env-file=.env.prod okx-readonly-export-2.mjs --profile prod --out prod.json",
-    "export:demo:quick": "node --env-file=.env.demo okx-readonly-export-2.mjs --profile demo --skip-bills --out demo.json",
-    "export:prod:quick": "node --env-file=.env.prod okx-readonly-export-2.mjs --profile prod --skip-bills --out prod.json",
-    "ws:demo": "node --env-file=.env.demo okx-ws-listener-3.mjs --profile demo --region eea",
-    "ws:prod": "node --env-file=.env.prod okx-ws-listener-3.mjs --profile prod --region eea",
-    "check:demo": "node --env-file=.env.demo okx-readonly-export-2.mjs --profile demo --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-demo.json",
-    "check:prod": "node --env-file=.env.prod okx-readonly-export-2.mjs --profile prod --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-prod.json"
+    "export:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --out demo.json",
+    "export:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --out prod.json",
+    "export:demo:quick": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --skip-bills --out demo.json",
+    "export:prod:quick": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --skip-bills --out prod.json",
+    "ws:demo": "node --env-file=.env.demo okx-ws-listener.mjs --profile demo --region eea",
+    "ws:prod": "node --env-file=.env.prod okx-ws-listener.mjs --profile prod --region eea",
+    "check:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-demo.json",
+    "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-prod.json"
   }
 }

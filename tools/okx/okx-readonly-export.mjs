@@ -2,40 +2,40 @@
 /**
  * OKX read-only export
  * ---------------------
- * Pobiera: userId (uid/mainUid/perm), saldo Trading + Funding, historię wpłat,
- * wypłat, transakcji (fills) i dziennik konta (bills) w zadanym oknie czasu.
+ * Fetches: userId (uid/mainUid/perm), Trading + Funding balances, deposit history,
+ * withdrawal history, fills and the account bills journal for a given time window.
  *
- * Wymaga Node.js >= 18 (natywne fetch + crypto). Brak zależności npm.
+ * Requires Node.js >= 18 (native fetch + crypto). No npm dependencies.
  *
- * Profile (--profile prod|demo, domyślnie prod):
- *   prod  -> OKX_KEY,      OKX_SECRET,      OKX_PASSPHRASE,      OKX_DOMAIN      (klucz live)
- *   demo  -> OKX_DEMO_KEY, OKX_DEMO_SECRET, OKX_DEMO_PASSPHRASE, OKX_DEMO_DOMAIN (klucz Demo Trading,
- *            automatycznie dodaje nagłówek x-simulated-trading: 1)
+ * Profiles (--profile prod|demo, defaults to prod):
+ *   prod  -> OKX_KEY,      OKX_SECRET,      OKX_PASSPHRASE,      OKX_DOMAIN      (live key)
+ *   demo  -> OKX_DEMO_KEY, OKX_DEMO_SECRET, OKX_DEMO_PASSPHRASE, OKX_DEMO_DOMAIN (Demo Trading key,
+ *            automatically adds the x-simulated-trading: 1 header)
  *
- * Użycie:
+ * Usage:
  *   OKX_KEY=... OKX_SECRET=... OKX_PASSPHRASE=... OKX_DOMAIN=eea.okx.com \
  *   node okx-readonly-export.mjs --from 2026-01-01 --to 2026-09-06 --out export.json
  *
  *   OKX_DEMO_KEY=... OKX_DEMO_SECRET=... OKX_DEMO_PASSPHRASE=... \
  *   node okx-readonly-export.mjs --profile demo --out demo.json
  *
- * Argumenty (wszystkie opcjonalne, sekrety lepiej podawać przez env):
- *   --profile prod|demo             wybór zestawu zmiennych środowiskowych (domyślnie prod)
- *   --key, --secret, --passphrase   nadpisują zmienne env wybranego profilu
- *   --domain <host>                 eea.okx.com (UE, konto z my.okx.com) | openapi.okx.com (domyślnie)
- *   --from <YYYY-MM-DD>             początek okna (domyślnie 90 dni wstecz)
- *   --to <YYYY-MM-DD>               koniec okna (domyślnie teraz)
- *   --out <plik.json>               zapis wyniku do pliku (domyślnie tylko stdout)
- *   --inst-types SPOT,SWAP,...      typy instrumentów dla fills (domyślnie SPOT,MARGIN,SWAP,FUTURES,OPTION)
- *   --skip-bills                    pomiń dziennik konta (bills-archive) – bywa duży
- *   --demo                          skrót dla --profile demo
- *   --verbose                       loguj każde wywołanie HTTP
+ * Arguments (all optional; prefer env vars for secrets):
+ *   --profile prod|demo             which set of env vars to use (defaults to prod)
+ *   --key, --secret, --passphrase   override the selected profile's env vars
+ *   --domain <host>                 eea.okx.com (EU, my.okx.com account) | openapi.okx.com (default)
+ *   --from <YYYY-MM-DD>             window start (defaults to 90 days ago)
+ *   --to <YYYY-MM-DD>               window end (defaults to now)
+ *   --out <file.json>               write the result to a file (defaults to stdout only)
+ *   --inst-types SPOT,SWAP,...      instrument types for fills (defaults to SPOT,MARGIN,SWAP,FUTURES,OPTION)
+ *   --skip-bills                    skip the account journal (bills-archive) - can be large
+ *   --demo                          shorthand for --profile demo
+ *   --verbose                       log every HTTP call
  */
 
 import { createHmac } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 
-// ---------- argumenty ----------
+// ---------- arguments ----------
 function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
@@ -51,7 +51,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 
-// ---------- profil ----------
+// ---------- profile ----------
 const PROFILES = {
   prod: { envPrefix: "OKX_", simulated: false },
   demo: { envPrefix: "OKX_DEMO_", simulated: true },
@@ -59,7 +59,7 @@ const PROFILES = {
 const profileName = args.demo ? "demo" : (args.profile ?? process.env.OKX_PROFILE ?? "prod");
 const profile = PROFILES[profileName];
 if (!profile) {
-  console.error(`Nieznany profil "${profileName}". Dostępne: ${Object.keys(PROFILES).join(", ")}.`);
+  console.error(`Unknown profile "${profileName}". Available: ${Object.keys(PROFILES).join(", ")}.`);
   process.exit(1);
 }
 const env = (name) => process.env[profile.envPrefix + name];
@@ -81,16 +81,16 @@ const cfg = {
 
 if (!cfg.key || !cfg.secret || !cfg.passphrase) {
   const p = profile.envPrefix;
-  console.error(`Brak poświadczeń dla profilu "${profileName}". Ustaw ${p}KEY, ${p}SECRET, ${p}PASSPHRASE (env) lub --key/--secret/--passphrase.`);
+  console.error(`Missing credentials for profile "${profileName}". Set ${p}KEY, ${p}SECRET, ${p}PASSPHRASE (env) or use --key/--secret/--passphrase.`);
   process.exit(1);
 }
-console.error(`Profil: ${profileName} (${cfg.domain}${cfg.demo ? ", x-simulated-trading" : ""})`);
+console.error(`Profile: ${profileName} (${cfg.domain}${cfg.demo ? ", x-simulated-trading" : ""})`);
 if (Number.isNaN(cfg.from) || Number.isNaN(cfg.to)) {
-  console.error("Zły format daty. Użyj YYYY-MM-DD.");
+  console.error("Invalid date format. Use YYYY-MM-DD.");
   process.exit(1);
 }
 
-// ---------- klient HTTP z podpisem ----------
+// ---------- signed HTTP client ----------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function sign(timestamp, method, requestPath, body = "") {
@@ -118,7 +118,7 @@ async function get(path, params = {}, { retries = 3 } = {}) {
   const json = await res.json().catch(() => ({}));
 
   if (res.status === 429 || json.code === "50011") {
-    if (retries <= 0) throw new Error(`Rate limit na ${requestPath}`);
+    if (retries <= 0) throw new Error(`Rate limit on ${requestPath}`);
     await sleep(1500);
     return get(path, params, { retries: retries - 1 });
   }
@@ -129,8 +129,8 @@ async function get(path, params = {}, { retries = 3 } = {}) {
 }
 
 /**
- * Paginacja wstecz. OKX zwraca rekordy od najnowszych; parametr `after`
- * oznacza "rekordy STARSZE niż podana wartość" (billId lub timestamp ms).
+ * Backwards pagination. OKX returns records newest-first; the `after` parameter
+ * means "records OLDER than the given value" (billId or timestamp in ms).
  */
 async function paginate(path, baseParams, { cursorField, tsField, limit = 100, minDelayMs = 250 }) {
   const all = [];
@@ -151,7 +151,7 @@ async function paginate(path, baseParams, { cursorField, tsField, limit = 100, m
   return all;
 }
 
-// ---------- pobieranie ----------
+// ---------- fetching ----------
 async function main() {
   const t0 = Date.now();
   const result = {
@@ -165,7 +165,7 @@ async function main() {
     },
   };
 
-  // 1. Konfiguracja konta -> uid, mainUid, uprawnienia klucza
+  // 1. Account config -> uid, mainUid, key permissions
   const [config] = await get("/api/v5/account/config");
   result.account = {
     uid: config.uid,
@@ -178,10 +178,10 @@ async function main() {
     kycLevel: config.kycLv,
   };
   if (config.perm !== "read_only") {
-    console.error(`UWAGA: klucz ma uprawnienia "${config.perm}", a nie tylko read_only!`);
+    console.error(`WARNING: this key has "${config.perm}" permissions, not read_only only!`);
   }
 
-  // 2. Salda: Trading + Funding
+  // 2. Balances: Trading + Funding
   const [trading] = await get("/api/v5/account/balance");
   result.balances = {
     trading: {
@@ -198,15 +198,15 @@ async function main() {
   };
   await sleep(250);
 
-  // 3. Wpłaty (paginacja po timestamp)
+  // 3. Deposits (paginated by timestamp)
   result.deposits = await paginate("/api/v5/asset/deposit-history", {}, { cursorField: "ts", tsField: "ts" });
   await sleep(250);
 
-  // 4. Wypłaty (paginacja po timestamp)
+  // 4. Withdrawals (paginated by timestamp)
   result.withdrawals = await paginate("/api/v5/asset/withdrawal-history", {}, { cursorField: "ts", tsField: "ts" });
   await sleep(250);
 
-  // 5. Fills (transakcje) – ostatnie 3 miesiące, per instType, paginacja po billId
+  // 5. Fills (trades) - last 3 months, per instType, paginated by billId
   result.fills = [];
   for (const instType of cfg.instTypes) {
     const rows = await paginate("/api/v5/trade/fills-history", { instType }, { cursorField: "billId", tsField: "ts" });
@@ -215,17 +215,17 @@ async function main() {
   }
   result.fills.sort((a, b) => Number(b.ts) - Number(a.ts));
 
-  // 6. Dziennik konta tradingowego (3 miesiące) – wszystkie zmiany salda
+  // 6. Trading account journal (3 months) - every balance change
   if (!cfg.skipBills) {
     result.tradingBills = await paginate("/api/v5/account/bills-archive", {}, { cursorField: "billId", tsField: "ts", minDelayMs: 450 });
     await sleep(250);
-    // Dziennik konta Funding (1 miesiąc) – transfery, wpłaty, wypłaty
+    // Funding account journal (1 month) - transfers, deposits, withdrawals
     result.fundingBills = await paginate("/api/v5/asset/bills", {}, { cursorField: "billId", tsField: "ts", minDelayMs: 450 });
   }
 
   result.meta.durationMs = Date.now() - t0;
 
-  // ---------- podsumowanie ----------
+  // ---------- summary ----------
   const sumBy = (rows, key) => rows.reduce((acc, r) => {
     acc[r.ccy] = (acc[r.ccy] ?? 0) + Number(r[key]);
     return acc;
@@ -242,22 +242,22 @@ async function main() {
       feesByCcy: sumBy(result.withdrawals, "fee"),
     },
     fills: result.fills.length,
-    tradingBills: result.tradingBills?.length ?? "(pominięto)",
-    fundingBills: result.fundingBills?.length ?? "(pominięto)",
+    tradingBills: result.tradingBills?.length ?? "(skipped)",
+    fundingBills: result.fundingBills?.length ?? "(skipped)",
   };
-  console.error("\n=== PODSUMOWANIE ===");
+  console.error("\n=== SUMMARY ===");
   console.error(JSON.stringify(summary, null, 2));
 
   const json = JSON.stringify(result, null, 2);
   if (cfg.out) {
     await writeFile(cfg.out, json, "utf8");
-    console.error(`\nZapisano ${cfg.out} (${(json.length / 1024).toFixed(1)} KB)`);
+    console.error(`\nSaved ${cfg.out} (${(json.length / 1024).toFixed(1)} KB)`);
   } else {
     process.stdout.write(json + "\n");
   }
 }
 
 main().catch((err) => {
-  console.error("BŁĄD:", err.message);
+  console.error("ERROR:", err.message);
   process.exit(2);
 });
