@@ -4,8 +4,11 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 
 | File | What it does |
 |------|--------------|
-| `okx-readonly-export.mjs` | REST export: uid / key permissions, Trading + Funding balances, deposits, withdrawals, fills, bills |
+| `okx-readonly-export.mjs` | REST export: uid / key permissions, balances, open orders, positions, order history, deposits, withdrawals, fills, bills |
 | `okx-ws-listener.mjs` | Private WebSocket listener (`orders`, `balance_and_position`, `account`, optionally `fills`) |
+| `okx-common.mjs` | Shared helpers: argument parsing, profiles, region hosts, signed REST client |
+
+Run either script with `--help` for the full flag list.
 
 ## Setting up `.env`
 
@@ -41,7 +44,18 @@ npm run export:prod -- --from 2026-01-01 --to 2026-06-30 --out h1.json
 npm run ws:prod -- --channels orders,fills,deposit-info
 ```
 
-The full flag list lives in the header comment of each `.mjs` file.
+Useful flags:
+
+```bash
+npm run export:prod -- --days 7              # last 7 days instead of --from/--to
+npm run export:prod -- --skip-orders         # skip open orders, positions and order history
+npm run ws:prod -- --quiet                   # hide 'account' pushes that carry no balance change
+npm run ws:prod -- --out-events events.jsonl # append every event to a JSONL file
+npm run ws:prod -- --no-catchup              # skip the REST reconciliation after login
+```
+
+**Credentials are read from the environment only.** They cannot be passed as arguments -
+argv is visible to other users through `ps` and lands in shell history.
 
 ## Limitations and gotchas
 
@@ -51,9 +65,10 @@ The full flag list lives in the header comment of each `.mjs` file.
 - **The WS `fills` channel requires VIP5+.** It lives on the `/ws/v5/business` endpoint and the
   subscription is rejected below that tier. The default channels (`orders`,
   `balance_and_position`, `account`) work on any account.
-- **`orders` is a notification channel, not a source of truth.** You get order state changes
-  (`state=filled` and so on); the full execution history still has to come from REST
-  (`fills-history`).
+- **`orders` is a notification channel, not a source of truth.** It has no snapshot: only changes
+  that happen after subscribing are pushed. The listener therefore reconciles over REST after every
+  login - open orders always, plus orders that reached a final state during a disconnect. Full
+  execution details still have to come from `fills-history`.
 - **`60032` (REST) / `50119` (WS login) means the wrong region.** A key from `my.okx.com` only
   works against `eea.okx.com` + `wseea.okx.com` / `wseeapap.okx.com` (demo). The same key on a
   global domain looks like a non-existent API key.

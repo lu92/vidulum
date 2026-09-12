@@ -1,32 +1,44 @@
-# Integracja OKX – kontekst dla agenta
+# OKX integration - agent context
 
-Ten plik jest streszczeniem ustaleń z researchu i testów. Przeczytaj go przed pracą nad czymkolwiek w `tools/okx/` lub nad modułem OKX w backendzie – oszczędza ponowne analizowanie dokumentacji OKX.
+This file summarises the findings from research and live testing. Read it before working on
+anything in `tools/okx/` or on the OKX module in the backend - it saves re-reading the OKX docs.
 
-## Po co to robimy (kontekst biznesowy)
+## Why we are doing this (business context)
 
-Vidulum/Widlum to SaaS do zarządzania cashflow dla polskich JDG (jednoosobowych działalności), z planowaną ekspansją na UE. Część użytkowników trzyma środki na giełdach krypto. Chcemy, żeby aplikacja:
+Vidulum/Widlum is a SaaS for cashflow management aimed at Polish sole proprietorships (JDG), with
+planned expansion into the EU. Some users keep funds on crypto exchanges. We want the application to:
 
-1. pokazywała **aktualny stan portfela** na OKX (Trading + Funding) obok innych kont użytkownika,
-2. importowała **historię wpłat, wypłat i transakcji** – z kursami, opłatami i adresami docelowymi – do księgowania i rozliczeń,
-3. dostawała **powiadomienie w czasie rzeczywistym** o wykonanej transakcji, żeby uruchomić własną logikę (aktualizacja salda, notyfikacja).
+1. show the **current OKX portfolio state** (Trading + Funding) alongside the user's other accounts,
+2. import the **history of deposits, withdrawals and trades** - with rates, fees and destination
+   addresses - for bookkeeping and settlement,
+3. receive a **real-time notification** when a trade executes, so it can trigger our own logic
+   (balance update, notification).
 
-Zasady nienegocjowalne:
-- Integracja jest **wyłącznie do odczytu**. Nigdy nie składamy zleceń, nie robimy transferów ani wypłat na koncie użytkownika. Klucz API użytkownika ma mieć uprawnienie tylko `read_only`; backend to weryfikuje przez `GET /api/v5/account/config` (pole `perm`) i odrzuca klucze z `trade`/`withdraw`.
-- Historia musi być **trwale zapisana u nas**, bo OKX nie oddaje jej w nieskończoność (patrz retencja niżej).
-- Sekrety użytkowników (key/secret/passphrase) są szyfrowane w bazie, nigdy w logach, konfiguracji ani URL-ach.
+Non-negotiable rules:
+- The integration is **read-only**. We never place orders, make transfers or withdraw from a user's
+  account. A user's API key must carry the `read_only` permission alone; the backend verifies this
+  via `GET /api/v5/account/config` (the `perm` field) and rejects keys with `trade`/`withdraw`.
+- History must be **stored durably on our side**, because OKX does not serve it indefinitely
+  (see retention below).
+- User secrets (key/secret/passphrase) are encrypted at rest and never appear in logs,
+  configuration or URLs.
 
-## Stan obecny
+## Current state
 
-`tools/okx/` zawiera dwa skrypty Node 22 (ESM, zero zależności npm) będące **prototypem / narzędziem deweloperskim** – docelowo logika ma trafić do backendu Spring Boot (Java, Kafka, MongoDB):
-- `okx-readonly-export.mjs` – REST: uid, salda, deposit/withdrawal history, fills, bills → JSON.
-- `okx-ws-listener.mjs` – prywatny WebSocket: `orders`, `balance_and_position`, `account`.
+`tools/okx/` contains two Node 22 scripts (ESM, zero npm dependencies) that act as a
+**prototype / developer tool** - the logic is ultimately meant to move into the Spring Boot backend
+(Java, Kafka, MongoDB):
+- `okx-readonly-export.mjs` - REST: uid, balances, deposit/withdrawal history, fills, bills -> JSON.
+- `okx-ws-listener.mjs` - private WebSocket: `orders`, `balance_and_position`, `account`.
 
-Oba mają profile `prod`/`demo` (zmienne `OKX_*` / `OKX_DEMO_*`, pliki `.env.prod` / `.env.demo` ładowane przez `node --env-file`). Przetestowane i działające na koncie demo w regionie EEA.
+Both support `prod`/`demo` profiles (`OKX_*` / `OKX_DEMO_*` variables, `.env.prod` / `.env.demo`
+loaded via `node --env-file`). Tested and working against a demo account in the EEA region.
 
-## Ustalenia techniczne (zweryfikowane na żywo)
+## Technical findings (verified live)
 
-### Regiony i hosty – najczęstsza przyczyna błędów
-Konto właściciela repo jest zarejestrowane na `my.okx.com` (region **EEA**). Klucze EEA nie działają na hostach globalnych i odwrotnie.
+### Regions and hosts - the most common source of errors
+The repo owner's account is registered on `my.okx.com` (**EEA** region). EEA keys do not work
+against global hosts, and vice versa.
 
 | | REST | WS live | WS demo |
 |---|---|---|---|
@@ -34,62 +46,98 @@ Konto właściciela repo jest zarejestrowane na `my.okx.com` (region **EEA**). K
 | **EEA** | `eea.okx.com` | `wss://wseea.okx.com:8443` | `wss://wseeapap.okx.com:8443` |
 | US | `openapi.okx.com`* | `wss://wsus.okx.com:8443` | `wss://wsuspap.okx.com:8443` |
 
-Ścieżki WS: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
-- REST `50119 "API key doesn't exist"` / WS `60032` → zły region lub klucz demo bez trybu demo.
-- WS `1006` przy connect → host nie istnieje (np. `wspap.my.okx.com` – nie używać).
-- Region musi być konfigurowalny **per użytkownik** w backendzie (użytkownicy UE = EEA, ale nie wszyscy).
+WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
+- REST `50119 "API key doesn't exist"` / WS `60032` -> wrong region, or a demo key without demo mode.
+- WS `1006` on connect -> the host does not exist (e.g. `wspap.my.okx.com` - do not use).
+- The region must be configurable **per user** in the backend (EU users are EEA, but not all of them).
 
 ### Demo Trading
-- Osobne klucze tworzone w trybie Demo Trading; wirtualne środki; bez wpłat i wypłat.
-- REST demo: ten sam host co live + nagłówek `x-simulated-trading: 1`. WS demo: osobny host (`*pap.okx.com`), bez nagłówka.
-- Do testów WS można na demo dać kluczowi `trade` i składać zlecenia z UI/REST, żeby wywołać eventy.
+- Separate keys created in Demo Trading mode; virtual funds; no deposits or withdrawals.
+- REST demo: same host as live plus the `x-simulated-trading: 1` header. WS demo: a separate host
+  (`*pap.okx.com`), no header.
+- For WS testing you can grant a demo key `trade` and place orders from the UI/REST to generate events.
 
-### Uwierzytelnianie
-- REST: nagłówki `OK-ACCESS-KEY`, `OK-ACCESS-SIGN`, `OK-ACCESS-TIMESTAMP` (ISO 8601 UTC z ms), `OK-ACCESS-PASSPHRASE`. Podpis = `Base64(HMAC_SHA256(timestamp + METHOD + requestPath(+query) + body, secret))`. Timestamp starszy niż 30 s → `50102`.
-- WS login: `{"op":"login","args":[{apiKey,passphrase,timestamp,sign}]}`, timestamp w **sekundach** (Unix), podpisywany string `timestamp + "GET" + "/users/self/verify"`.
-- Klucz `read_only` wystarcza do wszystkich endpointów i kanałów, których używamy.
+### Authentication
+- REST: headers `OK-ACCESS-KEY`, `OK-ACCESS-SIGN`, `OK-ACCESS-TIMESTAMP` (ISO 8601 UTC with ms),
+  `OK-ACCESS-PASSPHRASE`. Signature =
+  `Base64(HMAC_SHA256(timestamp + METHOD + requestPath(+query) + body, secret))`.
+  A timestamp older than 30 s yields `50102`.
+- WS login: `{"op":"login","args":[{apiKey,passphrase,timestamp,sign}]}`, timestamp in **seconds**
+  (Unix), over the signed string `timestamp + "GET" + "/users/self/verify"`.
+- A `read_only` key is sufficient for every endpoint and channel we use.
 
-### Endpointy REST, których używamy
-- `GET /account/config` → `uid`, `mainUid`, `perm`, `acctLv`.
-- `GET /account/balance` (Trading), `GET /asset/balances` (Funding). Oba trzeba sumować – wpłaty lądują na Funding, handel na Trading; transfery między nimi widać w `asset/bills` (subType 11/12; `from`/`to`: 6 = Funding, 18 = Trading).
-- `GET /asset/deposit-history` – `amt`, `ccy`, `chain`, `from`, `to`, `txId`, `state` (2 = zaksięgowane), `ts`. Brak opłaty (wpłaty są darmowe). Paginacja `after`=ts.
-- `GET /asset/withdrawal-history` – jw. plus `fee`, `wdId`. Paginacja `after`=ts.
-- `GET /trade/fills-history?instType=SPOT|MARGIN|SWAP|FUTURES|OPTION` – `fillPx`, `fillSz`, `fee`, `feeCcy`, `tradeId`, `ordId`, `billId`, `ts`. Paginacja `after`=billId. **Retencja 3 miesiące.**
-- `GET /account/bills-archive` – pełny dziennik konta tradingowego (trade, fee, funding fee, transfery, likwidacje), `balChg`, `bal`, `px`. **3 miesiące.** `GET /account/bills` – 7 dni.
-- `GET /asset/bills` – dziennik Funding. **1 miesiąc.**
-- `GET /asset/convert/history` – konwersje z kursem.
-- Paginacja OKX: wyniki od najnowszych; `after=X` znaczy "starsze niż X"; limit 100.
+### REST endpoints we use
+- `GET /account/config` -> `uid`, `mainUid`, `perm`, `acctLv`.
+- `GET /account/balance` (Trading), `GET /asset/balances` (Funding). Both must be summed - deposits
+  land in Funding, trading happens in Trading; transfers between them appear in `asset/bills`
+  (subType 11/12; `from`/`to`: 6 = Funding, 18 = Trading).
+- `GET /asset/deposit-history` - `amt`, `ccy`, `chain`, `from`, `to`, `txId`, `state`
+  (2 = credited), `ts`. No fee (deposits are free). Paginate with `after`=ts.
+- `GET /asset/withdrawal-history` - as above plus `fee`, `wdId`. Paginate with `after`=ts.
+- `GET /trade/fills-history?instType=SPOT|MARGIN|SWAP|FUTURES|OPTION` - `fillPx`, `fillSz`, `fee`,
+  `feeCcy`, `tradeId`, `ordId`, `billId`, `ts`. Paginate with `after`=billId. **3-month retention.**
+- `GET /account/bills-archive` - full trading account journal (trades, fees, funding fees,
+  transfers, liquidations), `balChg`, `bal`, `px`. **3 months.** `GET /account/bills` - 7 days.
+- `GET /asset/bills` - Funding journal. **1 month.**
+- `GET /asset/convert/history` - conversions with their rate.
+- OKX pagination: results are newest-first; `after=X` means "older than X"; limit 100.
 
-### Historia starsza niż 3 miesiące – archiwum kwartalne (async)
-- `POST /account/bills-history-archive` `{year, quarter}` → po ~2 h `GET` tego samego endpointu zwraca `fileHref` (CSV.zip) i `state` (`finished`/`ongoing`/`failed`). Link ważny ~5,5 h; wnioski o ten sam kwartał ważne 30 dni; limit 1 wniosek / 10 s.
-- Dane dostępne od **1 lutego 2021**, z wyjątkiem bieżącego kwartału. Wcześniejszych danych API nie oddaje.
-- Uwaga: dla plików generowanych po 11.10.2024 granice "kwartałów" są przesunięte (np. "2024 Q2" = 1.07–30.09) – weryfikować zakres po `ts` w pliku, nie po nazwie.
-- CSV zawiera `fillIdxPx` – cenę indeksową w USDT w chwili transakcji; wystarcza do wyceny bez pobierania świec.
-- Plan odbudowy historii: idź kwartałami wstecz do pierwszego pustego / Q1 2021; punkt startowy = min(najstarszy bill, najstarsza wpłata); jeśli najstarszy kwartał zaczyna się od niezerowego `bal`, zapisz saldo otwarcia. Weryfikacja: Σ`balChg` + saldo otwarcia = dzisiejsze saldo.
-- Dotyczy tylko Trading; dla Funding jest "monthly statement" (ostatni rok) w sekcji Funding.
+### History older than 3 months - quarterly archive (async)
+- `POST /account/bills-history-archive` `{year, quarter}` -> after ~2 h a `GET` on the same endpoint
+  returns `fileHref` (CSV.zip) and `state` (`finished`/`ongoing`/`failed`). The link is valid ~5.5 h;
+  a request for the same quarter stays valid 30 days; limit 1 request / 10 s.
+- Data is available from **1 February 2021**, excluding the current quarter. The API does not serve
+  anything earlier.
+- Caution: for files generated after 2024-10-11 the "quarter" boundaries are shifted
+  (e.g. "2024 Q2" = 01.07-30.09) - verify the range by `ts` inside the file, not by its name.
+- The CSV contains `fillIdxPx` - the USDT index price at the moment of the trade; enough for
+  valuation without fetching candles.
+- History rebuild plan: walk back quarter by quarter to the first empty one or Q1 2021; the starting
+  point is min(oldest bill, oldest deposit); if the oldest quarter begins with a non-zero `bal`,
+  record it as the opening balance. Verification: sum of `balChg` + opening balance = today's balance.
+- Applies to Trading only; Funding has a "monthly statement" (last year) in the Funding section.
 
-### WebSocket – powiadomienia
-- Nie ma webhooków. Używamy kanału **`orders`** (`instType: ANY`) na `/ws/v5/private` jako źródła powiadomień: `state` = `live` → `partially_filled`* → `filled` | `canceled`. Trigger biznesowy = `filled` (ma `avgPx`, `accFillSz`, `fee`).
-- `balance_and_position` – push przy każdej zmianie salda/pozycji z `eventType` (`filled_order`, `transferred`, `liquidation`...); wywołuje go też ręczny transfer Funding↔Trading – dobry test na live bez handlu.
-- `account` – pushuje także co ~5 s przy zmianie wyceny (`totalEq`) bez transakcji; nie traktować jako event transakcji.
-- `deposit-info` / `withdrawal-info` na `/private` – push przy wpłacie/wypłacie (na demo nieosiągalne).
-- **`fills` żyje na `/ws/v5/business`, nie przyjmuje `instType` i jest dostępny tylko dla VIP5+** – nie polegamy na nim; szczegóły fillów dociągamy REST-em po evencie `filled`.
-- Keepalive: co 20 s wysłać tekst `ping`, serwer odpowiada `pong`; brak ruchu ~30 s → OKX zrywa. Event `notice` kod 64008 = serwer zaraz zamknie połączenie (upgrade) → reconnect.
-- WS nie odtwarza eventów sprzed połączenia. Po każdym reconnect dociągnąć REST-em `fills-history` od ostatniego znanego `billId`.
+### WebSocket - notifications
+- There are no webhooks. We use the **`orders`** channel (`instType: ANY`) on `/ws/v5/private` as the
+  notification source: `state` = `live` -> `partially_filled`* -> `filled` | `canceled`. The business
+  trigger is `filled` (it carries `avgPx`, `accFillSz`, `fee`).
+- `balance_and_position` - pushed on every balance/position change with an `eventType`
+  (`filled_order`, `transferred`, `liquidation`, ...); a manual Funding<->Trading transfer also
+  triggers it, which makes a good live test without trading.
+- `account` - also pushes roughly every 5 s when valuation (`totalEq`) moves without any trade;
+  do not treat it as a trade event.
+- `deposit-info` / `withdrawal-info` on `/private` - pushed on deposit/withdrawal
+  (not reachable on demo).
+- **`fills` lives on `/ws/v5/business`, does not accept `instType`, and is available to VIP5+ only** -
+  we do not rely on it; fill details are fetched over REST after a `filled` event.
+- Keepalive: send the text `ping` every 20 s, the server replies `pong`; ~30 s without traffic and
+  OKX drops the connection. A `notice` event with code 64008 means the server is about to close the
+  connection (upgrade) -> reconnect.
+- WS does not replay events from before the connection. After every reconnect, fetch
+  `fills-history` over REST starting from the last known `billId`.
 
-### Ceny historyczne (publiczne, bez klucza)
-- `GET /market/history-candles?instId=BTC-USDT&bar=1D` (OHLCV, do 100/żądanie), `history-index-candles`, `history-mark-price-candles`. Do wyceny w PLN potrzebny osobny kurs USD/PLN (NBP).
+### Historical prices (public, no key required)
+- `GET /market/history-candles?instId=BTC-USDT&bar=1D` (OHLCV, up to 100 per request),
+  `history-index-candles`, `history-mark-price-candles`. Valuation in PLN additionally needs a
+  USD/PLN rate (NBP).
 
-### Rate limity
-Per endpoint i per klucz; typowo 5–20 req / 2 s dla prywatnych endpointów. Skrypty robią 250–500 ms przerwy między stronami i retry na `429`/`50011`.
+### Rate limits
+Per endpoint and per key; typically 5-20 req / 2 s for private endpoints. The scripts pause
+250-500 ms between pages and retry on `429`/`50011`.
 
-## Kierunek docelowy (backend)
-- Moduł `okx` w Spring Boot: konfiguracja per użytkownik = {region, demo flag, encrypted credentials}; `@ConfigurationProperties` + profile Springa dla środowisk.
-- Job synchronizacji REST (co N minut + na żądanie) zapisujący do MongoDB; deduplikacja po `billId` / `depId` / `wdId` / `tradeId`.
-- Osobny job archiwum kwartalnego (kolejka wniosków, polling stanu, import CSV).
-- Jeden WS `/private` na użytkownika z `orders` + `balance_and_position` (+ `deposit-info`/`withdrawal-info`), eventy publikowane na Kafkę.
-- Do testów: fixtures z surowymi payloadami zebranymi na demo; lokalny mock WS do testów reconnect/pong.
+## Target design (backend)
+- An `okx` module in Spring Boot: per-user configuration = {region, demo flag, encrypted
+  credentials}; `@ConfigurationProperties` plus Spring profiles per environment.
+- A REST synchronisation job (every N minutes plus on demand) writing to MongoDB; deduplication by
+  `billId` / `depId` / `wdId` / `tradeId`.
+- A separate quarterly-archive job (request queue, state polling, CSV import).
+- One `/private` WS per user with `orders` + `balance_and_position` (+ `deposit-info` /
+  `withdrawal-info`), publishing events to Kafka.
+- For tests: fixtures built from raw payloads captured on demo, plus a local WS mock for
+  reconnect/pong tests.
 
-## Gdzie szukać
-- Dokumentacja: `https://www.okx.com/docs-v5/en/` (dla EEA warto sprawdzać wersję pod `my.okx.com/docs-v5`).
-- Referencyjne SDK z obsługą regionów: `github.com/tiagosiebler/okx-api` (mapy hostów w `src/util/websocket-util.ts`).
+## Where to look
+- Documentation: `https://www.okx.com/docs-v5/en/` (for EEA it is worth checking the version under
+  `my.okx.com/docs-v5`).
+- Reference SDK with region handling: `github.com/tiagosiebler/okx-api`
+  (host maps in `src/util/websocket-util.ts`).

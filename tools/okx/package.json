@@ -14,7 +14,7 @@
     "export:prod:quick": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --skip-bills --out prod.json",
     "ws:demo": "node --env-file=.env.demo okx-ws-listener.mjs --profile demo --region eea",
     "ws:prod": "node --env-file=.env.prod okx-ws-listener.mjs --profile prod --region eea",
-    "check:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-demo.json",
-    "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --from $(node -p 'new Date(Date.now()-864e5).toISOString().slice(0,10)') --out check-prod.json"
+    "check:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --verbose --days 1 --out check-demo.json",
+    "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --days 1 --out check-prod.json"
   }
 }
