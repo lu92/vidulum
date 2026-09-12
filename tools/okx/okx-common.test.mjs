@@ -16,7 +16,7 @@
 
 import { readFileSync } from "node:fs";
 import { formatOrder, formatProtection, diffOrder } from "./okx-common.mjs";
-import { ORDER_FIELDS, auditOrderPayload, TERMINAL_STATES } from "./okx-order-contract.mjs";
+import { ORDER_FIELDS, auditOrderPayload, validateEnums, TERMINAL_STATES } from "./okx-order-contract.mjs";
 
 const fx = JSON.parse(readFileSync(new URL("./fixtures/orders-lifecycle.json", import.meta.url), "utf8"));
 const REAL = fx.frames;
@@ -50,6 +50,13 @@ console.log("\nKONTRAKT (dane prawdziwe)");
   checkThat("kontrakt opisuje dokladnie tyle pol", Object.keys(ORDER_FIELDS).length === n);
   checkThat("cancelSourceReason NIE wystepuje po WS", !("cancelSourceReason" in REAL[0].data),
     "jesli sie pojawilo, OKX zmienil kontrakt - zaktualizuj dokumentacje");
+  const enumProblems = REAL.flatMap((f) => validateEnums(f.data));
+  checkThat("kazda zaobserwowana wartosc miesci sie w udokumentowanej enumeracji",
+    enumProblems.length === 0, enumProblems.join("; "));
+
+  const withEnum = Object.values(ORDER_FIELDS).filter((f) => f.documented).length;
+  checkThat("kontrakt niesie enumeracje dla pol cyklu zycia", withEnum >= 8,
+    `pol z enumeracja: ${withEnum}`);
 }
 
 // ---------------------------------------------------------------- renderowanie

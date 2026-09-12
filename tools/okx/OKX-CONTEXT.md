@@ -135,6 +135,13 @@ WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
 - On a spot buy, the fee is charged **in the base currency** (BTC on BTC-EUR), not the quote.
 - `balance_and_position` fires `eventType=filled` on a real execution - confirmed; until an order
   actually fills, the only event ever seen is the `snapshot` sent at subscribe time.
+- **Field enumerations are only partly published.** `state`, `ordType`, `side`, `tdMode`,
+  `instType`, `posSide` and the trigger price types have documented value sets, mirrored into
+  `okx-order-contract.mjs` (source: the tiagosiebler/okx-api typings). `execType`, `category`,
+  `cancelSource`, `amendResult`, `amendSource`, `stpMode`, `tgtCcy`, `tpOrdKind`, `source` and
+  `outcome` are typed as plain strings there, and OKX's own single-page reference is too large to
+  retrieve programmatically - for those fields the contract records only observed values. Treat an
+  unrecognised value as data to investigate, not as an error.
 - WS does not replay events from before the connection. After every reconnect, fetch
   `fills-history` over REST starting from the last known `billId`.
 
@@ -161,5 +168,13 @@ Per endpoint and per key; typically 5-20 req / 2 s for private endpoints. The sc
 ## Where to look
 - Documentation: `https://www.okx.com/docs-v5/en/` (for EEA it is worth checking the version under
   `my.okx.com/docs-v5`).
-- Reference SDK with region handling: `github.com/tiagosiebler/okx-api`
-  (host maps in `src/util/websocket-util.ts`).
+- **Official SDK: Python only.** `python-okx` on PyPI (author `okxv5api <api@okg.com>`, source at
+  `github.com/okxapi/python-okx`), linked from the OKX docs overview. It is a thin REST wrapper:
+  methods take loose keyword arguments and return the raw response dict. `consts.py` holds endpoint
+  paths and nothing else - there are no typed models and no field enumerations, so it does not help
+  when you need to know which values a field can take. OKX publishes no Java or TypeScript SDK.
+- Best available source of field enumerations: the typings in `github.com/sieblyio/okx-api`
+  (formerly `tiagosiebler/okx-api`), `src/types/rest/shared.ts`. Third-party but explicit; it also
+  carries the region host maps in `src/util/websocket-util.ts`. It enumerates `state`, `ordType`,
+  `side`, `tdMode`, `instType`, `posSide` and the trigger price types, and types everything else as
+  plain `string`.

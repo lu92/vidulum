@@ -339,6 +339,13 @@ Do tego skala: syntetyczne zlecenie miało 27 pól, prawdziwa ramka ma 71.
   SL w starym stylu, ochrona częściowa) są **jawnie oznaczone jako syntetyczne**, żeby nikt nie
   wziął ich za dowód.
 
+Kontrakt niesie dwie osobne listy wartości na pole: `observed` (co faktycznie przyszło w sesji)
+i `documented` (pełna enumeracja, gdy jest opublikowana). Enumeracje udało się zdobyć dla ośmiu pól
+cyklu życia; dla `execType`, `category`, `cancelSource`, `amendResult`, `amendSource`, `stpMode`,
+`tgtCcy`, `tpOrdKind`, `source` i `outcome` żadne dostępne źródło ich nie podaje — tam zostaje sama
+obserwacja. `validateEnums()` zgłasza wartość spoza udokumentowanego zbioru, więc rozszerzenie
+enuma po stronie OKX nie przejdzie niezauważone.
+
 `fixtures/` nie wymagało zmian w `.gitignore` — reguła `tools/okx/*.json` nie przechodzi przez `/`.
 
 ---
