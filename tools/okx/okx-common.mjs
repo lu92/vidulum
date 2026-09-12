@@ -229,21 +229,50 @@ export function formatOrder(d) {
        + ` px=${d.px || "-"} avgPx=${d.avgPx || "-"} ordId=${d.ordId}${formatProtection(d)}`;
 }
 
-/** Fields worth reporting when the same ordId is pushed again (amend, fill, TP/SL attach). */
-export const ORDER_DIFF_FIELDS = ["state", "sz", "px", "ordType", "accFillSz", "avgPx", "reduceOnly"];
+/**
+ * Fields that carry no information in a diff: the order's identity (never changes) and
+ * uTime (moves on its own, and sometimes fails to move - see the TP-attach case).
+ * Protection lives in attachAlgoOrds / linkedAlgoOrd and is rendered by formatProtection.
+ */
+export const ORDER_DIFF_IGNORE = new Set([
+  "uTime", "ordId", "instId", "instType", "cTime", "category", "ccy", "tdMode",
+  "posSide", "tradeQuoteCcy", "attachAlgoOrds", "linkedAlgoOrd",
+]);
+
+/** Shown first when several fields move at once; everything else follows alphabetically. */
+export const ORDER_DIFF_PRIORITY = [
+  "state", "cancelSource", "cancelSourceReason", "px", "sz", "accFillSz", "avgPx",
+  "fillSz", "fillPx", "tradeId", "fee", "feeCcy", "pnl", "ordType",
+];
 
 /**
- * Diffs a push against the previously seen version of the same order. Without this an amend
- * that only moves the price, or a stop-loss attached to a live order, is indistinguishable
- * from a duplicate line.
+ * Diffs a push against the previously seen version of the same order.
+ *
+ * Every scalar field is compared rather than a hand-picked list: an order payload carries
+ * ~54 fields and picking favourites is exactly how the attached take-profit went unnoticed.
+ * A cancellation reason, a fill's own price and fee, or a leverage change all surface here
+ * without anyone having to predict them in advance.
  */
 export function diffOrder(prev, next) {
   if (!prev) return [];
-  const changes = [];
-  for (const f of ORDER_DIFF_FIELDS) {
-    if ((prev[f] ?? "") !== (next[f] ?? "")) changes.push(`${f}: ${prev[f] || "-"} -> ${next[f] || "-"}`);
+  const changes = new Map();
+  // Iterate the keys of the INCOMING push only. OKX sends the full order state on every
+  // update and spells "empty" as "", never by omitting the key - so a key missing from the
+  // push means "not reported here", not "changed to empty". Diffing the union of both key
+  // sets would turn any partial payload into a screenful of phantom changes.
+  for (const k of Object.keys(next)) {
+    if (ORDER_DIFF_IGNORE.has(k)) continue;
+    const a = prev[k], b = next[k];
+    // Objects and arrays are either protection (rendered separately) or not worth a text diff.
+    if ((a !== null && typeof a === "object") || (b !== null && typeof b === "object")) continue;
+    if ((a ?? "") !== (b ?? "")) changes.set(k, `${k}: ${a || "-"} -> ${b || "-"}`);
   }
+
+  const ordered = [];
+  for (const k of ORDER_DIFF_PRIORITY) if (changes.has(k)) { ordered.push(changes.get(k)); changes.delete(k); }
+  ordered.push(...[...changes.keys()].sort().map((k) => changes.get(k)));
+
   const before = formatProtection(prev), after = formatProtection(next);
-  if (before !== after) changes.push(`protection:${before || " (none)"} ->${after || " (none)"}`);
-  return changes;
+  if (before !== after) ordered.unshift(`protection:${before || " (none)"} ->${after || " (none)"}`);
+  return ordered;
 }

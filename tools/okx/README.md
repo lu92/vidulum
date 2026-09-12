@@ -7,6 +7,9 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 | `okx-readonly-export.mjs` | REST export: uid / key permissions, balances, open orders, positions, order history, deposits, withdrawals, fills, bills |
 | `okx-ws-listener.mjs` | Private WebSocket listener (`orders`, `balance_and_position`, `account`, optionally `fills`) |
 | `okx-common.mjs` | Shared helpers: argument parsing, profiles, region hosts, signed REST client |
+| `okx-order-contract.mjs` | Every field the `orders` channel sends, with a real example and what it means |
+| `okx-common.test.mjs` | `npm test` - runs offline, no credentials needed |
+| `fixtures/orders-lifecycle.json` | 9 raw frames covering one order's full lifecycle |
 
 Run either script with `--help` for the full flag list.
 
@@ -25,6 +28,7 @@ Create the keys as **read-only**; the export script warns if a key has broader p
 ## Running
 
 ```bash
+npm test                   # offline checks against the recorded fixtures
 npm run check:demo         # credential smoke test: --verbose, window from yesterday -> check-demo.json
 npm run check:prod         # same against the live key -> check-prod.json
 
@@ -78,6 +82,17 @@ argv is visible to other users through `ps` and lands in shell history.
 - The `demo` profile adds the `x-simulated-trading: 1` header automatically; demo and live keys
   cannot be mixed between profiles.
 - Output files (`*.json`) are git-ignored - `package.json` is the exception.
+
+## Tests
+
+`npm test` needs no credentials, no network and no dependencies - it replays the frames in
+`fixtures/orders-lifecycle.json`, recorded from a real order lifecycle on the demo account
+(creation, price amend, stop-loss attach and amend, take-profit added, cancellation, fill).
+Variants the account never produced - trailing stop, a rejected attached algo, a legacy
+top-level stop-loss - are clearly marked as synthetic in the test file.
+
+If OKX adds a field, the contract check fails with its name: re-record the fixtures and
+extend `okx-order-contract.mjs`.
 
 ## Related documents
 

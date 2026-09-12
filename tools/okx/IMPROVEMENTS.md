@@ -1,6 +1,6 @@
 # Usprawnienia — `tools/okx`
 
-**Status: wszystkie 24 pozycje wdrożone (2026-09-12).**
+**Status: wszystkie 26 pozycji wdrożonych (2026-09-12).**
 
 Lista powstała 2026-09-11 na podstawie analizy ~10-minutowej sesji `npm run ws:demo`
 (2026-09-08 23:17–23:27 UTC) oraz weryfikacji read-only przez REST i surowe ramki WS.
@@ -38,6 +38,8 @@ Objęte pliki: `okx-readonly-export.mjs`, `okx-ws-listener.mjs` oraz nowy `okx-c
 | **U22** | npm | `check:*` nie zadziała na Windows `cmd` | niska | wdrożone (`--days`) |
 | **U23** | listener | Log zleceń gubił `px`, `ordType` i doczepiony TP/SL | wysoka | wdrożone |
 | **U24** | oba | Stop loss w starym stylu, trailing stop i odrzucone algo pomijane | wysoka | wdrożone |
+| **U25** | listener | Diff zleceń po ręcznej liście pól — 27 z 54 zmieniało się po cichu | wysoka | wdrożone |
+| **U26** | oba | Brak kontraktu pól i testu — fixtures były zmyślone | wysoka | wdrożone |
 
 ---
 
@@ -247,6 +249,97 @@ SL w starym stylu (top-level)      [sl@58000(last)->market]
 trailing stop                      [trailing 5.00% active@62000 algoId=1002]
 doczepiony algo ODRZUCONY          [sl@58000->market FAILED 51280 (price out of range) algoId=1004]
 ```
+
+### U25 · Diff zleceń pomijał połowę ładunku
+U23 wprowadziło `diffOrder()` z **ręcznie wybraną** listą siedmiu pól. To ten sam wzorzec, który
+doprowadził do U23 i U24: cokolwiek spoza listy zmieniało się bez śladu w logu. Pomiar na żywym
+ładunku: **54 pola w zleceniu, 7 porównywanych, 9 obsłużonych jako ochrona — 27 niczyich.**
+
+Wśród nich rzeczy wprost potrzebne do śledzenia losu zlecenia:
+
+| Pole | Czego dotyczy |
+|---|---|
+| `cancelSource`, `cancelSourceReason` | **dlaczego** zlecenie zostało anulowane |
+| `fillPx`, `fillSz`, `tradeId` | konkretne wykonanie, nie tylko narastające `accFillSz` |
+| `fee`, `feeCcy`, `rebate`, `rebateCcy` | koszt transakcji |
+| `pnl`, `lever`, `source`, `outcome` | wynik, dźwignia, źródło zlecenia |
+
+Anulowanie samo w sobie było widoczne (`state: live -> canceled`), ale bez powodu — nie dało się
+odróżnić anulowania przez użytkownika od odrzucenia przez giełdę z braku depozytu.
+
+**Wdrożono:** `diffOrder()` porównuje **wszystkie pola skalarne** ładunku. Zamiast listy tego, co
+pokazujemy, jest krótka lista `ORDER_DIFF_IGNORE` tego, co pomijamy — tożsamość zlecenia (`ordId`,
+`instId`, `cTime`…), `uTime` oraz struktury ochrony renderowane osobno przez `formatProtection()`.
+Nowe pole w API OKX pojawi się w logu samo, bez zmiany w kodzie. Kolejność wyników porządkuje
+`ORDER_DIFF_PRIORITY` (stan, powód anulowania, cena, rozmiar, wykonanie, opłata), reszta
+alfabetycznie.
+
+**Potwierdzone na żywym koncie (2026-09-12):** klucz z uprawnieniem `trade` na koncie demo pozwolił
+przejść pełny cykl życia zlecenia. Dziewięć ramek kanału `orders` — utworzenie, zmiana samej ceny,
+doczepienie SL, zmiana progu SL, dołożenie TP, anulowanie i wykonanie — **każda z identycznym
+zestawem 71 kluczy**. OKX wysyła pełny stan, a pustkę zapisuje jako `""`. Generyczny diff wyłapał
+przy okazji dziesięć pól, których nikt by nie przewidział: `amendResult`, `amendSource`,
+`notionalUsd`, `lastPx`, `execType`, `fillFee`, `fillFeeCcy`, `fillIdxPx`, `fillNotionalUsd`,
+`fillTime`. Przy ręcznej liście pól żadne z nich by się nie pojawiło.
+
+**Luka ujawniona przy okazji:** `cancelSourceReason` **nie przychodzi po WebSockecie** — jest tylko
+w REST. Log pokaże `cancelSource: - -> 1`, ale nigdy tekstowego powodu. Żeby go mieć, trzeba dociągnąć
+zlecenie REST-em po anulowaniu.
+
+**Odporność na ładunek częściowy:** diff iteruje po kluczach **przychodzącego** pusha, nie po sumie
+kluczy obu wersji. OKX wysyła pełny stan zlecenia przy każdej aktualizacji i zapisuje pustkę jako
+`""`, nigdy przez pominięcie klucza — dowód z logu sesji: push doczepiający take profit niósł
+`instId`, `side`, `state`, `sz`, `accFillSz` i `avgPx`, mimo że żadne z nich się nie zmieniło.
+Gdyby jednak kiedyś przyszedł ładunek częściowy, suma kluczy zamieniłaby jedną zmianę ceny w osiem
+linii, z czego siedem fałszywych (`sz: 0.004 -> -`). Iterowanie po kluczach pusha daje poprawny
+wynik przy obu semantykach.
+
+Przy okazji **zrzut stanu przy zamykaniu**: `shutdown()` wypisuje ostatni znany stan każdego
+zlecenia widzianego w sesji, kluczowany po `ordId` z OKX — bez odtwarzania logu od początku.
+
+**Weryfikacja:** osiem scenariuszy cyklu życia na syntetycznych ładunkach — dodanie stop lossa,
+anulowanie przez użytkownika, anulowanie przez giełdę, wykonanie częściowe, wykonanie pełne,
+zmiana dźwigni, amend samej ceny oraz push bez żadnej zmiany (ma dać pustkę). Plus regresja na
+żywym koncie: zrzut przy zamykaniu pokazał cztery zlecenia z zachowanym take profitem.
+
+```
+ANULOWANIE PRZEZ GIELDE
+   -> state: live -> canceled
+   -> cancelSource: - -> 33
+   -> cancelSourceReason: - -> insufficient margin
+
+CZESCIOWE WYKONANIE
+   -> state: live -> partially_filled
+   -> accFillSz: 0 -> 0.001
+   -> fillSz: - -> 0.001      -> fillPx: - -> 60000
+   -> tradeId: - -> 77123     -> fee: 0 -> -0.06
+```
+
+### U26 · Kontrakt pól i test na prawdziwych danych
+Testy opierały się na payloadach, które sam napisałem, zgadując kształt odpowiedzi OKX.
+Porównanie z dziewięcioma prawdziwymi ramkami ujawniło dwie fikcje:
+
+1. **`cancelSourceReason` nie istnieje w ramce WS** — był wyłącznie w REST. Test sprawdzał więc
+   renderowanie tekstowego powodu anulowania, którego listener nigdy nie dostanie. Przechodził.
+2. **`failCode`, `failReason`, `percent` są tylko w kształcie REST** — `attachAlgoOrds` ma 19 pól
+   w REST i 16 po WebSockecie. Gałąź `FAILED` może odpalić się wyłącznie na danych z catch-upu.
+
+Do tego skala: syntetyczne zlecenie miało 27 pól, prawdziwa ramka ma 71.
+
+**Wdrożono:**
+- `fixtures/orders-lifecycle.json` — 9 surowych ramek `orders` z sesji 2026-09-12 (utworzenie,
+  zmiana ceny, doczepienie SL, zmiana progu SL, dołożenie TP, dwa anulowania, wykonanie) oraz
+  2 ramki `balance_and_position`, w tym pierwsza w historii z `eventType=filled`.
+- `okx-order-contract.mjs` — wszystkie 71 pól z grupą, przykładową wartością i opisem. Flaga
+  `verified` odróżnia 44 pola zaobserwowane z realną wartością od 27, które były zawsze puste.
+  `auditOrderPayload()` wykrywa pola spoza kontraktu — gdy OKX coś doda, dowiemy się, zamiast
+  to zignorować. Lista pól jest generowana z ramek, więc nie może się rozjechać z rzeczywistością.
+- `okx-common.test.mjs` + `npm test` — 31 asercji, bez sieci i bez poświadczeń, działa na świeżym
+  klonie. Cztery warianty, których konto nie wyprodukowało (trailing stop, odrzucona ochrona,
+  SL w starym stylu, ochrona częściowa) są **jawnie oznaczone jako syntetyczne**, żeby nikt nie
+  wziął ich za dowód.
+
+`fixtures/` nie wymagało zmian w `.gitignore` — reguła `tools/okx/*.json` nie przechodzi przez `/`.
 
 ---
 

@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "test": "node okx-common.test.mjs",
     "export:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --out demo.json",
     "export:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --out prod.json",
     "export:demo:quick": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --skip-bills --out demo.json",

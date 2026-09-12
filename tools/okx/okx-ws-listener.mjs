@@ -335,6 +335,12 @@ let shuttingDown = false;
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
+  // Final snapshot: the in-memory order book keyed by the OKX ordId, so the last known
+  // state of every order seen during the session is visible without replaying the log.
+  if (state.orders.size) {
+    console.log(`\norder state at shutdown (${state.orders.size}, keyed by ordId):`);
+    for (const o of state.orders.values()) console.log(`  ${formatOrder(o)}`);
+  }
   console.log(`\nshutting down (${connections.length} connection(s))...`);
   for (const c of connections) c.stop();
   setTimeout(() => process.exit(code), 150).unref();

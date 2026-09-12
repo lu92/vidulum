@@ -113,6 +113,28 @@ WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
 - Keepalive: send the text `ping` every 20 s, the server replies `pong`; ~30 s without traffic and
   OKX drops the connection. A `notice` event with code 64008 means the server is about to close the
   connection (upgrade) -> reconnect.
+- **The `orders` push carries the FULL order state, never a delta.** Verified live across 9 pushes
+  spanning creation, price amend, TP/SL amend, cancellation and a fill: every frame had the same
+  71 keys. "Empty" is always `""` - OKX never omits a key. Consumers can therefore diff two
+  consecutive pushes field by field without guessing which fields were reported.
+- The WS frame is **richer than `GET /trade/orders-pending`** (71 vs 54 fields). WS-only:
+  `amendResult`, `amendSource`, `reqId`, `code`, `msg`, `notionalUsd`, `lastPx`, `execType`,
+  `fillFee`, `fillFeeCcy`, `fillIdxPx`, `fillNotionalUsd`, `fillPnl`, `fillPxUsd`, `fillPxVol`,
+  `fillMarkPx`, `fillMarkVol`, `fillFwdPx`.
+- **`cancelSourceReason` exists in REST but NOT in the WS push.** WS gives only the numeric
+  `cancelSource`; the human-readable reason requires a REST lookup.
+- **`uTime` is not bumped for an attached TP/SL amend.** Verified: three consecutive pushes that
+  added and changed attached algos all carried the creation-time `uTime`. A price amend and a
+  cancellation do bump it. Never treat `uTime` as "time of this push".
+- Amending an attached TP/SL uses **`new`-prefixed fields** inside `attachAlgoOrds`
+  (`newSlTriggerPx`, `newSlOrdPx`, `newTpTriggerPx`, ...). Passing the plain names is rejected with
+  `51500 "You must enter a price, quantity, or TP/SL condition"`.
+- A stop-loss price is validated **at submission** (`51047` for an SL above the order price), so
+  `failCode` inside `attachAlgoOrds` describes a failure at trigger time, not a bad request.
+- Limit orders are bounded by a price band; exceeding it returns `51137` naming the allowed limit.
+- On a spot buy, the fee is charged **in the base currency** (BTC on BTC-EUR), not the quote.
+- `balance_and_position` fires `eventType=filled` on a real execution - confirmed; until an order
+  actually fills, the only event ever seen is the `snapshot` sent at subscribe time.
 - WS does not replay events from before the connection. After every reconnect, fetch
   `fills-history` over REST starting from the last known `billId`.
 
