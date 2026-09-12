@@ -20,7 +20,7 @@ import { appendFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import {
   parseArgs, maybePrintHelp, resolveProfile, createRestClient,
-  WS_HOSTS, INST_TYPES, FATAL_AUTH_CODES, sleep,
+  WS_HOSTS, INST_TYPES, FATAL_AUTH_CODES, sleep, formatOrder, diffOrder,
 } from "./okx-common.mjs";
 
 const USAGE = `
@@ -131,7 +131,7 @@ async function reconcileOrders(tag, sinceTs) {
     for (const o of pending) state.orders.set(o.ordId, o);
     console.log(`[${tag}] catch-up: ${pending.length} live order(s)`);
     for (const o of pending) {
-      console.log(`  [catchup/live] ${o.instId} ${o.side} state=${o.state} filled=${o.accFillSz}/${o.sz} px=${o.px} ordId=${o.ordId}`);
+      console.log(`  [catchup/live] ${formatOrder(o)}`);
       recordEvent("catchup/orders-pending", o);
     }
 
@@ -147,7 +147,7 @@ async function reconcileOrders(tag, sinceTs) {
     console.log(`[${tag}] catch-up: ${closed.length} order(s) finished while disconnected`);
     for (const o of closed) {
       state.orders.set(o.ordId, o);
-      console.log(`  [catchup/closed] ${new Date(Number(o.uTime)).toISOString()} ${o.instId} ${o.side} state=${o.state} filled=${o.accFillSz}/${o.sz} avgPx=${o.avgPx} ordId=${o.ordId}`);
+      console.log(`  [catchup/closed] ${new Date(Number(o.uTime)).toISOString()} ${formatOrder(o)}`);
       recordEvent("catchup/orders-history", o);
     }
   } catch (err) {
@@ -295,8 +295,12 @@ function handleEvent(channel, d) {
 
   switch (channel) {
     case "orders": {
+      const prev = state.orders.get(d.ordId);
       state.orders.set(d.ordId, d);
-      console.log(`[orders] ${t} ${d.instId} ${d.side} state=${d.state} filled=${d.accFillSz}/${d.sz} avgPx=${d.avgPx} ordId=${d.ordId}`);
+      console.log(`[orders] ${t} ${formatOrder(d)}`);
+      // An amend that only moves the price, or a TP attached to an existing order, leaves
+      // every other field untouched - without this diff the push reads as a duplicate line.
+      for (const c of diffOrder(prev, d)) console.log(`  -> ${c}`);
       if (d.state === "filled") console.log("  -> ORDER FILLED - trigger your own operation here");
       break;
     }

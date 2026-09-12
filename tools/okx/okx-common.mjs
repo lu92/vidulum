@@ -174,3 +174,76 @@ export function createRestClient({ key, secret, passphrase, domain, demo = false
 
   return { get, paginate };
 }
+
+// ---------- order rendering ----------
+
+/**
+ * Renders the protective orders attached to a parent order.
+ *
+ * OKX puts take-profit / stop-loss in TWO different places depending on how the order was
+ * created, and returns both shapes on every order:
+ *   - attachAlgoOrds[]  - current style (UI and newer API); more than one entry is possible
+ *   - top-level tpTriggerPx / slTriggerPx / slOrdPx / ... - legacy style, populated only
+ *     when the order was created that way
+ * Reading just one of them silently drops stop-losses, so both are handled.
+ *
+ * A trailing stop is a stop-loss too - it arrives as callbackRatio / callbackSpread rather
+ * than a trigger price, and would otherwise render as an empty bracket.
+ */
+export function formatProtection(d) {
+  const price = (p) => (p === "-1" ? "market" : p);
+
+  // `includeSz` only applies to attached entries, where sz is the protected quantity.
+  // On the parent order sz is the order size and must not be reported as protection.
+  const leg = (a, includeSz) => {
+    const bits = [];
+    if (a.tpTriggerPx) bits.push(`tp@${a.tpTriggerPx}${a.tpTriggerPxType ? `(${a.tpTriggerPxType})` : ""}->${price(a.tpOrdPx)}`);
+    if (a.slTriggerPx) bits.push(`sl@${a.slTriggerPx}${a.slTriggerPxType ? `(${a.slTriggerPxType})` : ""}->${price(a.slOrdPx)}`);
+    if (a.callbackRatio) bits.push(`trailing ${(Number(a.callbackRatio) * 100).toFixed(2)}%`);
+    else if (a.callbackSpread) bits.push(`trailing spread ${a.callbackSpread}`);
+    if (a.activePx) bits.push(`active@${a.activePx}`);
+    if (includeSz && a.sz) bits.push(`sz=${a.sz}`);
+    if (a.failCode && a.failCode !== "0") bits.push(`FAILED ${a.failCode}${a.failReason ? ` (${a.failReason})` : ""}`);
+    if (!bits.length) return null;
+    return bits.join(" ") + (a.attachAlgoId ? ` algoId=${a.attachAlgoId}` : "");
+  };
+
+  const parts = [];
+  for (const a of d.attachAlgoOrds ?? []) {
+    const rendered = leg(a, true);
+    if (rendered) parts.push(rendered);
+  }
+  // Legacy placement - only when attachAlgoOrds did not already describe the protection.
+  if (!parts.length) {
+    const inline = leg(d, false);
+    if (inline) parts.push(inline);
+  }
+  if (d.linkedAlgoOrd?.algoId) parts.push(`linkedAlgo=${d.linkedAlgoOrd.algoId}`);
+
+  return parts.length ? ` [${parts.join(" | ")}]` : "";
+}
+
+/** One-line rendering shared by the orders channel and the REST reconciliation. */
+export function formatOrder(d) {
+  return `${d.instId} ${d.side} ${d.ordType ?? "?"} state=${d.state} filled=${d.accFillSz}/${d.sz}`
+       + ` px=${d.px || "-"} avgPx=${d.avgPx || "-"} ordId=${d.ordId}${formatProtection(d)}`;
+}
+
+/** Fields worth reporting when the same ordId is pushed again (amend, fill, TP/SL attach). */
+export const ORDER_DIFF_FIELDS = ["state", "sz", "px", "ordType", "accFillSz", "avgPx", "reduceOnly"];
+
+/**
+ * Diffs a push against the previously seen version of the same order. Without this an amend
+ * that only moves the price, or a stop-loss attached to a live order, is indistinguishable
+ * from a duplicate line.
+ */
+export function diffOrder(prev, next) {
+  if (!prev) return [];
+  const changes = [];
+  for (const f of ORDER_DIFF_FIELDS) {
+    if ((prev[f] ?? "") !== (next[f] ?? "")) changes.push(`${f}: ${prev[f] || "-"} -> ${next[f] || "-"}`);
+  }
+  const before = formatProtection(prev), after = formatProtection(next);
+  if (before !== after) changes.push(`protection:${before || " (none)"} ->${after || " (none)"}`);
+  return changes;
+}

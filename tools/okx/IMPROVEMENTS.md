@@ -1,6 +1,6 @@
 # Usprawnienia — `tools/okx`
 
-**Status: wszystkie 22 pozycje wdrożone (2026-09-12).**
+**Status: wszystkie 24 pozycje wdrożone (2026-09-12).**
 
 Lista powstała 2026-09-11 na podstawie analizy ~10-minutowej sesji `npm run ws:demo`
 (2026-09-08 23:17–23:27 UTC) oraz weryfikacji read-only przez REST i surowe ramki WS.
@@ -36,6 +36,8 @@ Objęte pliki: `okx-readonly-export.mjs`, `okx-ws-listener.mjs` oraz nowy `okx-c
 | **U20** | oba | Wspólny moduł: podpis HMAC, profile, regiony | niska | wdrożone |
 | **U21** | npm | `check:prod` padnie — brak `OKX_DOMAIN` w `.env.prod` | wysoka | wdrożone |
 | **U22** | npm | `check:*` nie zadziała na Windows `cmd` | niska | wdrożone (`--days`) |
+| **U23** | listener | Log zleceń gubił `px`, `ordType` i doczepiony TP/SL | wysoka | wdrożone |
+| **U24** | oba | Stop loss w starym stylu, trailing stop i odrzucone algo pomijane | wysoka | wdrożone |
 
 ---
 
@@ -163,6 +165,91 @@ do archiwum kwartalnego opisanego w `OKX-CONTEXT.md`.
 
 ---
 
+## Znalezione po wdrożeniu
+
+### U23 · Log zleceń gubił cenę, typ i doczepiony take profit
+Sesja z 2026-09-12 (modyfikacja zlecenia, a potem dodanie do niego TP) pokazała trzy pushe
+`orders` dla `ordId=3916792731562668033`, z czego **dwa ostatnie były w logu nie do odróżnienia**:
+
+```
+[orders] 16:53:35.157Z BTC-EUR buy state=live filled=0/0.004 avgPx=0 ordId=3916792731562668033
+[orders] 16:53:35.157Z BTC-EUR buy state=live filled=0/0.004 avgPx=0 ordId=3916792731562668033
+```
+
+Drugi z nich to było dodanie take profitu. Trzy przyczyny:
+
+1. **`px` nie było drukowane** — amend zmieniający wyłącznie cenę dawał dwie identyczne linie.
+2. **`ordType` nie było drukowane** — nie dało się odróżnić `limit` od `market` czy `post_only`.
+3. **`attachAlgoOrds` nie było drukowane** — a OKX trzyma TP/SL *wewnątrz* zlecenia nadrzędnego,
+   nie jako osobne zlecenie algo. Zweryfikowane REST-em: `orders-algo-pending` zwraca 0 rekordów
+   dla wszystkich `ordType`, a samo zlecenie ma
+   `attachAlgoOrds: [{attachAlgoId: 3916799439731159045, tpTriggerPx: "61000", tpOrdPx: "-1",
+   tpTriggerPxType: "last", tpOrdKind: "condition"}]`.
+
+**Wdrożono:** `formatOrder()` (wspólny dla kanału `orders` i catch-upu) dokłada `ordType`, `px`
+oraz sekcję `[tp@... sl@...]` z `formatAttached()`; `tpOrdPx: "-1"` renderuje się jako `market`.
+Do tego `diffOrder()` porównuje push z poprzednią wersją zlecenia trzymaną już wcześniej
+w `state.orders` i wypisuje linie `-> pole: stare -> nowe`. Efekt na żywo:
+
+```
+[catchup/live] BTC-EUR buy limit state=live filled=0/0.004 px=60000 avgPx=- \
+               ordId=3916792731562668033 [tp@61000(last)->market algoId=3916799439731159045]
+```
+
+**Uwaga o czasie:** OKX **nie** podbija `uTime` przy doczepianiu TP — `uTime` pozostało
+`1789232015157` (16:53:35.157), czyli z momentu wcześniejszego amendu, mimo że TP dodano ~105 s
+później. Znacznik w logu jest więc czasem ostatniej modyfikacji zlecenia, nie czasem tego pusha.
+Dopiero linie z `diffOrder()` pokazują, że coś się realnie zmieniło.
+
+**Nietknięte:** eksport zapisuje wiersze `orders-pending` surowe, bez mapowania, więc
+`attachAlgoOrds` było i jest w `*.json` — luka dotyczyła wyłącznie logu listenera.
+
+**Znane ograniczenie:** samodzielne zlecenia algo (TP/SL *nie* doczepione do zlecenia) żyją na
+kanale `orders-algo` na endpoincie `/ws/v5/business` i domyślnie nie są subskrybowane.
+Routing już je obsługuje — `--channels orders,orders-algo` wystarczy, gdy zajdzie potrzeba.
+
+### U24 · Stop loss bywa w innym miejscu, niż czytaliśmy
+U23 renderowało wyłącznie `attachAlgoOrds`. Zrzut wszystkich kluczy żywego zlecenia pokazał, że
+OKX zwraca **dwa niezależne miejsca** na ochronę i oba są obecne w każdym zleceniu:
+
+```
+top-level:        tpTriggerPx, tpOrdPx, tpTriggerPxType,
+                  slTriggerPx, slOrdPx, slTriggerPxType, isTpLimit
+attachAlgoOrds[]: te same pola + activePx, callbackRatio, callbackSpread,
+                  slTriggerRatio, tpTriggerRatio, percent, sz, failCode, failReason
+```
+
+W badanym zleceniu pola górnego poziomu były puste (TP siedział w `attachAlgoOrds`), ale zlecenie
+utworzone w starszym stylu wypełnia właśnie je — i **stop loss zniknąłby z logu bez śladu**.
+Dwie dodatkowe luki w tym samym miejscu: trailing stop przychodzi jako `callbackRatio` /
+`callbackSpread`, a nie jako cena wyzwalania, więc renderował się jako pusty nawias; a odrzucone
+zlecenie doczepione (`failCode` / `failReason`) wyglądało jak działająca ochrona.
+
+**Wdrożono:** `formatProtection()` w `okx-common.mjs` czyta `attachAlgoOrds`, a gdy tam nic nie ma
+— pola górnego poziomu. Obsługuje trailing stop (`callbackRatio` renderowany jako procent),
+`activePx`, częściowy rozmiar ochrony oraz `FAILED <kod> (powód)`. Pole `sz` jest czytane
+**wyłącznie** z wpisów doczepionych: na zleceniu nadrzędnym `sz` to rozmiar zlecenia i zgłoszenie
+go jako ochrony byłoby błędem. `linkedAlgoOrd.algoId` pomijane, gdy puste (OKX zwraca
+`{"algoId":""}`, nie `null`).
+
+Przy okazji `formatOrder()` i `diffOrder()` przeniesiono z listenera do `okx-common.mjs`, dzięki
+czemu dają się testować bez uruchamiania nasłuchu.
+
+**Weryfikacja:** dziesięć syntetycznych ładunków w kształcie OKX (puste pola dokładnie jak
+w odpowiedzi API), pokrywających: brak ochrony, TP doczepiony, SL doczepiony, TP+SL w jednym
+wpisie, SL w starym stylu, trailing stop, częściowy TP, odrzucone algo, dwa osobne wpisy,
+powiązane zlecenie algo. Plus test, że rozmiar zlecenia nie wycieka jako ochrona, i że diff
+wykrywa zarówno dodanie SL, jak i amend zmieniający wyłącznie cenę.
+
+```
+SL doczepiony                      [sl@58000(mark)->57900 algoId=999]
+SL w starym stylu (top-level)      [sl@58000(last)->market]
+trailing stop                      [trailing 5.00% active@62000 algoId=1002]
+doczepiony algo ODRZUCONY          [sl@58000->market FAILED 51280 (price out of range) algoId=1004]
+```
+
+---
+
 ## Decyzje podjęte przy wdrożeniu
 
 1. **U1 — pełne uzgadnianie**, nie tylko stan w pamięci: `orders-pending` zawsze, `orders-history` po reconnekcie.
@@ -186,6 +273,7 @@ Dwie decyzje spoza pierwotnej listy:
 - U7 wyłapał realne `channel-conn-count` przy pierwszym uruchomieniu.
 - `SIGINT` → `shutting down (1 connection(s))...`, proces kończy się czysto.
 - `--help` działa bez zmiennych środowiskowych i nie wykonuje eksportu.
+- Po U23 catch-up renderuje doczepiony take profit: `[tp@61000(last)->market algoId=3916799439731159045]`.
 
 ## Rzeczy, które były w porządku od początku
 
