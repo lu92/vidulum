@@ -15,11 +15,15 @@
  */
 
 import { readFileSync } from "node:fs";
-import { formatOrder, formatProtection, diffOrder } from "./okx-common.mjs";
-import { ORDER_FIELDS, auditOrderPayload, validateEnums, TERMINAL_STATES } from "./okx-order-contract.mjs";
+import { formatOrder, formatProtection, diffOrder, foldBalances,
+         formatBalancePosition } from "./okx-common.mjs";
+import { ORDER_FIELDS, auditOrderPayload, validateEnums, explainCode,
+         CANCEL_SOURCE, TERMINAL_STATES, BALANCE_POSITION_EVENT_TYPES } from "./okx-order-contract.mjs";
 
 const fx = JSON.parse(readFileSync(new URL("./fixtures/orders-lifecycle.json", import.meta.url), "utf8"));
 const REAL = fx.frames;
+const ACC = fx.account;
+const BP = fx.balanceAndPosition;
 
 let pass = 0, fail = 0;
 function check(name, actual, expected) {
@@ -57,6 +61,14 @@ console.log("\nKONTRAKT (dane prawdziwe)");
   const withEnum = Object.values(ORDER_FIELDS).filter((f) => f.documented).length;
   checkThat("kontrakt niesie enumeracje dla pol cyklu zycia", withEnum >= 8,
     `pol z enumeracja: ${withEnum}`);
+  const undocumented = Object.entries(ORDER_FIELDS).filter(([, f]) => f.note.startsWith("UNDOCUMENTED"));
+  check("pola obecne na lączu, a nieopisane przez OKX", undocumented.map(([k]) => k), ["slippage"]);
+
+  check("kod anulowania tlumaczony na tekst", explainCode("cancelSource", "1"), "canceled by user");
+  check("kod wyniku zmiany tlumaczony na tekst", explainCode("amendResult", "0"), "success");
+  checkThat("tablica kodow anulowania jest kompletna wzgledem dokumentacji",
+    Object.keys(CANCEL_SOURCE).length === 30, `kodow: ${Object.keys(CANCEL_SOURCE).length}`);
+  check("nieznany kod nie jest zmyslany", explainCode("cancelSource", "999"), null);
 }
 
 // ---------------------------------------------------------------- renderowanie
@@ -88,7 +100,8 @@ console.log("\nCYKL ZYCIA - diff kolejnych ramek (dane prawdziwe)");
   checkThat("amend samej ceny zglasza px", d(0, 1).some((c) => c.startsWith("px: 50000 -> 51000")));
   checkThat("amend samej ceny zglasza amendResult", d(0, 1).some((c) => c.startsWith("amendResult:")));
   checkThat("anulowanie zglasza state", d(1, 2).some((c) => c === "state: live -> canceled"));
-  checkThat("anulowanie zglasza cancelSource", d(1, 2).some((c) => c.startsWith("cancelSource:")));
+  checkThat("anulowanie zglasza cancelSource z wyjasnieniem",
+    d(1, 2).some((c) => c === "cancelSource: - -> 1 (canceled by user)"));
   checkThat("anulowanie NIE zglasza cancelSourceReason (nie ma go po WS)",
     !d(1, 2).some((c) => c.startsWith("cancelSourceReason")));
   checkThat("zmiana progu SL zglaszana jako protection",
@@ -138,6 +151,66 @@ console.log("\nWARIANTY SYNTETYCZNE (konto demo ich nie wyprodukowalo - wartosci
       { ...attach({ attachAlgoId: "1004", slTriggerPx: "58000", slOrdPx: "-1" }),
         failCode: "51280", failReason: "price out of range" }] }),
     " [sl@58000->market FAILED 51280 (price out of range) algoId=1004]");
+}
+
+// ---------------------------------------------------------------- salda konta
+console.log("\nSALDA KONTA (dane prawdziwe)");
+{
+  const pelny = ACC.find((a) => a.scenario.startsWith("full set")).data.details;
+  const jedna = ACC.find((a) => a.scenario.startsWith("incremental push touching one")).data.details;
+
+  const s1 = foldBalances(new Map(), pelny, { replace: true });
+  check("snapshot wnosi szesc walut", s1.balances.size, 6);
+  check("kazda waluta zglaszana jako nowa", s1.changes.length, 6);
+
+  const s2 = foldBalances(s1.balances, jedna, { replace: false });
+  check("przyrost nie gubi pozostalych walut", s2.balances.size, 6);
+  checkThat("przyrost dotyczy jednej waluty", s2.changes.length <= 1);
+
+  // Waluta, ktora spadla do zera, przestaje byc wysylana - snapshot musi ja usunac,
+  // scalanie zostawiloby ja w mapie na zawsze.
+  const bezEur = pelny.filter((d) => d.ccy !== "EUR");
+  const s3 = foldBalances(s1.balances, bezEur, { replace: true });
+  check("snapshot usuwa walute, ktorej juz nie ma", s3.balances.size, 5);
+  checkThat("zniknieta waluta jest zgloszona",
+    s3.changes.some((c) => c.ccy === "EUR" && c.next === null));
+
+  const s4 = foldBalances(new Map(s1.balances), bezEur, { replace: false });
+  check("scalanie NIE usunieloby jej (dlatego snapshot musi zastepowac)", s4.balances.size, 6);
+
+  // Swieza para: s1.balances zostala juz zmutowana przez przyrost powyzej (foldBalances
+  // z replace:false celowo pisze w miejscu), wiec porownanie musi startowac od zera.
+  const a1 = foldBalances(new Map(), pelny, { replace: true });
+  const a2 = foldBalances(a1.balances, pelny, { replace: true });
+  check("powtorzony identyczny snapshot nie generuje zmian", a2.changes.length, 0);
+}
+
+// ---------------------------------------------------------------- balance_and_position
+console.log("\nBALANCE_AND_POSITION (dane prawdziwe)");
+{
+  const snap = BP.find((b) => b.data.eventType === "snapshot").data;
+  const fill = BP.find((b) => b.data.eventType === "filled").data;
+
+  checkThat("kazdy zaobserwowany eventType jest w udokumentowanym zbiorze",
+    BP.every((b) => BALANCE_POSITION_EVENT_TYPES.includes(b.data.eventType)));
+  check("zbior eventType z dokumentacji", BALANCE_POSITION_EVENT_TYPES.length, 13);
+
+  check("snapshot: salda bez pustych tablic",
+    formatBalancePosition(snap),
+    "eventType=snapshot  bal: BTC=1 XRP=50000 ETH=1 USD=5000 USDC=5000 EUR=4600");
+  checkThat("puste posData nie jest drukowane", !formatBalancePosition(snap).includes("pos:"));
+  checkThat("puste trades nie jest drukowane", !formatBalancePosition(snap).includes("trades:"));
+
+  checkThat("wykonanie pokazuje trades", formatBalancePosition(fill).includes("trades: BTC-EUR/1356365"));
+
+  // trades laczy ten kanal z kanalem orders - ten sam tradeId musi wystapic po obu stronach
+  const fillOrder = REAL.find((f) => f.scenario.startsWith("filled:")).data;
+  check("tradeId zgadza sie z kanalem orders", fill.trades[0].tradeId, fillOrder.tradeId);
+  check("instId zgadza sie z kanalem orders", fill.trades[0].instId, fillOrder.instId);
+
+  // balData i posData sa opcjonalne - OKX wysyla tylko to, co sie zmienilo
+  check("brak balData nie wywraca renderowania",
+    formatBalancePosition({ eventType: "transferred" }), "eventType=transferred");
 }
 
 console.log(`\n${fail ? "NIEPOWODZENIE" : "OK"}: ${pass} przeszlo, ${fail} nie przeszlo\n`);

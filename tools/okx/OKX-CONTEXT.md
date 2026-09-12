@@ -101,11 +101,30 @@ WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
 - There are no webhooks. We use the **`orders`** channel (`instType: ANY`) on `/ws/v5/private` as the
   notification source: `state` = `live` -> `partially_filled`* -> `filled` | `canceled`. The business
   trigger is `filled` (it carries `avgPx`, `accFillSz`, `fee`).
+- `balance_and_position` - its `eventType` sits INSIDE `data[]`, unlike the `account` channel where
+  it sits on the envelope; reading the wrong level returns undefined silently. Documented event
+  types: snapshot, delivered, exercised, transferred, filled, liquidation, claw_back, adl,
+  funding_fee, adjust_margin, set_leverage, interest_deduction, settlement.
+- `balance_and_position` carries a `trades` array on a fill, holding the instId and tradeId. That
+  tradeId matches the one on the orders channel and is the only reliable link between a balance
+  change and the fill that caused it - channel arrival order is not guaranteed, so timestamps
+  cannot be used for correlation.
+- `balData` and `posData` are each optional: OKX sends only the part that changed. Its snapshot can
+  also be split across messages, but unlike `account` this channel has no `curPage`/`lastPage`, so
+  an incomplete snapshot cannot be detected.
 - `balance_and_position` - pushed on every balance/position change with an `eventType`
   (`filled_order`, `transferred`, `liquidation`, ...); a manual Funding<->Trading transfer also
   triggers it, which makes a good live test without trading.
-- `account` - also pushes roughly every 5 s when valuation (`totalEq`) moves without any trade;
-  do not treat it as a trade event.
+- `account` - `eventType`, `curPage` and `lastPage` live on the message envelope, next to `data`,
+  not inside it. `snapshot` carries every currency with a non-zero balance (possibly paged, commit
+  only at `lastPage`); `event_update` carries only the currencies an event touched. A currency that
+  drops to zero simply stops being sent, so a snapshot must REPLACE the local map - merging leaves
+  it there forever.
+- The `account` channel pushes on events and on a regular heartbeat (~5 s). Subscribing with
+  `extraParams: {"updateInterval":"0"}` turns the heartbeat off at the source - measured 6 pushes
+  per 25 s down to 1. Event pushes are aggregated over ~50 ms rather than sent in real time.
+- `account.details[]` carries `autoLendAmt` and `autoStakingStatus` on the wire; neither appears in
+  the documented field list (51 observed vs 49 documented).
 - `deposit-info` / `withdrawal-info` on `/private` - pushed on deposit/withdrawal
   (not reachable on demo).
 - **`fills` lives on `/ws/v5/business`, does not accept `instType`, and is available to VIP5+ only** -
@@ -135,7 +154,16 @@ WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
 - On a spot buy, the fee is charged **in the base currency** (BTC on BTC-EUR), not the quote.
 - `balance_and_position` fires `eventType=filled` on a real execution - confirmed; until an order
   actually fills, the only event ever seen is the `snapshot` sent at subscribe time.
-- **Field enumerations are only partly published.** `state`, `ordType`, `side`, `tdMode`,
+- **OKX may deliver the same message more than once**, sometimes with a different `uTime`. The
+  published collapse rules: a `tradeId` counts once per instrument, a terminal state counts once per
+  order, a `reqId` counts once. Skipping this double-books fills.
+- **`slippage` arrives on the wire but is absent from the documented field list** (71 observed vs 70
+  documented).
+- **Field enumerations are published for 20 of the order fields**, including the full `cancelSource`
+  code table (30 values), `amendSource`, `amendResult` and `source`. Only `stpMode` carries no value
+  list. Earlier notes here claimed these were unpublished - that was wrong; they sit in the part of
+  the single-page reference that cannot be fetched programmatically. `okx-order-contract.mjs` now
+  mirrors them, so the numeric codes can be rendered as text even though `state`, `ordType`, `side`, `tdMode`,
   `instType`, `posSide` and the trigger price types have documented value sets, mirrored into
   `okx-order-contract.mjs` (source: the tiagosiebler/okx-api typings). `execType`, `category`,
   `cancelSource`, `amendResult`, `amendSource`, `stpMode`, `tgtCcy`, `tpOrdKind`, `source` and

@@ -20,8 +20,9 @@ import { appendFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import {
   parseArgs, maybePrintHelp, resolveProfile, createRestClient,
-  WS_HOSTS, INST_TYPES, FATAL_AUTH_CODES, sleep, formatOrder, diffOrder,
+  WS_HOSTS, INST_TYPES, FATAL_AUTH_CODES, sleep, formatOrder, diffOrder, foldBalances, formatBalancePosition,
 } from "./okx-common.mjs";
+import { TERMINAL_STATES } from "./okx-order-contract.mjs";
 
 const USAGE = `
 OKX private WebSocket listener
@@ -45,6 +46,8 @@ Options:
                             (default: OKX_DOMAIN / OKX_DEMO_DOMAIN, else openapi.okx.com)
   --channels a,b,c        default: orders,balance_and_position,account
   --no-catchup            skip the REST reconciliation after login
+  --no-dedup              process repeated messages instead of discarding them
+  --account-events-only   ask OKX to stop the regular 'account' heartbeat (updateInterval 0)
   --out-events <file>     append every event to a JSONL file
   --quiet                 suppress 'account' pushes that carry no balance change
   --verbose               log every REST call made during reconciliation
@@ -79,6 +82,8 @@ const base = (args["ws-url"] ?? profile.env("WS_URL")
 const cfg = {
   channels: (args.channels ?? "orders,balance_and_position,account").split(",").map((c) => c.trim()).filter(Boolean),
   catchup: !args["no-catchup"],
+  dedup: !args["no-dedup"],
+  accountEventsOnly: !!args["account-events-only"],
   outEvents: typeof args["out-events"] === "string" ? args["out-events"] : undefined,
   quiet: !!args.quiet,
 };
@@ -95,6 +100,11 @@ const NEEDS_INST_TYPE = new Set(["orders", "orders-algo", "algo-advance", "posit
 const byEndpoint = { private: [], business: [] };
 for (const channel of cfg.channels) {
   const arg = NEEDS_INST_TYPE.has(channel) ? { channel, instType: "ANY" } : { channel };
+  // The account channel pushes on events AND on a regular heartbeat. updateInterval 0 turns the
+  // heartbeat off at the source, which beats filtering ~98% of the traffic on arrival.
+  if (channel === "account" && cfg.accountEventsOnly) {
+    arg.extraParams = JSON.stringify({ updateInterval: "0" });
+  }
   byEndpoint[BUSINESS_CHANNELS.has(channel) ? "business" : "private"].push(arg);
 }
 
@@ -105,13 +115,47 @@ const state = {
   balances: new Map(), // ccy -> { cashBal, availBal, frozenBal }
   orders: new Map(),   // ordId -> last known order payload
   lastEventTs: 0,      // newest server timestamp seen, used as the catch-up watermark
+  seenTrades: new Set(),     // instId:tradeId - a fill must be counted once
+  terminalOrders: new Set(), // ordId that already reached filled / canceled
+  seenAmends: new Set(),     // ordId:reqId - an amendment response must be counted once
+  snapshotPages: null,       // account snapshot accumulated across pages
 };
 
-function recordEvent(channel, payload) {
+/**
+ * OKX warns that the same message may be delivered more than once, sometimes with a different
+ * uTime, and publishes the rules for collapsing them:
+ *   - a tradeId marks a fill; each tradeId counts once per instrument,
+ *   - a terminal state (filled / canceled / mmp_canceled) counts once per order,
+ *   - a reqId marks an amendment response; each counts once.
+ * Without this a single fill can be booked twice. Duplicates are reported rather than dropped
+ * silently - a sudden stream of them is a signal, not noise.
+ */
+function duplicateReason(d) {
+  if (!cfg.dedup) return null;
+  let reason = null;
+  if (d.tradeId) {
+    const key = `${d.instId}:${d.tradeId}`;
+    if (state.seenTrades.has(key)) reason = `fill already counted (tradeId=${d.tradeId})`;
+    else state.seenTrades.add(key);
+  } else if (TERMINAL_STATES.has(d.state)) {
+    if (state.terminalOrders.has(d.ordId)) reason = `terminal state already seen (${d.state})`;
+  } else if (d.reqId) {
+    const key = `${d.ordId}:${d.reqId}`;
+    if (state.seenAmends.has(key)) reason = `amendment response already seen (reqId=${d.reqId})`;
+    else state.seenAmends.add(key);
+  }
+  if (!reason && TERMINAL_STATES.has(d.state)) state.terminalOrders.add(d.ordId);
+  return reason;
+}
+
+function recordEvent(channel, payload, envelope) {
   if (!cfg.outEvents) return;
   try {
-    appendFileSync(cfg.outEvents,
-      JSON.stringify({ receivedAt: new Date().toISOString(), channel, data: payload }) + "\n");
+    const row = { receivedAt: new Date().toISOString(), channel, data: payload };
+    if (envelope?.eventType !== undefined) row.eventType = envelope.eventType;
+    if (envelope?.curPage !== undefined) row.curPage = envelope.curPage;
+    if (envelope?.lastPage !== undefined) row.lastPage = envelope.lastPage;
+    appendFileSync(cfg.outEvents, JSON.stringify(row) + "\n");
   } catch (err) {
     console.error(`cannot write ${cfg.outEvents}: ${err.message}`);
   }
@@ -230,8 +274,8 @@ function createConnection(endpoint, subscribeArgs) {
         loggedInOnce = true;
         console.log(`[${tag}] logged in, subscribing: ${subscribeArgs.map((a) => a.channel).join(", ")}`);
         ws.send(JSON.stringify({ op: "subscribe", args: subscribeArgs }));
-        // U2: a reconnect re-sends a full account snapshot, so drop the stale merge base.
-        state.balances.clear();
+        // The account snapshot that follows the subscribe replaces the map on its own,
+        // so there is nothing to clear here.
         if (handlesOrders) reconcileOrders(tag, sinceTs);
         return;
       }
@@ -243,7 +287,10 @@ function createConnection(endpoint, subscribeArgs) {
         console.warn(`[${tag}] unhandled control message:`, JSON.stringify(msg).slice(0, 300));
         return;
       }
-      for (const item of msg.data ?? []) handleEvent(msg.arg?.channel, item);
+      // eventType / curPage / lastPage sit on the envelope, not inside data[] - without
+      // forwarding them a paged snapshot is indistinguishable from an incremental update.
+      const envelope = { eventType: msg.eventType, curPage: msg.curPage, lastPage: msg.lastPage };
+      for (const item of msg.data ?? []) handleEvent(msg.arg?.channel, item, envelope);
     };
 
     ws.onclose = (e) => {
@@ -275,26 +322,14 @@ function eventTime(d) {
   return new Date(n).toISOString();
 }
 
-/** U2/U3: merge the incremental push and report what actually moved. */
-function mergeBalances(details = []) {
-  const changes = [];
-  for (const d of details) {
-    const prev = state.balances.get(d.ccy);
-    const next = { cashBal: d.cashBal, availBal: d.availBal, frozenBal: d.frozenBal };
-    if (!prev || prev.cashBal !== next.cashBal || prev.availBal !== next.availBal || prev.frozenBal !== next.frozenBal) {
-      changes.push({ ccy: d.ccy, prev, next });
-    }
-    state.balances.set(d.ccy, next);
-  }
-  return changes;
-}
-
-function handleEvent(channel, d) {
+function handleEvent(channel, d, envelope = {}) {
   const t = eventTime(d);
-  recordEvent(channel, d);
+  recordEvent(channel, d, envelope);
 
   switch (channel) {
     case "orders": {
+      const dup = duplicateReason(d);
+      if (dup) { console.log(`[orders] ${t} DUPLICATE ignored - ${dup} ordId=${d.ordId}`); break; }
       const prev = state.orders.get(d.ordId);
       state.orders.set(d.ordId, d);
       console.log(`[orders] ${t} ${formatOrder(d)}`);
@@ -308,20 +343,34 @@ function handleEvent(channel, d) {
       console.log(`[fills] ${t} ${d.instId} ${d.side} px=${d.fillPx} sz=${d.fillSz} fee=${d.fee}${d.feeCcy ?? ""} tradeId=${d.tradeId}`);
       break;
     case "balance_and_position":
-      console.log(`[bal&pos] ${t} eventType=${d.eventType}`, JSON.stringify(d.balData ?? []), JSON.stringify(d.posData ?? []));
+      console.log(`[bal&pos] ${t} ${formatBalancePosition(d)}`);
       break;
     case "account": {
-      const changes = mergeBalances(d.details);
+      // A snapshot may arrive in pages; only the complete set may replace the local map.
+      const isSnapshot = envelope.eventType === "snapshot";
+      if (isSnapshot && (envelope.curPage === undefined || envelope.curPage === 1)) {
+        state.snapshotPages = [];
+      }
+      if (isSnapshot && Array.isArray(state.snapshotPages)) {
+        state.snapshotPages.push(...(d.details ?? []));
+        if (envelope.lastPage === false) break; // more pages coming, nothing to report yet
+      }
+      const details = isSnapshot && Array.isArray(state.snapshotPages) ? state.snapshotPages : d.details;
+      const folded = foldBalances(state.balances, details, { replace: isSnapshot });
+      state.balances = folded.balances;
+      const changes = folded.changes;
+      if (isSnapshot) state.snapshotPages = null;
       // U19: most account pushes are pure revaluation of totalEq with no balance movement.
       if (cfg.quiet && changes.length === 0) break;
       const merged = [...state.balances.entries()]
         .map(([ccy, b]) => `${ccy}=${b.cashBal}(avail=${b.availBal} frozen=${b.frozenBal})`)
         .join(" ");
-      console.log(`[account] ${t} totalEq=${d.totalEq} ${merged}`);
+      console.log(`[account] ${t} ${envelope.eventType ?? "?"} totalEq=${d.totalEq} ${merged}`);
       // U3: the field that moves when an order is placed is frozenBal, never cashBal.
       for (const c of changes) {
         const from = c.prev ? `${c.prev.cashBal}/${c.prev.availBal}/${c.prev.frozenBal}` : "(new)";
-        console.log(`  -> ${c.ccy} cash/avail/frozen: ${from} -> ${c.next.cashBal}/${c.next.availBal}/${c.next.frozenBal}`);
+        const to = c.next ? `${c.next.cashBal}/${c.next.availBal}/${c.next.frozenBal}` : "(zero balance, no longer sent)";
+        console.log(`  -> ${c.ccy} cash/avail/frozen: ${from} -> ${to}`);
       }
       break;
     }

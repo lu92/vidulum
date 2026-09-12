@@ -1,6 +1,6 @@
 # Usprawnienia — `tools/okx`
 
-**Status: wszystkie 26 pozycji wdrożonych (2026-09-12).**
+**Status: wszystkie 29 pozycji wdrożonych (2026-09-12).**
 
 Lista powstała 2026-09-11 na podstawie analizy ~10-minutowej sesji `npm run ws:demo`
 (2026-09-08 23:17–23:27 UTC) oraz weryfikacji read-only przez REST i surowe ramki WS.
@@ -40,6 +40,9 @@ Objęte pliki: `okx-readonly-export.mjs`, `okx-ws-listener.mjs` oraz nowy `okx-c
 | **U24** | oba | Stop loss w starym stylu, trailing stop i odrzucone algo pomijane | wysoka | wdrożone |
 | **U25** | listener | Diff zleceń po ręcznej liście pól — 27 z 54 zmieniało się po cichu | wysoka | wdrożone |
 | **U26** | oba | Brak kontraktu pól i testu — fixtures były zmyślone | wysoka | wdrożone |
+| **U27** | listener | Brak deduplikacji — OKX ostrzega, że powtarza komunikaty | krytyczna | wdrożone |
+| **U28** | listener | Koperta kanału `account` ignorowana — snapshot mylony z przyrostem | krytyczna | wdrożone |
+| **U29** | listener | `bal&pos`: gubione `trades`, puste tablice jako szum | średnia | wdrożone |
 
 ---
 
@@ -347,6 +350,98 @@ obserwacja. `validateEnums()` zgłasza wartość spoza udokumentowanego zbioru, 
 enuma po stronie OKX nie przejdzie niezauważone.
 
 `fixtures/` nie wymagało zmian w `.gitignore` — reguła `tools/okx/*.json` nie przechodzi przez `/`.
+
+### U27 · Powtórzone komunikaty księgowane podwójnie
+Oficjalna dokumentacja kanału `orders` (wklejona ręcznie 2026-09-12, bo jednoplikowy `docs-v5`
+jest za duży do pobrania) zawiera ostrzeżenie, którego nie dało się wydedukować z obserwacji:
+
+> In exceptional cases, the same message may be sent multiple times (perhaps with the different uTime)
+
+i podaje cztery reguły odsiewania: `tradeId` liczy się raz na instrument, stan terminalny raz na
+zlecenie, `reqId` raz na zmianę. Listener nie miał żadnej — **powtórzone wykonanie zostałoby
+zaksięgowane drugi raz**. W naszej sesji duplikat nie wystąpił, więc żaden test na żywo by tego nie
+wykrył.
+
+**Wdrożono:** `duplicateReason()` z trzema zbiorami (`seenTrades`, `terminalOrders`, `seenAmends`)
+wg reguł OKX. Duplikat jest **zgłaszany, nie wyciszany** — nagły ich strumień to sygnał, nie szum.
+Wyłącznik `--no-dedup`.
+
+### Przy okazji — weryfikacja kontraktu wobec dokumentacji
+
+Porównanie naszych 71 pól z listą OKX dało trzy wyniki:
+
+1. **`slippage` przychodzi na łączu, ale nie ma go w dokumentacji.** 71 u nas, 70 u OKX. Pole jest
+   oznaczone w kontrakcie jako `UNDOCUMENTED` i pilnowane testem.
+2. **Enumeracje: 20 pól zamiast 8.** Wcześniej pisałem, że `execType`, `category`, `cancelSource`,
+   `amendResult`, `amendSource`, `tgtCcy`, `tpOrdKind`, `source` i `outcome` nie mają nigdzie
+   opublikowanych list — **to było błędne**. Mają, tylko w części dokumentacji, której narzędzie nie
+   umiało pobrać. Bez listy pozostaje wyłącznie `stpMode`.
+3. **Luka z powodem anulowania zamknięta.** `cancelSourceReason` faktycznie nie przychodzi po WS,
+   ale dokumentacja podaje mapowanie 30 kodów na znaczenia. `CANCEL_SOURCE`, `AMEND_SOURCE`,
+   `AMEND_RESULT` i `ORDER_SOURCE` w kontrakcie plus `explainCode()` w `diffOrder()` dają teraz:
+   `cancelSource: - -> 1 (canceled by user)`.
+
+### U28 · Koperta komunikatu `account` była ignorowana
+Dokumentacja kanału `account` (wklejona 2026-09-12) pokazała, że `eventType`, `curPage` i `lastPage`
+siedzą **na kopercie komunikatu**, obok `data`, a nie w środku. `handleEvent()` dostawał wyłącznie
+`msg.data[i]`, więc te trzy pola nie docierały nigdzie — ani do logiki, ani do zapisu JSONL.
+
+Cztery konsekwencje, z których żadna nie była widoczna z obserwacji:
+
+1. **Snapshot nie do odróżnienia od przyrostu.** `eventType=snapshot` niesie wszystkie waluty
+   z niezerowym saldem, `event_update` tylko te dotknięte zdarzeniem. Traktowaliśmy jedno i drugie
+   jako scalanie.
+2. **Waluta, która spadła do zera, zostawała w mapie na zawsze.** OKX po prostu przestaje ją
+   wysyłać — przy scalaniu nic jej nie usuwa. Snapshot musi *zastępować*, nie scalać.
+3. **Stronicowanie.** Snapshot może przyjść w kilku komunikatach (`curPage` / `lastPage`).
+   Zastąpienie mapy na pierwszej stronie wyglądałoby jak zniknięcie wszystkich pozostałych walut.
+4. **`updateInterval`.** Kanał daje parametr subskrypcji `extraParams: {"updateInterval":"0"}`,
+   który wyłącza regularny heartbeat u źródła. U19 filtrowało ten szum po stronie klienta —
+   to działało, ale ruch i tak leciał.
+
+**Wdrożono:** koperta przekazywana do `handleEvent()` i zapisywana w JSONL; `foldBalances()`
+przeniesiona do `okx-common.mjs` jako funkcja czysta z trybem `replace`; akumulacja stron snapshotu
+do `lastPage`; flaga `--account-events-only`. Zniknięcie waluty jest teraz raportowane jako
+`-> EUR ... -> (zero balance, no longer sent)`.
+
+**Zmierzone A/B (25 s, konto demo):** domyślnie **6** pushów `account`, z `--account-events-only`
+**1** (sam snapshot startowy).
+
+**Weryfikacja kontraktu kanału `account`:** 20 pól najwyższego poziomu — zgodne co do jednego.
+`details[]` ma 51 pól na żywo wobec 49 udokumentowanych: **`autoLendAmt` i `autoStakingStatus`
+przychodzą, ale nie ma ich w dokumentacji** — ten sam wzorzec co `slippage` w kanale `orders`.
+
+### U29 · `balance_and_position` gubił klucz korelacji
+Jedyny kanał, którego lista pól **zgadza się z dokumentacją co do jednego** — 5 pól najwyższego
+poziomu, 3 w `balData[]`, zero rozbieżności w obie strony. Ale renderowanie miało dwie wady:
+
+1. **Tablica `trades` nie była w ogóle wypisywana.** To ona łączy zmianę salda z wykonaniem, które
+   ją spowodowało. W nagranej ramce: `trades: [{"instId":"BTC-EUR","tradeId":"1356365"}]` — ten sam
+   `tradeId`, który przyszedł kanałem `orders`. Bez niej nie da się powiązać obu strumieni inaczej
+   niż po czasie, a czas nie jest wiarygodny (kolejność kanałów nie jest gwarantowana).
+2. **Puste tablice drukowane jako `[] []`.** Dokumentacja mówi wprost: *„Only balData will be pushed
+   if only the account balance changes; only posData will be pushed if only the position changes"* —
+   czyli brak sekcji jest normalny, nie warto go pokazywać.
+
+**Wdrożono:** `formatBalancePosition()` w `okx-common.mjs` — pomija puste sekcje, renderuje pozycje
+czytelnie i wypisuje `trades`. Do kontraktu trafił `BALANCE_POSITION_EVENT_TYPES` z pełnym zbiorem
+13 wartości (zaobserwowaliśmy 2: `snapshot` i `filled`).
+
+```
+eventType=snapshot  bal: BTC=1 XRP=50000 ETH=1 USD=5000 USDC=5000 EUR=4600
+eventType=filled    bal: BTC=1.0001993 EUR=4586.68226  trades: BTC-EUR/1356365
+```
+
+Test sprawdza, że `tradeId` i `instId` z `trades` zgadzają się z ramką wykonania z kanału `orders`.
+
+**Asymetria warta zapamiętania:** w kanale `account` pole `eventType` siedzi **na kopercie**
+komunikatu, a w `balance_and_position` **wewnątrz `data[]`**. Odczyt na złym poziomie daje
+`undefined` po cichu — to właśnie był błąd U28.
+
+**Ograniczenie bez rozwiązania:** dokumentacja mówi, że snapshot może zostać podzielony na kilka
+komunikatów, ale ten kanał **nie ma `curPage` ani `lastPage`**. Nie da się wykryć, że snapshot jest
+niekompletny. Dla naszego zastosowania nieszkodliwe, bo stan sald budujemy z kanału `account`,
+a ten markery ma.
 
 ---
 

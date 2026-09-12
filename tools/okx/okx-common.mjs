@@ -11,6 +11,7 @@
  */
 
 import { createHmac } from "node:crypto";
+import { explainCode } from "./okx-order-contract.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -265,7 +266,12 @@ export function diffOrder(prev, next) {
     const a = prev[k], b = next[k];
     // Objects and arrays are either protection (rendered separately) or not worth a text diff.
     if ((a !== null && typeof a === "object") || (b !== null && typeof b === "object")) continue;
-    if ((a ?? "") !== (b ?? "")) changes.set(k, `${k}: ${a || "-"} -> ${b || "-"}`);
+    if ((a ?? "") !== (b ?? "")) {
+      // Coded fields arrive as bare numbers and the WS push carries no explanatory text -
+      // cancelSourceReason exists only in REST. Annotate from the published code tables.
+      const meaning = explainCode(k, b);
+      changes.set(k, `${k}: ${a || "-"} -> ${b || "-"}${meaning ? ` (${meaning})` : ""}`);
+    }
   }
 
   const ordered = [];
@@ -275,4 +281,61 @@ export function diffOrder(prev, next) {
   const before = formatProtection(prev), after = formatProtection(next);
   if (before !== after) ordered.unshift(`protection:${before || " (none)"} ->${after || " (none)"}`);
   return ordered;
+}
+
+// ---------- account balances ----------
+
+/**
+ * Folds an account push into a balance snapshot and reports what actually moved.
+ *
+ * OKX distinguishes two shapes on the message envelope:
+ *   eventType=snapshot      every currency with a non-zero balance, possibly split across pages
+ *   eventType=event_update  only the currencies the event touched
+ *
+ * Merging a snapshot instead of replacing it would keep currencies that have since dropped to
+ * zero, because a zero-balance currency simply stops being sent. Replacing must therefore wait
+ * for the last page - on page 1 every other currency would look like it had disappeared.
+ *
+ * Pure: takes the current map, returns the new one plus the changes.
+ */
+export function foldBalances(current, details = [], { replace = false } = {}) {
+  const changes = [];
+  const target = replace ? new Map() : current;
+  for (const d of details) {
+    const prev = current.get(d.ccy);
+    const next = { cashBal: d.cashBal, availBal: d.availBal, frozenBal: d.frozenBal };
+    if (!prev || prev.cashBal !== next.cashBal || prev.availBal !== next.availBal || prev.frozenBal !== next.frozenBal) {
+      changes.push({ ccy: d.ccy, prev, next });
+    }
+    target.set(d.ccy, next);
+  }
+  if (replace) {
+    for (const [ccy, prev] of current) {
+      if (!target.has(ccy)) changes.push({ ccy, prev, next: null });
+    }
+  }
+  return { balances: target, changes };
+}
+
+/**
+ * Renders a balance_and_position push.
+ *
+ * `balData` and `posData` are each optional - OKX sends only the part that changed - so empty
+ * arrays are omitted rather than printed as noise. `trades` is the link back to the fill that
+ * caused the balance change: its tradeId matches the one delivered on the orders channel, and
+ * it is the only field tying the two together.
+ */
+export function formatBalancePosition(d) {
+  const parts = [`eventType=${d.eventType ?? "?"}`];
+  if (d.balData?.length) {
+    parts.push("bal: " + d.balData.map((b) => `${b.ccy}=${b.cashBal}`).join(" "));
+  }
+  if (d.posData?.length) {
+    parts.push("pos: " + d.posData.map((p) =>
+      `${p.instId}/${p.posSide} pos=${p.pos} avgPx=${p.avgPx}${p.mgnMode ? ` ${p.mgnMode}` : ""}`).join(" | "));
+  }
+  if (d.trades?.length) {
+    parts.push("trades: " + d.trades.map((t) => `${t.instId}/${t.tradeId}`).join(" "));
+  }
+  return parts.join("  ");
 }

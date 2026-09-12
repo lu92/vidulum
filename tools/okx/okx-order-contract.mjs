@@ -52,11 +52,11 @@ export const ORDER_FIELDS = {
     note: "Set when the order was created BY an algo order; empty for a plain order." },
   amendResult: { group: "amend", verified: true, example: "0",
     observed: ["0"],
-    documented: null,
+    documented: ["-1", "0", "1", "2"],
     note: "-1 failed, 0 succeeded, 1 automatic amend. Present only on the push that answers an amend." },
   amendSource: { group: "amend", verified: true, example: "1",
     observed: ["1"],
-    documented: null,
+    documented: ["1", "2", "4", "5", "6"],
     note: "What triggered the amend, e.g. 1 = amended by the user." },
   attachAlgoClOrdId: { group: "protection", verified: false, example: null,
     observed: [],
@@ -76,11 +76,11 @@ export const ORDER_FIELDS = {
     note: "Creation time, ms. Never changes." },
   cancelSource: { group: "cancel", verified: true, example: "1",
     observed: ["1"],
-    documented: null,
+    documented: ["0", "1", "2", "3", "4", "6", "7", "9", "10", "13", "14", "15", "17", "20", "21", "22", "23", "27", "31", "32", "33", "36", "37", "38", "39", "42", "43", "44", "45", "46"],
     note: "Numeric reason the order was cancelled. 1 = cancelled by the owner." },
   category: { group: "cancel", verified: true, example: "normal",
     observed: ["normal"],
-    documented: null,
+    documented: ["normal", "twap", "adl", "full_liquidation", "partial_liquidation", "delivery", "ddh", "auto_conversion"],
     note: "normal | twap | adl | full_liquidation | partial_liquidation | delivery | ddh." },
   ccy: { group: "instrument", verified: true, example: "EUR",
     observed: ["EUR"],
@@ -96,12 +96,12 @@ export const ORDER_FIELDS = {
     note: "Error code when an amend or the order itself failed; 0 otherwise." },
   execType: { group: "execution", verified: true, example: "T",
     observed: ["T"],
-    documented: null,
+    documented: ["T", "M"],
     note: "T = taker, M = maker." },
   fee: { group: "fees", verified: true, example: "0",
     observed: ["-0.0000007", "0"],
     documented: null,
-    note: "Cumulative fee. Negative means charged. On a spot BUY it is taken in the BASE currency." },
+    note: "Cumulative fee, negative when charged. Spot/Margin except maker sells: always negative, in feeCcy. For maker SELL orders on Spot/Margin it is fee plus rebate, in the quote currency." },
   feeCcy: { group: "fees", verified: true, example: "BTC",
     observed: ["BTC"],
     documented: null,
@@ -168,7 +168,7 @@ export const ORDER_FIELDS = {
     note: "SPOT | MARGIN | SWAP | FUTURES | OPTION." },
   isTpLimit: { group: "protection", verified: true, example: "false",
     observed: ["false"],
-    documented: null,
+    documented: ["true", "false"],
     note: "true when the take-profit executes as a limit rather than a market order." },
   lastPx: { group: "execution", verified: true, example: "66621",
     observed: ["66581.9", "66588.7", "66621"],
@@ -177,11 +177,11 @@ export const ORDER_FIELDS = {
   lever: { group: "terms", verified: true, example: "0",
     observed: ["0"],
     documented: null,
-    note: "Leverage. 0 on spot." },
+    note: "Leverage, 0.01 to 125. Only meaningful for MARGIN/FUTURES/SWAP; 0 on spot." },
   linkedAlgoOrd: { group: "protection", verified: true, example: "(object)",
     observed: [],
     documented: null,
-    note: "Algo order linked to this one; OKX sends {algoId:\"\"} rather than null when absent." },
+    note: "Linked stop-loss order, only for the TP limit leg of a one-cancels-the-other (oco) order. OKX sends {algoId:\"\"} rather than null when absent." },
   msg: { group: "amend", verified: false, example: null,
     observed: [],
     documented: null,
@@ -196,11 +196,11 @@ export const ORDER_FIELDS = {
     note: "OKX order id. Exceeds 2^53 - keep it a string; Number() corrupts it." },
   ordType: { group: "terms", verified: true, example: "limit",
     observed: ["limit"],
-    documented: ["market", "limit", "post_only", "fok", "ioc", "optimal_limit_ioc", "mmp", "mmp_and_post_only", "elp", "rpi"],
+    documented: ["market", "limit", "post_only", "fok", "ioc", "optimal_limit_ioc", "mmp", "mmp_and_post_only", "op_fok", "rpi", "elp"],
     note: "limit | market | post_only | fok | ioc | optimal_limit_ioc." },
   outcome: { group: "cancel", verified: false, example: null,
     observed: [],
-    documented: null,
+    documented: ["yes", "no"],
     note: "Outcome classification supplied by OKX." },
   pnl: { group: "fees", verified: true, example: "0",
     observed: ["0"],
@@ -216,7 +216,7 @@ export const ORDER_FIELDS = {
     note: "Limit price. Empty for market orders." },
   pxType: { group: "terms", verified: false, example: null,
     observed: [],
-    documented: null,
+    documented: ["px", "pxVol", "pxUsd"],
     note: "Options only - how px should be read (px | pxVol | pxUsd)." },
   pxUsd: { group: "terms", verified: false, example: null,
     observed: [],
@@ -228,7 +228,7 @@ export const ORDER_FIELDS = {
     note: "Options only - price expressed as implied volatility." },
   quickMgnType: { group: "terms", verified: false, example: null,
     observed: [],
-    documented: null,
+    documented: ["manual", "auto_borrow", "auto_repay"],
     note: "Quick-margin mode for margin trading." },
   rebate: { group: "fees", verified: true, example: "0",
     observed: ["0"],
@@ -240,7 +240,7 @@ export const ORDER_FIELDS = {
     note: "Rebate currency." },
   reduceOnly: { group: "terms", verified: true, example: "false",
     observed: ["false"],
-    documented: null,
+    documented: ["true", "false"],
     note: "Derivatives only - the order may only reduce a position." },
   reqId: { group: "identity", verified: false, example: null,
     observed: [],
@@ -265,19 +265,19 @@ export const ORDER_FIELDS = {
   slippage: { group: "terms", verified: true, example: "0",
     observed: ["0"],
     documented: null,
-    note: "Allowed slippage for market orders." },
+    note: "UNDOCUMENTED: arrives on the wire but is absent from the OKX orders-channel reference. Treat with care." },
   source: { group: "cancel", verified: false, example: null,
     observed: [],
-    documented: null,
+    documented: ["6", "7", "13", "25", "34"],
     note: "Origin of the cancellation for system-driven cases." },
   state: { group: "execution", verified: true, example: "live",
     observed: ["canceled", "filled", "live"],
-    documented: ["live", "partially_filled", "filled", "canceled", "mmp_canceled"],
+    documented: ["canceled", "live", "partially_filled", "filled", "mmp_canceled"],
     note: "live | partially_filled | filled | canceled | mmp_canceled. The lifecycle driver." },
   stpId: { group: "terms", verified: false, example: null,
     observed: [],
     documented: null,
-    note: "Self-trade prevention group id." },
+    note: "Self-trade prevention id. Deprecated by OKX; returns \"\" when not applicable." },
   stpMode: { group: "terms", verified: true, example: "cancel_maker",
     observed: ["cancel_maker"],
     documented: null,
@@ -292,11 +292,11 @@ export const ORDER_FIELDS = {
     note: "Client-supplied order tag." },
   tdMode: { group: "terms", verified: true, example: "cash",
     observed: ["cash"],
-    documented: ["cross", "isolated", "cash", "spot_isolated"],
+    documented: ["cross", "isolated", "cash"],
     note: "cash | cross | isolated. Spot uses cash." },
   tgtCcy: { group: "terms", verified: false, example: null,
     observed: [],
-    documented: null,
+    documented: ["base_ccy", "quote_ccy"],
     note: "For spot market orders: whether sz means base_ccy or quote_ccy." },
   tpOrdPx: { group: "protection", verified: false, example: null,
     observed: [],
@@ -313,7 +313,7 @@ export const ORDER_FIELDS = {
   tradeId: { group: "execution", verified: true, example: "1356365",
     observed: ["1356365"],
     documented: null,
-    note: "Exchange trade id for this fill. The key to reconcile against fills-history." },
+    note: "Trade id for THIS update. Its presence means a fill; OKX may resend a message, so each tradeId must be processed once per instId." },
   tradeQuoteCcy: { group: "instrument", verified: true, example: "EUR",
     observed: ["EUR"],
     documented: null,
@@ -368,6 +368,91 @@ export function validateEnums(payload) {
     if (!f.documented.includes(v)) problems.push(`${k}="${v}" is outside [${f.documented.join(", ")}]`);
   }
   return problems;
+}
+
+
+/**
+ * What triggered a `balance_and_position` push. Only `snapshot` and `filled` have been observed;
+ * the rest come from the OKX reference and are unconfirmed here.
+ *
+ * Note the asymmetry with the `account` channel: there `eventType` sits on the message envelope,
+ * here it sits inside `data[]`. Reading the wrong level yields undefined, silently.
+ */
+export const BALANCE_POSITION_EVENT_TYPES = [
+  "snapshot", "delivered", "exercised", "transferred", "filled", "liquidation", "claw_back",
+  "adl", "funding_fee", "adjust_margin", "set_leverage", "interest_deduction", "settlement",
+];
+
+/**
+ * Numeric codes the WS push carries as bare numbers, with the meanings OKX publishes.
+ *
+ * This matters because `cancelSourceReason` - the human-readable text - exists only in the REST
+ * shape. Over WebSocket you get `cancelSource: "1"` and nothing else, so without this table the
+ * difference between "the user cancelled it" and "risk control killed it" is invisible.
+ */
+export const CANCEL_SOURCE = {
+  "0": "canceled by system",
+  "1": "canceled by user",
+  "2": "pre reduce-only order canceled - insufficient margin in position",
+  "3": "risk cancellation - insufficient maintenance margin, liquidation risk",
+  "4": "borrowings reached hard cap",
+  "6": "ADL cancellation - low margin ratio, liquidation risk",
+  "7": "futures contract delivery",
+  "9": "insufficient balance after funding fees deducted",
+  "10": "option contract expiration",
+  "13": "FOK order not completely filled",
+  "14": "IOC order partially canceled - not completely filled",
+  "15": "order price beyond the limit",
+  "17": "close order canceled - position already closed at market price",
+  "20": "cancel-all-after triggered",
+  "21": "TP/SL order canceled - position had been closed",
+  "22": "reduce-only order canceled - better price available in the same direction",
+  "23": "existing reduce-only order canceled - better price available in the same direction",
+  "27": "price limit verification failed - counterparty price difference exceeds 5%",
+  "31": "post-only order would have taken liquidity",
+  "32": "self trade prevention",
+  "33": "exceeded the maximum number of order matches per taker order",
+  "36": "TP limit order canceled - corresponding SL order was triggered",
+  "37": "TP limit order canceled - corresponding SL order was canceled",
+  "38": "market maker protection orders canceled by the user",
+  "39": "market maker protection triggered",
+  "42": "chase difference reached the maximum",
+  "43": "buy price above the index price, or sell price below it",
+  "44": "insufficient balance for auto conversion at the risk control limit",
+  "45": "RPI order price verification failed",
+  "46": "delta reducing cancel orders",
+};
+
+export const AMEND_SOURCE = {
+  "1": "amended by user",
+  "2": "amended by user, quantity overridden by system due to reduce-only",
+  "4": "quantity amended by system due to reduce-only",
+  "5": "options px / pxVol / pxUsd modified by a linked variation",
+  "6": "price adjusted by system for the RPI maker spacing rule",
+};
+
+export const AMEND_RESULT = {
+  "-1": "failure",
+  "0": "success",
+  "1": "automatic cancel - amendment acknowledged then failed",
+  "2": "automatic amendment succeeded (options pxVol / pxUsd)",
+};
+
+/** Why a normal order came into existence, when it was created by another order. */
+export const ORDER_SOURCE = {
+  "6": "triggered by a trigger order",
+  "7": "triggered by a TP/SL order",
+  "13": "triggered by an algo order",
+  "25": "triggered by a trailing stop order",
+  "34": "triggered by a chase order",
+};
+
+const CODE_MAPS = { cancelSource: CANCEL_SOURCE, amendSource: AMEND_SOURCE, amendResult: AMEND_RESULT, source: ORDER_SOURCE };
+
+/** Returns the published meaning of a coded value, or null when the field carries no code map. */
+export function explainCode(field, value) {
+  if (value === "" || value === undefined || value === null) return null;
+  return CODE_MAPS[field]?.[String(value)] ?? null;
 }
 
 /** Human-readable dump of one payload: only the fields that actually carry a value. */
