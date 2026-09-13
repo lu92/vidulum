@@ -17,7 +17,7 @@
  * Requires Node.js >= 22 (native WebSocket).
  */
 
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import {
   parseArgs, maybePrintHelp, resolveProfile, createRestClient,
@@ -48,6 +48,8 @@ Options:
   --channels a,b,c        default: orders,balance_and_position,account
   --no-catchup            skip the REST reconciliation after login
   --no-dedup              process repeated messages instead of discarding them
+  --state <file>          watermark file surviving restarts (default .okx-listener-state.json)
+  --no-state              do not persist the watermark; a restart then re-reads nothing
   --account-events-only   ask OKX to stop the regular 'account' heartbeat (updateInterval 0)
   --out-events <file>     append every event to a JSONL file
   --quiet                 suppress 'account' pushes that carry no balance change
@@ -85,6 +87,8 @@ const cfg = {
   catchup: !args["no-catchup"],
   dedup: !args["no-dedup"],
   accountEventsOnly: !!args["account-events-only"],
+  stateFile: args["no-state"] ? null
+    : (typeof args.state === "string" ? args.state : ".okx-listener-state.json"),
   outEvents: typeof args["out-events"] === "string" ? args["out-events"] : undefined,
   quiet: !!args.quiet,
 };
@@ -126,7 +130,82 @@ const state = {
   terminalOrders: new Set(), // ordId that already reached filled / canceled
   seenAmends: new Set(),     // ordId:reqId - an amendment response must be counted once
   snapshotPages: null,       // account snapshot accumulated across pages
+  funding: new Map(),        // ccy -> balance on the Funding account, REST-sourced
 };
+
+// ---------- durable watermark ----------
+/**
+ * The reconciliation watermark has to outlive the process. Held only in memory it resets to 0 on
+ * every restart, so the catch-up degrades to "fetch live orders" and anything that reached a
+ * final state while the listener was down is lost - silently, because the private channels carry
+ * no sequence number to reveal the gap.
+ */
+function loadWatermark() {
+  if (!cfg.stateFile) return;
+  try {
+    const raw = JSON.parse(readFileSync(cfg.stateFile, "utf8"));
+    state.lastEventTs = Number(raw.lastEventTs) || 0;
+    if (state.lastEventTs) {
+      console.log(`resuming from ${new Date(state.lastEventTs).toISOString()} (${cfg.stateFile})`);
+    }
+  } catch {
+    console.log(`no previous watermark in ${cfg.stateFile}; first run reconciles live orders only`);
+  }
+}
+
+function saveWatermark() {
+  if (!cfg.stateFile || !state.lastEventTs) return;
+  try {
+    writeFileSync(cfg.stateFile,
+      JSON.stringify({ lastEventTs: state.lastEventTs, savedAt: new Date().toISOString() }, null, 2));
+  } catch (err) {
+    console.error(`cannot write ${cfg.stateFile}: ${err.message}`);
+  }
+}
+
+/** Terminal orders accumulate forever otherwise; live ones are never evicted. */
+const MAX_TRACKED_ORDERS = 1000;
+function evictTerminalOrders() {
+  if (state.orders.size <= MAX_TRACKED_ORDERS) return;
+  let dropped = 0;
+  for (const [ordId, o] of state.orders) {
+    if (state.orders.size <= MAX_TRACKED_ORDERS) break;
+    if (TERMINAL_STATES.has(o.state)) { state.orders.delete(ordId); dropped++; }
+  }
+  if (dropped) console.log(`evicted ${dropped} terminal order(s) held in memory (cap ${MAX_TRACKED_ORDERS})`);
+}
+
+/**
+ * Pulls the Funding balances over REST.
+ *
+ * Verified 2026-09-13: a Funding<->Trading transfer is reported only from the Trading side -
+ * `balance_and_position` fires `transferred` and `account` fires `event_update`, both carrying the
+ * trading balance. The Funding side appears in no push at all, and no private channel covers that
+ * account. A transfer notification therefore means "re-read Funding", not "Funding is now X".
+ */
+let fundingRefreshedAt = 0;
+async function refreshFunding(reason) {
+  const now = Date.now();
+  if (now - fundingRefreshedAt < 5000) return; // the event often arrives on two channels at once
+  fundingRefreshedAt = now;
+  try {
+    const rows = await rest.get("/api/v5/asset/balances");
+    const next = new Map(rows.map((b) => [b.ccy, b.bal]));
+    const changes = [];
+    for (const [ccy, bal] of next) {
+      if (state.funding.get(ccy) !== bal) changes.push(`${ccy}: ${state.funding.get(ccy) ?? "-"} -> ${bal}`);
+    }
+    for (const [ccy, bal] of state.funding) {
+      if (!next.has(ccy)) changes.push(`${ccy}: ${bal} -> (zero balance, no longer listed)`);
+    }
+    state.funding = next;
+    if (changes.length) {
+      console.log(`[funding] refreshed after ${reason}: ${changes.join("  ")}`);
+    }
+  } catch (err) {
+    console.error(`[funding] refresh after ${reason} FAILED, Funding balances may be stale: ${err.message}`);
+  }
+}
 
 /**
  * OKX warns that the same message may be delivered more than once, sometimes with a different
@@ -175,7 +254,7 @@ function recordEvent(channel, payload, envelope) {
  * login we pull the live orders, and on a reconnect also the orders that reached a final
  * state during the gap.
  */
-async function reconcileOrders(tag, sinceTs) {
+async function reconcile(tag, sinceTs) {
   if (!cfg.catchup) return;
   try {
     const pending = await rest.paginate("/api/v5/trade/orders-pending", {}, { cursorField: "ordId" });
@@ -187,6 +266,8 @@ async function reconcileOrders(tag, sinceTs) {
     }
 
     if (!sinceTs) return;
+    const since = new Date(sinceTs).toISOString();
+
     const closed = [];
     for (const instType of INST_TYPES) {
       const rows = await rest.paginate("/api/v5/trade/orders-history", { instType },
@@ -195,12 +276,42 @@ async function reconcileOrders(tag, sinceTs) {
       await sleep(300);
     }
     closed.sort((a, b) => Number(a.uTime) - Number(b.uTime));
-    console.log(`[${tag}] catch-up: ${closed.length} order(s) finished while disconnected`);
+    console.log(`[${tag}] catch-up: ${closed.length} order(s) finished since ${since}`);
     for (const o of closed) {
       state.orders.set(o.ordId, o);
       console.log(`  [catchup/closed] ${new Date(Number(o.uTime)).toISOString()} ${formatOrder(o)}`);
       recordEvent("catchup/orders-history", o);
     }
+    evictTerminalOrders();
+
+    // Fills, deposits and withdrawals need the same treatment: the channels do not replay, there
+    // is no sequence number to expose a gap, and these are the records the books are built from.
+    const fills = [];
+    for (const instType of INST_TYPES) {
+      fills.push(...await rest.paginate("/api/v5/trade/fills-history", { instType },
+        { cursorField: "billId", tsField: "ts", from: sinceTs }));
+      await sleep(300);
+    }
+    fills.sort((a, b) => Number(a.ts) - Number(b.ts));
+    console.log(`[${tag}] catch-up: ${fills.length} fill(s) since ${since}`);
+    for (const f of fills) {
+      console.log(`  [catchup/fill] ${new Date(Number(f.ts)).toISOString()} ${f.instId} ${f.side} px=${f.fillPx} sz=${f.fillSz} fee=${f.fee}${f.feeCcy} tradeId=${f.tradeId}`);
+      recordEvent("catchup/fills-history", f);
+    }
+
+    for (const [name, path, label] of [
+      ["deposit(s)", "/api/v5/asset/deposit-history", "catchup/deposit"],
+      ["withdrawal(s)", "/api/v5/asset/withdrawal-history", "catchup/withdrawal"],
+    ]) {
+      const rows = await rest.paginate(path, {}, { cursorField: "ts", tsField: "ts", from: sinceTs });
+      console.log(`[${tag}] catch-up: ${rows.length} ${name} since ${since}`);
+      for (const r of rows) {
+        console.log(`  [${label}] ${new Date(Number(r.ts)).toISOString()} ${r.ccy} ${r.amt} state=${r.state}`);
+        recordEvent(label, r);
+      }
+      await sleep(300);
+    }
+    if (fills.length) await refreshFunding("reconciliation");
   } catch (err) {
     // A failed catch-up must not kill a working listener, but it must be loud:
     // from here on the local order state is known to be incomplete.
@@ -224,7 +335,7 @@ function createConnection(endpoint, subscribeArgs) {
   const url = `${base}/ws/v5/${endpoint}`;
   const tag = `${profile.name}/${endpoint}`;
   const handlesOrders = subscribeArgs.some((a) => a.channel === "orders");
-  let ws, pingTimer, pongTimeout, backoff = 1000, loggedInOnce = false, stopping = false;
+  let ws, pingTimer, pongTimeout, backoff = 1000, stopping = false;
 
   const clearTimers = () => { clearInterval(pingTimer); clearTimeout(pongTimeout); };
 
@@ -277,13 +388,14 @@ function createConnection(endpoint, subscribeArgs) {
         }
         // U5: the backoff is reset only once the connection is actually usable.
         backoff = 1000;
-        const sinceTs = loggedInOnce ? state.lastEventTs : 0;
-        loggedInOnce = true;
+        // Not gated on loggedInOnce any more: a watermark loaded from disk must be honoured on
+        // the very first login, otherwise a restart silently skips the whole gap.
+        const sinceTs = state.lastEventTs;
         console.log(`[${tag}] logged in, subscribing: ${subscribeArgs.map((a) => a.channel).join(", ")}`);
         ws.send(JSON.stringify({ op: "subscribe", args: subscribeArgs }));
         // The account snapshot that follows the subscribe replaces the map on its own,
         // so there is nothing to clear here.
-        if (handlesOrders) reconcileOrders(tag, sinceTs);
+        if (handlesOrders) reconcile(tag, sinceTs);
         return;
       }
       if (msg.event === "subscribe") { console.log(`[${tag}] subscribed: ${msg.arg.channel}`); return; }
@@ -339,6 +451,7 @@ function handleEvent(channel, d, envelope = {}) {
       if (dup) { console.log(`[orders] ${t} DUPLICATE ignored - ${dup} ordId=${d.ordId}`); break; }
       const prev = state.orders.get(d.ordId);
       state.orders.set(d.ordId, d);
+      if (TERMINAL_STATES.has(d.state)) evictTerminalOrders();
       console.log(`[orders] ${t} ${formatOrder(d)}`);
       // An amend that only moves the price, or a TP attached to an existing order, leaves
       // every other field untouched - without this diff the push reads as a duplicate line.
@@ -351,6 +464,13 @@ function handleEvent(channel, d, envelope = {}) {
       break;
     case "balance_and_position":
       console.log(`[bal&pos] ${t} ${formatBalancePosition(d)}`);
+      // Only the trading side of a transfer reaches us; the Funding side has to be pulled.
+      if (d.eventType && d.eventType !== "snapshot") refreshFunding(`bal&pos ${d.eventType}`);
+      break;
+    case "deposit-info":
+    case "withdrawal-info":
+      console.log(`[${channel}] ${t} ${JSON.stringify(d)}`);
+      refreshFunding(channel);
       break;
     case "account": {
       // A snapshot may arrive in pages; only the complete set may replace the local map.
@@ -397,6 +517,7 @@ function shutdown(code = 0) {
     console.log(`\norder state at shutdown (${state.orders.size}, keyed by ordId):`);
     for (const o of state.orders.values()) console.log(`  ${formatOrder(o)}`);
   }
+  saveWatermark();
   console.log(`\nshutting down (${connections.length} connection(s))...`);
   for (const c of connections) c.stop();
   setTimeout(() => process.exit(code), 150).unref();
@@ -404,6 +525,9 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
+loadWatermark();
+// Periodic save as well as on shutdown: a SIGKILL or a crash would otherwise lose the window.
+setInterval(saveWatermark, 30_000).unref();
 if (cfg.outEvents) console.log(`recording events to ${cfg.outEvents}`);
 for (const [endpoint, subscribeArgs] of Object.entries(byEndpoint)) {
   if (subscribeArgs.length) createConnection(endpoint, subscribeArgs);

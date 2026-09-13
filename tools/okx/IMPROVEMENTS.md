@@ -1,6 +1,6 @@
 # Usprawnienia — `tools/okx`
 
-**Status: wszystkie 30 pozycji wdrożonych (2026-09-13).**
+**Status: wszystkie 34 pozycje wdrożone (2026-09-13).**
 
 Lista powstała 2026-09-11 na podstawie analizy ~10-minutowej sesji `npm run ws:demo`
 (2026-09-08 23:17–23:27 UTC) oraz weryfikacji read-only przez REST i surowe ramki WS.
@@ -44,6 +44,10 @@ Objęte pliki: `okx-readonly-export.mjs`, `okx-ws-listener.mjs` oraz nowy `okx-c
 | **U28** | listener | Koperta kanału `account` ignorowana — snapshot mylony z przyrostem | krytyczna | wdrożone |
 | **U29** | listener | `bal&pos`: gubione `trades`, puste tablice jako szum | średnia | wdrożone |
 | **U30** | listener | `deposit-info`/`withdrawal-info` kierowane na zły endpoint | wysoka | wdrożone |
+| **U31** | listener | Watermark tylko w pamięci — restart gubił zamknięte zlecenia | krytyczna | wdrożone |
+| **U32** | listener | Catch-up obejmował tylko zlecenia, nie fille ani wpłaty | wysoka | wdrożone |
+| **U33** | listener | Saldo Funding nigdy nie odświeżane | wysoka | wdrożone |
+| **U34** | listener | `state.orders` rosło bez ograniczeń | średnia | wdrożone |
 
 ---
 
@@ -500,6 +504,46 @@ przyjmowane na `/private` poza naszymi trzema: `positions`, `account-greeks`,
 `liquidation-warning`. Odrzucane na tym koncie demo: `fills`, `grid-orders-spot`,
 `grid-orders-contract`, `adl-warning`. Nie istnieją nigdzie: `asset`, `funding`,
 `funding-balance`, `balance`, `account-balance`.
+
+### U31–U34 · Domknięcie synchronizacji
+
+Cztery luki zgłaszane wcześniej jako znane, ale nienaprawione. Wszystkie dotyczyły tego samego:
+**stan po restarcie albo po długim działaniu był cicho niepełny.**
+
+**U31 — watermark przeżywa restart.** `state.lastEventTs` żył wyłącznie w pamięci, więc przy starcie
+wracał do zera i catch-up degradował się do „pobierz żywe zlecenia". Teraz trafia do
+`.okx-listener-state.json` (ignorowanego przez git), zapisywany co 30 s i przy zamykaniu. Zniknęło
+też warunkowanie `loggedInOnce` — wczytany watermark musi zadziałać już przy pierwszym logowaniu.
+
+Test na żywo: listener wystartował, zapisał watermark, został zatrzymany; w czasie przestoju
+złożyłem i anulowałem zlecenie; po restarcie:
+
+```
+resuming from 2026-09-13T01:29:47.876Z (.okx-listener-state.json)
+catch-up: 1 order(s) finished since 2026-09-13T01:29:47.876Z
+  [catchup/closed] ... state=canceled ordId=3917835390976782337
+```
+
+Wcześniej to zlecenie przepadłoby bez śladu — i bez możliwości wykrycia, bo kanały prywatne nie
+niosą numeru sekwencyjnego.
+
+**U32 — catch-up obejmuje fille, wpłaty i wypłaty.** Uzgadnialiśmy wyłącznie zlecenia, a to właśnie
+fille i przelewy są podstawą księgowania.
+
+**U33 — saldo Funding odświeżane zdarzeniowo.** Potwierdziliśmy, że żaden kanał go nie pokrywa,
+więc `refreshFunding()` dociąga `/api/v5/asset/balances` przy każdym `balance_and_position` innym
+niż `snapshot` oraz przy pushu `deposit-info`/`withdrawal-info`. Debounce 5 s, bo zdarzenie
+przychodzi zwykle dwoma kanałami naraz. Nieudane odświeżenie krzyczy, zamiast milczeć.
+
+**U34 — limit pamięci.** `state.orders` nie usuwało niczego. Teraz przy przekroczeniu 1000 wpisów
+usuwane są zlecenia w stanie terminalnym; żywe nigdy.
+
+### Kontrakty pozostałych kanałów
+
+`account` i `balance_and_position` dostały kontrakty na wzór `orders`: **96 pól** (20 + 51 w
+`details`, 5 + 3 + 15 + 2), z opisami OKX, notatkami własnymi i flagą `verified`. `posData` opisane
+z dokumentacji i oznaczone `verified: false` — konto spot nie ma pozycji, więc próbki brak.
+Generator `contract/generate-account.mjs` wyprowadza listę pól z fixtures, tak samo jak dla zleceń.
 
 ---
 

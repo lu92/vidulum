@@ -8,7 +8,9 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 | `okx-ws-listener.mjs` | Private WebSocket listener (`orders`, `balance_and_position`, `account`, optionally `fills`) |
 | `okx-common.mjs` | Shared helpers: argument parsing, profiles, region hosts, signed REST client |
 | `okx-order-contract.mjs` | Every field the `orders` channel sends, with a real example and what it means (generated) |
-| `contract/generate.mjs` | Regenerates the contract from the recorded fixtures |
+| `okx-account-contract.mjs` | Field contracts for the `account` and `balance_and_position` channels (generated) |
+| `contract/generate.mjs` | Regenerates the orders contract from the recorded fixtures |
+| `contract/generate-account.mjs` | Regenerates the account / balance_and_position contracts |
 | `contract/template.mjs` | The contract's prose and helper functions; the field table is injected |
 | `okx-common.test.mjs` | `npm test` - runs offline, no credentials needed |
 | `fixtures/orders-lifecycle.json` | 9 raw frames covering one order's full lifecycle |
@@ -58,10 +60,25 @@ npm run export:prod -- --skip-orders         # skip open orders, positions and o
 npm run ws:prod -- --quiet                   # hide 'account' pushes that carry no balance change
 npm run ws:prod -- --out-events events.jsonl # append every event to a JSONL file
 npm run ws:prod -- --no-catchup              # skip the REST reconciliation after login
+npm run ws:prod -- --account-events-only     # stop the ~5s 'account' heartbeat at the source
+npm run ws:prod -- --state /var/lib/okx.json # where to keep the watermark across restarts
 ```
 
 **Credentials are read from the environment only.** They cannot be passed as arguments -
 argv is visible to other users through `ps` and lands in shell history.
+
+## Staying in sync across restarts
+
+The private channels never replay and carry no sequence number, so a gap cannot be detected - only
+reconciled away. The listener keeps a watermark in `.okx-listener-state.json` (git-ignored) and on
+every login pulls back everything that happened since: open orders, orders that reached a final
+state, fills, deposits and withdrawals. Without that file a restart can only see currently-live
+orders, and anything that closed while the process was down is lost silently. `--no-state` turns
+the file off; `--state <file>` moves it.
+
+The Funding account is the one part no channel covers. A Funding<->Trading transfer is reported
+from the Trading side only, so the listener re-reads `/api/v5/asset/balances` whenever a
+`balance_and_position` event other than a snapshot arrives, or a deposit/withdrawal is pushed.
 
 ## Limitations and gotchas
 

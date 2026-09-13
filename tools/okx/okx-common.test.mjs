@@ -17,6 +17,9 @@
 import { readFileSync } from "node:fs";
 import { formatOrder, formatProtection, diffOrder, foldBalances,
          formatBalancePosition } from "./okx-common.mjs";
+import { ACCOUNT_FIELDS, ACCOUNT_DETAIL_FIELDS, BALPOS_FIELDS, BALPOS_BALDATA_FIELDS,
+         BALPOS_POSDATA_FIELDS, BALPOS_TRADES_FIELDS, ACCOUNT_EVENT_TYPES,
+         auditAgainst } from "./okx-account-contract.mjs";
 import { ORDER_FIELDS, auditOrderPayload, validateEnums, explainCode,
          CANCEL_SOURCE, TERMINAL_STATES, BALANCE_POSITION_EVENT_TYPES } from "./okx-order-contract.mjs";
 
@@ -215,6 +218,43 @@ console.log("\nBALANCE_AND_POSITION (dane prawdziwe)");
   // balData i posData sa opcjonalne - OKX wysyla tylko to, co sie zmienilo
   check("brak balData nie wywraca renderowania",
     formatBalancePosition({ eventType: "transferred" }), "eventType=transferred");
+}
+
+// ---------------------------------------------------------------- kontrakty pozostalych kanalow
+console.log("\nKONTRAKTY account / balance_and_position");
+{
+  const nieznane = (tabela, próbki) =>
+    [...new Set(próbki.flatMap((p) => auditAgainst(tabela, p)))];
+
+  check("account: brak pol spoza kontraktu",
+    nieznane(ACCOUNT_FIELDS, ACC.map((a) => a.data)), []);
+  check("account.details: brak pol spoza kontraktu",
+    nieznane(ACCOUNT_DETAIL_FIELDS, ACC.flatMap((a) => a.data.details)), []);
+  check("balance_and_position: brak pol spoza kontraktu",
+    nieznane(BALPOS_FIELDS, BP.map((b) => b.data)), []);
+  check("balData: brak pol spoza kontraktu",
+    nieznane(BALPOS_BALDATA_FIELDS, BP.flatMap((b) => b.data.balData ?? [])), []);
+  check("trades: brak pol spoza kontraktu",
+    nieznane(BALPOS_TRADES_FIELDS, BP.flatMap((b) => b.data.trades ?? [])), []);
+
+  check("liczba pol account", Object.keys(ACCOUNT_FIELDS).length, 20);
+  check("liczba pol account.details", Object.keys(ACCOUNT_DETAIL_FIELDS).length, 51);
+  check("liczba pol balance_and_position", Object.keys(BALPOS_FIELDS).length, 5);
+  checkThat("posData opisane mimo braku probki (konto spot)",
+    Object.keys(BALPOS_POSDATA_FIELDS).length === 15
+      && Object.values(BALPOS_POSDATA_FIELDS).every((f) => f.verified === false));
+
+  check("pola details nieudokumentowane przez OKX",
+    Object.entries(ACCOUNT_DETAIL_FIELDS).filter(([, f]) => f.docs === null).map(([k]) => k).sort(),
+    ["autoLendAmt", "autoStakingStatus"]);
+
+  const zaobserwowaneTypy = [...new Set(ACC.map((a) => a.eventType).filter(Boolean))];
+  checkThat("zaobserwowane eventType kanalu account sa w kontrakcie",
+    zaobserwowaneTypy.every((t) => ACCOUNT_EVENT_TYPES.includes(t)),
+    `zaobserwowane: ${zaobserwowaneTypy.join(", ")}`);
+  checkThat("mamy juz probke event_update", zaobserwowaneTypy.includes("event_update"));
+  checkThat("mamy juz probke transferred",
+    BP.some((b) => b.data.eventType === "transferred"));
 }
 
 console.log(`\n${fail ? "NIEPOWODZENIE" : "OK"}: ${pass} przeszlo, ${fail} nie przeszlo\n`);
