@@ -849,6 +849,23 @@
           }
         ]
       }
+    },
+    {
+      "scenario": "transferred: Funding<->Trading transfer, trading side only",
+      "eventType": "transferred",
+      "data": {
+        "balData": [
+          {
+            "cashBal": "4990",
+            "ccy": "USDC",
+            "uTime": "1789257957397"
+          }
+        ],
+        "eventType": "transferred",
+        "pTime": "1789257957397",
+        "posData": [],
+        "trades": []
+      }
     }
   ],
   "account": [
@@ -1404,6 +1421,86 @@
         "ordFroz": "",
         "totalEq": "163194.83752024124",
         "uTime": "1789240740453",
+        "upl": ""
+      }
+    },
+    {
+      "scenario": "event_update: one currency moved by a Funding transfer (envelope eventType recorded)",
+      "eventType": "event_update",
+      "data": {
+        "adjEq": "",
+        "availEq": "",
+        "borrowFroz": "",
+        "delta": "",
+        "deltaLever": "",
+        "deltaNeutralStatus": "",
+        "details": [
+          {
+            "accAvgPx": "",
+            "autoLendAmt": "0",
+            "autoLendMtAmt": "0",
+            "autoLendStatus": "unsupported",
+            "autoStakingStatus": "unsupported",
+            "availBal": "4990",
+            "availEq": "",
+            "borrowFroz": "",
+            "cashBal": "4990",
+            "ccy": "USDC",
+            "clSpotInUseAmt": "",
+            "coinUsdPrice": "0.9993",
+            "colBorrAutoConversion": "0",
+            "colRes": "0",
+            "collateralEnabled": false,
+            "collateralRestrict": false,
+            "crossLiab": "",
+            "disEq": "0",
+            "eq": "4990",
+            "eqUsd": "4986.507",
+            "fixedBal": "0",
+            "frozenBal": "0",
+            "frpType": "0",
+            "imr": "",
+            "interest": "",
+            "isoEq": "0",
+            "isoLiab": "",
+            "isoUpl": "",
+            "liab": "",
+            "maxLoan": "",
+            "maxSpotInUseAmt": "",
+            "mgnRatio": "",
+            "mmr": "",
+            "notionalLever": "",
+            "openAvgPx": "",
+            "ordFrozen": "0",
+            "rewardBal": "",
+            "smtSyncEq": "0",
+            "spotBal": "",
+            "spotCopyTradingEq": "0",
+            "spotInUseAmt": "",
+            "spotIsoBal": "0",
+            "spotUpl": "",
+            "spotUplRatio": "",
+            "stgyEq": "0",
+            "totalPnl": "",
+            "totalPnlRatio": "",
+            "twap": "0",
+            "uTime": "1789257957397",
+            "upl": "",
+            "uplLiab": ""
+          }
+        ],
+        "imr": "",
+        "isoEq": "",
+        "mgnRatio": "",
+        "mmr": "",
+        "notionalUsd": "",
+        "notionalUsdForBorrow": "",
+        "notionalUsdForFutures": "",
+        "notionalUsdForOption": "",
+        "notionalUsdForSwap": "",
+        "ordFroz": "",
+        "totalEq": "163365.962483902",
+        "uTime": "1789257957651",
         "upl": ""
       }
     }

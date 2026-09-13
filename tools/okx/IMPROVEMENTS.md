@@ -1,6 +1,6 @@
 # Usprawnienia — `tools/okx`
 
-**Status: wszystkie 29 pozycji wdrożonych (2026-09-12).**
+**Status: wszystkie 30 pozycji wdrożonych (2026-09-13).**
 
 Lista powstała 2026-09-11 na podstawie analizy ~10-minutowej sesji `npm run ws:demo`
 (2026-09-08 23:17–23:27 UTC) oraz weryfikacji read-only przez REST i surowe ramki WS.
@@ -43,6 +43,7 @@ Objęte pliki: `okx-readonly-export.mjs`, `okx-ws-listener.mjs` oraz nowy `okx-c
 | **U27** | listener | Brak deduplikacji — OKX ostrzega, że powtarza komunikaty | krytyczna | wdrożone |
 | **U28** | listener | Koperta kanału `account` ignorowana — snapshot mylony z przyrostem | krytyczna | wdrożone |
 | **U29** | listener | `bal&pos`: gubione `trades`, puste tablice jako szum | średnia | wdrożone |
+| **U30** | listener | `deposit-info`/`withdrawal-info` kierowane na zły endpoint | wysoka | wdrożone |
 
 ---
 
@@ -449,6 +450,56 @@ komunikatu, a w `balance_and_position` **wewnątrz `data[]`**. Odczyt na złym p
 komunikatów, ale ten kanał **nie ma `curPage` ani `lastPage`**. Nie da się wykryć, że snapshot jest
 niekompletny. Dla naszego zastosowania nieszkodliwe, bo stan sald budujemy z kanału `account`,
 a ten markery ma.
+
+### Weryfikacja przelewu Funding↔Trading (2026-09-13)
+
+Przelew 10 USDC w obie strony na koncie demo, przy wyłączonym heartbeacie, żeby każdy push był
+zdarzeniem. Domknął trzy pytania, które wisiały od analizy pokrycia:
+
+| pytanie | odpowiedź |
+|---|---|
+| czy `balance_and_position` daje `eventType=transferred`? | **tak**, z samą przeniesioną walutą |
+| czy `account` daje `event_update`? | **tak** — pierwszy raz zaobserwowany, tylko USDC w `details` |
+| czy widać stronę Funding? | **nie**, w żadnym kanale |
+| czy `deposit-info` reaguje? | **nie** — obsługuje wyłącznie ruchy zewnętrzne |
+
+```
+[bal&pos] 00:05:57.397 eventType=transferred  bal: USDC=4990
+[account] 00:05:57.651 event_update ... USDC=4990(avail=4990 frozen=0)
+  -> USDC cash/avail/frozen: 5000/5000/0 -> 4990/4990/0
+```
+
+W tym samym czasie REST pokazywał Funding `0 -> 10 -> 0`. **W strumieniu WS nie ma po tym śladu.**
+To potwierdza lukę nr 1 z analizy pokrycia: powiadomienie o przelewie mówi „odśwież Funding", a nie
+„Funding wynosi teraz X".
+
+Scalanie przyrostów (U28) zadziałało poprawnie na prawdziwym `event_update`: push niósł jedną
+walutę, log pokazał komplet sześciu z właściwym stanem i precyzyjną linią różnicy. Obie ramki
+trafiły do fixtures — wcześniej nie mieliśmy ani jednego `event_update` ani `transferred`.
+
+Uprawnienia: przelew między własnymi kontami wymaga `withdraw`; samo `trade` zwraca `50120`.
+
+### U30 · Kanały wpłat i wypłat trafiały na zły endpoint
+Router kierował `deposit-info` i `withdrawal-info` na `/ws/v5/private`, bo tak mówił nasz
+`OKX-CONTEXT.md`. Sonda subskrypcyjna na obu endpointach pokazała, że to nieprawda:
+
+```
+/ws/v5/private   deposit-info     ODRZUCONY 60018: channel doesn't exist
+/ws/v5/business  deposit-info     PRZYJETY
+```
+
+Nikt tego nie zauważył, bo domyślne kanały to `orders`, `balance_and_position` i `account` —
+żaden z nich tam nie należy. Pierwsza próba `--channels orders,deposit-info` skończyłaby się
+cichym brakiem powiadomień o wpłatach.
+
+**Wdrożono:** oba kanały dopisane do `BUSINESS_CHANNELS`. Potwierdzone na żywo — otwierają się
+dwa połączenia i wszystkie trzy subskrypcje przechodzą.
+
+**Przy okazji zmapowane empirycznie** (subskrypcja każdej nazwy na obu endpointach):
+przyjmowane na `/private` poza naszymi trzema: `positions`, `account-greeks`,
+`liquidation-warning`. Odrzucane na tym koncie demo: `fills`, `grid-orders-spot`,
+`grid-orders-contract`, `adl-warning`. Nie istnieją nigdzie: `asset`, `funding`,
+`funding-balance`, `balance`, `account-balance`.
 
 ---
 

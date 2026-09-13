@@ -7,7 +7,9 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 | `okx-readonly-export.mjs` | REST export: uid / key permissions, balances, open orders, positions, order history, deposits, withdrawals, fills, bills |
 | `okx-ws-listener.mjs` | Private WebSocket listener (`orders`, `balance_and_position`, `account`, optionally `fills`) |
 | `okx-common.mjs` | Shared helpers: argument parsing, profiles, region hosts, signed REST client |
-| `okx-order-contract.mjs` | Every field the `orders` channel sends, with a real example and what it means |
+| `okx-order-contract.mjs` | Every field the `orders` channel sends, with a real example and what it means (generated) |
+| `contract/generate.mjs` | Regenerates the contract from the recorded fixtures |
+| `contract/template.mjs` | The contract's prose and helper functions; the field table is injected |
 | `okx-common.test.mjs` | `npm test` - runs offline, no credentials needed |
 | `fixtures/orders-lifecycle.json` | 9 raw frames covering one order's full lifecycle |
 
@@ -91,8 +93,18 @@ argv is visible to other users through `ps` and lands in shell history.
 Variants the account never produced - trailing stop, a rejected attached algo, a legacy
 top-level stop-loss - are clearly marked as synthetic in the test file.
 
-If OKX adds a field, the contract check fails with its name: re-record the fixtures and
-extend `okx-order-contract.mjs`.
+If OKX adds a field, the contract check fails with its name. The contract is **generated**, not
+hand-edited - its field list is derived from the fixtures so it cannot drift from reality:
+
+```bash
+npm run contract:generate
+```
+
+Editing `okx-order-contract.mjs` directly means losing the change on the next run. The prose and
+helper functions belong in `contract/template.mjs`; the per-field notes, the documented
+enumerations and OKX's own descriptions live in the three tables at the top of
+`contract/generate.mjs`. Adding a field to the recording without describing it there fails the
+generator on purpose.
 
 ## Related documents
 

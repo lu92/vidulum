@@ -2,6 +2,8 @@
 /**
  * OKX `orders` channel - field contract
  * ------------------------------------
+ * GENERATED FILE - do not edit by hand. Run `npm run contract:generate`.
+ * Prose and helpers: contract/template.mjs. Field tables: contract/generate.mjs.
  * Every field the private WebSocket `orders` channel delivers, with a real example value and
  * what it means. This is a hand-verified contract, not a transcription of the OKX docs: the
  * field list was generated from 9 frames captured on 2026-09-12 covering an order's whole

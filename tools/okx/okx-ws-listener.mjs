@@ -5,8 +5,9 @@
  * Logs into the OKX private WebSocket and reports order, balance and position events.
  *
  * OKX splits channels across two endpoints:
- *   /ws/v5/private  -> orders, account, positions, balance_and_position, deposit-info, withdrawal-info
- *   /ws/v5/business -> fills (VIP5+ only, no instType), algo orders, grid
+ *   /ws/v5/private  -> orders, account, positions, balance_and_position, account-greeks,
+ *                      liquidation-warning
+ *   /ws/v5/business -> deposit-info, withdrawal-info, algo orders, fills (VIP5+), grid
  * A separate connection is opened for each endpoint that is actually needed.
  *
  * The WebSocket never replays what happened before the connection, so after every login
@@ -94,7 +95,13 @@ const rest = createRestClient({
 });
 
 // Which channels live on which endpoint
-const BUSINESS_CHANNELS = new Set(["fills", "orders-algo", "algo-advance", "grid-orders-spot", "grid-orders-contract"]);
+// Verified empirically on 2026-09-13 by subscribing to each name on both endpoints: deposit-info
+// and withdrawal-info live on /business, not /private as the OKX overview implies. Routing them
+// to /private returns 60018 "channel doesn't exist".
+const BUSINESS_CHANNELS = new Set([
+  "fills", "orders-algo", "algo-advance", "grid-orders-spot", "grid-orders-contract",
+  "deposit-info", "withdrawal-info",
+]);
 const NEEDS_INST_TYPE = new Set(["orders", "orders-algo", "algo-advance", "positions"]);
 
 const byEndpoint = { private: [], business: [] };

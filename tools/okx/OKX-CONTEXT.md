@@ -125,8 +125,31 @@ WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
   per 25 s down to 1. Event pushes are aggregated over ~50 ms rather than sent in real time.
 - `account.details[]` carries `autoLendAmt` and `autoStakingStatus` on the wire; neither appears in
   the documented field list (51 observed vs 49 documented).
-- `deposit-info` / `withdrawal-info` on `/private` - pushed on deposit/withdrawal
-  (not reachable on demo).
+- **`deposit-info` and `withdrawal-info` live on `/ws/v5/business`, not `/private`.** Verified on
+  2026-09-13 by subscribing to each name on both endpoints: on `/private` they return
+  `60018 "channel doesn't exist"`, on `/business` they subscribe cleanly. The overview text
+  implying `/private` is wrong.
+- **A Funding<->Trading transfer is reported only from the Trading side.** Verified 2026-09-13 by
+  moving 10 USDC each way on demo: `balance_and_position` fires `eventType=transferred` carrying
+  just the moved currency, and `account` fires `eventType=event_update` with only that currency in
+  `details`. Both show Trading going 5000 -> 4990; the Funding side going 0 -> 10 appears in NO
+  push. `deposit-info` / `withdrawal-info` stay silent - they cover external movements only.
+  Practical consequence: a transfer notification tells you to re-read `/api/v5/asset/balances`,
+  it does not tell you the new Funding balance.
+- Transferring between one's own accounts needs the `withdraw` permission; `trade` is not enough
+  (`50120`). Placing orders needs `trade` plus, on EEA accounts, per-product trading enablement
+  (`50123` until the Crypto product is ticked on the key).
+- **No private channel covers the Funding account.** `account` reports the Trading account only
+  (`/api/v5/account/balance`); Funding balances exist solely at `/api/v5/asset/balances`. Deposits
+  land in Funding, so `deposit-info` tells you a deposit happened but the resulting balance must
+  be pulled over REST. Probed and rejected as non-existent: `asset`, `funding`, `funding-balance`,
+  `balance`, `account-balance` on both endpoints.
+- Accepted on `/private` beyond what we subscribe to: `positions`, `account-greeks`,
+  `liquidation-warning`. Rejected on this demo account: `fills`, `grid-orders-spot`,
+  `grid-orders-contract` (all `60018` here), `adl-warning` (`60008`, public channel).
+- **Private channels carry no sequence number.** 95 distinct fields across 48 recorded frames
+  contain nothing resembling seq/nonce/offset. A dropped message therefore cannot be detected -
+  the only defence is REST reconciliation after every reconnect.
 - **`fills` lives on `/ws/v5/business`, does not accept `instType`, and is available to VIP5+ only** -
   we do not rely on it; fill details are fetched over REST after a `filled` event.
 - Keepalive: send the text `ping` every 20 s, the server replies `pong`; ~30 s without traffic and
