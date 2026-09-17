@@ -125,5 +125,7 @@ generator on purpose.
 
 ## Related documents
 
+- `PODSUMOWANIE.md` - the standing summary (Polish): glossary, what was established and how, the
+  sync architecture it implies, what remains unknown, and what comes next. Start here.
 - `OKX-CONTEXT.md` - integration context: business goals, verified API findings, target backend design.
 - `IMPROVEMENTS.md` - backlog of known weaknesses in both scripts, prioritised.
