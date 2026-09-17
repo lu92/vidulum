@@ -1,0 +1,231 @@
+# OKX integration - agent context
+
+This file summarises the findings from research and live testing. Read it before working on
+anything in `tools/okx/` or on the OKX module in the backend - it saves re-reading the OKX docs.
+
+## Why we are doing this (business context)
+
+Vidulum/Widlum is a SaaS for cashflow management aimed at Polish sole proprietorships (JDG), with
+planned expansion into the EU. Some users keep funds on crypto exchanges. We want the application to:
+
+1. show the **current OKX portfolio state** (Trading + Funding) alongside the user's other accounts,
+2. import the **history of deposits, withdrawals and trades** - with rates, fees and destination
+   addresses - for bookkeeping and settlement,
+3. receive a **real-time notification** when a trade executes, so it can trigger our own logic
+   (balance update, notification).
+
+Non-negotiable rules:
+- The integration is **read-only**. We never place orders, make transfers or withdraw from a user's
+  account. A user's API key must carry the `read_only` permission alone; the backend verifies this
+  via `GET /api/v5/account/config` (the `perm` field) and rejects keys with `trade`/`withdraw`.
+- History must be **stored durably on our side**, because OKX does not serve it indefinitely
+  (see retention below).
+- User secrets (key/secret/passphrase) are encrypted at rest and never appear in logs,
+  configuration or URLs.
+
+## Current state
+
+`tools/okx/` contains two Node 22 scripts (ESM, zero npm dependencies) that act as a
+**prototype / developer tool** - the logic is ultimately meant to move into the Spring Boot backend
+(Java, Kafka, MongoDB):
+- `okx-readonly-export.mjs` - REST: uid, balances, deposit/withdrawal history, fills, bills -> JSON.
+- `okx-ws-listener.mjs` - private WebSocket: `orders`, `balance_and_position`, `account`.
+
+Both support `prod`/`demo` profiles (`OKX_*` / `OKX_DEMO_*` variables, `.env.prod` / `.env.demo`
+loaded via `node --env-file`). Tested and working against a demo account in the EEA region.
+
+## Technical findings (verified live)
+
+### Regions and hosts - the most common source of errors
+The repo owner's account is registered on `my.okx.com` (**EEA** region). EEA keys do not work
+against global hosts, and vice versa.
+
+| | REST | WS live | WS demo |
+|---|---|---|---|
+| global | `openapi.okx.com` | `wss://ws.okx.com:8443` | `wss://wspap.okx.com:8443` |
+| **EEA** | `eea.okx.com` | `wss://wseea.okx.com:8443` | `wss://wseeapap.okx.com:8443` |
+| US | `openapi.okx.com`* | `wss://wsus.okx.com:8443` | `wss://wsuspap.okx.com:8443` |
+
+WS paths: `/ws/v5/private`, `/ws/v5/public`, `/ws/v5/business`.
+- REST `50119 "API key doesn't exist"` / WS `60032` -> wrong region, or a demo key without demo mode.
+- WS `1006` on connect -> the host does not exist (e.g. `wspap.my.okx.com` - do not use).
+- The region must be configurable **per user** in the backend (EU users are EEA, but not all of them).
+
+### Demo Trading
+- Separate keys created in Demo Trading mode; virtual funds; no deposits or withdrawals.
+- REST demo: same host as live plus the `x-simulated-trading: 1` header. WS demo: a separate host
+  (`*pap.okx.com`), no header.
+- For WS testing you can grant a demo key `trade` and place orders from the UI/REST to generate events.
+
+### Authentication
+- REST: headers `OK-ACCESS-KEY`, `OK-ACCESS-SIGN`, `OK-ACCESS-TIMESTAMP` (ISO 8601 UTC with ms),
+  `OK-ACCESS-PASSPHRASE`. Signature =
+  `Base64(HMAC_SHA256(timestamp + METHOD + requestPath(+query) + body, secret))`.
+  A timestamp older than 30 s yields `50102`.
+- WS login: `{"op":"login","args":[{apiKey,passphrase,timestamp,sign}]}`, timestamp in **seconds**
+  (Unix), over the signed string `timestamp + "GET" + "/users/self/verify"`.
+- A `read_only` key is sufficient for every endpoint and channel we use.
+
+### REST endpoints we use
+- `GET /account/config` -> `uid`, `mainUid`, `perm`, `acctLv`.
+- `GET /account/balance` (Trading), `GET /asset/balances` (Funding). Both must be summed - deposits
+  land in Funding, trading happens in Trading; transfers between them appear in `asset/bills`
+  (subType 11/12; `from`/`to`: 6 = Funding, 18 = Trading).
+- `GET /asset/deposit-history` - `amt`, `ccy`, `chain`, `from`, `to`, `txId`, `state`
+  (2 = credited), `ts`. No fee (deposits are free). Paginate with `after`=ts.
+- `GET /asset/withdrawal-history` - as above plus `fee`, `wdId`. Paginate with `after`=ts.
+- `GET /trade/fills-history?instType=SPOT|MARGIN|SWAP|FUTURES|OPTION` - `fillPx`, `fillSz`, `fee`,
+  `feeCcy`, `tradeId`, `ordId`, `billId`, `ts`. Paginate with `after`=billId. **3-month retention.**
+- `GET /account/bills-archive` - full trading account journal (trades, fees, funding fees,
+  transfers, liquidations), `balChg`, `bal`, `px`. **3 months.** `GET /account/bills` - 7 days.
+- `GET /asset/bills` - Funding journal. **1 month.**
+- `GET /asset/convert/history` - conversions with their rate.
+- OKX pagination: results are newest-first; `after=X` means "older than X"; limit 100.
+
+### History older than 3 months - quarterly archive (async)
+- `POST /account/bills-history-archive` `{year, quarter}` -> after ~2 h a `GET` on the same endpoint
+  returns `fileHref` (CSV.zip) and `state` (`finished`/`ongoing`/`failed`). The link is valid ~5.5 h;
+  a request for the same quarter stays valid 30 days; limit 1 request / 10 s.
+- Data is available from **1 February 2021**, excluding the current quarter. The API does not serve
+  anything earlier.
+- Caution: for files generated after 2024-10-11 the "quarter" boundaries are shifted
+  (e.g. "2024 Q2" = 01.07-30.09) - verify the range by `ts` inside the file, not by its name.
+- The CSV contains `fillIdxPx` - the USDT index price at the moment of the trade; enough for
+  valuation without fetching candles.
+- History rebuild plan: walk back quarter by quarter to the first empty one or Q1 2021; the starting
+  point is min(oldest bill, oldest deposit); if the oldest quarter begins with a non-zero `bal`,
+  record it as the opening balance. Verification: sum of `balChg` + opening balance = today's balance.
+- Applies to Trading only; Funding has a "monthly statement" (last year) in the Funding section.
+
+### WebSocket - notifications
+- There are no webhooks. We use the **`orders`** channel (`instType: ANY`) on `/ws/v5/private` as the
+  notification source: `state` = `live` -> `partially_filled`* -> `filled` | `canceled`. The business
+  trigger is `filled` (it carries `avgPx`, `accFillSz`, `fee`).
+- `balance_and_position` - its `eventType` sits INSIDE `data[]`, unlike the `account` channel where
+  it sits on the envelope; reading the wrong level returns undefined silently. Documented event
+  types: snapshot, delivered, exercised, transferred, filled, liquidation, claw_back, adl,
+  funding_fee, adjust_margin, set_leverage, interest_deduction, settlement.
+- `balance_and_position` carries a `trades` array on a fill, holding the instId and tradeId. That
+  tradeId matches the one on the orders channel and is the only reliable link between a balance
+  change and the fill that caused it - channel arrival order is not guaranteed, so timestamps
+  cannot be used for correlation.
+- `balData` and `posData` are each optional: OKX sends only the part that changed. Its snapshot can
+  also be split across messages, but unlike `account` this channel has no `curPage`/`lastPage`, so
+  an incomplete snapshot cannot be detected.
+- `balance_and_position` - pushed on every balance/position change with an `eventType`
+  (`filled_order`, `transferred`, `liquidation`, ...); a manual Funding<->Trading transfer also
+  triggers it, which makes a good live test without trading.
+- `account` - `eventType`, `curPage` and `lastPage` live on the message envelope, next to `data`,
+  not inside it. `snapshot` carries every currency with a non-zero balance (possibly paged, commit
+  only at `lastPage`); `event_update` carries only the currencies an event touched. A currency that
+  drops to zero simply stops being sent, so a snapshot must REPLACE the local map - merging leaves
+  it there forever.
+- The `account` channel pushes on events and on a regular heartbeat (~5 s). Subscribing with
+  `extraParams: {"updateInterval":"0"}` turns the heartbeat off at the source - measured 6 pushes
+  per 25 s down to 1. Event pushes are aggregated over ~50 ms rather than sent in real time.
+- `account.details[]` carries `autoLendAmt` and `autoStakingStatus` on the wire; neither appears in
+  the documented field list (51 observed vs 49 documented).
+- **`deposit-info` and `withdrawal-info` live on `/ws/v5/business`, not `/private`.** Verified on
+  2026-09-13 by subscribing to each name on both endpoints: on `/private` they return
+  `60018 "channel doesn't exist"`, on `/business` they subscribe cleanly. The overview text
+  implying `/private` is wrong.
+- **A Funding<->Trading transfer is reported only from the Trading side.** Verified 2026-09-13 by
+  moving 10 USDC each way on demo: `balance_and_position` fires `eventType=transferred` carrying
+  just the moved currency, and `account` fires `eventType=event_update` with only that currency in
+  `details`. Both show Trading going 5000 -> 4990; the Funding side going 0 -> 10 appears in NO
+  push. `deposit-info` / `withdrawal-info` stay silent - they cover external movements only.
+  Practical consequence: a transfer notification tells you to re-read `/api/v5/asset/balances`,
+  it does not tell you the new Funding balance.
+- Transferring between one's own accounts needs the `withdraw` permission; `trade` is not enough
+  (`50120`). Placing orders needs `trade` plus, on EEA accounts, per-product trading enablement
+  (`50123` until the Crypto product is ticked on the key).
+- **No private channel covers the Funding account.** `account` reports the Trading account only
+  (`/api/v5/account/balance`); Funding balances exist solely at `/api/v5/asset/balances`. Deposits
+  land in Funding, so `deposit-info` tells you a deposit happened but the resulting balance must
+  be pulled over REST. Probed and rejected as non-existent: `asset`, `funding`, `funding-balance`,
+  `balance`, `account-balance` on both endpoints.
+- Accepted on `/private` beyond what we subscribe to: `positions`, `account-greeks`,
+  `liquidation-warning`. Rejected on this demo account: `fills`, `grid-orders-spot`,
+  `grid-orders-contract` (all `60018` here), `adl-warning` (`60008`, public channel).
+- **Private channels carry no sequence number.** 95 distinct fields across 48 recorded frames
+  contain nothing resembling seq/nonce/offset. A dropped message therefore cannot be detected -
+  the only defence is REST reconciliation after every reconnect.
+- **`fills` lives on `/ws/v5/business`, does not accept `instType`, and is available to VIP5+ only** -
+  we do not rely on it; fill details are fetched over REST after a `filled` event.
+- Keepalive: send the text `ping` every 20 s, the server replies `pong`; ~30 s without traffic and
+  OKX drops the connection. A `notice` event with code 64008 means the server is about to close the
+  connection (upgrade) -> reconnect.
+- **The `orders` push carries the FULL order state, never a delta.** Verified live across 9 pushes
+  spanning creation, price amend, TP/SL amend, cancellation and a fill: every frame had the same
+  71 keys. "Empty" is always `""` - OKX never omits a key. Consumers can therefore diff two
+  consecutive pushes field by field without guessing which fields were reported.
+- The WS frame is **richer than `GET /trade/orders-pending`** (71 vs 54 fields). WS-only:
+  `amendResult`, `amendSource`, `reqId`, `code`, `msg`, `notionalUsd`, `lastPx`, `execType`,
+  `fillFee`, `fillFeeCcy`, `fillIdxPx`, `fillNotionalUsd`, `fillPnl`, `fillPxUsd`, `fillPxVol`,
+  `fillMarkPx`, `fillMarkVol`, `fillFwdPx`.
+- **`cancelSourceReason` exists in REST but NOT in the WS push.** WS gives only the numeric
+  `cancelSource`; the human-readable reason requires a REST lookup.
+- **`uTime` is not bumped for an attached TP/SL amend.** Verified: three consecutive pushes that
+  added and changed attached algos all carried the creation-time `uTime`. A price amend and a
+  cancellation do bump it. Never treat `uTime` as "time of this push".
+- Amending an attached TP/SL uses **`new`-prefixed fields** inside `attachAlgoOrds`
+  (`newSlTriggerPx`, `newSlOrdPx`, `newTpTriggerPx`, ...). Passing the plain names is rejected with
+  `51500 "You must enter a price, quantity, or TP/SL condition"`.
+- A stop-loss price is validated **at submission** (`51047` for an SL above the order price), so
+  `failCode` inside `attachAlgoOrds` describes a failure at trigger time, not a bad request.
+- Limit orders are bounded by a price band; exceeding it returns `51137` naming the allowed limit.
+- On a spot buy, the fee is charged **in the base currency** (BTC on BTC-EUR), not the quote.
+- `balance_and_position` fires `eventType=filled` on a real execution - confirmed; until an order
+  actually fills, the only event ever seen is the `snapshot` sent at subscribe time.
+- **OKX may deliver the same message more than once**, sometimes with a different `uTime`. The
+  published collapse rules: a `tradeId` counts once per instrument, a terminal state counts once per
+  order, a `reqId` counts once. Skipping this double-books fills.
+- **`slippage` arrives on the wire but is absent from the documented field list** (71 observed vs 70
+  documented).
+- **Field enumerations are published for 20 of the order fields**, including the full `cancelSource`
+  code table (30 values), `amendSource`, `amendResult` and `source`. Only `stpMode` carries no value
+  list. Earlier notes here claimed these were unpublished - that was wrong; they sit in the part of
+  the single-page reference that cannot be fetched programmatically. `okx-order-contract.mjs` now
+  mirrors them, so the numeric codes can be rendered as text even though `state`, `ordType`, `side`, `tdMode`,
+  `instType`, `posSide` and the trigger price types have documented value sets, mirrored into
+  `okx-order-contract.mjs` (source: the tiagosiebler/okx-api typings). `execType`, `category`,
+  `cancelSource`, `amendResult`, `amendSource`, `stpMode`, `tgtCcy`, `tpOrdKind`, `source` and
+  `outcome` are typed as plain strings there, and OKX's own single-page reference is too large to
+  retrieve programmatically - for those fields the contract records only observed values. Treat an
+  unrecognised value as data to investigate, not as an error.
+- WS does not replay events from before the connection. After every reconnect, fetch
+  `fills-history` over REST starting from the last known `billId`.
+
+### Historical prices (public, no key required)
+- `GET /market/history-candles?instId=BTC-USDT&bar=1D` (OHLCV, up to 100 per request),
+  `history-index-candles`, `history-mark-price-candles`. Valuation in PLN additionally needs a
+  USD/PLN rate (NBP).
+
+### Rate limits
+Per endpoint and per key; typically 5-20 req / 2 s for private endpoints. The scripts pause
+250-500 ms between pages and retry on `429`/`50011`.
+
+## Target design (backend)
+- An `okx` module in Spring Boot: per-user configuration = {region, demo flag, encrypted
+  credentials}; `@ConfigurationProperties` plus Spring profiles per environment.
+- A REST synchronisation job (every N minutes plus on demand) writing to MongoDB; deduplication by
+  `billId` / `depId` / `wdId` / `tradeId`.
+- A separate quarterly-archive job (request queue, state polling, CSV import).
+- One `/private` WS per user with `orders` + `balance_and_position` (+ `deposit-info` /
+  `withdrawal-info`), publishing events to Kafka.
+- For tests: fixtures built from raw payloads captured on demo, plus a local WS mock for
+  reconnect/pong tests.
+
+## Where to look
+- Documentation: `https://www.okx.com/docs-v5/en/` (for EEA it is worth checking the version under
+  `my.okx.com/docs-v5`).
+- **Official SDK: Python only.** `python-okx` on PyPI (author `okxv5api <api@okg.com>`, source at
+  `github.com/okxapi/python-okx`), linked from the OKX docs overview. It is a thin REST wrapper:
+  methods take loose keyword arguments and return the raw response dict. `consts.py` holds endpoint
+  paths and nothing else - there are no typed models and no field enumerations, so it does not help
+  when you need to know which values a field can take. OKX publishes no Java or TypeScript SDK.
+- Best available source of field enumerations: the typings in `github.com/sieblyio/okx-api`
+  (formerly `tiagosiebler/okx-api`), `src/types/rest/shared.ts`. Third-party but explicit; it also
+  carries the region host maps in `src/util/websocket-util.ts`. It enumerates `state`, `ordType`,
+  `side`, `tdMode`, `instType`, `posSide` and the trigger price types, and types everything else as
+  plain `string`.
