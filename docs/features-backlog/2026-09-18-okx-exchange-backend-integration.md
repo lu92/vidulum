@@ -14,6 +14,92 @@ Dokumenty źródłowe: `tools/okx/PODSUMOWANIE.md` (ustalenia o API), `tools/okx
 
 ---
 
+## 0. Punkt startowy — jak zacząć od zera
+
+Sekcja dla kogoś, kto dostaje ten dokument i repozytorium, i nic poza tym.
+
+### 0.1 Stan na dziś
+
+| co | stan |
+|---|---|
+| prototyp OKX w Node (`tools/okx/`) | **działa**, zweryfikowany na żywym koncie demo, 70 asercji |
+| moduł `okx` w Javie | **nie istnieje** — zero klas `.java` zawierających „okx" |
+| `OkxBrokerQuotationProvider` | **nie istnieje** — zarejestrowani: Degiro, PM, Binance, Exante |
+| `PortfolioSpec`, `ExchangeConnection` | **nie istnieją** — zaprojektowane w §4 i §5 |
+| endpoint snapshotu / spec-u | **nie istnieje** |
+| zmiany w `Portfolio` / `Asset` | **nie wprowadzone** — opisane w §3 i §8 |
+
+Innymi słowy: **po stronie Javy nie zaczęto**. Wszystko poniżej to projekt, nie opis istniejącego kodu.
+Jedyne, co działa, to prototyp w Node.
+
+### 0.2 Czego potrzebujesz
+
+- **Java 21** z preview features (skonfigurowane w `pom.xml`)
+- **Node ≥ 22** — prototyp używa natywnego `WebSocket`, na Node 20 nie wystartuje
+- **Docker** — MongoDB i Kafka
+- **Konto OKX Demo Trading** z kluczem API o uprawnieniu `read_only`
+
+### 0.3 Uruchomienie backendu
+
+```bash
+# infrastruktura + aplikacja w kontenerach
+docker-compose -f docker-compose-final.yml up -d      # backend na localhost:9090
+
+# albo lokalnie, przy działającej infrastrukturze
+./mvnw spring-boot:run -pl vidulum-app                # backend na localhost:8080
+```
+
+**Uwaga: port zależy od sposobu uruchomienia.** `docker-compose-final.yml` mapuje `9090:8080`,
+a `application.yml` nie ustawia `server.port`, więc lokalnie obowiązuje domyślne `8080`. POC musi
+mieć adres backendu jako parametr, nie zaszyty na sztywno.
+
+Pełne instrukcje budowania per moduł, przebudowy obrazu Dockera i zasady projektu (CQRS, DDD,
+`DataCleaner`, `ErrorHttpHandler`) są w głównym `CLAUDE.md` — **obowiązują też tutaj**.
+
+### 0.4 Uruchomienie prototypu OKX
+
+```bash
+cd tools/okx
+cp .env.example .env.demo     # uzupełnij OKX_DEMO_KEY/SECRET/PASSPHRASE
+npm test                      # 70 asercji, bez sieci i bez poświadczeń
+npm run check:demo            # test poświadczeń: 19 wywołań REST
+npm run ws:demo               # nasłuch na żywo
+```
+
+Klucz twórz w sekcji **Demo Trading** OKX, wyłącznie z uprawnieniem odczytu. Konto z `my.okx.com`
+(region EEA) wymaga `OKX_DOMAIN=eea.okx.com` — bez tego dostaniesz `60032`. Passphrase zawierające
+`#` **musi być w cudzysłowach**, inaczej `node --env-file` utnie wartość i dostaniesz `50105`.
+
+### 0.5 Jak weryfikować tezy z tego dokumentu
+
+Każde twierdzenie o istniejącym kodzie wskazuje plik i linię — sprawdzaj je, zamiast wierzyć.
+Najczęściej używane punkty odniesienia:
+
+| teza | gdzie sprawdzić |
+|---|---|
+| brak providera OKX | `QuotationService.java:54` |
+| fill wymaga `Order` | `MakeTradeCommandHandler.java:25`, `FillOrderCommandHandler.java:25` |
+| depozyt tylko w jednej walucie | `Portfolio.java:225` |
+| `avgPurchasePrice = 1` przy depozycie | `Portfolio.java:236` |
+| wycena pobiera cenę dla każdego aktywa | `PortfolioSummaryMapper.java:124` |
+| tylko `/api/v1/auth/**` jest publiczne | `SecurityConfiguration.java:34` |
+| `investedBalance` tylko z `deposit`/`withdraw` | `Portfolio.java:244,276` |
+
+### 0.6 Dokumenty powiązane
+
+| plik | co zawiera |
+|---|---|
+| `tools/okx/PODSUMOWANIE.md` | **słownik pojęć** (payload, koperta, watermark, proweniencja), ustalenia o API OKX, architektura synchronizacji |
+| `tools/okx/OKX-CONTEXT.md` | fakty techniczne o API: regiony, hosty, retencja, kontrakty kanałów |
+| `tools/okx/IMPROVEMENTS.md` | 34 poprawki prototypu z dowodami — po co każda powstała |
+| `tools/okx/README.md` | jak uruchomić narzędzia, ograniczenia i pułapki |
+| `CLAUDE.md` | zasady projektu — build per moduł, CQRS, `DataCleaner`, `ErrorHttpHandler` |
+
+Jeśli nie znasz pojęć **payload**, **koperta**, **watermark** albo **proweniencja** używanych niżej,
+zacznij od słownika w `PODSUMOWANIE.md` §1.
+
+---
+
 ## 1. Rola skryptu JS — POC, nie cel
 
 Na tym etapie kod w `tools/okx/` pozostaje w Node i pełni rolę **proof of concept**, który po
