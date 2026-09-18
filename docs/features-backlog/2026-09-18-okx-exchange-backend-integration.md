@@ -221,15 +221,45 @@ stateDiagram-v2
     [*] --> draft: roznica snapshot minus stan znany
     draft --> applied: brak pytan
     draft --> awaiting_answer: sa pytania
+    draft --> stale: TTL 15 min minelo
     awaiting_answer --> confirmed: uzytkownik odpowiedzial
-    confirmed --> applied: walidacja przeszla
-    confirmed --> awaiting_answer: walidacja odrzucila
-    awaiting_answer --> stale: snapshot sie zestarzal
-    stale --> draft: przelicz roznice, zadaj tylko aktualne pytania
+    awaiting_answer --> stale: TTL 15 min minelo
+    awaiting_answer --> cancelled: uzytkownik przerwal onboarding
+    draft --> cancelled: uzytkownik przerwal onboarding
+    confirmed --> applied: walidacja i swiezy snapshot zgodne
+    confirmed --> awaiting_answer: snapshot sie zmienil, dopytaj o roznice
+    confirmed --> failed: zapis Portfolio nie powiodl sie
+    failed --> confirmed: ponow probe
+    stale --> draft: przelicz roznice, ZACHOWAJ pasujace odpowiedzi
     applied --> [*]
+    cancelled --> [*]
 ```
 
 Ścieżka `draft → applied` bez udziału człowieka to ta, którą pójdzie większość synchronizacji.
+
+**TTL specyfikacji: 15 minut (decyzja na POC).** Trzy rzeczy, które trzeba przy tym rozumieć:
+
+- **Przeterminowuje się snapshot, nie odpowiedzi.** Spec zawiera dwa rodzaje danych o zupełnie
+  różnej trwałości. **Snapshot** to „co giełda mówiła o 10:00" — starzeje się z każdą transakcją na
+  koncie. **Odpowiedź** to „za to ETH zapłaciłem 2 400 EUR" — jest prawdziwa niezależnie od tego,
+  co dzieje się z saldem. Wygaszenie całego spec-u wyrzuca obie, choć psuje się tylko jedna.
+  Wejście w `stale` przelicza różnicę od nowa i **zachowuje odpowiedzi, których kotwica nadal
+  obowiązuje** — pyta wyłącznie o to, co doszło.
+
+  Odpowiedź jest przypisana do **partii** (`ticker`, `subName`, ilość w chwili odpowiedzi), nie do
+  całej pozycji. Dzięki temu dokupienie ETH nie unieważnia wyceny wcześniejszej partii — tworzy
+  nową partię z własnym pytaniem. Odpowiedź traci ważność tylko wtedy, gdy jej partia zniknęła
+  albo zmalała.
+- **Czas jest tylko przybliżeniem tego, co nas interesuje.** Snapshot sprzed dwóch godzin na
+  nieruchomym koncie jest aktualny; sprzed trzydziestu sekund na aktywnie handlowanym — już nie.
+  Dlatego `confirm` **zawsze** pobiera świeży snapshot i porównuje, niezależnie od wieku spec-u.
+  Zgodny — stosuj. Różny — wróć do `awaiting_answer` z pytaniem o różnicę. TTL jest wtedy
+  podpowiedzią dla interfejsu, a nie mechanizmem poprawności.
+- **Token JWT może wygasnąć szybciej niż spec.** Wtedy `confirm` padnie z powodu niezwiązanego
+  z danymi. POC musi to rozróżniać w komunikacie.
+
+Stan `cancelled` jest terminalny i świadomy: użytkownik przerwał onboarding. Bez niego spec-y
+wiszą w nieskończoność w `awaiting_answer` i nie da się odróżnić „myśli" od „odszedł".
 
 ### 4.6 Co ta konstrukcja daje poza rozwiązaniem problemu ceny
 
@@ -264,7 +294,187 @@ a pozycje bez ceny muszą być **jawnie potwierdzone jako nieznane**, nie pomini
 
 ---
 
-## 5. Inwentarz endpointów
+## 5. ExchangeConnection i gotowość giełdy
+
+### 5.1 Po co osobna encja
+
+Silnik z §4 liczy `snapshot − stan znany`. Przy drugim uruchomieniu backend musi wiedzieć, **który
+portfel odpowiada któremu kontu giełdowemu** — inaczej „stan znany" jest zawsze pusty i każda
+synchronizacja wygląda jak onboarding.
+
+W POC jest to niejawne: jeden skrypt, jedno konto. Przy pierwszej synchronizacji przestaje działać.
+
+### 5.2 Model
+
+| pole | typ | uwagi |
+|---|---|---|
+| `id` | `ExchangeConnectionId` | |
+| `userId` | `UserId` | |
+| `exchange` | `Exchange` | `OKX`, docelowo inne |
+| `accountUid` | `String` | **klucz naturalny** — `uid` z `GET /account/config`; wykrywa podłączenie tego samego konta dwa razy |
+| `environment` | enum | `DEMO` / `LIVE` |
+| `region` | enum | `EEA` / `GLOBAL` / `US` — determinuje hosty REST i WS |
+| `reportedKeyPermissions` | `String` | `perm` zgłoszone przez klienta; **walidowane, że to `read_only`**. Przedrostek `reported` jest świadomy — patrz §5.3 |
+| `credentialsMode` | enum | `EXTERNAL` (POC — klucze zostają w skrypcie) / `STORED_ENCRYPTED` (docelowo) |
+| `portfolioId` | `PortfolioId` | ustawiane po `confirm`; puste do tego czasu |
+| `denominationCurrency` | `Currency` | **wejście**, nie wynik — patrz §5.4 |
+| `status` | enum | `PENDING` / `ACTIVE` / `ERROR` / `REVOKED` |
+| `lastSnapshotAt` | `Instant` | podstawa TTL spec-u |
+| `lastSyncAt` | `Instant` | |
+| `createdAt` | `Instant` | |
+
+Dwie decyzje warte uzasadnienia:
+
+**`accountUid` jako klucz naturalny.** Bez niego nie wykryjesz, że użytkownik podpina to samo konto
+po raz drugi — i zrobisz mu dwa portfele z tymi samymi aktywami. OKX oddaje `uid` w
+`GET /account/config`, więc to nic nie kosztuje.
+
+**`credentialsMode` jawnie mówi, że w POC kluczy nie mamy.** To nie jest brak, tylko stan świadomy.
+Bez tego pola ktoś za pół roku uzna, że szyfrowanie „zapomniano dodać".
+
+### 5.3 Wymuszenie read-only w POC
+
+`OKX-CONTEXT.md` stawia warunek nienegocjowalny: klucz użytkownika ma mieć wyłącznie `read_only`,
+a backend to weryfikuje. W POC backend **nie ma poświadczeń**, więc nie zrobi wywołania sam.
+
+Rozwiązanie: snapshot wysyłany do `POST /portfolio-spec` **musi nieść pole `reportedKeyPermissions`**, a backend
+odrzuca spec, jeśli to nie `read_only`. Nazwa jest celowo niewygodna: samym brzmieniem mówi, że to
+wartość **zgłoszona przez klienta**, a nie zweryfikowana przez nas. Gdy POC zostanie zastąpiony
+kodem w Javie i backend zacznie pobierać `perm` sam, nazwa straci przedrostek `reported`. To nadal nie jest dowód (dane pochodzą od tego samego
+klienta), ale zamienia deklarację w kontrolę, którą widać w logu i w testach.
+
+**Czym ta walidacja jest, a czym nie jest.** Warto rozróżnić dwie rzeczy, które łatwo pomylić:
+
+| rodzaj kontroli | pytanie | czy POC to daje |
+|---|---|---|
+| **spójność** | czy odpowiedzi pasują do snapshotu, który dostaliśmy? | **tak** |
+| **autentyczność** | czy ten snapshot to naprawdę to, co powiedziała giełda? | **nie** |
+
+W POC snapshot i odpowiedzi przychodzą z **tego samego źródła** — ze skryptu. Porównywanie jednego
+z drugim wychwyci więc błąd (odpowiedź odnosząca się do pozycji, której w snapshocie nie ma), ale
+nie wychwyci kłamstwa (skrypt mógłby wysłać `perm: "read_only"`, trzymając klucz z uprawnieniem
+`trade`).
+
+Co to daje mimo wszystko: **reguła istnieje jako kod, a nie jako zdanie w dokumencie**. Jest ścieżka,
+która odrzuca spec, jest test, który to sprawdza, i jest wpis w logu. Gdy backend zacznie sam
+pobierać snapshot, ta sama walidacja staje się prawdziwą kontrolą — zmienia się tylko źródło
+danych wejściowych, nie logika.
+
+### 5.4 Waluta wyceny jest wejściem, nie wynikiem
+
+Decyzja z §6 mówi: notowania muszą być w cache **zanim** powstanie portfel. Ale notowania publikuje
+się przeciwko walucie wyceny — nie da się załadować `BTC/EUR`, nie wiedząc, że walutą jest EUR.
+
+Stąd: `denominationCurrency` należy do `ExchangeConnection` i jest **parametrem podłączenia**,
+ustalanym przed pobraniem pierwszego snapshotu. Spec go nie wybiera — spec go używa.
+
+### 5.5 Funding kontra Trading — zweryfikowane na żywo
+
+Sprawdzone 2026-09-18 przelewem 10 USDC w obie strony na koncie demo.
+
+**Nie mają osobnych identyfikatorów.** Oba należą do tego samego `uid`, a aktywa adresuje się w obu
+tym samym `ccy`. „Typ konta" to wyłącznie kod używany przy przelewach: **`6` = Funding, `18` = Trading**.
+Nie istnieje nic w rodzaju identyfikatora subkonta.
+
+**Różnią się dramatycznie bogactwem danych:**
+
+```
+FUNDING   {"availBal":"10","bal":"10","ccy":"USDC","frozenBal":"0"}       ← 4 pola
+TRADING   {ccy, cashBal, availBal, frozenBal, spotBal, openAvgPx, eq,
+           upl, imr, mmr, liab, interest, twap, colRes, ...}              ← 50 pól
+```
+
+Kluczowa konsekwencja dla modelu: **Funding nie ma żadnych pól kosztu nabycia ani wyniku** — brak
+`spotBal`, `openAvgPx`, `spotUpl`. Aktywo leżące na Funding jest więc zawsze pozycją nieznanego
+pochodzenia.
+
+| | Trading | Funding |
+|---|---|---|
+| handel | tak | nie |
+| `frozenBal` znaczy | blokada przez otwarte zlecenie | oczekująca wypłata |
+| koszt nabycia | jest, dla części kupionej | **brak** |
+| wpłaty z zewnątrz | nie trafiają tu | **tu lądują** |
+| wypłaty | nie stąd | **stąd wychodzą** |
+
+Przelew między nimi pojawia się w `asset/bills` jako `type=130` (przychód) i `type=131` (rozchód).
+**To nie jest wpłata ani wypłata** — nie może zmieniać `investedBalance`.
+
+**Decyzja: jedno `Portfolio` na oba.** Ekonomicznie to jedna kieszeń; rozbicie na dwa portfele
+sprawiłoby, że przelew wewnętrzny wyglądałby jak wypłata z jednego i wpłata do drugiego, fałszując
+`investedBalance` po obu stronach. Widok zbiorczy i tak scala pozycje po tickerze.
+
+**Zastrzeżenie: nie upychać przegródki w `subName`.** To pole niesie już jeden wymiar — pochodzenie
+kosztu (`okx-bought` / `unknown-origin`). Dorzucenie drugiego dałoby ciągi typu
+`okx-trading-bought`, po których nie da się filtrować. Jeśli kiedyś trzeba będzie odpowiedzieć na
+pytanie „ile mam na Funding", powinien to być **osobny atrybut aktywa**, nie fragment nazwy.
+W praktyce wymiar i tak się skraca, bo pozycja z Funding jest zawsze nieznanego pochodzenia.
+
+W POC Funding jest poza zakresem (jest pusty, decyzja: najpierw Trading).
+
+### 5.6 Dwa niezależne zegary nieświeżości
+
+`AssetPriceMetadata` niesie własny `dateTime`, niezależny od momentu synchronizacji konta. W systemie
+tykają więc **dwa zegary, które trzeba pokazywać osobno**:
+
+| znacznik | za co odpowiada | typowy wiek |
+|---|---|---|
+| `portfolioSyncedAt` | kiedy ostatnio odczytaliśmy **stan konta** z giełdy — ilości, salda, locki | godziny, dni |
+| `quotesAsOf` | kiedy ostatnio dostaliśmy **cenę** użytą do wyceny | sekundy, minuty |
+
+Rozjeżdżają się w obie strony. Salda sprzed trzech dni wycenione ceną sprzed pięciu sekund wyglądają
+na świeże, a opierają się na nieaktualnych ilościach. Odwrotnie: świeży snapshot i notowania sprzed
+dwóch godzin, bo połączenie padło po synchronizacji.
+
+**Interfejs nie może zlać ich w jedno „zaktualizowano o 14:32".** `GET /portfolio` zwraca oba,
+a kontrolka przy giełdzie wskazuje, który z nich jest problemem. „Offline od 10 minut" znaczy co
+innego przy saldach sprzed minuty, a co innego przy saldach sprzed tygodnia.
+
+**Brak połączenia nie blokuje odczytu portfela.** Zwracamy ostatnią znaną wycenę, oznaczoną jako
+potencjalnie nieaktualną — nie błąd.
+
+### 5.5 Endpoint statusu giełdy
+
+Przydatny przy testach, w monitoringu i docelowo jako kontrolka w interfejsie.
+
+```
+GET /exchange/status            -> lista wszystkich
+GET /exchange/{name}/status     -> jedna giełda
+```
+
+```json
+{
+  "exchange": "OKX",
+  "displayName": "OKX",
+  "status": "ONLINE",
+  "lastCheckAt": "2026-09-18T10:31:02Z",
+  "lastSuccessAt": "2026-09-18T10:31:02Z",
+  "latencyMs": 142,
+  "message": null,
+  "quotesReady": true,
+  "quotedSymbols": ["BTC/EUR", "ETH/EUR", "XRP/EUR", "USD/EUR", "USDC/EUR", "EUR/EUR"],
+  "brokerRegistered": true
+}
+```
+
+Wartości `status`: `ONLINE` · `DEGRADED` (odpowiada, ale wolno lub częściowo) · `OFFLINE` ·
+`UNKNOWN` (jeszcze nie sprawdzano).
+
+**Kluczowa decyzja projektowa: status to nie tylko osiągalność, ale i gotowość.** Trzy pola
+odpowiadają na trzy różne pytania, które w praktyce zlewają się w jedno „czy mogę teraz założyć
+portfel?":
+
+| pole | pytanie |
+|---|---|
+| `status`, `latencyMs` | czy giełda odpowiada |
+| `brokerRegistered` | czy `QuotationService` zna `Broker("OKX")` |
+| `quotesReady`, `quotedSymbols` | czy notowania są w cache |
+
+Bez `brokerRegistered` i `quotesReady` endpoint mówiłby „ONLINE", a zakładanie portfela i tak by
+padło — bo pada nie na giełdzie, tylko po naszej stronie.
+
+---
+
+## 6. Inwentarz endpointów
 
 Kto woła, co woła i z której części systemu to pochodzi.
 
@@ -277,7 +487,7 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 |---|---|---|
 | `GET /api/v5/account/config` | `uid`, `perm`, poziom konta | weryfikacja, że klucz jest `read_only` |
 | `GET /api/v5/account/balance` | salda Trading: `cashBal`, `availBal`, `frozenBal`, **`spotBal`**, **`openAvgPx`** | źródło pozycji i kosztu nabycia |
-| `GET /api/v5/asset/balances` | salda Funding | poza zakresem POC, patrz §10 |
+| `GET /api/v5/asset/balances` | salda Funding | poza zakresem POC, patrz §12 |
 | `GET /api/v5/trade/orders-pending` | otwarte zlecenia | uzasadnienie `frozenBal` → `Asset.locked` |
 | `GET /api/v5/market/ticker?instId=` | `last` dla pary | publiczne, bez klucza — źródło notowań |
 
@@ -285,7 +495,7 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 
 | URL | metoda | moduł | status |
 |---|---|---|---|
-| `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje |
+| `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
 | `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
 | `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — tworzy draft z różnicy |
 | `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — czego brakuje |
@@ -307,17 +517,39 @@ POC, ale nie jest to API do produkcyjnej ingesty notowań.
 
 ---
 
-## 6. Przepływ HTTP — uruchomienie POC
+## 7. Przepływ HTTP — uruchomienie POC
+
+**Kolejność faz nie jest dowolna — i wymusza ją nie tylko wycena, ale i bezpieczeństwo.**
+
+Publiczne są **wyłącznie** `/api/v1/auth/**` i `/actuator/health`; `SecurityConfiguration` kończy się
+na `anyRequest().authenticated()`. Oznacza to, że **`/quote/publish` też wymaga tokenu**, więc
+notowań nie da się opublikować przed rejestracją użytkownika. Kolejność jest zatem:
+rejestracja → notowania → połączenie → spec → zatwierdzenie → odczyt.
+
+**Token zwykłego użytkownika wystarcza.** `Role.USER` ma pusty zbiór uprawnień, a żaden endpoint
+`vidulum-wealth` nie sprawdza roli — rolę weryfikuje wyłącznie `/api/v1/management/**`, którego POC
+nie dotyka. Konto administracyjne ani seed nie są potrzebne.
+
+Notowania muszą trafić do cache providera **zanim powstanie portfel** — `GET /portfolio/{id}/{currency}` pobiera cenę dla **każdego** aktywa, łącznie z gotówką.
+Dla euro w portfelu wycenianym w euro to symbol `EUR/EUR`, a `BrokerQuotationProvider.fetch` nie ma
+dla gotówki żadnego przypadku szczególnego: brak w cache → `QuoteNotFoundException`.
+
+Sześć notowań wymaganych dla konta testowego, w tym **`EUR/EUR = 1.0`**:
+
+```
+BTC/EUR · ETH/EUR · XRP/EUR · USD/EUR · USDC/EUR · EUR/EUR = 1.0
+```
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant POC as POC Node
     participant OKX as OKX API<br/>eea.okx.com
-    participant AU as shared-kernel<br/>AuthenticationController
-    participant PF as vidulum-wealth<br/>PortfolioRestController
-    participant SP as vidulum-wealth<br/>PortfolioSpecRestController
+    participant EX as vidulum-wealth<br/>ExchangeStatusController
     participant QT as vidulum-wealth<br/>QuoteRestController
+    participant AU as shared-kernel<br/>AuthenticationController
+    participant SP as vidulum-wealth<br/>PortfolioSpecRestController
+    participant PF as vidulum-wealth<br/>PortfolioRestController
     participant KF as Kafka quotes
     participant DB as Mongo
 
@@ -326,51 +558,60 @@ sequenceDiagram
     POC->>OKX: GET /api/v5/account/config
     OKX-->>POC: uid, perm=read_only
     POC->>OKX: GET /api/v5/account/balance
-    OKX-->>POC: 6 walut, cashBal availBal frozenBal, openAvgPx dla BTC
+    OKX-->>POC: 6 walut, cashBal availBal frozenBal, spotBal openAvgPx dla BTC
     POC->>OKX: GET /api/v5/trade/orders-pending
-    OKX-->>POC: 4 otwarte zlecenia, zrodlo frozenBal
-    end
-
-    rect rgb(232, 234, 246)
-    Note over POC,DB: FAZA 2 - zalozenie uzytkownika i portfela
-    POC->>AU: POST /api/v1/auth/register
-    AU-->>POC: access_token, user_id
-    Note right of POC: portfel NIE powstaje tutaj —<br/>powstanie z zatwierdzonego spec-u
-    end
-
-    rect rgb(255, 243, 224)
-    Note over POC,DB: FAZA 3 - spec i zatwierdzenie, NOWE ENDPOINTY D1 D2 D3
-    POC->>SP: POST /portfolio-spec
-    Note right of POC: snapshot + stan znany<br/>przy onboardingu stan pusty
-    SP->>DB: zapis draft
-    SP-->>POC: specId + lista pytan
-    POC->>SP: PUT /portfolio-spec/{specId}/answers
-    Note right of POC: ETH - cena podana recznie<br/>fiat - potwierdzone 1:1
-    SP-->>POC: stan confirmed
-    POC->>SP: POST /portfolio-spec/{specId}/confirm
-    SP->>SP: walidacja wzgledem snapshotu
-    SP->>DB: Portfolio + Asset BTC/okx-bought + BTC/unknown-origin + 5 walut
-    SP-->>POC: portfolioId
+    OKX-->>POC: 4 zlecenia z ordId, zrodlo frozenBal
+    POC->>OKX: GET /api/v5/market/ticker per instId
+    OKX-->>POC: kursy BTC-EUR ETH-EUR XRP-EUR USD-EUR USDC-EUR
     end
 
     rect rgb(243, 229, 245)
-    Note over POC,KF: FAZA 4 - notowania dla aktywow z portfela
-    POC->>OKX: GET /api/v5/market/ticker?instId=BTC-EUR
-    OKX-->>POC: last = 66532.9
-    loop dla kazdego aktywa w portfelu
+    Note over POC,KF: FAZA 2 - notowania NAJPIERW, inaczej faza 5 rzuci wyjatkiem
+    loop kazdy ticker ze snapshotu
         POC->>QT: GET /quote/publish?broker=OKX&origin=BTC&destination=EUR&amount=66532.9
         QT->>KF: PriceChangedEvent
         KF->>QT: onPriceChange -> OkxBrokerQuotationProvider
     end
+    POC->>QT: GET /quote/publish?broker=OKX&origin=EUR&destination=EUR&amount=1.0
+    Note right of POC: gotowka tez wymaga notowania
+    POC->>EX: GET /exchange/OKX/status
+    EX-->>POC: status ONLINE, brokerRegistered true, quotesReady true
+    end
+
+    rect rgb(232, 234, 246)
+    Note over POC,DB: FAZA 3 - uzytkownik i polaczenie z gielda
+    POC->>AU: POST /api/v1/auth/register
+    AU-->>POC: access_token, user_id
+    POC->>SP: POST /exchange-connection
+    Note right of POC: accountUid z config, region EEA,<br/>environment DEMO, denominationCurrency EUR
+    SP->>DB: zapis ExchangeConnection, status PENDING
+    SP-->>POC: connectionId
+    end
+
+    rect rgb(255, 243, 224)
+    Note over POC,DB: FAZA 4 - specyfikacja i zatwierdzenie
+    POC->>SP: POST /portfolio-spec
+    Note right of POC: connectionId + snapshot z perm<br/>stan znany pusty, bo pierwszy raz
+    SP->>SP: walidacja perm == read_only
+    SP->>DB: zapis snapshotu i draft spec-u, TTL 15 min
+    SP-->>POC: specId + lista pytan
+    POC->>SP: PUT /portfolio-spec/{specId}/answers
+    Note right of POC: ETH cena reczna, fiat potwierdzone 1:1
+    SP-->>POC: stan confirmed
+    POC->>SP: POST /portfolio-spec/{specId}/confirm
+    SP->>SP: swiezy snapshot i porownanie, walidacja
+    SP->>DB: Portfolio + Assets + locki z ordId OKX
+    SP->>DB: ExchangeConnection.portfolioId, status ACTIVE
+    SP-->>POC: portfolioId
     end
 
     rect rgb(232, 245, 233)
     Note over POC,DB: FAZA 5 - odczyt wyceny
-    POC->>PF: GET /portfolio/{id}/EUR
+    POC->>PF: GET /portfolio/{portfolioId}/EUR
     PF->>DB: odczyt Portfolio i Asset
-    PF->>QT: fetch ceny dla kazdego tickera
+    PF->>QT: fetch ceny dla kazdego tickera, takze EUR/EUR
     QT-->>PF: AssetPriceMetadata
-    PF-->>POC: wartosc, wynik dla czesci znanej, pokrycie
+    PF-->>POC: wartosc, wynik czesci znanej, pokrycie
     end
 ```
 
@@ -415,7 +656,7 @@ odczycie, z bieżących notowań. Dlatego ten sam `GET` dwie minuty później zw
 
 ---
 
-## 7. Zmiany w modelu danych
+## 8. Zmiany w modelu danych
 
 ```mermaid
 flowchart TB
@@ -460,10 +701,12 @@ flowchart TB
 | `Price.one` / `Price.zero` | używane jako ukryte znaczniki „nie wiem" przy depozycie i agregacji | F3 |
 | `websocket-gateway` | ma własny `pom.xml`, ale **nie ma go w `<modules>` roota** | F4 |
 | `BrokerQuotationProvider` | fallback przyjmuje kurs USDT jako USD 1:1, bez przeliczenia | B4 |
+| `Portfolio.investedBalance` | aktualizowane **wyłącznie** w `deposit` i `withdraw`; ścieżka spec-u omija obie | C9 — świadomie zero w POC |
+| `Asset.AssetLock` | wymaga `orderId` — na szczęście `orders-pending` z OKX go daje, więc lock może nieść **prawdziwy** identyfikator zlecenia giełdowego | D5 |
 
 ---
 
-## 8. Lista zadań
+## 9. Lista zadań
 
 Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2** poprawność długoterminowa · **P3** dług techniczny.
 
@@ -474,6 +717,8 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | A1 | Decyzja o module Maven `okx` | Gdzie leży (`vidulum-wealth/okx` czy top-level), jak podlega regule `shared-kernel ← wealth ← app`. Repo ma precedens: `vidulum-cashflow` ma 2 submoduły. | P0 | open | — |
 | A2 | Szkielet modułu + rejestracja w reaktorze | `pom.xml`, wpis w `<modules>`, pusty pakiet, build przechodzi. | P0 | open | A1 |
 | A3 | `ErrorHttpHandler` + `ErrorCode` | Dodać obsługę `BrokerNotFoundException`, `OrderNotFoundException`, `QuoteNotFoundException` oraz nowych wyjątków OKX. Dziś żaden wyjątek z wealth nie jest obsłużony. | P1 | open | A2 |
+| A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny, `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". | P0 | open | A2 |
+| A6 | Walidacja `perm == read_only` | Snapshot niesie `perm`; backend odrzuca spec, jeśli klucz ma szersze uprawnienia. Wymóg nienegocjowalny z `OKX-CONTEXT.md`. | P0 | open | A5 |
 | A4 | `DataCleaner` dla encji OKX | Każda nowa `@Document` musi trafić do cleanera modułu — wymóg z `CLAUDE.md`. | P1 | open | A2 |
 
 ### Ścieżka B — broker i notowania
@@ -483,6 +728,8 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | B1 | `OkxBrokerQuotationProvider` | Implementacja `BrokerQuotationProvider` dla `Broker("OKX")`: cache cen, `onPriceChange`, `fetch`. | P0 | open | A2 |
 | B2 | Rejestracja providera | `QuotationService.registerBroker(...)` przy starcie. Bez tego `PriceChangedEvent` dla OKX wybucha przy konsumpcji z Kafki. | P0 | open | B1 |
 | B3 | Weryfikacja ścieżki publikacji | Sprawdzić `GET /quote/publish?broker=OKX&...` end-to-end: REST → Kafka `quotes` → provider → `GET /quote/OKX/BTC/EUR`. | P0 | open | B2 |
+| B5 | Notowania dla gotówki | `EUR/EUR = 1.0` i każda inna waluta portfela przeciwko walucie wyceny. Bez tego `GET /portfolio` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P0 | open | B3 |
+| B6 | Endpoint statusu giełdy | `GET /exchange/status` wg §5.5 — osiągalność, `brokerRegistered`, `quotesReady`. Potrzebny do testów i monitoringu, docelowo kontrolka w UI. | P1 | open | B2 |
 | B4 | Łańcuch denominacji do PLN | `openAvgPx` jest w USD niezależnie od pary; OKX nie ma par PLN. Potrzebny kurs USD/PLN z NBP i rozszerzenie fallbacku (dziś tylko `X/USD → X/USDT` z założeniem 1:1). | P2 | open | B3 |
 
 ### Ścieżka C — model `Portfolio` i `Asset`
@@ -496,6 +743,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | C5 | Zmiana wartości majątku | Osobna miara, **niewymagająca ceny nabycia** — odpowiada na „o ile zmienił się mój majątek", gdzie część nieznana jest pełnoprawna. | P1 | open | C2 |
 | C6 | Naprawa `AggregatedPortfolio` | Scalanie po `(ticker, subName)` zamiast po samym `ticker`, inaczej widok zbiorczy rozcieńcza średnią. | P1 | open | C2 |
 | C7 | Reguła sprzedaży nieznanej części | Sprzedaż pozycji bez kosztu to zdarzenie podatkowe, którego nie policzymy. Zażądać ceny albo zapisać z jawnie brakującym kosztem — nigdy nie przyjmować zera. | P2 | open | C2 |
+| C9 | `investedBalance` przy tworzeniu ze spec-u | **Odłożone. Decyzja POC: zostaje zerem.** Pole aktualizują wyłącznie `deposit` i `withdraw`, a ścieżka spec-u omija obie — portfel ze snapshotu pokaże „zainwestowano 0" przy sześciu aktywach. Świadomie odłożone, **nie przeoczone**. Do rozstrzygnięcia: czy ma to być suma znanych kosztów przeliczona na walutę wyceny, czy pole traci sens przy portfelu ze snapshotu i wymaga zastąpienia miarą liczoną z `CostBasis`. Interfejs nie może pokazywać zera jako prawdy. | P1 | open | C1, D3 |
 | C8 | „Nieznane" jako zadanie | Ekran/flaga „uzupełnij cenę nabycia". Bez tego użytkownik nie odliczy kosztów przy PIT. | P2 | open | C2 |
 
 ### Ścieżka D — PortfolioSpec
@@ -510,6 +758,8 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | D6 | Reguły nadpisywania wg proweniencji | `ASSUMED_PAR` i `EXCHANGE_REPORTED` nadpisywalne po cichu, `USER_PROVIDED` **nigdy bez pytania**. | P1 | open | D2 |
 | D7 | Obsługa zestarzałego snapshotu | Stan `stale`: przeliczyć różnicę od nowa, zadać tylko pytania nadal aktualne, nie stosować nieaktualnych odpowiedzi. | P2 | open | D1 |
 | D8 | Idempotencja i brak pustych spec-ów | Synchronizacja bez zmian **nie tworzy spec-u**. Powtórne zatwierdzenie tego samego spec-u nie zmienia danych. | P2 | open | D3 |
+| D10 | TTL i stany terminalne | TTL 15 min na snapshot, **nie na odpowiedzi**. `stale` przelicza różnicę i zachowuje pasujące odpowiedzi. `cancelled` jako świadome przerwanie onboardingu. `failed` przy nieudanym zapisie. | P1 | open | D1 |
+| D11 | `confirm` zawsze na świeżym snapshocie | Niezależnie od wieku spec-u: pobierz ponownie, porównaj, przy zgodności zastosuj, przy różnicy wróć do `awaiting_answer`. | P1 | open | D3 |
 | D9 | `DataCleaner` dla `PortfolioSpec` | Wymóg z `CLAUDE.md` dla każdej nowej encji `@Document`. | P1 | open | D1 |
 
 ### Ścieżka E — POC w Node
@@ -519,6 +769,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | E1 | Odczyt stanu z OKX | `account/config`, `account/balance`, `orders-pending`, `market/ticker`. | P0 | **finished** | — |
 | E2 | Rejestracja użytkownika + JWT | `POST /api/v1/auth/register`, zapamiętanie tokenu do kolejnych wywołań. | P0 | open | A2 |
 | E3 | Zebranie snapshotu do spec-u | Złożenie stanu z `account/balance` i `orders-pending` w kształt oczekiwany przez `POST /portfolio-spec`. | P0 | open | E2 |
+| E8 | Publikacja notowań przed onboardingiem | Faza 2: wszystkie tickery ze snapshotu plus `EUR/EUR = 1.0`, weryfikacja przez `GET /exchange/OKX/status`. | P0 | open | B5, B6 |
 | E4 | Przejście ścieżki spec-u | `POST /portfolio-spec` ze snapshotem, odpowiedzi na pytania, `confirm`. Podział na `okx-bought` / `unknown-origin` wg `spotBal` robi silnik różnicy, nie POC. | P0 | open | D3, E3 |
 | E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu. | P1 | open | B3, E4 |
 | E6 | Pętla odświeżania | Cykliczne pobranie tickerów i republikacja, żeby wycena żyła. | P1 | open | E5 |
@@ -535,7 +786,40 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 
 ---
 
-## 9. Kolejność wykonania
+## 10. Rejestr decyzji
+
+Ustalenia podjęte w trakcie analizy, zebrane w jednym miejscu, żeby nie trzeba było ich odtwarzać
+z historii rozmów.
+
+| # | decyzja | uzasadnienie |
+|---|---|---|
+| 1 | Bez osobnego read-modelu — dane idą przez `Portfolio` i `Asset` | klasy domenowe dostosowujemy do rzeczywistości, zamiast omijać |
+| 2 | Dwie pozycje na aktywo: znana i nieznana, rozróżniane `subName` | model już wspiera `(ticker, subName)`; wzór na wynik zostaje bez zmian |
+| 3 | Część nieznana jest **neutralna** dla wyniku | nie zmyślamy kosztu; osobna miara zmiany wartości majątku (C5) |
+| 4 | `PortfolioSpec` jako silnik **każdej** synchronizacji, nie tylko onboardingu | onboarding to przypadek z pustym stanem znanym |
+| 5 | TTL spec-u 15 min — na **snapshot**, nie na odpowiedzi | odpowiedź „ETH kosztowało 2 400 EUR" nie starzeje się |
+| 6 | `confirm` zawsze pobiera świeży snapshot i porównuje | czas to tylko przybliżenie pytania „czy coś się zmieniło" |
+| 7 | Proweniencja ze słownika zamkniętego | umożliwia regułę „czego wolno nie pytać przed nadpisaniem" |
+| 8 | `reportedKeyPermissions` zamiast `perm` | nazwa mówi, że to wartość zgłoszona, nie zweryfikowana |
+| 9 | Notowania do cache **przed** utworzeniem portfela, po rejestracji | `GET /portfolio` pobiera cenę dla każdego aktywa, także gotówki |
+| 10 | `EUR/EUR = 1.0` jako pełnoprawne notowanie | gotówka jest aktywem i też potrzebuje kursu |
+| 11 | `ExchangeConnection` z `accountUid` jako kluczem naturalnym | wykrywa podłączenie tego samego konta dwa razy |
+| 12 | Waluta wyceny to **wejście** połączenia, nie wynik spec-u | notowania publikuje się przeciwko niej, a idą pierwsze |
+| 13 | `name` podaje użytkownik | |
+| 14 | `allowedDepositCurrency` to pojęcie **osobne** od waluty wyceny, ale **domyślnie jej równe** | semantycznie to co innego; przy portfelu ze snapshotu ścieżka `deposit` i tak nie jest używana, więc wartość jest bezczynna — domyślna równość znosi jedno pytanie z onboardingu, a zachowuje przewidywalność, gdyby ktoś kiedyś użył `POST /portfolio/deposit` |
+| 21 | **Konto admina nie jest potrzebne** — wystarczy token zwykłego użytkownika | `Role.USER` ma pusty zbiór uprawnień, a `SecurityConfiguration` kończy się na `anyRequest().authenticated()`; żaden endpoint `vidulum-wealth` nie sprawdza roli. Weryfikowane w kodzie |
+| 22 | `investedBalance` — **odłożone**, bez decyzji docelowej | w POC zero (C9); temat wraca przy pierwszym ekranie z podsumowaniem portfela |
+| 15 | `investedBalance` zostaje zerem w POC (C9) | świadomie odłożone; UI nie może pokazywać zera jako prawdy |
+| 20b | `GET /exchange/status` wymaga tokenu jak reszta | spójne z resztą API; jeśli monitoring zewnętrzny będzie tego potrzebował, endpoint nie ujawnia danych użytkownika, więc dopisanie do `WHITE_LIST_URL` będzie bezpieczne |
+| 16 | Jedno `Portfolio` na Funding i Trading | przelew wewnętrzny nie jest wpłatą ani wypłatą |
+| 17 | Przegródka Funding/Trading **nie** w `subName` | to drugi, ortogonalny wymiar — osobny atrybut, gdy będzie potrzebny |
+| 18 | Dwa znaczniki czasu: `portfolioSyncedAt` i `quotesAsOf` | rozjeżdżają się w obie strony, UI nie może ich zlewać |
+| 19 | Offline nie blokuje odczytu portfela | zwracamy ostatnią znaną wycenę, oznaczoną jako nieaktualną |
+| 20 | POC nie jest idempotentny | przy ponownym uruchomieniu: „konto już podłączone, spróbuj z czystym stanem" |
+
+---
+
+## 11. Kolejność wykonania
 
 Ścieżka krytyczna do działającego POC:
 
@@ -554,7 +838,7 @@ Zadania **P0** wystarczają, żeby zobaczyć portfel z aktualną wyceną. **P1**
 liczby są uczciwe. **P2** i **P3** można odłożyć, ale C7 i C8 muszą być gotowe, zanim ktokolwiek
 użyje tych danych do rozliczenia.
 
-## 10. Czego ta analiza nie rozstrzyga
+## 12. Czego ta analiza nie rozstrzyga
 
 - **Kiedy logika przenosi się z Node do Javy.** POC dowodzi przepływu; docelowa architektura
   z `OKX-CONTEXT.md` (poświadczenia w Mongo, WS per user, Kafka) to osobna decyzja.
@@ -562,5 +846,9 @@ użyje tych danych do rozliczenia.
   ale jej koszt rośnie z czasem: prowizje pobierane w walucie bazowej, subkonta Funding/Trading,
   wielowalutowość i `investedBalance` jako pojedyncza liczba. Każde z nich będzie wymagało zmiany
   w `Portfolio`, a nie obejścia obok niego.
+- **Docelowe znaczenie `investedBalance`.** W POC zero, świadomie (C9). Przy pierwszym ekranie
+  z podsumowaniem portfela trzeba będzie rozstrzygnąć, czy to suma znanych kosztów przeliczona na
+  walutę wyceny, czy pole traci sens przy portfelu ze snapshotu i wymaga zastąpienia miarą liczoną
+  z `CostBasis`.
 - **Konto Funding.** Żaden kanał WS go nie pokrywa; snapshot musi go dociągać osobno przez
   `GET /api/v5/asset/balances`. W POC pomijane.
