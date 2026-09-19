@@ -865,7 +865,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | E4 | Przejście ścieżki spec-u | `POST /portfolio-spec` ze snapshotem, odpowiedzi na pytania, `confirm`. Podział na `okx-bought` / `unknown-origin` wg `spotBal` robi silnik różnicy, nie POC. | P0 | open | D3, E3 |
 | E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu. | P1 | open | B3, E4 |
 | E6 | Pętla odświeżania | Cykliczne pobranie tickerów i republikacja, żeby wycena żyła. | P1 | open | E5 |
-| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR`, pokazanie wartości, wyniku i pokrycia. | P1 | open | E4 |
+| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR`, pokazanie wartości, wyniku i pokrycia. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P1 | open | E4, E8 |
 
 ### Ścieżka F — dług techniczny
 
