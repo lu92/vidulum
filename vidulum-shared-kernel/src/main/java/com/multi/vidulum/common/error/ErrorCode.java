@@ -149,7 +149,14 @@ public enum ErrorCode {
     EXCHANGE_ACCOUNT_ALREADY_CONNECTED(HttpStatus.CONFLICT, "Exchange account is already connected"),
     EXCHANGE_CONNECTION_INVALID_TRANSITION(HttpStatus.CONFLICT, "Operation not allowed in current connection status"),
     EXCHANGE_KEY_PERMISSIONS_NOT_REPORTED(HttpStatus.BAD_REQUEST, "API key permissions were not reported"),
-    EXCHANGE_KEY_PERMISSIONS_TOO_BROAD(HttpStatus.UNPROCESSABLE_ENTITY, "API key must be read-only");
+    EXCHANGE_KEY_PERMISSIONS_TOO_BROAD(HttpStatus.UNPROCESSABLE_ENTITY, "API key must be read-only"),
+    EXCHANGE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "Exchange is not supported"),
+    EXCHANGE_REGION_UNKNOWN(HttpStatus.BAD_REQUEST, "Region is not served by this exchange"),
+
+    // ============ Wealth (portfolio, trading, quotations) ============
+    BROKER_NOT_FOUND(HttpStatus.NOT_FOUND, "Broker not found"),
+    QUOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Quote not found for symbol"),
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;
