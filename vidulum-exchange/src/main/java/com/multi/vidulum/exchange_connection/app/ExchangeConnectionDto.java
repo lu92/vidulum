@@ -55,6 +55,12 @@ public final class ExchangeConnectionDto {
             CredentialsMode credentialsMode) {
     }
 
+    /** Request body of {@code POST /exchange-connection/{id}/revoke}. */
+    public record RevokeConnectionJson(
+            @NotBlank(message = "reason is required")
+            String reason) {
+    }
+
     /**
      * Connection as the API returns it.
      *

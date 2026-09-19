@@ -6,6 +6,7 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommand;
 import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommand;
+import com.multi.vidulum.exchange_connection.app.commands.revoke.RevokeExchangeConnectionCommand;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQuery;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQuery;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
@@ -54,6 +55,21 @@ public class ExchangeConnectionRestController {
                         request.credentialsMode()
                 )
         );
+
+        return ExchangeConnectionDto.ExchangeConnectionJson.from(connection);
+    }
+
+    /**
+     * The exchange is no longer reachable with this key. Nothing is deleted: the connection keeps
+     * its account id and its portfolio so {@link #reconnect} can pick it back up.
+     */
+    @PostMapping("/{connectionId}/revoke")
+    public ExchangeConnectionDto.ExchangeConnectionJson revoke(
+            @PathVariable String connectionId,
+            @Valid @RequestBody ExchangeConnectionDto.RevokeConnectionJson request) {
+
+        ExchangeConnection connection = commandGateway.send(new RevokeExchangeConnectionCommand(
+                currentUser(), ExchangeConnectionId.of(connectionId), request.reason()));
 
         return ExchangeConnectionDto.ExchangeConnectionJson.from(connection);
     }
