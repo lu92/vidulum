@@ -165,6 +165,144 @@ Trzy zastrzeżenia do tej reguły, obsługiwane osobnymi zadaniami:
 - „Nieznane" to **zadanie do uzupełnienia**, nie stan docelowy. Bez tego użytkownik nie odliczy
   kosztów przy rozliczeniu (C8).
 
+
+### 3.1 `CostBasis` — typ, który uniemożliwia zmyślenie kosztu (C1)
+
+Reguła z §3 („wynik tylko ze znanej części") nie obroni się sama, dopóki koszt nabycia jest
+obowiązkowym `Price`. C1 zamienia ją w niezmiennik typu.
+
+#### Co dokładnie jest zepsute dzisiaj
+
+Cztery miejsca, nie jedno:
+
+| miejsce | co robi | dlaczego to błąd |
+|---|---|---|
+| `PortfolioSummaryMapper:127` | `oldValue = avgPurchasePrice × quantity`, potem `profit = currentValue − oldValue` | mnoży cenę **znanej części** przez **całe saldo** — przy 0,3 kupionego ze 100 zysk jest zmyślony |
+| `AggregatedPortfolio:126` | `Price.zero("USD")` | sentinel „nie wiem" nieodróżnialny od ceny zero, do tego waluta zaszyta niezależnie od portfela |
+| `Portfolio:236` (depozyt) | `Price.one(currency)` | semantycznie prawda, ale zapisana jako liczba nieodróżnialna od prawdziwej ceny 1 |
+| `Portfolio:178`, `:211` | średnia ważona przez `getValue()` | dołożenie pozycji o koszcie zero po cichu rozcieńcza średnią — odwrotny wariant tego samego błędu |
+
+Przy okazji rozbrajana jest pułapka: `Money.diffPct` ma strażnika na `this.amount`, ale **nie na
+dzielniku**. Zerowy `oldValue` przy niezerowej wartości bieżącej to `ArithmeticException`.
+Dziś trudno tam trafić, bo ceny biorą się z transakcji; staje się osiągalne w chwili, gdy
+cokolwiek zapisze koszt zero.
+
+#### Typ
+
+```java
+public record CostBasis(
+        Quantity quantity,      // ilu sztuk ten koszt dotyczy
+        Price avgPrice,         // średnia cena nabycia TEJ ilości
+        Provenance provenance   // skąd ta liczba
+) {}
+```
+
+`Asset.costBasis` jest **nullowalne**. `null` znaczy „nie znamy kosztu" i jest **jedynym**
+sposobem wyrażenia niewiedzy.
+
+**Dlaczego `quantity` w środku, skoro `Asset` już ją ma.** Bo mogą się różnić: trzymasz 100,
+znasz koszt 0,3. To jedyny sposób, żeby policzyć `oldValue` na tym, czego koszt faktycznie
+znamy. Po C2 w większości przypadków będą równe, ale **C1 wchodzi przed C2** i właśnie wtedy
+własne `quantity` jest niezbędne. Później zostaje jako sprawdzalny niezmiennik
+`costBasis.quantity <= asset.quantity`.
+
+#### Proweniencja — cztery wartości
+
+| wartość | kto produkuje | co wolno |
+|---|---|---|
+| `EXCHANGE_REPORTED` | `openAvgPx` / `accAvgPx` z giełdy | nadpisywalne po cichu |
+| `DERIVED_FROM_FILLS` | własna historia transakcji (`handleExecutedTrade`) | nadpisywalne po cichu |
+| `ASSUMED_PAR` | gotówka i stablecoiny — zastępuje `Price.one` | nadpisywalne po cichu |
+| `USER_PROVIDED` | człowiek odpowiedział „kosztowało 2400 EUR" | **nigdy bez pytania** (D6) |
+
+**`UNKNOWN` z pierwotnego szkicu zostaje usunięte.** Nie ma producenta: skoro `null` znaczy
+„nie wiemy", to `UNKNOWN` jest drugim sposobem powiedzenia tego samego, a dwa sposoby gwarantują,
+że kod będzie sprawdzał jeden i pomijał drugi. Jedyne uzasadnienie to dane zastane o nieznanym
+pochodzeniu — a tych nie ma, bo aplikacja nie ma użytkowników.
+
+#### Zmiana w `Asset`
+
+```java
+public Money getValue() {                       // usuwane
+    return avgPurchasePrice.multiply(quantity);
+}
+
+public Optional<Money> knownCost()              // costBasis.avgPrice × costBasis.quantity
+public Quantity coveredQuantity()               // ile z pozycji ma znany koszt
+```
+
+`getValue()` jest dwuznaczne — brzmi jak wartość rynkowa, a znaczy koszt nabycia. Ta
+dwuznaczność jest w połowie odpowiedzialna za błąd w `PortfolioSummaryMapper`. `Optional` zmusza
+każde wywołanie do rozstrzygnięcia, co zrobić z brakiem kosztu, zamiast dostać zmyślone zero.
+
+Interfejs `Valuable` ma **jednego** implementującego (`Asset`), więc znika razem z metodą.
+
+#### 26 miejsc wywołań
+
+**Mechaniczne przeniesienie (11):** `PortfolioSnapshot.AssetSnapshot`, `PortfolioEntity` ×3,
+`Portfolio:48`, `Portfolio:80`, `RiskManagementMapper`, `AssetRiskManagementStatement`,
+`RiskManagementDto`, `PortfolioDto`, `PortfolioSummaryMapper:144`.
+
+Dwie decyzje w tej grupie: w **encji Mongo spłaszczyć do trzech pól** (`costQuantity`,
+`costPrice`, `costProvenance`), żeby dokument został czytelny, a `null` jednoznaczny; w **DTO
+wystawić jako obiekt zagnieżdżony** z proweniencją, bo interfejs musi umieć pokazać „ta liczba
+pochodzi od ciebie" kontra „z giełdy".
+
+**Arytmetyka wymagająca decyzji (7):** `Asset.getValue`, `Portfolio.increaseAsset`,
+`Portfolio.reduceAsset`, `AggregatedPortfolio` ×3, `PortfolioSummaryMapper:127`.
+
+- `increaseAsset` / `reduceAsset` — średnia ważona liczona **tylko po znanych częściach**;
+  dołożenie porcji o nieznanym koszcie nie rusza średniej, tylko zmniejsza pokrycie.
+- `PortfolioSummaryMapper:127` — `oldValue` z `knownCost()`, a przy `Optional.empty()` zysk
+  **nie jest liczony wcale**. Nie zero, nie null-jako-zero: pole nieobecne. Docelowo to C3 i C4,
+  ale C1 musi już nie kłamać.
+- `AggregatedPortfolio:126` — `Price.zero("USD")` znika, zastępuje je `null`.
+
+**Producenci (2):** `Portfolio:187` (transakcja → `DERIVED_FROM_FILLS`), `Portfolio:236`
+(depozyt → `ASSUMED_PAR`).
+
+#### Otwarte przy wdrożeniu
+
+1. Czy `reduceAsset` zmniejsza `costBasis.quantity` proporcjonalnie przy sprzedaży części —
+   tak przy `DERIVED_FROM_FILLS`; sprzedaż pozycji **bez** kosztu to zdarzenie podatkowe,
+   którego nie policzymy, i należy do C7. W C1 wystarczy nie przyjąć zera.
+2. Waluta kosztu kontra waluta wyceny. `Price` niesie własną walutę, więc koszt w USDC przy
+   wycenie w EUR wymaga przeliczenia. `PortfolioSummaryMapper` już to robi przez
+   `denominateInCurrency`; C1 tego nie zmienia, ale kurs historyczny kontra bieżący to osobny
+   problem.
+
+#### Znalezione przy wdrożeniu
+
+**Wypłata nie aktualizowała kosztu.** `apply(MoneyWithdrawEvent)` zmniejszał ilość, ale nie
+`costBasis`, więc po wypłacie całości koszt nadal twierdził, że pokrywa 10 000 sztuk, których
+już nie ma. Wykrył to test, którego oczekiwanie powstało mechanicznie z ilości — czyli dokładnie
+ta własność, dla której `CLAUDE.md` każe porównywać całe obiekty.
+
+**Średnia cena zakupu pochłaniała wpływy ze sprzedaży — i podwajała zysk.** Stary `reduceAsset`
+odejmował od kosztu pozostałej pozycji to, co sprzedana część przyniosła:
+
+```java
+Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
+Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
+```
+
+Skutek na realnym przypadku z `shouldBuyBitcoinTest`: kupione 1 BTC po 60 000, sprzedane 0,25 po
+80 000. Zysk zrealizowany raportowany osobno jako 4 750 USD — a koszt reszty spadał z 60 000 do
+53 333, więc ta sama nadwyżka wracała drugi raz jako 5 000 USD zysku niezrealizowanego. Łącznie
+9 750 zamiast 5 000.
+
+Po zmianie **to, co zapłaciłeś, nie zmienia się dlatego, że sprzedałeś część**. Koszt jest
+przycinany do pozostałej ilości, a nie przeliczany. Oczekiwania w trzech testach zostały
+poprawione wraz z komentarzem — stare liczby kodowały starą, błędną semantykę.
+
+Formalnie wykracza to poza „wprowadź typ", ale mieści się w tym, po co C1 istnieje: koszt, który
+pochłania wpływy ze sprzedaży, jest kosztem, który kłamie.
+
+#### Czego C1 nie robi
+
+Nie rozdziela pozycji (C2), nie wyłącza nieznanej części z wyniku (C3), nie liczy pokrycia (C4),
+nie rusza `investedBalance` (C9) ani pozostałych sentineli (F3). C1 to **typ plus przeprowadzenie
+go przez 26 miejsc** tak, żeby nic nie zmyślało liczby.
 ---
 
 ## 4. PortfolioSpec — onboarding jako pierwszy przypadek synchronizacji
@@ -999,6 +1137,9 @@ flowchart TB
 
 ## 9. Lista zadań
 
+Statusy **nie są tutaj** — trzyma je [tablica zadań](2026-09-18-okx-tasks.md), żeby nie
+rozjeżdżały się między dwoma plikami. Ta lista mówi, **co** każde zadanie obejmuje.
+
 > **Statusy śledzimy w osobnym pliku:** [`2026-09-18-okx-tasks.md`](2026-09-18-okx-tasks.md) —
 > tablica z postępem, zadaniami gotowymi do wzięcia i grafem zależności. Tamten plik jest **źródłem
 > prawdy o statusach**; poniższe tabele trzymają opisy i uzasadnienia. Zmieniając status, edytuj
@@ -1009,81 +1150,81 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 
 ### Ścieżka A — fundamenty modułu
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| A1 | Decyzja o module Maven `okx` | Gdzie leży (`vidulum-wealth/okx` czy top-level), jak podlega regule `shared-kernel ← wealth ← app`. Repo ma precedens: `vidulum-cashflow` ma 2 submoduły. | P0 | open | — |
-| A2 | Szkielet modułu + rejestracja w reaktorze | `pom.xml`, wpis w `<modules>`, pusty pakiet, build przechodzi. | P0 | open | A1 |
-| A10 | Moduł `vidulum-exchange` i przeniesienie modelu połączenia | Nowy moduł zależny **tylko** od `shared-kernel`, wstawiony w reaktorze przed `vidulum-wealth`. Przeniesienie `ExchangeConnection` z całą infrastrukturą, `Exchange` → `Broker`, `region` → `String`, `ExchangeRegion` → `OkxRegion` w module giełdy. Patrz §5.9. | P0 | open | A5 |
-| A3 | `ErrorHttpHandler` + `ErrorCode` | Dodać obsługę `BrokerNotFoundException`, `OrderNotFoundException`, `QuoteNotFoundException` oraz nowych wyjątków OKX. Dziś żaden wyjątek z wealth nie jest obsłużony. | P1 | open | A2 |
-| A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny (**indeks unikalności**), `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". Wnosi pierwszą kolekcję Mongo w module (→ A4) i pierwsze wyjątki biznesowe (→ A3). | P0 | open | A2 |
-| A6 | Walidacja `perm == read_only` | Snapshot niesie `perm`; backend odrzuca spec, jeśli klucz ma szersze uprawnienia. Wymóg nienegocjowalny z `OKX-CONTEXT.md`. | P0 | open | A5 |
-| A8 | Onboarding połączenia — serwis i endpoint | `POST /exchange-connection` i `POST /exchange-connection/{id}/reconnect`. Bez niego nic nie tworzy `ExchangeConnection` przez HTTP, a `ExchangeAccountAlreadyConnectedException` nie ma kto rzucić — dziś podwójne podłączenie kończy się `DuplicateKeyException` z warstwy Mongo. Patrz §5.8. | P0 | open | A5, A6 |
-| A9 | Odczyt stanu połączenia | `GET /exchange-connection/{id}` i `GET /exchange-connection`. Zwraca `status`, `statusReason`, `portfolioId` oraz **oba** znaczniki czasu osobno (§5.6) — interfejs nie może ich zlać w jedno „zaktualizowano o 14:32". Nie myli się z `GET /exchange/{name}/status` z §5.7, które jest systemowe i nie zna użytkownika. | P1 | open | A8 |
-| A4 | `DataCleaner` dla encji OKX | Każda nowa `@Document` musi trafić do cleanera modułu — wymóg z `CLAUDE.md`. | P1 | open | A2 |
-| A7 | Ponowne podłączenie po przerwie | Wyszukanie połączenia po `accountUid`, przejście `REVOKED → ACTIVE` z zachowaniem `portfolioId`, utworzenie spec-u z **niepustym** stanem znanym. Patrz §5.8. Poza zakresem POC (decyzja 20). | P1 | open | A5, D1 |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| A1 | Decyzja o module Maven `okx` | Gdzie leży (`vidulum-wealth/okx` czy top-level), jak podlega regule `shared-kernel ← wealth ← app`. Repo ma precedens: `vidulum-cashflow` ma 2 submoduły. | P0 | — |
+| A2 | Szkielet modułu + rejestracja w reaktorze | `pom.xml`, wpis w `<modules>`, pusty pakiet, build przechodzi. | P0 | A1 |
+| A10 | Moduł `vidulum-exchange` i przeniesienie modelu połączenia | Nowy moduł zależny **tylko** od `shared-kernel`, wstawiony w reaktorze przed `vidulum-wealth`. Przeniesienie `ExchangeConnection` z całą infrastrukturą, `Exchange` → `Broker`, `region` → `String`, `ExchangeRegion` → `OkxRegion` w module giełdy. Patrz §5.9. | P0 | A5 |
+| A3 | `ErrorHttpHandler` + `ErrorCode` | `BrokerNotFoundException`, `OrderNotFoundException` i `QuoteNotFoundException` dziedziczyły po `RuntimeException`, więc dawały 500. Teraz po `BusinessException` z własnymi kodami; sam handler nie wymagał zmiany, bo mapuje `BusinessException` generycznie. | P1 | A2 |
+| A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny (**indeks unikalności**), `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". Wnosi pierwszą kolekcję Mongo w module (→ A4) i pierwsze wyjątki biznesowe (→ A3). | P0 | A2 |
+| A6 | Walidacja `perm == read_only` | Snapshot niesie `perm`; backend odrzuca spec, jeśli klucz ma szersze uprawnienia. Wymóg nienegocjowalny z `OKX-CONTEXT.md`. | P0 | A5 |
+| A8 | Onboarding połączenia — komendy i endpointy | `POST /exchange-connection` i `POST /exchange-connection/{id}/reconnect` przez `CommandGateway`, plus port `ExchangeAdapter` dla części giełdowej. Domyka dwie dziury: podwójne podłączenie dawało `DuplicateKeyException` (500), a puste pole — `IllegalArgumentException` (500). Patrz §5.10. | P0 | A5, A6, A10 |
+| A9 | Odczyt stanu połączenia | `GET /exchange-connection/{id}` i `GET /exchange-connection` przez `QueryGateway`. Zwraca `status`, `statusReason`, `portfolioId` oraz **oba** znaczniki czasu osobno (§5.6) — interfejs nie może ich zlać w jedno „zaktualizowano o 14:32". Nie myli się z `GET /exchange/{name}/status` z §5.7, które jest systemowe i nie zna użytkownika. | P1 | A8 |
+| A4 | `DataCleaner` dla `ExchangeConnection` | Każda nowa `@Document` musi trafić do cleanera modułu — wymóg z `CLAUDE.md`. Mieszka w `vidulum-exchange`, bo kolekcja `exchange_connections` jest wspólna dla wszystkich giełd. | P1 | A2 |
+| A7 | Ponowne podłączenie po przerwie | Wyszukanie połączenia po `accountUid`, przejście `REVOKED → ACTIVE` z zachowaniem `portfolioId`, utworzenie spec-u z **niepustym** stanem znanym. Patrz §5.8. Poza zakresem POC (decyzja 20). | P1 | A5, D1 |
 
 ### Ścieżka B — broker i notowania
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| B1 | `OkxBrokerQuotationProvider` | Implementacja `BrokerQuotationProvider` dla `Broker("OKX")`: cache cen, `onPriceChange`, `fetch`. | P0 | open | A2 |
-| B2 | Rejestracja providera | `QuotationService.registerBroker(...)` przy starcie. Bez tego `PriceChangedEvent` dla OKX wybucha przy konsumpcji z Kafki. | P0 | open | B1 |
-| B3 | Weryfikacja ścieżki publikacji | Sprawdzić `GET /quote/publish?broker=OKX&...` end-to-end: REST → Kafka `quotes` → provider → `GET /quote/OKX/BTC/EUR`. | P0 | open | B2 |
-| B5 | Notowania dla gotówki | `EUR/EUR = 1.0` i każda inna waluta portfela przeciwko walucie wyceny. Bez tego `GET /portfolio` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P0 | open | B3 |
-| B6 | Endpoint statusu giełdy | `GET /exchange/status` wg §5.5 — osiągalność, `brokerRegistered`, `quotesReady`. Potrzebny do testów i monitoringu, docelowo kontrolka w UI. | P1 | open | B2 |
-| B4 | Łańcuch denominacji do PLN | `openAvgPx` jest w USD niezależnie od pary; OKX nie ma par PLN. Potrzebny kurs USD/PLN z NBP i rozszerzenie fallbacku (dziś tylko `X/USD → X/USDT` z założeniem 1:1). | P2 | open | B3 |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| B1 | `OkxBrokerQuotationProvider` | Implementacja `BrokerQuotationProvider` dla `Broker("OKX")`: cache cen, `onPriceChange`, `fetch`. | P0 | A2 |
+| B2 | Rejestracja providera | `QuotationService.registerBroker(...)` przy starcie. Bez tego `PriceChangedEvent` dla OKX wybucha przy konsumpcji z Kafki. | P0 | B1 |
+| B3 | Weryfikacja ścieżki publikacji | Sprawdzić `GET /quote/publish?broker=OKX&...` end-to-end: REST → Kafka `quotes` → provider → `GET /quote/OKX/BTC/EUR`. | P0 | B2 |
+| B5 | Notowania dla gotówki | `EUR/EUR = 1.0` i każda inna waluta portfela przeciwko walucie wyceny. Bez tego `GET /portfolio` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P0 | B3 |
+| B6 | Endpoint statusu giełdy | `GET /exchange/status` wg §5.5 — osiągalność, `brokerRegistered`, `quotesReady`. Potrzebny do testów i monitoringu, docelowo kontrolka w UI. | P1 | B2 |
+| B4 | Łańcuch denominacji do PLN | `openAvgPx` jest w USD niezależnie od pary; OKX nie ma par PLN. Potrzebny kurs USD/PLN z NBP i rozszerzenie fallbacku (dziś tylko `X/USD → X/USDT` z założeniem 1:1). | P2 | B3 |
 
 ### Ścieżka C — model `Portfolio` i `Asset`
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| C1 | Typ `CostBasis` | Koszt nabycia niosący **własną ilość, walutę i proweniencję**: `{quantity, avgPrice{amount, currency}, provenance}` albo `null`. Proweniencja ze słownika zamkniętego: `EXCHANGE_REPORTED`, `USER_PROVIDED`, `ASSUMED_PAR`, `DERIVED_FROM_FILLS`, `UNKNOWN`. Uniemożliwia pomnożenie ceny znanej części przez całe saldo i pozwala rozstrzygać, co wolno nadpisać. | P0 | open | — |
-| C2 | Rozdzielenie pozycji po `subName` | `okx-bought` / `unknown-origin`. Model już wspiera `(ticker, subName)` — bez zmian w `findAssetByTickerAndSubName`. | P0 | open | C1 |
-| C3 | Wynik tylko ze znanej części | Pozycja bez `costBasis` nie wnosi zysku ani straty. | P1 | open | C2 |
-| C4 | Pokrycie wyniku | Przy każdej liczbie wyniku: ilu procent pozycji dotyczy. Przy niskim pokryciu liczba ustępuje komunikatowi. | P1 | open | C3 |
-| C5 | Zmiana wartości majątku | Osobna miara, **niewymagająca ceny nabycia** — odpowiada na „o ile zmienił się mój majątek", gdzie część nieznana jest pełnoprawna. | P1 | open | C2 |
-| C6 | Naprawa `AggregatedPortfolio` | Scalanie po `(ticker, subName)` zamiast po samym `ticker`, inaczej widok zbiorczy rozcieńcza średnią. | P1 | open | C2 |
-| C7 | Reguła sprzedaży nieznanej części | Sprzedaż pozycji bez kosztu to zdarzenie podatkowe, którego nie policzymy. Zażądać ceny albo zapisać z jawnie brakującym kosztem — nigdy nie przyjmować zera. | P2 | open | C2 |
-| C9 | `investedBalance` przy tworzeniu ze spec-u | **Odłożone. Decyzja POC: zostaje zerem.** Pole aktualizują wyłącznie `deposit` i `withdraw`, a ścieżka spec-u omija obie — portfel ze snapshotu pokaże „zainwestowano 0" przy sześciu aktywach. Świadomie odłożone, **nie przeoczone**. Do rozstrzygnięcia: czy ma to być suma znanych kosztów przeliczona na walutę wyceny, czy pole traci sens przy portfelu ze snapshotu i wymaga zastąpienia miarą liczoną z `CostBasis`. Interfejs nie może pokazywać zera jako prawdy. | P1 | open | C1, D3 |
-| C8 | „Nieznane" jako zadanie | Ekran/flaga „uzupełnij cenę nabycia". Bez tego użytkownik nie odliczy kosztów przy PIT. | P2 | open | C2 |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| C1 | Typ `CostBasis` | Koszt nabycia niosący **własną ilość, walutę i proweniencję**: `{quantity, avgPrice{amount, currency}, provenance}` albo `null`. Proweniencja ze słownika zamkniętego: `EXCHANGE_REPORTED`, `USER_PROVIDED`, `ASSUMED_PAR`, `DERIVED_FROM_FILLS`, `UNKNOWN`. Uniemożliwia pomnożenie ceny znanej części przez całe saldo i pozwala rozstrzygać, co wolno nadpisać. | P0 | — |
+| C2 | Rozdzielenie pozycji po `subName` | `okx-bought` / `unknown-origin`. Model już wspiera `(ticker, subName)` — bez zmian w `findAssetByTickerAndSubName`. | P0 | C1 |
+| C3 | Wynik tylko ze znanej części | Pozycja bez `costBasis` nie wnosi zysku ani straty. | P1 | C2 |
+| C4 | Pokrycie wyniku | Przy każdej liczbie wyniku: ilu procent pozycji dotyczy. Przy niskim pokryciu liczba ustępuje komunikatowi. | P1 | C3 |
+| C5 | Zmiana wartości majątku | Osobna miara, **niewymagająca ceny nabycia** — odpowiada na „o ile zmienił się mój majątek", gdzie część nieznana jest pełnoprawna. | P1 | C2 |
+| C6 | Naprawa `AggregatedPortfolio` | Scalanie po `(ticker, subName)` zamiast po samym `ticker`, inaczej widok zbiorczy rozcieńcza średnią. | P1 | C2 |
+| C7 | Reguła sprzedaży nieznanej części | Sprzedaż pozycji bez kosztu to zdarzenie podatkowe, którego nie policzymy. Zażądać ceny albo zapisać z jawnie brakującym kosztem — nigdy nie przyjmować zera. | P2 | C2 |
+| C9 | `investedBalance` przy tworzeniu ze spec-u | **Odłożone. Decyzja POC: zostaje zerem.** Pole aktualizują wyłącznie `deposit` i `withdraw`, a ścieżka spec-u omija obie — portfel ze snapshotu pokaże „zainwestowano 0" przy sześciu aktywach. Świadomie odłożone, **nie przeoczone**. Do rozstrzygnięcia: czy ma to być suma znanych kosztów przeliczona na walutę wyceny, czy pole traci sens przy portfelu ze snapshotu i wymaga zastąpienia miarą liczoną z `CostBasis`. Interfejs nie może pokazywać zera jako prawdy. | P1 | C1, D3 |
+| C8 | „Nieznane" jako zadanie | Ekran/flaga „uzupełnij cenę nabycia". Bez tego użytkownik nie odliczy kosztów przy PIT. | P2 | C2 |
 
 ### Ścieżka D — PortfolioSpec
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| D1 | Encja `PortfolioSpec` + silnik różnicy | Trwała encja z cyklem `draft → awaiting_answer → confirmed → applied → stale`. Powstaje z różnicy `snapshot − stan znany`; przy onboardingu stan znany jest pusty. Endpointy `POST /portfolio-spec` i `GET /portfolio-spec/{id}`. | P0 | open | C1, C2 |
-| D2 | Odpowiedzi użytkownika | `PUT /portfolio-spec/{id}/answers`. Każda odpowiedź niesie **proweniencję** ze słownika zamkniętego. | P0 | open | D1 |
-| D3 | Zatwierdzenie i utworzenie portfela | `POST /portfolio-spec/{id}/confirm` — walidacja względem snapshotu, potem utworzenie `Portfolio` z referencją do spec-u. | P0 | open | D2 |
-| D4 | Reguły automatycznego rozstrzygania | Tabela z §4.2: `EXCHANGE_REPORTED`, `ASSUMED_PAR`, dopasowanie do filla. Decyduje, czy spec w ogóle wymaga człowieka. | P0 | open | D1 |
-| D5 | Odwzorowanie locków | `frozenBal` → `Asset.locked`, `availBal` → `Asset.free`. Rozstrzygane automatycznie, bez pytania. | P1 | open | D3 |
-| D6 | Reguły nadpisywania wg proweniencji | `ASSUMED_PAR` i `EXCHANGE_REPORTED` nadpisywalne po cichu, `USER_PROVIDED` **nigdy bez pytania**. | P1 | open | D2 |
-| D7 | Obsługa zestarzałego snapshotu | Stan `stale`: przeliczyć różnicę od nowa, zadać tylko pytania nadal aktualne, nie stosować nieaktualnych odpowiedzi. | P2 | open | D1 |
-| D8 | Idempotencja i brak pustych spec-ów | Synchronizacja bez zmian **nie tworzy spec-u**. Powtórne zatwierdzenie tego samego spec-u nie zmienia danych. | P2 | open | D3 |
-| D10 | TTL i stany terminalne | TTL 15 min na snapshot, **nie na odpowiedzi**. `stale` przelicza różnicę i zachowuje pasujące odpowiedzi. `cancelled` jako świadome przerwanie onboardingu. `failed` przy nieudanym zapisie. | P1 | open | D1 |
-| D11 | `confirm` zawsze na świeżym snapshocie | Niezależnie od wieku spec-u: pobierz ponownie, porównaj, przy zgodności zastosuj, przy różnicy wróć do `awaiting_answer`. | P1 | open | D3 |
-| D9 | `DataCleaner` dla `PortfolioSpec` | Wymóg z `CLAUDE.md` dla każdej nowej encji `@Document`. | P1 | open | D1 |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| D1 | Encja `PortfolioSpec` + silnik różnicy | Trwała encja z cyklem `draft → awaiting_answer → confirmed → applied → stale`. Powstaje z różnicy `snapshot − stan znany`; przy onboardingu stan znany jest pusty. Endpointy `POST /portfolio-spec` i `GET /portfolio-spec/{id}`. | P0 | C1, C2 |
+| D2 | Odpowiedzi użytkownika | `PUT /portfolio-spec/{id}/answers`. Każda odpowiedź niesie **proweniencję** ze słownika zamkniętego. | P0 | D1 |
+| D3 | Zatwierdzenie i utworzenie portfela | `POST /portfolio-spec/{id}/confirm` — walidacja względem snapshotu, potem utworzenie `Portfolio` z referencją do spec-u. | P0 | D2 |
+| D4 | Reguły automatycznego rozstrzygania | Tabela z §4.2: `EXCHANGE_REPORTED`, `ASSUMED_PAR`, dopasowanie do filla. Decyduje, czy spec w ogóle wymaga człowieka. | P0 | D1 |
+| D5 | Odwzorowanie locków | `frozenBal` → `Asset.locked`, `availBal` → `Asset.free`. Rozstrzygane automatycznie, bez pytania. | P1 | D3 |
+| D6 | Reguły nadpisywania wg proweniencji | `ASSUMED_PAR` i `EXCHANGE_REPORTED` nadpisywalne po cichu, `USER_PROVIDED` **nigdy bez pytania**. | P1 | D2 |
+| D7 | Obsługa zestarzałego snapshotu | Stan `stale`: przeliczyć różnicę od nowa, zadać tylko pytania nadal aktualne, nie stosować nieaktualnych odpowiedzi. | P2 | D1 |
+| D8 | Idempotencja i brak pustych spec-ów | Synchronizacja bez zmian **nie tworzy spec-u**. Powtórne zatwierdzenie tego samego spec-u nie zmienia danych. | P2 | D3 |
+| D10 | TTL i stany terminalne | TTL 15 min na snapshot, **nie na odpowiedzi**. `stale` przelicza różnicę i zachowuje pasujące odpowiedzi. `cancelled` jako świadome przerwanie onboardingu. `failed` przy nieudanym zapisie. | P1 | D1 |
+| D11 | `confirm` zawsze na świeżym snapshocie | Niezależnie od wieku spec-u: pobierz ponownie, porównaj, przy zgodności zastosuj, przy różnicy wróć do `awaiting_answer`. | P1 | D3 |
+| D9 | `DataCleaner` dla `PortfolioSpec` | Wymóg z `CLAUDE.md` dla każdej nowej encji `@Document`. | P1 | D1 |
 
 ### Ścieżka E — POC w Node
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| E1 | Odczyt stanu z OKX | `account/config`, `account/balance`, `orders-pending`, `market/ticker`. | P0 | **finished** | — |
-| E2 | Rejestracja użytkownika + JWT | `POST /api/v1/auth/register`, zapamiętanie tokenu do kolejnych wywołań. | P0 | open | A2 |
-| E3 | Zebranie snapshotu do spec-u | Złożenie stanu z `account/balance` i `orders-pending` w kształt oczekiwany przez `POST /portfolio-spec`. | P0 | open | E2 |
-| E8 | Publikacja notowań przed onboardingiem | Faza 2: wszystkie tickery ze snapshotu plus `EUR/EUR = 1.0`, weryfikacja przez `GET /exchange/OKX/status`. | P0 | open | B5, B6 |
-| E4 | Przejście ścieżki spec-u | `POST /portfolio-spec` ze snapshotem, odpowiedzi na pytania, `confirm`. Podział na `okx-bought` / `unknown-origin` wg `spotBal` robi silnik różnicy, nie POC. | P0 | open | D3, E3 |
-| E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu. | P1 | open | B3, E4 |
-| E6 | Pętla odświeżania | Cykliczne pobranie tickerów i republikacja, żeby wycena żyła. | P1 | open | E5 |
-| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR`, pokazanie wartości, wyniku i pokrycia. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P1 | open | E4, E8 |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| E1 | Odczyt stanu z OKX | `account/config`, `account/balance`, `orders-pending`, `market/ticker`. | P0 | — |
+| E2 | Rejestracja użytkownika + JWT | `POST /api/v1/auth/register`, zapamiętanie tokenu do kolejnych wywołań. | P0 | A2 |
+| E3 | Zebranie snapshotu do spec-u | Złożenie stanu z `account/balance` i `orders-pending` w kształt oczekiwany przez `POST /portfolio-spec`. | P0 | E2 |
+| E8 | Publikacja notowań przed onboardingiem | Faza 2: wszystkie tickery ze snapshotu plus `EUR/EUR = 1.0`, weryfikacja przez `GET /exchange/OKX/status`. | P0 | B5, B6 |
+| E4 | Przejście ścieżki spec-u | `POST /portfolio-spec` ze snapshotem, odpowiedzi na pytania, `confirm`. Podział na `okx-bought` / `unknown-origin` wg `spotBal` robi silnik różnicy, nie POC. | P0 | D3, E3 |
+| E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu. | P1 | B3, E4 |
+| E6 | Pętla odświeżania | Cykliczne pobranie tickerów i republikacja, żeby wycena żyła. | P1 | E5 |
+| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR`, pokazanie wartości, wyniku i pokrycia. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P1 | E4, E8 |
 
 ### Ścieżka F — dług techniczny
 
-| # | zadanie | opis | prio | status | zależy od |
-|---|---|---|---|---|---|
-| F1 | Indeks unikalności `OriginTradeId` | Zero indeksów w `vidulum-wealth`; OKX powtarza komunikaty, Kafka ma redelivery. | P2 | open | — |
-| F2 | `Quantity` na `BigDecimal` | Dziś `double` przy stringach OKX z 8+ miejscami; przy setkach filli powstanie dryf. | P3 | open | — |
-| F3 | Usunięcie sentineli `Price.one`/`Price.zero` | Ukryte znaczniki „nie wiem" w depozycie i agregacji; do zastąpienia typem z C1. | P3 | open | C1 |
-| F4 | `websocket-gateway` do reaktora | Ma własny `pom.xml`, ale nie ma go w `<modules>` roota — `./mvnw clean test` go nie buduje. | P3 | open | — |
+| # | zadanie | opis | prio | zależy od |
+|---|---|---|---|---|
+| F1 | Indeks unikalności `OriginTradeId` | Zero indeksów w `vidulum-wealth`; OKX powtarza komunikaty, Kafka ma redelivery. | P2 | — |
+| F2 | `Quantity` na `BigDecimal` | Dziś `double` przy stringach OKX z 8+ miejscami; przy setkach filli powstanie dryf. | P3 | — |
+| F3 | Usunięcie sentineli `Price.one`/`Price.zero` | Ukryte znaczniki „nie wiem" w depozycie i agregacji; do zastąpienia typem z C1. | P3 | C1 |
+| F4 | `websocket-gateway` do reaktora | Ma własny `pom.xml`, ale nie ma go w `<modules>` roota — `./mvnw clean test` go nie buduje. | P3 | — |
 
 ---
 

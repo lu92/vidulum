@@ -74,6 +74,14 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <!-- First tests in this module. The value objects here (Money, Price, CostBasis) carry
+             real arithmetic, so they are worth covering without pulling in a downstream module. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

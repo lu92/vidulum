@@ -75,13 +75,11 @@ public class AggregatedPortfolio {
                         Quantity quantity = relatedAsset.getQuantity().plus(asset.getQuantity());
                         Quantity lockedQuantity = relatedAsset.getLocked().plus(asset.getLocked());
                         Quantity freeQuantity = relatedAsset.getFree().plus(asset.getFree());
-                        Price avgPurchasePrice = Price.of(relatedAsset.getValue().plus(asset.getValue()).divide(quantity));
-
 
                         Asset updatedAsset = Asset.builder()
                                 .ticker(relatedAsset.getTicker())
                                 .subName(relatedAsset.getSubName())
-                                .avgPurchasePrice(avgPurchasePrice)
+                                .costBasis(mergeCost(relatedAsset.getCostBasis(), asset.getCostBasis()))
                                 .quantity(quantity)
                                 .locked(lockedQuantity)
                                 .free(freeQuantity)
@@ -123,7 +121,7 @@ public class AggregatedPortfolio {
                                             Asset.builder()
                                                     .ticker(firstAsset.getTicker())
                                                     .subName(SubName.none())
-                                                    .avgPurchasePrice(Price.zero("USD"))
+                                                    .costBasis(null)
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .free(Quantity.zero(firstAsset.getQuantity().getUnit()))
@@ -135,9 +133,9 @@ public class AggregatedPortfolio {
                                                 Quantity quantity = identityAsset.getQuantity().plus(nextAsset.getQuantity());
                                                 Quantity lockedQuantity = identityAsset.getLocked().plus(nextAsset.getLocked());
                                                 Quantity freeQuantity = identityAsset.getFree().plus(nextAsset.getFree());
-                                                Price avgPurchasePrice = Price.of(identityAsset.getValue().plus(nextAsset.getValue()).divide(quantity));
 
-                                                identityAsset.setAvgPurchasePrice(avgPurchasePrice);
+                                                identityAsset.setCostBasis(
+                                                        mergeCost(identityAsset.getCostBasis(), nextAsset.getCostBasis()));
                                                 identityAsset.setQuantity(quantity);
                                                 identityAsset.setLocked(lockedQuantity);
                                                 identityAsset.setFree(freeQuantity);
@@ -151,5 +149,22 @@ public class AggregatedPortfolio {
                                            Currency originCurrency,
                                            Money investedMoney,
                                            Broker broker) {
+    }
+
+    /**
+     * Merges the known parts of two costs and nothing else.
+     *
+     * <p>A position whose cost is unknown contributes no price to the average — it only enlarges
+     * the quantity the average fails to cover. The old code averaged through {@code getValue()},
+     * so an unknown cost entered as zero and quietly dragged the average down.
+     */
+    private static CostBasis mergeCost(CostBasis left, CostBasis right) {
+        if (left == null) {
+            return right;
+        }
+        if (right == null) {
+            return left;
+        }
+        return left.merge(right);
     }
 }

@@ -45,7 +45,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     return new PortfolioSnapshot.AssetSnapshot(
                             asset.getTicker(),
                             asset.getSubName(),
-                            asset.getAvgPurchasePrice(),
+                            asset.getCostBasis(),
                             asset.getQuantity(),
                             asset.getLocked(),
                             asset.getFree(),
@@ -77,7 +77,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     return new Asset(
                             assetSnapshot.getTicker(),
                             assetSnapshot.getSubName(),
-                            assetSnapshot.getAvgPurchasePrice(),
+                            assetSnapshot.getCostBasis(),
                             assetSnapshot.getQuantity(),
                             assetSnapshot.getLocked(),
                             assetSnapshot.getFree(),
@@ -174,17 +174,24 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.quantity());
                     Quantity updatedFreeQuantity = existingAsset.getFree().plus(purchasedPortion.quantity());
-                    Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
-                    Price updatedAvgPurchasePrice = Price.of(totalValue.divide(totalQuantity));
+
+                    // A trade always tells us what it cost. Merging happens only over the parts
+                    // whose cost is known, so adding to a position of unknown origin records the
+                    // cost of the new part and leaves the rest uncovered instead of averaging a
+                    // real price with an invented one.
+                    CostBasis purchasedCost = purchasedCostOf(purchasedPortion);
+                    CostBasis updatedCost = existingAsset.hasKnownCost()
+                            ? existingAsset.getCostBasis().merge(purchasedCost)
+                            : purchasedCost;
 
                     existingAsset.setQuantity(totalQuantity);
-                    existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+                    existingAsset.setCostBasis(updatedCost);
                     existingAsset.setFree(updatedFreeQuantity);
                 }, () -> {
                     Asset newAsset = Asset.builder()
                             .ticker(purchasedPortion.ticker())
                             .subName(purchasedPortion.subName())
-                            .avgPurchasePrice(purchasedPortion.price())
+                            .costBasis(purchasedCostOf(purchasedPortion))
                             .quantity(purchasedPortion.quantity())
                             .locked(Quantity.zero())
                             .free(purchasedPortion.quantity())
@@ -207,12 +214,14 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             assets.remove(soldAsset);
         } else {
             Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
-            Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
-            Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
+            // The cost can never cover more than is still held, so it is capped rather than
+            // recomputed. Which units were sold — the ones with a known cost or the ones
+            // without — is a question this task does not answer; C7 owns it. Once C2 splits
+            // positions into all-known and all-unknown, both readings coincide.
             Quantity updatedLockedQuantity = soldAsset.getLocked().minus(soldPortion.quantity());
             soldAsset.setQuantity(decreasedQuantity);
-            soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+            soldAsset.setCostBasis(cappedTo(soldAsset.getCostBasis(), decreasedQuantity));
             soldAsset.setLocked(updatedLockedQuantity);
             soldAsset.getActiveLocks().remove(new Asset.AssetLock(orderId, soldPortion.quantity()));
         }
@@ -229,11 +238,14 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
                 existingAsset.setQuantity(updatedQuantity);
                 existingAsset.setFree(updatedQuantity);
+                existingAsset.setCostBasis(CostBasis.atPar(updatedQuantity, event.deposit().getCurrency()));
             }, () -> {
                 Asset cash = Asset.builder()
                         .ticker(ticker)
                         .subName(SubName.none())
-                        .avgPurchasePrice(Price.one(event.deposit().getCurrency()))
+                        .costBasis(CostBasis.atPar(
+                                Quantity.of(event.deposit().getAmount().doubleValue()),
+                                event.deposit().getCurrency()))
                         .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                         .locked(Quantity.zero())
                         .free(Quantity.of(event.deposit().getAmount().doubleValue()))
@@ -271,10 +283,32 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 throw new NotSufficientBalance(event.withdrawal());
             }
 
-            cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue()));
+            Quantity remaining = Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue());
+            cash.setQuantity(remaining);
             cash.setFree(Quantity.of(cash.getFree().getQty() - event.withdrawal().getAmount().doubleValue()));
+            // Withdrawing shrinks the position, so the cost must shrink with it — otherwise the
+            // cost keeps claiming to cover units that are no longer held.
+            cash.setCostBasis(cappedTo(cash.getCostBasis(), remaining));
             investedBalance = investedBalance.minus(event.withdrawal());
         });
+    }
+
+    /** A trade's cost is known exactly, because we recorded the fill ourselves. */
+    private static CostBasis purchasedCostOf(AssetPortion purchasedPortion) {
+        return CostBasis.of(
+                purchasedPortion.quantity(),
+                purchasedPortion.price(),
+                Provenance.DERIVED_FROM_FILLS);
+    }
+
+    /** Keeps a known cost from claiming to cover more units than the position still holds. */
+    private static CostBasis cappedTo(CostBasis costBasis, Quantity remaining) {
+        if (costBasis == null) {
+            return null;
+        }
+        return costBasis.quantity().getQty() > remaining.getQty()
+                ? costBasis.reduceTo(remaining)
+                : costBasis;
     }
 
     private Optional<Asset> findAssetByTicker(Ticker ticker) {
