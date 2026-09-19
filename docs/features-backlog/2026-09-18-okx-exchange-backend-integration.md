@@ -684,6 +684,23 @@ istniejącego portfela kończy się jawnym `CannotApplySpecToExistingPortfolioEx
 bo zmniejszanie pozycji o nieznanym koszcie to zdarzenie podatkowe, którego nie policzymy (C7).
 Głośna odmowa jest lepsza od zastosowania połowy.
 
+#### Waluta i broker należą do połączenia, nie do żądania
+
+Pierwsza wersja `confirm` brała jedno i drugie **z ciała żądania**, choć `ExchangeConnection`
+już je niesie. Te same dwa fakty miały dwa źródła i nic ich nie porównywało.
+
+Szkoda była realna i przesunięta w czasie. Notowania publikuje się **przeciwko walucie wyceny**
+i muszą być w cache przed utworzeniem portfela (decyzja 9). Żądanie z inną walutą kończyło się
+sukcesem, a awaria wychodziła dopiero przy `GET /portfolio` — na notowaniu, którego nikt nie
+opublikował. Przy brokerze analogicznie: decyduje on, **czyj cache notowań** obsługuje portfel,
+więc połączenie OKX mogło zasilać portfel zapisany pod inną giełdą — co podważa unifikację
+`Exchange` z `Broker` z C2.
+
+Teraz **połączenie wygrywa, a żądanie służy do potwierdzenia**: rozjazd kończy się
+`ConnectionMismatchException` (409), nie cichym nadpisaniem. To ten sam wzorzec, co
+`confirmedBalance` przy atestacji cashflow — wołający deklaruje, w co wierzy, a backend
+konfrontuje to z prawdą. Gdy spec nie ma połączenia, oba pola z żądania są jedynym źródłem.
+
 #### Co w testach trzeba będzie ruszyć
 
 **Nic się nie psuje przy D1 i D4** — to nowy pakiet obok istniejących. `PortfolioFactory.empty`
@@ -1099,6 +1116,7 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 | `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
 | `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
 | `/exchange-connection` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — rejestruje konto, zwraca cały stan połączenia |
+| `/exchange-connection/{id}/revoke` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A11) — rozłączenie, portfel zostaje |
 | `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — powrót po przerwie, zachowuje portfel |
 | `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — stan jednego połączenia |
 | `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — połączenia użytkownika + `supportedExchanges` |
@@ -1337,6 +1355,8 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | A8 | Onboarding połączenia — komendy i endpointy | `POST /exchange-connection` i `POST /exchange-connection/{id}/reconnect` przez `CommandGateway`, plus port `ExchangeAdapter` dla części giełdowej. Domyka dwie dziury: podwójne podłączenie dawało `DuplicateKeyException` (500), a puste pole — `IllegalArgumentException` (500). Patrz §5.10. | P0 | A5, A6, A10 |
 | A9 | Odczyt stanu połączenia | `GET /exchange-connection/{id}` i `GET /exchange-connection` przez `QueryGateway`. Zwraca `status`, `statusReason`, `portfolioId` oraz **oba** znaczniki czasu osobno (§5.6) — interfejs nie może ich zlać w jedno „zaktualizowano o 14:32". Nie myli się z `GET /exchange/{name}/status` z §5.7, które jest systemowe i nie zna użytkownika. | P1 | A8 |
 | A4 | `DataCleaner` dla `ExchangeConnection` | Każda nowa `@Document` musi trafić do cleanera modułu — wymóg z `CLAUDE.md`. Mieszka w `vidulum-exchange`, bo kolekcja `exchange_connections` jest wspólna dla wszystkich giełd. | P1 | A2 |
+| A11 | Rozłączenie połączenia (`revoke`) | `POST /exchange-connection/{id}/revoke`. Bez niego `REVOKED` nie miało producenta, więc `reconnect` — poprawny i przetestowany — był nieosiągalny w działającym systemie. Nic nie jest kasowane: `accountUid` i `portfolioId` zostają. | P0 | A8 |
+| A12 | Producent statusu `ERROR` | Jedyny status bez wywołania produkcyjnego. Naturalnym producentem jest nieudane pobranie snapshotu, a backend w POC snapshotu nie pobiera — więc dopóki poświadczenia są po stronie skryptu, `ERROR` i `retry` zostają nieosiągalne. Odnotowane, nie przeoczone. | P2 | A8 |
 | A7 | Ponowne podłączenie po przerwie | Wyszukanie połączenia po `accountUid`, przejście `REVOKED → ACTIVE` z zachowaniem `portfolioId`, utworzenie spec-u z **niepustym** stanem znanym. Patrz §5.8. Poza zakresem POC (decyzja 20). | P1 | A5, D1 |
 
 ### Ścieżka B — broker i notowania

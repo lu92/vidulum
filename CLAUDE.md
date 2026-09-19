@@ -813,12 +813,26 @@ Form: file=@canonical.csv
 | POST | `/exchange-connection` | Register an exchange account → returns connection with `PENDING` status |
 | GET | `/exchange-connection` | List caller's connections + `supportedExchanges` |
 | GET | `/exchange-connection/{connectionId}` | Get one connection's state |
+| POST | `/exchange-connection/{connectionId}/revoke` | Mark a connection as disconnected; the portfolio stays |
 | POST | `/exchange-connection/{connectionId}/reconnect` | Resume a `REVOKED` connection, keeping its portfolio |
 
 Notes:
 - The user id comes from the JWT, never from the body.
 - Another user's connection answers 404, not 403.
 - API keys are never sent or stored; `reportedKeyPermissions` must be `read_only`.
+
+### Portfolio Specification (`/portfolio-spec`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/portfolio-spec` | Compute `snapshot - known state` → returns the differences and any questions |
+| GET | `/portfolio-spec/{specId}` | What still has to be decided |
+| PUT | `/portfolio-spec/{specId}/answers` | Record answers, anchored to the batch they were given for |
+| POST | `/portfolio-spec/{specId}/confirm` | Create the portfolio and put the connection into service |
+
+Notes:
+- The snapshot travels in the request body; the backend holds no exchange credentials.
+- `confirm` always compares against a fresh snapshot and refuses if the exchange moved on.
+- Broker and valuation currency come from the connection; the request may confirm them, not set them.
 
 ### Recurring Rules (`/api/v1/recurring-rules`)
 | Method | Endpoint | Description |
