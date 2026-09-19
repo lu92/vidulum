@@ -29,7 +29,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     public static class AssetSnapshot {
         Ticker ticker;
         SubName subName;
-        Price avgPurchasePrice;
+        CostBasis costBasis;
         Quantity quantity;
         Quantity locked;
         Quantity free;

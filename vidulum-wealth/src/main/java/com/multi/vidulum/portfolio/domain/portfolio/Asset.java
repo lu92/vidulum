@@ -14,18 +14,41 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Asset implements Valuable {
+public class Asset {
     private Ticker ticker;
     private SubName subName;
-    private Price avgPurchasePrice;
+
+    /**
+     * What the position cost — for the part of it we know about. {@code null} means the cost is
+     * unknown, which is a legitimate state: assets transferred in from outside carry no purchase
+     * price, and inventing one would turn a guess into reported profit.
+     */
+    private CostBasis costBasis;
+
     private Quantity quantity;
     private Quantity locked;
     private Quantity free;
     private Set<AssetLock> activeLocks;
 
-    @Override
-    public Money getValue() {
-        return avgPurchasePrice.multiply(quantity);
+    /**
+     * What the known part of this position cost, or empty when no cost is known.
+     *
+     * <p>Replaces the old {@code getValue()}, which multiplied the average price by the
+     * <b>whole</b> quantity. That was the shape of the bug: hold 100 units, know the cost of 0.3,
+     * and every consumer got an invented number. {@code Optional} forces each caller to decide
+     * what to do about a missing cost instead of receiving a fabricated zero.
+     */
+    public Optional<Money> knownCost() {
+        return Optional.ofNullable(costBasis).map(CostBasis::totalCost);
+    }
+
+    /** How much of this position has a known cost. Zero when none of it does. */
+    public Quantity coveredQuantity() {
+        return costBasis != null ? costBasis.quantity() : Quantity.zero(quantity.getUnit());
+    }
+
+    public boolean hasKnownCost() {
+        return costBasis != null;
     }
 
     public void lock(OrderId orderId, Quantity quantity) {

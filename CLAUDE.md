@@ -387,6 +387,7 @@ When creating new documentation:
 | `docs/PERFORMANCE_TESTING_GUIDE.md` | Load testing tools, VPS sizing, monitoring |
 | `docs/FEATURES_BACKLOG_DETAILED.md` | Detailed description of all unimplemented features |
 | `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md` | **Manual testing guide for CSV import flow** |
+| `tools/task-board/refresh.py` | Regenerates the derived sections of a task board (progress, ready-to-take) and validates its dependency graph |
 
 ## Manual Testing - CSV Import Flow
 

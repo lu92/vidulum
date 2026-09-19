@@ -41,6 +41,7 @@ public final class RiskManagementDto {
         private String ticker;
         private Quantity quantity;
         private List<StopLossJson> stopLosses;
+        /** {@code null} when the position has no known cost — see {@code CostBasis}. */
         private Price avgPurchasePrice;
         private Money currentValue;
         private Price currentPrice;

@@ -2,7 +2,9 @@ package com.multi.vidulum.portfolio.domain.portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.AmbiguousAssetSelectionException;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
+import com.multi.vidulum.portfolio.domain.DuplicateAssetPositionException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents.*;
@@ -45,7 +47,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     return new PortfolioSnapshot.AssetSnapshot(
                             asset.getTicker(),
                             asset.getSubName(),
-                            asset.getAvgPurchasePrice(),
+                            asset.getCostBasis(),
                             asset.getQuantity(),
                             asset.getLocked(),
                             asset.getFree(),
@@ -77,7 +79,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     return new Asset(
                             assetSnapshot.getTicker(),
                             assetSnapshot.getSubName(),
-                            assetSnapshot.getAvgPurchasePrice(),
+                            assetSnapshot.getCostBasis(),
                             assetSnapshot.getQuantity(),
                             assetSnapshot.getLocked(),
                             assetSnapshot.getFree(),
@@ -85,6 +87,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                     );
                 })
                 .collect(Collectors.toList());
+
+        requireOnePositionPerName(assets);
 
         return Portfolio.builder()
                 .portfolioId(snapshot.getPortfolioId())
@@ -132,6 +136,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     private AssetPortion calculateSoldPortionOfAsset(PortfolioEvents.TradeProcessedEvent event) {
         if (Side.BUY.equals(event.side())) {
+            // The money side of a trade is cash, which is never split by origin.
             return new AssetPortion(
                     event.symbol().getDestination(),
                     SubName.none(),
@@ -140,7 +145,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         } else {
             return new AssetPortion(
                     event.symbol().getOrigin(),
-                    event.subName(),
+                    tradedPosition(event.subName()),
                     event.quantity(),
                     event.price());
         }
@@ -150,7 +155,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         if (Side.BUY.equals(trade.side())) {
             return new AssetPortion(
                     trade.symbol().getOrigin(),
-                    trade.subName(),
+                    tradedPosition(trade.subName()),
                     trade.quantity(),
                     trade.price());
         } else {
@@ -174,23 +179,30 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .ifPresentOrElse(existingAsset -> {
                     Quantity totalQuantity = existingAsset.getQuantity().plus(purchasedPortion.quantity());
                     Quantity updatedFreeQuantity = existingAsset.getFree().plus(purchasedPortion.quantity());
-                    Money totalValue = existingAsset.getValue().plus(purchasedPortion.getValue());
-                    Price updatedAvgPurchasePrice = Price.of(totalValue.divide(totalQuantity));
+
+                    // A trade always tells us what it cost. Merging happens only over the parts
+                    // whose cost is known, so adding to a position of unknown origin records the
+                    // cost of the new part and leaves the rest uncovered instead of averaging a
+                    // real price with an invented one.
+                    CostBasis purchasedCost = purchasedCostOf(purchasedPortion);
+                    CostBasis updatedCost = existingAsset.hasKnownCost()
+                            ? existingAsset.getCostBasis().merge(purchasedCost)
+                            : purchasedCost;
 
                     existingAsset.setQuantity(totalQuantity);
-                    existingAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+                    existingAsset.setCostBasis(updatedCost);
                     existingAsset.setFree(updatedFreeQuantity);
                 }, () -> {
                     Asset newAsset = Asset.builder()
                             .ticker(purchasedPortion.ticker())
                             .subName(purchasedPortion.subName())
-                            .avgPurchasePrice(purchasedPortion.price())
+                            .costBasis(purchasedCostOf(purchasedPortion))
                             .quantity(purchasedPortion.quantity())
                             .locked(Quantity.zero())
                             .free(purchasedPortion.quantity())
                             .activeLocks(new HashSet<>())
                             .build();
-                    assets.add(newAsset);
+                    addAsset(newAsset);
                 });
     }
 
@@ -207,12 +219,14 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             assets.remove(soldAsset);
         } else {
             Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
-            Money totalValue = soldAsset.getValue().minus(soldPortion.getValue());
-            Price updatedAvgPurchasePrice = Price.of(totalValue.divide(decreasedQuantity));
 
+            // The cost can never cover more than is still held, so it is capped rather than
+            // recomputed. Which units were sold — the ones with a known cost or the ones
+            // without — is a question this task does not answer; C7 owns it. Once C2 splits
+            // positions into all-known and all-unknown, both readings coincide.
             Quantity updatedLockedQuantity = soldAsset.getLocked().minus(soldPortion.quantity());
             soldAsset.setQuantity(decreasedQuantity);
-            soldAsset.setAvgPurchasePrice(updatedAvgPurchasePrice);
+            soldAsset.setCostBasis(cappedTo(soldAsset.getCostBasis(), decreasedQuantity));
             soldAsset.setLocked(updatedLockedQuantity);
             soldAsset.getActiveLocks().remove(new Asset.AssetLock(orderId, soldPortion.quantity()));
         }
@@ -225,21 +239,24 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             if (!depositCurrency.equals(allowedDepositCurrency)) {
                 throw new IllegalArgumentException(String.format("Cannot accept deposit with currency: [%s]", depositCurrency));
             }
-            findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
+            findCashAsset(ticker).ifPresentOrElse(existingAsset -> {
                 Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
                 existingAsset.setQuantity(updatedQuantity);
                 existingAsset.setFree(updatedQuantity);
+                existingAsset.setCostBasis(CostBasis.atPar(updatedQuantity, event.deposit().getCurrency()));
             }, () -> {
                 Asset cash = Asset.builder()
                         .ticker(ticker)
                         .subName(SubName.none())
-                        .avgPurchasePrice(Price.one(event.deposit().getCurrency()))
+                        .costBasis(CostBasis.atPar(
+                                Quantity.of(event.deposit().getAmount().doubleValue()),
+                                event.deposit().getCurrency()))
                         .quantity(Quantity.of(event.deposit().getAmount().doubleValue()))
                         .locked(Quantity.zero())
                         .free(Quantity.of(event.deposit().getAmount().doubleValue()))
                         .activeLocks(new HashSet<>())
                         .build();
-                assets.add(cash);
+                addAsset(cash);
             });
             investedBalance = investedBalance.plus(event.deposit());
         });
@@ -260,7 +277,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void apply(MoneyWithdrawEvent event) {
         tryWhenPortfolioIsOpen(() -> {
             Ticker ticker = Ticker.of(event.withdrawal().getCurrency());
-            Asset cash = findAssetByTicker(ticker)
+            Asset cash = findCashAsset(ticker)
                     .orElseThrow(() -> new AssetNotFoundException(ticker));
 
             if (cash.getFree().getQty() < event.withdrawal().getAmount().doubleValue()) {
@@ -271,16 +288,40 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 throw new NotSufficientBalance(event.withdrawal());
             }
 
-            cash.setQuantity(Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue()));
+            Quantity remaining = Quantity.of(cash.getQuantity().getQty() - event.withdrawal().getAmount().doubleValue());
+            cash.setQuantity(remaining);
             cash.setFree(Quantity.of(cash.getFree().getQty() - event.withdrawal().getAmount().doubleValue()));
+            // Withdrawing shrinks the position, so the cost must shrink with it — otherwise the
+            // cost keeps claiming to cover units that are no longer held.
+            cash.setCostBasis(cappedTo(cash.getCostBasis(), remaining));
             investedBalance = investedBalance.minus(event.withdrawal());
         });
     }
 
-    private Optional<Asset> findAssetByTicker(Ticker ticker) {
-        return assets.stream()
-                .filter(asset -> asset.getTicker().equals(ticker))
-                .findFirst();
+    /** A trade's cost is known exactly, because we recorded the fill ourselves. */
+    private static CostBasis purchasedCostOf(AssetPortion purchasedPortion) {
+        return CostBasis.of(
+                purchasedPortion.quantity(),
+                purchasedPortion.price(),
+                Provenance.DERIVED_FROM_FILLS);
+    }
+
+    /** Keeps a known cost from claiming to cover more units than the position still holds. */
+    private static CostBasis cappedTo(CostBasis costBasis, Quantity remaining) {
+        if (costBasis == null) {
+            return null;
+        }
+        return costBasis.quantity().getQty() > remaining.getQty()
+                ? costBasis.reduceTo(remaining)
+                : costBasis;
+    }
+
+    /**
+     * The cash position of a currency. Money is never split by origin, so this is unambiguous by
+     * construction — unlike a lookup by ticker alone, which C2 removed.
+     */
+    private Optional<Asset> findCashAsset(Ticker ticker) {
+        return findAssetByTickerAndSubName(ticker, SubName.none());
     }
 
     private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, SubName subName) {
@@ -289,27 +330,95 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .findFirst();
     }
 
+    /** Every position of a ticker. What views and valuation need, instead of an arbitrary first. */
+    public List<Asset> findAssetsByTicker(Ticker ticker) {
+        return assets.stream()
+                .filter(asset -> asset.getTicker().equals(ticker))
+                .toList();
+    }
+
+    /**
+     * Resolves which position an operation meant.
+     *
+     * <p>When {@code subName} is given, that position is used. When it is not, the ticker must be
+     * held in exactly one position; holding it in several and not saying which is an
+     * {@link AmbiguousAssetSelectionException}, never a silent pick by list order.
+     */
+    private Asset requireAsset(Ticker ticker, SubName subName) {
+        if (subName != null) {
+            return findAssetByTickerAndSubName(ticker, subName)
+                    .orElseThrow(() -> new AssetNotFoundException(ticker));
+        }
+        List<Asset> candidates = findAssetsByTicker(ticker);
+        if (candidates.isEmpty()) {
+            throw new AssetNotFoundException(ticker);
+        }
+        if (candidates.size() > 1) {
+            throw new AmbiguousAssetSelectionException(
+                    ticker, candidates.stream().map(Asset::getSubName).toList());
+        }
+        return candidates.getFirst();
+    }
+
+    /**
+     * A trade always concerns the traded position; {@code none} on the non-cash side is the
+     * pre-C2 default and is translated rather than creating a third, empty position.
+     */
+    private static SubName tradedPosition(SubName requested) {
+        return requested == null || requested.isCash() ? SubName.traded() : requested;
+    }
+
+    /**
+     * The same guard as {@link #addAsset}, applied when a portfolio is rehydrated.
+     *
+     * <p>Without it the invariant would hold only for positions this aggregate created, and a
+     * document written around it — by a migration, a fixture, or the synchronisation engine —
+     * could load two positions under one key. Everything downstream assumes that key identifies
+     * exactly one row.
+     */
+    private static void requireOnePositionPerName(List<Asset> assets) {
+        Set<String> seen = new HashSet<>();
+        assets.forEach(asset -> {
+            String key = asset.getTicker().getId() + "/" + asset.getSubName().getName();
+            if (!seen.add(key)) {
+                throw new DuplicateAssetPositionException(asset.getTicker(), asset.getSubName());
+            }
+        });
+    }
+
+    /** Guards the invariant every other rule rests on: one position per (ticker, subName). */
+    private void addAsset(Asset asset) {
+        findAssetByTickerAndSubName(asset.getTicker(), asset.getSubName()).ifPresent(existing -> {
+            throw new DuplicateAssetPositionException(asset.getTicker(), asset.getSubName());
+        });
+        assets.add(asset);
+    }
+
     public void lockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
-        findAssetByTicker(ticker)
-                .orElseThrow(() -> new AssetNotFoundException(ticker));
-        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
+        lockAsset(ticker, null, orderId, quantity, dateTime);
+    }
+
+    public void lockAsset(Ticker ticker, SubName subName, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
+        SubName resolved = requireAsset(ticker, subName).getSubName();
+        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, resolved, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
 
     public void apply(AssetLockedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
-            Asset asset = findAssetByTicker(event.ticker())
-                    .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+            Asset asset = requireAsset(event.ticker(), event.subName());
             asset.lock(event.orderId(), event.quantity());
         });
     }
 
     public void unlockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
-        findAssetByTicker(ticker)
-                .orElseThrow(() -> new AssetNotFoundException(ticker));
+        unlockAsset(ticker, null, orderId, quantity, dateTime);
+    }
 
-        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
+    public void unlockAsset(Ticker ticker, SubName subName, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
+        SubName resolved = requireAsset(ticker, subName).getSubName();
+        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, resolved, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
@@ -317,8 +426,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void apply(AssetUnlockedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
 
-            Asset asset = findAssetByTicker(event.ticker())
-                    .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+            Asset asset = requireAsset(event.ticker(), event.subName());
             asset.unlock(event.orderId(), event.quantity());
         });
     }

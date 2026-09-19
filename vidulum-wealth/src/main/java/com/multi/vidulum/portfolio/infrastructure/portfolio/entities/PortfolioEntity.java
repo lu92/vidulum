@@ -47,7 +47,9 @@ public class PortfolioEntity {
                     return new AssetEntity(
                             assetSnapshot.getTicker().getId(),
                             assetSnapshot.getSubName().getName(),
-                            assetSnapshot.getAvgPurchasePrice(),
+                            costQuantityOf(assetSnapshot.getCostBasis()),
+                            costPriceOf(assetSnapshot.getCostBasis()),
+                            costProvenanceOf(assetSnapshot.getCostBasis()),
                             assetSnapshot.getQuantity(),
                             assetSnapshot.getLocked(),
                             assetSnapshot.getFree(),
@@ -81,7 +83,7 @@ public class PortfolioEntity {
                     return new PortfolioSnapshot.AssetSnapshot(
                             Ticker.of(assetEntity.ticker()),
                             SubName.of(assetEntity.subName()),
-                            assetEntity.avgPurchasePrice(),
+                            costBasisOf(assetEntity),
                             assetEntity.quantity(),
                             assetEntity.locked(),
                             assetEntity.free(),
@@ -102,10 +104,36 @@ public class PortfolioEntity {
         );
     }
 
+    /**
+     * The cost basis is stored flattened into three fields rather than as a nested object, so the
+     * document stays readable and "cost unknown" is unambiguously three nulls rather than a
+     * partially filled sub-document.
+     */
+    private static Quantity costQuantityOf(CostBasis costBasis) {
+        return costBasis != null ? costBasis.quantity() : null;
+    }
+
+    private static Price costPriceOf(CostBasis costBasis) {
+        return costBasis != null ? costBasis.avgPrice() : null;
+    }
+
+    private static Provenance costProvenanceOf(CostBasis costBasis) {
+        return costBasis != null ? costBasis.provenance() : null;
+    }
+
+    private static CostBasis costBasisOf(AssetEntity entity) {
+        if (entity.costQuantity() == null || entity.costPrice() == null || entity.costProvenance() == null) {
+            return null;
+        }
+        return CostBasis.of(entity.costQuantity(), entity.costPrice(), entity.costProvenance());
+    }
+
     public record AssetEntity(
             String ticker,
             String subName,
-            Price avgPurchasePrice,
+            Quantity costQuantity,
+            Price costPrice,
+            Provenance costProvenance,
             Quantity quantity,
             Quantity locked,
             Quantity free,

@@ -124,10 +124,23 @@ public class PortfolioSummaryMapper {
         Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
         log.info("Getting price metadata of [{}]", symbol);
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
-        Money oldValue = denominateInCurrency(asset.getAvgPurchasePrice().multiply(asset.getQuantity()), broker, denominatedCurrency);
         Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
-        Money profit = currentValue.minus(oldValue);
-        double pctProfit = currentValue.diffPct(oldValue);
+
+        // Profit is computed only over the part whose cost we know, and only if we know any.
+        // Both sides of the subtraction refer to the same units: the old code multiplied the
+        // known part's average price by the WHOLE balance, so a position with 0.3 bought out of
+        // 100 held reported an invented profit. When nothing is known, the figures stay absent
+        // rather than defaulting to zero - reporting zero would present a guess as a fact.
+        Money profit = null;
+        Double pctProfit = null;
+        if (asset.hasKnownCost()) {
+            Money oldValue = denominateInCurrency(
+                    asset.knownCost().orElseThrow(), broker, denominatedCurrency);
+            Money coveredValue = assetPriceMetadata.getCurrentPrice()
+                    .multiply(asset.coveredQuantity());
+            profit = coveredValue.minus(oldValue);
+            pctProfit = coveredValue.diffPct(oldValue);
+        }
         log.info("Getting info about asset [{}]", asset.getTicker());
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
 
@@ -141,14 +154,14 @@ public class PortfolioSummaryMapper {
         return PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
                 .fullName(assetBasicInfo.getFullName())
-                .avgPurchasePrice(asset.getAvgPurchasePrice().withScale(4))
+                .costBasis(PortfolioDto.CostBasisJson.from(asset.getCostBasis()))
                 .quantity(asset.getQuantity())
                 .locked(asset.getLocked())
                 .free(asset.getFree())
                 .activeLocks(activeLocks)
                 .tags(assetBasicInfo.getTags())
                 .pctProfit(pctProfit)
-                .profit(profit.withScale(4))
+                .profit(profit != null ? profit.withScale(4) : null)
                 .currentPrice(assetPriceMetadata.getCurrentPrice().withScale(4))
                 .currentValue(currentValue.withScale(4))
                 .build();
