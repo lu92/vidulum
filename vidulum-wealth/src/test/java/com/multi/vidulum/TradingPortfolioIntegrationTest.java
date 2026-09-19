@@ -125,7 +125,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .subName(SubName.none())
+                                .subName(SubName.traded())
                                 .costBasis(CostBasis.of(Quantity.of(1), Price.of(60000, "USD"), Provenance.DERIVED_FROM_FILLS))
                                 .quantity(Quantity.of(1))
                                 .locked(Quantity.zero())
@@ -987,7 +987,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .subName(SubName.none())
+                                .subName(SubName.traded())
                                 .costBasis(CostBasis.of(Quantity.of(0.25), Price.of(37500, "USD"), Provenance.DERIVED_FROM_FILLS))
                                 .quantity(Quantity.of(0.25))
                                 .locked(Quantity.zero())
@@ -996,7 +996,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("ETH"))
-                                .subName(SubName.none())
+                                .subName(SubName.traded())
                                 .costBasis(CostBasis.of(Quantity.of(1.3), Price.of(3000, "USD"), Provenance.DERIVED_FROM_FILLS))
                                 .quantity(Quantity.of(1.3))
                                 .locked(Quantity.zero())

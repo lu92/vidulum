@@ -77,12 +77,9 @@ public final class PortfolioFixture {
         return this;
     }
 
-    /** A position whose cost we know. */
+    /** A position acquired through a trade, so its cost is known. */
     public PortfolioFixture with(String ticker, Quantity quantity, CostBasis costBasis) {
-        assets.add(new PortfolioSnapshot.AssetSnapshot(
-                Ticker.of(ticker), SubName.none(), costBasis,
-                quantity, Quantity.zero(quantity.getUnit()), quantity, List.of()));
-        return this;
+        return at(SubName.traded(), ticker, quantity, costBasis);
     }
 
     /**
@@ -90,7 +87,20 @@ public final class PortfolioFixture {
      * Impossible to reach through deposits or trades, which is most of why this fixture exists.
      */
     public PortfolioFixture withUnknownCost(String ticker, Quantity quantity) {
-        return with(ticker, quantity, null);
+        return at(SubName.transferredIn(), ticker, quantity, null);
+    }
+
+    /** Cash — never split by origin, always at par. */
+    public PortfolioFixture withCash(String currency, Quantity quantity) {
+        return at(SubName.none(), currency, quantity, CostBasis.atPar(quantity, currency));
+    }
+
+    /** Full control, for the cases the named helpers do not cover. */
+    public PortfolioFixture at(SubName subName, String ticker, Quantity quantity, CostBasis costBasis) {
+        assets.add(new PortfolioSnapshot.AssetSnapshot(
+                Ticker.of(ticker), subName, costBasis,
+                quantity, Quantity.zero(quantity.getUnit()), quantity, List.of()));
+        return this;
     }
 
     public Portfolio build() {

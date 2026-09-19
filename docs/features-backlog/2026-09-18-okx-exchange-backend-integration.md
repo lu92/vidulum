@@ -303,6 +303,95 @@ pochłania wpływy ze sprzedaży, jest kosztem, który kłamie.
 Nie rozdziela pozycji (C2), nie wyłącza nieznanej części z wyniku (C3), nie liczy pokrycia (C4),
 nie rusza `investedBalance` (C9) ani pozostałych sentineli (F3). C1 to **typ plus przeprowadzenie
 go przez 26 miejsc** tak, żeby nic nie zmyślało liczby.
+
+### 3.2 Rozdzielenie pozycji po `subName` (C2)
+
+#### Po co, skoro C1 już wystarcza
+
+C1 sprawił, że częściowa wiedza **da się wyrazić** — `CostBasis.quantity` bywa mniejsza od
+`Asset.quantity`. To jest jednak proteza: każdy konsument musi *pamiętać* o sprawdzeniu pokrycia,
+a wystarczy, że jeden zapomni, i wraca zmyślona liczba — tylko trudniejsza do znalezienia.
+
+Po rozdzieleniu **każda pozycja jest w całości znana albo w całości nieznana**, więc wzór
+`cena_bieżąca × ilość − cena_nabycia × ilość` znów jest poprawny bez warunków, a pokrycie staje
+się sumą na poziomie portfela zamiast pułapki przy każdym mnożeniu.
+
+Powód niezależny od arytmetyki: te dwie części **zachowują się inaczej prawnie**. Nieznana to
+zobowiązanie podatkowe, którego nie policzymy. Jako jeden wiersz nigdy nie sprzedasz „tylko tej
+znanej części", a to jest operacja, którą ludzie realnie wykonują.
+
+#### Słownik
+
+| `subName` | znaczenie |
+|---|---|
+| `traded` | nabyte transakcją, którą zapisaliśmy — koszt znany z fillów |
+| `transferred-in` | przyszło z zewnątrz — koszt nieznany, dopóki użytkownik go nie poda |
+| `none` | **gotówka**; nie ma pochodzenia do rozdzielania, koszt zawsze po parze |
+
+Gotówka zostaje przy `none` świadomie: strona pieniężna każdej transakcji ma zaszyte
+`SubName.none()` (`Portfolio:137`, `:159`) i tak ma pozostać.
+
+#### Trzy rzeczy, które podział psuje
+
+**1. Wyszukiwanie po samym tickerze przestaje być jednoznaczne.**
+
+```java
+private Optional<Asset> findAssetByTicker(Ticker ticker) {
+    return assets.stream().filter(a -> a.getTicker().equals(ticker)).findFirst();
+}
+```
+
+`findFirst()` przy dwóch pozycjach BTC wybiera **według kolejności w liście**, czyli przypadkowo.
+Używają tego cztery operacje w sześciu miejscach: depozyt (`:237`), wypłata (`:275`),
+`lockAsset` (`:327`, `:336`), `unlockAsset` (`:343`, `:354`).
+
+Przy blokadach jest to najgroźniejsze, bo `activeLocks` to zbiór **per pozycja**: blokada trafi
+na `transferred-in`, odblokowanie na `traded` i rzuci `CannotUnlockAssetException` — albo odwrotnie,
+`locked`/`free` rozjadą się po cichu.
+
+**2. Ścieżka zleceń twardo wpisuje `SubName.none()`.** `ExecuteOrderCommandHandler:41` i
+`FillOrderCommandHandler:44`. Transakcja z definicji dotyczy pozycji `traded`, więc to tam ma
+trafiać — inaczej egzekucja nie znajdzie żadnej z pozycji i utworzy **trzecią**, pustą.
+
+**3. Nic nie pilnuje unikalności `(ticker, subName)`.** Cała reszta stoi na tym niezmienniku.
+
+#### Co C2 robi
+
+- **Niezmiennik**: najwyżej jedna pozycja na `(ticker, subName)`, wymuszony przy dodawaniu.
+- **Rozdzielenie `findAssetByTicker` na trzy intencje**: pozycja gotówkowa (depozyt, wypłata),
+  konkretna pozycja (blokady), wszystkie pozycje tickera (widoki i wycena).
+- **Blokady dostają `subName`**, opcjonalny w API: gdy ticker ma jedną pozycję, rozstrzyga się
+  sam; gdy ma więcej, a nie podano której — **głośny błąd zamiast losowego wyboru**.
+- **Transakcje celują w `traded`** zamiast w `none` dla strony niepieniężnej.
+
+Zamiana cichego uszkodzenia na jawny błąd jest tu ważniejsza niż wygoda: portfel, w którym
+`locked` nie zgadza się z rzeczywistością, jest gorszy niż odrzucone żądanie.
+
+#### Znalezione przy wdrożeniu
+
+**`Ticker` w zdarzeniach nie wystarczał.** `AssetLockedEvent` i `AssetUnlockedEvent` niosły sam
+ticker, więc odtworzenie stanu ze zdarzeń trafiałoby w przypadkową pozycję dokładnie tak samo jak
+żywa operacja. Oba dostały `subName`, ustalany **raz** przy `lockAsset`/`unlockAsset` i zapisany
+w zdarzeniu — rozstrzyganie dwa razy (przy wywołaniu i przy odtwarzaniu) mogłoby dać dwa różne
+wyniki, gdyby portfel w międzyczasie się zmienił.
+
+**Zgodność wsteczna wyszła sama.** `SubName.none()` na stronie niepieniężnej transakcji jest
+tłumaczone na `traded` (`tradedPosition`), więc `ExecuteOrderCommandHandler` i
+`FillOrderCommandHandler` nie wymagały zmiany — a mimo to przestały tworzyć trzecią, pustą
+pozycję. Metody `lockAsset`/`unlockAsset` bez `subName` zostały jako przeciążenia: rozstrzygają
+się same, gdy pozycja jest jedna, i rzucają `AmbiguousAssetSelectionException`, gdy jest ich
+więcej.
+
+**Ślad w testach, który warto znać.** `TradeProcessedEvent` zapisuje `subName` **tak, jak podał
+go wołający** (`none`), a nie pozycję, na którą trafił (`traded`). Zdarzenie jest zapisem
+żądania, nie jego skutku — i tak ma zostać.
+
+#### Czego C2 nie robi
+
+Nie zmienia liczenia wyniku (C3), nie pokazuje pokrycia (C4), nie naprawia scalania po samym
+tickerze w `AggregatedPortfolio` (C6) i **nie rozstrzyga, z której pozycji sprzedajesz**, gdy
+trzymasz obie (C7). C2 ma sprawić, że dwie pozycje jednego waloru współistnieją, nie psując
+blokad ani zleceń.
 ---
 
 ## 4. PortfolioSpec — onboarding jako pierwszy przypadek synchronizacji

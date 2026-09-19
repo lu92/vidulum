@@ -2,7 +2,9 @@ package com.multi.vidulum.portfolio.domain.portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.AmbiguousAssetSelectionException;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
+import com.multi.vidulum.portfolio.domain.DuplicateAssetPositionException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents.*;
@@ -132,6 +134,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     private AssetPortion calculateSoldPortionOfAsset(PortfolioEvents.TradeProcessedEvent event) {
         if (Side.BUY.equals(event.side())) {
+            // The money side of a trade is cash, which is never split by origin.
             return new AssetPortion(
                     event.symbol().getDestination(),
                     SubName.none(),
@@ -140,7 +143,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         } else {
             return new AssetPortion(
                     event.symbol().getOrigin(),
-                    event.subName(),
+                    tradedPosition(event.subName()),
                     event.quantity(),
                     event.price());
         }
@@ -150,7 +153,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         if (Side.BUY.equals(trade.side())) {
             return new AssetPortion(
                     trade.symbol().getOrigin(),
-                    trade.subName(),
+                    tradedPosition(trade.subName()),
                     trade.quantity(),
                     trade.price());
         } else {
@@ -197,7 +200,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .free(purchasedPortion.quantity())
                             .activeLocks(new HashSet<>())
                             .build();
-                    assets.add(newAsset);
+                    addAsset(newAsset);
                 });
     }
 
@@ -234,7 +237,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             if (!depositCurrency.equals(allowedDepositCurrency)) {
                 throw new IllegalArgumentException(String.format("Cannot accept deposit with currency: [%s]", depositCurrency));
             }
-            findAssetByTicker(ticker).ifPresentOrElse(existingAsset -> {
+            findCashAsset(ticker).ifPresentOrElse(existingAsset -> {
                 Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
                 existingAsset.setQuantity(updatedQuantity);
                 existingAsset.setFree(updatedQuantity);
@@ -251,7 +254,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         .free(Quantity.of(event.deposit().getAmount().doubleValue()))
                         .activeLocks(new HashSet<>())
                         .build();
-                assets.add(cash);
+                addAsset(cash);
             });
             investedBalance = investedBalance.plus(event.deposit());
         });
@@ -272,7 +275,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void apply(MoneyWithdrawEvent event) {
         tryWhenPortfolioIsOpen(() -> {
             Ticker ticker = Ticker.of(event.withdrawal().getCurrency());
-            Asset cash = findAssetByTicker(ticker)
+            Asset cash = findCashAsset(ticker)
                     .orElseThrow(() -> new AssetNotFoundException(ticker));
 
             if (cash.getFree().getQty() < event.withdrawal().getAmount().doubleValue()) {
@@ -311,10 +314,12 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 : costBasis;
     }
 
-    private Optional<Asset> findAssetByTicker(Ticker ticker) {
-        return assets.stream()
-                .filter(asset -> asset.getTicker().equals(ticker))
-                .findFirst();
+    /**
+     * The cash position of a currency. Money is never split by origin, so this is unambiguous by
+     * construction — unlike a lookup by ticker alone, which C2 removed.
+     */
+    private Optional<Asset> findCashAsset(Ticker ticker) {
+        return findAssetByTickerAndSubName(ticker, SubName.none());
     }
 
     private Optional<Asset> findAssetByTickerAndSubName(Ticker ticker, SubName subName) {
@@ -323,27 +328,77 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .findFirst();
     }
 
+    /** Every position of a ticker. What views and valuation need, instead of an arbitrary first. */
+    public List<Asset> findAssetsByTicker(Ticker ticker) {
+        return assets.stream()
+                .filter(asset -> asset.getTicker().equals(ticker))
+                .toList();
+    }
+
+    /**
+     * Resolves which position an operation meant.
+     *
+     * <p>When {@code subName} is given, that position is used. When it is not, the ticker must be
+     * held in exactly one position; holding it in several and not saying which is an
+     * {@link AmbiguousAssetSelectionException}, never a silent pick by list order.
+     */
+    private Asset requireAsset(Ticker ticker, SubName subName) {
+        if (subName != null) {
+            return findAssetByTickerAndSubName(ticker, subName)
+                    .orElseThrow(() -> new AssetNotFoundException(ticker));
+        }
+        List<Asset> candidates = findAssetsByTicker(ticker);
+        if (candidates.isEmpty()) {
+            throw new AssetNotFoundException(ticker);
+        }
+        if (candidates.size() > 1) {
+            throw new AmbiguousAssetSelectionException(
+                    ticker, candidates.stream().map(Asset::getSubName).toList());
+        }
+        return candidates.getFirst();
+    }
+
+    /**
+     * A trade always concerns the traded position; {@code none} on the non-cash side is the
+     * pre-C2 default and is translated rather than creating a third, empty position.
+     */
+    private static SubName tradedPosition(SubName requested) {
+        return requested == null || requested.isCash() ? SubName.traded() : requested;
+    }
+
+    /** Guards the invariant every other rule rests on: one position per (ticker, subName). */
+    private void addAsset(Asset asset) {
+        findAssetByTickerAndSubName(asset.getTicker(), asset.getSubName()).ifPresent(existing -> {
+            throw new DuplicateAssetPositionException(asset.getTicker(), asset.getSubName());
+        });
+        assets.add(asset);
+    }
+
     public void lockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
-        findAssetByTicker(ticker)
-                .orElseThrow(() -> new AssetNotFoundException(ticker));
-        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
+        lockAsset(ticker, null, orderId, quantity, dateTime);
+    }
+
+    public void lockAsset(Ticker ticker, SubName subName, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
+        SubName resolved = requireAsset(ticker, subName).getSubName();
+        AssetLockedEvent event = new AssetLockedEvent(portfolioId, ticker, resolved, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
 
     public void apply(AssetLockedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
-            Asset asset = findAssetByTicker(event.ticker())
-                    .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+            Asset asset = requireAsset(event.ticker(), event.subName());
             asset.lock(event.orderId(), event.quantity());
         });
     }
 
     public void unlockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
-        findAssetByTicker(ticker)
-                .orElseThrow(() -> new AssetNotFoundException(ticker));
+        unlockAsset(ticker, null, orderId, quantity, dateTime);
+    }
 
-        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, orderId, quantity, dateTime);
+    public void unlockAsset(Ticker ticker, SubName subName, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {
+        SubName resolved = requireAsset(ticker, subName).getSubName();
+        AssetUnlockedEvent event = new AssetUnlockedEvent(portfolioId, ticker, resolved, orderId, quantity, dateTime);
         apply(event);
         add(event);
     }
@@ -351,8 +406,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     public void apply(AssetUnlockedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
 
-            Asset asset = findAssetByTicker(event.ticker())
-                    .orElseThrow(() -> new AssetNotFoundException(event.ticker()));
+            Asset asset = requireAsset(event.ticker(), event.subName());
             asset.unlock(event.orderId(), event.quantity());
         });
     }

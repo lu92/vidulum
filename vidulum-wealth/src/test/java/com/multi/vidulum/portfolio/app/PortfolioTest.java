@@ -136,7 +136,7 @@ class PortfolioTest {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .subName(SubName.none())
+                                .subName(SubName.traded())
                                 .costBasis(CostBasis.of(Quantity.of(0.1), Price.of(40000.0, "USD"), Provenance.DERIVED_FROM_FILLS))
                                 .quantity(Quantity.of(0.1))
                                 .locked(Quantity.zero())
@@ -162,6 +162,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
+                                SubName.none(),
                                 ORDER_ID,
                                 Quantity.of(4000),
                                 DATE_TIME
@@ -252,6 +253,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
+                                SubName.none(),
                                 ORDER_ID,
                                 Quantity.of(4000),
                                 DATE_TIME
@@ -269,6 +271,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
+                                SubName.traded(),
                                 ORDER_ID_2,
                                 Quantity.of(0.1),
                                 DATE_TIME
@@ -334,7 +337,7 @@ class PortfolioTest {
                                 .build(),
                         Asset.builder()
                                 .ticker(Ticker.of("BTC"))
-                                .subName(SubName.none())
+                                .subName(SubName.traded())
                                 .costBasis(CostBasis.of(Quantity.of(0.1), Price.of(40000.0, "USD"), Provenance.DERIVED_FROM_FILLS))
                                 .quantity(Quantity.of(0.1))
                                 .locked(Quantity.of(0.015))
@@ -360,6 +363,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
+                                SubName.none(),
                                 ORDER_ID,
                                 Quantity.of(4000),
                                 DATE_TIME
@@ -377,6 +381,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
+                                SubName.traded(),
                                 ORDER_ID_2,
                                 Quantity.of(0.03),
                                 DATE_TIME
@@ -384,6 +389,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
+                                SubName.none(),
                                 ORDER_ID_3,
                                 Quantity.of(2000),
                                 DATE_TIME
@@ -391,6 +397,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetUnlockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
+                                SubName.none(),
                                 ORDER_ID_3,
                                 Quantity.of(700),
                                 DATE_TIME
@@ -398,6 +405,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetUnlockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
+                                SubName.traded(),
                                 ORDER_ID_2,
                                 Quantity.of(0.015),
                                 DATE_TIME
@@ -568,6 +576,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("EUR"),
+                                SubName.none(),
                                 ORDER_ID,
                                 Quantity.of(4000),
                                 DATE_TIME
@@ -585,6 +594,7 @@ class PortfolioTest {
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
+                                SubName.traded(),
                                 ORDER_ID_2,
                                 Quantity.of(0.1),
                                 DATE_TIME
