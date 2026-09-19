@@ -90,7 +90,7 @@ vidulum/
 │   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
 ├── vidulum-exchange/            # Exchange-agnostic connection model (102 tests)
-│   └── exchange_connection/     #   ExchangeConnection, onboarding service, REST
+│   └── exchange_connection/     #   ExchangeConnection, connect/reconnect commands, REST
 │
 ├── vidulum-okx/                 # OKX adapter (31 tests)
 │   └── okx/                     #   Quotation provider, OkxExchangeAdapter, OkxRegion

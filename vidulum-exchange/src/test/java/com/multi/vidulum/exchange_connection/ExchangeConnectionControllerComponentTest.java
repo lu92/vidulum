@@ -3,11 +3,15 @@ package com.multi.vidulum.exchange_connection;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
-import com.multi.vidulum.exchange_connection.app.ConnectExchangeRequest;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionJson;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionRestController;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionService;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionsListJson;
+import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQueryHandler;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
+import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
+import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
@@ -56,22 +60,43 @@ class ExchangeConnectionControllerComponentTest {
     private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
     private final InMemoryExchangeConnectionRepository repository =
             new InMemoryExchangeConnectionRepository();
-    private final ExchangeConnectionService service =
-            new ExchangeConnectionService(repository, clock, List.of(new StubExchangeAdapter()));
+    private final ExchangeAdapters adapters = new ExchangeAdapters(List.of(new StubExchangeAdapter()));
+
+    /**
+     * Gateways wired exactly as {@code VidulumApplication} wires them — by registering every
+     * handler — so the reflection-based routing is exercised here too, not only in the
+     * containerised test.
+     */
+    private final CommandGateway commandGateway = commandGateway();
+    private final QueryGateway queryGateway = queryGateway();
+
+    private CommandGateway commandGateway() {
+        CommandGateway gateway = new CommandGateway();
+        gateway.registerCommandHandler(new ConnectExchangeCommandHandler(repository, adapters, clock));
+        gateway.registerCommandHandler(new ReconnectExchangeCommandHandler(repository, clock));
+        return gateway;
+    }
+
+    private QueryGateway queryGateway() {
+        QueryGateway gateway = new QueryGateway();
+        gateway.registerQueryHandler(new GetExchangeConnectionQueryHandler(repository));
+        gateway.registerQueryHandler(new GetExchangeConnectionsOfUserQueryHandler(repository, adapters));
+        return gateway;
+    }
 
     /** Switchable stand-in for the JWT principal. */
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
 
     private final ExchangeConnectionRestController controller =
-            new ExchangeConnectionRestController(service, authenticatedUserProvider);
+            new ExchangeConnectionRestController(commandGateway, queryGateway, authenticatedUserProvider);
 
-    private static ConnectExchangeRequest request(String broker, String region, String permissions) {
-        return new ConnectExchangeRequest(
+    private static ExchangeConnectionDto.ConnectExchangeJson request(String broker, String region, String permissions) {
+        return new ExchangeConnectionDto.ConnectExchangeJson(
                 broker, ACCOUNT_UID, ExchangeEnvironment.DEMO, region, permissions, "EUR", null);
     }
 
-    private static ConnectExchangeRequest validRequest() {
+    private static ExchangeConnectionDto.ConnectExchangeJson validRequest() {
         return request("DEMOEX", "EU", "read_only");
     }
 
@@ -81,12 +106,12 @@ class ExchangeConnectionControllerComponentTest {
      */
     @Test
     void shouldReturnTheWholeConnectionAfterRegistering() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         assertThat(created.id()).isNotBlank();
         assertThat(created)
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionJson(
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionJson(
                         created.id(),
                         ALICE.getId(),
                         "DEMOEX",
@@ -112,7 +137,7 @@ class ExchangeConnectionControllerComponentTest {
     void shouldDefaultCredentialsModeToExternalWhenOmitted() {
         assertThat(controller.connect(validRequest()).credentialsMode()).isEqualTo("EXTERNAL");
 
-        ConnectExchangeRequest explicit = new ConnectExchangeRequest(
+        ExchangeConnectionDto.ConnectExchangeJson explicit = new ExchangeConnectionDto.ConnectExchangeJson(
                 "DEMOEX", "999", ExchangeEnvironment.LIVE, "US", "read_only", "EUR",
                 CredentialsMode.STORED_ENCRYPTED);
 
@@ -127,7 +152,7 @@ class ExchangeConnectionControllerComponentTest {
 
     @Test
     void shouldReadBackTheConnectionItJustCreated() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         assertThat(controller.get(created.id()))
                 .usingRecursiveComparison()
@@ -140,7 +165,7 @@ class ExchangeConnectionControllerComponentTest {
      */
     @Test
     void shouldReturnTheWholeConnectionAfterReconnecting() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         ExchangeConnection stored = repository.findById(ExchangeConnectionId.of(created.id())).orElseThrow();
         stored.confirm(PortfolioId.of("portfolio-1"), NOW);
@@ -148,11 +173,11 @@ class ExchangeConnectionControllerComponentTest {
         stored.revoke("api key expired", LATER);
         repository.save(stored);
 
-        ExchangeConnectionJson reconnected = controller.reconnect(created.id());
+        ExchangeConnectionDto.ExchangeConnectionJson reconnected = controller.reconnect(created.id());
 
         assertThat(reconnected)
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionJson(
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionJson(
                         created.id(),
                         ALICE.getId(),
                         "DEMOEX",
@@ -175,14 +200,14 @@ class ExchangeConnectionControllerComponentTest {
      */
     @Test
     void shouldExposeStatusAndReasonOfARevokedConnection() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         ExchangeConnection stored = repository.findById(ExchangeConnectionId.of(created.id())).orElseThrow();
         stored.confirm(PortfolioId.of("portfolio-1"), NOW);
         stored.revoke("api key expired", LATER);
         repository.save(stored);
 
-        ExchangeConnectionJson read = controller.get(created.id());
+        ExchangeConnectionDto.ExchangeConnectionJson read = controller.get(created.id());
 
         assertThat(read.status()).isEqualTo("REVOKED");
         assertThat(read.statusReason()).isEqualTo("api key expired");
@@ -197,14 +222,14 @@ class ExchangeConnectionControllerComponentTest {
      */
     @Test
     void shouldReturnBothStalenessTimestampsSeparately() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         ExchangeConnection stored = repository.findById(ExchangeConnectionId.of(created.id())).orElseThrow();
         stored.confirm(PortfolioId.of("portfolio-1"), NOW);
         stored.recordSnapshot(LATER);
         repository.save(stored);
 
-        ExchangeConnectionJson read = controller.get(created.id());
+        ExchangeConnectionDto.ExchangeConnectionJson read = controller.get(created.id());
 
         assertThat(read.lastSnapshotAt()).isEqualTo(LATER);
         assertThat(read.lastSyncAt()).isEqualTo(NOW);
@@ -213,24 +238,24 @@ class ExchangeConnectionControllerComponentTest {
 
     @Test
     void shouldListTheCallersConnectionsWithTheSupportedExchanges() {
-        ExchangeConnectionJson alices = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson alices = controller.connect(validRequest());
 
         caller = BOB;
         controller.connect(validRequest());
 
         caller = ALICE;
-        ExchangeConnectionsListJson listed = controller.list();
+        ExchangeConnectionDto.ExchangeConnectionsListJson listed = controller.list();
 
         assertThat(listed)
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionsListJson(List.of(alices), List.of("DEMOEX")));
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionsListJson(List.of(alices), List.of("DEMOEX")));
     }
 
     @Test
     void shouldListNothingForACallerWithNoConnections() {
         assertThat(controller.list())
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionsListJson(List.of(), List.of("DEMOEX")));
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionsListJson(List.of(), List.of("DEMOEX")));
     }
 
     /**
@@ -245,7 +270,7 @@ class ExchangeConnectionControllerComponentTest {
 
     @Test
     void shouldHideAnotherCallersConnection() {
-        ExchangeConnectionJson alices = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson alices = controller.connect(validRequest());
 
         caller = BOB;
 
@@ -279,7 +304,7 @@ class ExchangeConnectionControllerComponentTest {
 
     @Test
     void shouldRefuseToReconnectAConnectionThatIsNotRevoked() {
-        ExchangeConnectionJson created = controller.connect(validRequest());
+        ExchangeConnectionDto.ExchangeConnectionJson created = controller.connect(validRequest());
 
         assertThatThrownBy(() -> controller.reconnect(created.id()))
                 .isInstanceOf(IllegalConnectionTransitionException.class);

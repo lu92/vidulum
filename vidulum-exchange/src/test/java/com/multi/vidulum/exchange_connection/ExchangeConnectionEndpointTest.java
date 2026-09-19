@@ -4,8 +4,7 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
-import com.multi.vidulum.exchange_connection.app.ConnectExchangeRequest;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionJson;
+import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
@@ -88,12 +87,12 @@ class ExchangeConnectionEndpointTest {
         actor = new ExchangeConnectionHttpActor(restTemplate, port);
     }
 
-    private static ConnectExchangeRequest request(String broker, String region, String permissions) {
-        return new ConnectExchangeRequest(
+    private static ExchangeConnectionDto.ConnectExchangeJson request(String broker, String region, String permissions) {
+        return new ExchangeConnectionDto.ConnectExchangeJson(
                 broker, ACCOUNT_UID, ExchangeEnvironment.DEMO, region, permissions, "EUR", null);
     }
 
-    private static ConnectExchangeRequest validRequest() {
+    private static ExchangeConnectionDto.ConnectExchangeJson validRequest() {
         return request("DEMOEX", "EU", "read_only");
     }
 
@@ -103,16 +102,16 @@ class ExchangeConnectionEndpointTest {
      */
     @Test
     void shouldCreateConnectionAndReturnItsWholeStateOverTheWire() {
-        ResponseEntity<ExchangeConnectionJson> response = actor.connect(validRequest());
+        ResponseEntity<ExchangeConnectionDto.ExchangeConnectionJson> response = actor.connect(validRequest());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-        ExchangeConnectionJson created = response.getBody();
+        ExchangeConnectionDto.ExchangeConnectionJson created = response.getBody();
         assertThat(created).isNotNull();
         assertThat(created.id()).isNotBlank();
         assertThat(created)
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionJson(
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionJson(
                         created.id(),
                         ALICE.getId(),
                         "DEMOEX",
@@ -213,7 +212,7 @@ class ExchangeConnectionEndpointTest {
         connection.revoke("api key expired", FIXED_NOW);
         repository.save(connection);
 
-        ResponseEntity<ExchangeConnectionJson> response = actor.reconnect(id);
+        ResponseEntity<ExchangeConnectionDto.ExchangeConnectionJson> response = actor.reconnect(id);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().status()).isEqualTo("ACTIVE");

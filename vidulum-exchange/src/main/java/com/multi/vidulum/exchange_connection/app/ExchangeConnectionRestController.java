@@ -1,8 +1,18 @@
 package com.multi.vidulum.exchange_connection.app;
 
+import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
+import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommand;
+import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommand;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQuery;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQuery;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
+import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,47 +28,69 @@ import org.springframework.web.bind.annotation.RestController;
  * Connections belong to the authenticated user; the user id is never taken from the request, so
  * one account cannot be registered on someone else's behalf.
  */
+@AllArgsConstructor
 @RestController
 @RequestMapping("/exchange-connection")
-@AllArgsConstructor
 public class ExchangeConnectionRestController {
 
-    private final ExchangeConnectionService service;
+    private final CommandGateway commandGateway;
+    private final QueryGateway queryGateway;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ExchangeConnectionJson connect(@Valid @RequestBody ConnectExchangeRequest request) {
-        UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return ExchangeConnectionJson.from(service.connect(userId, request.toCommand()));
+    public ExchangeConnectionDto.ExchangeConnectionJson connect(
+            @Valid @RequestBody ExchangeConnectionDto.ConnectExchangeJson request) {
+
+        ExchangeConnection connection = commandGateway.send(
+                new ConnectExchangeCommand(
+                        currentUser(),
+                        Broker.of(request.broker()),
+                        request.accountUid(),
+                        request.environment(),
+                        request.region(),
+                        request.reportedKeyPermissions(),
+                        Currency.of(request.denominationCurrency()),
+                        request.credentialsMode()
+                )
+        );
+
+        return ExchangeConnectionDto.ExchangeConnectionJson.from(connection);
+    }
+
+    @PostMapping("/{connectionId}/reconnect")
+    public ExchangeConnectionDto.ExchangeConnectionJson reconnect(@PathVariable String connectionId) {
+        ExchangeConnection connection = commandGateway.send(
+                new ReconnectExchangeCommand(currentUser(), ExchangeConnectionId.of(connectionId))
+        );
+
+        return ExchangeConnectionDto.ExchangeConnectionJson.from(connection);
     }
 
     /**
-     * One connection's current state.
-     *
-     * <p>Answers {@code 404} for another user's connection rather than {@code 403}: a
-     * {@code 403} would confirm that the id exists.
+     * One connection's current state. Answers {@code 404} for another user's connection rather
+     * than {@code 403}, which would confirm that the id exists.
      */
     @GetMapping("/{connectionId}")
-    public ExchangeConnectionJson get(@PathVariable String connectionId) {
-        UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return ExchangeConnectionJson.from(
-                service.get(userId, ExchangeConnectionId.of(connectionId)));
+    public ExchangeConnectionDto.ExchangeConnectionJson get(@PathVariable String connectionId) {
+        ExchangeConnection connection = queryGateway.send(
+                new GetExchangeConnectionQuery(currentUser(), ExchangeConnectionId.of(connectionId))
+        );
+
+        return ExchangeConnectionDto.ExchangeConnectionJson.from(connection);
     }
 
     /** Every connection the caller owns, whatever its status. */
     @GetMapping
-    public ExchangeConnectionsListJson list() {
-        UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return new ExchangeConnectionsListJson(
-                service.list(userId).stream().map(ExchangeConnectionJson::from).toList(),
-                service.supportedExchanges());
+    public ExchangeConnectionDto.ExchangeConnectionsListJson list() {
+        GetExchangeConnectionsOfUserQueryHandler.Result result = queryGateway.send(
+                new GetExchangeConnectionsOfUserQuery(currentUser())
+        );
+
+        return ExchangeConnectionDto.ExchangeConnectionsListJson.from(result);
     }
 
-    @PostMapping("/{connectionId}/reconnect")
-    public ExchangeConnectionJson reconnect(@PathVariable String connectionId) {
-        UserId userId = authenticatedUserProvider.getCurrentUserId();
-        return ExchangeConnectionJson.from(
-                service.reconnect(userId, ExchangeConnectionId.of(connectionId)));
+    private UserId currentUser() {
+        return authenticatedUserProvider.getCurrentUserId();
     }
 }

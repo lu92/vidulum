@@ -4,9 +4,7 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.common.error.ErrorCode;
-import com.multi.vidulum.exchange_connection.app.ConnectExchangeRequest;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionJson;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionsListJson;
+import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
@@ -88,8 +86,8 @@ class ExchangeConnectionReadEndpointTest {
         actor = new ExchangeConnectionHttpActor(restTemplate, port);
     }
 
-    private ExchangeConnectionJson connectAccount(String accountUid) {
-        return actor.connect(new ConnectExchangeRequest(
+    private ExchangeConnectionDto.ExchangeConnectionJson connectAccount(String accountUid) {
+        return actor.connect(new ExchangeConnectionDto.ConnectExchangeJson(
                 "DEMOEX", accountUid, ExchangeEnvironment.DEMO, "EU", "read_only", "EUR", null))
                 .getBody();
     }
@@ -104,9 +102,9 @@ class ExchangeConnectionReadEndpointTest {
      */
     @Test
     void shouldReturnTheSameConnectionThatWasJustCreated() {
-        ExchangeConnectionJson created = connectAccount("349378528917283");
+        ExchangeConnectionDto.ExchangeConnectionJson created = connectAccount("349378528917283");
 
-        ResponseEntity<ExchangeConnectionJson> response = actor.get(created.id());
+        ResponseEntity<ExchangeConnectionDto.ExchangeConnectionJson> response = actor.get(created.id());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
@@ -126,7 +124,7 @@ class ExchangeConnectionReadEndpointTest {
         connection.recordSnapshot(SNAPSHOT_AT);
         repository.save(connection);
 
-        ExchangeConnectionJson read = actor.get(id).getBody();
+        ExchangeConnectionDto.ExchangeConnectionJson read = actor.get(id).getBody();
 
         assertThat(read.lastSnapshotAt()).isEqualTo(SNAPSHOT_AT);
         assertThat(read.lastSyncAt()).isEqualTo(SYNC_AT);
@@ -145,7 +143,7 @@ class ExchangeConnectionReadEndpointTest {
         connection.revoke("api key expired", SNAPSHOT_AT);
         repository.save(connection);
 
-        ExchangeConnectionJson read = actor.get(id).getBody();
+        ExchangeConnectionDto.ExchangeConnectionJson read = actor.get(id).getBody();
 
         assertThat(read.status()).isEqualTo("REVOKED");
         assertThat(read.statusReason()).isEqualTo("api key expired");
@@ -162,24 +160,24 @@ class ExchangeConnectionReadEndpointTest {
         connect("333");
 
         ExchangeTestApplication.CurrentTestUser.set(ALICE);
-        ExchangeConnectionsListJson listed = actor.list().getBody();
+        ExchangeConnectionDto.ExchangeConnectionsListJson listed = actor.list().getBody();
 
         assertThat(listed.connections())
                 .hasSize(2)
                 .allSatisfy(connection ->
                         assertThat(connection.userId()).isEqualTo(ALICE.getId()))
-                .extracting(ExchangeConnectionJson::accountUid)
+                .extracting(ExchangeConnectionDto.ExchangeConnectionJson::accountUid)
                 .containsExactlyInAnyOrder("111", "222");
         assertThat(listed.supportedExchanges()).containsExactly("DEMOEX");
     }
 
     @Test
     void shouldReturnAnEmptyListForAUserWithNoConnections() {
-        ExchangeConnectionsListJson listed = actor.list().getBody();
+        ExchangeConnectionDto.ExchangeConnectionsListJson listed = actor.list().getBody();
 
         assertThat(listed)
                 .usingRecursiveComparison()
-                .isEqualTo(new ExchangeConnectionsListJson(java.util.List.of(), java.util.List.of("DEMOEX")));
+                .isEqualTo(new ExchangeConnectionDto.ExchangeConnectionsListJson(java.util.List.of(), java.util.List.of("DEMOEX")));
     }
 
     @Test

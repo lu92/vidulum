@@ -721,6 +721,27 @@ regionu OKX nie uwierzytelni się w innym. Bez tej walidacji błąd wyszedłby d
 z giełdy przy pierwszym pobraniu snapshotu — czyli długo po tym, jak użytkownik uznał, że konto
 jest podłączone.
 
+**Układ pakietów jest taki sam jak w `vidulum-cashflow`.** Kontroler nie zna serwisu — składa
+komendę albo zapytanie i wysyła je przez `CommandGateway` / `QueryGateway`, a logika mieszka
+w handlerach:
+
+```
+exchange_connection/
+├── app/
+│   ├── ExchangeConnectionDto.java            — wszystkie modele JSON w jednej klasie
+│   ├── ExchangeConnectionRestController.java — mapuje JSON → komenda, wysyła przez gateway
+│   ├── commands/
+│   │   ├── connect/    ConnectExchangeCommand + Handler
+│   │   └── reconnect/  ReconnectExchangeCommand + Handler
+│   └── queries/        GetExchangeConnectionQuery + Handler,
+│                       GetExchangeConnectionsOfUserQuery + Handler
+├── domain/
+└── infrastructure/
+```
+
+Reguła „połączenie widzi tylko jego właściciel" siedzi w jednym miejscu — jako metoda domyślna
+`findOwnedOrThrow` na repozytorium domenowym — więc każdy handler wymusza ją tak samo.
+
 **Odmowy i ich kody.** Każda kończy się statusem, na który klient może zareagować:
 
 | sytuacja | status | kod |

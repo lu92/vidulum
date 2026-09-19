@@ -3,8 +3,16 @@ package com.multi.vidulum.exchange_connection;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.exchange_connection.app.ConnectExchangeCommand;
-import com.multi.vidulum.exchange_connection.app.ExchangeConnectionService;
+import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommand;
+import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommand;
+import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQuery;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQueryHandler;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQuery;
+import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
+import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
 import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAccountAlreadyConnectedException;
@@ -28,11 +36,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Component tests for the onboarding service: real aggregate, real mapping through
+ * Component tests for the command and query handlers: real aggregate, real mapping through
  * {@link InMemoryExchangeConnectionRepository}, a stub adapter standing in for an exchange's
- * module. No Spring, no containers.
+ * module. No Spring, no containers — the handlers are plain objects, so they need none.
  */
-class ExchangeConnectionServiceTest {
+class ExchangeConnectionHandlersTest {
 
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z");
     private static final UserId ALICE = UserId.of("U10000001");
@@ -42,13 +50,28 @@ class ExchangeConnectionServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
     private final InMemoryExchangeConnectionRepository repository =
             new InMemoryExchangeConnectionRepository();
-    private final ExchangeConnectionService service = new ExchangeConnectionService(
-            repository, clock, List.of(new StubExchangeAdapter()));
+    private final ExchangeAdapters adapters = new ExchangeAdapters(List.of(new StubExchangeAdapter()));
+
+    private final ConnectExchangeCommandHandler connectHandler =
+            new ConnectExchangeCommandHandler(repository, adapters, clock);
+    private final ReconnectExchangeCommandHandler reconnectHandler =
+            new ReconnectExchangeCommandHandler(repository, clock);
+    private final GetExchangeConnectionQueryHandler getHandler =
+            new GetExchangeConnectionQueryHandler(repository);
+    private final GetExchangeConnectionsOfUserQueryHandler listHandler =
+            new GetExchangeConnectionsOfUserQueryHandler(repository, adapters);
+
+    private ExchangeConnection connect(UserId userId, ConnectExchangeCommand command) {
+        return connectHandler.handle(command.userId().equals(userId) ? command
+                : new ConnectExchangeCommand(userId, command.broker(), command.accountUid(),
+                command.environment(), command.region(), command.reportedKeyPermissions(),
+                command.denominationCurrency(), command.credentialsMode()));
+    }
 
     private static ConnectExchangeCommand command(String broker, String region, String permissions) {
         return new ConnectExchangeCommand(
-                broker, ACCOUNT_UID, ExchangeEnvironment.DEMO, region, permissions, "EUR",
-                CredentialsMode.EXTERNAL);
+                ALICE, Broker.of(broker), ACCOUNT_UID, ExchangeEnvironment.DEMO, region,
+                permissions, Currency.of("EUR"), CredentialsMode.EXTERNAL);
     }
 
     private static ConnectExchangeCommand validCommand() {
@@ -57,7 +80,7 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldConnectAccountAsPendingWithoutPortfolio() {
-        ExchangeConnection connection = service.connect(ALICE, validCommand());
+        ExchangeConnection connection = connect(ALICE, validCommand());
 
         assertThat(connection.getStatus()).isEqualTo(ConnectionStatus.PENDING);
         assertThat(connection.getPortfolioId()).isNull();
@@ -69,15 +92,15 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldAcceptBrokerNameInAnyCaseAndStoreItNormalised() {
-        ExchangeConnection connection = service.connect(ALICE, command("demoex", "EU", "read_only"));
+        ExchangeConnection connection = connect(ALICE, command("demoex", "EU", "read_only"));
 
         assertThat(connection.getBroker()).isEqualTo(Broker.of("DEMOEX"));
-        assertThat(service.get(ALICE, connection.getId()).getBroker()).isEqualTo(Broker.of("DEMOEX"));
+        assertThat(getHandler.query(new GetExchangeConnectionQuery(ALICE, connection.getId())).getBroker()).isEqualTo(Broker.of("DEMOEX"));
     }
 
     @Test
     void shouldRefuseBrokerWithNoRegisteredAdapter() {
-        assertThatThrownBy(() -> service.connect(ALICE, command("BINANCE", "EU", "read_only")))
+        assertThatThrownBy(() -> connect(ALICE, command("BINANCE", "EU", "read_only")))
                 .isInstanceOf(ExchangeNotSupportedException.class)
                 .hasMessageContaining("BINANCE")
                 .hasMessageContaining("DEMOEX");
@@ -87,7 +110,7 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldRefuseRegionTheExchangeDoesNotServe() {
-        assertThatThrownBy(() -> service.connect(ALICE, command("DEMOEX", "MARS", "read_only")))
+        assertThatThrownBy(() -> connect(ALICE, command("DEMOEX", "MARS", "read_only")))
                 .isInstanceOf(UnknownExchangeRegionException.class)
                 .hasMessageContaining("MARS")
                 .hasMessageContaining("EU");
@@ -97,7 +120,7 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldRefuseKeyThatCouldTradeBeforeStoringAnything() {
-        assertThatThrownBy(() -> service.connect(ALICE, command("DEMOEX", "EU", "read_only,trade")))
+        assertThatThrownBy(() -> connect(ALICE, command("DEMOEX", "EU", "read_only,trade")))
                 .isInstanceOf(KeyPermissionsTooBroadException.class);
 
         assertThat(repository.size()).isZero();
@@ -108,9 +131,9 @@ class ExchangeConnectionServiceTest {
      */
     @Test
     void shouldRefuseToConnectAnAccountThatIsAlreadyKnown() {
-        service.connect(ALICE, validCommand());
+        connect(ALICE, validCommand());
 
-        assertThatThrownBy(() -> service.connect(ALICE, validCommand()))
+        assertThatThrownBy(() -> connect(ALICE, validCommand()))
                 .isInstanceOf(ExchangeAccountAlreadyConnectedException.class)
                 .hasMessageContaining(ACCOUNT_UID);
 
@@ -123,20 +146,20 @@ class ExchangeConnectionServiceTest {
      */
     @Test
     void shouldRefuseToConnectAgainEvenWhenTheExistingConnectionIsRevoked() {
-        ExchangeConnection connection = service.connect(ALICE, validCommand());
+        ExchangeConnection connection = connect(ALICE, validCommand());
         connection.confirm(PortfolioId.of("portfolio-1"), NOW);
         connection.revoke("api key expired", NOW);
         repository.save(connection);
 
-        assertThatThrownBy(() -> service.connect(ALICE, validCommand()))
+        assertThatThrownBy(() -> connect(ALICE, validCommand()))
                 .isInstanceOf(ExchangeAccountAlreadyConnectedException.class);
     }
 
     @Test
     void shouldLetAnotherUserConnectTheSameExchangeAccount() {
-        service.connect(ALICE, validCommand());
+        connect(ALICE, validCommand());
 
-        ExchangeConnection bobs = service.connect(BOB, validCommand());
+        ExchangeConnection bobs = connect(BOB, validCommand());
 
         assertThat(bobs.getUserId()).isEqualTo(BOB);
         assertThat(repository.size()).isEqualTo(2);
@@ -144,12 +167,12 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldReconnectRevokedConnectionKeepingItsPortfolio() {
-        ExchangeConnection connection = service.connect(ALICE, validCommand());
+        ExchangeConnection connection = connect(ALICE, validCommand());
         connection.confirm(PortfolioId.of("portfolio-1"), NOW);
         connection.revoke("api key expired", NOW);
         repository.save(connection);
 
-        ExchangeConnection reconnected = service.reconnect(ALICE, connection.getId());
+        ExchangeConnection reconnected = reconnectHandler.handle(new ReconnectExchangeCommand(ALICE, connection.getId()));
 
         assertThat(reconnected.getStatus()).isEqualTo(ConnectionStatus.ACTIVE);
         assertThat(reconnected.getStatusReason()).isNull();
@@ -159,9 +182,9 @@ class ExchangeConnectionServiceTest {
 
     @Test
     void shouldRefuseToReconnectConnectionThatIsNotRevoked() {
-        ExchangeConnection connection = service.connect(ALICE, validCommand());
+        ExchangeConnection connection = connect(ALICE, validCommand());
 
-        assertThatThrownBy(() -> service.reconnect(ALICE, connection.getId()))
+        assertThatThrownBy(() -> reconnectHandler.handle(new ReconnectExchangeCommand(ALICE, connection.getId())))
                 .isInstanceOf(IllegalConnectionTransitionException.class)
                 .hasMessageContaining("PENDING");
     }
@@ -172,31 +195,31 @@ class ExchangeConnectionServiceTest {
      */
     @Test
     void shouldHideAnotherUsersConnection() {
-        ExchangeConnection alices = service.connect(ALICE, validCommand());
+        ExchangeConnection alices = connect(ALICE, validCommand());
 
-        assertThatThrownBy(() -> service.get(BOB, alices.getId()))
+        assertThatThrownBy(() -> getHandler.query(new GetExchangeConnectionQuery(BOB, alices.getId())))
                 .isInstanceOf(ExchangeConnectionNotFoundException.class);
-        assertThatThrownBy(() -> service.reconnect(BOB, alices.getId()))
+        assertThatThrownBy(() -> reconnectHandler.handle(new ReconnectExchangeCommand(BOB, alices.getId())))
                 .isInstanceOf(ExchangeConnectionNotFoundException.class);
     }
 
     @Test
     void shouldReportUnknownConnectionAsNotFound() {
-        assertThatThrownBy(() -> service.get(ALICE, ExchangeConnectionId.of("nope")))
+        assertThatThrownBy(() -> getHandler.query(new GetExchangeConnectionQuery(ALICE, ExchangeConnectionId.of("nope"))))
                 .isInstanceOf(ExchangeConnectionNotFoundException.class);
     }
 
     @Test
     void shouldListOnlyTheCallersConnections() {
-        service.connect(ALICE, validCommand());
-        service.connect(BOB, validCommand());
+        connect(ALICE, validCommand());
+        connect(BOB, validCommand());
 
-        assertThat(service.list(ALICE)).hasSize(1);
-        assertThat(service.list(ALICE).getFirst().getUserId()).isEqualTo(ALICE);
+        assertThat(listHandler.query(new GetExchangeConnectionsOfUserQuery(ALICE)).connections()).hasSize(1);
+        assertThat(listHandler.query(new GetExchangeConnectionsOfUserQuery(ALICE)).connections().getFirst().getUserId()).isEqualTo(ALICE);
     }
 
     @Test
     void shouldReportWhichExchangesAreSupported() {
-        assertThat(service.supportedExchanges()).containsExactly("DEMOEX");
+        assertThat(listHandler.query(new GetExchangeConnectionsOfUserQuery(ALICE)).supportedExchanges()).containsExactly("DEMOEX");
     }
 }
