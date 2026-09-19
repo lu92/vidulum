@@ -605,6 +605,93 @@ nowa, zamiast stosowania nieaktualnych odpowiedzi.
 snapshotem, ilość objęta kosztem nie może przekraczać ilości pozycji, waluta musi być rozwiązywalna,
 a pozycje bez ceny muszą być **jawnie potwierdzone jako nieznane**, nie pominięte milczeniem.
 
+
+### 4.8 Łańcuch D1 → D4 → D2 → D3 — zakres i granice
+
+#### Podział pracy
+
+| # | co dokłada | dlaczego nie da się bez niego |
+|---|---|---|
+| **D1** | encja + silnik różnicy, `POST`/`GET /portfolio-spec` | bez niego nie ma czego zatwierdzać |
+| **D4** | reguły z §4.2 — które różnice **nie** wymagają człowieka | bez niego spec pyta o **każdy zwykły zakup** |
+| **D2** | `PUT .../answers` z proweniencją i kotwicą w partii | bez niego nie da się odpowiedzieć |
+| **D3** | `confirm` → `Portfolio` + `ExchangeConnection.confirm` | bez niego nic się nie materializuje |
+
+**D1 i D4 są nierozdzielne w praktyce.** D1 bez D4 jest weryfikowalny wyłącznie testem, bo
+ścieżka `draft → applied` — ta, którą pójdzie większość synchronizacji — po prostu nie powstaje.
+
+#### Co D4 dziedziczy po C1
+
+Cztery z pięciu proweniencji **już istnieją** jako enum, a `CostBasis.isOverwritableSilently()`
+implementuje regułę nadpisywania. D4 jest więc mapowaniem różnicy na istniejące pojęcia, nie
+projektowaniem od zera.
+
+Jedna reguła jest droższa, niż wygląda. **„Pozycja zmalała, jest odpowiadający fill — nie pytaj"**
+wymaga historii transakcji z okresu przerwy. OKX trzyma `fills-history` **3 miesiące**; dłuższa
+przerwa bez archiwum kwartalnego sprawia, że każdy spadek wygląda jak przelew na zewnątrz
+(§5.8). W POC historii filli nie ma w ogóle, więc **spadek zawsze rodzi pytanie** — to jest
+świadome ograniczenie, nie przeoczenie.
+
+#### Kształt snapshotu jest podyktowany przez OKX
+
+Giełda podaje `cashBal` (całość), `spotBal` (część handlowana) i `openAvgPx` (średnia dla części
+handlowanej). To odwzorowuje się jeden do jednego na podział z C2:
+
+```
+pozycja traded          = spotBal            , CostBasis(EXCHANGE_REPORTED)
+pozycja transferred-in  = cashBal - spotBal  , brak kosztu
+```
+
+Silnik nie musi niczego zgadywać — produkuje dwa wiersze, bo giełda podaje dwie liczby.
+
+#### Trzy decyzje podjęte przed kodem
+
+**`Portfolio` nie niesie `specId`.** §4.7 mówi „`Portfolio` niesie referencję do spec-u, który go
+zrodził"; odwracamy ten kierunek — referencję trzyma `spec.portfolioId`, który i tak jest
+zaplanowany. Powód praktyczny: nowe pole w `Portfolio` przechodzi przez `PortfolioSnapshot`,
+`PortfolioEntity` i **12 miejsc w testach porównujących cały portfel**, i dokłada koszt każdemu,
+kto portfela używa, dla informacji potrzebnej rzadko. Pytanie „który spec zrodził ten portfel"
+obsługuje zapytanie, nie pole.
+
+**Świeży snapshot przy `confirm` przychodzi w ciele żądania.** Backend w POC nie ma poświadczeń,
+więc nie pobierze go sam. To nadal kontrola **spójności**, nie autentyczności — dokładnie to samo
+rozróżnienie co przy `reportedKeyPermissions` w §5.3. Trzeba to wiedzieć, zanim ktoś uzna, że
+`confirm` weryfikuje coś, czego nie może.
+
+**Spec nie kopiuje pól aktywa.** Trzyma `quantity` wyłącznie po to, żeby zwalidować odpowiedź
+przeciwko snapshotowi (§4.7). Bez tej dyscypliny powstanie drugi model portfela pod inną nazwą.
+
+#### Znalezione przy wdrożeniu D2 i D3
+
+**`vidulum-wealth` nie miało zależności od `vidulum-exchange`.** §5.9 przewidywało ten kierunek
+przy wydzielaniu modułu, ale wpis w `pom.xml` nigdy nie powstał — bo do D3 nic go nie
+potrzebowało. Dodany; kierunek jest zgodny z planem, `exchange` zależy wyłącznie od
+`shared-kernel`.
+
+**Brak transakcji obejmującej portfel i połączenie.** Pierwsza wersja `confirm` zapisywała
+portfel, oznaczała spec jako `applied`, a dopiero potem potwierdzała połączenie — awaria na
+ostatnim kroku zostawiała portfel bez połączenia i nic nie odróżniało go od prawdziwego.
+Połączenie jest teraz **sprawdzane, zanim cokolwiek zostanie zapisane**, co zawęża okno do
+minimum. Test `shouldNotCreateAPortfolioWhenTheConnectionCannotBeConfirmed` to utrwala.
+
+**`Difference` musiał urosnąć o trzeci stan.** Odpowiedź „nie wiem" to różnica bez kosztu
+**i** bez otwartego pytania — poprzedni niezmiennik „albo koszt, albo pytanie, nigdy oba ani
+żadne" tego nie dopuszczał. Teraz są trzy kształty: rozstrzygnięty przez reguły, otwarty,
+odpowiedziany.
+
+**D3 obejmuje tworzenie, nie stosowanie do istniejącego portfela.** Spec policzony względem
+istniejącego portfela kończy się jawnym `CannotApplySpecToExistingPortfolioException` (501),
+bo zmniejszanie pozycji o nieznanym koszcie to zdarzenie podatkowe, którego nie policzymy (C7).
+Głośna odmowa jest lepsza od zastosowania połowy.
+
+#### Co w testach trzeba będzie ruszyć
+
+**Nic się nie psuje przy D1 i D4** — to nowy pakiet obok istniejących. `PortfolioFactory.empty`
+zostaje, `POST /portfolio` bez zmian, testy `vidulum-exchange` nietknięte.
+
+Przy **D3** dochodzi `ConfirmExchangeConnectionCommand` w `vidulum-exchange` (D3 musi mieć jak
+zamknąć drugą stronę) oraz `PortfolioSpecEntity` w `WealthDataCleaner` i w tabeli `CLAUDE.md`.
+To są dopisania, nie poprawki — pod warunkiem, że `Portfolio` nie dostanie `specId`.
 ---
 
 ## 5. ExchangeConnection i gotowość giełdy
@@ -1015,10 +1102,10 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 | `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — powrót po przerwie, zachowuje portfel |
 | `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — stan jednego połączenia |
 | `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — połączenia użytkownika + `supportedExchanges` |
-| `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — tworzy draft z różnicy |
-| `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — czego brakuje |
-| `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D2)** — odpowiedzi użytkownika |
-| `/portfolio-spec/{id}/confirm` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D3)** — walidacja i zastosowanie |
+| `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D1) — liczy różnicę, snapshot w ciele żądania |
+| `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D1) — czego brakuje |
+| `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D2) — odpowiedzi zakotwiczone w partii |
+| `/portfolio-spec/{id}/confirm` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D3) — świeży snapshot w ciele, tworzy portfel, potwierdza połączenie |
 | `/portfolio/{id}/{currency}` | GET | `vidulum-wealth` · `PortfolioRestController` | istnieje |
 | `/portfolio/asset/lock` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje, alternatywa dla D3 |
 | `/quote/publish` | GET | `vidulum-wealth` · `QuoteRestController` | istnieje |

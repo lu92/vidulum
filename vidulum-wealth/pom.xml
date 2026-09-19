@@ -22,6 +22,16 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Exchange: PortfolioSpec closes onboarding by confirming the connection that started
+             it. The direction was planned when vidulum-exchange was extracted (see the analysis,
+             section 5.9) - exchange depends on shared-kernel only, precisely so that wealth can
+             depend on it and not the other way round. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

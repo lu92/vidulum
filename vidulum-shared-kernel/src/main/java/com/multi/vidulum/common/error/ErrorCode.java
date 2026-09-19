@@ -156,7 +156,17 @@ public enum ErrorCode {
     // ============ Wealth (portfolio, trading, quotations) ============
     BROKER_NOT_FOUND(HttpStatus.NOT_FOUND, "Broker not found"),
     QUOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Quote not found for symbol"),
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found");
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found"),
+
+    // ============ Portfolio specification ============
+    PORTFOLIO_SPEC_NOT_FOUND(HttpStatus.NOT_FOUND, "Portfolio specification not found"),
+    PORTFOLIO_SPEC_NOTHING_TO_SYNCHRONISE(HttpStatus.CONFLICT, "Snapshot matches the known state"),
+    PORTFOLIO_SPEC_INVALID_TRANSITION(HttpStatus.CONFLICT, "Operation not allowed in current specification status"),
+    PORTFOLIO_SPEC_ANSWER_NOT_APPLICABLE(HttpStatus.UNPROCESSABLE_ENTITY, "Answer does not match anything the specification asks"),
+    PORTFOLIO_SPEC_UNANSWERED(HttpStatus.CONFLICT, "Specification still has unanswered questions"),
+    PORTFOLIO_SPEC_SNAPSHOT_CHANGED(HttpStatus.CONFLICT, "Exchange state changed since the specification was built"),
+    PORTFOLIO_SPEC_APPLY_NOT_SUPPORTED(HttpStatus.NOT_IMPLEMENTED, "Applying a specification to an existing portfolio is not supported yet"),
+    PORTFOLIO_SPEC_CONNECTION_MISMATCH(HttpStatus.CONFLICT, "Confirmation contradicts the exchange connection");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;
