@@ -37,6 +37,13 @@
             <artifactId>spring-boot-starter-classic</artifactId>
         </dependency>
 
+        <!-- Mongo: ExchangeConnection is persisted here. Declared explicitly rather than
+             relying on the transitive path through vidulum-wealth. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -63,6 +70,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

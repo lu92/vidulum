@@ -397,23 +397,40 @@ W POC jest to niejawne: jeden skrypt, jedno konto. Przy pierwszej synchronizacji
 | `id` | `ExchangeConnectionId` | |
 | `userId` | `UserId` | |
 | `exchange` | `Exchange` | `OKX`, docelowo inne |
-| `accountUid` | `String` | **klucz naturalny** — `uid` z `GET /account/config`; wykrywa podłączenie tego samego konta dwa razy |
+| `accountUid` | `String` | `uid` z `GET /account/config`; część klucza naturalnego |
 | `environment` | enum | `DEMO` / `LIVE` |
 | `region` | enum | `EEA` / `GLOBAL` / `US` — determinuje hosty REST i WS |
-| `reportedKeyPermissions` | `String` | `perm` zgłoszone przez klienta; **walidowane, że to `read_only`**. Przedrostek `reported` jest świadomy — patrz §5.3 |
+| `reportedKeyPermissions` | `ReportedKeyPermissions` | `perm` zgłoszone przez klienta; typ **wymusza `read_only` przy konstrukcji**, trzyma też surowy string do audytu. Przedrostek `reported` jest świadomy — patrz §5.3 |
 | `credentialsMode` | enum | `EXTERNAL` (POC — klucze zostają w skrypcie) / `STORED_ENCRYPTED` (docelowo) |
-| `portfolioId` | `PortfolioId` | ustawiane po `confirm`; puste do tego czasu |
+| `portfolioId` | `PortfolioId` | ustawiane po `confirm`; puste do tego czasu. Kardynalność **1:1** — patrz §5.8 |
 | `denominationCurrency` | `Currency` | **wejście**, nie wynik — patrz §5.4 |
-| `status` | enum | `PENDING` / `ACTIVE` / `ERROR` / `REVOKED` |
-| `lastSnapshotAt` | `Instant` | podstawa TTL spec-u |
-| `lastSyncAt` | `Instant` | |
-| `createdAt` | `Instant` | |
+| `status` | enum | `PENDING` / `ACTIVE` / `ERROR` / `REVOKED`. **Żaden nie jest terminalny** — patrz §5.8 |
+| `statusReason` | `String` | czemu `ERROR` albo `REVOKED`; bez tego oba stany są nieczytelne dla użytkownika |
+| `lastSnapshotAt` | `ZonedDateTime` | kiedy ostatnio **odczytaliśmy** stan z giełdy; podstawa TTL spec-u |
+| `lastSyncAt` | `ZonedDateTime` | kiedy ostatnio **zastosowaliśmy** snapshot do portfela |
+| `createdAt` | `ZonedDateTime` | |
+
+Typ czasu to `ZonedDateTime`, nie `Instant` — cała reszta repozytorium używa tego pierwszego
+(`UserFinancialProfile`, `CashFlow`, konwertery w `shared-kernel`, `FixedClockConfig` w testach).
 
 Dwie decyzje warte uzasadnienia:
 
-**`accountUid` jako klucz naturalny.** Bez niego nie wykryjesz, że użytkownik podpina to samo konto
-po raz drugi — i zrobisz mu dwa portfele z tymi samymi aktywami. OKX oddaje `uid` w
-`GET /account/config`, więc to nic nie kosztuje.
+**Klucz naturalny to `(userId, exchange, environment, accountUid)`.** Bez niego nie wykryjesz, że
+użytkownik podpina to samo konto po raz drugi — i zrobisz mu dwa portfele z tymi samymi aktywami.
+OKX oddaje `uid` w `GET /account/config`, więc to nic nie kosztuje.
+
+Klucz jest **złożony, nie sam `accountUid`**, z dwóch powodów. `environment` musi w nim być, bo
+demo i live to osobne konta z osobnymi saldami. `userId` musi w nim być, bo klucz globalny
+pozwoliłby pierwszemu użytkownikowi zablokować wszystkim innym podłączenie tego samego konta —
+to problem supportowy, nie zabezpieczenie, skoro portfele i tak są per-user i nic nie jest
+liczone podwójnie między użytkownikami.
+
+**Indeks unikalności zakładany jest jawnie, nie adnotacją.** `spring.data.mongodb.auto-index-creation`
+domyślnie jest wyłączone i ten projekt nigdzie go nie włącza — wszystkie istniejące `@Indexed`
+w repozytorium **nie tworzą żadnego indeksu** (to samo obserwuje F1). Adnotacja byłaby więc
+deklaracją, która nigdy nie dociera do bazy, a niezmiennik wyglądałby na wymuszony. Indeks zakłada
+`ExchangeConnectionIndexInitializer` jako `ApplicationRunner` — po `DataCleaner`, który kasuje
+kolekcję w trakcie budowy kontekstu.
 
 **`credentialsMode` jawnie mówi, że w POC kluczy nie mamy.** To nie jest brak, tylko stan świadomy.
 Bez tego pola ktoś za pół roku uzna, że szyfrowanie „zapomniano dodać".
@@ -423,8 +440,25 @@ Bez tego pola ktoś za pół roku uzna, że szyfrowanie „zapomniano dodać".
 `OKX-CONTEXT.md` stawia warunek nienegocjowalny: klucz użytkownika ma mieć wyłącznie `read_only`,
 a backend to weryfikuje. W POC backend **nie ma poświadczeń**, więc nie zrobi wywołania sam.
 
-Rozwiązanie: snapshot wysyłany do `POST /portfolio-spec` **musi nieść pole `reportedKeyPermissions`**, a backend
-odrzuca spec, jeśli to nie `read_only`. Nazwa jest celowo niewygodna: samym brzmieniem mówi, że to
+Rozwiązanie: snapshot **musi nieść pole `reportedKeyPermissions`**, a backend odrzuca żądanie,
+jeśli to nie `read_only`.
+
+**Gdzie ta reguła mieszka (zrobione w A6).** Nie w kontrolerze i nie w serwisie, tylko w typie
+`ReportedKeyPermissions`, którego `of(...)` odmawia zbudowania wartości szerszej niż `read_only`.
+`ExchangeConnection` trzyma ten typ zamiast `String`, więc **nie istnieje ścieżka, która omija
+kontrolę** — ani przez nowy endpoint, ani przez odczyt z bazy (`toDomain()` też przechodzi przez
+`of(...)`, co odrzuca dokument podmieniony ręcznie). Konsekwencja projektowa: połączenie z
+za szerokim kluczem **nigdy nie powstaje**, więc nie ma rekordu w stanie `ERROR` z tego powodu —
+żądanie jest odrzucane, zanim cokolwiek zostanie zapisane.
+
+OKX zwraca `perm` jako listę po przecinku, więc sprawdzenie idzie po każdym wpisie, nie po całym
+napisie: `"read_only,trade"` zaczyna się od właściwego słowa i musi zostać odrzucone. Białe znaki
+i wielkość liter są normalizowane, ale surowy string zostaje zapisany bez zmian — to, co klient
+zadeklarował, ma być audytowalne co do znaku.
+
+Dwa różne błędy, nie jeden: `EXCHANGE_KEY_PERMISSIONS_NOT_REPORTED` (400 — nie podano niczego) i
+`EXCHANGE_KEY_PERMISSIONS_TOO_BROAD` (422 — klucz, którego nie przyjmujemy). Komunikat drugiego
+wymienia zgłoszone uprawnienia, żeby użytkownik wiedział, co usunąć przy wydawaniu klucza. Nazwa jest celowo niewygodna: samym brzmieniem mówi, że to
 wartość **zgłoszona przez klienta**, a nie zweryfikowana przez nas. Gdy POC zostanie zastąpiony
 kodem w Javie i backend zacznie pobierać `perm` sam, nazwa straci przedrostek `reported`. To nadal nie jest dowód (dane pochodzą od tego samego
 klienta), ale zamienia deklarację w kontrolę, którą widać w logu i w testach.
@@ -518,7 +552,7 @@ innego przy saldach sprzed minuty, a co innego przy saldach sprzed tygodnia.
 **Brak połączenia nie blokuje odczytu portfela.** Zwracamy ostatnią znaną wycenę, oznaczoną jako
 potencjalnie nieaktualną — nie błąd.
 
-### 5.5 Endpoint statusu giełdy
+### 5.7 Endpoint statusu giełdy
 
 Przydatny przy testach, w monitoringu i docelowo jako kontrolka w interfejsie.
 
@@ -558,6 +592,58 @@ portfel?":
 Bez `brokerRegistered` i `quotesReady` endpoint mówiłby „ONLINE", a zakładanie portfela i tak by
 padło — bo pada nie na giełdzie, tylko po naszej stronie.
 
+
+### 5.8 Cykl życia połączenia
+
+Trzy ustalenia, które domykają encję.
+
+**Jedno połączenie, jeden portfel.** Kardynalność `ExchangeConnection : Portfolio` to **1:1**.
+Wynika to wprost z decyzji 16 — Funding i Trading idą do jednego portfela, więc nie ma drugiego
+powodu, dla którego jedno konto giełdowe miałoby rodzić dwa. `portfolioId` zostaje pojedynczym
+polem, nie listą. Gdyby to się kiedyś zmieniło, zmiana pola na kolekcję jest migracją danych,
+a nie przeprojektowaniem — dlatego można ją odłożyć bez ryzyka.
+
+**`REVOKED` nie jest stanem terminalnym.** Brak połączenia z giełdą to **przerwa**, nie koniec:
+klucz wygasł, użytkownik go skasował, giełda zwróciła `401`. Połączenie zachowuje `accountUid`
+i `portfolioId`, a portfel zostaje nietknięty ze znacznikiem `portfolioSyncedAt` z momentu
+ostatniej udanej synchronizacji. Nic się nie kasuje i nie archiwizuje.
+
+**Ponowne podłączenie to synchronizacja, nie onboarding.** Po powrocie tego samego `accountUid`
+backend odnajduje istniejące połączenie, przywraca `ACTIVE` i tworzy spec-a — z **niepustym**
+stanem znanym, czyli portfelem sprzed przerwy. Cała maszyneria z §4 działa bez zmian:
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: POST /exchange-connection
+    PENDING --> ACTIVE: confirm spec-u, portfolioId ustawione
+    PENDING --> ERROR: zly uid, brak odpowiedzi, blad gieldy
+    ERROR --> PENDING: ponowna proba
+    ACTIVE --> REVOKED: klucz wygasl lub uzytkownik odlaczyl
+    REVOKED --> ACTIVE: ten sam accountUid wraca
+    ACTIVE --> ACTIVE: kolejna synchronizacja
+```
+
+Różnica po przerwie jest większa, ale **jakościowo taka sama** jak po godzinie. Tabela z §4.2
+obsługuje oba kierunki: pozycja urosła z `openAvgPx` rozstrzyga się sama, pozycja zmalała bez
+odpowiadającego filla staje się pytaniem „wypłata czy przeniesienie?". To właśnie znaczy
+„portfel wyrównany z giełdą" — zbieżność wymuszona przez ten sam silnik, który obsługuje
+zwykły dzień.
+
+**Dwa różne „statusy", których nie wolno mylić.** `GET /exchange/{name}/status` z §5.7 odpowiada
+na pytanie systemowe — czy giełda w ogóle jest użyteczna: czy odpowiada, czy broker jest
+zarejestrowany, czy notowania są w cache. Nie zna użytkownika i jest taki sam dla wszystkich.
+`GET /exchange-connection/{id}` odpowiada na pytanie osobiste — w jakim stanie jest **moje**
+połączenie i czy mój portfel jest aktualny. Giełda może być `ONLINE`, a połączenie `REVOKED`;
+i odwrotnie — połączenie `ACTIVE`, a giełda chwilowo `OFFLINE`, co §5.6 opisuje jako rozjazd
+`portfolioSyncedAt` i `quotesAsOf`. Zlanie ich w jeden endpoint zabiera użytkownikowi możliwość
+odróżnienia „giełda ma awarię" od „twój klucz wygasł".
+
+**Jedno ograniczenie warte zapisania.** Reguła „zmalało, ale jest odpowiadający fill — nie pytaj"
+wymaga historii transakcji z okresu przerwy. OKX trzyma `fills-history` przez **3 miesiące**;
+starsze okresy wymagają archiwum kwartalnego, które pobiera się osobnym żądaniem. Przy przerwie
+dłuższej niż kwartał — bez tego archiwum — każdy spadek pozycji wygląda jak przelew na zewnątrz
+i staje się pytaniem do użytkownika. Nie jest to błąd modelu, tylko koszt długiej przerwy,
+który trzeba pokazać w interfejsie zamiast ukryć.
 ---
 
 ## 6. Inwentarz endpointów
@@ -583,6 +669,10 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 |---|---|---|---|
 | `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
 | `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
+| `/exchange-connection` | POST | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A8)** — rejestruje konto giełdowe, zwraca `ExchangeConnectionId` |
+| `/exchange-connection/{id}/reconnect` | POST | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A8)** — powrót po przerwie, zachowuje portfel |
+| `/exchange-connection/{id}` | GET | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A9)** — stan jednego połączenia |
+| `/exchange-connection` | GET | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A9)** — połączenia zalogowanego użytkownika |
 | `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — tworzy draft z różnicy |
 | `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — czego brakuje |
 | `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D2)** — odpowiedzi użytkownika |
@@ -809,9 +899,12 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | A1 | Decyzja o module Maven `okx` | Gdzie leży (`vidulum-wealth/okx` czy top-level), jak podlega regule `shared-kernel ← wealth ← app`. Repo ma precedens: `vidulum-cashflow` ma 2 submoduły. | P0 | open | — |
 | A2 | Szkielet modułu + rejestracja w reaktorze | `pom.xml`, wpis w `<modules>`, pusty pakiet, build przechodzi. | P0 | open | A1 |
 | A3 | `ErrorHttpHandler` + `ErrorCode` | Dodać obsługę `BrokerNotFoundException`, `OrderNotFoundException`, `QuoteNotFoundException` oraz nowych wyjątków OKX. Dziś żaden wyjątek z wealth nie jest obsłużony. | P1 | open | A2 |
-| A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny, `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". | P0 | open | A2 |
+| A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny (**indeks unikalności**), `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". Wnosi pierwszą kolekcję Mongo w module (→ A4) i pierwsze wyjątki biznesowe (→ A3). | P0 | open | A2 |
 | A6 | Walidacja `perm == read_only` | Snapshot niesie `perm`; backend odrzuca spec, jeśli klucz ma szersze uprawnienia. Wymóg nienegocjowalny z `OKX-CONTEXT.md`. | P0 | open | A5 |
+| A8 | Onboarding połączenia — serwis i endpoint | `POST /exchange-connection` i `POST /exchange-connection/{id}/reconnect`. Bez niego nic nie tworzy `ExchangeConnection` przez HTTP, a `ExchangeAccountAlreadyConnectedException` nie ma kto rzucić — dziś podwójne podłączenie kończy się `DuplicateKeyException` z warstwy Mongo. Patrz §5.8. | P0 | open | A5, A6 |
+| A9 | Odczyt stanu połączenia | `GET /exchange-connection/{id}` i `GET /exchange-connection`. Zwraca `status`, `statusReason`, `portfolioId` oraz **oba** znaczniki czasu osobno (§5.6) — interfejs nie może ich zlać w jedno „zaktualizowano o 14:32". Nie myli się z `GET /exchange/{name}/status` z §5.7, które jest systemowe i nie zna użytkownika. | P1 | open | A8 |
 | A4 | `DataCleaner` dla encji OKX | Każda nowa `@Document` musi trafić do cleanera modułu — wymóg z `CLAUDE.md`. | P1 | open | A2 |
+| A7 | Ponowne podłączenie po przerwie | Wyszukanie połączenia po `accountUid`, przejście `REVOKED → ACTIVE` z zachowaniem `portfolioId`, utworzenie spec-u z **niepustym** stanem znanym. Patrz §5.8. Poza zakresem POC (decyzja 20). | P1 | open | A5, D1 |
 
 ### Ścieżka B — broker i notowania
 
@@ -908,6 +1001,9 @@ z historii rozmów.
 | 18 | Dwa znaczniki czasu: `portfolioSyncedAt` i `quotesAsOf` | rozjeżdżają się w obie strony, UI nie może ich zlewać |
 | 19 | Offline nie blokuje odczytu portfela | zwracamy ostatnią znaną wycenę, oznaczoną jako nieaktualną |
 | 20 | POC nie jest idempotentny | przy ponownym uruchomieniu: „konto już podłączone, spróbuj z czystym stanem" |
+| 23 | `ExchangeConnection : Portfolio` to **1:1** | Funding i Trading idą do jednego portfela (decyzja 16), więc nie ma drugiego powodu na rozdział; `portfolioId` zostaje pojedynczym polem |
+| 24 | `REVOKED` **nie jest stanem terminalnym** | brak połączenia to przerwa, nie koniec — połączenie i portfel zostają nietknięte |
+| 25 | Ponowne podłączenie tego samego `accountUid` to **synchronizacja**, nie onboarding | spec powstaje z niepustym stanem znanym; portfel zostaje wyrównany z giełdą przez ten sam silnik z §4 |
 
 ---
 

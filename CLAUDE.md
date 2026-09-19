@@ -245,6 +245,7 @@ Each Maven module has its own `DataCleaner` that clears its MongoDB collections 
 |--------|-------|-------------|
 | vidulum-cashflow | `CashFlowDataCleaner` | CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity, StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity, AiCsvTransformationDocument, MappingRules, RecurringRuleEntity, UserFinancialProfileEntity |
 | vidulum-wealth | `WealthDataCleaner` | PortfolioEntity, OrderEntity, TradeEntity, PnlHistoryEntity |
+| vidulum-okx | `OkxDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
 ## Docker Rebuild (Full Restart)
