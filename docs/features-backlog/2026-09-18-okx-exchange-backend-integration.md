@@ -794,6 +794,12 @@ flowchart TB
 
 ## 9. Lista zadań
 
+> **Statusy śledzimy w osobnym pliku:** [`2026-09-18-okx-tasks.md`](2026-09-18-okx-tasks.md) —
+> tablica z postępem, zadaniami gotowymi do wzięcia i grafem zależności. Tamten plik jest **źródłem
+> prawdy o statusach**; poniższe tabele trzymają opisy i uzasadnienia. Zmieniając status, edytuj
+> tablicę, nie tę sekcję.
+
+
 Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2** poprawność długoterminowa · **P3** dług techniczny.
 
 ### Ścieżka A — fundamenty modułu
