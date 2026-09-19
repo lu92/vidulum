@@ -1,0 +1,21 @@
+# Test configuration for the OKX module.
+# Mirrors vidulum-wealth: shorter timeouts so Testcontainers shut down promptly.
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+  kafka:
+    listener:
+      immediate-stop: true
+    consumer:
+      properties:
+        max.poll.interval.ms: 10000
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+    producer:
+      properties:
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        linger.ms: 0
+
+server:
+  shutdown: graceful

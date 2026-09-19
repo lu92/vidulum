@@ -142,7 +142,14 @@ public enum ErrorCode {
     OWNED_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "Bank account already in user's profile"),
     OWNED_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "Bank account not found in profile"),
     OWNED_ACCOUNT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "User financial profile not found"),
-    OWNED_ACCOUNT_CASHFLOW_LINKED(HttpStatus.UNPROCESSABLE_ENTITY, "Cannot remove account linked to active CashFlow");
+    OWNED_ACCOUNT_CASHFLOW_LINKED(HttpStatus.UNPROCESSABLE_ENTITY, "Cannot remove account linked to active CashFlow"),
+
+    // ============ Exchange Connection ============
+    EXCHANGE_CONNECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Exchange connection not found"),
+    EXCHANGE_ACCOUNT_ALREADY_CONNECTED(HttpStatus.CONFLICT, "Exchange account is already connected"),
+    EXCHANGE_CONNECTION_INVALID_TRANSITION(HttpStatus.CONFLICT, "Operation not allowed in current connection status"),
+    EXCHANGE_KEY_PERMISSIONS_NOT_REPORTED(HttpStatus.BAD_REQUEST, "API key permissions were not reported"),
+    EXCHANGE_KEY_PERMISSIONS_TOO_BROAD(HttpStatus.UNPROCESSABLE_ENTITY, "API key must be read-only");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;
