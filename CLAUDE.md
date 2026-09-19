@@ -89,6 +89,12 @@ vidulum/
 │   └── recurring_rules/         #   Recurring transaction rules
 │   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
+├── vidulum-exchange/            # Exchange-agnostic connection model (54 tests)
+│   └── exchange_connection/     #   ExchangeConnection, natural key, lifecycle
+│
+├── vidulum-okx/                 # OKX adapter (19 tests)
+│   └── okx/                     #   Quotation provider, OkxRegion
+│
 ├── vidulum-wealth/              # Wealth management domain module (23 tests)
 │   └── portfolio/               #   Portfolios, assets, deposit/withdraw
 │   └── trading/                 #   Orders, trades, execution
@@ -103,7 +109,9 @@ vidulum/
     └── VidulumApplication       #   @SpringBootApplication entry point
 ```
 
-**Dependency flow**: `shared-kernel` ← `cashflow` / `wealth` ← `app` (no circular dependencies).
+**Dependency flow**: `shared-kernel` ← `cashflow` / `exchange` / `wealth` ← `okx` ← `app`
+(no circular dependencies). `vidulum-exchange` depends on `shared-kernel` only, so it sits before
+`vidulum-wealth` in the reactor and both `wealth` and `okx` can use it.
 
 ### CQRS Pattern
 
@@ -245,7 +253,7 @@ Each Maven module has its own `DataCleaner` that clears its MongoDB collections 
 |--------|-------|-------------|
 | vidulum-cashflow | `CashFlowDataCleaner` | CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity, StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity, AiCsvTransformationDocument, MappingRules, RecurringRuleEntity, UserFinancialProfileEntity |
 | vidulum-wealth | `WealthDataCleaner` | PortfolioEntity, OrderEntity, TradeEntity, PnlHistoryEntity |
-| vidulum-okx | `OkxDataCleaner` | ExchangeConnectionEntity |
+| vidulum-exchange | `ExchangeConnectionDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
 ## Docker Rebuild (Full Restart)

@@ -10,44 +10,31 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>vidulum-okx</artifactId>
-    <name>Vidulum OKX Module</name>
-    <description>OKX exchange integration: quotation provider, exchange connection</description>
+    <artifactId>vidulum-exchange</artifactId>
+    <name>Vidulum Exchange Module</name>
+    <description>Exchange-agnostic model: the link between a user, an exchange account and a portfolio</description>
 
     <dependencies>
-        <!-- Shared Kernel -->
+        <!-- Shared Kernel is the ONLY Vidulum dependency, deliberately.
+             ExchangeConnection needs UserId, PortfolioId, Currency and Broker - all of which live
+             there - so this module can sit before vidulum-wealth in the reactor. That matters:
+             PortfolioSpec (D1) lives in wealth and has to read the connection to learn the known
+             state, so wealth depends on this module and not the other way round. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Exchange: the exchange-agnostic connection model. This module is one adapter on top
-             of it, so the dependency points this way and never the other. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-exchange</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- Wealth: BrokerQuotationProvider and QuotationService live here.
-             The dependency points this way on purpose: wealth must stay unaware of OKX,
-             otherwise registering the provider would create a cycle. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-wealth</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-classic</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
 
-
-
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -66,23 +53,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-resttestclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>kafka</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
+            <artifactId>mongodb</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

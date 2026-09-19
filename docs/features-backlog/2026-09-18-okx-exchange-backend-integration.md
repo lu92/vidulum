@@ -396,10 +396,10 @@ W POC jest to niejawne: jeden skrypt, jedno konto. Przy pierwszej synchronizacji
 |---|---|---|
 | `id` | `ExchangeConnectionId` | |
 | `userId` | `UserId` | |
-| `exchange` | `Exchange` | `OKX`, docelowo inne |
+| `broker` | `Broker` | z shared-kernel — **ten sam typ, którym `Portfolio` nazywa giełdę**; id normalizowane do wielkich liter |
 | `accountUid` | `String` | `uid` z `GET /account/config`; część klucza naturalnego |
 | `environment` | enum | `DEMO` / `LIVE` |
-| `region` | enum | `EEA` / `GLOBAL` / `US` — determinuje hosty REST i WS |
+| `region` | `String` | nieprzezroczysta wskazówka routingu; dla OKX `EEA` / `GLOBAL` / `US` (enum `OkxRegion` w module giełdy) — patrz §5.9 |
 | `reportedKeyPermissions` | `ReportedKeyPermissions` | `perm` zgłoszone przez klienta; typ **wymusza `read_only` przy konstrukcji**, trzyma też surowy string do audytu. Przedrostek `reported` jest świadomy — patrz §5.3 |
 | `credentialsMode` | enum | `EXTERNAL` (POC — klucze zostają w skrypcie) / `STORED_ENCRYPTED` (docelowo) |
 | `portfolioId` | `PortfolioId` | ustawiane po `confirm`; puste do tego czasu. Kardynalność **1:1** — patrz §5.8 |
@@ -415,7 +415,7 @@ Typ czasu to `ZonedDateTime`, nie `Instant` — cała reszta repozytorium używa
 
 Dwie decyzje warte uzasadnienia:
 
-**Klucz naturalny to `(userId, exchange, environment, accountUid)`.** Bez niego nie wykryjesz, że
+**Klucz naturalny to `(userId, broker, environment, accountUid)`.** Bez niego nie wykryjesz, że
 użytkownik podpina to samo konto po raz drugi — i zrobisz mu dwa portfele z tymi samymi aktywami.
 OKX oddaje `uid` w `GET /account/config`, więc to nic nie kosztuje.
 
@@ -644,6 +644,52 @@ starsze okresy wymagają archiwum kwartalnego, które pobiera się osobnym żąd
 dłuższej niż kwartał — bez tego archiwum — każdy spadek pozycji wygląda jak przelew na zewnątrz
 i staje się pytaniem do użytkownika. Nie jest to błąd modelu, tylko koszt długiej przerwy,
 który trzeba pokazać w interfejsie zamiast ukryć.
+
+### 5.9 Podział na moduły — co jest wspólne, a co giełdowe
+
+Model połączenia nie ma w sobie nic z OKX-a, więc mieszka w osobnym module **`vidulum-exchange`**,
+a `vidulum-okx` jest jednym z adapterów nad nim.
+
+**Powód jest strukturalny, nie estetyczny.** Dopóki `ExchangeConnection` leżał w `vidulum-okx`,
+pierwszy moduł drugiej giełdy musiałby zależeć od modułu OKX-a — wyłącznie po to, żeby sięgnąć po
+wspólny agregat. Odwrócona zależność bez uzasadnienia.
+
+```
+shared-kernel ← exchange ←┬── wealth ← okx ← app
+                          └── okx
+```
+
+`vidulum-exchange` zależy **tylko od `shared-kernel`**, bo `ExchangeConnection` używa wyłącznie
+`UserId`, `PortfolioId`, `Currency` i `Broker`. Dzięki temu stoi w reaktorze **przed**
+`vidulum-wealth` — a to jest warunek konieczny, bo `PortfolioSpec` (D1) ma żyć w `wealth` i musi
+czytać połączenie, żeby poznać „stan znany".
+
+| co | gdzie | dlaczego |
+|---|---|---|
+| `ExchangeConnection` i cały jego cykl życia | `exchange` | powiązanie user ↔ konto ↔ portfel nie zależy od giełdy |
+| encja Mongo, repozytorium, indeks, `DataCleaner` | `exchange` | jedna kolekcja `exchange_connections` dla wszystkich giełd; dwa moduły kasujące ją same byłoby błędem |
+| `ReportedKeyPermissions` | `exchange` | to **słownik Vidulum**, nie format giełdy — patrz niżej |
+| `OkxRegion` | `okx` | `EEA`/`GLOBAL`/`US` to podział OKX-a i nie generalizuje się |
+| `OkxBrokerQuotationProvider` | `okx` | z definicji |
+
+**Dlaczego uprawnienia zostały wspólne, a region nie.** Każda giełda koduje uprawnienia inaczej
+(OKX — lista po przecinku, Binance — booleany, Coinbase — scope'y), ale to znaczy tylko tyle, że
+**tłumaczenie** należy do adaptera. Decyzja, co Vidulum akceptuje, jest jedna dla całego systemu
+i musi być nieusuwalna — gdyby `KeyPermissions` było interfejsem implementowanym per giełda, nowa
+giełda mogłaby przyjechać z własną, słabszą definicją „read-only". Region jest odwrotnie: agregat
+nic z nim nie robi, tylko go przenosi, więc nie ma czego uwspólniać i zostaje tekstem.
+
+**`Broker` zamiast własnego enuma `Exchange`.** `Portfolio` już ma pole `broker` typu `Broker`
+z shared-kernel, a `OkxBrokerQuotationProvider` używa `Broker.of("OKX")`. Własny enum oznaczał
+dwa niepowiązane identyfikatory tej samej giełdy — połączenie mówiące `Exchange.OKX` i portfel
+mówiący `Broker.of("OKX")`, bez niczego, co gwarantuje zgodność. Do tego enum wymuszałby edycję
+modułu wspólnego przy każdej nowej giełdzie; stała `Broker` jest deklarowana w module giełdy.
+Id jest normalizowane do wielkich liter przy tworzeniu połączenia, bo wchodzi do klucza
+naturalnego — `"okx"` nie może stać się drugim kontem obok `"OKX"`.
+
+Zadanie **A8** dokłada nad tym serwis onboardingu: część wspólna (utworzenie i odszukanie
+połączenia) w `exchange`, część OKX-owa (walidacja regionu, pobranie snapshotu) w `okx`.
+
 ---
 
 ## 6. Inwentarz endpointów
@@ -669,10 +715,10 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 |---|---|---|---|
 | `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
 | `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
-| `/exchange-connection` | POST | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A8)** — rejestruje konto giełdowe, zwraca `ExchangeConnectionId` |
-| `/exchange-connection/{id}/reconnect` | POST | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A8)** — powrót po przerwie, zachowuje portfel |
-| `/exchange-connection/{id}` | GET | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A9)** — stan jednego połączenia |
-| `/exchange-connection` | GET | `vidulum-okx` · `ExchangeConnectionRestController` | **do napisania (A9)** — połączenia zalogowanego użytkownika |
+| `/exchange-connection` | POST | `vidulum-okx` · onboarding OKX nad `vidulum-exchange` | **do napisania (A8)** — rejestruje konto giełdowe, zwraca `ExchangeConnectionId` |
+| `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A8)** — powrót po przerwie, zachowuje portfel |
+| `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A9)** — stan jednego połączenia |
+| `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A9)** — połączenia zalogowanego użytkownika |
 | `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — tworzy draft z różnicy |
 | `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — czego brakuje |
 | `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D2)** — odpowiedzi użytkownika |
@@ -898,6 +944,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 |---|---|---|---|---|---|
 | A1 | Decyzja o module Maven `okx` | Gdzie leży (`vidulum-wealth/okx` czy top-level), jak podlega regule `shared-kernel ← wealth ← app`. Repo ma precedens: `vidulum-cashflow` ma 2 submoduły. | P0 | open | — |
 | A2 | Szkielet modułu + rejestracja w reaktorze | `pom.xml`, wpis w `<modules>`, pusty pakiet, build przechodzi. | P0 | open | A1 |
+| A10 | Moduł `vidulum-exchange` i przeniesienie modelu połączenia | Nowy moduł zależny **tylko** od `shared-kernel`, wstawiony w reaktorze przed `vidulum-wealth`. Przeniesienie `ExchangeConnection` z całą infrastrukturą, `Exchange` → `Broker`, `region` → `String`, `ExchangeRegion` → `OkxRegion` w module giełdy. Patrz §5.9. | P0 | open | A5 |
 | A3 | `ErrorHttpHandler` + `ErrorCode` | Dodać obsługę `BrokerNotFoundException`, `OrderNotFoundException`, `QuoteNotFoundException` oraz nowych wyjątków OKX. Dziś żaden wyjątek z wealth nie jest obsłużony. | P1 | open | A2 |
 | A5 | Encja `ExchangeConnection` | Model z §5.2: `accountUid` jako klucz naturalny (**indeks unikalności**), `credentialsMode`, `denominationCurrency`, `portfolioId`, `status`. Bez niej druga synchronizacja nie znajdzie „stanu znanego". Wnosi pierwszą kolekcję Mongo w module (→ A4) i pierwsze wyjątki biznesowe (→ A3). | P0 | open | A2 |
 | A6 | Walidacja `perm == read_only` | Snapshot niesie `perm`; backend odrzuca spec, jeśli klucz ma szersze uprawnienia. Wymóg nienegocjowalny z `OKX-CONTEXT.md`. | P0 | open | A5 |
@@ -988,7 +1035,11 @@ z historii rozmów.
 | 8 | `reportedKeyPermissions` zamiast `perm` | nazwa mówi, że to wartość zgłoszona, nie zweryfikowana |
 | 9 | Notowania do cache **przed** utworzeniem portfela, po rejestracji | `GET /portfolio` pobiera cenę dla każdego aktywa, także gotówki |
 | 10 | `EUR/EUR = 1.0` jako pełnoprawne notowanie | gotówka jest aktywem i też potrzebuje kursu |
-| 11 | `ExchangeConnection` z `accountUid` jako kluczem naturalnym | wykrywa podłączenie tego samego konta dwa razy |
+| 11 | `ExchangeConnection` z kluczem naturalnym `(userId, broker, environment, accountUid)` | wykrywa podłączenie tego samego konta dwa razy; złożony, bo demo i live to osobne konta, a klucz globalny blokowałby innych użytkowników |
+| 26 | **Moduł `vidulum-exchange`** — model połączenia jest wspólny dla giełd, moduły giełd są adapterami | bez tego druga giełda musiałaby zależeć od `vidulum-okx`; zależy tylko od `shared-kernel`, więc może stać przed `vidulum-wealth` |
+| 27 | `Broker` z shared-kernel zamiast własnego enuma `Exchange` | `Portfolio.broker` używa tego samego typu — połączenie i portfel nazywają giełdę jedną wartością, a nowa giełda nie wymaga edycji modułu wspólnego |
+| 28 | `region` jako `String` w agregacie, enum `OkxRegion` w module giełdy | wartości są podziałem OKX-a i nie generalizują się; agregat tylko je przenosi |
+| 29 | `ReportedKeyPermissions` **zostaje generyczne** | to słownik Vidulum („`read_only` i nic więcej"), a nie format giełdy; tłumaczenie odpowiedzi giełdy na ten słownik należy do adaptera |
 | 12 | Waluta wyceny to **wejście** połączenia, nie wynik spec-u | notowania publikuje się przeciwko niej, a idą pierwsze |
 | 13 | `name` podaje użytkownik | |
 | 14 | `allowedDepositCurrency` to pojęcie **osobne** od waluty wyceny, ale **domyślnie jej równe** | semantycznie to co innego; przy portfelu ze snapshotu ścieżka `deposit` i tak nie jest używana, więc wartość jest bezczynna — domyślna równość znosi jedno pytanie z onboardingu, a zachowuje przewidywalność, gdyby ktoś kiedyś użył `POST /portfolio/deposit` |

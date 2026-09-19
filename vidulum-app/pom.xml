@@ -39,6 +39,11 @@
              so component scanning registers the provider -->
         <dependency>
             <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
             <artifactId>vidulum-okx</artifactId>
             <version>${project.version}</version>
         </dependency>

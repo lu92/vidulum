@@ -1,0 +1,8 @@
+# Test configuration for the exchange module.
+# Mirrors vidulum-wealth: shorter timeouts so Testcontainers shut down promptly.
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+
+server:
+  shutdown: graceful
