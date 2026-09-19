@@ -31,6 +31,7 @@ public final class PortfolioEvents {
     public record AssetLockedEvent(
             PortfolioId portfolioId,
             Ticker ticker,
+            SubName subName,
             OrderId orderId,
             Quantity quantity,
             ZonedDateTime dateTime) implements DomainEvent {
@@ -39,6 +40,7 @@ public final class PortfolioEvents {
     public record AssetUnlockedEvent(
             PortfolioId portfolioId,
             Ticker ticker,
+            SubName subName,
             OrderId orderId,
             Quantity quantity,
             ZonedDateTime dateTime) implements DomainEvent {

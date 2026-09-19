@@ -48,17 +48,49 @@ public class PortfolioDto {
     public static class AssetSummaryJson {
         private String ticker;
         private String fullName;
-        private Price avgPurchasePrice;
+
+        /**
+         * What the known part of the position cost, or {@code null} when the cost is unknown.
+         * Carries {@code provenance} so the interface can distinguish "you told us this" from
+         * "the exchange reported it".
+         */
+        private CostBasisJson costBasis;
+
         private Quantity quantity;
         private Quantity locked;
         private Quantity free;
         private Set<AssetLockJson> activeLocks;
 
-        private double pctProfit;
+        /**
+         * {@code null} when no cost is known. Deliberately not zero: a position transferred in
+         * from outside has no profit we can compute, and reporting zero would present a guess as
+         * a fact.
+         */
+        private Double pctProfit;
         private Money profit;
         private Price currentPrice;
         private Money currentValue;
         private List<String> tags;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class CostBasisJson {
+        /** How many units this cost covers — may be less than the position holds. */
+        private Quantity quantity;
+        private Price avgPrice;
+        private Provenance provenance;
+
+        public static CostBasisJson from(CostBasis costBasis) {
+            return costBasis == null ? null : CostBasisJson.builder()
+                    .quantity(costBasis.quantity())
+                    .avgPrice(costBasis.avgPrice().withScale(4))
+                    .provenance(costBasis.provenance())
+                    .build();
+        }
     }
 
     @Data

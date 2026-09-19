@@ -101,7 +101,9 @@ public class RiskManagementEngine {
                                     .ticker(Ticker.of(asset.getTicker()))
                                     .quantity(asset.getQuantity())
                                     .stopLosses(relatedStopLosses)
-                                    .avgPurchasePrice(asset.getAvgPurchasePrice())
+                                    .avgPurchasePrice(asset.getCostBasis() != null
+                                            ? asset.getCostBasis().getAvgPrice()
+                                            : null)
                                     .currentValue(asset.getCurrentValue())
                                     .currentPrice(asset.getCurrentPrice())
                                     .ragStatus(RagStatus.GREEN);

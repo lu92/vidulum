@@ -15,7 +15,8 @@ public class AssetRiskManagementStatement {
     private Ticker ticker;
     private Quantity quantity;
     private List<StopLoss> stopLosses;
-    private Price avgPurchasePrice;
+        /** {@code null} when the position has no known cost — see {@code CostBasis}. */
+private Price avgPurchasePrice;
     private Money currentValue;
     private Price currentPrice;
     private Money safeMoney;
