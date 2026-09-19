@@ -89,11 +89,11 @@ vidulum/
 │   └── recurring_rules/         #   Recurring transaction rules
 │   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
-├── vidulum-exchange/            # Exchange-agnostic connection model (54 tests)
-│   └── exchange_connection/     #   ExchangeConnection, natural key, lifecycle
+├── vidulum-exchange/            # Exchange-agnostic connection model (102 tests)
+│   └── exchange_connection/     #   ExchangeConnection, onboarding service, REST
 │
-├── vidulum-okx/                 # OKX adapter (19 tests)
-│   └── okx/                     #   Quotation provider, OkxRegion
+├── vidulum-okx/                 # OKX adapter (31 tests)
+│   └── okx/                     #   Quotation provider, OkxExchangeAdapter, OkxRegion
 │
 ├── vidulum-wealth/              # Wealth management domain module (23 tests)
 │   └── portfolio/               #   Portfolios, assets, deposit/withdraw
@@ -219,6 +219,21 @@ When writing integration tests, follow these rules:
 6. **Test naming**: Use descriptive method names that explain the scenario, e.g., `shouldImportHistoricalTransactionViaRestApi`, `shouldRejectStagingWithUnmappedCategories`.
 
 7. **Reference tests**: See `BankDataIngestionHttpIntegrationTest` and `DualCashflowStatementGeneratorWithHistory` for examples of well-structured integration tests.
+
+### Test Levels
+
+Three levels, each with a distinct job. Put an assertion at the cheapest level that can make it.
+
+| level | how it runs | what belongs there | examples |
+|-------|-------------|--------------------|----------|
+| **unit** | no Spring, no collaborators | a single aggregate's rules, value-object parsing | `ExchangeConnectionTest`, `ReportedKeyPermissionsTest` |
+| **component** | no Spring, real collaborators + `InMemory*Repository` | whole use cases including the entity round trip and DTO mapping; exhaustive whole-object assertions | `PortfolioTest`, `ExchangeConnectionComponentTest`, `ExchangeConnectionControllerComponentTest` |
+| **integration** | `@SpringBootTest` + Testcontainers + an `*HttpActor` | what only a running server shows: HTTP status codes, serialisation, indexes, Kafka | `CashFlowControllerTest`, `ExchangeConnectionEndpointTest` |
+
+A component test may drive a `@RestController`'s methods directly — construct it with the real
+service and an in-memory repository. That covers request → domain → storage → response in
+milliseconds, so the slow integration test can stay focused on HTTP concerns instead of
+duplicating payload assertions.
 
 ## Infrastructure
 
@@ -790,6 +805,19 @@ Form: file=@canonical.csv
 | POST | `/api/v1/bank-data-ingestion/cf={cfId}/import` | Start import job |
 | GET | `/api/v1/bank-data-ingestion/cf={cfId}/import/{jobId}` | Get import job status |
 | GET | `/api/v1/bank-data-ingestion/cf={cfId}/import` | List import jobs |
+
+### Exchange Connection (`/exchange-connection`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/exchange-connection` | Register an exchange account → returns connection with `PENDING` status |
+| GET | `/exchange-connection` | List caller's connections + `supportedExchanges` |
+| GET | `/exchange-connection/{connectionId}` | Get one connection's state |
+| POST | `/exchange-connection/{connectionId}/reconnect` | Resume a `REVOKED` connection, keeping its portfolio |
+
+Notes:
+- The user id comes from the JWT, never from the body.
+- Another user's connection answers 404, not 403.
+- API keys are never sent or stored; `reportedKeyPermissions` must be `read_only`.
 
 ### Recurring Rules (`/api/v1/recurring-rules`)
 | Method | Endpoint | Description |

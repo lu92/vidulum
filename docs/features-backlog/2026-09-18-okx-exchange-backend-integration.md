@@ -690,6 +690,54 @@ naturalnego — `"okx"` nie może stać się drugim kontem obok `"OKX"`.
 Zadanie **A8** dokłada nad tym serwis onboardingu: część wspólna (utworzenie i odszukanie
 połączenia) w `exchange`, część OKX-owa (walidacja regionu, pobranie snapshotu) w `okx`.
 
+
+### 5.10 Jak moduł giełdy podłącza się do onboardingu
+
+Serwis onboardingu jest wspólny, ale rejestracja konta ma jedną część, która naprawdę różni się
+między giełdami: **słownik regionów**. Reszta — id konta, środowisko, uprawnienia, waluta wyceny
+— jest wszędzie taka sama.
+
+Stąd port `ExchangeAdapter` w `vidulum-exchange`, celowo minimalny:
+
+```java
+public interface ExchangeAdapter {
+    Broker broker();
+    void validateRegion(String region);
+}
+```
+
+`OkxExchangeAdapter` implementuje go w `vidulum-okx` i sprawdza region przeciwko `OkxRegion`.
+Serwis zbiera adaptery przez `List<ExchangeAdapter>` — tak samo jak `KafkaTopicConfig` zbiera
+dostawców notowań — więc **dodanie giełdy to dodanie modułu, a nie edycja modułu wspólnego**.
+
+Zbiór zarejestrowanych adapterów odpowiada przy okazji na pytanie „które giełdy w ogóle da się
+podłączyć", które serwis i tak musi znać, żeby odrzucić nieznanego brokera. Zwraca je
+`GET /exchange-connection` jako `supportedExchanges`. To **inne pytanie** niż
+`GET /exchange/{name}/status` z §5.7: tamto mówi, czy giełda odpowiada i czy jej notowania są
+w cache *teraz*.
+
+**Dlaczego region jest sprawdzany przy rejestracji, a nie później.** Klucz wydany dla jednego
+regionu OKX nie uwierzytelni się w innym. Bez tej walidacji błąd wyszedłby dopiero jako `401`
+z giełdy przy pierwszym pobraniu snapshotu — czyli długo po tym, jak użytkownik uznał, że konto
+jest podłączone.
+
+**Odmowy i ich kody.** Każda kończy się statusem, na który klient może zareagować:
+
+| sytuacja | status | kod |
+|---|---|---|
+| nieznany broker | 400 | `EXCHANGE_NOT_SUPPORTED` |
+| region, którego giełda nie obsługuje | 400 | `EXCHANGE_REGION_UNKNOWN` |
+| puste pole w żądaniu | 400 | `VALIDATION_ERROR` + `fieldErrors` |
+| klucz szerszy niż `read_only` | 422 | `EXCHANGE_KEY_PERMISSIONS_TOO_BROAD` |
+| konto już podłączone | 409 | `EXCHANGE_ACCOUNT_ALREADY_CONNECTED` |
+| `reconnect` połączenia, które nie jest `REVOKED` | 409 | `EXCHANGE_CONNECTION_INVALID_TRANSITION` |
+| cudze albo nieistniejące połączenie | 404 | `EXCHANGE_CONNECTION_NOT_FOUND` |
+
+Dwie rzeczy w tej tabeli są świadome. **Puste pole daje 400, a nie 500** — `ExchangeConnection`
+broni tych samych niezmienników `IllegalArgumentException`em, ale to asercja ostatniej szansy;
+walidacja na `ConnectExchangeRequest` zamienia ten sam błąd w odpowiedź nazywającą pole.
+**Cudze połączenie daje 404, nie 403** — `403` potwierdziłoby, że dane `id` istnieje.
+
 ---
 
 ## 6. Inwentarz endpointów
@@ -715,10 +763,10 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 |---|---|---|---|
 | `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
 | `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
-| `/exchange-connection` | POST | `vidulum-okx` · onboarding OKX nad `vidulum-exchange` | **do napisania (A8)** — rejestruje konto giełdowe, zwraca `ExchangeConnectionId` |
-| `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A8)** — powrót po przerwie, zachowuje portfel |
-| `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A9)** — stan jednego połączenia |
-| `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | **do napisania (A9)** — połączenia zalogowanego użytkownika |
+| `/exchange-connection` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — rejestruje konto, zwraca cały stan połączenia |
+| `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — powrót po przerwie, zachowuje portfel |
+| `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — stan jednego połączenia |
+| `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — połączenia użytkownika + `supportedExchanges` |
 | `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — tworzy draft z różnicy |
 | `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D1)** — czego brakuje |
 | `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | **do napisania (D2)** — odpowiedzi użytkownika |
@@ -1039,6 +1087,9 @@ z historii rozmów.
 | 26 | **Moduł `vidulum-exchange`** — model połączenia jest wspólny dla giełd, moduły giełd są adapterami | bez tego druga giełda musiałaby zależeć od `vidulum-okx`; zależy tylko od `shared-kernel`, więc może stać przed `vidulum-wealth` |
 | 27 | `Broker` z shared-kernel zamiast własnego enuma `Exchange` | `Portfolio.broker` używa tego samego typu — połączenie i portfel nazywają giełdę jedną wartością, a nowa giełda nie wymaga edycji modułu wspólnego |
 | 28 | `region` jako `String` w agregacie, enum `OkxRegion` w module giełdy | wartości są podziałem OKX-a i nie generalizują się; agregat tylko je przenosi |
+| 30 | `ExchangeAdapter` jako port — jedyna metoda poza tożsamością to `validateRegion` | region to jedyna część rejestracji, która naprawdę różni się między giełdami; dodanie giełdy to dodanie modułu, nie edycja wspólnego |
+| 31 | Cudze połączenie odpowiada `404`, nie `403` | `403` potwierdziłoby istnienie identyfikatora |
+| 32 | Walidacja pustych pól na DTO, nie na agregacie | agregat zostaje z asercją ostatniej szansy (500), a klient dostaje 400 z nazwą pola |
 | 29 | `ReportedKeyPermissions` **zostaje generyczne** | to słownik Vidulum („`read_only` i nic więcej"), a nie format giełdy; tłumaczenie odpowiedzi giełdy na ten słownik należy do adaptera |
 | 12 | Waluta wyceny to **wejście** połączenia, nie wynik spec-u | notowania publikuje się przeciwko niej, a idą pierwsze |
 | 13 | `name` podaje użytkownik | |
