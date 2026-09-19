@@ -19,14 +19,17 @@ import java.util.stream.Collectors;
 /**
  * In-memory implementation of {@link DomainPortfolioRepository} for unit tests.
  * Uses {@link PortfolioEntity} for snapshot round-trip (fromSnapshot/toSnapshot).
+ *
+ * <p>Public because the portfolio-spec tests need a known state to compute a difference against,
+ * and building one through deposits and trades would obscure what those tests are about.
  */
-class InMemoryPortfolioRepository implements DomainPortfolioRepository {
+public class InMemoryPortfolioRepository implements DomainPortfolioRepository {
 
     private final Map<String, PortfolioEntity> store = new ConcurrentHashMap<>();
     private final Map<PortfolioId, List<StoredDomainEvent>> eventStore = new ConcurrentHashMap<>();
     private final Clock clock;
 
-    InMemoryPortfolioRepository(Clock clock) {
+    public InMemoryPortfolioRepository(Clock clock) {
         this.clock = clock;
     }
 

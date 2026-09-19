@@ -2,6 +2,7 @@ package com.multi.vidulum.trading.infrastructure;
 
 import com.multi.vidulum.pnl.infrastructure.entities.PnlHistoryEntity;
 import com.multi.vidulum.portfolio.infrastructure.portfolio.entities.PortfolioEntity;
+import com.multi.vidulum.portfolio_spec.infrastructure.PortfolioSpecEntity;
 import com.multi.vidulum.shared.DataCleaner;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ public class WealthDataCleaner implements DataCleaner {
     public void clean(MongoTemplate mongoTemplate) {
         // Portfolio
         mongoTemplate.dropCollection(PortfolioEntity.class);
+        mongoTemplate.dropCollection(PortfolioSpecEntity.class);
 
         // Trading
         mongoTemplate.dropCollection(OrderEntity.class);

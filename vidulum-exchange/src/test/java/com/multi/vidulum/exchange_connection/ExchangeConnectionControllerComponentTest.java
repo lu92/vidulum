@@ -6,6 +6,7 @@ import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionRestController;
 import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.revoke.RevokeExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQueryHandler;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
@@ -74,6 +75,7 @@ class ExchangeConnectionControllerComponentTest {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new ConnectExchangeCommandHandler(repository, adapters, clock));
         gateway.registerCommandHandler(new ReconnectExchangeCommandHandler(repository, clock));
+        gateway.registerCommandHandler(new RevokeExchangeConnectionCommandHandler(repository, clock));
         return gateway;
     }
 
