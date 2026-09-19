@@ -88,6 +88,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 })
                 .collect(Collectors.toList());
 
+        requireOnePositionPerName(assets);
+
         return Portfolio.builder()
                 .portfolioId(snapshot.getPortfolioId())
                 .userId(snapshot.getUserId())
@@ -364,6 +366,24 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
      */
     private static SubName tradedPosition(SubName requested) {
         return requested == null || requested.isCash() ? SubName.traded() : requested;
+    }
+
+    /**
+     * The same guard as {@link #addAsset}, applied when a portfolio is rehydrated.
+     *
+     * <p>Without it the invariant would hold only for positions this aggregate created, and a
+     * document written around it — by a migration, a fixture, or the synchronisation engine —
+     * could load two positions under one key. Everything downstream assumes that key identifies
+     * exactly one row.
+     */
+    private static void requireOnePositionPerName(List<Asset> assets) {
+        Set<String> seen = new HashSet<>();
+        assets.forEach(asset -> {
+            String key = asset.getTicker().getId() + "/" + asset.getSubName().getName();
+            if (!seen.add(key)) {
+                throw new DuplicateAssetPositionException(asset.getTicker(), asset.getSubName());
+            }
+        });
     }
 
     /** Guards the invariant every other rule rests on: one position per (ticker, subName). */
