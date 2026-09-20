@@ -57,6 +57,33 @@ export function publishPath(query) {
 }
 
 /**
+ * A stand-in instrument when the exchange lists no direct pair.
+ *
+ * <p>OKX has no `USD-EUR`: it does not trade fiat dollars as spot. It does have `USDT-EUR`, and
+ * the backend already treats the two as interchangeable in the other direction — `X/USD` falls
+ * back to `X/USDT` when no direct quote is cached. Using the same assumption here is consistent
+ * with what the system already believes rather than a new one.
+ *
+ * <p>This is a **narrow slice** of the denomination chain (task B4), not the chain itself: one
+ * substitution, in one direction, for the one case that blocks a euro-valued portfolio holding
+ * dollars. A general cross-rate path still needs an external source such as NBP.
+ *
+ * @returns the instrument to ask for instead, or `null` when there is no honest substitute
+ */
+export function proxyInstrumentFor(symbol) {
+  const [origin, destination] = symbol.split("/");
+  if (origin === "USD" && destination !== "USDT") {
+    return `USDT-${destination}`;
+  }
+  return null;
+}
+
+/** Whether a published price came from a substitute rather than the pair itself. */
+export function isDerived(symbol, instId) {
+  return instId !== instrumentIdFor(symbol);
+}
+
+/**
  * What the status endpoint still does not know about.
  *
  * <p>This is the check that decides whether onboarding may start. Comparing against what the
@@ -97,4 +124,22 @@ export function describeCycle({ published, failed, at }) {
   return failed.length === 0
     ? `${head}`
     : `${head}, failed ${failed.length}: ${failed.join(", ")}`;
+}
+
+/**
+ * Fetches a ticker for a symbol, falling back to a proxy instrument when the exchange lists no
+ * direct pair. Returns what was actually used, so callers can say when a rate was derived.
+ */
+export async function resolveTicker(okx, symbol) {
+  const direct = instrumentIdFor(symbol);
+  const [hit] = await okx.get("/api/v5/market/ticker", { instId: direct }).catch(() => [null]);
+  if (hit) return { ticker: hit, instId: direct, derived: false };
+
+  const proxy = proxyInstrumentFor(symbol);
+  if (!proxy) return { ticker: null, instId: direct, derived: false };
+
+  const [viaProxy] = await okx.get("/api/v5/market/ticker", { instId: proxy }).catch(() => [null]);
+  return viaProxy
+    ? { ticker: viaProxy, instId: proxy, derived: true }
+    : { ticker: null, instId: direct, derived: false };
 }

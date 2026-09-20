@@ -38,6 +38,13 @@ public final class PortfolioSpecDto {
 
             String connectionId,
 
+            /**
+             * What the portfolio will be valued in. Needed here and not only at confirmation:
+             * it decides which line of the snapshot is cash, and so what the caller is asked (C10).
+             */
+            @NotBlank(message = "denominationCurrency is required")
+            String denominationCurrency,
+
             /** Known state. Absent during onboarding, which is the case where nothing is known. */
             String portfolioId,
 
@@ -154,6 +161,7 @@ public final class PortfolioSpecDto {
             String id,
             String userId,
             String connectionId,
+            String denominationCurrency,
             String status,
             String portfolioId,
             ZonedDateTime snapshotTakenAt,
@@ -167,6 +175,7 @@ public final class PortfolioSpecDto {
                     spec.getId().getId(),
                     spec.getUserId().getId(),
                     spec.getConnectionId(),
+                    spec.getDenominationCurrency().getId(),
                     spec.getStatus().name(),
                     spec.getPortfolioId() != null ? spec.getPortfolioId().getId() : null,
                     spec.getSnapshot().takenAt(),

@@ -52,11 +52,14 @@ function toPosition(detail) {
  * @param connectionId the connection this account was registered under; the backend takes the
  *                     broker and valuation currency from it, so they are not repeated here
  */
-export function buildSpecRequest({ broker, connectionId, portfolioId = null,
+export function buildSpecRequest({ broker, connectionId, denominationCurrency, portfolioId = null,
                                    takenAt, details, dustThreshold = 0 }) {
   return {
     broker,
     connectionId,
+    // Sent at creation, not only at confirmation: the backend needs it to know which line of the
+    // snapshot is cash, and cash is the one position it must not split (task C10).
+    denominationCurrency,
     portfolioId,
     snapshotTakenAt: takenAt,
     positions: buildSnapshotPositions(details, { dustThreshold }),

@@ -49,6 +49,7 @@ public class PortfolioSpecRestController {
                 currentUser(),
                 request.connectionId(),
                 request.portfolioId() != null ? PortfolioId.of(request.portfolioId()) : null,
+                Currency.of(request.denominationCurrency()),
                 request.toSnapshot()));
 
         return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());

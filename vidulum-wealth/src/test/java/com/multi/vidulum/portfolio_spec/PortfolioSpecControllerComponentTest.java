@@ -1,5 +1,7 @@
 package com.multi.vidulum.portfolio_spec;
 
+import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
@@ -7,6 +9,11 @@ import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
+import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
+import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
+import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
+import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.portfolio.app.PortfolioFixture;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -19,6 +26,7 @@ import com.multi.vidulum.portfolio_spec.domain.NothingToSynchroniseException;
 import com.multi.vidulum.portfolio_spec.domain.PortfolioSpecNotFoundException;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -45,6 +53,25 @@ class PortfolioSpecControllerComponentTest {
     private final Clock clock = Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
     private final InMemorySpecRepository specRepository = new InMemorySpecRepository();
     private final DomainPortfolioRepository portfolioRepository = new InMemoryPortfolioRepository(clock);
+    private final InMemoryExchangeConnectionRepositoryForSpec connections =
+            new InMemoryExchangeConnectionRepositoryForSpec();
+
+    /**
+     * The specification is now refused if it names a connection that says something else, so every
+     * caller in this test needs one of their own to name.
+     */
+    @BeforeEach
+    void seedConnections() {
+        connections.save(pending("conn-1", ALICE));
+        connections.save(pending("conn-2", BOB));
+    }
+
+    private static ExchangeConnection pending(String id, UserId owner) {
+        return ExchangeConnection.pending(
+                ExchangeConnectionId.of(id), owner, Broker.of("OKX"), "349378528917283",
+                ExchangeEnvironment.DEMO, "EEA", ReportedKeyPermissions.of("read_only"),
+                CredentialsMode.EXTERNAL, Currency.of("EUR"), NOW);
+    }
 
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
@@ -55,7 +82,7 @@ class PortfolioSpecControllerComponentTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, clock));
+                specRepository, portfolioRepository, connections, clock));
         return gateway;
     }
 
@@ -69,8 +96,13 @@ class PortfolioSpecControllerComponentTest {
             commandGateway, queryGateway, authenticatedUserProvider, clock);
 
     private static PortfolioSpecDto.CreateSpecJson request(String portfolioId, double total, double traded, Double price) {
+        return request("conn-1", portfolioId, total, traded, price);
+    }
+
+    private static PortfolioSpecDto.CreateSpecJson request(
+            String connectionId, String portfolioId, double total, double traded, Double price) {
         return new PortfolioSpecDto.CreateSpecJson(
-                "OKX", "conn-1", portfolioId, NOW,
+                "OKX", connectionId, "EUR", portfolioId, NOW,
                 List.of(new PortfolioSpecDto.SnapshotPositionJson(
                         "BTC", Quantity.of(total), Quantity.of(traded),
                         price == null ? null : Price.of(price, "USD"))));
@@ -173,7 +205,7 @@ class PortfolioSpecControllerComponentTest {
     void shouldAttributeTheSpecificationToTheAuthenticatedCaller() {
         caller = BOB;
 
-        assertThat(controller.create(request(null, 1.3, 0.3, 50_000.0)).userId())
+        assertThat(controller.create(request("conn-2", null, 1.3, 0.3, 50_000.0)).userId())
                 .isEqualTo(BOB.getId());
     }
 

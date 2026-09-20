@@ -6,7 +6,9 @@ import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommand;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
+import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -92,12 +94,18 @@ public class ConfirmPortfolioSpecCommandHandler
             throw new SnapshotChangedException(spec.getId());
         }
 
-        // The connection is the source of truth for both. The request still carries them, but
-        // only to be confirmed - see ConnectionMismatchException for why.
         Broker broker = connection.map(ExchangeConnection::getBroker)
                 .orElse(command.freshSnapshot().broker());
-        Currency currency = connection.map(ExchangeConnection::getDenominationCurrency)
-                .orElse(command.denominationCurrency());
+
+        // The specification's currency wins, and is not merely one of three opinions. It is what
+        // the differences were computed with - it decided which snapshot line was filed as cash
+        // (C10) - so a portfolio valued in anything else would key its cash position differently
+        // from the specification that produced it, and the first deposit would land beside it.
+        Currency currency = spec.getDenominationCurrency();
+        if (!command.denominationCurrency().getId().equalsIgnoreCase(currency.getId())) {
+            throw new ConnectionMismatchException("denominationCurrency",
+                    command.denominationCurrency().getId(), currency.getId(), "specification");
+        }
 
         Portfolio portfolio = portfolioFactory.withAssets(
                 PortfolioId.generate(),
@@ -163,6 +171,15 @@ public class ConfirmPortfolioSpecCommandHandler
         requireSame("broker",
                 command.freshSnapshot().broker().getId(),
                 connection.getBroker().getId());
+
+        // Asked here rather than left to the aggregate, which would raise it after the portfolio
+        // had been written. A connection already serving a portfolio is the reachable case: nothing
+        // stops a second specification from naming it, and without this the second confirmation
+        // left an orphan portfolio behind before failing.
+        if (connection.getStatus() != ConnectionStatus.PENDING) {
+            throw new IllegalConnectionTransitionException(
+                    connection.getId(), connection.getStatus(), "confirm");
+        }
 
         return Optional.of(connection);
     }
