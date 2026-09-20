@@ -27,7 +27,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createRestClient, maybePrintHelp, parseArgs, resolveProfile } from "./okx-common.mjs";
 import { buildSpecRequest, buildSnapshotPositions, lockedByOpenOrders } from "./okx-snapshot.mjs";
 import { describePortfolio, quotesNeededBy } from "./okx-portfolio.mjs";
-import { instrumentIdFor, missingSymbols, publishPath, publishQuery, requiredSymbols,
+import { missingSymbols, publishPath, publishQuery, requiredSymbols, resolveTicker,
          unquotableSymbols } from "./okx-quotes.mjs";
 import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQuestions,
          openQuestions, planAnswers } from "./okx-spec-flow.mjs";
@@ -66,7 +66,7 @@ const suppliedAnswers = args.answers
 
 const okx = createRestClient({
   key: cfg.key, secret: cfg.secret, passphrase: cfg.passphrase,
-  domain: cfg.domain, demo: cfg.demo, verbose,
+  domain: cfg.domain, demo: cfg.simulated, verbose,
 });
 
 const run = { stages: [] };
@@ -95,7 +95,7 @@ const openOrders = await okx.paginate("/api/v5/trade/orders-pending", {}, { curs
 
 run.exchange = {
   uid: config.uid,
-  environment: cfg.demo ? "DEMO" : "LIVE",
+  environment: cfg.simulated ? "DEMO" : "LIVE",
   keyPermissions: config.perm,
 };
 // Not part of the snapshot: a lock changes what is available, not what is held (task D5).
@@ -129,10 +129,10 @@ const required = requiredSymbols(snapshotPositions, currency);
 if (!args["skip-quotes"] && required.length > 0) {
   const results = [];
   for (const symbol of required) {
-    const instId = instrumentIdFor(symbol);
-    const [ticker] = await okx.get("/api/v5/market/ticker", { instId }).catch(() => [null]);
+    const { ticker, derived } = await resolveTicker(okx, symbol);
     results.push({ symbol, ticker: ticker ?? null });
     if (!ticker) continue;
+    if (derived) console.error(`  ${symbol} priced through a substitute instrument (task B4)`);
     await vidulum.get(publishPath(publishQuery({ broker: "OKX", symbol, ticker })));
   }
 
@@ -240,8 +240,7 @@ let summary = await vidulum.get(`/portfolio/${run.portfolioId}/${currency}`);
 if (!args["skip-quotes"]) {
   const needed = quotesNeededBy(summary, currency);
   for (const symbol of needed) {
-    const [ticker] = await okx.get("/api/v5/market/ticker",
-      { instId: instrumentIdFor(symbol) }).catch(() => [null]);
+    const { ticker } = await resolveTicker(okx, symbol);
     if (!ticker) continue;
     await vidulum.get(publishPath(publishQuery({ broker: "OKX", symbol, ticker })));
   }
