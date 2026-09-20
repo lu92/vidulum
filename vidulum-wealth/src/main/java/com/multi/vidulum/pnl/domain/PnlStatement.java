@@ -12,8 +12,8 @@ import java.util.List;
 public class PnlStatement {
     private Money investedBalance;
     private Money currentValue;
-    private Money totalProfit;
-    private double pctProfit;
+    private Money totalUnrealisedProfit;
+    private Double pctUnrealisedProfit;
     private List<PnlPortfolioStatement> pnlPortfolioStatements;
     private ZonedDateTime dateTime;
 }

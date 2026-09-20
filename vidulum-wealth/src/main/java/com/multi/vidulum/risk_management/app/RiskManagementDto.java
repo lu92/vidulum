@@ -26,10 +26,10 @@ public final class RiskManagementDto {
         private List<AssetRiskManagementStatementJson> assetRiskManagementStatements;
         private Money investedBalance;
         private Money currentValue;
-        private Money profit;
+        private Money unrealisedProfit;
         private Money safe;
         private Money risk;
-        private double pctProfit;
+        private Double pctUnrealisedProfit;
         private double riskPct;
     }
 
