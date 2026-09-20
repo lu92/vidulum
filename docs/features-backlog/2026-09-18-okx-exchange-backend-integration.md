@@ -1366,8 +1366,9 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | B1 | `OkxBrokerQuotationProvider` | Implementacja `BrokerQuotationProvider` dla `Broker("OKX")`: cache cen, `onPriceChange`, `fetch`. | P0 | A2 |
 | B2 | Rejestracja providera | `QuotationService.registerBroker(...)` przy starcie. Bez tego `PriceChangedEvent` dla OKX wybucha przy konsumpcji z Kafki. | P0 | B1 |
 | B3 | Weryfikacja ścieżki publikacji | Sprawdzić `GET /quote/publish?broker=OKX&...` end-to-end: REST → Kafka `quotes` → provider → `GET /quote/OKX/BTC/EUR`. | P0 | B2 |
-| B5 | Notowania dla gotówki | `EUR/EUR = 1.0` i każda inna waluta portfela przeciwko walucie wyceny. Bez tego `GET /portfolio` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P0 | B3 |
-| B6 | Endpoint statusu giełdy | `GET /exchange/status` wg §5.5 — osiągalność, `brokerRegistered`, `quotesReady`. Potrzebny do testów i monitoringu, docelowo kontrolka w UI. | P1 | B2 |
+| B5 | Notowania dla gotówki | Para tożsamościowa (`X/X`) jest liczona, **nie publikowana**: to arytmetyka, nie dane rynkowe. Sprawdzana **przed** cache, żeby publikacja nie mogła jej zaprzeczyć. Pozostałe waluty portfela (`USD/EUR`, `USDC/EUR`) wymagają prawdziwych kursów jak dotąd. | P0 | B3 |
+| B6 | Endpoint statusu giełdy | `GET /exchange/status` i `GET /exchange/{name}/status` wg §5.7. **`brokerRegistered` i `quotesReady` są prawdziwe; `reachability` zwraca `UNKNOWN`**, bo nic w backendzie nie woła giełdy — patrz B7. Nieznany broker dostaje odpowiedź, nie 404: „nie obsługujemy tej giełdy" jest użyteczną odpowiedzią na „czy mogę jej użyć". | P1 | B2 |
+| B7 | Sonda osiągalności giełdy | Wypełnia `reachability` i `latencyMs`. Należy do modułu giełdy — to on zna hosty i limity — więc jako metoda na `ExchangeAdapter`. Bez niej status mówi tylko o gotowości po naszej stronie, co jest zapisane w komunikacie zamiast domyślane. | P2 | B6 |
 | B4 | Łańcuch denominacji do PLN | `openAvgPx` jest w USD niezależnie od pary; OKX nie ma par PLN. Potrzebny kurs USD/PLN z NBP i rozszerzenie fallbacku (dziś tylko `X/USD → X/USDT` z założeniem 1:1). | P2 | B3 |
 
 ### Ścieżka C — model `Portfolio` i `Asset`
@@ -1405,13 +1406,13 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | # | zadanie | opis | prio | zależy od |
 |---|---|---|---|---|
 | E1 | Odczyt stanu z OKX | `account/config`, `account/balance`, `orders-pending`, `market/ticker`. | P0 | — |
-| E2 | Rejestracja użytkownika + JWT | `POST /api/v1/auth/register`, zapamiętanie tokenu do kolejnych wywołań. | P0 | A2 |
-| E3 | Zebranie snapshotu do spec-u | Złożenie stanu z `account/balance` i `orders-pending` w kształt oczekiwany przez `POST /portfolio-spec`. | P0 | E2 |
-| E8 | Publikacja notowań przed onboardingiem | Faza 2: wszystkie tickery ze snapshotu plus `EUR/EUR = 1.0`, weryfikacja przez `GET /exchange/OKX/status`. | P0 | B5, B6 |
-| E4 | Przejście ścieżki spec-u | `POST /portfolio-spec` ze snapshotem, odpowiedzi na pytania, `confirm`. Podział na `okx-bought` / `unknown-origin` wg `spotBal` robi silnik różnicy, nie POC. | P0 | D3, E3 |
-| E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu. | P1 | B3, E4 |
+| E2 | Rejestracja użytkownika + JWT | `vidulum-client.mjs`: rejestracja, przechowanie tokenu, doklejanie `Authorization` do kolejnych wywołań. Błędy niosą `code` z `ApiError`, bo przepływ na nie reaguje — `PORTFOLIO_SPEC_SNAPSHOT_CHANGED` to inna sytuacja niż `EXCHANGE_ACCOUNT_ALREADY_CONNECTED`. | P0 | A2 |
+| E3 | Zebranie snapshotu do spec-u | `okx-snapshot.mjs`: `cashBal` → `total`, `spotBal` → `traded`, `openAvgPx` → `reportedAvgPrice`. **Podziału na pozycje POC nie robi** — przekazuje trzy liczby, a rozdziela silnik różnicy, żeby ta sama reguła nie żyła w dwóch miejscach. Locki z `orders-pending` zwracane osobno, bo należą do portfela, nie do stanu posiadania (D5). | P0 | E2 |
+| E8 | Publikacja notowań przed onboardingiem | Dla każdego waloru ze snapshotu kurs przeciwko walucie wyceny, pobrany z `market/ticker` i wysłany przez `/quote/publish`. **`EUR/EUR` nie jest publikowane** — po B5 backend liczy je jako 1. Weryfikacja przez `GET /exchange/OKX/status`, porównywana z tym, co **zgłasza backend**, a nie z tym, co wysłaliśmy: publikacja przyjęta, która nie dotarła do cache, to dokładnie ten przypadek. Instrumenty, których OKX nie ma (pary PLN), są raportowane zamiast zgadywane — to B4. | P0 | B5, B6 |
+| E4 | Przejście ścieżki spec-u | `okx-onboard.mjs` przechodzi sześć kroków: odczyt OKX → rejestracja → `POST /exchange-connection` → spec → odpowiedzi → `confirm`. **Domyślnie zatrzymuje się na pytaniach**; `--assume-unknown` albo `--answers` są jawną zgodą, bo „nie wiem" to decyzja, której skrypt nie podejmuje za człowieka. Przed `confirm` saldo jest czytane **ponownie** — backend i tak porównuje ze świeżym snapshotem, więc wysłanie tego samego tylko maskowałoby zmianę z czasu odpowiadania. Podział pozycji robi silnik różnicy, nie POC. | P0 | A8, D3, E3 |
+| E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu — zbiór węższy niż snapshot, bo pyłek odpadł, a pozycje się rozdzieliły. Po odświeżeniu portfel jest czytany ponownie, żeby raport pokazał ceny właśnie opublikowane, a nie te, z którymi powstał. | P1 | B3, E4 |
 | E6 | Pętla odświeżania | Cykliczne pobranie tickerów i republikacja, żeby wycena żyła. | P1 | E5 |
-| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR`, pokazanie wartości, wyniku i pokrycia. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException` na pierwszej pozycji gotówkowej. | P1 | E4, E8 |
+| E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR` plus raport. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException`. Trzy rzeczy w prezentacji są celowe: brak kosztu jest **nazwany**, brak wyniku **nie jest zerem** (to zniosłoby rozróżnienie utrzymywane od C1), a zerowe `investedBalance` ma zastrzeżenie, bo portfel ze snapshotu nigdy nie przeszedł przez wpłatę (C9). Pokrycie liczy POC z tego, co zwraca API — `C4` doda je po stronie backendu. | P1 | E4, E8 |
 
 ### Ścieżka F — dług techniczny
 

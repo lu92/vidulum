@@ -821,6 +821,18 @@ Notes:
 - Another user's connection answers 404, not 403.
 - API keys are never sent or stored; `reportedKeyPermissions` must be `read_only`.
 
+### Exchange Status (`/exchange`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/exchange/status` | Readiness of every registered exchange |
+| GET | `/exchange/{name}/status` | Readiness of one; answers for unknown exchanges instead of 404 |
+
+Notes:
+- `brokerRegistered` and `quotesReady` are live; `reachability` is always `UNKNOWN` — nothing
+  probes the exchange yet.
+- Not the same question as `GET /exchange-connection/{id}`: that one is per-user.
+- A quote of an asset against itself (`EUR/EUR`) is computed as 1 and never needs publishing.
+
 ### Portfolio Specification (`/portfolio-spec`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|

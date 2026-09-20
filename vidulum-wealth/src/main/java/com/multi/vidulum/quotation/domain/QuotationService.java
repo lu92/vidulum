@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -29,6 +30,20 @@ public class QuotationService {
             brokerProvider.onPriceChange(event);
             return null;
         });
+    }
+
+    /** Which brokers this instance can serve at all. */
+    public Set<Broker> registeredBrokers() {
+        return Set.copyOf(registeredBrokers.keySet());
+    }
+
+    public boolean isRegistered(Broker broker) {
+        return registeredBrokers.containsKey(broker);
+    }
+
+    /** What the broker can price right now, identity pairs aside — those never need publishing. */
+    public Set<Symbol> quotedSymbols(Broker broker) {
+        return findBrokerOrRaiseException(broker, BrokerQuotationProvider::quotedSymbols);
     }
 
     public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {

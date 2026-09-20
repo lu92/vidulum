@@ -13,6 +13,13 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 | `contract/generate-account.mjs` | Regenerates the account / balance_and_position contracts |
 | `contract/template.mjs` | The contract's prose and helper functions; the field table is injected |
 | `okx-common.test.mjs` | `npm test` - runs offline, no credentials needed |
+| `vidulum-client.mjs` | Minimal Vidulum REST client: registration, JWT, `ApiError` codes |
+| `okx-snapshot.mjs` | Maps an OKX balance reply onto the `POST /portfolio-spec` body |
+| `okx-onboard.mjs` | Walks an OKX account to a Vidulum portfolio (tasks E2, E3, E4) |
+| `okx-spec-flow.mjs` | Decisions taken while walking the specification: which questions to answer, request bodies |
+| `okx-quotes.mjs` | Which quotes a portfolio needs, and whether they reached the cache (task E8) |
+| `okx-portfolio.mjs` | Reads the portfolio back and reports value, result and coverage (tasks E5, E7) |
+| `okx-onboard.test.mjs` | Offline tests for the onboarding half, including a simulated full walk |
 | `fixtures/orders-lifecycle.json` | 9 raw frames covering one order's full lifecycle |
 
 Run either script with `--help` for the full flag list.
@@ -28,6 +35,76 @@ Fill in `KEY` / `SECRET` / `PASSPHRASE` in each file. An EEA account (`my.okx.co
 `OKX_DOMAIN=eea.okx.com` - without it REST goes to `openapi.okx.com` and returns `60032`.
 Create the keys as **read-only**; the export script warns if a key has broader permissions.
 `.env.prod` and `.env.demo` are in `.gitignore`; `.env.example` is not.
+
+## Onboarding do Vidulum (E2 + E3 + E4)
+
+```bash
+npm run onboard:demo:dry     # sam snapshot, bez backendu
+npm run onboard:demo         # az do pytan, potem sie zatrzymuje
+npm run onboard:demo:auto    # odpowiada "nie wiem" i konczy portfelem
+```
+
+`okx-onboard.mjs` przechodzi cala sciezke:
+
+| krok | co robi | zadanie |
+|---|---|---|
+| 1 | czyta `account/config`, `account/balance`, `orders-pending` | E1 |
+| 2 | rejestruje uzytkownika i trzyma JWT | E2 |
+| 3 | publikuje kursy i **sprawdza, ze dotarly** | E8 |
+| 4 | `POST /exchange-connection` | A8 |
+| 5 | buduje snapshot i tworzy spec | E3, D1 |
+| 6 | odpowiada na pytania | D2 |
+| 7 | `confirm` przeciwko **swiezemu** snapshotowi | D3 |
+| 8 | odswieza kursy dla tego, co portfel **faktycznie** trzyma | E5 |
+| 9 | odczytuje portfel i raportuje wycene, wynik i pokrycie | E7 |
+
+Kursy ida **przed** utworzeniem portfela, bo `GET /portfolio/{id}/{waluta}` wycenia **kazde**
+aktywo, jakie portfel trzyma. Portfel zalozony wczesniej to portfel, ktorego nie da sie odczytac,
+a awaria wychodzi daleko od zadania, ktore ja spowodowalo.
+
+Weryfikacja idzie przez `GET /exchange/OKX/status` i porownuje z tym, co **zglasza backend**, nie
+z tym, co wyslalismy: publikacja przyjeta, ktora nie dotarla do cache, to dokladnie ten przypadek.
+Kursu waluty wyceny do samej siebie (`EUR/EUR`) nie trzeba publikowac — backend liczy go jako 1.
+
+Na koncu raport wyglada tak:
+
+```
+My OKX (OKX)
+  value      71500 EUR
+  invested   0 EUR   <- always zero for a snapshot-built portfolio (task C9)
+  coverage   23% of value has a known cost
+  BTC 0.3 -> 16500 EUR; cost 50000 EUR (EXCHANGE_REPORTED); profit 1500 EUR [100% covered]
+  BTC 1 -> 55000 EUR; cost unknown; profit not computable [0% covered]
+```
+
+Trzy rzeczy sa tu celowe. **Brak kosztu jest nazwany**, nie zamilczany. **Brak wyniku nie jest
+zerem** — pozycja przelana z zewnatrz nie ma zysku, ktory dalo by sie policzyc, a „0.00" znioslby
+rozroznienie, ktore backend utrzymuje od C1. **Zerowe `invested` ma zastrzezenie**, bo portfel ze
+snapshotu nigdy nie przeszedl przez wplate, wiec to pole nic nie mowi o tym, ile faktycznie
+wlozono (C9).
+
+**Domyslnie zatrzymuje sie po kroku 4** i wypisuje pytania. Zeby przejsc dalej, trzeba podac
+`--assume-unknown` albo `--answers plik.json` — bo „nie wiem" to **decyzja**, a skrypt nie
+powinien jej podejmowac po cichu za czlowieka.
+
+Przed `confirm` saldo jest **czytane ponownie**. Backend porownuje ze swiezym snapshotem
+niezaleznie od wieku spec-u, wiec wyslanie tego samego co na poczatku tylko zamaskowaloby
+zmiane, ktora zaszla w trakcie odpowiadania.
+
+Mapowanie jest krotkie, bo backend powstal wokol tego, co OKX faktycznie zwraca:
+
+| OKX | snapshot |
+|---|---|
+| `cashBal` | `total` — wszystko, co jest na koncie |
+| `spotBal` | `traded` — czesc, ktorej OKX podal cene |
+| `openAvgPx` | `reportedAvgPrice` — srednia cena tej czesci, **w USD** |
+
+**POC nie dzieli pozycji.** Przekazuje trzy liczby, a na `traded` i `transferred-in` rozdziela je
+silnik roznicy po stronie backendu — inaczej ta sama regula zylaby w dwoch miejscach i zaczelaby
+sie rozjezdzac.
+
+Locki z otwartych zlecen sa zwracane **osobno**: zlecenie blokuje czesc salda, ale nie zmienia
+tego, co jest w posiadaniu. Do portfela trafia dopiero w zadaniu D5.
 
 ## Running
 
