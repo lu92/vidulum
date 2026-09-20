@@ -11,6 +11,10 @@ import com.multi.vidulum.common.error.ErrorCode;
  * cache <b>before</b> the portfolio exists (decision 9), and the broker decides whose quote cache
  * serves it at all. Letting the confirmation set them again gives the same fact two sources.
  *
+ * <p>The specification is the third holder of the same fact, and it is checked too: its currency
+ * is what {@code DifferenceEngine} filed cash under (C10), so a confirmation that renames the
+ * currency would produce a portfolio keyed differently from the decisions that built it.
+ *
  * <p>Rejecting rather than silently overriding follows the pattern the cash-flow attestation
  * already uses with {@code confirmedBalance}: the caller states what they believe, and a
  * disagreement is surfaced instead of resolved behind their back. A caller who sends USD while
@@ -19,9 +23,13 @@ import com.multi.vidulum.common.error.ErrorCode;
  */
 public class ConnectionMismatchException extends BusinessException {
 
-    public ConnectionMismatchException(String field, String stated, String onConnection) {
-        super(String.format(
-                "%s stated as [%s] but the connection says [%s]", field, stated, onConnection));
+    public ConnectionMismatchException(String field, String stated, String known) {
+        this(field, stated, known, "connection");
+    }
+
+    /** @param source what holds the contradicting value — the connection or the specification */
+    public ConnectionMismatchException(String field, String stated, String known, String source) {
+        super(String.format("%s stated as [%s] but the %s says [%s]", field, stated, source, known));
     }
 
     @Override

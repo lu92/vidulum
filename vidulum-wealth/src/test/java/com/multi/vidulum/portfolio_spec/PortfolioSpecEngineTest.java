@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio_spec;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Price;
@@ -55,7 +56,7 @@ class PortfolioSpecEngineTest {
 
     private static PortfolioSpec specFrom(List<Asset> knownState, ExchangeSnapshot snapshot) {
         return PortfolioSpec.from(PortfolioSpecId.of("spec-1"), ALICE, CONNECTION,
-                knownState, snapshot, NOW);
+                Currency.of("EUR"), knownState, snapshot, NOW);
     }
 
     /** Matches on ticker as well as position: two tickers can share a subName. */
@@ -117,7 +118,10 @@ class PortfolioSpecEngineTest {
 
         assertThat(spec.getStatus()).isEqualTo(SpecStatus.DRAFT);
         assertThat(spec.needsAnswers()).isFalse();
-        assertThat(of(spec, Ticker.of("EUR"), SubName.transferredIn()).resolvedCost().provenance())
+
+        // Under `none`, not `transferred-in`: this is the portfolio's own currency, and filing it
+        // anywhere else is what made the first deposit create a second EUR position (C10).
+        assertThat(of(spec, Ticker.of("EUR"), SubName.none()).resolvedCost().provenance())
                 .isEqualTo(Provenance.ASSUMED_PAR);
     }
 
@@ -241,5 +245,57 @@ class PortfolioSpecEngineTest {
         assertThatThrownBy(spec::cancel).isInstanceOf(IllegalSpecTransitionException.class);
         assertThatThrownBy(() -> spec.markStale(snapshot(NOW, btc(1, 1, 50_000.0)), List.of(), NOW))
                 .isInstanceOf(IllegalSpecTransitionException.class);
+    }
+
+    /**
+     * The portfolio's own currency is cash, and cash is one position under {@code none} — task
+     * C10.
+     *
+     * <p>Splitting money by how it arrived describes nothing anyone can act on, and the slot is
+     * not a matter of taste: {@code deposit} and {@code withdraw} look under {@code none} and
+     * nowhere else. While the engine filed euro under {@code transferred-in}, a portfolio built
+     * from a snapshot answered its first deposit by creating a <b>second</b> euro position beside
+     * the first — 200 OK, two balances, and a withdrawal that could only see one of them.
+     */
+    @Test
+    void shouldFileTheValuationCurrencyAsOneCashPosition() {
+        PortfolioSpec spec = specFrom(List.of(), snapshot(NOW,
+                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(5_000), Quantity.of(1_200),
+                        Price.of(1, "EUR"))));
+
+        assertThat(spec.getDifferences())
+                .as("not split - the exchange reporting a traded part changes nothing about cash")
+                .hasSize(1);
+
+        Difference cash = spec.getDifferences().getFirst();
+        assertThat(cash.subName()).isEqualTo(SubName.none());
+        assertThat(cash.quantity())
+                .as("the whole balance, traded part included")
+                .isEqualTo(Quantity.of(5_000));
+        assertThat(cash.needsAnswer()).isFalse();
+        assertThat(cash.resolvedCost())
+                .isEqualTo(CostBasis.atPar(Quantity.of(5_000), "EUR"));
+    }
+
+    /**
+     * Only the valuation currency, not everything taken at par.
+     *
+     * <p>USDC is at par too, but it is not what this portfolio settles in, so it stays an ordinary
+     * position. That keeps {@code none} with a single meaning — the money this portfolio is
+     * denominated in — instead of becoming a bucket for anything worth about one unit.
+     */
+    @Test
+    void shouldStillSplitAParAssetThatIsNotTheValuationCurrency() {
+        PortfolioSpec spec = specFrom(List.of(), snapshot(NOW,
+                new SnapshotPosition(Ticker.of("USDC"), Quantity.of(1_000), Quantity.of(400), null)));
+
+        assertThat(spec.getDifferences()).hasSize(2);
+        assertThat(of(spec, Ticker.of("USDC"), SubName.traded()).quantity())
+                .isEqualTo(Quantity.of(400));
+        assertThat(of(spec, Ticker.of("USDC"), SubName.transferredIn()).quantity())
+                .isEqualTo(Quantity.of(600));
+        assertThat(spec.getDifferences())
+                .as("nothing but the valuation currency reaches the cash slot")
+                .noneMatch(difference -> difference.subName().equals(SubName.none()));
     }
 }

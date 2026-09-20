@@ -331,6 +331,13 @@ znanej części", a to jest operacja, którą ludzie realnie wykonują.
 Gotówka zostaje przy `none` świadomie: strona pieniężna każdej transakcji ma zaszyte
 `SubName.none()` (`Portfolio:137`, `:159`) i tak ma pozostać.
 
+**„Gotówka" znaczy: waluta wyceny tego portfela — i nic więcej.** To zawężenie kosztowało nas
+C10. Kusi, żeby do `none` wpuścić wszystko po parze, ale USDC też jest po parze, a nie jest
+jednostką rozliczeniową portfela; wrzucony do `none` rozmyłby ten slot do „coś wartego mniej
+więcej jeden". Regułą jest więc jeden ticker na portfel — ten z `denominationCurrency` — a każdy
+inny walor, choćby najstabilniejszy, zostaje zwykłą pozycją dzieloną na `traded` i
+`transferred-in`.
+
 #### Trzy rzeczy, które podział psuje
 
 **1. Wyszukiwanie po samym tickerze przestaje być jednoznaczne.**
@@ -643,6 +650,11 @@ pozycja transferred-in  = cashBal - spotBal  , brak kosztu
 ```
 
 Silnik nie musi niczego zgadywać — produkuje dwa wiersze, bo giełda podaje dwie liczby.
+
+Z jednym wyjątkiem: **linia w walucie wyceny nie jest dzielona wcale**. Daje jeden wiersz
+`none` o wartości `cashBal`, z kosztem po parze i bez pytania — `openAvgPx` jest tu ignorowane,
+bo cena numeraire względem siebie samej niczego nie mówi. Powód nie jest estetyczny: `deposit`
+i `withdraw` szukają gotówki pod `none` i nigdzie indziej (C10).
 
 #### Trzy decyzje podjęte przed kodem
 
@@ -1377,6 +1389,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 |---|---|---|---|---|
 | C1 | Typ `CostBasis` | Koszt nabycia niosący **własną ilość, walutę i proweniencję**: `{quantity, avgPrice{amount, currency}, provenance}` albo `null`. Proweniencja ze słownika zamkniętego: `EXCHANGE_REPORTED`, `USER_PROVIDED`, `ASSUMED_PAR`, `DERIVED_FROM_FILLS`, `UNKNOWN`. Uniemożliwia pomnożenie ceny znanej części przez całe saldo i pozwala rozstrzygać, co wolno nadpisać. | P0 | — |
 | C2 | Rozdzielenie pozycji po `subName` | `okx-bought` / `unknown-origin`. Model już wspiera `(ticker, subName)` — bez zmian w `findAssetByTickerAndSubName`. | P0 | C1 |
+| C10 | Gotówka ze snapshotu trafia do `transferred-in`, nie do `none` | **Znalezione na żywym uruchomieniu**, nie przez testy — i to jest w tym najciekawsze. `DifferenceEngine` dzielił każdą linię snapshotu na `traded` i `transferred-in` i nigdy nie produkował `none`, choć C2 przeznacza `none` dla gotówki, a `findCashAsset` (depozyt, wypłata) szuka właśnie tam. Skutek zweryfikowany: portfel ze snapshotu miał 4386 EUR w `transferred-in`, a wpłata 100 EUR odpowiadała `200 OK` i **drugą** pozycją EUR w `none`; wypłata widziała tylko mniejszą z dwóch. Żaden test tego nie łapał, bo każda połowa była zgodna ze swoją konwencją — `PortfolioSplitPositionsTest` budował gotówkę fixture'em wprost w `none`, a `PortfolioSpecEngineTest` sprawdzał jedynie, że fiat dostaje `ASSUMED_PAR`, nie pytając gdzie. Błąd mieszkał na styku. **Rozstrzygnięcie:** silnik kieruje do `none` wyłącznie walutę wyceny portfela (nie każde aktywo po parze — patrz §3.2), a `PortfolioSpec` niesie `denominationCurrency`, bo to ona decyduje o kluczu pozycji i musi być znana przy liczeniu różnicy, nie dopiero przy `confirm`. `confirm` odrzuca próbę zmiany waluty względem spec-u, a `create` konfrontuje żądanie z połączeniem **zanim** cokolwiek policzy — bo kontrola dopiero przy `confirm` jest za późna: spec zbudowany na złej walucie zadaje złe pytania, a po odpowiedzeniu na nie żadna wartość już nie przechodzi (jedna kontrola odrzuca to, co przeczy połączeniu, druga to, co przeczy spec-owi). Przy okazji, przepisując test pod nową walidację, wyszedł osobny błąd — wydzielony jako D12. | P0 | C2, D1 |
 | C3 | Wynik tylko ze znanej części | Pozycja bez `costBasis` nie wnosi zysku ani straty. | P1 | C2 |
 | C4 | Pokrycie wyniku | Przy każdej liczbie wyniku: ilu procent pozycji dotyczy. Przy niskim pokryciu liczba ustępuje komunikatowi. | P1 | C3 |
 | C5 | Zmiana wartości majątku | Osobna miara, **niewymagająca ceny nabycia** — odpowiada na „o ile zmienił się mój majątek", gdzie część nieznana jest pełnoprawna. | P1 | C2 |
@@ -1400,6 +1413,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | D10 | TTL i stany terminalne | TTL 15 min na snapshot, **nie na odpowiedzi**. `stale` przelicza różnicę i zachowuje pasujące odpowiedzi. `cancelled` jako świadome przerwanie onboardingu. `failed` przy nieudanym zapisie. | P1 | D1 |
 | D11 | `confirm` zawsze na świeżym snapshocie | Niezależnie od wieku spec-u: pobierz ponownie, porównaj, przy zgodności zastosuj, przy różnicy wróć do `awaiting_answer`. | P1 | D3 |
 | D9 | `DataCleaner` dla `PortfolioSpec` | Wymóg z `CLAUDE.md` dla każdej nowej encji `@Document`. | P1 | D1 |
+| D12 | Osierocony portfel po nieudanym `confirm` połączenia | **Znalezione przy przepisywaniu testu**, nie przez nowy scenariusz. `shouldNotCreateAPortfolioWhenTheConnectionCannotBeConfirmed` wyzwalał się dotąd nieistniejącym połączeniem — przypadkiem, który po C10 odrzuca już `create`. Przestawiony na połączenie w stanie `ACTIVE` test padł: portfel **był** zapisywany, a dopiero potem `ExchangeConnection.confirm` rzucał `IllegalConnectionTransitionException`. Handler deklarował w komentarzu, że nic nie zapisuje przed sprawdzeniem połączenia, ale sprawdzał istnienie, walutę i brokera — nie status. Przypadek jest osiągalny: nic nie broni drugiemu spec-owi wskazać połączenia, które już obsługuje portfel. Nie ma transakcji obejmującej portfel i połączenie, więc kolejność kontroli **jest** mechanizmem spójności. | P0 | D3 |
 
 ### Ścieżka E — POC w Node
 
@@ -1412,12 +1426,14 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 | E4 | Przejście ścieżki spec-u | `okx-onboard.mjs` przechodzi sześć kroków: odczyt OKX → rejestracja → `POST /exchange-connection` → spec → odpowiedzi → `confirm`. **Domyślnie zatrzymuje się na pytaniach**; `--assume-unknown` albo `--answers` są jawną zgodą, bo „nie wiem" to decyzja, której skrypt nie podejmuje za człowieka. Przed `confirm` saldo jest czytane **ponownie** — backend i tak porównuje ze świeżym snapshotem, więc wysłanie tego samego tylko maskowałoby zmianę z czasu odpowiadania. Podział pozycji robi silnik różnicy, nie POC. | P0 | A8, D3, E3 |
 | E5 | Publikacja notowań | Tylko dla aktywów obecnych w świeżo założonym portfelu — zbiór węższy niż snapshot, bo pyłek odpadł, a pozycje się rozdzieliły. Po odświeżeniu portfel jest czytany ponownie, żeby raport pokazał ceny właśnie opublikowane, a nie te, z którymi powstał. | P1 | B3, E4 |
 | E6 | Pętla odświeżania | `okx-quote-loop.mjs`. Czyta portfel w każdym cyklu, więc nadąża za tym, co się w nim zmieniło. Przy błędzie **nie kończy się**, tylko czeka coraz dłużej (do 5 min): pętla umierająca przy pierwszym limicie API jest gorsza niż jej brak, bo wycena po cichu przestaje się ruszać. Każdy cykl wypisuje też to, **czego nie udało się odświeżyć** — „5 ok" przy szóstym pominiętym wygląda zdrowo, a portfel przestaje być wyceniany w całości. | P1 | E5 |
+| E9 | Smoke na żywym backendzie | `okx-onboard.mjs` przechodzi ścieżkę raz i pokazuje wynik człowiekowi; to za mało, żeby odpowiedzieć na pytanie, czy backend został w stanie, z którego da się korzystać. `okx-smoke.mjs` onboarduje jednorazowych użytkowników w pętli i sprawdza **stan po każdym kroku**, nie to, że wywołanie zwróciło 2xx: połączenie kończy jako `ACTIVE` wskazujące na portfel, pozycja bez znanego kosztu raportuje **brak** wyniku zamiast zera, `investedBalance` jest zerem (C9), portfel nadal się wycenia po ponownej publikacji kursów. OKX czytany jest **raz** — testowany jest backend, a dobijanie się do giełdy dodałoby tylko limity do listy trybów awarii. To on znalazł C10. | P1 | E4, E7 |
 | E7 | Odczyt i prezentacja wyceny | `GET /portfolio/{id}/EUR` plus raport. **Wymaga E8** — bez notowań w cache `GET` rzuca `QuoteNotFoundException`. Trzy rzeczy w prezentacji są celowe: brak kosztu jest **nazwany**, brak wyniku **nie jest zerem** (to zniosłoby rozróżnienie utrzymywane od C1), a zerowe `investedBalance` ma zastrzeżenie, bo portfel ze snapshotu nigdy nie przeszedł przez wpłatę (C9). Pokrycie liczy POC z tego, co zwraca API — `C4` doda je po stronie backendu. | P1 | E4, E8 |
 
 ### Ścieżka F — dług techniczny
 
 | # | zadanie | opis | prio | zależy od |
 |---|---|---|---|---|
+| F5 | `/quote/publish` nie waliduje wejścia | Nieliczbowa kwota kończy się `NumberFormatException` w `Price.of` i odpowiedzią 500 zamiast błędu walidacji. Znalezione przypadkiem — własny skrypt wysłał `amount=NaN`. Endpoint zasila cache w testach i POC, więc niczego nie blokuje, ale 500 na złe wejście to zły sygnał dla każdego, kto go użyje. | P3 | — |
 | F1 | Indeks unikalności `OriginTradeId` | Zero indeksów w `vidulum-wealth`; OKX powtarza komunikaty, Kafka ma redelivery. | P2 | — |
 | F2 | `Quantity` na `BigDecimal` | Dziś `double` przy stringach OKX z 8+ miejscami; przy setkach filli powstanie dryf. | P3 | — |
 | F3 | Usunięcie sentineli `Price.one`/`Price.zero` | Ukryte znaczniki „nie wiem" w depozycie i agregacji; do zastąpienia typem z C1. | P3 | C1 |

@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio_spec.infrastructure;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
@@ -50,6 +51,7 @@ public class PortfolioSpecEntity {
 
     private String userId;
     private String connectionId;
+    private String denominationCurrency;
     private String broker;
     private Date snapshotTakenAt;
     private List<SnapshotPositionDocument> snapshotPositions;
@@ -64,6 +66,7 @@ public class PortfolioSpecEntity {
                 .id(spec.getId().getId())
                 .userId(spec.getUserId().getId())
                 .connectionId(spec.getConnectionId())
+                .denominationCurrency(spec.getDenominationCurrency().getId())
                 .broker(spec.getSnapshot().broker().getId())
                 .snapshotTakenAt(toDate(spec.getSnapshot().takenAt()))
                 .snapshotPositions(spec.getSnapshot().positions().stream()
@@ -81,6 +84,7 @@ public class PortfolioSpecEntity {
                 .id(PortfolioSpecId.of(id))
                 .userId(UserId.of(userId))
                 .connectionId(connectionId)
+                .denominationCurrency(Currency.of(denominationCurrency))
                 .snapshot(new ExchangeSnapshot(
                         Broker.of(broker),
                         toZonedDateTime(snapshotTakenAt),

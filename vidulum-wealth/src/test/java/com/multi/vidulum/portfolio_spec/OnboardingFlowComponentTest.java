@@ -2,11 +2,13 @@ package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.SubName;
+import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
@@ -19,6 +21,7 @@ import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQu
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
+import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionNotFoundException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
@@ -104,7 +107,7 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new ConnectExchangeCommandHandler(connections, adapters, clock));
         gateway.registerCommandHandler(new ReconnectExchangeCommandHandler(connections, clock));
         gateway.registerCommandHandler(new RevokeExchangeConnectionCommandHandler(connections, clock));
-        gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, clock));
+        gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specs, connections, portfolios, new PortfolioFactory(), confirmConnectionHandler, clock));
@@ -134,7 +137,7 @@ class OnboardingFlowComponentTest {
 
     private PortfolioSpecDto.PortfolioSpecJson createSpec(String connectionId) {
         return specController.create(new PortfolioSpecDto.CreateSpecJson(
-                "OKX", connectionId, null, NOW, List.of(btc(1.3, 0.3))));
+                "OKX", connectionId, "EUR", null, NOW, List.of(btc(1.3, 0.3))));
     }
 
     private void answerUnknownCost(String specId) {
@@ -315,7 +318,7 @@ class OnboardingFlowComponentTest {
 
         PortfolioSpecDto.PortfolioSpecJson next = specController.create(
                 new PortfolioSpecDto.CreateSpecJson(
-                        "OKX", connectionId, portfolioId, NOW, List.of(btc(1.8, 0.8))));
+                        "OKX", connectionId, "EUR", portfolioId, NOW, List.of(btc(1.8, 0.8))));
 
         assertThat(next.differences())
                 .as("only what moved, not the whole portfolio again")
@@ -323,5 +326,112 @@ class OnboardingFlowComponentTest {
         assertThat(next.status())
                 .as("a purchase the exchange priced needs no human")
                 .isEqualTo("DRAFT");
+    }
+
+    /**
+     * The snapshot's cash and a later deposit are the same position — task C10, found on a live
+     * run rather than by any test here.
+     *
+     * <p>Two halves had each been right on their own. {@code DifferenceEngine} split every
+     * snapshot line into {@code traded} and {@code transferred-in}; {@code deposit} looked under
+     * {@code none}, where C2 puts cash. Neither side was checked against the other, so a portfolio
+     * onboarded with 4 386 EUR answered a 100 EUR deposit with 200 OK and a second euro position
+     * — and a withdrawal afterwards could only see the smaller of the two.
+     *
+     * <p>This is the seam, so the test walks it end to end rather than asserting on the engine:
+     * the assertion that matters is that the money the exchange reported and the money the user
+     * puts in afterwards land on one balance.
+     */
+    @Test
+    void shouldLetALaterDepositLandOnTheCashTheSnapshotBroughtIn() {
+        List<PortfolioSpecDto.SnapshotPositionJson> reported = List.of(btc(1.3, 0.3), eur(5_000));
+
+        String connectionId = connect().id();
+        PortfolioSpecDto.PortfolioSpecJson spec = specController.create(
+                new PortfolioSpecDto.CreateSpecJson("OKX", connectionId, "EUR", null, NOW, reported));
+
+        assertThat(spec.differences())
+                .as("cash is never a question - one euro costs one euro when euro is the unit")
+                .filteredOn(difference -> difference.ticker().equals("EUR"))
+                .singleElement()
+                .satisfies(difference -> {
+                    assertThat(difference.subName()).isEqualTo(SubName.none().getName());
+                    assertThat(difference.question()).isNull();
+                    assertThat(difference.costProvenance()).isEqualTo(Provenance.ASSUMED_PAR.name());
+                });
+
+        answerUnknownCost(spec.id());
+
+        String portfolioId = specController.confirm(spec.id(), new PortfolioSpecDto.ConfirmSpecJson(
+                "My OKX", "EUR", "OKX", NOW, reported)).portfolioId();
+
+        Portfolio portfolio = portfolios.findById(PortfolioId.of(portfolioId)).orElseThrow();
+        assertThat(portfolio.findAssetsByTicker(Ticker.of("EUR")))
+                .as("cash arrives as one position, not split by how it got there")
+                .hasSize(1);
+        assertThat(position(portfolio, SubName.none()).getQuantity()).isEqualTo(Quantity.of(5_000));
+
+        portfolio.depositMoney(Money.of(100, "EUR"));
+
+        assertThat(portfolio.findAssetsByTicker(Ticker.of("EUR")))
+                .as("the deposit finds the existing balance instead of opening a parallel one")
+                .hasSize(1);
+        assertThat(position(portfolio, SubName.none()).getQuantity()).isEqualTo(Quantity.of(5_100));
+    }
+
+    /**
+     * The confirmation may not rename the currency the specification was computed with: that
+     * choice decided which line was filed as cash, so a portfolio valued in anything else would
+     * key its cash differently from the decisions that produced it.
+     */
+    @Test
+    void shouldRefuseToConfirmInADifferentCurrencyThanTheSpecificationUsed() {
+        String connectionId = connect().id();
+        String specId = createSpec(connectionId).id();
+        answerUnknownCost(specId);
+
+        assertThatThrownBy(() -> confirm(specId, "USD", "OKX"))
+                .isInstanceOf(ConnectionMismatchException.class);
+    }
+
+    private static PortfolioSpecDto.SnapshotPositionJson eur(double total) {
+        return new PortfolioSpecDto.SnapshotPositionJson(
+                "EUR", Quantity.of(total), Quantity.zero(), null);
+    }
+
+    /**
+     * The disagreement is caught on the first request, not on the last.
+     *
+     * <p>Both {@code create} and {@code confirm} compare the currency against the connection, and
+     * only the earlier check is any use: the currency decides which snapshot line is filed as cash
+     * (C10), so a specification built with the wrong one asks the wrong questions. Worse, by
+     * confirmation time no value is accepted any more — one check rejects what contradicts the
+     * connection, the other what contradicts the specification — so the caller would be left with
+     * a specification they had answered in full and could never apply.
+     */
+    @Test
+    void shouldRefuseASpecificationInADifferentCurrencyThanTheConnection() {
+        String connectionId = connect().id();
+
+        assertThatThrownBy(() -> specController.create(new PortfolioSpecDto.CreateSpecJson(
+                "OKX", connectionId, "USD", null, NOW, List.of(btc(1.3, 0.3)))))
+                .isInstanceOf(ConnectionMismatchException.class)
+                .hasMessageContaining("EUR");
+
+        assertThat(specs.findByUserId(ALICE))
+                .as("nothing is stored for a request that was refused")
+                .isEmpty();
+    }
+
+    /** Someone else's connection is not found, rather than forbidden — the rule A9 established. */
+    @Test
+    void shouldNotLetACallerBuildASpecificationOnAnotherUsersConnection() {
+        String alices = connect().id();
+
+        caller = BOB;
+
+        assertThatThrownBy(() -> specController.create(new PortfolioSpecDto.CreateSpecJson(
+                "OKX", alices, "EUR", null, NOW, List.of(btc(1.3, 0.3)))))
+                .isInstanceOf(ExchangeConnectionNotFoundException.class);
     }
 }

@@ -15,7 +15,7 @@
 
 import { createRestClient, maybePrintHelp, parseArgs, resolveProfile, sleep } from "./okx-common.mjs";
 import { quotesNeededBy } from "./okx-portfolio.mjs";
-import { backoffDelay, describeCycle, instrumentIdFor, publishPath, publishQuery } from "./okx-quotes.mjs";
+import { backoffDelay, describeCycle, publishPath, publishQuery, resolveTicker } from "./okx-quotes.mjs";
 import { createVidulumClient } from "./vidulum-client.mjs";
 
 const USAGE = `
@@ -48,7 +48,7 @@ if (!portfolioId) {
 
 const okx = createRestClient({
   key: cfg.key, secret: cfg.secret, passphrase: cfg.passphrase,
-  domain: cfg.domain, demo: cfg.demo, verbose,
+  domain: cfg.domain, demo: cfg.simulated, verbose,
 });
 
 const vidulum = createVidulumClient({
@@ -82,8 +82,7 @@ do {
     const published = [];
     const failed = [];
     for (const symbol of symbols) {
-      const [ticker] = await okx.get("/api/v5/market/ticker",
-        { instId: instrumentIdFor(symbol) }).catch(() => [null]);
+      const { ticker } = await resolveTicker(okx, symbol);
       if (!ticker) {
         failed.push(symbol);
         continue;

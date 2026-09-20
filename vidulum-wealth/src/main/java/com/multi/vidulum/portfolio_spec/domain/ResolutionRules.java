@@ -56,6 +56,18 @@ public final class ResolutionRules {
     }
 
     /**
+     * Cash that appeared, in the currency the portfolio is valued in.
+     *
+     * <p>Never a question, and not because of {@link ParAssets} — one euro costs one euro by
+     * definition when euro is the unit of account. The exchange's {@code openAvgPx} is ignored
+     * here for the same reason: a price for the numeraire against itself would say nothing.
+     */
+    public static Difference forCash(Ticker ticker, Quantity quantity) {
+        return Difference.settled(ticker, SubName.none(), DifferenceDirection.INCREASED, quantity,
+                CostBasis.atPar(quantity, ticker.getId()));
+    }
+
+    /**
      * Classifies units that disappeared.
      *
      * <p>Always a question in the POC — see the note above about fill history. Cash is no
