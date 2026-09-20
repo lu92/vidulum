@@ -2,6 +2,10 @@ package com.multi.vidulum.okx;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -26,6 +30,16 @@ public class OkxTestApplication {
      * {@code /actuator/health} are public. These tests verify that the OKX provider is wired into
      * the quotation pipeline, not who may call it, so authentication would only add noise.
      */
+    /**
+     * Required by {@code ExchangeStatusRestController}, which this context picks up along with
+     * the rest of {@code com.multi.vidulum.quotation}. Fixed, so a status timestamp is
+     * assertable; production takes its clock from {@code VidulumApplication}.
+     */
+    @Bean
+    Clock clock() {
+        return Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    }
+
     @Bean
     SecurityFilterChain permitAllForTests(HttpSecurity http) throws Exception {
         return http

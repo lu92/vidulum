@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node okx-common.test.mjs",
+    "test": "node okx-common.test.mjs && node okx-onboard.test.mjs",
     "contract:generate": "node contract/generate.mjs && node contract/generate-account.mjs",
     "export:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --out demo.json",
     "export:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --out prod.json",
@@ -17,6 +17,10 @@
     "ws:demo": "node --env-file=.env.demo okx-ws-listener.mjs --profile demo --region eea",
     "ws:prod": "node --env-file=.env.prod okx-ws-listener.mjs --profile prod --region eea",
     "check:demo": "node --env-file=.env.demo okx-readonly-export.mjs --profile demo --verbose --days 1 --out check-demo.json",
-    "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --days 1 --out check-prod.json"
+    "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --days 1 --out check-prod.json",
+    "onboard:demo": "node --env-file=.env.demo okx-onboard.mjs --profile demo",
+    "onboard:demo:dry": "node --env-file=.env.demo okx-onboard.mjs --profile demo --dry-run",
+    "onboard:demo:auto": "node --env-file=.env.demo okx-onboard.mjs --profile demo --assume-unknown",
+    "quotes:loop:demo": "node --env-file=.env.demo okx-quote-loop.mjs --profile demo"
   }
 }
