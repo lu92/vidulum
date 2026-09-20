@@ -104,7 +104,8 @@ stage("read OKX account", { positions: buildSnapshotPositions(details, { dustThr
 
 if (dryRun) {
   run.specRequest = buildSpecRequest({
-    broker: "OKX", connectionId: null, takenAt, details, dustThreshold: dust,
+    broker: "OKX", connectionId: null, denominationCurrency: currency,
+    takenAt, details, dustThreshold: dust,
   });
   finish();
 }
@@ -173,7 +174,8 @@ stage("connected exchange account", { connectionId: connection.id, status: conne
 // --- 5. the specification (E3 + D1) -----------------------------------------------------------------
 
 const specRequest = buildSpecRequest({
-  broker: "OKX", connectionId: connection.id, takenAt, details, dustThreshold: dust,
+  broker: "OKX", connectionId: connection.id, denominationCurrency: currency,
+  takenAt, details, dustThreshold: dust,
 });
 run.specRequest = specRequest;
 

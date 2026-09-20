@@ -331,6 +331,13 @@ znanej części", a to jest operacja, którą ludzie realnie wykonują.
 Gotówka zostaje przy `none` świadomie: strona pieniężna każdej transakcji ma zaszyte
 `SubName.none()` (`Portfolio:137`, `:159`) i tak ma pozostać.
 
+**„Gotówka" znaczy: waluta wyceny tego portfela — i nic więcej.** To zawężenie kosztowało nas
+C10. Kusi, żeby do `none` wpuścić wszystko po parze, ale USDC też jest po parze, a nie jest
+jednostką rozliczeniową portfela; wrzucony do `none` rozmyłby ten slot do „coś wartego mniej
+więcej jeden". Regułą jest więc jeden ticker na portfel — ten z `denominationCurrency` — a każdy
+inny walor, choćby najstabilniejszy, zostaje zwykłą pozycją dzieloną na `traded` i
+`transferred-in`.
+
 #### Trzy rzeczy, które podział psuje
 
 **1. Wyszukiwanie po samym tickerze przestaje być jednoznaczne.**
@@ -643,6 +650,11 @@ pozycja transferred-in  = cashBal - spotBal  , brak kosztu
 ```
 
 Silnik nie musi niczego zgadywać — produkuje dwa wiersze, bo giełda podaje dwie liczby.
+
+Z jednym wyjątkiem: **linia w walucie wyceny nie jest dzielona wcale**. Daje jeden wiersz
+`none` o wartości `cashBal`, z kosztem po parze i bez pytania — `openAvgPx` jest tu ignorowane,
+bo cena numeraire względem siebie samej niczego nie mówi. Powód nie jest estetyczny: `deposit`
+i `withdraw` szukają gotówki pod `none` i nigdzie indziej (C10).
 
 #### Trzy decyzje podjęte przed kodem
 
@@ -1377,7 +1389,7 @@ Priorytety: **P0** blokuje POC · **P1** potrzebne do poprawnych liczb · **P2**
 |---|---|---|---|---|
 | C1 | Typ `CostBasis` | Koszt nabycia niosący **własną ilość, walutę i proweniencję**: `{quantity, avgPrice{amount, currency}, provenance}` albo `null`. Proweniencja ze słownika zamkniętego: `EXCHANGE_REPORTED`, `USER_PROVIDED`, `ASSUMED_PAR`, `DERIVED_FROM_FILLS`, `UNKNOWN`. Uniemożliwia pomnożenie ceny znanej części przez całe saldo i pozwala rozstrzygać, co wolno nadpisać. | P0 | — |
 | C2 | Rozdzielenie pozycji po `subName` | `okx-bought` / `unknown-origin`. Model już wspiera `(ticker, subName)` — bez zmian w `findAssetByTickerAndSubName`. | P0 | C1 |
-| C10 | Gotówka ze snapshotu trafia do `transferred-in`, nie do `none` | **Znalezione na żywym uruchomieniu.** `DifferenceEngine` dzieli każdą linię snapshotu na `traded` i `transferred-in` i nigdy nie produkuje `none`, choć C2 przeznacza `none` dla gotówki, a `findCashAsset` (depozyt, wypłata) szuka właśnie tam. Skutek zweryfikowany: portfel ze snapshotu ma 4386 EUR w `transferred-in`, a wpłata 100 EUR tworzy **drugą** pozycję EUR w `none`. Do rozstrzygnięcia: czy silnik ma kierować aktywa po parze do `none`, czy `findCashAsset` ma akceptować dowolną pozycję gotówkową. | P0 | C2, D1 |
+| C10 | Gotówka ze snapshotu trafia do `transferred-in`, nie do `none` | **Znalezione na żywym uruchomieniu**, nie przez testy — i to jest w tym najciekawsze. `DifferenceEngine` dzielił każdą linię snapshotu na `traded` i `transferred-in` i nigdy nie produkował `none`, choć C2 przeznacza `none` dla gotówki, a `findCashAsset` (depozyt, wypłata) szuka właśnie tam. Skutek zweryfikowany: portfel ze snapshotu miał 4386 EUR w `transferred-in`, a wpłata 100 EUR odpowiadała `200 OK` i **drugą** pozycją EUR w `none`; wypłata widziała tylko mniejszą z dwóch. Żaden test tego nie łapał, bo każda połowa była zgodna ze swoją konwencją — `PortfolioSplitPositionsTest` budował gotówkę fixture'em wprost w `none`, a `PortfolioSpecEngineTest` sprawdzał jedynie, że fiat dostaje `ASSUMED_PAR`, nie pytając gdzie. Błąd mieszkał na styku. **Rozstrzygnięcie:** silnik kieruje do `none` wyłącznie walutę wyceny portfela (nie każde aktywo po parze — patrz §3.2), a `PortfolioSpec` niesie `denominationCurrency`, bo to ona decyduje o kluczu pozycji i musi być znana przy liczeniu różnicy, nie dopiero przy `confirm`. `confirm` odrzuca próbę zmiany waluty względem spec-u, a `create` konfrontuje żądanie z połączeniem **zanim** cokolwiek policzy — bo kontrola dopiero przy `confirm` jest za późna: spec zbudowany na złej walucie zadaje złe pytania, a po odpowiedzeniu na nie żadna wartość już nie przechodzi (jedna kontrola odrzuca to, co przeczy połączeniu, druga to, co przeczy spec-owi). Przy okazji wyszło, że połączenie już `ACTIVE` zostawiało po nieudanym `confirm` osierocony portfel — status jest teraz sprawdzany przed zapisem. | P0 | C2, D1 |
 | C3 | Wynik tylko ze znanej części | Pozycja bez `costBasis` nie wnosi zysku ani straty. | P1 | C2 |
 | C4 | Pokrycie wyniku | Przy każdej liczbie wyniku: ilu procent pozycji dotyczy. Przy niskim pokryciu liczba ustępuje komunikatowi. | P1 | C3 |
 | C5 | Zmiana wartości majątku | Osobna miara, **niewymagająca ceny nabycia** — odpowiada na „o ile zmienił się mój majątek", gdzie część nieznana jest pełnoprawna. | P1 | C2 |

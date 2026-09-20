@@ -15,6 +15,7 @@ import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -33,6 +34,7 @@ import com.multi.vidulum.portfolio_spec.domain.SnapshotChangedException;
 import com.multi.vidulum.portfolio_spec.domain.UnansweredQuestionsException;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -78,7 +80,7 @@ class PortfolioSpecAnswerAndConfirmTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, clock));
+                specRepository, portfolioRepository, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
@@ -103,7 +105,7 @@ class PortfolioSpecAnswerAndConfirmTest {
 
     private PortfolioSpecDto.PortfolioSpecJson createSpec() {
         return controller.create(new PortfolioSpecDto.CreateSpecJson(
-                "OKX", CONNECTION, null, NOW, List.of(btc(1.3, 0.3, 50_000.0))));
+                "OKX", CONNECTION, "EUR", null, NOW, List.of(btc(1.3, 0.3, 50_000.0))));
     }
 
     private PortfolioSpecDto.PortfolioSpecJson answerUnknown(String specId) {
@@ -115,6 +117,15 @@ class PortfolioSpecAnswerAndConfirmTest {
     private PortfolioSpecDto.ConfirmSpecJson confirmBody(double total, double traded) {
         return new PortfolioSpecDto.ConfirmSpecJson(
                 "My OKX", "EUR", "OKX", NOW, List.of(btc(total, traded, 50_000.0)));
+    }
+
+    /**
+     * Creating a specification now checks the connection it names, so one has to exist before any
+     * of these tests can get as far as the behaviour they are about.
+     */
+    @BeforeEach
+    void seedConnection() {
+        pendingConnection();
     }
 
     private ExchangeConnection pendingConnection() {
@@ -292,7 +303,7 @@ class PortfolioSpecAnswerAndConfirmTest {
     @Test
     void shouldApplyASpecificationThatHasNoConnection() {
         PortfolioSpecDto.PortfolioSpecJson spec = controller.create(new PortfolioSpecDto.CreateSpecJson(
-                "OKX", null, null, NOW, List.of(btc(1.3, 0.3, 50_000.0))));
+                "OKX", null, "EUR", null, NOW, List.of(btc(1.3, 0.3, 50_000.0))));
         answerUnknown(spec.id());
 
         assertThat(controller.confirm(spec.id(), confirmBody(1.3, 0.3)).status())
@@ -302,14 +313,23 @@ class PortfolioSpecAnswerAndConfirmTest {
     /**
      * There is no transaction spanning the portfolio and the connection, so a connection that
      * cannot be confirmed has to stop the operation before anything is written.
+     *
+     * <p>The connection here is already {@code ACTIVE} — onboarded once before — which is the
+     * case that survives the check {@code create} now performs. A connection that simply does not
+     * exist no longer reaches this point at all: the specification naming it is refused outright.
      */
     @Test
     void shouldNotCreateAPortfolioWhenTheConnectionCannotBeConfirmed() {
         String specId = createSpec().id();
         answerUnknown(specId);
 
+        ExchangeConnection alreadyOnboarded = connections
+                .findById(ExchangeConnectionId.of(CONNECTION)).orElseThrow();
+        alreadyOnboarded.confirm(PortfolioId.of("PF-earlier"), NOW);
+        connections.save(alreadyOnboarded);
+
         assertThatThrownBy(() -> controller.confirm(specId, confirmBody(1.3, 0.3)))
-                .hasMessageContaining(CONNECTION);
+                .isInstanceOf(IllegalConnectionTransitionException.class);
 
         assertThat(portfolioRepository.findByUserId(ALICE))
                 .as("nothing may be left behind by a failed confirmation")

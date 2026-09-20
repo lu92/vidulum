@@ -89,10 +89,11 @@ checkThat("cena nabycia jest w USD, niezaleznie od waluty wyceny",
 
 check("cale cialo zadania ma ksztalt oczekiwany przez POST /portfolio-spec",
   Object.keys(buildSpecRequest({
-    broker: "OKX", connectionId: "conn-1", takenAt: "2022-01-01T00:00:00Z",
-    details: [PART_TRADED],
+    broker: "OKX", connectionId: "conn-1", denominationCurrency: "EUR",
+    takenAt: "2022-01-01T00:00:00Z", details: [PART_TRADED],
   })),
-  ["broker", "connectionId", "portfolioId", "snapshotTakenAt", "positions"]);
+  ["broker", "connectionId", "denominationCurrency", "portfolioId", "snapshotTakenAt",
+   "positions"]);
 
 console.log("\nE3 - locki z otwartych zlecen");
 
@@ -448,8 +449,8 @@ function routingFetch(routes) {
     accountUid: "349378528917283", environment: "DEMO", region: "EEA",
     reportedKeyPermissions: "read_only", denominationCurrency: "EUR" }));
   const spec = await client.post("/portfolio-spec", buildSpecRequest({
-    broker: "OKX", connectionId: connection.id, takenAt: "2022-01-01T00:00:00Z",
-    details: [PART_TRADED] }));
+    broker: "OKX", connectionId: connection.id, denominationCurrency: "EUR",
+    takenAt: "2022-01-01T00:00:00Z", details: [PART_TRADED] }));
   const answered = await client.put(`/portfolio-spec/${spec.id}/answers`,
     { answers: planAnswers(spec, ANSWER_POLICY.ASSUME_UNKNOWN) });
   const applied = await client.post(`/portfolio-spec/${spec.id}/confirm`, buildConfirmRequest({

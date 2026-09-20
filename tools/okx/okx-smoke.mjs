@@ -143,6 +143,7 @@ for (let run = 1; run <= iterations; run++) {
     const spec = await vidulum.post("/portfolio-spec", {
       broker: "OKX",
       connectionId: connection.id,
+      denominationCurrency: currency,
       portfolioId: null,
       snapshotTakenAt: new Date().toISOString(),
       positions,

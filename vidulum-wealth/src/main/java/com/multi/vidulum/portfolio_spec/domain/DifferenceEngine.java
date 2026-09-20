@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio_spec.domain;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Ticker;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -25,6 +27,16 @@ import java.util.stream.Collectors;
  * {@code traded} position it priced, and a {@code transferred-in} one it did not. Nothing here
  * has to invent a price for a balance it does not understand.
  *
+ * <p><b>Cash is the exception, and deliberately so (task C10).</b> The portfolio's own valuation
+ * currency is not split: it is one position under {@link SubName#none()}, because splitting money
+ * by how it arrived describes nothing anyone can act on. It also has to be that slot and no other
+ * — {@code deposit} and {@code withdraw} look there, so a snapshot that filed cash under
+ * {@code transferred-in} made the first deposit create a second, parallel cash position.
+ *
+ * <p>Only the valuation currency, not every asset at par. USDC is taken at par too, but it is not
+ * what this portfolio settles in, so it stays an ordinary position and {@code none} keeps a single
+ * meaning: the money this portfolio is denominated in.
+ *
  * <p>Positions that did not move produce no difference at all — a synchronisation with nothing
  * to report should not create a spec (§4.5).
  */
@@ -33,15 +45,26 @@ public final class DifferenceEngine {
     private DifferenceEngine() {
     }
 
-    public static List<Difference> compute(List<Asset> knownState, ExchangeSnapshot snapshot) {
+    /**
+     * @param valuationCurrency what the portfolio is denominated in — the one ticker filed as cash
+     */
+    public static List<Difference> compute(
+            List<Asset> knownState, ExchangeSnapshot snapshot, Currency valuationCurrency) {
+
+        Objects.requireNonNull(valuationCurrency, "valuationCurrency is required");
+
         Map<PositionKey, Asset> known = knownState.stream()
                 .collect(Collectors.toMap(PositionKey::of, Function.identity()));
 
         Map<PositionKey, Quantity> reported = new java.util.LinkedHashMap<>();
         Map<PositionKey, SnapshotPosition> sources = new java.util.LinkedHashMap<>();
         for (SnapshotPosition position : snapshot.positions()) {
-            put(reported, sources, position, SubName.traded(), position.traded());
-            put(reported, sources, position, SubName.transferredIn(), position.transferredIn());
+            if (isCash(position.ticker(), valuationCurrency)) {
+                put(reported, sources, position, SubName.none(), position.total());
+            } else {
+                put(reported, sources, position, SubName.traded(), position.traded());
+                put(reported, sources, position, SubName.transferredIn(), position.transferredIn());
+            }
         }
 
         List<Difference> differences = new ArrayList<>();
@@ -55,9 +78,11 @@ public final class DifferenceEngine {
                 continue;
             }
             if (delta > 0) {
-                differences.add(ResolutionRules.forIncrease(
-                        key.ticker(), key.subName(), Quantity.of(delta),
-                        priceFor(sources.get(key), key.subName())));
+                differences.add(isCash(key.ticker(), valuationCurrency)
+                        ? ResolutionRules.forCash(key.ticker(), Quantity.of(delta))
+                        : ResolutionRules.forIncrease(
+                                key.ticker(), key.subName(), Quantity.of(delta),
+                                priceFor(sources.get(key), key.subName())));
             } else {
                 differences.add(ResolutionRules.forDecrease(
                         key.ticker(), key.subName(), Quantity.of(-delta)));
@@ -86,6 +111,10 @@ public final class DifferenceEngine {
         PositionKey key = new PositionKey(position.ticker(), subName);
         reported.put(key, quantity);
         sources.put(key, position);
+    }
+
+    private static boolean isCash(Ticker ticker, Currency valuationCurrency) {
+        return ticker.getId().equalsIgnoreCase(valuationCurrency.getId());
     }
 
     private static Set<PositionKey> allKeys(Map<PositionKey, Asset> known,

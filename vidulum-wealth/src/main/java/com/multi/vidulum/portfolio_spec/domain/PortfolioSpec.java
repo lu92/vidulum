@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio_spec.domain;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -52,6 +53,13 @@ public class PortfolioSpec {
     /** Which exchange account this describes. Empty until connections exist for every source. */
     private final String connectionId;
 
+    /**
+     * What the portfolio will be valued in. Held here, not read from the connection at each step,
+     * because it decides which snapshot line is cash (C10) — and the differences the user answers
+     * must key the same way as the portfolio those answers will produce.
+     */
+    private final Currency denominationCurrency;
+
     /** The anchor: everything is validated against it, and it is what ages. */
     private final ExchangeSnapshot snapshot;
 
@@ -74,17 +82,20 @@ public class PortfolioSpec {
             PortfolioSpecId id,
             UserId userId,
             String connectionId,
+            Currency denominationCurrency,
             List<Asset> knownState,
             ExchangeSnapshot snapshot,
             ZonedDateTime now) {
 
         Objects.requireNonNull(id, "id is required");
         Objects.requireNonNull(userId, "userId is required");
+        Objects.requireNonNull(denominationCurrency, "denominationCurrency is required");
         Objects.requireNonNull(knownState, "knownState is required");
         Objects.requireNonNull(snapshot, "snapshot is required");
         Objects.requireNonNull(now, "now is required");
 
-        List<Difference> differences = DifferenceEngine.compute(knownState, snapshot);
+        List<Difference> differences =
+                DifferenceEngine.compute(knownState, snapshot, denominationCurrency);
         if (differences.isEmpty()) {
             throw new NothingToSynchroniseException(userId);
         }
@@ -93,6 +104,7 @@ public class PortfolioSpec {
                 .id(id)
                 .userId(userId)
                 .connectionId(connectionId)
+                .denominationCurrency(denominationCurrency)
                 .snapshot(snapshot)
                 .differences(differences)
                 .status(statusFor(differences))
@@ -200,7 +212,8 @@ public class PortfolioSpec {
      */
     public void markStale(ExchangeSnapshot fresherSnapshot, List<Asset> knownState, ZonedDateTime now) {
         requireNotTerminal("recompute");
-        this.differences = DifferenceEngine.compute(knownState, fresherSnapshot);
+        this.differences =
+                DifferenceEngine.compute(knownState, fresherSnapshot, denominationCurrency);
         this.status = differences.isEmpty() ? SpecStatus.APPLIED : statusFor(differences);
         this.lastRecomputedAt = now;
     }
