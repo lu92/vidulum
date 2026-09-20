@@ -16,8 +16,8 @@ import { buildSnapshotPositions, buildSpecRequest, lockedByOpenOrders,
 import { createVidulumClient, VidulumError, throwawayUser } from "./vidulum-client.mjs";
 import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQuestions,
          openQuestions, planAnswers } from "./okx-spec-flow.mjs";
-import { instrumentIdFor, missingSymbols, publishPath, publishQuery, requiredSymbols,
-         unquotableSymbols } from "./okx-quotes.mjs";
+import { backoffDelay, describeCycle, instrumentIdFor, missingSymbols, publishPath, publishQuery,
+         requiredSymbols, unquotableSymbols } from "./okx-quotes.mjs";
 import { coverageOf, describePortfolio, describePositions, portfolioCoverage,
          quotesNeededBy } from "./okx-portfolio.mjs";
 
@@ -362,6 +362,29 @@ checkThat("zerowe investedBalance jest opatrzone zastrzezeniem",
 checkThat("raport zaczyna sie od nazwy i wartosci",
   describePortfolio(SUMMARY)[0].includes("My OKX")
     && describePortfolio(SUMMARY)[1].includes("71500 EUR"));
+
+console.log("\nE6 - petla odswiezania");
+
+// A loop that exits on the first hiccup is worse than no loop: the valuation silently stops
+// moving and nothing says so.
+check("pierwsza porazka czeka dluzej niz zwykly interwal",
+  backoffDelay(1, 30_000), 60_000);
+check("kolejne porazki rosna wykladniczo",
+  [2, 3].map((n) => backoffDelay(n, 30_000)), [120_000, 240_000]);
+// With a 30s interval the ceiling is reached on the fourth failure - about eight minutes in.
+check("czekanie ma sufit, zeby petla nie zasnela na godziny",
+  [4, 10].map((n) => backoffDelay(n, 30_000)), [300_000, 300_000]);
+check("brak porazek to zwykly interwal", backoffDelay(0, 30_000), 30_000);
+
+check("udany cykl mowi, ile odswiezono",
+  describeCycle({ published: ["BTC/EUR", "ETH/EUR"], failed: [], at: "2022-01-01T00:00:00Z" }),
+  "2022-01-01T00:00:00Z refreshed 2");
+
+// Naming only what worked would let a loop look healthy while the portfolio slowly stops being
+// valued in full.
+check("cykl nazywa to, czego nie udalo sie odswiezyc",
+  describeCycle({ published: ["BTC/EUR"], failed: ["XRP/EUR"], at: "2022-01-01T00:00:00Z" }),
+  "2022-01-01T00:00:00Z refreshed 1, failed 1: XRP/EUR");
 
 console.log("\nE4 - caly przeplyw przeciwko atrapie backendu");
 

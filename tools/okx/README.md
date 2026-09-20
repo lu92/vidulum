@@ -19,6 +19,7 @@ Two standalone scripts (ESM, Node >= 22, **zero npm dependencies**) for read-onl
 | `okx-spec-flow.mjs` | Decisions taken while walking the specification: which questions to answer, request bodies |
 | `okx-quotes.mjs` | Which quotes a portfolio needs, and whether they reached the cache (task E8) |
 | `okx-portfolio.mjs` | Reads the portfolio back and reports value, result and coverage (tasks E5, E7) |
+| `okx-quote-loop.mjs` | Republishes quotes on a loop so the valuation keeps moving (task E6) |
 | `okx-onboard.test.mjs` | Offline tests for the onboarding half, including a simulated full walk |
 | `fixtures/orders-lifecycle.json` | 9 raw frames covering one order's full lifecycle |
 
@@ -105,6 +106,27 @@ sie rozjezdzac.
 
 Locki z otwartych zlecen sa zwracane **osobno**: zlecenie blokuje czesc salda, ale nie zmienia
 tego, co jest w posiadaniu. Do portfela trafia dopiero w zadaniu D5.
+
+
+## Zywa wycena (E6)
+
+```bash
+node --env-file=.env.demo okx-quote-loop.mjs --profile demo \
+     --portfolio <id> --token <jwt> --interval 30
+```
+
+Bez tego kursy zaladowane przy onboardingu zostaja zamrozone i portfel w nieskonczonosc raportuje
+cene z chwili ostatniej publikacji.
+
+Petla czyta portfel w kazdym cyklu, wiec sama nadaza za tym, co sie w nim zmienilo. Przy bledzie
+**nie konczy sie**, tylko czeka coraz dluzej — do pieciu minut. Petla, ktora umiera przy pierwszym
+limicie API, jest gorsza niz jej brak: wycena po cichu przestaje sie ruszac i nic tego nie mowi.
+
+Kazdy cykl wypisuje takze to, **czego nie udalo sie odswiezyc**. „5 ok" przy szostym pominietym
+po cichu wyglada zdrowo, podczas gdy portfel przestaje byc wyceniany w calosci.
+
+`--once` robi jeden cykl i wychodzi — do uzycia ze skryptu albo jako sprawdzenie.
+
 
 ## Running
 

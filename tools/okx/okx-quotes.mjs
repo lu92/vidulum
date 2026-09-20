@@ -72,3 +72,29 @@ export function missingSymbols(status, required) {
 export function unquotableSymbols(results) {
   return results.filter((r) => r.ticker === null).map((r) => r.symbol);
 }
+
+/**
+ * How long to wait after a failed cycle (task E6).
+ *
+ * <p>A refresh loop that dies on the first hiccup is worse than no loop: the valuation silently
+ * stops moving and nothing says so. Exponential backoff keeps it alive through a rate limit or a
+ * dropped connection, and the cap stops it from drifting into checking once an hour.
+ */
+export function backoffDelay(consecutiveFailures, baseMs, maxMs = 5 * 60_000) {
+  if (consecutiveFailures <= 0) return baseMs;
+  return Math.min(baseMs * 2 ** consecutiveFailures, maxMs);
+}
+
+/**
+ * One line summarising a refresh cycle.
+ *
+ * <p>Names what could not be refreshed rather than only what could: a loop that prints "5 ok"
+ * while quietly skipping a sixth looks healthy while the portfolio slowly stops being valued in
+ * full.
+ */
+export function describeCycle({ published, failed, at }) {
+  const head = `${at} refreshed ${published.length}`;
+  return failed.length === 0
+    ? `${head}`
+    : `${head}, failed ${failed.length}: ${failed.join(", ")}`;
+}

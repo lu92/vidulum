@@ -20,6 +20,7 @@
     "check:prod": "node --env-file=.env.prod okx-readonly-export.mjs --profile prod --verbose --days 1 --out check-prod.json",
     "onboard:demo": "node --env-file=.env.demo okx-onboard.mjs --profile demo",
     "onboard:demo:dry": "node --env-file=.env.demo okx-onboard.mjs --profile demo --dry-run",
-    "onboard:demo:auto": "node --env-file=.env.demo okx-onboard.mjs --profile demo --assume-unknown"
+    "onboard:demo:auto": "node --env-file=.env.demo okx-onboard.mjs --profile demo --assume-unknown",
+    "quotes:loop:demo": "node --env-file=.env.demo okx-quote-loop.mjs --profile demo"
   }
 }
