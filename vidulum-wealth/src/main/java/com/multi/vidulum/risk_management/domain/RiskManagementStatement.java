@@ -19,8 +19,9 @@ public class RiskManagementStatement {
     private List<AssetRiskManagementStatement> assetRiskManagementStatements;
     private Money investedBalance;
     private Money currentValue;
-    private double pctProfit;
-    private Money profit;
+    /** Absent when the portfolio summary could not compute one - see {@code ProfitStatus}. */
+    private Double pctUnrealisedProfit;
+    private Money unrealisedProfit;
     private Money safe;
     private Money risk;
     private double riskPct;

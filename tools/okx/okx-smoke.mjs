@@ -14,7 +14,8 @@
  */
 
 import { createRestClient, maybePrintHelp, parseArgs, resolveProfile, sleep } from "./okx-common.mjs";
-import { describePortfolio, quotesNeededBy } from "./okx-portfolio.mjs";
+import { coverageAgreement, describePortfolio, portfolioCoverage,
+         quotesNeededBy } from "./okx-portfolio.mjs";
 import { instrumentIdFor, missingSymbols, publishPath, publishQuery, requiredSymbols,
          resolveTicker } from "./okx-quotes.mjs";
 import { buildConnectionRequest, planAnswers, ANSWER_POLICY } from "./okx-spec-flow.mjs";
@@ -191,8 +192,34 @@ for (let run = 1; run <= iterations; run++) {
     const portfolio = await vidulum.get(`/portfolio/${applied.portfolioId}/${currency}`);
     check("the portfolio can be valued at all", Boolean(portfolio.currentValue));
     check("it holds something", (portfolio.assets ?? []).length > 0);
-    check("a position with no known cost reports no profit, not zero",
-      (portfolio.assets ?? []).filter((a) => !a.costBasis).every((a) => a.profit === null));
+    check("a position with no known cost reports no gain, not zero",
+      (portfolio.assets ?? []).filter((a) => !a.costBasis)
+        .every((a) => a.unrealisedProfit === null));
+
+    // C3 + C4: the backend now answers both "what is the result" and "of how much".
+    const agreement = coverageAgreement(portfolio);
+    check("backend coverage matches our own reckoning of it (C4)",
+      agreement.agree,
+      `backend ${agreement.theirs}, ours ${agreement.ours}`);
+    check("every position reports its own coverage",
+      (portfolio.assets ?? []).every((a) => typeof a.coverage === "number"),
+      JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.coverage])));
+
+    const expectedStatus = portfolioCoverage(portfolio) >= 0.5 ? "COMPUTED" : "WITHHELD_LOW_COVERAGE";
+    check("a result computed from a minority of the value is withheld, not printed (C4)",
+      portfolio.profitStatus === expectedStatus,
+      `status ${portfolio.profitStatus}, coverage ${agreement.theirs}`);
+    check("a withheld result carries no figure to misread",
+      portfolio.profitStatus !== "WITHHELD_LOW_COVERAGE"
+        || (portfolio.unrealisedProfit === null && portfolio.pctUnrealisedProfit === null),
+      JSON.stringify([portfolio.unrealisedProfit, portfolio.pctUnrealisedProfit]));
+
+    // The defect C3 fixed, checked where it actually appeared: investedBalance is zero here,
+    // and the old formula turned that into "the whole portfolio is profit".
+    check("the whole portfolio is not reported as gain just because nothing was deposited (C3)",
+      portfolio.unrealisedProfit === null
+        || portfolio.unrealisedProfit.amount !== portfolio.currentValue.amount,
+      JSON.stringify([portfolio.unrealisedProfit, portfolio.currentValue]));
     check("invested balance is zero for a snapshot-built portfolio (task C9)",
       portfolio.investedBalance?.amount === 0, JSON.stringify(portfolio.investedBalance));
     outcome.value = portfolio.currentValue;

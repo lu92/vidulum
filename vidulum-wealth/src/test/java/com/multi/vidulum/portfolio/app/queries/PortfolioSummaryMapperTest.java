@@ -7,6 +7,7 @@ import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
@@ -157,8 +158,9 @@ class PortfolioSummaryMapperTest {
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(6000))
                                 .activeLocks(Set.of())
-                                .pctProfit(0.0)
-                                .profit(Money.zero("USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .unrealisedProfit(Money.zero("USD"))
+                                .coverage(1.0)
                                 .currentPrice(Price.of(1, "USD"))
                                 .currentValue(Money.of(6000, "USD"))
                                 .tags(List.of("Cash"))
@@ -175,8 +177,9 @@ class PortfolioSummaryMapperTest {
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(0.1))
                                 .activeLocks(Set.of())
-                                .pctProfit(0.0)
-                                .profit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .unrealisedProfit(Money.of(0, "USD"))
+                                .coverage(1.0)
                                 .currentPrice(Price.of(40000, "USD"))
                                 .currentValue(Money.of(4000, "USD"))
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -184,8 +187,10 @@ class PortfolioSummaryMapperTest {
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(10000, "USD"))
                 .currentValue(Money.of(10000, "USD"))
-                .pctProfit(0.0)
-                .profit(Money.zero("USD"))
+                .pctUnrealisedProfit(0.0)
+                .unrealisedProfit(Money.zero("USD"))
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build());
     }
 
@@ -228,8 +233,9 @@ class PortfolioSummaryMapperTest {
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(6000))
                                 .activeLocks(Set.of())
-                                .pctProfit(0.0)
-                                .profit(Money.zero("EUR"))
+                                .pctUnrealisedProfit(0.0)
+                                .unrealisedProfit(Money.zero("EUR"))
+                                .coverage(1.0)
                                 .currentPrice(Price.of(0.95, "EUR"))
                                 .currentValue(Money.of(5700, "EUR"))
                                 .tags(List.of("Cash"))
@@ -246,8 +252,9 @@ class PortfolioSummaryMapperTest {
                                 .locked(Quantity.of(0))
                                 .free(Quantity.of(0.1))
                                 .activeLocks(Set.of())
-                                .pctProfit(0.0)
-                                .profit(Money.of(0, "EUR"))
+                                .pctUnrealisedProfit(0.0)
+                                .unrealisedProfit(Money.of(0, "EUR"))
+                                .coverage(1.0)
                                 .currentPrice(Price.of(38000, "EUR"))
                                 .currentValue(Money.of(3800, "EUR"))
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -255,8 +262,10 @@ class PortfolioSummaryMapperTest {
                 .status(PortfolioStatus.OPEN)
                 .investedBalance(Money.of(9500, "EUR"))
                 .currentValue(Money.of(9500, "EUR"))
-                .pctProfit(0.0)
-                .profit(Money.zero("EUR"))
+                .pctUnrealisedProfit(0.0)
+                .unrealisedProfit(Money.zero("EUR"))
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build());
     }
 
@@ -310,9 +319,10 @@ class PortfolioSummaryMapperTest {
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(0.2))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(-0.0952381)
-                                                        .profit(Money.of(-800, "USD"))
-                                                        .currentPrice(Price.of(38000, "USD"))
+                                                        .pctUnrealisedProfit(-0.0952381)
+                                                        .unrealisedProfit(Money.of(-800, "USD"))
+                                                        .coverage(1.0)
+                                .currentPrice(Price.of(38000, "USD"))
                                                         .currentValue(Money.of(7600, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                                         .build(),
@@ -328,9 +338,10 @@ class PortfolioSummaryMapperTest {
                                                         .locked(Quantity.of(1))
                                                         .free(Quantity.of(1))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(-0.04761905)
-                                                        .profit(Money.of(-200, "USD"))
-                                                        .currentPrice(Price.of(2000, "USD"))
+                                                        .pctUnrealisedProfit(-0.04761905)
+                                                        .unrealisedProfit(Money.of(-200, "USD"))
+                                                        .coverage(1.0)
+                                .currentPrice(Price.of(2000, "USD"))
                                                         .currentValue(Money.of(4000, "USD"))
                                                         .tags(List.of("Ethereum", "Crypto", "ETH"))
                                                         .build()),
@@ -350,9 +361,10 @@ class PortfolioSummaryMapperTest {
                                                                 .orderId("order-id")
                                                                 .quantity(Quantity.of(1000))
                                                                 .build()))
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
-                                                        .currentPrice(Price.of(1.0500, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
+                                .currentPrice(Price.of(1.0500, "USD"))
                                                         .currentValue(Money.of(5250, "USD"))
                                                         .tags(List.of("Cash"))
                                                         .build())
@@ -360,8 +372,13 @@ class PortfolioSummaryMapperTest {
                         .portfolioIds(AGGREGATED_PORTFOLIO.getPortfolioIds().stream().map(PortfolioId::getId).collect(Collectors.toList()))
                         .investedBalance(Money.of(20750, "USD"))
                         .currentValue(Money.of(16850, "USD"))
-                        .totalProfit(Money.of(-3900, "USD"))
-                        .pctProfit(-0.18795181)
+                        // -800 (BTC) - 200 (ETH) + 0 (EUR). Wcześniej -3900: wartość aktywów
+                        // minus investedBalance dwóch innych portfeli - liczby z różnych
+                        // światów, składane w jedną (C3).
+                        .totalUnrealisedProfit(Money.of(-1000, "USD"))
+                        .pctUnrealisedProfit(-0.05602241)
+                        .profitCoverage(1.0)
+                        .profitStatus(ProfitStatus.COMPUTED)
                         .build());
     }
 }

@@ -7,6 +7,8 @@ import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.common.PortfolioId;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,8 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,42 +35,114 @@ public class PortfolioSummaryMapper {
 
     public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
         Broker broker = portfolio.getBroker();
-        List<PortfolioDto.AssetSummaryJson> denominatedAssets = portfolio.getAssets()
+        List<MappedAsset> mapped = portfolio.getAssets()
                 .stream()
-                .map(asset -> mapAssetWithDenomination(portfolio.getBroker(), asset, denominationCurrency))
+                .map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency))
                 .collect(toList());
 
-        Money currentValue = denominatedAssets.stream().reduce(
-                Money.zero(denominationCurrency.getId()),
-                (accumulatedValue, assetSummary) -> accumulatedValue.plus(assetSummary.getCurrentValue()),
-                Money::plus);
+        Money currentValue = mapped.stream()
+                .map(m -> m.json().getCurrentValue())
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
 
-        Money denominatedInvestedBalance = denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
-        Money profit = currentValue.minus(denominatedInvestedBalance);
-
-        double pctProfit = 0;
-        if (!Money.zero(denominationCurrency.getId()).equals(denominatedInvestedBalance)) {
-            pctProfit = profit.diffPct(denominatedInvestedBalance);
-        }
+        Money denominatedInvestedBalance =
+                denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
+        Result result = resultOf(mapped, denominationCurrency);
 
         return PortfolioDto.PortfolioSummaryJson.builder()
                 .portfolioId(portfolio.getPortfolioId().getId())
                 .userId(portfolio.getUserId().getId())
                 .name(portfolio.getName())
                 .broker(portfolio.getBroker().getId())
-                .assets(denominatedAssets)
+                .assets(mapped.stream().map(MappedAsset::json).collect(toList()))
                 .status(portfolio.getStatus())
                 .investedBalance(denominatedInvestedBalance)
                 .currentValue(currentValue)
-                .profit(profit)
-                .pctProfit(pctProfit)
+                .unrealisedProfit(result.profit())
+                .pctUnrealisedProfit(result.pctProfit())
+                .profitCoverage(result.coverageShare())
+                .profitStatus(result.status())
                 .build();
+    }
+
+    /**
+     * The portfolio's result, built from what positions cost rather than from
+     * {@code investedBalance} (task C3).
+     *
+     * <p>The old formula was {@code currentValue - investedBalance}, and only {@code deposit} and
+     * {@code withdraw} ever move {@code investedBalance}. A portfolio created from an exchange
+     * snapshot goes through neither, so it reported its <b>entire value</b> as profit — 147 000
+     * EUR made out of nothing. That is the same defect C3 fixed per position, surviving one level
+     * up, and no amount of care at the asset level could correct a total computed from a
+     * different quantity.
+     *
+     * <p>Summing the positions instead means the total inherits their honesty: positions whose
+     * cost nobody knows contribute nothing, and what remains is measured against what it actually
+     * cost. {@code investedBalance} is still reported — task C9 decides what it should mean — but
+     * nothing is derived from it any more.
+     */
+    private Result resultOf(List<MappedAsset> mapped, Currency denominationCurrency) {
+        String currency = denominationCurrency.getId();
+        if (mapped.isEmpty()) {
+            return Result.absent(ProfitStatus.NOTHING_HELD, null);
+        }
+
+        List<ProfitCoverage.Weight> weights = new ArrayList<>(mapped.size());
+        for (MappedAsset asset : mapped) {
+            weights.add(new ProfitCoverage.Weight(
+                    asset.json().getCurrentValue().getAmount().doubleValue(),
+                    asset.coverage() != null ? asset.coverage().share() : 0));
+        }
+        Optional<ProfitCoverage> coverage = ProfitCoverage.weighted(weights);
+        if (coverage.isEmpty()) {
+            return Result.absent(ProfitStatus.NOTHING_HELD, null);
+        }
+
+        List<MappedAsset> priced = mapped.stream().filter(MappedAsset::hasKnownCost).collect(toList());
+        if (priced.isEmpty()) {
+            return Result.absent(ProfitStatus.NO_KNOWN_COST, coverage.get().share());
+        }
+        if (!coverage.get().isMeaningful()) {
+            return Result.absent(ProfitStatus.WITHHELD_LOW_COVERAGE, coverage.get().share());
+        }
+
+        Money coveredValue = priced.stream().map(MappedAsset::coveredValue)
+                .reduce(Money.zero(currency), Money::plus);
+        Money knownCost = priced.stream().map(MappedAsset::knownCost)
+                .reduce(Money.zero(currency), Money::plus);
+
+        return new Result(
+                coveredValue.minus(knownCost).withScale(4),
+                coveredValue.diffPct(knownCost),
+                coverage.get().share(),
+                ProfitStatus.COMPUTED);
+    }
+
+    /**
+     * A position after denomination, plus the two figures the portfolio total needs and the JSON
+     * does not carry precisely enough to recover — {@code profit} is rounded for display, and
+     * deriving the cost back out of it would drift.
+     */
+    private record MappedAsset(
+            PortfolioDto.AssetSummaryJson json,
+            ProfitCoverage coverage,
+            Money coveredValue,
+            Money knownCost) {
+
+        boolean hasKnownCost() {
+            return knownCost != null;
+        }
+    }
+
+    private record Result(Money profit, Double pctProfit, Double coverageShare, ProfitStatus status) {
+        static Result absent(ProfitStatus status, Double coverageShare) {
+            return new Result(null, null, coverageShare, status);
+        }
     }
 
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio, Currency denominationCurrency) {
         Map<Segment, Map<Broker, List<Asset>>> segmentedAssets = aggregatedPortfolio.fetchSegmentedAssets();
         Set<Segment> segments = segmentedAssets.keySet();
-        Map<String, List<PortfolioDto.AssetSummaryJson>> mappedAssets = segments.stream()
+        Map<String, List<MappedAsset>> mappedAssets = segments.stream()
                 .collect(toMap(Segment::getName, segment -> {
                     Map<Broker, List<Asset>> domainAssets = segmentedAssets.get(segment);
                     return domainAssets.entrySet().stream()
@@ -80,7 +156,7 @@ public class PortfolioSummaryMapper {
                 }));
 
         Money currentValue = mappedAssets.values().stream().flatMap(Collection::stream)
-                .map(PortfolioDto.AssetSummaryJson::getCurrentValue)
+                .map(m -> m.json().getCurrentValue())
                 .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
 
         List<String> portfolioIds = aggregatedPortfolio.getPortfolioIds().stream()
@@ -91,20 +167,25 @@ public class PortfolioSummaryMapper {
                 .map(investedBalance -> denominateInCurrency(investedBalance.investedMoney(), investedBalance.broker(), denominationCurrency))
                 .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
 
-        Money profit = currentValue.minus(investedBalanceInDenominatedCurrency);
-
-        double pctProfit = Money.zero(denominationCurrency.getId()).equals(investedBalanceInDenominatedCurrency) ?
-                0 :
-                currentValue.diffPct(investedBalanceInDenominatedCurrency);
+        // Same rule as one portfolio: the total is the positions' result, not the gap between
+        // value and deposits. The aggregated view merges by ticker alone, which dilutes averages
+        // across sources - that is C6, and this change neither causes nor cures it.
+        Result result = resultOf(
+                mappedAssets.values().stream().flatMap(Collection::stream).collect(toList()),
+                denominationCurrency);
 
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
-                .segmentedAssets(mappedAssets)
+                .segmentedAssets(mappedAssets.entrySet().stream().collect(toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream().map(MappedAsset::json).collect(toList()))))
                 .portfolioIds(portfolioIds)
                 .investedBalance(investedBalanceInDenominatedCurrency.withScale(4))
                 .currentValue(currentValue.withScale(4))
-                .totalProfit(profit.withScale(4))
-                .pctProfit(pctProfit)
+                .totalUnrealisedProfit(result.profit())
+                .pctUnrealisedProfit(result.pctProfit())
+                .profitCoverage(result.coverageShare())
+                .profitStatus(result.status())
                 .build();
     }
 
@@ -116,11 +197,11 @@ public class PortfolioSummaryMapper {
         return Money.of(updatedAmount, currency.getId());
     }
 
-    private List<PortfolioDto.AssetSummaryJson> mapAssets(Broker broker, List<Asset> assets, Currency denominationCurrency) {
+    private List<MappedAsset> mapAssets(Broker broker, List<Asset> assets, Currency denominationCurrency) {
         return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency)).collect(toList());
     }
 
-    private PortfolioDto.AssetSummaryJson mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
+    private MappedAsset mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
         Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
         log.info("Getting price metadata of [{}]", symbol);
         AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
@@ -133,14 +214,16 @@ public class PortfolioSummaryMapper {
         // rather than defaulting to zero - reporting zero would present a guess as a fact.
         Money profit = null;
         Double pctProfit = null;
+        Money knownCost = null;
+        Money coveredValue = null;
         if (asset.hasKnownCost()) {
-            Money oldValue = denominateInCurrency(
+            knownCost = denominateInCurrency(
                     asset.knownCost().orElseThrow(), broker, denominatedCurrency);
-            Money coveredValue = assetPriceMetadata.getCurrentPrice()
-                    .multiply(asset.coveredQuantity());
-            profit = coveredValue.minus(oldValue);
-            pctProfit = coveredValue.diffPct(oldValue);
+            coveredValue = assetPriceMetadata.getCurrentPrice().multiply(asset.coveredQuantity());
+            profit = coveredValue.minus(knownCost);
+            pctProfit = coveredValue.diffPct(knownCost);
         }
+        ProfitCoverage coverage = ProfitCoverage.ofPosition(asset).orElse(null);
         log.info("Getting info about asset [{}]", asset.getTicker());
         AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
 
@@ -151,7 +234,7 @@ public class PortfolioSummaryMapper {
                         .build())
                 .collect(Collectors.toSet());
 
-        return PortfolioDto.AssetSummaryJson.builder()
+        PortfolioDto.AssetSummaryJson json = PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
                 .fullName(assetBasicInfo.getFullName())
                 .costBasis(PortfolioDto.CostBasisJson.from(asset.getCostBasis()))
@@ -160,10 +243,13 @@ public class PortfolioSummaryMapper {
                 .free(asset.getFree())
                 .activeLocks(activeLocks)
                 .tags(assetBasicInfo.getTags())
-                .pctProfit(pctProfit)
-                .profit(profit != null ? profit.withScale(4) : null)
+                .pctUnrealisedProfit(pctProfit)
+                .unrealisedProfit(profit != null ? profit.withScale(4) : null)
                 .currentPrice(assetPriceMetadata.getCurrentPrice().withScale(4))
                 .currentValue(currentValue.withScale(4))
+                .coverage(coverage != null ? coverage.share() : null)
                 .build();
+
+        return new MappedAsset(json, coverage, coveredValue, knownCost);
     }
 }

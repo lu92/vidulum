@@ -41,8 +41,8 @@ public class PnlDto {
     public static class PnlStatementJson {
         private Money investedBalance;
         private Money currentValue;
-        private Money totalProfit;
-        private double pctProfit;
+        private Money totalUnrealisedProfit;
+        private Double pctUnrealisedProfit;
         private List<PnlPortfolioStatementJson> portfolioStatements;
         private ZonedDateTime dateTime;
     }
@@ -55,8 +55,8 @@ public class PnlDto {
         private String portfolioId;
         private Money investedBalance;
         private Money currentValue;
-        private Money totalProfit;
-        private double pctProfit;
+        private Money totalUnrealisedProfit;
+        private Double pctUnrealisedProfit;
         private List<PnlTradeDetailsJson> executedTrades;
     }
 
