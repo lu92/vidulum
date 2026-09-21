@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,8 +37,26 @@ public class PortfolioDto {
         private PortfolioStatus status;
         private Money investedBalance;
         private Money currentValue;
-        private double pctProfit;
-        private Money profit;
+
+        /**
+         * Gain on what is <b>currently held</b>, and how much of the value it speaks for
+         * (tasks C3, C4).
+         *
+         * <p>Named for what it is. The field used to be {@code profit} and was
+         * {@code currentValue - investedBalance}, which mixes in gains already realised and
+         * collapses to the entire value when {@code investedBalance} is zero — as it is for every
+         * portfolio built from an exchange snapshot (C9). Renaming rather than redefining is the
+         * point: a client reading {@code profit} would otherwise receive a different quantity
+         * under the same name. Realised results belong to the PnL module, not here.
+         *
+         * <p>Both are {@code null} unless {@code profitStatus} is {@code COMPUTED} — the status
+         * says which of the three silences this is. Withheld rather than annotated on purpose: a
+         * caveat is something a client can drop, and the misleading number would outlive it.
+         */
+        private Double pctUnrealisedProfit;
+        private Money unrealisedProfit;
+        private Double profitCoverage;
+        private ProfitStatus profitStatus;
     }
 
     @Data
@@ -66,8 +85,19 @@ public class PortfolioDto {
          * from outside has no profit we can compute, and reporting zero would present a guess as
          * a fact.
          */
-        private Double pctProfit;
-        private Money profit;
+        private Double pctUnrealisedProfit;
+        private Money unrealisedProfit;
+
+        /**
+         * What share of this position has a known cost — {@code null} when it holds nothing.
+         *
+         * <p>Not withheld at low coverage the way the portfolio total is: here the covered
+         * quantity sits right next to {@code quantity} in the same object, so a reader can see
+         * that 0.3 of 100 is priced. The total has no such visible pair, which is exactly why it
+         * needs the rule.
+         */
+        private Double coverage;
+
         private Price currentPrice;
         private Money currentValue;
         private List<String> tags;
@@ -150,8 +180,12 @@ public class PortfolioDto {
         private List<String> portfolioIds;
         private Money investedBalance;
         private Money currentValue;
-        private Money totalProfit;
-        private double pctProfit;
+        private Money totalUnrealisedProfit;
+
+        /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */
+        private Double pctUnrealisedProfit;
+        private Double profitCoverage;
+        private ProfitStatus profitStatus;
     }
 
     @Data

@@ -13,7 +13,7 @@ public class PnlPortfolioStatement {
     private PortfolioId portfolioId;
     private Money investedBalance;
     private Money currentValue;
-    private Money totalProfit;
-    private double pctProfit;
+    private Money totalUnrealisedProfit;
+    private Double pctUnrealisedProfit;
     private List<PnlTradeDetails> executedTrades;
 }

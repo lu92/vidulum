@@ -25,8 +25,8 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
     public static class PnlStatementSnapshot {
         Money investedBalance;
         Money currentValue;
-        Money totalProfit;
-        double pctProfit;
+        Money totalUnrealisedProfit;
+        Double pctUnrealisedProfit;
         List<PnlPortfolioStatementSnapshot> portfolioStatements;
         ZonedDateTime dateTime;
     }
@@ -37,8 +37,8 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
         PortfolioId portfolioId;
         Money investedBalance;
         Money currentValue;
-        Money totalProfit;
-        double pctProfit;
+        Money totalUnrealisedProfit;
+        Double pctUnrealisedProfit;
         List<PnlTradeDetailsSnapshot> executedTrades;
     }
 

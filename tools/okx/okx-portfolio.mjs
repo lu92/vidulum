@@ -33,7 +33,13 @@ export function coverageOf(asset) {
   return covered / held;
 }
 
-/** Share of the portfolio's value that a result can be computed for. */
+/**
+ * Share of the portfolio's value that a result can be computed for.
+ *
+ * <p>Kept after C4 moved this into the backend, and deliberately so: it is the independent
+ * reckoning the backend's own `profitCoverage` is checked against. Two implementations of the
+ * same rule agreeing is evidence; one implementation agreeing with itself is not.
+ */
 export function portfolioCoverage(summary) {
   const assets = summary.assets ?? [];
   const total = assets.reduce((sum, a) => sum + (a.currentValue?.amount ?? 0), 0);
@@ -60,11 +66,11 @@ export function describePositions(summary) {
                          currency: asset.costBasis.avgPrice.currency })}` +
         ` (${asset.costBasis.provenance})`
       : "cost unknown";
-    const profit = asset.profit === null || asset.profit === undefined
-      ? "profit not computable"
-      : `profit ${format(asset.profit)}`;
+    const gain = asset.unrealisedProfit === null || asset.unrealisedProfit === undefined
+      ? "unrealised gain not computable"
+      : `unrealised ${format(asset.unrealisedProfit)}`;
     const covered = coverage === null ? "" : ` [${(coverage * 100).toFixed(0)}% covered]`;
-    return `${asset.ticker} ${asset.quantity.qty} -> ${value}; ${cost}; ${profit}${covered}`;
+    return `${asset.ticker} ${asset.quantity.qty} -> ${value}; ${cost}; ${gain}${covered}`;
   });
 }
 
@@ -85,9 +91,57 @@ export function describePortfolio(summary) {
       (summary.investedBalance?.amount === 0
         ? "   <- always zero for a snapshot-built portfolio (task C9)"
         : ""),
-    `  coverage   ${coverage === null ? "n/a" : (coverage * 100).toFixed(0) + "% of value has a known cost"}`,
+    `  coverage   ${coverage === null ? "n/a" : (coverage * 100).toFixed(0) + "% of value has a known cost"}`
+      + `  (backend: ${describeBackendCoverage(summary)})`,
+    `  result     ${describeResult(summary)}`,
   ];
   return lines.concat(describePositions(summary).map((line) => `  ${line}`));
+}
+
+/**
+ * What the backend now says about the same question (task C4), printed beside the prototype's own
+ * figure so a disagreement is visible rather than silently preferred.
+ */
+export function describeBackendCoverage(summary) {
+  if (summary.profitCoverage === null || summary.profitCoverage === undefined) return "n/a";
+  return `${(summary.profitCoverage * 100).toFixed(0)}%`;
+}
+
+/**
+ * The portfolio's result as the backend reports it.
+ *
+ * <p>`WITHHELD_LOW_COVERAGE` is not an error and must not read like one: the backend computed a
+ * correct figure and decided it would mislead. Printing the status instead of a blank is the
+ * whole point of C4.
+ */
+export function describeResult(summary) {
+  switch (summary.profitStatus) {
+    case "COMPUTED":
+      return `${format(summary.unrealisedProfit)} unrealised`
+        + ` (${(summary.pctUnrealisedProfit * 100).toFixed(2)}%)`;
+    case "WITHHELD_LOW_COVERAGE":
+      return "withheld - too little of the value has a known cost to stand for the whole";
+    case "NO_KNOWN_COST":
+      return "not computable - nothing held has a known cost";
+    case "NOTHING_HELD":
+      return "nothing held";
+    default:
+      return `unknown status: ${summary.profitStatus}`;
+  }
+}
+
+/**
+ * Does the backend agree with our own reckoning of coverage?
+ *
+ * <p>Returns the two figures so a caller can report the gap rather than a bare boolean.
+ */
+export function coverageAgreement(summary, tolerance = 1e-6) {
+  const ours = portfolioCoverage(summary);
+  const theirs = summary.profitCoverage ?? null;
+  const agree = ours === null || theirs === null
+    ? ours === theirs
+    : Math.abs(ours - theirs) <= tolerance;
+  return { ours, theirs, agree };
 }
 
 function format(money) {

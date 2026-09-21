@@ -12,8 +12,8 @@ import java.util.List;
 public class PnlStatementEntity {
     Money investedBalance;
     Money currentValue;
-    Money totalProfit;
-    double pctProfit;
+    Money totalUnrealisedProfit;
+    Double pctUnrealisedProfit;
     List<PnlPortfolioStatementEntity> portfolioStatements;
     Date dateTime;
 }

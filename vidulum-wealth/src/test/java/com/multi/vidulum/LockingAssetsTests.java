@@ -2,6 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -128,8 +129,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                                 .orderId(placedOrderSummary1.getOrderId())
                                                                 .quantity(Quantity.of(27500.0))
                                                                 .build()))
-                                                .pctProfit(0.0)
-                                                .profit(Money.of(0, "USD"))
+                                                .pctUnrealisedProfit(0.0)
+                                                .unrealisedProfit(Money.of(0, "USD"))
+                                                .coverage(1.0)
                                                 .currentPrice(Price.of(1, "USD"))
                                                 .currentValue(Money.of(100000.0, "USD"))
                                                 .tags(List.of())
@@ -137,8 +139,10 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
     }
 
@@ -260,8 +264,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                 .locked(Quantity.zero())
                                                 .free(Quantity.of(100000.0))
                                                 .activeLocks(Set.of())
-                                                .pctProfit(0.0)
-                                                .profit(Money.of(0, "USD"))
+                                                .pctUnrealisedProfit(0.0)
+                                                .unrealisedProfit(Money.of(0, "USD"))
+                                                .coverage(1.0)
                                                 .currentPrice(Price.of(1, "USD"))
                                                 .currentValue(Money.of(100000.0, "USD"))
                                                 .tags(List.of())
@@ -269,8 +274,10 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
     }
 
@@ -465,8 +472,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                                         .orderId(placedOrderSummary1.getOrderId())
                                                                         .quantity(Quantity.of(25000.0000))
                                                                         .build()))
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(1, "USD"))
                                                         .currentValue(Money.of(40000.0, "USD"))
                                                         .tags(List.of())
@@ -488,8 +496,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                                         .orderId(placedOrderSummary2.getOrderId())
                                                                         .quantity(Quantity.of(0.5))
                                                                         .build()))
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(60000.0000, "USD"))
                                                         .currentValue(Money.of(60000.0000, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -498,8 +507,10 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
     }
 
@@ -638,8 +649,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .locked(Quantity.of(0))
                                                         .free(Quantity.of(40000.0))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(1, "USD"))
                                                         .currentValue(Money.of(40000.0, "USD"))
                                                         .tags(List.of())
@@ -657,8 +669,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(1))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(60000.0000, "USD"))
                                                         .currentValue(Money.of(60000.0000, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -667,8 +680,10 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
 
         TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
@@ -769,8 +784,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .locked(Quantity.of(0))
                                                         .free(Quantity.of(40000.0 + 18000.0 + 6000.0))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(1, "USD"))
                                                         .currentValue(Money.of(40000.0 + 18000.0 + 6000.0, "USD"))
                                                         .tags(List.of())
@@ -788,8 +804,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(0.6))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.of(0, "USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.of(0, "USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(60000.0000, "USD"))
                                                         .currentValue(Money.of(36000.0000, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -798,8 +815,10 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.of(0, "USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.of(0, "USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
     }
 }

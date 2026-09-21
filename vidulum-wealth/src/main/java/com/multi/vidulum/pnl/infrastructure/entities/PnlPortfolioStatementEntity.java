@@ -16,7 +16,7 @@ public class PnlPortfolioStatementEntity {
     String portfolioId;
     Money investedBalance;
     Money currentValue;
-    Money totalProfit;
-    double pctProfit;
+    Money totalUnrealisedProfit;
+    Double pctUnrealisedProfit;
     List<PnlTradeDetailsEntity> executedTrades;
 }

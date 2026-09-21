@@ -18,8 +18,8 @@ import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQue
          openQuestions, planAnswers } from "./okx-spec-flow.mjs";
 import { backoffDelay, describeCycle, instrumentIdFor, missingSymbols, publishPath, publishQuery,
          requiredSymbols, unquotableSymbols } from "./okx-quotes.mjs";
-import { coverageOf, describePortfolio, describePositions, portfolioCoverage,
-         quotesNeededBy } from "./okx-portfolio.mjs";
+import { coverageAgreement, coverageOf, describePortfolio, describePositions, describeResult,
+         portfolioCoverage, quotesNeededBy } from "./okx-portfolio.mjs";
 
 let pass = 0, fail = 0;
 function check(name, actual, expected) {
@@ -310,19 +310,23 @@ const SUMMARY = {
   name: "My OKX", broker: "OKX",
   currentValue: { amount: 71500, currency: "EUR" },
   investedBalance: { amount: 0, currency: "EUR" },
+  // Zaledwie 23% wartosci ma znany koszt, wiec backend wstrzymuje liczbe wyniku (C4).
+  unrealisedProfit: null, pctUnrealisedProfit: null,
+  profitCoverage: 0.23076923076923078, profitStatus: "WITHHELD_LOW_COVERAGE",
   assets: [
     { ticker: "BTC", subName: "traded", quantity: { qty: 0.3, unit: "Number" },
       costBasis: { quantity: { qty: 0.3, unit: "Number" },
                    avgPrice: { amount: 50000, currency: "EUR" },
                    provenance: "EXCHANGE_REPORTED" },
       currentValue: { amount: 16500, currency: "EUR" },
-      profit: { amount: 1500, currency: "EUR" }, pctProfit: 0.1 },
+      unrealisedProfit: { amount: 1500, currency: "EUR" }, pctUnrealisedProfit: 0.1,
+      coverage: 1 },
     { ticker: "BTC", subName: "transferred-in", quantity: { qty: 1, unit: "Number" },
       costBasis: null, currentValue: { amount: 55000, currency: "EUR" },
-      profit: null, pctProfit: null },
+      unrealisedProfit: null, pctUnrealisedProfit: null, coverage: 0 },
     { ticker: "EUR", subName: "", quantity: { qty: 0, unit: "Number" },
       costBasis: null, currentValue: { amount: 0, currency: "EUR" },
-      profit: null, pctProfit: null },
+      unrealisedProfit: null, pctUnrealisedProfit: null, coverage: null },
   ],
 };
 
@@ -346,8 +350,25 @@ checkThat("brak kosztu jest nazwany, nie zamilczany",
   describePositions(SUMMARY)[1].includes("cost unknown"));
 
 checkThat("brak wyniku nie jest pokazywany jako zero",
-  describePositions(SUMMARY)[1].includes("profit not computable")
-    && !describePositions(SUMMARY)[1].includes("profit 0"));
+  describePositions(SUMMARY)[1].includes("unrealised gain not computable")
+    && !describePositions(SUMMARY)[1].includes("unrealised 0"));
+
+// C4 - backend liczy pokrycie sam; POC liczy je niezaleznie i oba maja sie zgadzac.
+checkThat("pokrycie z backendu zgadza sie z naszym wlasnym rachunkiem",
+  coverageAgreement(SUMMARY).agree);
+
+checkThat("rozbieznosc pokrycia jest raportowana, nie przemilczana",
+  coverageAgreement({ ...SUMMARY, profitCoverage: 0.9 }).agree === false);
+
+// Wstrzymany wynik to decyzja, nie awaria - i ma sie tak czytac.
+checkThat("wstrzymany wynik tlumaczy sie slowami, nie pustka",
+  describeResult(SUMMARY).includes("withheld")
+    && !describeResult(SUMMARY).includes("0"));
+
+checkThat("policzony wynik pokazuje kwote i procent",
+  describeResult({ profitStatus: "COMPUTED",
+                   unrealisedProfit: { amount: 1500, currency: "EUR" },
+                   pctUnrealisedProfit: 0.1 }) === "1500 EUR unrealised (10.00%)");
 
 checkThat("proweniencja kosztu jest widoczna",
   describePositions(SUMMARY)[0].includes("EXCHANGE_REPORTED"));

@@ -8,6 +8,7 @@ import com.multi.vidulum.pnl.domain.PnlPortfolioStatement;
 import com.multi.vidulum.pnl.domain.PnlStatement;
 import com.multi.vidulum.pnl.domain.PnlTradeDetails;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
@@ -160,8 +161,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(1))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.zero("USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.zero("USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(60000.0, "USD"))
                                         .currentValue(Money.of(60000.0, "USD"))
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -179,8 +181,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .activeLocks(Set.of())
                                         .free(Quantity.of(40000.0))
-                                        .pctProfit(0.0)
-                                        .profit(Money.zero("USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.zero("USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1, "USD"))
                                         .currentValue(Money.of(40000.0, "USD"))
                                         .tags(List.of())
@@ -188,8 +191,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(100000.0, "USD"))
-                .totalProfit(Money.zero("USD"))
-                .pctProfit(0.0)
+                .totalUnrealisedProfit(Money.zero("USD"))
+                .pctUnrealisedProfit(0.0)
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build();
 
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
@@ -284,8 +289,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(1))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.zero("USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.zero("USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(60000.0, "USD"))
                                                         .currentValue(Money.of(60000.0, "USD"))
                                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -303,8 +309,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                                         .locked(Quantity.zero())
                                                         .free(Quantity.of(40000.0))
                                                         .activeLocks(Set.of())
-                                                        .pctProfit(0.0)
-                                                        .profit(Money.zero("USD"))
+                                                        .pctUnrealisedProfit(0.0)
+                                                        .unrealisedProfit(Money.zero("USD"))
+                                                        .coverage(1.0)
                                                         .currentPrice(Price.of(1, "USD"))
                                                         .currentValue(Money.of(40000.0, "USD"))
                                                         .tags(List.of())
@@ -312,8 +319,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                                 .investedBalance(Money.of(100000.0, "USD"))
                                 .currentValue(Money.of(100000.0, "USD"))
-                                .totalProfit(Money.zero("USD"))
-                                .pctProfit(0.0)
+                                .totalUnrealisedProfit(Money.zero("USD"))
+                                .pctUnrealisedProfit(0.0)
+                                .profitCoverage(1.0)
+                                .profitStatus(ProfitStatus.COMPUTED)
                                 .build());
 
         String originOrderId3 = uniqueOriginOrderId("Y");
@@ -387,8 +396,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(0.75))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.of(0, "USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.of(0, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(60000.0, "USD"))
                                         .currentValue(Money.of(45000.0, "USD"))
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -406,8 +416,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(60000))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.zero("USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.zero("USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1, "USD"))
                                         .currentValue(Money.of(60000, "USD"))
                                         .tags(List.of())
@@ -415,8 +426,13 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(105000.0, "USD"))
-                .totalProfit(Money.of(5000, "USD"))
-                .pctProfit(0.05)
+                // BTC stoi w cenie zakupu, gotowka po parze - niezrealizowanego zysku nie ma.
+                // Wczesniej 5000: zysk ze sprzedazy, czyli wielkosc zrealizowana. Nie znika -
+                // po prostu nie nalezy do tej liczby, jej miejsce jest w module PnL.
+                .totalUnrealisedProfit(Money.zero("USD"))
+                .pctUnrealisedProfit(0.0)
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build();
 
         assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
@@ -573,8 +589,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(120000.0))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.zero("USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.zero("USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1, "USD"))
                                         .currentValue(Money.of(120000.0, "USD"))
                                         .tags(List.of())
@@ -582,8 +599,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(120000.0, "USD"))
-                .totalProfit(Money.of(20000.0, "USD"))
-                .pctProfit(0.2)
+                // Zostaje sama gotowka, po parze. Wczesniej 20000 - zysk zrealizowany.
+                .totalUnrealisedProfit(Money.zero("USD"))
+                .pctUnrealisedProfit(0.0)
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build();
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
 
@@ -1032,8 +1052,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(87100))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.of(0, "USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.of(0, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1, "USD"))
                                         .currentValue(Money.of(87100.0, "USD"))
                                         .tags(List.of())
@@ -1051,8 +1072,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(1.3))
                                         .activeLocks(Set.of())
-                                        .pctProfit(-0.05)
-                                        .profit(Money.of(-195.0000, "USD"))
+                                        .pctUnrealisedProfit(-0.05)
+                                        .unrealisedProfit(Money.of(-195.0000, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(2850.0000, "USD"))
                                         .currentValue(Money.of(3705.0000, "USD"))
                                         .tags(List.of("Ethereum", "Crypto", "ETH"))
@@ -1069,8 +1091,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(0.25))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.6)
-                                        .profit(Money.of(5625.0, "USD"))
+                                        .pctUnrealisedProfit(0.6)
+                                        .unrealisedProfit(Money.of(5625.0, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(60000.0000, "USD"))
                                         .currentValue(Money.of(15000.0000, "USD"))
                                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -1079,8 +1102,12 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
                 .investedBalance(Money.of(100000.0, "USD"))
                 .currentValue(Money.of(105805, "USD"))
-                .totalProfit(Money.of(5805.0, "USD"))
-                .pctProfit(0.05805)
+                // -195 (ETH) + 5625 (BTC) + 0 (USD), wzgledem 100375 kosztu. Wczesniej 5805:
+                // wartosc minus wplaty, co mieszalo w to zysk juz zrealizowany.
+                .totalUnrealisedProfit(Money.of(5430.0, "USD"))
+                .pctUnrealisedProfit(0.05409713)
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
@@ -1295,10 +1322,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
 //                                ))
 //                        .investedBalance(portfolio.getInvestedBalance())
 //                        .currentValue(Money.of(103805, "USD"))
-//                        .profit(Money.of(3805, "USD"))
+//                        .unrealisedProfit(Money.of(3805, "USD"))
 //                        .safe(Money.of(94949.999999999998200000000, "USD"))
 //                        .risk(Money.of(8855.000000000001800000000, "USD"))
-//                        .pctProfit(-0.96195)
+//                        .pctUnrealisedProfit(-0.96195)
 //                        .riskPct(-12.72275551)
 //                        .build()
 //        );
@@ -1560,8 +1587,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.zero())
                                         .free(Quantity.of(12160))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.0)
-                                        .profit(Money.zero("USD"))
+                                        .pctUnrealisedProfit(0.0)
+                                        .unrealisedProfit(Money.zero("USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1, "USD"))
                                         .currentValue(Money.of(12160, "USD"))
                                         .tags(List.of())
@@ -1579,8 +1607,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.of(0, "oz"))
                                         .free(Quantity.of(5, "oz"))
                                         .activeLocks(Set.of())
-                                        .pctProfit(0.05555555)
-                                        .profit(Money.of(25, "USD"))
+                                        .pctUnrealisedProfit(0.05555555)
+                                        .unrealisedProfit(Money.of(25, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(95, "USD"))
                                         .currentValue(Money.of(475, "USD"))
                                         .tags(List.of("Silver", "Precious Metals"))
@@ -1598,8 +1627,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .locked(Quantity.of(0, "oz"))
                                         .free(Quantity.of(4, "oz"))
                                         .activeLocks(Set.of())
-                                        .pctProfit(-0.03095559)
-                                        .profit(Money.of(-230.0, "USD"))
+                                        .pctUnrealisedProfit(-0.03095559)
+                                        .unrealisedProfit(Money.of(-230.0, "USD"))
+                                        .coverage(1.0)
                                         .currentPrice(Price.of(1800, "USD"))
                                         .currentValue(Money.of(7200, "USD"))
                                         .tags(List.of("Gold", "Precious Metals"))
@@ -1607,8 +1637,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .portfolioIds(List.of(registeredPreciousMetalsPortfolio.portfolioId(), registeredPreciousMetalsPortfolio2.portfolioId()))
                 .investedBalance(Money.of(20000, "USD"))
                 .currentValue(Money.of(19835, "USD"))
-                .totalProfit(Money.of(-165, "USD"))
-                .pctProfit(-0.00825)
+                // 25 (XAG) - 230 (XAU) + 0 (USD).
+                .totalUnrealisedProfit(Money.of(-205, "USD"))
+                .pctUnrealisedProfit(-0.01022955)
+                .profitCoverage(1.0)
+                .profitStatus(ProfitStatus.COMPUTED)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);
@@ -1632,8 +1665,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         PnlDto.PnlStatementJson.builder()
                                 .investedBalance(Money.of(20000, "USD"))
                                 .currentValue(Money.of(19835, "USD"))
-                                .totalProfit(Money.of(-165, "USD"))
-                                .pctProfit(-0.00825)
+                                // Migawka PnL bierze liczbe z podsumowania portfela, wiec
+                                // przejmuje jej nowe znaczenie: 25 (XAG) - 230 (XAU) + 0 (USD).
+                                .totalUnrealisedProfit(Money.of(-205, "USD"))
+                                .pctUnrealisedProfit(-0.01022955)
                                 .build()));
 
         PnlDto.PnlStatementJson pnlStatementJson = pnlHistoryJson.getPnlStatements().get(0);
@@ -1645,15 +1680,16 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .portfolioId(registeredPreciousMetalsPortfolio.portfolioId())
                                 .investedBalance(Money.of(10000, "USD"))
                                 .currentValue(Money.of(10035, "USD"))
-                                .totalProfit(Money.of(35, "USD"))
-                                .pctProfit(-0.9965)
+                                // 25 (XAG) - 30 (XAU): dwie pozycje, nie roznica wobec wplat.
+                                .totalUnrealisedProfit(Money.of(-5, "USD"))
+                                .pctUnrealisedProfit(-4.9801E-4)
                                 .build(),
                         PnlDto.PnlPortfolioStatementJson.builder()
                                 .portfolioId(registeredPreciousMetalsPortfolio2.portfolioId())
                                 .investedBalance(Money.of(10000, "USD"))
                                 .currentValue(Money.of(9800, "USD"))
-                                .totalProfit(Money.of(-200, "USD"))
-                                .pctProfit(-1.02)
+                                .totalUnrealisedProfit(Money.of(-200, "USD"))
+                                .pctUnrealisedProfit(-0.02)
                                 .build()
                 ));
 
@@ -1738,15 +1774,15 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         PnlStatement.builder()
                                 .investedBalance(Money.of(100, "USD"))
                                 .currentValue(Money.of(120, "USD"))
-                                .totalProfit(Money.of(20, "USD"))
-                                .pctProfit(20.0)
+                                .totalUnrealisedProfit(Money.of(20, "USD"))
+                                .pctUnrealisedProfit(20.0)
                                 .pnlPortfolioStatements(List.of(
                                         PnlPortfolioStatement.builder()
                                                 .portfolioId(PortfolioId.of(UUID.randomUUID().toString()))
                                                 .investedBalance(Money.of(100, "USD"))
                                                 .currentValue(Money.of(120, "USD"))
-                                                .totalProfit(Money.of(20, "USD"))
-                                                .pctProfit(20.0)
+                                                .totalUnrealisedProfit(Money.of(20, "USD"))
+                                                .pctUnrealisedProfit(20.0)
                                                 .executedTrades(List.of(
                                                         PnlTradeDetails.builder()
                                                                 .tradeId(TradeId.of(UUID.randomUUID().toString()))
@@ -1777,15 +1813,15 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         PnlStatement.builder()
                                 .investedBalance(Money.of(100, "USD"))
                                 .currentValue(Money.of(130, "USD"))
-                                .totalProfit(Money.of(30, "USD"))
-                                .pctProfit(30.0)
+                                .totalUnrealisedProfit(Money.of(30, "USD"))
+                                .pctUnrealisedProfit(30.0)
                                 .pnlPortfolioStatements(List.of(
                                         PnlPortfolioStatement.builder()
                                                 .portfolioId(PortfolioId.of(UUID.randomUUID().toString()))
                                                 .investedBalance(Money.of(100, "USD"))
                                                 .currentValue(Money.of(130, "USD"))
-                                                .totalProfit(Money.of(30, "USD"))
-                                                .pctProfit(30.0)
+                                                .totalUnrealisedProfit(Money.of(30, "USD"))
+                                                .pctUnrealisedProfit(30.0)
                                                 .executedTrades(List.of(
                                                         PnlTradeDetails.builder()
                                                                 .tradeId(TradeId.of(UUID.randomUUID().toString()))
