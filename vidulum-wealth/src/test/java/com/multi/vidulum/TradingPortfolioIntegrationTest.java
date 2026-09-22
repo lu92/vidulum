@@ -1413,7 +1413,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
-                Quantity.of(2, "oz"), Quantity.of(0), Quantity.of(2, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(2, "oz"), Quantity.of(0, "oz"), Quantity.of(2, "oz"));
 
         TradingDto.OrderSummaryJson placedBuyOrder2 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1448,7 +1448,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
-                Quantity.of(4, "oz"), Quantity.of(0), Quantity.of(4, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(4, "oz"), Quantity.of(0, "oz"), Quantity.of(4, "oz"));
 
         TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1466,7 +1466,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
-                Quantity.of(4, "oz"), Quantity.of(1), Quantity.of(3, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(4, "oz"), Quantity.of(1, "oz"), Quantity.of(3, "oz"));
 
         makeTrade(TradingDto.TradeExecutedJson.builder()
                 .originTradeId("pm-trade3")
@@ -1486,7 +1486,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 Quantity.of(4610), Quantity.of(0), Quantity.of(4610));
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAU"),
-                Quantity.of(3, "oz"), Quantity.of(0), Quantity.of(3, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(3, "oz"), Quantity.of(0, "oz"), Quantity.of(3, "oz"));
 
         TradingDto.OrderSummaryJson placedBuyOrder4 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1521,7 +1521,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId, Ticker.of("XAG"),
-                Quantity.of(5, "oz"), Quantity.of(0), Quantity.of(5, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(5, "oz"), Quantity.of(0, "oz"), Quantity.of(5, "oz"));
 
         TradingDto.OrderSummaryJson placedBuyOrder5 = placeOrder(
                 TradingDto.PlaceOrderJson.builder()
@@ -1556,7 +1556,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build());
 
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("XAU"),
-                Quantity.of(1, "oz"), Quantity.of(0), Quantity.of(1, "oz")); // TODO: change locked's unit to 'oz'
+                Quantity.of(1, "oz"), Quantity.of(0, "oz"), Quantity.of(1, "oz"));
 
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.userId(), registeredPreciousMetalsPortfolio.portfolioId());
         assertThat(allTrades).hasSize(4);

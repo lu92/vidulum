@@ -21,6 +21,14 @@ public class MakeTradeCommand implements Command {
      * Filled with {@code OrderId.notDefined()} in case of making direct trade on exchange.
      */
     OrderId orderId;
+
+    /**
+     * Read off the order when there is one, and taken from the request when there is not.
+     * A hand-entered purchase has nowhere else to state what was bought and which way.
+     */
+    Symbol symbol;
+    Side side;
+
     SubName subName;
     Quantity quantity;
     Price price;

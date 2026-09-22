@@ -30,7 +30,7 @@ public class OrderRestController {
     private final Clock clock;
 
     @PostMapping("/orders")
-    public TradingDto.OrderSummaryJson placeOrder(@RequestParam TradingDto.PlaceOrderJson placeOrderJson) {
+    public TradingDto.OrderSummaryJson placeOrder(@RequestBody TradingDto.PlaceOrderJson placeOrderJson) {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
                 .orderId(OrderId.generate())
                 .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
@@ -51,7 +51,7 @@ public class OrderRestController {
     }
 
     @PutMapping("/orders")
-    public TradingDto.OrderExecutionSummaryJson executeOrder(@RequestParam TradingDto.ExecuteOrderJson executeOrderJson) {
+    public TradingDto.OrderExecutionSummaryJson executeOrder(@RequestBody TradingDto.ExecuteOrderJson executeOrderJson) {
         ExecuteOrderCommand command = ExecuteOrderCommand.builder()
                 .originTradeId(OriginTradeId.of(executeOrderJson.getOriginTradeId()))
                 .originOrderId(OriginOrderId.of(executeOrderJson.getOriginOrderId()))

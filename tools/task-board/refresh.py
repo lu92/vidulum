@@ -23,7 +23,7 @@ from pathlib import Path
 DEFAULT_BOARD = Path(__file__).resolve().parents[2] / "docs/features-backlog/2026-09-18-okx-tasks.md"
 
 TASK_ROW = re.compile(
-    r"^\| \*\*([A-F]\d+)\*\* \| (P\d) \| (\*\*finished\*\*|`open`|`wip`|`blocked`) \| "
+    r"^\| \*\*([A-Z]\d+)\*\* \| (P\d) \| (\*\*finished\*\*|`open`|`wip`|`blocked`) \| "
     r"([^|]+?) \| ([^|]*?) \| ([^|]*?) \|$",
     re.M,
 )
@@ -49,8 +49,19 @@ def split_ids(cell):
     return [part.strip() for part in cell.split(",") if part.strip() and part.strip() != "—"]
 
 
+# A row that looks like a task but does not match TASK_ROW used to be skipped in silence - the
+# board then under-reported itself and nothing said so. Anything shaped like a task row has to
+# parse or stop the script.
+# Six columns, so the priority legend - which also opens with a bolded code - is left alone.
+TASK_ROW_SHAPE = re.compile(r"^\| \*\*[A-Z]\d+\*\* \|(?:[^|]*\|){5}$", re.M)
+
+
 def parse(text):
     tasks = {}
+    recognised = {match.group(0) for match in TASK_ROW.finditer(text)}
+    for row in TASK_ROW_SHAPE.finditer(text):
+        if row.group(0) not in recognised:
+            fail(f"row does not parse as a task - check its columns:\n  {row.group(0)}")
     for row in TASK_ROW.finditer(text):
         task = Task(*row.groups())
         if task.id in tasks:
@@ -113,11 +124,50 @@ def ready_table(tasks):
     return "\n".join(lines)
 
 
+def graph_block(tasks):
+    """
+    The dependency graph, drawn from the same rows as everything else.
+
+    Kept by hand until now, and it had drifted far enough to be misleading: finished work still
+    showed as outstanding, and tasks added after it was written were missing altogether. A picture
+    nobody regenerates is worse than no picture, because it is believed.
+    """
+    order = sorted(tasks.values(), key=lambda t: (t.id[0], int(t.id[1:])))
+    lines = [
+        "```mermaid",
+        "flowchart LR",
+        "    classDef p0 fill:#FFCDD2,stroke:#C62828,color:#B71C1C",
+        "    classDef p1 fill:#FFE0B2,stroke:#E65100,color:#BF360C",
+        "    classDef p2 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1",
+        "    classDef p3 fill:#ECEFF1,stroke:#546E7A,color:#263238",
+        "    classDef done fill:#C8E6C9,stroke:#2E7D32,color:#1B5E20",
+        "",
+    ]
+    for task in order:
+        style = "done" if task.status == "finished" else task.priority.lower()
+        label = task.title if len(task.title) <= 38 else task.title[:37].rstrip() + "…"
+        label = label.replace('"', "'").replace("`", "")
+        lines.append(f'    {task.id}["{task.id} {label}"]:::{style}')
+    lines.append("")
+    for task in order:
+        for dependency in task.depends_on:
+            lines.append(f"    {dependency} --> {task.id}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def replace_section(text, heading, next_heading, body):
     start = text.index(heading) + len(heading)
     end = text.index(next_heading)
     head, _, _ = text[start:end].partition("|")
     return text[:start] + head + body + "\n\n" + text[end:]
+
+
+def replace_graph(text, body):
+    heading = "## Graf zależności\n"
+    start = text.index(heading) + len(heading)
+    end = text.index("```", text.index("```", start) + 3) + 3
+    return text[:start] + "\n" + body + text[end:]
 
 
 def fail(message):
@@ -144,6 +194,7 @@ def main():
     updated = replace_section(text, "## Postęp\n", "## Gotowe do wzięcia", progress_table(tasks))
     updated = replace_section(updated, "## Gotowe do wzięcia\n", "## Zadania według ścieżek",
                               ready_table(tasks))
+    updated = replace_graph(updated, graph_block(tasks))
 
     if updated == text:
         print(f"task-board: up to date ({len(tasks)} tasks)")
