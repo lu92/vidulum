@@ -22,6 +22,13 @@ public class PortfolioDto {
         private String name;
         private String userId;
         private String broker;
+
+        /**
+         * What the portfolio settles in. Required: without it the aggregate cannot say which
+         * deposits it accepts, and {@code PortfolioFactory.empty} has nothing to build
+         * {@code investedBalance} from.
+         */
+        private String allowedDepositCurrency;
     }
 
     @Data
@@ -157,6 +164,14 @@ public class PortfolioDto {
     public static class LockAssetJson {
         private String portfolioId;
         private String ticker;
+
+        /**
+         * Which order reserves these units. Required, and not a formality: a lock is released by
+         * matching this id, so one recorded without it can never be undone — and the summary
+         * cannot even be read afterwards.
+         */
+        private String orderId;
+
         private Quantity quantity;
     }
 
@@ -167,6 +182,10 @@ public class PortfolioDto {
     public static class UnlockAssetJson {
         private String portfolioId;
         private String ticker;
+
+        /** The order whose lock is being released — see {@link LockAssetJson}. */
+        private String orderId;
+
         private Quantity quantity;
     }
 

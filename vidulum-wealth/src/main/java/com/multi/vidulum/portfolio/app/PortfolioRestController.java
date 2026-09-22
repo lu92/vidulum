@@ -2,6 +2,7 @@ package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
@@ -34,6 +35,7 @@ public class PortfolioRestController {
                 .name(request.getName())
                 .userId(UserId.of(request.getUserId()))
                 .broker(Broker.of(request.getBroker()))
+                .allowedDepositCurrency(Currency.of(request.getAllowedDepositCurrency()))
                 .build();
 
         Portfolio portfolio = commandGateway.send(command);
@@ -63,6 +65,7 @@ public class PortfolioRestController {
         LockAssetCommand command = LockAssetCommand.builder()
                 .portfolioId(PortfolioId.of(request.getPortfolioId()))
                 .ticker(Ticker.of(request.getTicker()))
+                .orderId(OrderId.of(request.getOrderId()))
                 .quantity(request.getQuantity())
                 .build();
         commandGateway.send(command);
@@ -73,6 +76,7 @@ public class PortfolioRestController {
         UnlockAssetCommand command = UnlockAssetCommand.builder()
                 .portfolioId(PortfolioId.of(request.getPortfolioId()))
                 .ticker(Ticker.of(request.getTicker()))
+                .orderId(OrderId.of(request.getOrderId()))
                 .quantity(request.getQuantity())
                 .build();
         commandGateway.send(command);

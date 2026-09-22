@@ -198,7 +198,10 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .subName(purchasedPortion.subName())
                             .costBasis(purchasedCostOf(purchasedPortion))
                             .quantity(purchasedPortion.quantity())
-                            .locked(Quantity.zero())
+                            // Zero of the same unit the position is measured in. A troy ounce
+                            // position whose lock is counted in "Number" reads as a unit error
+                            // to anyone inspecting it, and nothing in Quantity would object.
+                            .locked(Quantity.zero(purchasedPortion.quantity().getUnit()))
                             .free(purchasedPortion.quantity())
                             .activeLocks(new HashSet<>())
                             .build();
@@ -206,29 +209,49 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 });
     }
 
+    /**
+     * Takes units out of a position, from whichever side of it they were promised.
+     *
+     * <p>A trade filled against an order consumes a reservation: the units left {@code free} when
+     * the order was placed, and this is where the matching {@code locked} amount is released. A
+     * trade entered by hand reserved nothing, so it comes straight out of {@code free}.
+     *
+     * <p>Treating both alike is what broke the manual path: subtracting from {@code locked} when
+     * nothing was locked drove it negative, left {@code free} untouched, and produced a position
+     * whose parts no longer summed to its size — silently, on a request that answered 200.
+     */
     private void reduceAsset(OrderId orderId, AssetPortion soldPortion) {
         Asset soldAsset = findAssetByTickerAndSubName(soldPortion.ticker(), soldPortion.subName())
                 .orElseThrow(() -> new AssetNotFoundException(soldPortion.ticker()));
 
-        if (soldPortion.quantity().getQty() > soldAsset.getQuantity().getQty()) {
+        boolean fromReservation = OrderId.isDefined(orderId);
+
+        // With an order the units were already set aside, so the whole position backs the trade.
+        // Without one, only what is free does — otherwise a hand-entered sale would spend units an
+        // open order is holding, and the order could no longer be filled.
+        Quantity available = fromReservation ? soldAsset.getQuantity() : soldAsset.getFree();
+        if (soldPortion.quantity().getQty() > available.getQty()) {
             throw new NotSufficientBalance(soldPortion.getValue());
         }
 
-        boolean isAssetSoldOutFully = soldAsset.getQuantity().equals(soldPortion.quantity());
-        if (isAssetSoldOutFully) {
+        if (soldAsset.getQuantity().equals(soldPortion.quantity())) {
             assets.remove(soldAsset);
-        } else {
-            Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
+            return;
+        }
 
-            // The cost can never cover more than is still held, so it is capped rather than
-            // recomputed. Which units were sold — the ones with a known cost or the ones
-            // without — is a question this task does not answer; C7 owns it. Once C2 splits
-            // positions into all-known and all-unknown, both readings coincide.
-            Quantity updatedLockedQuantity = soldAsset.getLocked().minus(soldPortion.quantity());
-            soldAsset.setQuantity(decreasedQuantity);
-            soldAsset.setCostBasis(cappedTo(soldAsset.getCostBasis(), decreasedQuantity));
-            soldAsset.setLocked(updatedLockedQuantity);
+        // The cost can never cover more than is still held, so it is capped rather than
+        // recomputed. Which units were sold — the ones with a known cost or the ones
+        // without — is a question this task does not answer; C7 owns it. Once C2 splits
+        // positions into all-known and all-unknown, both readings coincide.
+        Quantity decreasedQuantity = soldAsset.getQuantity().minus(soldPortion.quantity());
+        soldAsset.setQuantity(decreasedQuantity);
+        soldAsset.setCostBasis(cappedTo(soldAsset.getCostBasis(), decreasedQuantity));
+
+        if (fromReservation) {
+            soldAsset.setLocked(soldAsset.getLocked().minus(soldPortion.quantity()));
             soldAsset.getActiveLocks().remove(new Asset.AssetLock(orderId, soldPortion.quantity()));
+        } else {
+            soldAsset.setFree(soldAsset.getFree().minus(soldPortion.quantity()));
         }
     }
 

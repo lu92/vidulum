@@ -71,7 +71,7 @@ public class ErrorHttpHandler {
     public ResponseEntity<ApiError> handleMissingServletRequestParameter(MissingServletRequestParameterException ex) {
         log.debug("Missing required parameter: {}", ex.getParameterName());
         String message = String.format("Required parameter '%s' is missing", ex.getParameterName());
-        ApiError error = ApiError.of(ErrorCode.RECURRING_RULE_MISSING_CASHFLOW_ID, message);
+        ApiError error = ApiError.of(ErrorCode.VALIDATION_ERROR, message);
         return ResponseEntity.status(error.httpStatus()).body(error);
     }
 

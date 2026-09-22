@@ -22,7 +22,17 @@ public class OrderId {
         return OrderId.of(UUID.randomUUID().toString());
     }
 
+    /**
+     * A trade that no order preceded — a purchase recorded by hand rather than filled on an
+     * exchange. Used instead of {@code null} so the value survives serialisation and comparison
+     * without every reader having to guard.
+     */
     public static OrderId notDefined() {
         return new OrderId("NOT_DEFINED");
+    }
+
+    /** False for {@code notDefined()} — see above. Null-safe on purpose; callers pass what they got. */
+    public static boolean isDefined(OrderId orderId) {
+        return orderId != null && !notDefined().equals(orderId);
     }
 }

@@ -33,7 +33,9 @@ public class TradeRestController {
                 .userId(UserId.of(tradeExecutedJson.getUserId()))
                 .portfolioId(PortfolioId.of(tradeExecutedJson.getPortfolioId()))
                 .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
-                .orderId(OrderId.of(tradeExecutedJson.getOrderId()))
+                .orderId(orderIdOf(tradeExecutedJson))
+                .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
+                .side(tradeExecutedJson.getSide())
                 .subName(SubName.of(tradeExecutedJson.getSubName()))
                 .quantity(tradeExecutedJson.getQuantity())
                 .price(tradeExecutedJson.getPrice())
@@ -44,6 +46,16 @@ public class TradeRestController {
                 .build();
 
         commandGateway.send(command);
+    }
+
+    /**
+     * A blank {@code orderId} means the trade was entered by hand — a purchase from a dealer, not
+     * a fill from an exchange. Mapped to {@link OrderId#notDefined()} so everything downstream
+     * compares a value instead of guarding against null.
+     */
+    private static OrderId orderIdOf(TradingDto.TradeExecutedJson json) {
+        String orderId = json.getOrderId();
+        return orderId == null || orderId.isBlank() ? OrderId.notDefined() : OrderId.of(orderId);
     }
 
     @GetMapping("/trades/userId={userId}/{portfolioId}")
