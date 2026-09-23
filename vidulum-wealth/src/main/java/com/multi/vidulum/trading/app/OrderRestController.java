@@ -2,6 +2,7 @@ package com.multi.vidulum.trading.app;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.PortfolioId;
+import com.multi.vidulum.portfolio.app.PortfolioAccess;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
@@ -27,6 +28,7 @@ public class OrderRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final TradingMapper mapper;
+    private final PortfolioAccess access;
     private final Clock clock;
 
     @PostMapping("/orders")
@@ -34,7 +36,7 @@ public class OrderRestController {
         PlaceOrderCommand command = PlaceOrderCommand.builder()
                 .orderId(OrderId.generate())
                 .originOrderId(OriginOrderId.of(placeOrderJson.getOriginOrderId()))
-                .portfolioId(PortfolioId.of(placeOrderJson.getPortfolioId()))
+                .portfolioId(access.requireOwned(placeOrderJson.getPortfolioId()))
                 .broker(Broker.of(placeOrderJson.getBroker()))
                 .symbol(Symbol.of(placeOrderJson.getSymbol()))
                 .type(placeOrderJson.getType())
@@ -77,7 +79,7 @@ public class OrderRestController {
     @GetMapping("/orders/{portfolioId}")
     public List<TradingDto.OrderSummaryJson> getAllOpenedOrders(@PathVariable("portfolioId") String portfolioId) {
         GetAllOpenedOrdersForPortfolioQuery query = GetAllOpenedOrdersForPortfolioQuery.builder()
-                .portfolioId(PortfolioId.of(portfolioId))
+                .portfolioId(access.requireOwned(portfolioId))
                 .build();
         List<Order> orders = queryGateway.send(query);
         return orders.stream()

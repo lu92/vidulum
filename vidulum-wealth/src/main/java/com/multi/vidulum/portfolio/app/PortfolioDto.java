@@ -20,7 +20,6 @@ public class PortfolioDto {
     @AllArgsConstructor
     public static class CreateEmptyPortfolioJson {
         private String name;
-        private String userId;
         private String broker;
 
         /**

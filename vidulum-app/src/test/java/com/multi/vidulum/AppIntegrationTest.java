@@ -17,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
@@ -53,6 +55,44 @@ public abstract class AppIntegrationTest {
 
         // UserFinancialProfileApi bean is provided by the RestController itself
         // (UserFinancialProfileRestController implements UserFinancialProfileApi)
+
+        /**
+         * Stands in for {@code SecurityContextUserProvider} (task G2).
+         *
+         * <p>These tests call controllers as plain Java methods, so there is no request and no
+         * security context to read. Their users come from the user domain and were never through
+         * {@code /api/v1/auth/register}, so the real provider could not resolve them either.
+         *
+         * <p>That the identity now genuinely comes from a token is proved where it can be —
+         * {@code PortfolioOwnershipHttpIntegrationTest}, over HTTP, with two registered users.
+         */
+        @Bean
+        @Primary
+        public TestActingUser testActingUser() {
+            return new TestActingUser();
+        }
+    }
+
+    /** Mutable so a test can change who is asking; ownership is untestable otherwise. */
+    public static class TestActingUser implements AuthenticatedUserProvider {
+        private volatile UserId currentUserId = UserId.of("U00000001");
+
+        @Override
+        public UserId getCurrentUserId() {
+            return currentUserId;
+        }
+
+        void actAs(UserId userId) {
+            this.currentUserId = userId;
+        }
+    }
+
+    @Autowired
+    protected TestActingUser testActingUser;
+
+    /** Switches who the following controller calls come from. */
+    protected void actingAs(String userId) {
+        testActingUser.actAs(UserId.of(userId));
     }
 
     protected static final MongoDBContainer mongoDBContainer;

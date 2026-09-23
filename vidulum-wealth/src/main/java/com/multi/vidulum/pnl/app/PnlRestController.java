@@ -2,6 +2,7 @@ package com.multi.vidulum.pnl.app;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Range;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.portfolio.app.PortfolioAccess;
 import com.multi.vidulum.pnl.app.commands.MakePnlSnapshotCommand;
 import com.multi.vidulum.pnl.app.queries.GetPnlHistoryQuery;
 import com.multi.vidulum.pnl.domain.PnlHistory;
@@ -20,11 +21,13 @@ public class PnlRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
+    private final PortfolioAccess access;
 
-    @GetMapping("/pnl/userId={userId}")
-    public PnlDto.PnlHistoryJson getPnlHistory(@PathVariable("userId") String userId) {
+    /** The caller's own history. The user id used to be a path variable anyone could set. */
+    @GetMapping("/pnl")
+    public PnlDto.PnlHistoryJson getPnlHistory() {
         GetPnlHistoryQuery query = GetPnlHistoryQuery.builder()
-                .userId(UserId.of(userId))
+                .userId(access.currentUser())
                 .build();
 
         PnlHistory pnlHistory = queryGateway.send(query);
@@ -35,7 +38,7 @@ public class PnlRestController {
     @PostMapping("/pnl")
     public void makePnlSnapshot(@RequestBody PnlDto.MakePnlSnapshotJson request) {
         MakePnlSnapshotCommand command = MakePnlSnapshotCommand.builder()
-                .userId(UserId.of(request.getUserId()))
+                .userId(access.currentUser())
                 .dateTimeRange(Range.of(request.getFrom(), request.getTo()))
                 .build();
 

@@ -108,7 +108,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(27500.0)) && usdAsset.getFree().equals(Quantity.of(72500));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.userId(), "USD"))
+        assertThat(portfolioRestController.getAggregatedPortfolio("USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.userId())
@@ -247,7 +247,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
             return usdAsset.getLocked().isZero() && usdAsset.getFree().equals(Quantity.of(100000.0));
         });
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.userId(), "USD"))
+        assertThat(portfolioRestController.getAggregatedPortfolio("USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.userId())
@@ -343,7 +343,6 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.portfolioId())
                 .orderId(placedBuyOrder1.getOrderId())
-                .userId(createdUser.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -449,7 +448,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
             return usdAsset.getLocked().equals(Quantity.of(25000)) && btcAsset.getLocked().equals(Quantity.of(0.5));
         });
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUser.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio("USD");
         assertThat(aggregatedPortfolio)
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -576,7 +575,6 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUser.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -616,7 +614,6 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 .originTradeId("trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUser.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -631,7 +628,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 Quantity.of(0),
                 Quantity.of(1));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.userId(), "USD"))
+        assertThat(portfolioRestController.getAggregatedPortfolio("USD"))
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.userId())
@@ -711,7 +708,6 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 .originTradeId("trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUser.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -751,7 +747,6 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 .originTradeId("trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUser.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -766,7 +761,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                 Quantity.of(0),
                 Quantity.of(0.6));
 
-        assertThat(portfolioRestController.getAggregatedPortfolio(createdUser.userId(), "USD")) //
+        assertThat(portfolioRestController.getAggregatedPortfolio("USD")) //
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                                 .userId(createdUser.userId())

@@ -29,6 +29,9 @@ class UserPortfolioOnboardingTest extends AppIntegrationTest {
         // when — activate
         activateUser(createdUser.getUserId());
 
+        // From here the portfolio endpoints ask who is calling, and answer 404 to anyone else.
+        actingAs(createdUser.getUserId());
+
         // then — user is active with no portfolios
         UserDto.UserSummaryJson activeUser = userRestController.getUser(createdUser.getUserId());
         assertThat(activeUser.isActive()).isTrue();

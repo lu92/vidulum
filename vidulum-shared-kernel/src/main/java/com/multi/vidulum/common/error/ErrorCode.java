@@ -159,6 +159,7 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found"),
 
     // ============ Portfolio specification ============
+    PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "Portfolio not found"),
     PORTFOLIO_SPEC_NOT_FOUND(HttpStatus.NOT_FOUND, "Portfolio specification not found"),
     PORTFOLIO_SPEC_NOTHING_TO_SYNCHRONISE(HttpStatus.CONFLICT, "Snapshot matches the known state"),
     PORTFOLIO_SPEC_INVALID_TRANSITION(HttpStatus.CONFLICT, "Operation not allowed in current specification status"),
