@@ -92,7 +92,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade1")
                 .portfolioId(registeredPortfolio.portfolioId())
                 .orderId(placedOrder.getOrderId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName("")
                 .side(BUY)
@@ -140,10 +139,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
-        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.userId(), registeredPortfolio.portfolioId());
+        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(registeredPortfolio.portfolioId());
         assertThat(allTrades).hasSize(1);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio("USD");
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.userId())
@@ -200,12 +199,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
         pnlRestController.makePnlSnapshot(
                 PnlDto.MakePnlSnapshotJson.builder()
-                        .userId(createdUserJson.userId())
                         .from(ZonedDateTime.parse("2021-06-01T00:00:00Z"))
                         .to(ZonedDateTime.parse("2021-06-01T23:59:59Z"))
                         .build());
 
-        PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory(createdUserJson.userId());
+        PnlDto.PnlHistoryJson pnlHistory = pnlRestController.getPnlHistory();
         System.out.println(pnlHistory);
 
         TradingDto.OrderSummaryJson placedOrder2 = placeOrder(
@@ -270,7 +268,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 );
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.portfolioId())).isEmpty();
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio1 = portfolioRestController.getAggregatedPortfolio("USD");
         assertThat(aggregatedPortfolio1)
                 .isEqualTo(
                         PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -372,7 +370,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
 
         assertThat(orderRestController.getAllOpenedOrders(registeredPortfolio.portfolioId())).isEmpty();
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio2 = portfolioRestController.getAggregatedPortfolio("USD");
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio2 = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(createdUserJson.userId())
@@ -493,7 +491,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade1")
                 .orderId(placedBuyOrder.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -527,7 +524,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade2")
                 .orderId(placedSellOrder.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -566,10 +562,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
-        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.userId(), registeredPortfolio.portfolioId());
+        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(registeredPortfolio.portfolioId());
         assertThat(allTrades).hasSize(2);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio("USD");
 
         log.info("Aggregated portfolio:\n {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
 
@@ -684,7 +680,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade1")
                 .orderId(placedOrderSummary1.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -725,7 +720,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade2")
                 .orderId(placedOrderSummary2.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -766,7 +760,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade3")
                 .orderId(placedOrderSummary3.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -807,7 +800,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade4")
                 .orderId(placedOrderSummary4.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("BTC/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -848,7 +840,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade5")
                 .orderId(placedOrderSummary5.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("ETH/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -889,7 +880,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade6")
                 .orderId(placedOrderSummary6.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("ETH/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -930,7 +920,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade7")
                 .orderId(placedOrderSummary7.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("ETH/USD")
                 .subName(SubName.none().getName())
                 .side(BUY)
@@ -971,7 +960,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("trade8")
                 .orderId(placedOrderSummary8.getOrderId())
                 .portfolioId(registeredPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("ETH/USD")
                 .subName(SubName.none().getName())
                 .side(SELL)
@@ -1030,11 +1018,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
-        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.userId(), registeredPortfolio.portfolioId());
+        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(registeredPortfolio.portfolioId());
         assertThat(allTrades).hasSize(8);
 
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestController.getAggregatedPortfolio("USD");
         log.info("Aggregated portfolio:\n{}", jsonFormatter.formatToPrettyJson(aggregatedPortfolio));
 
         PortfolioDto.AggregatedPortfolioSummaryJson expectedAggregatedPortfolio = PortfolioDto.AggregatedPortfolioSummaryJson.builder()
@@ -1402,7 +1390,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("pm-trade1")
                 .orderId(placedBuyOrder1.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("XAU/USD")
                 .subName("Maple Leaf")
                 .side(BUY)
@@ -1437,7 +1424,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("pm-trade2")
                 .orderId(placedBuyOrder2.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("XAU/USD")
                 .subName("Krugerrand")
                 .side(BUY)
@@ -1472,7 +1458,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("pm-trade3")
                 .orderId(placedBuyOrder3.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("XAU/USD")
                 .subName("Maple Leaf")
                 .side(SELL)
@@ -1510,7 +1495,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("pm-trade4")
                 .orderId(placedBuyOrder4.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("XAG/USD")
                 .subName("Maple Leaf")
                 .side(BUY)
@@ -1545,7 +1529,6 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .originTradeId("pm-trade5")
                 .orderId(placedBuyOrder5.getOrderId())
                 .portfolioId(registeredPreciousMetalsPortfolio2.portfolioId())
-                .userId(createdUserJson.userId())
                 .symbol("XAU/USD")
                 .subName("Maple Leaf")
                 .side(BUY)
@@ -1558,16 +1541,14 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
         awaitUntilAssetMetadataIsEqualTo(registeredPortfolioId2, Ticker.of("XAU"),
                 Quantity.of(1, "oz"), Quantity.of(0, "oz"), Quantity.of(1, "oz"));
 
-        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(createdUserJson.userId(), registeredPreciousMetalsPortfolio.portfolioId());
+        List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(registeredPreciousMetalsPortfolio.portfolioId());
         assertThat(allTrades).hasSize(4);
 
-        List<TradingDto.TradeSummaryJson> lastTwoTrades = tradeRestController.getTradesInDateRange(
-                createdUserJson.userId(),
-                ZonedDateTime.parse("2021-03-01T00:00:00Z"),
+        List<TradingDto.TradeSummaryJson> lastTwoTrades = tradeRestController.getTradesInDateRange(ZonedDateTime.parse("2021-03-01T00:00:00Z"),
                 ZonedDateTime.parse("2021-05-01T00:00:00Z"));
         assertThat(lastTwoTrades).hasSize(3);
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio(createdUserJson.userId(), "USD");
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolioJson = portfolioRestController.getAggregatedPortfolio("USD");
 
         log.info("Aggregated Portfolio: {}", jsonFormatter.formatToPrettyJson(aggregatedPortfolioJson));
 
@@ -1648,12 +1629,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
 
         pnlRestController.makePnlSnapshot(
                 PnlDto.MakePnlSnapshotJson.builder()
-                        .userId(createdUserJson.userId())
                         .from(ZonedDateTime.parse("2021-02-01T00:00:00Z"))
                         .to(ZonedDateTime.parse("2021-06-01T00:00:00Z"))
                         .build());
 
-        PnlDto.PnlHistoryJson pnlHistoryJson = pnlRestController.getPnlHistory(createdUserJson.userId());
+        PnlDto.PnlHistoryJson pnlHistoryJson = pnlRestController.getPnlHistory();
         System.out.println(pnlHistoryJson);
 
         System.out.println(jsonFormatter.formatToPrettyJson(pnlHistoryJson));

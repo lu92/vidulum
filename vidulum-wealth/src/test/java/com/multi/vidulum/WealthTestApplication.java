@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 
 import java.util.List;
 
@@ -20,6 +21,16 @@ import java.util.List;
 @SpringBootApplication
 @Import({PortfolioAppConfig.class, TradingAppConfig.class})
 public class WealthTestApplication {
+
+    /**
+     * Overrides {@code SecurityContextUserProvider}, which reads an authentication these tests
+     * never create — see {@link TestAuthenticatedUser}.
+     */
+    @Bean
+    @Primary
+    public TestAuthenticatedUser testAuthenticatedUser() {
+        return new TestAuthenticatedUser();
+    }
 
     @Bean
     public CommandGateway commandGateway(@Autowired List<CommandHandler<?, ?>> commandHandlers) {

@@ -76,6 +76,6 @@ public class TestPortfolioRestClient implements PortfolioRestClient {
 
     @Override
     public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId) {
-        return portfolioRestController.getAggregatedPortfolio(userId.getId(), "USD");
+        return portfolioRestController.getAggregatedPortfolio("USD");
     }
 }

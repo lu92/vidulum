@@ -27,13 +27,16 @@ public class PortfolioRestController {
     private final QueryGateway queryGateway;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
     private final PositionMapper positionMapper;
+    private final PortfolioAccess access;
 
     @PostMapping("/portfolio")
     public PortfolioDto.PortfolioSummaryJson createEmptyPortfolio(@RequestBody PortfolioDto.CreateEmptyPortfolioJson request) {
         CreateEmptyPortfolioCommand command = CreateEmptyPortfolioCommand.builder()
                 .portfolioId(PortfolioId.generate())
                 .name(request.getName())
-                .userId(UserId.of(request.getUserId()))
+                // From the token. Taking it from the body let a caller open a portfolio in
+                // someone else's name, and every later check would have agreed with the lie.
+                .userId(access.currentUser())
                 .broker(Broker.of(request.getBroker()))
                 .allowedDepositCurrency(Currency.of(request.getAllowedDepositCurrency()))
                 .build();
@@ -45,7 +48,7 @@ public class PortfolioRestController {
     @PostMapping("/portfolio/deposit")
     public void depositMoney(@RequestBody PortfolioDto.DepositMoneyJson request) {
         DepositMoneyCommand command = DepositMoneyCommand.builder()
-                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
                 .build();
         commandGateway.send(command);
@@ -54,7 +57,7 @@ public class PortfolioRestController {
     @PostMapping("/portfolio/withdraw")
     public void withdrawMoney(@RequestBody PortfolioDto.WithdrawMoneyJson request) {
         WithdrawMoneyCommand command = WithdrawMoneyCommand.builder()
-                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
                 .build();
         commandGateway.send(command);
@@ -63,7 +66,7 @@ public class PortfolioRestController {
     @PostMapping("/portfolio/asset/lock")
     public void lockAsset(@RequestBody PortfolioDto.LockAssetJson request) {
         LockAssetCommand command = LockAssetCommand.builder()
-                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .ticker(Ticker.of(request.getTicker()))
                 .orderId(OrderId.of(request.getOrderId()))
                 .quantity(request.getQuantity())
@@ -74,7 +77,7 @@ public class PortfolioRestController {
     @PostMapping("/portfolio/asset/unlock")
     public void unlockAsset(@RequestBody PortfolioDto.UnlockAssetJson request) {
         UnlockAssetCommand command = UnlockAssetCommand.builder()
-                .portfolioId(PortfolioId.of(request.getPortfolioId()))
+                .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .ticker(Ticker.of(request.getTicker()))
                 .orderId(OrderId.of(request.getOrderId()))
                 .quantity(request.getQuantity())
@@ -85,17 +88,18 @@ public class PortfolioRestController {
     @GetMapping("/portfolio/{id}/{currency}")
     public PortfolioDto.PortfolioSummaryJson getPortfolio(@PathVariable("id") String id, @PathVariable("currency") String currency) {
         GetPortfolioQuery query = GetPortfolioQuery.builder()
-                .portfolioId(PortfolioId.of(id))
+                .portfolioId(access.requireOwned(id))
                 .build();
 
         Portfolio portfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(portfolio, Currency.of(currency));
     }
 
-    @GetMapping("/aggregated-portfolio/userId={userId}/{currency}")
-    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable("userId") String userId, @PathVariable String currency) {
+    /** The caller's own holdings. The user id used to come from the path, so anyone could ask. */
+    @GetMapping("/aggregated-portfolio/{currency}")
+    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(@PathVariable String currency) {
         GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
-                .userId(UserId.of(userId))
+                .userId(access.currentUser())
                 .build();
         AggregatedPortfolio aggregatedPortfolio = queryGateway.send(query);
         return portfolioSummaryMapper.map(aggregatedPortfolio, Currency.of(currency));
@@ -104,7 +108,7 @@ public class PortfolioRestController {
     @GetMapping("/portfolio/opened-positions/{portfolioId}")
     public PortfolioDto.OpenedPositionsJson getOpenedPositions(@PathVariable("portfolioId") String portfolioId) {
         GetPositionViewOfPortfolioQuery query = GetPositionViewOfPortfolioQuery.builder()
-                .portfolioId(PortfolioId.of(portfolioId))
+                .portfolioId(access.requireOwned(portfolioId))
                 .build();
         OpenedPositions openedPositions = queryGateway.send(query);
         return positionMapper.map(openedPositions);

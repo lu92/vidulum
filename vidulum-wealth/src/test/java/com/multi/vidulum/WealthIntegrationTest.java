@@ -123,6 +123,9 @@ public abstract class WealthIntegrationTest {
     protected PortfolioRestClient portfolioRestClient;
 
     @Autowired
+    protected TestAuthenticatedUser testAuthenticatedUser;
+
+    @Autowired
     protected CommandGateway commandGateway;
 
     @Autowired
@@ -175,7 +178,17 @@ public abstract class WealthIntegrationTest {
     protected TestPortfolioSummary registerPortfolio(String name, String broker, String userId, String currency) {
         PortfolioId portfolioId = portfolioRestClient.createPortfolio(
                 name, new UserId(userId), Broker.of(broker), Currency.of(currency));
+
+        // Creating a portfolio also means acting as its owner from here on. Ownership is now
+        // enforced on every endpoint (G2), and a test that registered for one user and carried on
+        // as another would be refused - correctly, and confusingly.
+        actingAs(userId);
         return new TestPortfolioSummary(portfolioId.getId(), broker);
+    }
+
+    /** Switches who the following calls come from. */
+    protected void actingAs(String userId) {
+        testAuthenticatedUser.actAs(UserId.of(userId));
     }
 
     protected void depositMoney(PortfolioId portfolioId, Money money) {

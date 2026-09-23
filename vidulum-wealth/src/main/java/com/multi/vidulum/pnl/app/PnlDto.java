@@ -19,7 +19,6 @@ public class PnlDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MakePnlSnapshotJson {
-        private String userId;
         private ZonedDateTime from;
         private ZonedDateTime to;
     }
