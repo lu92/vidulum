@@ -6,6 +6,8 @@ import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioComma
 import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
+import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -21,10 +23,14 @@ public class TestPortfolioRestClient implements PortfolioRestClient {
 
     private final CommandGateway commandGateway;
     private final PortfolioRestController portfolioRestController;
+    private final DomainPortfolioRepository portfolioRepository;
 
-    public TestPortfolioRestClient(@Lazy CommandGateway commandGateway, @Lazy PortfolioRestController portfolioRestController) {
+    public TestPortfolioRestClient(@Lazy CommandGateway commandGateway,
+                                   @Lazy PortfolioRestController portfolioRestController,
+                                   DomainPortfolioRepository portfolioRepository) {
         this.commandGateway = commandGateway;
         this.portfolioRestController = portfolioRestController;
+        this.portfolioRepository = portfolioRepository;
     }
 
     @Override
@@ -62,7 +68,10 @@ public class TestPortfolioRestClient implements PortfolioRestClient {
 
     @Override
     public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId) {
-        return portfolioRestController.getPortfolio(portfolioId.getId(), "USD");
+        Portfolio portfolio = portfolioRepository.findById(portfolioId)
+                .orElseThrow(() -> new PortfolioNotFoundException(portfolioId));
+        return portfolioRestController.getPortfolio(
+                portfolioId.getId(), portfolio.getAllowedDepositCurrency().getId());
     }
 
     @Override

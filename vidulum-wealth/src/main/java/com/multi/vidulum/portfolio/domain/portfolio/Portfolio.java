@@ -263,9 +263,15 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 throw new IllegalArgumentException(String.format("Cannot accept deposit with currency: [%s]", depositCurrency));
             }
             findCashAsset(ticker).ifPresentOrElse(existingAsset -> {
-                Quantity updatedQuantity = Quantity.of(existingAsset.getQuantity().getQty() + event.deposit().getAmount().doubleValue());
+                Quantity deposited = Quantity.of(event.deposit().getAmount().doubleValue());
+                Quantity updatedQuantity = existingAsset.getQuantity().plus(deposited);
+
+                // Added to what was free, not set to the whole balance. Setting it handed back
+                // money an open order had reserved: the position still said 4 000 locked while
+                // free jumped to the full 11 000, so the same units could be spent twice and the
+                // order they backed could no longer be filled.
                 existingAsset.setQuantity(updatedQuantity);
-                existingAsset.setFree(updatedQuantity);
+                existingAsset.setFree(existingAsset.getFree().plus(deposited));
                 existingAsset.setCostBasis(CostBasis.atPar(updatedQuantity, event.deposit().getCurrency()));
             }, () -> {
                 Asset cash = Asset.builder()

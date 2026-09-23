@@ -37,6 +37,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
+import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommandHandler;
 import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommand;
 import com.multi.vidulum.trading.app.commands.orders.create.PlaceOrderCommandHandler;
 import com.multi.vidulum.trading.app.commands.orders.fill.FillOrderCommandHandler;
@@ -149,11 +151,7 @@ class PreciousMetalsLifecycleComponentTest {
     private final LockAssetCommandHandler lockHandler = new LockAssetCommandHandler(portfolios, clock);
     private final UnlockAssetCommandHandler unlockHandler = new UnlockAssetCommandHandler(portfolios, clock);
 
-    /**
-     * Stands in for {@code PortfolioRestClientImpl}, which lives in another module — and values
-     * every portfolio in USD regardless of what it settles in. Here the portfolio's own currency
-     * is used, so the balance check placing an order does is done in the units it holds.
-     */
+    /** Stands in for {@code PortfolioRestClientImpl}, which lives in another module. */
     private final PortfolioRestClient portfolioClient = new ComponentPortfolioRestClient();
 
     @BeforeEach
@@ -164,6 +162,7 @@ class PreciousMetalsLifecycleComponentTest {
         gateway.registerCommandHandler(unlockHandler);
         gateway.registerCommandHandler(new ProcessTradeCommandHandler(portfolios));
         gateway.registerCommandHandler(new PlaceOrderCommandHandler(orders, new OrderFactory(), portfolioClient));
+        gateway.registerCommandHandler(new CancelOrderCommandHandler(orders, portfolioClient));
         gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectOrderFilledEmitter()));
         gateway.registerCommandHandler(new MakeTradeCommandHandler(trades, orders, new DirectTradeCapturedEmitter()));
 
@@ -208,10 +207,22 @@ class PreciousMetalsLifecycleComponentTest {
     // --- steps ------------------------------------------------------------------------------
 
     private void deposit(double amount) {
-        gateway.send(DepositMoneyCommand.builder()
-                .portfolioId(portfolioId)
-                .money(Money.of(amount, "USD"))
+        deposit(portfolioId, Money.of(amount, "USD"));
+    }
+
+    private void deposit(PortfolioId id, Money money) {
+        gateway.send(DepositMoneyCommand.builder().portfolioId(id).money(money).build());
+    }
+
+    private PortfolioId createPortfolio(String name, Currency currency) {
+        Portfolio created = gateway.send(CreateEmptyPortfolioCommand.builder()
+                .portfolioId(PortfolioId.generate())
+                .name(name)
+                .userId(OWNER)
+                .broker(PM)
+                .allowedDepositCurrency(currency)
                 .build());
+        return created.getPortfolioId();
     }
 
     private void quote(String symbol, double price) {
@@ -486,6 +497,105 @@ class PreciousMetalsLifecycleComponentTest {
                 .hasMessageContaining("symbol and side");
     }
 
+    /**
+     * Money paid in while an order is standing does not hand back what that order reserved.
+     *
+     * <p>The deposit used to set {@code free} to the whole balance rather than add to it, so a
+     * position could report 4 000 locked and 11 000 free out of 11 000 held. The same units were
+     * then spendable twice, and the order they backed could no longer be filled — reachable from
+     * the plainest sequence there is: place an order, pay some money in.
+     */
+    @Test
+    void shouldNotReleaseReservedCashWhenMoreMoneyIsPaidIn() {
+        placeOrder(Side.BUY, XAU, 2, 2000);
+
+        assertThat(position("USD").getLocked()).isEqualTo(Quantity.of(4000));
+        assertThat(position("USD").getFree()).isEqualTo(Quantity.of(16_000));
+
+        deposit(5_000);
+
+        assertThat(position("USD").getQuantity()).isEqualTo(Quantity.of(25_000));
+        assertThat(position("USD").getLocked())
+                .as("the order still holds what it reserved")
+                .isEqualTo(Quantity.of(4000));
+        assertThat(position("USD").getFree())
+                .as("the deposit is added to what was free, not substituted for it")
+                .isEqualTo(Quantity.of(21_000));
+        assertHoldingsAddUp();
+    }
+
+    /**
+     * Cancelling a sale gives the metal back in ounces.
+     *
+     * <p>Both sides of a cancellation used to be released as {@code Order.getTotal()}, which for
+     * a sale answered {@code Money.one("USD") x quantity} — the quantity smuggled through a money
+     * in dollars.
+     *
+     * <p>This test would have passed then too, and saying so matters: multiplying by one changes
+     * nothing, so the number came out right and only the currency was a fiction. It records the
+     * behaviour rather than guarding the fix. What guards it is {@code Order.getTotal()} refusing
+     * a sale outright — see {@code OrderTest.shouldRefuseToStateWhatASaleCosts}.
+     */
+    @Test
+    void shouldGiveBackTheMetalInOuncesWhenASaleIsCancelled() {
+        tradeByHand(Side.BUY, XAU, 5, 1800);
+        OrderId sale = placeOrder(Side.SELL, XAU, 2, 2000);
+
+        assertThat(position("XAU").getLocked()).isEqualTo(Quantity.of(2, OZ));
+        assertThat(position("XAU").getFree()).isEqualTo(Quantity.of(3, OZ));
+
+        gateway.send(CancelOrderCommand.builder().orderId(sale).build());
+
+        assertThat(position("XAU").getLocked()).isEqualTo(Quantity.of(0, OZ));
+        assertThat(position("XAU").getFree()).isEqualTo(Quantity.of(5, OZ));
+        assertThat(position("XAU").getActiveLocks())
+                .as("and the record of the reservation goes with it")
+                .isEmpty();
+        assertHoldingsAddUp();
+    }
+
+    /**
+     * A portfolio that settles in something other than dollars can still place an order.
+     *
+     * <p>The balance check ahead of an order reads the portfolio through
+     * {@code PortfolioRestClient}, and every implementation valued it in USD whatever it actually
+     * settled in. A zloty portfolio was compared against dollar amounts and needed USD quotes for
+     * assets nobody had priced that way — so it could not trade at all.
+     */
+    @Test
+    void shouldLetAPortfolioThatSettlesInZlotyPlaceAnOrder() {
+        Currency pln = Currency.of("PLN");
+        PortfolioId zlotyPortfolio = createPortfolio("Metale w złotych", pln);
+        deposit(zlotyPortfolio, Money.of(40_000, "PLN"));
+        quote("XAU/PLN", 7000);
+
+        Order order = gateway.send(PlaceOrderCommand.builder()
+                .orderId(OrderId.generate())
+                .originOrderId(OriginOrderId.of("pln-1"))
+                .portfolioId(zlotyPortfolio)
+                .broker(PM)
+                .symbol(Symbol.of(XAU, Ticker.of("PLN")))
+                .type(OrderType.LIMIT)
+                .side(Side.BUY)
+                .limitPrice(Price.of(7000, "PLN"))
+                .quantity(Quantity.of(5, OZ))
+                .occurredDateTime(NOW)
+                .build());
+
+        assertThat(order.getOrderId()).isNotNull();
+
+        PortfolioDto.PortfolioSummaryJson summary =
+                summaryMapper.map(portfolios.findById(zlotyPortfolio).orElseThrow(), pln);
+        PortfolioDto.AssetSummaryJson cash = summary.getAssets().stream()
+                .filter(asset -> asset.getTicker().equals("PLN")).findFirst().orElseThrow();
+
+        assertThat(cash.getLocked())
+                .as("35 000 zloty set aside, counted in zloty")
+                .isEqualTo(Quantity.of(35_000));
+        assertThat(cash.getFree()).isEqualTo(Quantity.of(5_000));
+        assertThat(summary.getCurrentValue()).isEqualTo(Money.of(40_000, "PLN"));
+    }
+
     // --- in-memory stores --------------------------------------------------------------------
 
     private static final class InMemoryOrders implements DomainOrderRepository {
@@ -577,7 +687,8 @@ class PreciousMetalsLifecycleComponentTest {
 
         @Override
         public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId id) {
-            return summaryMapper.map(portfolios.findById(id).orElseThrow(), USD);
+            Portfolio portfolio = portfolios.findById(id).orElseThrow();
+            return summaryMapper.map(portfolio, portfolio.getAllowedDepositCurrency());
         }
 
         @Override

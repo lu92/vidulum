@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Pure unit test for Order aggregate — no Spring context, no Testcontainers.
@@ -262,5 +263,55 @@ class OrderTest {
                 );
 
         assertThat(persistedOrder3.getUncommittedEvents()).isEmpty();
+    }
+
+    /**
+     * A sale has no cost to state, and saying so is the guard that replaced a working accident.
+     *
+     * <p>{@code getTotal()} used to answer {@code Money.one("USD") x quantity} for a sale — the
+     * quantity handed back dressed as dollars. Every caller multiplied it by one and read the
+     * number, so it held; none of them read the currency, so nothing complained. What is being
+     * protected here is not a calculation but a refusal: the next caller to ask a sale what it
+     * costs is stopped instead of quietly given ounces labelled USD.
+     */
+    @Test
+    public void shouldRefuseToStateWhatASaleCosts() {
+        Order sale = orderFactory.empty(
+                OrderId.generate(),
+                OriginOrderId.notDefined(),
+                PortfolioId.generate(),
+                BROKER,
+                Symbol.of("XAU/USD"),
+                OrderType.LIMIT,
+                Side.SELL,
+                null,
+                null,
+                Price.of(2000, "USD"),
+                Quantity.of(2, "oz"),
+                ZonedDateTime.now(clock));
+
+        assertThatThrownBy(sale::getTotal)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("reserves the asset");
+    }
+
+    /** A purchase does have one, and it is the money it will take. */
+    @Test
+    public void shouldStateWhatAPurchaseCosts() {
+        Order purchase = orderFactory.empty(
+                OrderId.generate(),
+                OriginOrderId.notDefined(),
+                PortfolioId.generate(),
+                BROKER,
+                Symbol.of("XAU/USD"),
+                OrderType.LIMIT,
+                Side.BUY,
+                null,
+                null,
+                Price.of(1800, "USD"),
+                Quantity.of(2, "oz"),
+                ZonedDateTime.now(clock));
+
+        assertThat(purchase.getTotal()).isEqualTo(Money.of(3600, "USD"));
     }
 }
