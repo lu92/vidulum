@@ -90,13 +90,21 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
         );
     }
 
+    /**
+     * What a purchase will cost, and therefore what has to be set aside for it.
+     *
+     * <p>Only a purchase has one. A sale reserves the asset itself, measured in whatever unit the
+     * position is held in, and the old else-branch answered {@code Money.one("USD") x quantity} —
+     * a quantity dressed as money, correct only because multiplying by one leaves it alone, and
+     * wrong the moment anybody read its currency. Callers now ask for the quantity directly.
+     */
     public Money getTotal() {
-        if (isPurchaseAttempt()) {
-            Price price = OrderType.OCO.equals(parameters.type()) ? parameters.targetPrice() : parameters.limitPrice();
-            return price.multiply(parameters.quantity());
-        } else {
-            return Money.one("USD").multiply(parameters.quantity());
+        if (!isPurchaseAttempt()) {
+            throw new IllegalStateException(
+                    "A sale reserves the asset, not money - ask for its quantity instead");
         }
+        Price price = OrderType.OCO.equals(parameters.type()) ? parameters.targetPrice() : parameters.limitPrice();
+        return price.multiply(parameters.quantity());
     }
 
     public void addExecution(OrderExecution execution) {

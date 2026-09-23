@@ -36,9 +36,17 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
         return savedOrder;
     }
 
+    /**
+     * Releases exactly what placing the order reserved — cash for a purchase, the asset for a
+     * sale — mirroring {@code PlaceOrderCommandHandler}. Both sides used to be released as
+     * {@code getTotal()}, which for a sale meant the quantity smuggled through a {@code Money} in
+     * dollars, whatever the position was actually measured in.
+     */
     private void unlockParticularAssetInPortfolio(Order order) {
         Ticker ticker = order.isPurchaseAttempt() ? order.getSymbol().getDestination() : order.getSymbol().getOrigin();
-        Quantity quantityToUnlocked = Quantity.of(order.getTotal().getAmount().doubleValue());
+        Quantity quantityToUnlocked = order.isPurchaseAttempt()
+                ? Quantity.of(order.getTotal().getAmount().doubleValue())
+                : order.getParameters().quantity();
         portfolioRestClient.unlockAsset(
                 order.getPortfolioId(),
                 ticker,
