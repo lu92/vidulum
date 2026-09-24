@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.common.*;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,7 +42,23 @@ public class PortfolioDto {
         private String broker;
         private List<AssetSummaryJson> assets;
         private PortfolioStatus status;
-        private Money investedBalance;
+        /**
+         * What the owner has put in, net of what they have taken out, and how much of the ledger
+         * that figure speaks for (task C9).
+         *
+         * <p>Replaces {@code investedBalance}, which only deposits and withdrawals ever moved — so
+         * a portfolio built from an exchange snapshot reported {@code 0} beside six figures of
+         * holdings. Renamed rather than redefined: a client reading {@code investedBalance} would
+         * otherwise receive a different quantity under the same name.
+         *
+         * <p>{@code null} unless {@code contributionStatus} is {@code COMPUTED}; the status says
+         * which silence this is. <b>Not a cost basis</b> — moving an asset in from elsewhere is a
+         * contribution to this portfolio at its arrival value, not a purchase at that price.
+         */
+        private Money netContributions;
+        private Double contributionCoverage;
+        private ContributionStatus contributionStatus;
+
         private Money currentValue;
 
         /**
@@ -196,7 +213,12 @@ public class PortfolioDto {
         private String userId;
         private Map<String, List<AssetSummaryJson>> segmentedAssets;
         private List<String> portfolioIds;
-        private Money investedBalance;
+
+        /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */
+        private Money netContributions;
+        private Double contributionCoverage;
+        private ContributionStatus contributionStatus;
+
         private Money currentValue;
         private Money totalUnrealisedProfit;
 

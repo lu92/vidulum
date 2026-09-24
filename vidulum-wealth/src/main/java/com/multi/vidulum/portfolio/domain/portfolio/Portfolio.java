@@ -29,7 +29,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private String name;
     private Broker broker;
     private List<Asset> assets;
-    private Money investedBalance;
+
+    /**
+     * Everything that has moved in or out, in order (task C9). Replaces the single
+     * {@code investedBalance} this used to carry — see {@link Contribution} for why a scalar could
+     * not hold it.
+     */
+    private List<Contribution> contributions;
     private PortfolioStatus status;
     private Currency allowedDepositCurrency;
     private List<DomainEvent> uncommittedEvents;
@@ -62,7 +68,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 broker,
                 assetSnapshots,
                 status,
-                investedBalance,
+                List.copyOf(contributions),
                 allowedDepositCurrency
         );
     }
@@ -97,7 +103,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .broker(snapshot.getBroker())
                 .assets(assets)
                 .status(snapshot.getStatus())
-                .investedBalance(snapshot.getInvestedBalance())
+                .contributions(new LinkedList<>(snapshot.getContributions()))
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency())
                 .build();
     }
@@ -287,18 +293,19 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                         .build();
                 addAsset(cash);
             });
-            investedBalance = investedBalance.plus(event.deposit());
+            contributions.add(new Contribution(event.contributionId(), event.dateTime(),
+                    Contribution.Direction.IN, event.deposit(), event.deposit(), Provenance.ASSUMED_PAR));
         });
     }
 
-    public void depositMoney(Money deposit) {
-        MoneyDepositedEvent event = new MoneyDepositedEvent(portfolioId, deposit);
+    public void depositMoney(Money deposit, ContributionId contributionId, ZonedDateTime dateTime) {
+        MoneyDepositedEvent event = new MoneyDepositedEvent(portfolioId, deposit, contributionId, dateTime);
         apply(event);
         add(event);
     }
 
-    public void withdrawMoney(Money withdrawal) {
-        MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal);
+    public void withdrawMoney(Money withdrawal, ContributionId contributionId, ZonedDateTime dateTime) {
+        MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal, contributionId, dateTime);
         apply(event);
         add(event);
     }
@@ -323,7 +330,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             // Withdrawing shrinks the position, so the cost must shrink with it — otherwise the
             // cost keeps claiming to cover units that are no longer held.
             cash.setCostBasis(cappedTo(cash.getCostBasis(), remaining));
-            investedBalance = investedBalance.minus(event.withdrawal());
+            contributions.add(new Contribution(event.contributionId(), event.dateTime(),
+                    Contribution.Direction.OUT, event.withdrawal(), event.withdrawal(), Provenance.ASSUMED_PAR));
         });
     }
 

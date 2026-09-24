@@ -66,6 +66,21 @@ public record ProfitCoverage(double share) {
     public record Weight(double value, double share) {
     }
 
+    /**
+     * How much of a ledger of contributions carries a value (task C9).
+     *
+     * <p>Counted by entries rather than weighted by amount, because an entry with no value has no
+     * amount to weight by — the very thing being measured is missing. Empty when nothing has ever
+     * moved: there is no denominator, and {@code 0} would claim we looked and found none.
+     */
+    public static Optional<ProfitCoverage> ofLedger(Collection<Contribution> contributions) {
+        if (contributions.isEmpty()) {
+            return Optional.empty();
+        }
+        long valued = contributions.stream().filter(Contribution::hasKnownValue).count();
+        return Optional.of(new ProfitCoverage((double) valued / contributions.size()));
+    }
+
     public boolean isMeaningful() {
         return share >= MEANINGFUL_FROM;
     }

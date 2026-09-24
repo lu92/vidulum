@@ -19,7 +19,7 @@ public class AggregatedPortfolio {
     private UserId userId;
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
     private List<PortfolioId> portfolioIds = new LinkedList<>();
-    private List<PortfolioInvestedBalance> portfolioInvestedBalances;
+    private List<PortfolioContributions> portfolioContributions;
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
@@ -54,11 +54,11 @@ public class AggregatedPortfolio {
         portfolioIds.add(portfolioId);
     }
 
-    public void appendPortfolioInvestedBalance(PortfolioInvestedBalance investedBalance) {
-        if (portfolioInvestedBalances == null) {
-            portfolioInvestedBalances = new LinkedList<>();
+    public void appendPortfolioContributions(PortfolioContributions contributions) {
+        if (portfolioContributions == null) {
+            portfolioContributions = new LinkedList<>();
         }
-        portfolioInvestedBalances.add(investedBalance);
+        portfolioContributions.add(contributions);
     }
 
     @Value
@@ -145,10 +145,15 @@ public class AggregatedPortfolio {
                         }));
     }
 
-    public record PortfolioInvestedBalance(PortfolioId portfolioId,
-                                           Currency originCurrency,
-                                           Money investedMoney,
-                                           Broker broker) {
+    /**
+     * One portfolio's ledger, kept per portfolio rather than pre-summed (task C9): each carries
+     * its own currency and broker, and the aggregate cannot add them up before it knows what to
+     * add them up into.
+     */
+    public record PortfolioContributions(PortfolioId portfolioId,
+                                         Currency originCurrency,
+                                         List<com.multi.vidulum.portfolio.domain.portfolio.Contribution> contributions,
+                                         Broker broker) {
     }
 
     /**

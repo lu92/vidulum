@@ -2,6 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -137,7 +138,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                 .tags(List.of())
                                                 .build())))
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
-                                .investedBalance(Money.of(100000.0, "USD"))
+                                .netContributions(Money.of(100000.0, "USD"))
+                                .contributionCoverage(1.0)
+                                .contributionStatus(ContributionStatus.COMPUTED)
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.of(0, "USD"))
                                 .pctUnrealisedProfit(0.0)
@@ -272,7 +275,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                 .tags(List.of())
                                                 .build())))
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
-                                .investedBalance(Money.of(100000.0, "USD"))
+                                .netContributions(Money.of(100000.0, "USD"))
+                                .contributionCoverage(1.0)
+                                .contributionStatus(ContributionStatus.COMPUTED)
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.of(0, "USD"))
                                 .pctUnrealisedProfit(0.0)
@@ -504,7 +509,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .build())
                                 ))
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
-                                .investedBalance(Money.of(100000.0, "USD"))
+                                .netContributions(Money.of(100000.0, "USD"))
+                                .contributionCoverage(1.0)
+                                .contributionStatus(ContributionStatus.COMPUTED)
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.of(0, "USD"))
                                 .pctUnrealisedProfit(0.0)
@@ -675,7 +682,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .build())
                                 ))
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
-                                .investedBalance(Money.of(100000.0, "USD"))
+                                .netContributions(Money.of(100000.0, "USD"))
+                                .contributionCoverage(1.0)
+                                .contributionStatus(ContributionStatus.COMPUTED)
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.of(0, "USD"))
                                 .pctUnrealisedProfit(0.0)
@@ -808,7 +817,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                                         .build())
                                 ))
                                 .portfolioIds(List.of(registeredPortfolio.portfolioId()))
-                                .investedBalance(Money.of(100000.0, "USD"))
+                                .netContributions(Money.of(100000.0, "USD"))
+                                .contributionCoverage(1.0)
+                                .contributionStatus(ContributionStatus.COMPUTED)
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.of(0, "USD"))
                                 .pctUnrealisedProfit(0.0)

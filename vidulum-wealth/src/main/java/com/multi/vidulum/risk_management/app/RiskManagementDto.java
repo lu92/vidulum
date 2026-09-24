@@ -24,7 +24,7 @@ public final class RiskManagementDto {
         private String name;
         private String broker;
         private List<AssetRiskManagementStatementJson> assetRiskManagementStatements;
-        private Money investedBalance;
+        private Money netContributions;
         private Money currentValue;
         private Money unrealisedProfit;
         private Money safe;

@@ -18,14 +18,24 @@ public final class PortfolioEvents {
             UserId userId) implements DomainEvent {
     }
 
+    /**
+     * Carries the contribution's identity and time rather than letting the aggregate invent them
+     * (task C9). Everything else here takes its moment from the caller — see
+     * {@code AssetLockedEvent} — and an aggregate reading the wall clock cannot be tested against
+     * a fixed one, which is what {@code FixedClockConfig} exists for.
+     */
     public record MoneyDepositedEvent(
             PortfolioId portfolioId,
-            Money deposit) implements DomainEvent {
+            Money deposit,
+            ContributionId contributionId,
+            ZonedDateTime dateTime) implements DomainEvent {
     }
 
     public record MoneyWithdrawEvent(
             PortfolioId portfolioId,
-            Money withdrawal) implements DomainEvent {
+            Money withdrawal,
+            ContributionId contributionId,
+            ZonedDateTime dateTime) implements DomainEvent {
     }
 
     public record AssetLockedEvent(

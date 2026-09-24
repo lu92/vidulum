@@ -38,7 +38,8 @@ public class PnlDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PnlStatementJson {
-        private Money investedBalance;
+        /** Absent when the portfolio summary could not add one up - see {@code ContributionStatus}. */
+    private Money netContributions;
         private Money currentValue;
         private Money totalUnrealisedProfit;
         private Double pctUnrealisedProfit;
@@ -52,7 +53,8 @@ public class PnlDto {
     @AllArgsConstructor
     public static class PnlPortfolioStatementJson {
         private String portfolioId;
-        private Money investedBalance;
+        /** Absent when the portfolio summary could not add one up - see {@code ContributionStatus}. */
+    private Money netContributions;
         private Money currentValue;
         private Money totalUnrealisedProfit;
         private Double pctUnrealisedProfit;

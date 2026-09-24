@@ -59,7 +59,7 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
 
                     return PnlPortfolioStatement.builder()
                             .portfolioId(PortfolioId.of(portfolioSummaryJson.getPortfolioId()))
-                            .investedBalance(portfolioSummaryJson.getInvestedBalance())
+                            .netContributions(portfolioSummaryJson.getNetContributions())
                             .currentValue(portfolioSummaryJson.getCurrentValue())
                             .totalUnrealisedProfit(portfolioSummaryJson.getUnrealisedProfit())
                             .pctUnrealisedProfit(portfolioSummaryJson.getPctUnrealisedProfit())
@@ -69,7 +69,7 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                 .collect(toList());
 
         return PnlStatement.builder()
-                .investedBalance(aggregatedPortfolio.getInvestedBalance())
+                .netContributions(aggregatedPortfolio.getNetContributions())
                 .currentValue(aggregatedPortfolio.getCurrentValue())
                 .totalUnrealisedProfit(aggregatedPortfolio.getTotalUnrealisedProfit())
                 .pctUnrealisedProfit(aggregatedPortfolio.getPctUnrealisedProfit())

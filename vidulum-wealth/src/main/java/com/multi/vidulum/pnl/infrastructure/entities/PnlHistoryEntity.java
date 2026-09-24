@@ -63,7 +63,7 @@ public class PnlHistoryEntity {
 
                                 return PnlPortfolioStatementEntity.builder()
                                         .portfolioId(pnlPortfolioStatementSnapshot.getPortfolioId().getId())
-                                        .investedBalance(pnlPortfolioStatementSnapshot.getInvestedBalance())
+                                        .netContributions(pnlPortfolioStatementSnapshot.getNetContributions())
                                         .currentValue(pnlPortfolioStatementSnapshot.getCurrentValue())
                                         .totalUnrealisedProfit(pnlPortfolioStatementSnapshot.getTotalUnrealisedProfit())
                                         .pctUnrealisedProfit(pnlPortfolioStatementSnapshot.getPctUnrealisedProfit())
@@ -73,7 +73,7 @@ public class PnlHistoryEntity {
                             .collect(toList());
 
                     return new PnlStatementEntity(
-                            pnlStatementSnapshot.getInvestedBalance(),
+                            pnlStatementSnapshot.getNetContributions(),
                             pnlStatementSnapshot.getCurrentValue(),
                             pnlStatementSnapshot.getTotalUnrealisedProfit(),
                             pnlStatementSnapshot.getPctUnrealisedProfit(),
@@ -118,7 +118,7 @@ public class PnlHistoryEntity {
 
                                 return PnlHistorySnapshot.PnlPortfolioStatementSnapshot.builder()
                                         .portfolioId(PortfolioId.of(pnlPortfolioStatementEntity.getPortfolioId()))
-                                        .investedBalance(pnlPortfolioStatementEntity.getInvestedBalance())
+                                        .netContributions(pnlPortfolioStatementEntity.getNetContributions())
                                         .currentValue(pnlPortfolioStatementEntity.getCurrentValue())
                                         .totalUnrealisedProfit(pnlPortfolioStatementEntity.getTotalUnrealisedProfit())
                                         .pctUnrealisedProfit(pnlPortfolioStatementEntity.getPctUnrealisedProfit())
@@ -133,7 +133,7 @@ public class PnlHistoryEntity {
                             null;
 
                     return new PnlHistorySnapshot.PnlStatementSnapshot(
-                            pnlStatementEntity.getInvestedBalance(),
+                            pnlStatementEntity.getNetContributions(),
                             pnlStatementEntity.getCurrentValue(),
                             pnlStatementEntity.getTotalUnrealisedProfit(),
                             pnlStatementEntity.getPctUnrealisedProfit(),

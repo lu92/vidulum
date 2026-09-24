@@ -99,7 +99,10 @@ public class PortfolioSpecRestController {
                 PortfolioSpecId.of(specId),
                 request.portfolioName(),
                 Currency.of(request.denominationCurrency()),
-                request.toSnapshot()));
+                request.toSnapshot(),
+                // One moment for the whole confirmation: the opening contribution, markApplied and
+                // markStale all date from here, and a clock consulted per use could not promise that.
+                now()));
 
         return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());
     }

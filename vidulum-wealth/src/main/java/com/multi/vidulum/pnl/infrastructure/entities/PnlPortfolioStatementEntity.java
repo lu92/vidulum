@@ -14,7 +14,7 @@ import java.util.List;
 @ToString
 public class PnlPortfolioStatementEntity {
     String portfolioId;
-    Money investedBalance;
+    Money netContributions;
     Money currentValue;
     Money totalUnrealisedProfit;
     Double pctUnrealisedProfit;

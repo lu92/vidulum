@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
@@ -21,6 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * price attached. That is exactly the state an exchange snapshot will arrive in.
  */
 class PortfolioCostBasisTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     private static Asset only(Portfolio portfolio) {
         return portfolio.getAssets().getFirst();
@@ -81,7 +86,7 @@ class PortfolioCostBasisTest {
     void shouldRecordDepositedCashAtPar() {
         Portfolio portfolio = portfolio().denominatedIn("USD").build();
 
-        portfolio.depositMoney(Money.of(10_000, "USD"));
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
         Asset cash = only(portfolio);
         assertThat(cash.getCostBasis().provenance()).isEqualTo(Provenance.ASSUMED_PAR);
@@ -96,9 +101,9 @@ class PortfolioCostBasisTest {
     @Test
     void shouldShrinkTheCostWhenCashIsWithdrawn() {
         Portfolio portfolio = portfolio().denominatedIn("USD").build();
-        portfolio.depositMoney(Money.of(10_000, "USD"));
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
-        portfolio.withdrawMoney(Money.of(4_000, "USD"));
+        portfolio.withdrawMoney(Money.of(4_000, "USD"), ContributionId.of("withdrawal-1"), FIXED_CONTRIBUTION_TIME);
 
         Asset cash = only(portfolio);
         assertThat(cash.getQuantity()).isEqualTo(Quantity.of(6_000));

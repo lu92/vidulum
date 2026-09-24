@@ -40,7 +40,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
 
                                         return PnlHistorySnapshot.PnlPortfolioStatementSnapshot.builder()
                                                 .portfolioId(pnlPortfolioStatement.getPortfolioId())
-                                                .investedBalance(pnlPortfolioStatement.getInvestedBalance())
+                                                .netContributions(pnlPortfolioStatement.getNetContributions())
                                                 .currentValue(pnlPortfolioStatement.getCurrentValue())
                                                 .totalUnrealisedProfit(pnlPortfolioStatement.getTotalUnrealisedProfit())
                                                 .pctUnrealisedProfit(pnlPortfolioStatement.getPctUnrealisedProfit())
@@ -50,7 +50,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                                     .collect(toList());
 
                     return new PnlHistorySnapshot.PnlStatementSnapshot(
-                            pnlStatement.getInvestedBalance(),
+                            pnlStatement.getNetContributions(),
                             pnlStatement.getCurrentValue(),
                             pnlStatement.getTotalUnrealisedProfit(),
                             pnlStatement.getPctUnrealisedProfit(),
@@ -88,7 +88,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
 
                                 return PnlPortfolioStatement.builder()
                                         .portfolioId(pnlPortfolioStatementSnapshot.getPortfolioId())
-                                        .investedBalance(pnlPortfolioStatementSnapshot.getInvestedBalance())
+                                        .netContributions(pnlPortfolioStatementSnapshot.getNetContributions())
                                         .currentValue(pnlPortfolioStatementSnapshot.getCurrentValue())
                                         .totalUnrealisedProfit(pnlPortfolioStatementSnapshot.getTotalUnrealisedProfit())
                                         .pctUnrealisedProfit(pnlPortfolioStatementSnapshot.getPctUnrealisedProfit())
@@ -97,7 +97,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                             })
                             .collect(toList());
                     return PnlStatement.builder()
-                            .investedBalance(pnlStatementSnapshot.getInvestedBalance())
+                            .netContributions(pnlStatementSnapshot.getNetContributions())
                             .currentValue(pnlStatementSnapshot.getCurrentValue())
                             .totalUnrealisedProfit(pnlStatementSnapshot.getTotalUnrealisedProfit())
                             .pctUnrealisedProfit(pnlStatementSnapshot.getPctUnrealisedProfit())

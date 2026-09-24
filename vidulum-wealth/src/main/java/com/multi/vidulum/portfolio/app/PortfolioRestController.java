@@ -11,6 +11,7 @@ import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
 import com.multi.vidulum.portfolio.app.queries.*;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -18,6 +19,9 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Clock;
+import java.time.ZonedDateTime;
 
 @RestController
 @AllArgsConstructor
@@ -28,6 +32,12 @@ public class PortfolioRestController {
     private final PortfolioSummaryMapper portfolioSummaryMapper;
     private final PositionMapper positionMapper;
     private final PortfolioAccess access;
+
+    /**
+     * Where the clock lives now. The deposit and withdrawal handlers used to hold one and stamp the
+     * ledger entry themselves; keeping it at the edge leaves them pure functions of their command.
+     */
+    private final Clock clock;
 
     @PostMapping("/portfolio")
     public PortfolioDto.PortfolioSummaryJson createEmptyPortfolio(@RequestBody PortfolioDto.CreateEmptyPortfolioJson request) {
@@ -50,6 +60,10 @@ public class PortfolioRestController {
         DepositMoneyCommand command = DepositMoneyCommand.builder()
                 .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
+                // Identity and moment are minted here rather than inside the handler: the command
+                // then states the whole fact, and the same command replayed writes the same entry.
+                .contributionId(ContributionId.generate())
+                .dateTime(ZonedDateTime.now(clock))
                 .build();
         commandGateway.send(command);
     }
@@ -59,6 +73,8 @@ public class PortfolioRestController {
         WithdrawMoneyCommand command = WithdrawMoneyCommand.builder()
                 .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
+                .contributionId(ContributionId.generate())
+                .dateTime(ZonedDateTime.now(clock))
                 .build();
         commandGateway.send(command);
     }

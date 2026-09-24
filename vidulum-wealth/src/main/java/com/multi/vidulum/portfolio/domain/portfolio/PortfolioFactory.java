@@ -25,7 +25,7 @@ public class PortfolioFactory {
                 .broker(broker)
                 .assets(new LinkedList<>())
                 .allowedDepositCurrency(allowedDepositCurrency)
-                .investedBalance(Money.zero(allowedDepositCurrency.getId()))
+                .contributions(new LinkedList<>())
                 .status(PortfolioStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();
@@ -39,10 +39,10 @@ public class PortfolioFactory {
      * holding transferred in from outside, whose cost nobody knows. Each position carries its own
      * {@code CostBasis} or none at all, so nothing here has to invent a price.
      *
-     * <p>{@code investedBalance} stays zero: it is moved only by deposits and withdrawals, and
-     * this path bypasses both. That is a deliberate gap with a task of its own (C9) — a portfolio
-     * built from a snapshot will report "invested 0" until it is closed, and the interface must
-     * not show that as a fact.
+     * <p>The opening contribution comes in with the assets (task C12): a portfolio built from a
+     * snapshot did not get here through deposits, so its ledger starts with one entry saying what
+     * the account was worth on the day we first read it — not with a zero pretending nobody ever
+     * put anything in.
      */
     public Portfolio withAssets(
             PortfolioId portfolioId,
@@ -50,7 +50,8 @@ public class PortfolioFactory {
             UserId userId,
             Broker broker,
             Currency allowedDepositCurrency,
-            List<Asset> assets) {
+            List<Asset> assets,
+            List<Contribution> contributions) {
 
         List<DomainEvent> uncommittedEvents = new LinkedList<>();
         uncommittedEvents.add(new PortfolioEvents.PortfolioOpenedEvent(portfolioId, name, broker));
@@ -62,7 +63,7 @@ public class PortfolioFactory {
                 broker,
                 assets.stream().map(PortfolioFactory::toSnapshot).toList(),
                 PortfolioStatus.OPEN,
-                Money.zero(allowedDepositCurrency.getId()),
+                List.copyOf(contributions),
                 allowedDepositCurrency));
     }
 

@@ -10,7 +10,7 @@ import java.util.List;
 @Value
 @Builder
 public class PnlStatementEntity {
-    Money investedBalance;
+    Money netContributions;
     Money currentValue;
     Money totalUnrealisedProfit;
     Double pctUnrealisedProfit;

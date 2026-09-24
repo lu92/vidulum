@@ -43,7 +43,7 @@ public class RiskManagementEngine {
                 .name(portfolio.getName())
                 .broker(Broker.of(portfolio.getBroker()))
                 .assetRiskManagementStatements(assetStatements)
-                .investedBalance(portfolio.getInvestedBalance())
+                .netContributions(portfolio.getNetContributions())
                 .currentValue(portfolio.getCurrentValue())
                 .pctUnrealisedProfit(portfolio.getPctUnrealisedProfit())
                 .unrealisedProfit(portfolio.getUnrealisedProfit())

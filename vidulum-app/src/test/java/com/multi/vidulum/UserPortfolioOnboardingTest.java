@@ -59,6 +59,6 @@ class UserPortfolioOnboardingTest extends AppIntegrationTest {
         assertThat(portfolio.getAssets().get(0).getQuantity()).isEqualTo(Quantity.of(50000));
         assertThat(portfolio.getAssets().get(0).getFree()).isEqualTo(Quantity.of(50000));
         assertThat(portfolio.getAssets().get(0).getLocked()).isEqualTo(Quantity.zero());
-        assertThat(portfolio.getInvestedBalance()).isEqualTo(Money.of(50000, "USD"));
+        assertThat(portfolio.getNetContributions()).isEqualTo(Money.of(50000, "USD"));
     }
 }

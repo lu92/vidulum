@@ -1,5 +1,5 @@
 package com.multi.vidulum.portfolio.app.commands.withdraw;
-import com.multi.vidulum.common.PortfolioId;
+
 import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -12,15 +12,15 @@ import org.springframework.stereotype.Component;
 @Component
 @AllArgsConstructor
 public class WithdrawMoneyCommandHandler implements CommandHandler<WithdrawMoneyCommand, Void> {
-    private final DomainPortfolioRepository repository;
 
+    private final DomainPortfolioRepository repository;
 
     @Override
     public Void handle(WithdrawMoneyCommand command) {
         Portfolio portfolio = repository.findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.withdrawMoney(command.getMoney());
+        portfolio.withdrawMoney(command.getMoney(), command.getContributionId(), command.getDateTime());
         repository.save(portfolio);
         log.info("Portfolio [{}]: money [{}}] has been withdrawn", portfolio.getPortfolioId(), command.getMoney());
         return null;

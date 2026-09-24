@@ -2,9 +2,11 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.pnl.app.commands.SetupPnlHistoryCommand;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
+import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
@@ -37,6 +39,7 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,6 +55,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @SpringBootTest(classes = {FixedClockConfig.class})
 @ActiveProfiles("test")
 public abstract class WealthIntegrationTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     protected static final MongoDBContainer mongoDBContainer;
     protected static final KafkaContainer kafka;
@@ -76,6 +83,9 @@ public abstract class WealthIntegrationTest {
 
     @Autowired
     private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
+    @Autowired
+    protected Clock clock;
 
     @Autowired
     protected QuoteRestController quoteRestController;
@@ -191,12 +201,23 @@ public abstract class WealthIntegrationTest {
         testAuthenticatedUser.actAs(UserId.of(userId));
     }
 
+    /**
+     * Setup, so it goes through the gateway rather than the controller: the controller generates a
+     * fresh contribution id for every deposit, and a whole-object assertion cannot pin a random
+     * one. Ownership on the controller path is covered where it is the subject —
+     * {@code PortfolioOwnershipHttpIntegrationTest}.
+     */
     protected void depositMoney(PortfolioId portfolioId, Money money) {
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(portfolioId.getId())
-                        .money(money)
-                        .build());
+        depositMoney(portfolioId, money, ContributionId.of("deposit-1"));
+    }
+
+    protected void depositMoney(PortfolioId portfolioId, Money money, ContributionId contributionId) {
+        commandGateway.send(DepositMoneyCommand.builder()
+                .portfolioId(portfolioId)
+                .money(money)
+                .contributionId(contributionId)
+                .dateTime(ZonedDateTime.now(clock))
+                .build());
     }
 
     protected TradingDto.OrderSummaryJson placeOrder(TradingDto.PlaceOrderJson placeOrderJson) {

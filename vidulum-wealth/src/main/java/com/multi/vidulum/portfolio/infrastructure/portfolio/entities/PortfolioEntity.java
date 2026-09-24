@@ -9,6 +9,12 @@ import lombok.ToString;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.multi.vidulum.common.Provenance;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -26,7 +32,7 @@ public class PortfolioEntity {
     private String broker;
     private List<AssetEntity> assets;
     private PortfolioStatus status;
-    private Money investedBalance;
+    private List<ContributionEntity> contributions;
     private String allowedDepositCurrency;
 
 
@@ -66,7 +72,8 @@ public class PortfolioEntity {
                 .broker(snapshot.getBroker().getId())
                 .assets(assetEntities)
                 .status(snapshot.getStatus())
-                .investedBalance(snapshot.getInvestedBalance())
+                .contributions(snapshot.getContributions().stream()
+                        .map(ContributionEntity::from).toList())
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency().getId())
                 .build();
     }
@@ -99,9 +106,47 @@ public class PortfolioEntity {
                 Broker.of(broker),
                 assetSnapshots,
                 status,
-                investedBalance,
+                contributions == null
+                        ? List.of()
+                        : contributions.stream().map(ContributionEntity::toDomain).toList(),
                 Currency.of(allowedDepositCurrency)
         );
+    }
+
+    /**
+     * One movement in or out (task C9).
+     *
+     * <p>{@code valueAtArrival} and {@code provenance} are stored together and are either both
+     * present or both absent — a value without a source, or a source without a value, is a
+     * half-written fact, and the domain record refuses it on construction.
+     */
+    public record ContributionEntity(
+            String id,
+            Date dateTime,
+            String direction,
+            Money what,
+            Money valueAtArrival,
+            Provenance provenance) {
+
+        static ContributionEntity from(Contribution contribution) {
+            return new ContributionEntity(
+                    contribution.id().getId(),
+                    Date.from(contribution.dateTime().toInstant()),
+                    contribution.direction().name(),
+                    contribution.what(),
+                    contribution.valueAtArrival(),
+                    contribution.provenance());
+        }
+
+        Contribution toDomain() {
+            return new Contribution(
+                    ContributionId.of(id),
+                    ZonedDateTime.ofInstant(dateTime.toInstant(), ZoneOffset.UTC),
+                    Contribution.Direction.valueOf(direction),
+                    what,
+                    valueAtArrival,
+                    provenance);
+        }
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.OrderId;
@@ -36,6 +37,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * third one.
  */
 class PortfolioSplitPositionsTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2021-06-01T06:30:00Z");
     private static final OrderId ORDER = OrderId.of("order-1");
@@ -135,8 +140,8 @@ class PortfolioSplitPositionsTest {
                 .withUnknownCost("BTC", Quantity.of(1))
                 .build();
 
-        portfolio.depositMoney(Money.of(10_000, "USD"));
-        portfolio.withdrawMoney(Money.of(4_000, "USD"));
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
+        portfolio.withdrawMoney(Money.of(4_000, "USD"), ContributionId.of("withdrawal-1"), FIXED_CONTRIBUTION_TIME);
 
         Asset cash = position(portfolio, SubName.none());
         assertThat(cash.getTicker()).isEqualTo(Ticker.of("USD"));
@@ -275,7 +280,7 @@ class PortfolioSplitPositionsTest {
                 .withUnknownCost("USD", Quantity.of(500))
                 .build();
 
-        portfolio.depositMoney(Money.of(200, "USD"));
+        portfolio.depositMoney(Money.of(200, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
         assertThat(position(portfolio, SubName.none()).getQuantity()).isEqualTo(Quantity.of(1_200));
         assertThat(position(portfolio, SubName.transferredIn()).getQuantity()).isEqualTo(Quantity.of(500));
