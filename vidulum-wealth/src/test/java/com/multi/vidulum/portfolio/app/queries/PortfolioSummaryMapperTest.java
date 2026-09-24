@@ -200,6 +200,8 @@ class PortfolioSummaryMapperTest {
                 .unrealisedProfit(Money.zero("USD"))
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(0, "USD"))
+                .pctWealthChange(0.0)
                 .build());
     }
 
@@ -277,6 +279,8 @@ class PortfolioSummaryMapperTest {
                 .unrealisedProfit(Money.zero("EUR"))
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(0, "EUR"))
+                .pctWealthChange(0.0)
                 .build());
     }
 
@@ -392,6 +396,8 @@ class PortfolioSummaryMapperTest {
                         .pctUnrealisedProfit(-0.05602241)
                         .profitCoverage(1.0)
                         .profitStatus(ProfitStatus.COMPUTED)
+                        .wealthChange(Money.of(-3900, "USD"))
+                        .pctWealthChange(-0.18795180722891566)
                         .build());
     }
 }

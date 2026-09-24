@@ -23,7 +23,7 @@ public class AggregatedPortfolio {
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
-        Map<Ticker, Asset> mergedAssets = mergeAssetsWithSameTicker(assets);
+        Map<PositionKey, Asset> mergedAssets = mergeAssetsAtSamePosition(assets);
 
         segmentedAssets.compute(segment, (foundSegment, groupedAssets) -> {
             if (groupedAssets == null) {
@@ -67,7 +67,7 @@ public class AggregatedPortfolio {
         Map<Broker, List<Asset>> portfolio = new HashMap<>();
 
         public void appendAsset(Broker broker, Asset asset) {
-            findRelatedAsset(broker, asset.getTicker())
+            findRelatedAsset(broker, asset)
                     .ifPresentOrElse(relatedAsset -> {
 
                         // asset-portfolio is already having asset with same ticker so lets update asset's amount
@@ -101,16 +101,34 @@ public class AggregatedPortfolio {
                     });
         }
 
-        private Optional<Asset> findRelatedAsset(Broker broker, Ticker ticker) {
+        private Optional<Asset> findRelatedAsset(Broker broker, Asset asset) {
             return portfolio.getOrDefault(broker, List.of()).stream()
-                    .filter(asset -> ticker.equals(asset.getTicker()))
+                    .filter(held -> PositionKey.of(held).equals(PositionKey.of(asset)))
                     .findFirst();
         }
     }
 
-    private Map<Ticker, Asset> mergeAssetsWithSameTicker(List<Asset> assets) {
-        Map<Ticker, List<Asset>> groupedAssetsPerTicker = assets.stream().collect(Collectors.groupingBy(Asset::getTicker));
-        return groupedAssetsPerTicker.entrySet().stream()
+    /**
+     * What makes two lines the same position (task C6).
+     *
+     * <p>The ticker alone is not enough. C2 split a holding by where it came from precisely because
+     * one bitcoin bought here and one transferred in from elsewhere are different facts: the first
+     * has a price, the second has none. Merging them on ticker rebuilt the very thing C2 took
+     * apart — the aggregated view answered with a single BTC line whose average price covered a
+     * fraction of the quantity, and the old code even stamped it {@code SubName.none()}, erasing
+     * the evidence that anything had been merged.
+     */
+    private record PositionKey(Ticker ticker, SubName subName) {
+        static PositionKey of(Asset asset) {
+            return new PositionKey(asset.getTicker(), asset.getSubName());
+        }
+    }
+
+    private Map<PositionKey, Asset> mergeAssetsAtSamePosition(List<Asset> assets) {
+        Map<PositionKey, List<Asset>> grouped = assets.stream()
+                .collect(Collectors.groupingBy(PositionKey::of));
+
+        return grouped.entrySet().stream()
                 .collect(toMap(
                         Map.Entry::getKey,
                         entry -> {
@@ -120,7 +138,10 @@ public class AggregatedPortfolio {
                                     .reduce(
                                             Asset.builder()
                                                     .ticker(firstAsset.getTicker())
-                                                    .subName(SubName.none())
+                                                    // The group's own subName, not none(): these
+                                                    // lines are the same position, and saying
+                                                    // otherwise loses where the holding came from.
+                                                    .subName(firstAsset.getSubName())
                                                     .costBasis(null)
                                                     .quantity(Quantity.zero(firstAsset.getQuantity().getUnit()))
                                                     .locked(Quantity.zero(firstAsset.getQuantity().getUnit()))

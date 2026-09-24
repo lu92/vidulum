@@ -80,6 +80,33 @@ public class PortfolioDto {
         private Money unrealisedProfit;
         private Double profitCoverage;
         private ProfitStatus profitStatus;
+
+        /**
+         * How much the owner's wealth has changed since they started — value now, less what they
+         * put in (task C5).
+         *
+         * <p>A different question from {@code unrealisedProfit}, and the one most owners actually
+         * ask. Profit needs a purchase price, so a holding transferred in from another exchange
+         * cannot take part in it: on a real OKX account 92% of the value has no known cost and the
+         * result is withheld, leaving the owner with no number at all. This measure needs only two
+         * things we do have — what the portfolio is worth, and what went into it — so the unpriced
+         * part counts in full.
+         *
+         * <p>It does <b>not</b> say the trades were good. Wealth can grow while every decision
+         * lagged the market; that judgement stays with {@code unrealisedProfit}, and the two must
+         * never be added together.
+         *
+         * <p>Measured since inception rather than over a window, because that is what the ledger
+         * can currently support honestly: every entry is dated, but there is no stored valuation
+         * to compare against for an arbitrary start date. Windows arrive with the PnL history.
+         *
+         * <p>{@code null} exactly when {@code netContributions} is — this is derived from it, so
+         * the reason for the silence is in {@code contributionStatus} and is not repeated here.
+         * {@code pctWealthChange} is additionally {@code null} when nothing is left in the ledger
+         * to divide by: everything taken back out leaves a change with no meaningful base.
+         */
+        private Money wealthChange;
+        private Double pctWealthChange;
     }
 
     @Data
@@ -226,6 +253,10 @@ public class PortfolioDto {
         private Double pctUnrealisedProfit;
         private Double profitCoverage;
         private ProfitStatus profitStatus;
+
+        /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */
+        private Money wealthChange;
+        private Double pctWealthChange;
     }
 
     @Data

@@ -19,7 +19,7 @@ import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQue
 import { backoffDelay, describeCycle, instrumentIdFor, missingSymbols, publishPath, publishQuery,
          requiredSymbols, unquotableSymbols } from "./okx-quotes.mjs";
 import { coverageAgreement, coverageOf, describeContributions, describePortfolio, describePositions,
-         describeResult,
+         describeResult, describeWealthChange,
          portfolioCoverage, quotesNeededBy } from "./okx-portfolio.mjs";
 
 let pass = 0, fail = 0;
@@ -353,6 +353,9 @@ const SUMMARY = {
   currentValue: { amount: 71500, currency: "EUR" },
   netContributions: { amount: 60000, currency: "EUR" },
   contributionCoverage: 1.0, contributionStatus: "COMPUTED",
+  // C5: majatek urosl o 11 500 wzgledem tego, co wlozono - i ta liczba jest podawana mimo
+  // wstrzymanego wyniku, bo nie potrzebuje ceny nabycia.
+  wealthChange: { amount: 11500, currency: "EUR" }, pctWealthChange: 0.19166666666666668,
   // Zaledwie 23% wartosci ma znany koszt, wiec backend wstrzymuje liczbe wyniku (C4).
   unrealisedProfit: null, pctUnrealisedProfit: null,
   profitCoverage: 0.23076923076923078, profitStatus: "WITHHELD_LOW_COVERAGE",
@@ -429,6 +432,16 @@ checkThat("wklad wlasciciela jest podany wraz z pokryciem ksiegi",
 checkThat("wstrzymany wklad tlumaczy sie slowami, nie zerem",
   describeContributions({ contributionStatus: "WITHHELD_LOW_COVERAGE" }).includes("withheld")
     && !describeContributions({ contributionStatus: "WITHHELD_LOW_COVERAGE" }).includes("0"));
+
+checkThat("wzrost majatku jest podany, choc wynik jest wstrzymany",
+  describePortfolio(SUMMARY).some((l) => l.includes("growth") && l.includes("11500 EUR"))
+    && describeResult(SUMMARY).includes("withheld"));
+
+checkThat("wzrost majatku milknie razem z ksiega i mowi dlaczego",
+  describeWealthChange({ wealthChange: null, contributionStatus: "WITHHELD_LOW_COVERAGE" })
+    .includes("not computable")
+  && describeWealthChange({ wealthChange: null, contributionStatus: "WITHHELD_LOW_COVERAGE" })
+    .includes("withheld"));
 
 checkThat("portfel bez zadnego wkladu mowi to wprost",
   describeContributions({ contributionStatus: "NOTHING_CONTRIBUTED" }) === "nothing put in");

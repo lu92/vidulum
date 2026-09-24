@@ -50,6 +50,7 @@ public class PortfolioSummaryMapper {
                 denominated(portfolio.getContributions(), broker, denominationCurrency),
                 denominationCurrency);
         Result result = resultOf(mapped, denominationCurrency);
+        WealthChange wealthChange = wealthChangeOf(currentValue, ledger);
 
         return PortfolioDto.PortfolioSummaryJson.builder()
                 .portfolioId(portfolio.getPortfolioId().getId())
@@ -66,7 +67,44 @@ public class PortfolioSummaryMapper {
                 .pctUnrealisedProfit(result.pctProfit())
                 .profitCoverage(result.coverageShare())
                 .profitStatus(result.status())
+                .wealthChange(wealthChange.amount())
+                .pctWealthChange(wealthChange.pct())
                 .build();
+    }
+
+    /**
+     * How much the owner's wealth has changed since inception (task C5).
+     *
+     * <p>{@code currentValue - netContributions}: what the portfolio is worth, less what went into
+     * it. Deliberately built from the ledger rather than from cost bases, because that is what
+     * makes it answerable at all — on the account this was written against, 92% of the value has
+     * no known cost and {@code unrealisedProfit} is withheld, while every one of those coins still
+     * counts here in full.
+     *
+     * <p>Shares the ledger's fate rather than carrying a status of its own: it can be stated
+     * exactly when the net contribution can, and an enum that could never disagree with
+     * {@code ContributionStatus} would be two names for one fact.
+     *
+     * <p>The percentage divides by what was put in, and is withheld when that is zero or negative
+     * — an owner who has taken more out than they put in has a change with no meaningful base, and
+     * a percentage against a negative denominator flips sign without flipping meaning.
+     */
+    private WealthChange wealthChangeOf(Money currentValue, Ledger ledger) {
+        if (ledger.net() == null) {
+            return WealthChange.absent();
+        }
+        Money change = currentValue.minus(ledger.net()).withScale(4);
+        double contributed = ledger.net().getAmount().doubleValue();
+        Double pct = contributed > 0
+                ? change.getAmount().doubleValue() / contributed
+                : null;
+        return new WealthChange(change, pct);
+    }
+
+    private record WealthChange(Money amount, Double pct) {
+        static WealthChange absent() {
+            return new WealthChange(null, null);
+        }
     }
 
     /**
@@ -247,11 +285,12 @@ public class PortfolioSummaryMapper {
                 denominationCurrency);
 
         // Same rule as one portfolio: the total is the positions' result, not the gap between
-        // value and deposits. The aggregated view merges by ticker alone, which dilutes averages
-        // across sources - that is C6, and this change neither causes nor cures it.
+        // value and deposits.
         Result result = resultOf(
                 mappedAssets.values().stream().flatMap(Collection::stream).collect(toList()),
                 denominationCurrency);
+
+        WealthChange aggregatedWealthChange = wealthChangeOf(currentValue.withScale(4), ledger);
 
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
@@ -267,6 +306,8 @@ public class PortfolioSummaryMapper {
                 .pctUnrealisedProfit(result.pctProfit())
                 .profitCoverage(result.coverageShare())
                 .profitStatus(result.status())
+                .wealthChange(aggregatedWealthChange.amount())
+                .pctWealthChange(aggregatedWealthChange.pct())
                 .build();
     }
 

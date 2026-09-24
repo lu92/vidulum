@@ -146,6 +146,8 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
     }
 
@@ -283,6 +285,8 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
     }
 
@@ -517,6 +521,8 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
     }
 
@@ -690,6 +696,8 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
 
         TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
@@ -825,6 +833,8 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
     }
 }
