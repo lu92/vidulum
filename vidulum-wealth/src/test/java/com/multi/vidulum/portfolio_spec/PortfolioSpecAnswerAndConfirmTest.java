@@ -329,7 +329,7 @@ class PortfolioSpecAnswerAndConfirmTest {
             assertThat(opening.when())
                     .as("the moment of confirmation, taken from the clock rather than invented inside")
                     .isEqualTo(NOW);
-            assertThat(opening.id()).isNotBlank();
+            assertThat(opening.id().getId()).isNotBlank();
         });
     }
 

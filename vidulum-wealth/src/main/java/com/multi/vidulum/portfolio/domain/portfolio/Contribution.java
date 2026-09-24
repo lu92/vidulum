@@ -5,7 +5,6 @@ import com.multi.vidulum.common.Provenance;
 
 import java.time.ZonedDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Something the owner moved into this portfolio, or out of it (task C9).
@@ -28,7 +27,7 @@ import java.util.UUID;
  *                       and it is what lets the timeline exist before historical prices do (C13).
  */
 public record Contribution(
-        String id,
+        ContributionId id,
         ZonedDateTime when,
         Direction direction,
         Money what,
@@ -60,11 +59,11 @@ public record Contribution(
         OUT
     }
 
-    public static Contribution paidIn(String id, Money money, ZonedDateTime when) {
+    public static Contribution paidIn(ContributionId id, Money money, ZonedDateTime when) {
         return new Contribution(id, when, Direction.IN, money, money, Provenance.ASSUMED_PAR);
     }
 
-    public static Contribution takenOut(String id, Money money, ZonedDateTime when) {
+    public static Contribution takenOut(ContributionId id, Money money, ZonedDateTime when) {
         return new Contribution(id, when, Direction.OUT, money, money, Provenance.ASSUMED_PAR);
     }
 
@@ -74,7 +73,7 @@ public record Contribution(
      * contribution carries an id: you cannot replace what you cannot point at.
      */
     public static Contribution opening(Money value, ZonedDateTime when) {
-        return new Contribution(UUID.randomUUID().toString(), when, Direction.IN,
+        return new Contribution(ContributionId.generate(), when, Direction.IN,
                 value, value, Provenance.OPENING_SNAPSHOT);
     }
 
@@ -85,7 +84,7 @@ public record Contribution(
     /** Signed by direction, so a ledger sums without every caller re-deriving the sign. */
     public Money signedValue() {
         if (valueAtArrival == null) {
-            throw new IllegalStateException("contribution [" + id + "] has no value to sign");
+            throw new IllegalStateException("contribution [" + id.getId() + "] has no value to sign");
         }
         return direction == Direction.IN ? valueAtArrival : valueAtArrival.multiply(-1);
     }

@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app.queries;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
@@ -55,7 +56,7 @@ class PortfolioSummaryMapperTest {
                 BROKER,
                 USD);
 
-        PORTFOLIO.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        PORTFOLIO.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         PORTFOLIO.lockAsset(Ticker.of("USD"), OrderId.of("order-id"), Quantity.of(4000), ZonedDateTime.parse("2021-06-01T06:30:00Z"));
         PORTFOLIO.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -103,14 +104,14 @@ class PortfolioSummaryMapperTest {
         AggregatedPortfolio.PortfolioContributions portfolioContributions1 = new AggregatedPortfolio.PortfolioContributions(
                 PortfolioId.generate(),
                 Currency.of("EUR"),
-                List.of(Contribution.paidIn("deposit-1", Money.of(15000, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
+                List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(15000, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
                 BROKER
         );
 
         AggregatedPortfolio.PortfolioContributions portfolioContributions2 = new AggregatedPortfolio.PortfolioContributions(
                 PortfolioId.generate(),
                 Currency.of("PLN"),
-                List.of(Contribution.paidIn("deposit-1", Money.of(20000, "PLN"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
+                List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(20000, "PLN"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
                 BROKER
         );
 

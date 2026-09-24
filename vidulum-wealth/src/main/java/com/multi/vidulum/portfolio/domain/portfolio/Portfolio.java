@@ -298,13 +298,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         });
     }
 
-    public void depositMoney(Money deposit, String contributionId, ZonedDateTime when) {
+    public void depositMoney(Money deposit, ContributionId contributionId, ZonedDateTime when) {
         MoneyDepositedEvent event = new MoneyDepositedEvent(portfolioId, deposit, contributionId, when);
         apply(event);
         add(event);
     }
 
-    public void withdrawMoney(Money withdrawal, String contributionId, ZonedDateTime when) {
+    public void withdrawMoney(Money withdrawal, ContributionId contributionId, ZonedDateTime when) {
         MoneyWithdrawEvent event = new MoneyWithdrawEvent(portfolioId, withdrawal, contributionId, when);
         apply(event);
         add(event);

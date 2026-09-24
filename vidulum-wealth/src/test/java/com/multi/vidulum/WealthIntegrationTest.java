@@ -2,6 +2,7 @@ package com.multi.vidulum;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.pnl.app.commands.SetupPnlHistoryCommand;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
@@ -38,6 +39,7 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -81,6 +83,9 @@ public abstract class WealthIntegrationTest {
 
     @Autowired
     private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
+    @Autowired
+    protected Clock clock;
 
     @Autowired
     protected QuoteRestController quoteRestController;
@@ -203,14 +208,15 @@ public abstract class WealthIntegrationTest {
      * {@code PortfolioOwnershipHttpIntegrationTest}.
      */
     protected void depositMoney(PortfolioId portfolioId, Money money) {
-        depositMoney(portfolioId, money, "deposit-1");
+        depositMoney(portfolioId, money, ContributionId.of("deposit-1"));
     }
 
-    protected void depositMoney(PortfolioId portfolioId, Money money, String contributionId) {
+    protected void depositMoney(PortfolioId portfolioId, Money money, ContributionId contributionId) {
         commandGateway.send(DepositMoneyCommand.builder()
                 .portfolioId(portfolioId)
                 .money(money)
                 .contributionId(contributionId)
+                .when(ZonedDateTime.now(clock))
                 .build());
     }
 

@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio_spec;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
@@ -404,7 +405,7 @@ class OnboardingFlowComponentTest {
                 .hasSize(1);
         assertThat(position(portfolio, SubName.none()).getQuantity()).isEqualTo(Quantity.of(5_000));
 
-        portfolio.depositMoney(Money.of(100, "EUR"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(100, "EUR"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
         assertThat(portfolio.findAssetsByTicker(Ticker.of("EUR")))
                 .as("the deposit finds the existing balance instead of opening a parallel one")

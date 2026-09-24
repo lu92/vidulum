@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.app;
 
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.CannotUnlockAssetException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -60,7 +61,7 @@ class PortfolioTest {
                 USD
         );
 
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
         assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
@@ -80,7 +81,7 @@ class PortfolioTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -93,7 +94,7 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME)
+                                Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME)
                 );
     }
 
@@ -108,7 +109,7 @@ class PortfolioTest {
                 USD
         );
 
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -150,7 +151,7 @@ class PortfolioTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -163,7 +164,7 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME),
+                                Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
@@ -196,7 +197,7 @@ class PortfolioTest {
                 USD
         );
 
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -241,7 +242,7 @@ class PortfolioTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -254,7 +255,7 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME),
+                                Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
@@ -304,7 +305,7 @@ class PortfolioTest {
                 USD
         );
 
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -351,7 +352,7 @@ class PortfolioTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -364,7 +365,7 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME),
+                                Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("USD"),
@@ -466,8 +467,8 @@ class PortfolioTest {
                 USD
         );
 
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
-        portfolio.withdrawMoney(Money.of(10000, "USD"), "withdrawal-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
+        portfolio.withdrawMoney(Money.of(10000, "USD"), ContributionId.of("withdrawal-1"), FIXED_CONTRIBUTION_TIME);
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
         assertThat(savedPortfolio).isEqualTo(Portfolio.builder()
@@ -490,8 +491,8 @@ class PortfolioTest {
                 // Saldo wraca do zera, ale rejestr pamieta oba ruchy - o to chodzi w C9:
                 // "nic nie mam" i "nic nie wplacilem" to dwa rozne zdania.
                 .contributions(List.of(
-                        Contribution.paidIn("deposit-1", Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME),
-                        Contribution.takenOut("withdrawal-1", Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME)))
+                        Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME),
+                        Contribution.takenOut(ContributionId.of("withdrawal-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME)))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -504,10 +505,10 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME),
+                                Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME),
                         new PortfolioEvents.MoneyWithdrawEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "USD"), "withdrawal-1", FIXED_CONTRIBUTION_TIME)
+                                Money.of(10000, "USD"), ContributionId.of("withdrawal-1"), FIXED_CONTRIBUTION_TIME)
                 );
     }
 
@@ -522,7 +523,7 @@ class PortfolioTest {
                 EUR
         );
 
-        portfolio.depositMoney(Money.of(10000, "EUR"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "EUR"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         Portfolio persistedPortfolio = portfolioRepository.save(portfolio);
         persistedPortfolio.lockAsset(Ticker.of("EUR"), ORDER_ID, Quantity.of(4000), DATE_TIME);
         persistedPortfolio.handleExecutedTrade(
@@ -568,7 +569,7 @@ class PortfolioTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(10000.0, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("EUR"))
                 .build());
 
@@ -581,7 +582,7 @@ class PortfolioTest {
                         ),
                         new PortfolioEvents.MoneyDepositedEvent(
                                 portfolio.getPortfolioId(),
-                                Money.of(10000, "EUR"), "deposit-1", FIXED_CONTRIBUTION_TIME),
+                                Money.of(10000, "EUR"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("EUR"),
@@ -631,7 +632,7 @@ class PortfolioTest {
                 BROKER,
                 USD
         );
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
 
         // When and Then
@@ -651,7 +652,7 @@ class PortfolioTest {
                 BROKER,
                 USD
         );
-        portfolio.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID, Quantity.of(4000), DATE_TIME);
 
         // When and Then

@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Currency;
@@ -106,8 +107,7 @@ public final class PortfolioFixture {
      * transferred in on a day we could price.
      */
     public PortfolioFixture contributed(Money money) {
-        contributions.add(Contribution.paidIn(
-                "contribution-" + (contributions.size() + 1), money, CONTRIBUTED_AT));
+        contributions.add(Contribution.paidIn(nextId(), money, CONTRIBUTED_AT));
         return this;
     }
 
@@ -117,10 +117,13 @@ public final class PortfolioFixture {
      * ledger reports coverage rather than a bare total.
      */
     public PortfolioFixture contributedOfUnknownValue(Money money) {
-        contributions.add(new Contribution(
-                "contribution-" + (contributions.size() + 1), CONTRIBUTED_AT,
+        contributions.add(new Contribution(nextId(), CONTRIBUTED_AT,
                 Contribution.Direction.IN, money, null, null));
         return this;
+    }
+
+    private ContributionId nextId() {
+        return ContributionId.of("contribution-" + (contributions.size() + 1));
     }
 
     public Portfolio build() {

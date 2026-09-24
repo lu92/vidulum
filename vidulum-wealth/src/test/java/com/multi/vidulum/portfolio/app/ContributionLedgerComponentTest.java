@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
@@ -95,13 +96,14 @@ class ContributionLedgerComponentTest {
     @Test
     void shouldRecordEveryDepositAndWithdrawalInOrder() {
         Portfolio portfolio = emptyPortfolio();
-        portfolio.depositMoney(Money.of(10_000, "USD"), "first", WHEN);
-        portfolio.depositMoney(Money.of(5_000, "USD"), "second", WHEN.plusDays(1));
-        portfolio.withdrawMoney(Money.of(2_000, "USD"), "third", WHEN.plusDays(2));
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("first"), WHEN);
+        portfolio.depositMoney(Money.of(5_000, "USD"), ContributionId.of("second"), WHEN.plusDays(1));
+        portfolio.withdrawMoney(Money.of(2_000, "USD"), ContributionId.of("third"), WHEN.plusDays(2));
 
         assertThat(portfolio.getContributions()).extracting(Contribution::id)
                 .as("one mechanism: deposits and withdrawals write the same ledger")
-                .containsExactly("first", "second", "third");
+                .containsExactly(ContributionId.of("first"), ContributionId.of("second"),
+                        ContributionId.of("third"));
 
         PortfolioDto.PortfolioSummaryJson summary = summaryOf(portfolio);
         assertThat(summary.getNetContributions())
@@ -118,8 +120,8 @@ class ContributionLedgerComponentTest {
     @Test
     void shouldRememberMovementsAfterTheMoneyIsGoneAgain() {
         Portfolio portfolio = emptyPortfolio();
-        portfolio.depositMoney(Money.of(10_000, "USD"), "in", WHEN);
-        portfolio.withdrawMoney(Money.of(10_000, "USD"), "out", WHEN.plusDays(1));
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("in"), WHEN);
+        portfolio.withdrawMoney(Money.of(10_000, "USD"), ContributionId.of("out"), WHEN.plusDays(1));
 
         assertThat(portfolio.getContributions()).hasSize(2);
         assertThat(summaryOf(portfolio).getNetContributions()).isEqualTo(Money.of(0, "USD"));
@@ -130,10 +132,10 @@ class ContributionLedgerComponentTest {
     @Test
     void shouldTakeItsMomentAndIdentityFromTheCaller() {
         Portfolio portfolio = emptyPortfolio();
-        portfolio.depositMoney(Money.of(1_000, "USD"), "pinned", WHEN);
+        portfolio.depositMoney(Money.of(1_000, "USD"), ContributionId.of("pinned"), WHEN);
 
         assertThat(portfolio.getContributions()).singleElement().satisfies(entry -> {
-            assertThat(entry.id()).isEqualTo("pinned");
+            assertThat(entry.id()).isEqualTo(ContributionId.of("pinned"));
             assertThat(entry.when()).isEqualTo(WHEN);
             assertThat(entry.provenance()).isEqualTo(Provenance.ASSUMED_PAR);
         });
@@ -188,7 +190,7 @@ class ContributionLedgerComponentTest {
     void shouldRestateTheLedgerInWhicheverCurrencyIsAskedFor() {
         prices.put("USD/EUR", 0.95);
         Portfolio portfolio = emptyPortfolio();
-        portfolio.depositMoney(Money.of(10_000, "USD"), "in", WHEN);
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("in"), WHEN);
 
         PortfolioDto.PortfolioSummaryJson inEuro = mapper.map(portfolio, Currency.of("EUR"));
 
@@ -198,11 +200,11 @@ class ContributionLedgerComponentTest {
     /** A value without a source, or a source without a value, is a half-written fact. */
     @Test
     void shouldRefuseAHalfWrittenContribution() {
-        assertThatThrownBy(() -> new Contribution("a", WHEN, Contribution.Direction.IN,
+        assertThatThrownBy(() -> new Contribution(ContributionId.of("a"), WHEN, Contribution.Direction.IN,
                 Money.of(1, "USD"), Money.of(1, "USD"), null))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> new Contribution("b", WHEN, Contribution.Direction.IN,
+        assertThatThrownBy(() -> new Contribution(ContributionId.of("b"), WHEN, Contribution.Direction.IN,
                 Money.of(1, "USD"), null, Provenance.ASSUMED_PAR))
                 .isInstanceOf(IllegalArgumentException.class);
     }

@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
@@ -158,7 +159,7 @@ class PreciousMetalsLifecycleComponentTest {
     @BeforeEach
     void wire() {
         gateway.registerCommandHandler(new CreateEmptyPortfolioCommandHandler(portfolios, new PortfolioFactory()));
-        gateway.registerCommandHandler(new DepositMoneyCommandHandler(portfolios, clock));
+        gateway.registerCommandHandler(new DepositMoneyCommandHandler(portfolios));
         gateway.registerCommandHandler(lockHandler);
         gateway.registerCommandHandler(unlockHandler);
         gateway.registerCommandHandler(new ProcessTradeCommandHandler(portfolios));
@@ -214,7 +215,8 @@ class PreciousMetalsLifecycleComponentTest {
     private void deposit(PortfolioId id, Money money) {
         gateway.send(DepositMoneyCommand.builder()
                 .portfolioId(id).money(money)
-                .contributionId("deposit-" + (++contributionCounter))
+                .contributionId(ContributionId.of("deposit-" + (++contributionCounter)))
+                .when(NOW)
                 .build());
     }
 

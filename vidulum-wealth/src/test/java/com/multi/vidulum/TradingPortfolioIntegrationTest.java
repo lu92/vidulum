@@ -1,5 +1,6 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.app.PnlDto;
@@ -136,7 +137,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -565,7 +566,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -1023,7 +1024,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .build()
                 ))
                 .status(PortfolioStatus.OPEN)
-                .contributions(List.of(Contribution.paidIn("deposit-1", Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 

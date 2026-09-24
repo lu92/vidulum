@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
@@ -85,7 +86,7 @@ class PortfolioCostBasisTest {
     void shouldRecordDepositedCashAtPar() {
         Portfolio portfolio = portfolio().denominatedIn("USD").build();
 
-        portfolio.depositMoney(Money.of(10_000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
         Asset cash = only(portfolio);
         assertThat(cash.getCostBasis().provenance()).isEqualTo(Provenance.ASSUMED_PAR);
@@ -100,9 +101,9 @@ class PortfolioCostBasisTest {
     @Test
     void shouldShrinkTheCostWhenCashIsWithdrawn() {
         Portfolio portfolio = portfolio().denominatedIn("USD").build();
-        portfolio.depositMoney(Money.of(10_000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("deposit-1"), FIXED_CONTRIBUTION_TIME);
 
-        portfolio.withdrawMoney(Money.of(4_000, "USD"), "withdrawal-1", FIXED_CONTRIBUTION_TIME);
+        portfolio.withdrawMoney(Money.of(4_000, "USD"), ContributionId.of("withdrawal-1"), FIXED_CONTRIBUTION_TIME);
 
         Asset cash = only(portfolio);
         assertThat(cash.getQuantity()).isEqualTo(Quantity.of(6_000));

@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -129,7 +130,7 @@ public class PortfolioEntity {
 
         static ContributionEntity from(Contribution contribution) {
             return new ContributionEntity(
-                    contribution.id(),
+                    contribution.id().getId(),
                     Date.from(contribution.when().toInstant()),
                     contribution.direction().name(),
                     contribution.what(),
@@ -139,7 +140,7 @@ public class PortfolioEntity {
 
         Contribution toDomain() {
             return new Contribution(
-                    id,
+                    ContributionId.of(id),
                     ZonedDateTime.ofInstant(when.toInstant(), ZoneOffset.UTC),
                     Contribution.Direction.valueOf(direction),
                     what,

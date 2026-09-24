@@ -27,14 +27,14 @@ public final class PortfolioEvents {
     public record MoneyDepositedEvent(
             PortfolioId portfolioId,
             Money deposit,
-            String contributionId,
+            ContributionId contributionId,
             ZonedDateTime dateTime) implements DomainEvent {
     }
 
     public record MoneyWithdrawEvent(
             PortfolioId portfolioId,
             Money withdrawal,
-            String contributionId,
+            ContributionId contributionId,
             ZonedDateTime dateTime) implements DomainEvent {
     }
 
