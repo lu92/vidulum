@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Price;
@@ -56,7 +57,8 @@ class PortfolioSpecEngineTest {
 
     private static PortfolioSpec specFrom(List<Asset> knownState, ExchangeSnapshot snapshot) {
         return PortfolioSpec.from(PortfolioSpecId.of("spec-1"), ALICE, CONNECTION,
-                Currency.of("EUR"), knownState, snapshot, NOW);
+                Currency.of("EUR"), knownState.isEmpty() ? null : PortfolioId.of("portfolio-1"),
+                knownState, snapshot, NOW);
     }
 
     /** Matches on ticker as well as position: two tickers can share a subName. */

@@ -288,6 +288,48 @@ for (let run = 1; run <= iterations; run++) {
     outcome.valueAfterRefresh = reread.currentValue;
     outcome.moved = reread.currentValue.amount !== before;
 
+    // 10. read the same account again (task D13). Until this worked, a second reading built a
+    // SECOND portfolio holding only the differences - one showing last week's state, one showing
+    // this week's change, neither describing the account.
+    const [secondBalance] = await okx.get("/api/v5/account/balance");
+    const secondFunding = await okx.get("/api/v5/asset/balances");
+    const secondPositions = buildSnapshotPositions({
+      trading: secondBalance.details ?? [], funding: secondFunding ?? [], dustThreshold: dust });
+    let resynced = null;
+    try {
+      resynced = await vidulum.post("/portfolio-spec", {
+        broker: "OKX",
+        connectionId: connection.id,
+        denominationCurrency: currency,
+        // The portfolio to measure against - the field the specification used to forget.
+        portfolioId: applied.portfolioId,
+        snapshotTakenAt: new Date().toISOString(),
+        positions: secondPositions,
+      });
+    } catch (error) {
+      // An account that has not moved between two reads a few seconds apart has nothing to
+      // synchronise, and saying so is the correct answer - not an empty specification.
+      check("an unchanged account reports nothing to synchronise, rather than a second portfolio",
+        error.status === 409, `${error.status} ${error.message}`);
+    }
+    if (resynced) {
+      const applied2 = await vidulum.post(`/portfolio-spec/${resynced.id}/confirm`, {
+        portfolioName: `smoke ${run}`,
+        denominationCurrency: currency,
+        broker: "OKX",
+        snapshotTakenAt: new Date().toISOString(),
+        positions: secondPositions,
+      });
+      check("a second reading updates the portfolio it measured against (D13)",
+        applied2.portfolioId === applied.portfolioId,
+        `${applied2.portfolioId} vs ${applied.portfolioId}`);
+    }
+    const owned = await vidulum.get(`/aggregated-portfolio/${currency}`).catch(() => null);
+    if (owned) {
+      check("the owner still has exactly one portfolio for this account (D13)",
+        (owned.portfolioIds ?? []).length === 1, JSON.stringify(owned.portfolioIds));
+    }
+
     console.log("");
     describePortfolio(reread).forEach((line) => console.log(`    ${line}`));
 

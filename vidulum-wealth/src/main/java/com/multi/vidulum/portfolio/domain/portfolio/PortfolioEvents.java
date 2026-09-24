@@ -38,6 +38,29 @@ public final class PortfolioEvents {
             ZonedDateTime dateTime) implements DomainEvent {
     }
 
+    /**
+     * One position as a later reading of the exchange found it (task D13).
+     *
+     * <p>Carries the <b>change</b>, not the new total: a synchronisation computes what moved, and
+     * an event that restated the whole position would make two sources of truth out of one.
+     */
+    public record PositionSynchronisedEvent(
+            PortfolioId portfolioId,
+            Ticker ticker,
+            SubName subName,
+            Quantity delta,
+            CostBasis incomingCost,
+            ZonedDateTime dateTime) implements DomainEvent {
+    }
+
+    /** What the exchange has committed for one ticker, as of this reading (task D5). */
+    public record PositionFrozenEvent(
+            PortfolioId portfolioId,
+            Ticker ticker,
+            Quantity frozen,
+            ZonedDateTime dateTime) implements DomainEvent {
+    }
+
     public record AssetLockedEvent(
             PortfolioId portfolioId,
             Ticker ticker,

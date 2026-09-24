@@ -43,4 +43,27 @@ public enum Provenance {
     public boolean isOverwritableSilently() {
         return this != USER_PROVIDED;
     }
+
+    /**
+     * How much authority a number from this source carries when two sources disagree (task D6).
+     *
+     * <p>A person's own statement wins over everything: the exchange cannot know what you paid on
+     * another venue, so overwriting it destroys the only record of that fact. Our own fills come
+     * next — they are individual transactions, while an exchange's {@code openAvgPx} is a rolling
+     * average it recomputes, so replacing ours with theirs trades precision for freshness. The
+     * rest are interchangeable: one reported average is as good as the next, and the later one is
+     * simply more recent.
+     */
+    public int authority() {
+        return switch (this) {
+            case USER_PROVIDED -> 3;
+            case DERIVED_FROM_FILLS -> 2;
+            case EXCHANGE_REPORTED, ASSUMED_PAR, OPENING_SNAPSHOT -> 1;
+        };
+    }
+
+    /** Whether a number from this source may be replaced by one from {@code incoming}. */
+    public boolean yieldsTo(Provenance incoming) {
+        return incoming.authority() >= authority();
+    }
 }
