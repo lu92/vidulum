@@ -118,7 +118,7 @@ class PortfolioSpecAnswerAndConfirmTest {
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, confirmConnectionHandler, clock));
+                quotes, confirmConnectionHandler));
         return gateway;
     }
 
@@ -326,7 +326,7 @@ class PortfolioSpecAnswerAndConfirmTest {
                     .as("1.3 BTC at 50 000, both positions counted - the unpriced one included")
                     .isEqualTo(65_000);
             assertThat(opening.valueAtArrival().getCurrency()).isEqualTo("EUR");
-            assertThat(opening.when())
+            assertThat(opening.dateTime())
                     .as("the moment of confirmation, taken from the clock rather than invented inside")
                     .isEqualTo(NOW);
             assertThat(opening.id().getId()).isNotBlank();

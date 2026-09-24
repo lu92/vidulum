@@ -63,7 +63,7 @@ public class PortfolioRestController {
                 // Identity and moment are minted here rather than inside the handler: the command
                 // then states the whole fact, and the same command replayed writes the same entry.
                 .contributionId(ContributionId.generate())
-                .when(ZonedDateTime.now(clock))
+                .dateTime(ZonedDateTime.now(clock))
                 .build();
         commandGateway.send(command);
     }
@@ -74,7 +74,7 @@ public class PortfolioRestController {
                 .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
                 .contributionId(ContributionId.generate())
-                .when(ZonedDateTime.now(clock))
+                .dateTime(ZonedDateTime.now(clock))
                 .build();
         commandGateway.send(command);
     }

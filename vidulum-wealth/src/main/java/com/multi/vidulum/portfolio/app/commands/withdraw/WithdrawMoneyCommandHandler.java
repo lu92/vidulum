@@ -20,7 +20,7 @@ public class WithdrawMoneyCommandHandler implements CommandHandler<WithdrawMoney
         Portfolio portfolio = repository.findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.withdrawMoney(command.getMoney(), command.getContributionId(), command.getWhen());
+        portfolio.withdrawMoney(command.getMoney(), command.getContributionId(), command.getDateTime());
         repository.save(portfolio);
         log.info("Portfolio [{}]: money [{}}] has been withdrawn", portfolio.getPortfolioId(), command.getMoney());
         return null;

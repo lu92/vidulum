@@ -176,7 +176,7 @@ public class PortfolioSummaryMapper {
         return contributions.stream()
                 .map(contribution -> contribution.hasKnownValue()
                         ? new Contribution(
-                                contribution.id(), contribution.when(), contribution.direction(),
+                                contribution.id(), contribution.dateTime(), contribution.direction(),
                                 contribution.what(),
                                 denominateInCurrency(contribution.valueAtArrival(), broker, denominationCurrency),
                                 contribution.provenance())

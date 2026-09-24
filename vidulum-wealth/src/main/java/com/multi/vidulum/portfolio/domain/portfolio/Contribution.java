@@ -28,7 +28,7 @@ import java.util.Objects;
  */
 public record Contribution(
         ContributionId id,
-        ZonedDateTime when,
+        ZonedDateTime dateTime,
         Direction direction,
         Money what,
         Money valueAtArrival,
@@ -36,7 +36,7 @@ public record Contribution(
 
     public Contribution {
         Objects.requireNonNull(id, "id is required");
-        Objects.requireNonNull(when, "when is required");
+        Objects.requireNonNull(dateTime, "dateTime is required");
         Objects.requireNonNull(direction, "direction is required");
         Objects.requireNonNull(what, "what is required");
         if (valueAtArrival == null && provenance != null) {
@@ -59,12 +59,12 @@ public record Contribution(
         OUT
     }
 
-    public static Contribution paidIn(ContributionId id, Money money, ZonedDateTime when) {
-        return new Contribution(id, when, Direction.IN, money, money, Provenance.ASSUMED_PAR);
+    public static Contribution paidIn(ContributionId id, Money money, ZonedDateTime dateTime) {
+        return new Contribution(id, dateTime, Direction.IN, money, money, Provenance.ASSUMED_PAR);
     }
 
-    public static Contribution takenOut(ContributionId id, Money money, ZonedDateTime when) {
-        return new Contribution(id, when, Direction.OUT, money, money, Provenance.ASSUMED_PAR);
+    public static Contribution takenOut(ContributionId id, Money money, ZonedDateTime dateTime) {
+        return new Contribution(id, dateTime, Direction.OUT, money, money, Provenance.ASSUMED_PAR);
     }
 
     /**
@@ -72,8 +72,8 @@ public record Contribution(
      * have (task C12). Replaced by real deposits once backfill exists (C13), which is why every
      * contribution carries an id: you cannot replace what you cannot point at.
      */
-    public static Contribution opening(Money value, ZonedDateTime when) {
-        return new Contribution(ContributionId.generate(), when, Direction.IN,
+    public static Contribution opening(Money value, ZonedDateTime dateTime) {
+        return new Contribution(ContributionId.generate(), dateTime, Direction.IN,
                 value, value, Provenance.OPENING_SNAPSHOT);
     }
 

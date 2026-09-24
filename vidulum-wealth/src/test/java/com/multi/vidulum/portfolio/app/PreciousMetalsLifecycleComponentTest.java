@@ -216,7 +216,7 @@ class PreciousMetalsLifecycleComponentTest {
         gateway.send(DepositMoneyCommand.builder()
                 .portfolioId(id).money(money)
                 .contributionId(ContributionId.of("deposit-" + (++contributionCounter)))
-                .when(NOW)
+                .dateTime(NOW)
                 .build());
     }
 

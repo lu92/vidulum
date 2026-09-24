@@ -27,5 +27,5 @@ public class DepositMoneyCommand implements Command {
      * same command produces a different ledger entry depending on when it is executed, which is
      * also why every test that wanted a fixed moment had to inject a clock to get one.
      */
-    private final ZonedDateTime when;
+    private final ZonedDateTime dateTime;
 }

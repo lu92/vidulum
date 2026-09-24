@@ -20,7 +20,7 @@ public class DepositMoneyCommandHandler implements CommandHandler<DepositMoneyCo
         Portfolio portfolio = repository.findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.depositMoney(command.getMoney(), command.getContributionId(), command.getWhen());
+        portfolio.depositMoney(command.getMoney(), command.getContributionId(), command.getDateTime());
         repository.save(portfolio);
         log.info("Portfolio [{}]: money [{}}] has been deposited", portfolio.getPortfolioId(), command.getMoney());
         return null;

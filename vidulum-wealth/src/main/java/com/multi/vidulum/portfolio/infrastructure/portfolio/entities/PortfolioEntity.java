@@ -122,7 +122,7 @@ public class PortfolioEntity {
      */
     public record ContributionEntity(
             String id,
-            Date when,
+            Date dateTime,
             String direction,
             Money what,
             Money valueAtArrival,
@@ -131,7 +131,7 @@ public class PortfolioEntity {
         static ContributionEntity from(Contribution contribution) {
             return new ContributionEntity(
                     contribution.id().getId(),
-                    Date.from(contribution.when().toInstant()),
+                    Date.from(contribution.dateTime().toInstant()),
                     contribution.direction().name(),
                     contribution.what(),
                     contribution.valueAtArrival(),
@@ -141,7 +141,7 @@ public class PortfolioEntity {
         Contribution toDomain() {
             return new Contribution(
                     ContributionId.of(id),
-                    ZonedDateTime.ofInstant(when.toInstant(), ZoneOffset.UTC),
+                    ZonedDateTime.ofInstant(dateTime.toInstant(), ZoneOffset.UTC),
                     Contribution.Direction.valueOf(direction),
                     what,
                     valueAtArrival,

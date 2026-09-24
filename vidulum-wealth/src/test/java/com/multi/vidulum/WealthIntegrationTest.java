@@ -216,7 +216,7 @@ public abstract class WealthIntegrationTest {
                 .portfolioId(portfolioId)
                 .money(money)
                 .contributionId(contributionId)
-                .when(ZonedDateTime.now(clock))
+                .dateTime(ZonedDateTime.now(clock))
                 .build());
     }
 

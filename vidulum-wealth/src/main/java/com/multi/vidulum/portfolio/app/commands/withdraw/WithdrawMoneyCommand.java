@@ -19,5 +19,5 @@ public class WithdrawMoneyCommand implements Command {
     private final ContributionId contributionId;
 
     /** When this happened. See {@code DepositMoneyCommand#when} for why the command carries it. */
-    private final ZonedDateTime when;
+    private final ZonedDateTime dateTime;
 }

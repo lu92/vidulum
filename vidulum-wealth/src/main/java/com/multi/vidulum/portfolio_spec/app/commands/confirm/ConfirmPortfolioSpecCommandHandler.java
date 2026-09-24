@@ -33,7 +33,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Optional;
@@ -90,12 +89,11 @@ public class ConfirmPortfolioSpecCommandHandler
      * lives with the aggregate that owns it; only the delivery is direct.
      */
     private final ConfirmExchangeConnectionCommandHandler confirmConnectionHandler;
-    private final Clock clock;
 
     @Override
     public PortfolioSpec handle(ConfirmPortfolioSpecCommand command) {
         PortfolioSpec spec = specRepository.findOwnedOrThrow(command.userId(), command.specId());
-        ZonedDateTime now = ZonedDateTime.now(clock);
+        ZonedDateTime now = command.dateTime();
 
         if (spec.getPortfolioId() != null) {
             throw new CannotApplySpecToExistingPortfolioException(spec.getPortfolioId());

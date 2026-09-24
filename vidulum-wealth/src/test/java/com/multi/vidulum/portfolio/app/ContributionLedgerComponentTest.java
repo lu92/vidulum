@@ -136,7 +136,7 @@ class ContributionLedgerComponentTest {
 
         assertThat(portfolio.getContributions()).singleElement().satisfies(entry -> {
             assertThat(entry.id()).isEqualTo(ContributionId.of("pinned"));
-            assertThat(entry.when()).isEqualTo(WHEN);
+            assertThat(entry.dateTime()).isEqualTo(WHEN);
             assertThat(entry.provenance()).isEqualTo(Provenance.ASSUMED_PAR);
         });
     }

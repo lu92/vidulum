@@ -144,7 +144,7 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler, clock));
+                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler));
         return gateway;
     }
 
