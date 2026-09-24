@@ -84,12 +84,17 @@ if (config.perm !== "read_only") {
   process.exit(1);
 }
 
+/**
+ * Both accounts (E10). Deposits land in Funding and stay there until moved, so reading only
+ * Trading hides whatever the user paid in and left alone.
+ */
 async function readBalance() {
   const [balance] = await okx.get("/api/v5/account/balance");
-  return balance.details ?? [];
+  const funding = await okx.get("/api/v5/asset/balances");
+  return { trading: balance.details ?? [], funding: funding ?? [] };
 }
 
-const details = await readBalance();
+const balances = await readBalance();
 const takenAt = new Date().toISOString();
 const openOrders = await okx.paginate("/api/v5/trade/orders-pending", {}, { cursorField: "ordId" });
 
@@ -100,12 +105,12 @@ run.exchange = {
 };
 // Not part of the snapshot: a lock changes what is available, not what is held (task D5).
 run.lockedByOpenOrders = lockedByOpenOrders(openOrders);
-stage("read OKX account", { positions: buildSnapshotPositions(details, { dustThreshold: dust }).length });
+stage("read OKX account", { positions: buildSnapshotPositions({ ...balances, dustThreshold: dust }).length });
 
 if (dryRun) {
   run.specRequest = buildSpecRequest({
     broker: "OKX", connectionId: null, denominationCurrency: currency,
-    takenAt, details, dustThreshold: dust,
+    takenAt, ...balances, dustThreshold: dust,
   });
   finish();
 }
@@ -124,7 +129,7 @@ stage("registered user", { userId: registered.userId });
 
 // --- 3. quotes, before anything is created (E8) ---------------------------------------------------
 
-const snapshotPositions = buildSnapshotPositions(details, { dustThreshold: dust });
+const snapshotPositions = buildSnapshotPositions({ ...balances, dustThreshold: dust });
 const required = requiredSymbols(snapshotPositions, currency);
 
 if (!args["skip-quotes"] && required.length > 0) {
@@ -175,7 +180,7 @@ stage("connected exchange account", { connectionId: connection.id, status: conne
 
 const specRequest = buildSpecRequest({
   broker: "OKX", connectionId: connection.id, denominationCurrency: currency,
-  takenAt, details, dustThreshold: dust,
+  takenAt, ...balances, dustThreshold: dust,
 });
 run.specRequest = specRequest;
 
@@ -213,7 +218,7 @@ if (questions.length > 0) {
 
 // Read the account again. The backend compares regardless of how old the specification is, so
 // reusing the first reply would only hide a change that happened while questions were answered.
-const freshDetails = await readBalance();
+const freshBalances = await readBalance();
 const freshTakenAt = new Date().toISOString();
 
 const applied = await attempt(() => vidulum.post(`/portfolio-spec/${spec.id}/confirm`,
@@ -222,7 +227,7 @@ const applied = await attempt(() => vidulum.post(`/portfolio-spec/${spec.id}/con
     denominationCurrency: currency,
     broker: "OKX",
     takenAt: freshTakenAt,
-    positions: buildSnapshotPositions(freshDetails, { dustThreshold: dust }),
+    positions: buildSnapshotPositions({ ...freshBalances, dustThreshold: dust }),
   })));
 
 run.portfolioId = applied.portfolioId;

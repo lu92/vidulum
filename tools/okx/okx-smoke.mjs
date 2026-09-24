@@ -64,7 +64,10 @@ const okx = createRestClient({
 console.log("reading OKX account...");
 const [config] = await okx.get("/api/v5/account/config");
 const [balance] = await okx.get("/api/v5/account/balance");
-const positions = buildSnapshotPositions(balance.details ?? [], { dustThreshold: dust });
+// Funding as well as Trading (E10) - a deposit left where it landed lives only here.
+const funding = await okx.get("/api/v5/asset/balances");
+const positions = buildSnapshotPositions({
+  trading: balance.details ?? [], funding: funding ?? [], dustThreshold: dust });
 const required = requiredSymbols(positions, currency);
 
 console.log(`  uid ${config.uid}, perm ${config.perm}`);
@@ -171,12 +174,14 @@ for (let run = 1; run <= iterations; run++) {
 
     // 6. confirm against a fresh snapshot
     const [freshBalance] = await okx.get("/api/v5/account/balance");
+    const freshFunding = await okx.get("/api/v5/asset/balances");
     const applied = await vidulum.post(`/portfolio-spec/${spec.id}/confirm`, {
       portfolioName: `smoke ${run}`,
       denominationCurrency: currency,
       broker: "OKX",
       snapshotTakenAt: new Date().toISOString(),
-      positions: buildSnapshotPositions(freshBalance.details ?? [], { dustThreshold: dust }),
+      positions: buildSnapshotPositions({
+        trading: freshBalance.details ?? [], funding: freshFunding ?? [], dustThreshold: dust }),
     });
     check("confirmation applies the specification", applied.status === "APPLIED", applied.status);
     check("a portfolio id comes back", Boolean(applied.portfolioId));
