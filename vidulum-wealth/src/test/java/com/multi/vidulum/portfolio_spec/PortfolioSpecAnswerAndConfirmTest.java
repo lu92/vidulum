@@ -1,6 +1,15 @@
 package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
+import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.common.Symbol;
+import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
@@ -74,6 +83,31 @@ class PortfolioSpecAnswerAndConfirmTest {
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
 
+    /**
+     * Prices for the opening contribution (C12). Confirmation now needs them: it records what the
+     * account was worth on arrival, and that cannot wait until the first read.
+     */
+    private final QuoteRestClient quotes = new QuoteRestClient() {
+        @Override
+        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
+            return AssetPriceMetadata.builder()
+                    .symbol(symbol)
+                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
+                            ? Price.one(symbol.getDestination().getId())
+                            : Price.of(50_000, symbol.getDestination().getId()))
+                    .build();
+        }
+
+        @Override
+        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
+            return AssetBasicInfo.notFound(ticker);
+        }
+
+        @Override
+        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
+        }
+    };
+
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 
@@ -84,7 +118,7 @@ class PortfolioSpecAnswerAndConfirmTest {
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                confirmConnectionHandler, clock));
+                quotes, confirmConnectionHandler, clock));
         return gateway;
     }
 
@@ -265,11 +299,15 @@ class PortfolioSpecAnswerAndConfirmTest {
     }
 
     /**
-     * The task C9 exists for: a portfolio built from a snapshot reports "invested 0", because
-     * that field moves only on deposits and withdrawals and this path bypasses both.
+     * What a portfolio built from a snapshot can say about what its owner put in (tasks C9, C12).
+     *
+     * <p>This path passes through neither deposit nor withdrawal, so the field the ledger replaces
+     * answered {@code 0} here — beside six figures of holdings, which reads as profit out of thin
+     * air. The ledger opens instead with one entry: what the account was worth on the day we first
+     * read it, marked {@code OPENING_SNAPSHOT} so nobody mistakes it for a deposit somebody made.
      */
     @Test
-    void shouldLeaveInvestedBalanceAtZeroForASnapshotBuiltPortfolio() {
+    void shouldOpenTheLedgerWithWhatTheAccountWasWorthOnArrival() {
         pendingConnection();
         String specId = createSpec().id();
         answerUnknown(specId);
@@ -278,7 +316,40 @@ class PortfolioSpecAnswerAndConfirmTest {
 
         Portfolio portfolio = portfolioRepository
                 .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
-        assertThat(portfolio.getInvestedBalance().getAmount().doubleValue()).isZero();
+
+        assertThat(portfolio.getContributions()).singleElement().satisfies(opening -> {
+            assertThat(opening.provenance())
+                    .as("not EXCHANGE_REPORTED: the exchange said what is held, not how it arrived")
+                    .isEqualTo(Provenance.OPENING_SNAPSHOT);
+            assertThat(opening.direction()).isEqualTo(Contribution.Direction.IN);
+            assertThat(opening.valueAtArrival().getAmount().doubleValue())
+                    .as("1.3 BTC at 50 000, both positions counted - the unpriced one included")
+                    .isEqualTo(65_000);
+            assertThat(opening.valueAtArrival().getCurrency()).isEqualTo("EUR");
+            assertThat(opening.when())
+                    .as("the moment of confirmation, taken from the clock rather than invented inside")
+                    .isEqualTo(NOW);
+            assertThat(opening.id()).isNotBlank();
+        });
+    }
+
+    /** And the summary states it, rather than reporting a zero it never learned. */
+    @Test
+    void shouldReportTheOpeningContributionInTheSummary() {
+        pendingConnection();
+        String specId = createSpec().id();
+        answerUnknown(specId);
+
+        PortfolioSpecDto.PortfolioSpecJson applied = controller.confirm(specId, confirmBody(1.3, 0.3));
+        Portfolio portfolio = portfolioRepository
+                .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
+
+        PortfolioDto.PortfolioSummaryJson summary =
+                new PortfolioSummaryMapper(quotes).map(portfolio, Currency.of("EUR"));
+
+        assertThat(summary.getContributionStatus()).isEqualTo(ContributionStatus.COMPUTED);
+        assertThat(summary.getNetContributions()).isEqualTo(Money.of(65_000, "EUR"));
+        assertThat(summary.getContributionCoverage()).isEqualTo(1.0);
     }
 
     /**

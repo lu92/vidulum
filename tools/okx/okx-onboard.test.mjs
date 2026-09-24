@@ -18,7 +18,8 @@ import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQue
          openQuestions, planAnswers } from "./okx-spec-flow.mjs";
 import { backoffDelay, describeCycle, instrumentIdFor, missingSymbols, publishPath, publishQuery,
          requiredSymbols, unquotableSymbols } from "./okx-quotes.mjs";
-import { coverageAgreement, coverageOf, describePortfolio, describePositions, describeResult,
+import { coverageAgreement, coverageOf, describeContributions, describePortfolio, describePositions,
+         describeResult,
          portfolioCoverage, quotesNeededBy } from "./okx-portfolio.mjs";
 
 let pass = 0, fail = 0;
@@ -350,7 +351,8 @@ console.log("\nE5 i E7 - odczyt portfela i wycena");
 const SUMMARY = {
   name: "My OKX", broker: "OKX",
   currentValue: { amount: 71500, currency: "EUR" },
-  investedBalance: { amount: 0, currency: "EUR" },
+  netContributions: { amount: 60000, currency: "EUR" },
+  contributionCoverage: 1.0, contributionStatus: "COMPUTED",
   // Zaledwie 23% wartosci ma znany koszt, wiec backend wstrzymuje liczbe wyniku (C4).
   unrealisedProfit: null, pctUnrealisedProfit: null,
   profitCoverage: 0.23076923076923078, profitStatus: "WITHHELD_LOW_COVERAGE",
@@ -417,10 +419,19 @@ checkThat("proweniencja kosztu jest widoczna",
 checkThat("pokrycie pozycji jest pokazane w procentach",
   describePositions(SUMMARY)[0].includes("100% covered"));
 
-// A snapshot-built portfolio never went through a deposit, so this field says nothing about what
-// was actually put in. Printing it without a caveat would be the one number here that lies.
-checkThat("zerowe investedBalance jest opatrzone zastrzezeniem",
-  describePortfolio(SUMMARY).some((l) => l.includes("invested") && l.includes("C9")));
+// Wczesniej bylo tu zerowe investedBalance z zastrzezeniem w nawiasie. Po C12 onboarding zapisuje
+// wklad otwarcia, wiec raport podaje liczbe - a gdy ksiega jest w wiekszosci bez wyceny, backend ja
+// wstrzymuje i raport powtarza to slowami zamiast drukowac polowiczna sume (C9).
+checkThat("wklad wlasciciela jest podany wraz z pokryciem ksiegi",
+  describePortfolio(SUMMARY).some((l) =>
+    l.includes("put in") && l.includes("60000 EUR net") && l.includes("100% of the ledger")));
+
+checkThat("wstrzymany wklad tlumaczy sie slowami, nie zerem",
+  describeContributions({ contributionStatus: "WITHHELD_LOW_COVERAGE" }).includes("withheld")
+    && !describeContributions({ contributionStatus: "WITHHELD_LOW_COVERAGE" }).includes("0"));
+
+checkThat("portfel bez zadnego wkladu mowi to wprost",
+  describeContributions({ contributionStatus: "NOTHING_CONTRIBUTED" }) === "nothing put in");
 
 checkThat("raport zaczyna sie od nazwy i wartosci",
   describePortfolio(SUMMARY)[0].includes("My OKX")

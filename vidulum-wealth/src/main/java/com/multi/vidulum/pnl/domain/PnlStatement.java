@@ -10,7 +10,8 @@ import java.util.List;
 @Data
 @Builder
 public class PnlStatement {
-    private Money investedBalance;
+    /** Absent when the portfolio summary could not add one up - see {@code ContributionStatus}. */
+    private Money netContributions;
     private Money currentValue;
     private Money totalUnrealisedProfit;
     private Double pctUnrealisedProfit;

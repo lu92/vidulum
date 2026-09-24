@@ -66,7 +66,7 @@ public class PnlRestController {
 
                                 return PnlDto.PnlPortfolioStatementJson.builder()
                                         .portfolioId(pnlPortfolioStatement.getPortfolioId().getId())
-                                        .investedBalance(pnlPortfolioStatement.getInvestedBalance())
+                                        .netContributions(pnlPortfolioStatement.getNetContributions())
                                         .currentValue(pnlPortfolioStatement.getCurrentValue())
                                         .totalUnrealisedProfit(pnlPortfolioStatement.getTotalUnrealisedProfit())
                                         .pctUnrealisedProfit(pnlPortfolioStatement.getPctUnrealisedProfit())
@@ -76,7 +76,7 @@ public class PnlRestController {
                             .collect(toList());
 
                     return PnlDto.PnlStatementJson.builder()
-                            .investedBalance(pnlStatement.getInvestedBalance())
+                            .netContributions(pnlStatement.getNetContributions())
                             .currentValue(pnlStatement.getCurrentValue())
                             .totalUnrealisedProfit(pnlStatement.getTotalUnrealisedProfit())
                             .pctUnrealisedProfit(pnlStatement.getPctUnrealisedProfit())

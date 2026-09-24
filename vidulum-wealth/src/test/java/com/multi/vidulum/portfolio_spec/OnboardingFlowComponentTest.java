@@ -1,6 +1,10 @@
 package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.common.Symbol;
+import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.PortfolioId;
@@ -64,6 +68,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@code PENDING → ACTIVE → REVOKED → ACTIVE}.
  */
 class OnboardingFlowComponentTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z");
     private static final UserId ALICE = UserId.of("U10000001");
@@ -99,6 +107,31 @@ class OnboardingFlowComponentTest {
     private final ConfirmExchangeConnectionCommandHandler confirmConnectionHandler =
             new ConfirmExchangeConnectionCommandHandler(connections, clock);
 
+    /**
+     * Prices for the opening contribution (C12). Confirmation now needs them: it records what the
+     * account was worth on arrival, and that cannot wait until the first read.
+     */
+    private final QuoteRestClient quotes = new QuoteRestClient() {
+        @Override
+        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
+            return AssetPriceMetadata.builder()
+                    .symbol(symbol)
+                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
+                            ? Price.one(symbol.getDestination().getId())
+                            : Price.of(50_000, symbol.getDestination().getId()))
+                    .build();
+        }
+
+        @Override
+        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
+            return AssetBasicInfo.notFound(ticker);
+        }
+
+        @Override
+        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
+        }
+    };
+
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 
@@ -110,7 +143,7 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specs, connections, portfolios, new PortfolioFactory(), confirmConnectionHandler, clock));
+                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler, clock));
         return gateway;
     }
 
@@ -371,7 +404,7 @@ class OnboardingFlowComponentTest {
                 .hasSize(1);
         assertThat(position(portfolio, SubName.none()).getQuantity()).isEqualTo(Quantity.of(5_000));
 
-        portfolio.depositMoney(Money.of(100, "EUR"));
+        portfolio.depositMoney(Money.of(100, "EUR"), "deposit-1", FIXED_CONTRIBUTION_TIME);
 
         assertThat(portfolio.findAssetsByTicker(Ticker.of("EUR")))
                 .as("the deposit finds the existing balance instead of opening a parallel one")

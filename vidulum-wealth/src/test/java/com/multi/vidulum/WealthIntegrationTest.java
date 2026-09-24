@@ -5,6 +5,7 @@ import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.pnl.app.commands.SetupPnlHistoryCommand;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioRestController;
+import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
@@ -52,6 +53,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 @SpringBootTest(classes = {FixedClockConfig.class})
 @ActiveProfiles("test")
 public abstract class WealthIntegrationTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     protected static final MongoDBContainer mongoDBContainer;
     protected static final KafkaContainer kafka;
@@ -191,12 +196,22 @@ public abstract class WealthIntegrationTest {
         testAuthenticatedUser.actAs(UserId.of(userId));
     }
 
+    /**
+     * Setup, so it goes through the gateway rather than the controller: the controller generates a
+     * fresh contribution id for every deposit, and a whole-object assertion cannot pin a random
+     * one. Ownership on the controller path is covered where it is the subject —
+     * {@code PortfolioOwnershipHttpIntegrationTest}.
+     */
     protected void depositMoney(PortfolioId portfolioId, Money money) {
-        portfolioRestController.depositMoney(
-                PortfolioDto.DepositMoneyJson.builder()
-                        .portfolioId(portfolioId.getId())
-                        .money(money)
-                        .build());
+        depositMoney(portfolioId, money, "deposit-1");
+    }
+
+    protected void depositMoney(PortfolioId portfolioId, Money money, String contributionId) {
+        commandGateway.send(DepositMoneyCommand.builder()
+                .portfolioId(portfolioId)
+                .money(money)
+                .contributionId(contributionId)
+                .build());
     }
 
     protected TradingDto.OrderSummaryJson placeOrder(TradingDto.PlaceOrderJson placeOrderJson) {

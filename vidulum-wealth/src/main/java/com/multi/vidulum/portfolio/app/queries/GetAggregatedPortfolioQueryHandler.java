@@ -58,13 +58,12 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                                 aggregatedPortfolio.addAssets(segment, portfolio.getBroker(), assets);
                             });
 
-                            // increase number of invested money
                             aggregatedPortfolio.appendPortfolioId(portfolio.getPortfolioId()); // todo remove
-                            aggregatedPortfolio.appendPortfolioInvestedBalance(
-                                    new AggregatedPortfolio.PortfolioInvestedBalance(
+                            aggregatedPortfolio.appendPortfolioContributions(
+                                    new AggregatedPortfolio.PortfolioContributions(
                                             portfolio.getPortfolioId(),
                                             portfolio.getAllowedDepositCurrency(),
-                                            portfolio.getInvestedBalance(),
+                                            portfolio.getContributions(),
                                             portfolio.getBroker())
                             );
                             return aggregatedPortfolio;

@@ -178,11 +178,11 @@ nietknięte — i tak ma być, patrz §2.
 Robione naraz da PR, którego nikt porządnie nie przejrzy: agregat, encja, trzy moduły konsumujące,
 POC i kilkanaście testów całoobiektowych. Cztery kroki, każdy osobno wysyłalny:
 
-1. **Model wkładów i jeden mechanizm.** Lista w agregacie, `deposit`/`withdraw` ją zapełniają, nowa
+1. ✅ **Zrobione (C9). Model wkładów i jeden mechanizm.** Lista w agregacie, `deposit`/`withdraw` ją zapełniają, nowa
    nazwa w API z pokryciem i statusem. **Bez ścieżki snapshotu** — portfele z wpłat działają od razu
    i pełną wartością, bo tam wszystko jest znane. Nowa mechanika sprawdzona tam, gdzie nie ma
    niewiadomych.
-2. **Wkład otwarcia przy `confirm`.** Tu wchodzi zależność od notowań i zmiana momentu awarii.
+2. ✅ **Zrobione (C12). Wkład otwarcia przy `confirm`.** Tu wchodzi zależność od notowań i zmiana momentu awarii.
    Osobno, bo to jedyny krok ze strukturalną konsekwencją.
 3. **C5** na gotowym fundamencie.
 4. **Backfill.** Dopiero wtedy `history-candles` i granica konta z §4.4.
@@ -191,7 +191,9 @@ POC i kilkanaście testów całoobiektowych. Cztery kroki, każdy osobno wysyła
 
 ## 8. Zostaje do rozstrzygnięcia
 
-- **Nazwa** pola zastępującego `investedBalance` w API.
-- **Kiedy** wprowadzić granicę całego konta (§4.4) — nie blokuje kroków 1–3, blokuje krok 4.
+- ~~**Nazwa** pola zastępującego `investedBalance` w API.~~ Rozstrzygnięte w C9: `netContributions`,
+  obok `contributionCoverage` i `contributionStatus` — ten sam trójkąt, co przy wyniku (C4), bo to ta
+  sama reguła zastosowana o poziom niżej.
+- **Kiedy** wprowadzić granicę całego konta (§4.4) — nie blokowało kroków 1–2, blokuje krok 4.
 - Czy backfill sięga wstecz **poza** datę utworzenia portfela w Vidulum, czy zatrzymuje się na niej.
 - Czy wypłata gotówki i wypłata waloru to ten sam `source`, czy dwa różne.

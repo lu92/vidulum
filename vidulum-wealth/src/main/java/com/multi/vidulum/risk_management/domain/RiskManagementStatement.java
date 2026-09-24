@@ -17,7 +17,7 @@ public class RiskManagementStatement {
     private String name;
     private Broker broker;
     private List<AssetRiskManagementStatement> assetRiskManagementStatements;
-    private Money investedBalance;
+    private Money netContributions;
     private Money currentValue;
     /** Absent when the portfolio summary could not compute one - see {@code ProfitStatus}. */
     private Double pctUnrealisedProfit;

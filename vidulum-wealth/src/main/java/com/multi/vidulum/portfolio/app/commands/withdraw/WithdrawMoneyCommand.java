@@ -11,4 +11,7 @@ import lombok.Getter;
 public class WithdrawMoneyCommand implements Command {
     private final PortfolioId portfolioId;
     private final Money money;
+
+    /** Identity of the ledger entry this creates — generated outside so a test can pin it. */
+    private final String contributionId;
 }

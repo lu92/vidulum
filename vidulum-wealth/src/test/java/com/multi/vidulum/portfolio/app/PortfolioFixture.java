@@ -14,6 +14,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.snapshots.PortfolioSnapshot;
 
 import java.util.ArrayList;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -34,8 +36,10 @@ public final class PortfolioFixture {
     private String name = "XYZ";
     private Broker broker = Broker.of("BROKER");
     private Currency allowedDepositCurrency = Currency.of("USD");
-    private Money investedBalance = Money.zero("USD");
+    private final List<Contribution> contributions = new ArrayList<>();
     private PortfolioStatus status = PortfolioStatus.OPEN;
+
+    private static final ZonedDateTime CONTRIBUTED_AT = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 
     public static PortfolioFixture portfolio() {
         return new PortfolioFixture();
@@ -63,12 +67,6 @@ public final class PortfolioFixture {
 
     public PortfolioFixture denominatedIn(String currency) {
         this.allowedDepositCurrency = Currency.of(currency);
-        this.investedBalance = Money.zero(currency);
-        return this;
-    }
-
-    public PortfolioFixture invested(Money investedBalance) {
-        this.investedBalance = investedBalance;
         return this;
     }
 
@@ -103,9 +101,31 @@ public final class PortfolioFixture {
         return this;
     }
 
+    /**
+     * Something the owner put in, whose value at the time is known — a cash deposit, or a holding
+     * transferred in on a day we could price.
+     */
+    public PortfolioFixture contributed(Money money) {
+        contributions.add(Contribution.paidIn(
+                "contribution-" + (contributions.size() + 1), money, CONTRIBUTED_AT));
+        return this;
+    }
+
+    /**
+     * Something the owner put in whose value at the time nobody knows — a coin transferred in from
+     * an exchange we cannot price backwards. Unreachable through deposits, and the whole reason the
+     * ledger reports coverage rather than a bare total.
+     */
+    public PortfolioFixture contributedOfUnknownValue(Money money) {
+        contributions.add(new Contribution(
+                "contribution-" + (contributions.size() + 1), CONTRIBUTED_AT,
+                Contribution.Direction.IN, money, null, null));
+        return this;
+    }
+
     public Portfolio build() {
         return Portfolio.from(new PortfolioSnapshot(
                 portfolioId, userId, name, broker, List.copyOf(assets),
-                status, investedBalance, allowedDepositCurrency));
+                status, List.copyOf(contributions), allowedDepositCurrency));
     }
 }

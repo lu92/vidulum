@@ -116,6 +116,7 @@ class PreciousMetalsLifecycleComponentTest {
     private final CommandGateway gateway = new CommandGateway();
     private PortfolioId portfolioId;
     private int tradeCounter;
+    private int contributionCounter;
 
     // --- wiring -----------------------------------------------------------------------------
 
@@ -157,7 +158,7 @@ class PreciousMetalsLifecycleComponentTest {
     @BeforeEach
     void wire() {
         gateway.registerCommandHandler(new CreateEmptyPortfolioCommandHandler(portfolios, new PortfolioFactory()));
-        gateway.registerCommandHandler(new DepositMoneyCommandHandler(portfolios));
+        gateway.registerCommandHandler(new DepositMoneyCommandHandler(portfolios, clock));
         gateway.registerCommandHandler(lockHandler);
         gateway.registerCommandHandler(unlockHandler);
         gateway.registerCommandHandler(new ProcessTradeCommandHandler(portfolios));
@@ -211,7 +212,10 @@ class PreciousMetalsLifecycleComponentTest {
     }
 
     private void deposit(PortfolioId id, Money money) {
-        gateway.send(DepositMoneyCommand.builder().portfolioId(id).money(money).build());
+        gateway.send(DepositMoneyCommand.builder()
+                .portfolioId(id).money(money)
+                .contributionId("deposit-" + (++contributionCounter))
+                .build());
     }
 
     private PortfolioId createPortfolio(String name, Currency currency) {

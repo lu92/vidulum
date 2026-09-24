@@ -6,6 +6,8 @@ import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
@@ -44,8 +46,9 @@ public class PortfolioSummaryMapper {
                 .map(m -> m.json().getCurrentValue())
                 .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
 
-        Money denominatedInvestedBalance =
-                denominateInCurrency(portfolio.getInvestedBalance(), broker, denominationCurrency);
+        Ledger ledger = ledgerOf(
+                denominated(portfolio.getContributions(), broker, denominationCurrency),
+                denominationCurrency);
         Result result = resultOf(mapped, denominationCurrency);
 
         return PortfolioDto.PortfolioSummaryJson.builder()
@@ -55,7 +58,9 @@ public class PortfolioSummaryMapper {
                 .broker(portfolio.getBroker().getId())
                 .assets(mapped.stream().map(MappedAsset::json).collect(toList()))
                 .status(portfolio.getStatus())
-                .investedBalance(denominatedInvestedBalance)
+                .netContributions(ledger.net())
+                .contributionCoverage(ledger.coverageShare())
+                .contributionStatus(ledger.status())
                 .currentValue(currentValue)
                 .unrealisedProfit(result.profit())
                 .pctUnrealisedProfit(result.pctProfit())
@@ -139,6 +144,74 @@ public class PortfolioSummaryMapper {
         }
     }
 
+    /**
+     * What the owner has put in, net of what they have taken out (task C9).
+     *
+     * <p>Replaces the single {@code investedBalance} this used to read off the aggregate, which
+     * only {@code deposit} and {@code withdraw} ever moved — so a portfolio built from an exchange
+     * snapshot answered {@code 0} beside six figures of holdings. Zero is worse than silence: an
+     * interface renders it as a number.
+     *
+     * <p>Withheld below {@link ProfitCoverage#MEANINGFUL_FROM} for the same reason a profit is: a
+     * total added up from a minority of the ledger does not describe the ledger. Nothing produces
+     * a valueless contribution yet — backfill (C13) will be the first — but the rule is here so
+     * that when it does, the number does not quietly start lying.
+     */
+    /**
+     * Restates every valued entry in the currency being asked for.
+     *
+     * <p>A contribution is recorded in the currency it arrived in, and the summary can be
+     * requested in another one — {@code GET /portfolio/{id}/{currency}}. Skipping this made a
+     * 10 000 USD deposit answer "10 000 EUR", and made an aggregate add zloty to euro.
+     *
+     * <p>Entries with no value pass through untouched: there is nothing to convert, and they still
+     * have to be counted so coverage can say how much of the ledger is missing.
+     */
+    private List<Contribution> denominated(
+            List<Contribution> contributions, Broker broker, Currency denominationCurrency) {
+
+        if (contributions == null) {
+            return List.of();
+        }
+        return contributions.stream()
+                .map(contribution -> contribution.hasKnownValue()
+                        ? new Contribution(
+                                contribution.id(), contribution.when(), contribution.direction(),
+                                contribution.what(),
+                                denominateInCurrency(contribution.valueAtArrival(), broker, denominationCurrency),
+                                contribution.provenance())
+                        : contribution)
+                .toList();
+    }
+
+    private Ledger ledgerOf(List<Contribution> contributions, Currency denominationCurrency) {
+        if (contributions == null || contributions.isEmpty()) {
+            return Ledger.absent(ContributionStatus.NOTHING_CONTRIBUTED, null);
+        }
+        ProfitCoverage coverage = ProfitCoverage.ofLedger(contributions).orElseThrow();
+
+        List<Contribution> valued = contributions.stream().filter(Contribution::hasKnownValue).toList();
+        if (valued.isEmpty()) {
+            return Ledger.absent(ContributionStatus.NO_KNOWN_VALUE, coverage.share());
+        }
+        if (!coverage.isMeaningful()) {
+            return Ledger.absent(ContributionStatus.WITHHELD_LOW_COVERAGE, coverage.share());
+        }
+
+        // Every value is already in the portfolio's own currency - a deposit must be in the
+        // currency the portfolio accepts, and an opening contribution is valued when it is made.
+        Money net = valued.stream()
+                .map(Contribution::signedValue)
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+        return new Ledger(net.withScale(4), coverage.share(), ContributionStatus.COMPUTED);
+    }
+
+    private record Ledger(Money net, Double coverageShare, ContributionStatus status) {
+        static Ledger absent(ContributionStatus status, Double coverageShare) {
+            return new Ledger(null, coverageShare, status);
+        }
+    }
+
     public PortfolioDto.AggregatedPortfolioSummaryJson map(AggregatedPortfolio aggregatedPortfolio, Currency denominationCurrency) {
         Map<Segment, Map<Broker, List<Asset>>> segmentedAssets = aggregatedPortfolio.fetchSegmentedAssets();
         Set<Segment> segments = segmentedAssets.keySet();
@@ -163,9 +236,15 @@ public class PortfolioSummaryMapper {
                 .map(PortfolioId::getId)
                 .collect(toList());
 
-        Money investedBalanceInDenominatedCurrency = aggregatedPortfolio.getPortfolioInvestedBalances().stream()
-                .map(investedBalance -> denominateInCurrency(investedBalance.investedMoney(), investedBalance.broker(), denominationCurrency))
-                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+        // Each portfolio keeps its own currency and its own broker, so every ledger is converted
+        // on its own terms before the entries are merged. Summing first and converting after would
+        // add zloty to euro and call the result dollars.
+        Ledger ledger = ledgerOf(
+                aggregatedPortfolio.getPortfolioContributions().stream()
+                        .flatMap(entry -> denominated(
+                                entry.contributions(), entry.broker(), denominationCurrency).stream())
+                        .toList(),
+                denominationCurrency);
 
         // Same rule as one portfolio: the total is the positions' result, not the gap between
         // value and deposits. The aggregated view merges by ticker alone, which dilutes averages
@@ -180,7 +259,9 @@ public class PortfolioSummaryMapper {
                         Map.Entry::getKey,
                         entry -> entry.getValue().stream().map(MappedAsset::json).collect(toList()))))
                 .portfolioIds(portfolioIds)
-                .investedBalance(investedBalanceInDenominatedCurrency.withScale(4))
+                .netContributions(ledger.net())
+                .contributionCoverage(ledger.coverageShare())
+                .contributionStatus(ledger.status())
                 .currentValue(currentValue.withScale(4))
                 .totalUnrealisedProfit(result.profit())
                 .pctUnrealisedProfit(result.pctProfit())

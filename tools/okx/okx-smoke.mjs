@@ -219,14 +219,26 @@ for (let run = 1; run <= iterations; run++) {
         || (portfolio.unrealisedProfit === null && portfolio.pctUnrealisedProfit === null),
       JSON.stringify([portfolio.unrealisedProfit, portfolio.pctUnrealisedProfit]));
 
-    // The defect C3 fixed, checked where it actually appeared: investedBalance is zero here,
-    // and the old formula turned that into "the whole portfolio is profit".
+    // The defect C3 fixed, checked where it actually appeared: the result used to be
+    // "value - invested", and a snapshot-built portfolio invested nothing, so the old formula
+    // turned the whole portfolio into profit.
     check("the whole portfolio is not reported as gain just because nothing was deposited (C3)",
       portfolio.unrealisedProfit === null
         || portfolio.unrealisedProfit.amount !== portfolio.currentValue.amount,
       JSON.stringify([portfolio.unrealisedProfit, portfolio.currentValue]));
-    check("invested balance is zero for a snapshot-built portfolio (task C9)",
-      portfolio.investedBalance?.amount === 0, JSON.stringify(portfolio.investedBalance));
+    // C9 and C12, checked where the old field was at its worst: onboarding passes through no
+    // deposit, so "invested" used to answer 0 beside the whole balance. The ledger now opens with
+    // one entry worth what the account held on arrival, marked as a snapshot and not as a deposit.
+    check("the ledger opens with what the account was worth, not with a zero (C9, C12)",
+      portfolio.contributionStatus === "COMPUTED"
+        && portfolio.netContributions?.amount > 0,
+      JSON.stringify([portfolio.contributionStatus, portfolio.netContributions]));
+    check("the opening entry is valued in the portfolio's own currency",
+      portfolio.netContributions?.currency === currency,
+      JSON.stringify(portfolio.netContributions));
+    check("a ledger fully valued reports full coverage",
+      portfolio.contributionCoverage === 1,
+      String(portfolio.contributionCoverage));
     outcome.value = portfolio.currentValue;
 
     // 9. refresh quotes and read again

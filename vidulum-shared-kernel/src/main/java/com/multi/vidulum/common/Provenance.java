@@ -23,7 +23,17 @@ public enum Provenance {
     ASSUMED_PAR,
 
     /** The user told us. Never overwritten without asking. */
-    USER_PROVIDED;
+    USER_PROVIDED,
+
+    /**
+     * What an exchange account was worth on the day we started watching it (task C12).
+     *
+     * <p>Only ever carried by a {@code Contribution}, never by a {@code CostBasis}. The exchange
+     * did not say "this is what you put in" — it said "this is what you hold". Recording that
+     * difference in the data, rather than in a comment, is what stops an opening balance from
+     * being read later as a deposit somebody actually made.
+     */
+    OPENING_SNAPSHOT;
 
     /**
      * Whether a better number may replace this one silently. Only {@link #USER_PROVIDED} may not:

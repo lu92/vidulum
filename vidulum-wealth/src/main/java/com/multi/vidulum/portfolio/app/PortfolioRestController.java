@@ -19,6 +19,8 @@ import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @AllArgsConstructor
 public class PortfolioRestController {
@@ -50,6 +52,7 @@ public class PortfolioRestController {
         DepositMoneyCommand command = DepositMoneyCommand.builder()
                 .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
+                .contributionId(UUID.randomUUID().toString())
                 .build();
         commandGateway.send(command);
     }
@@ -59,6 +62,7 @@ public class PortfolioRestController {
         WithdrawMoneyCommand command = WithdrawMoneyCommand.builder()
                 .portfolioId(access.requireOwned(request.getPortfolioId()))
                 .money(request.getMoney())
+                .contributionId(UUID.randomUUID().toString())
                 .build();
         commandGateway.send(command);
     }

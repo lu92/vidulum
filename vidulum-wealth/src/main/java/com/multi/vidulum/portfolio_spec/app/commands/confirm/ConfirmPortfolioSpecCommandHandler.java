@@ -9,6 +9,11 @@ import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepo
 import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.Symbol;
+import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -61,6 +66,20 @@ public class ConfirmPortfolioSpecCommandHandler
     private final DomainExchangeConnectionRepository connectionRepository;
     private final DomainPortfolioRepository portfolioRepository;
     private final PortfolioFactory portfolioFactory;
+
+    /**
+     * New here, and the one structural consequence of C12. Creating the portfolio used to need no
+     * prices at all — valuation happened later, at {@code GET /portfolio}. An opening contribution
+     * states what the account was worth <b>on the day it arrived</b>, so the prices have to be at
+     * hand now. Deferring it would record the price of whenever somebody first looked, which is a
+     * different number and a non-deterministic one.
+     *
+     * <p>The data was already required: E8 makes quotes precede onboarding, because without them
+     * the first read throws. What changes is <b>when a missing quote is felt</b> — confirmation
+     * fails instead of the first read. That is the better failure: no portfolio beats one that
+     * cannot be read.
+     */
+    private final QuoteRestClient quoteRestClient;
     /**
      * The exchange module's handler, injected directly rather than reached through
      * {@code CommandGateway}.
@@ -107,13 +126,15 @@ public class ConfirmPortfolioSpecCommandHandler
                     command.denominationCurrency().getId(), currency.getId(), "specification");
         }
 
+        List<Asset> assets = assetsOf(spec);
         Portfolio portfolio = portfolioFactory.withAssets(
                 PortfolioId.generate(),
                 command.portfolioName(),
                 command.userId(),
                 broker,
                 currency,
-                assetsOf(spec));
+                assets,
+                List.of(openingContribution(assets, broker, currency, now)));
 
         Portfolio saved = portfolioRepository.save(portfolio);
         spec.markApplied(saved.getPortfolioId(), now);
@@ -124,6 +145,30 @@ public class ConfirmPortfolioSpecCommandHandler
         log.info("Specification [{}] applied as portfolio [{}] with {} position(s)",
                 spec.getId().getId(), saved.getPortfolioId().getId(), portfolio.getAssets().size());
         return appliedSpec;
+    }
+
+    /**
+     * What this account was worth on the day we first read it (task C12).
+     *
+     * <p>One entry, not a reconstructed history: the exchange told us what is held, not how it got
+     * there. Its provenance says exactly that — {@code OPENING_SNAPSHOT}, never
+     * {@code EXCHANGE_REPORTED} — so nobody later mistakes it for a deposit somebody made. Backfill
+     * (C13) replaces it once real deposits can be read, which is why it carries an id.
+     *
+     * <p>Valued position by position rather than as one figure, so a single unpriced holding costs
+     * one line instead of the whole number — the same reason the design chose a list over a scalar.
+     */
+    private Contribution openingContribution(
+            List<Asset> assets, Broker broker, Currency currency, ZonedDateTime now) {
+
+        Money opening = assets.stream()
+                .map(asset -> quoteRestClient
+                        .fetch(broker, Symbol.of(asset.getTicker(), Ticker.of(currency.getId())))
+                        .getCurrentPrice()
+                        .multiply(asset.getQuantity()))
+                .reduce(Money.zero(currency.getId()), Money::plus);
+
+        return Contribution.opening(opening.withScale(4), now);
     }
 
     /**

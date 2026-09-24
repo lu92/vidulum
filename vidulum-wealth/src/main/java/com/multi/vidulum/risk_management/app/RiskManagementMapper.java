@@ -45,7 +45,7 @@ public class RiskManagementMapper {
                 .name(statement.getName())
                 .broker(statement.getBroker().getId())
                 .assetRiskManagementStatements(assets)
-                .investedBalance(statement.getInvestedBalance())
+                .netContributions(statement.getNetContributions())
                 .currentValue(statement.getCurrentValue())
                 .pctUnrealisedProfit(statement.getPctUnrealisedProfit())
                 .unrealisedProfit(statement.getUnrealisedProfit())

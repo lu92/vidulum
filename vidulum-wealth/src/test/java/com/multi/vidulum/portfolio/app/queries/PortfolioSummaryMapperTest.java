@@ -6,6 +6,8 @@ import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
@@ -28,6 +30,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PortfolioSummaryMapperTest {
+    /** Contributions take their moment and identity from the caller now (C9). */
+    private static final java.time.ZonedDateTime FIXED_CONTRIBUTION_TIME =
+            java.time.ZonedDateTime.parse("2022-01-01T00:00:00Z");
+
 
     @Mock
     private QuoteRestClient quoteRestClientMock;
@@ -49,7 +55,7 @@ class PortfolioSummaryMapperTest {
                 BROKER,
                 USD);
 
-        PORTFOLIO.depositMoney(Money.of(10000, "USD"));
+        PORTFOLIO.depositMoney(Money.of(10000, "USD"), "deposit-1", FIXED_CONTRIBUTION_TIME);
         PORTFOLIO.lockAsset(Ticker.of("USD"), OrderId.of("order-id"), Quantity.of(4000), ZonedDateTime.parse("2021-06-01T06:30:00Z"));
         PORTFOLIO.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -94,17 +100,17 @@ class PortfolioSummaryMapperTest {
                 .activeLocks(Set.of(new Asset.AssetLock(OrderId.of("order-id"), Quantity.of(1000))))
                 .build());
 
-        AggregatedPortfolio.PortfolioInvestedBalance portfolioInvestedBalance1 = new AggregatedPortfolio.PortfolioInvestedBalance(
+        AggregatedPortfolio.PortfolioContributions portfolioContributions1 = new AggregatedPortfolio.PortfolioContributions(
                 PortfolioId.generate(),
                 Currency.of("EUR"),
-                Money.of(15000, "EUR"),
+                List.of(Contribution.paidIn("deposit-1", Money.of(15000, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
                 BROKER
         );
 
-        AggregatedPortfolio.PortfolioInvestedBalance portfolioInvestedBalance2 = new AggregatedPortfolio.PortfolioInvestedBalance(
+        AggregatedPortfolio.PortfolioContributions portfolioContributions2 = new AggregatedPortfolio.PortfolioContributions(
                 PortfolioId.generate(),
                 Currency.of("PLN"),
-                Money.of(20000, "PLN"),
+                List.of(Contribution.paidIn("deposit-1", Money.of(20000, "PLN"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))),
                 BROKER
         );
 
@@ -114,8 +120,8 @@ class PortfolioSummaryMapperTest {
                         Segment.of("Crypto"), cryptoGroupedAssets,
                         Segment.of("Cash"), cashGroupedAssets
                 ))
-                .portfolioIds(List.of(portfolioInvestedBalance1.portfolioId(), portfolioInvestedBalance2.portfolioId()))
-                .portfolioInvestedBalances(List.of(portfolioInvestedBalance1, portfolioInvestedBalance2))
+                .portfolioIds(List.of(portfolioContributions1.portfolioId(), portfolioContributions2.portfolioId()))
+                .portfolioContributions(List.of(portfolioContributions1, portfolioContributions2))
                 .build();
     }
 
@@ -185,7 +191,9 @@ class PortfolioSummaryMapperTest {
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()))
                 .status(PortfolioStatus.OPEN)
-                .investedBalance(Money.of(10000, "USD"))
+                .netContributions(Money.of(10000, "USD"))
+                .contributionCoverage(1.0)
+                .contributionStatus(ContributionStatus.COMPUTED)
                 .currentValue(Money.of(10000, "USD"))
                 .pctUnrealisedProfit(0.0)
                 .unrealisedProfit(Money.zero("USD"))
@@ -260,7 +268,9 @@ class PortfolioSummaryMapperTest {
                                 .tags(List.of("Bitcoin", "Crypto", "BTC"))
                                 .build()))
                 .status(PortfolioStatus.OPEN)
-                .investedBalance(Money.of(9500, "EUR"))
+                .netContributions(Money.of(9500, "EUR"))
+                .contributionCoverage(1.0)
+                .contributionStatus(ContributionStatus.COMPUTED)
                 .currentValue(Money.of(9500, "EUR"))
                 .pctUnrealisedProfit(0.0)
                 .unrealisedProfit(Money.zero("EUR"))
@@ -370,7 +380,9 @@ class PortfolioSummaryMapperTest {
                                                         .build())
                                 ))
                         .portfolioIds(AGGREGATED_PORTFOLIO.getPortfolioIds().stream().map(PortfolioId::getId).collect(Collectors.toList()))
-                        .investedBalance(Money.of(20750, "USD"))
+                        .netContributions(Money.of(20750, "USD"))
+                        .contributionCoverage(1.0)
+                        .contributionStatus(ContributionStatus.COMPUTED)
                         .currentValue(Money.of(16850, "USD"))
                         // -800 (BTC) - 200 (ETH) + 0 (EUR). Wcześniej -3900: wartość aktywów
                         // minus investedBalance dwóch innych portfeli - liczby z różnych

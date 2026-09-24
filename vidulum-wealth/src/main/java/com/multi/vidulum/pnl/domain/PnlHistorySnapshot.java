@@ -23,7 +23,7 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
 
     @Value
     public static class PnlStatementSnapshot {
-        Money investedBalance;
+        Money netContributions;
         Money currentValue;
         Money totalUnrealisedProfit;
         Double pctUnrealisedProfit;
@@ -35,7 +35,7 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
     @Builder
     public static class PnlPortfolioStatementSnapshot {
         PortfolioId portfolioId;
-        Money investedBalance;
+        Money netContributions;
         Money currentValue;
         Money totalUnrealisedProfit;
         Double pctUnrealisedProfit;

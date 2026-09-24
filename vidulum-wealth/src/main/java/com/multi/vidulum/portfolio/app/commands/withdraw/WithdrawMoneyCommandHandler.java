@@ -8,11 +8,16 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.ZonedDateTime;
+
+import java.time.Clock;
+
 @Slf4j
 @Component
 @AllArgsConstructor
 public class WithdrawMoneyCommandHandler implements CommandHandler<WithdrawMoneyCommand, Void> {
     private final DomainPortfolioRepository repository;
+    private final Clock clock;
 
 
     @Override
@@ -20,7 +25,7 @@ public class WithdrawMoneyCommandHandler implements CommandHandler<WithdrawMoney
         Portfolio portfolio = repository.findById(command.getPortfolioId())
                 .orElseThrow(() -> new PortfolioNotFoundException(command.getPortfolioId()));
 
-        portfolio.withdrawMoney(command.getMoney());
+        portfolio.withdrawMoney(command.getMoney(), command.getContributionId(), ZonedDateTime.now(clock));
         repository.save(portfolio);
         log.info("Portfolio [{}]: money [{}}] has been withdrawn", portfolio.getPortfolioId(), command.getMoney());
         return null;

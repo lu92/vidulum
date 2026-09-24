@@ -15,6 +15,7 @@ import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
+import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import org.junit.jupiter.api.Test;
 
@@ -108,7 +109,9 @@ class PortfolioResultCoverageTest {
 
         PortfolioDto.PortfolioSummaryJson summary = summaryOf(portfolio);
 
-        assertThat(summary.getInvestedBalance()).isEqualTo(com.multi.vidulum.common.Money.zero("EUR"));
+        // Nothing was ever paid in, and that is now said rather than answered as zero (C9).
+        assertThat(summary.getNetContributions()).isNull();
+        assertThat(summary.getContributionStatus()).isEqualTo(ContributionStatus.NOTHING_CONTRIBUTED);
         assertThat(summary.getCurrentValue().getAmount().doubleValue()).isEqualTo(147_000);
         assertThat(summary.getUnrealisedProfit())
                 .as("the old formula answered 147 000 here, made entirely out of a missing deposit")

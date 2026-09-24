@@ -75,22 +75,41 @@ export function describePositions(summary) {
 }
 
 /**
- * The portfolio as a whole.
+ * What the owner put in, as far as the ledger knows (tasks C9 and C12).
  *
- * <p>`investedBalance` is reported alongside a warning when it is zero: a portfolio built from a
- * snapshot never went through a deposit, so the field says nothing about what was actually put
- * in. Task C9 decides what it should mean; until then, printing it without a caveat would be the
- * one number in this report that lies.
+ * <p>This used to print `investedBalance`, which moved only on deposits and withdrawals - so a
+ * portfolio onboarded from a snapshot reported `0` beside six figures of holdings, and the report
+ * had to carry a caveat saying the number meant nothing. It is now a ledger: onboarding writes one
+ * opening entry worth what the account held on arrival, and the backend withholds the total when
+ * too little of the ledger carries a value, exactly as it withholds a result (C4).
+ */
+export function describeContributions(summary) {
+  switch (summary.contributionStatus) {
+    case "COMPUTED":
+      return `${format(summary.netContributions)} net`;
+    case "WITHHELD_LOW_COVERAGE":
+      return "withheld - too little of the ledger has a known value to stand for the whole";
+    case "NO_KNOWN_VALUE":
+      return "not computable - nothing put in has a known value";
+    case "NOTHING_CONTRIBUTED":
+      return "nothing put in";
+    default:
+      return `unknown status: ${summary.contributionStatus}`;
+  }
+}
+
+/**
+ * The portfolio as a whole.
  */
 export function describePortfolio(summary) {
   const coverage = portfolioCoverage(summary);
   const lines = [
     `${summary.name} (${summary.broker})`,
     `  value      ${format(summary.currentValue)}`,
-    `  invested   ${format(summary.investedBalance)}` +
-      (summary.investedBalance?.amount === 0
-        ? "   <- always zero for a snapshot-built portfolio (task C9)"
-        : ""),
+    `  put in     ${describeContributions(summary)}`
+      + (summary.contributionCoverage === null || summary.contributionCoverage === undefined
+        ? ""
+        : `  (${(summary.contributionCoverage * 100).toFixed(0)}% of the ledger is valued)`),
     `  coverage   ${coverage === null ? "n/a" : (coverage * 100).toFixed(0) + "% of value has a known cost"}`
       + `  (backend: ${describeBackendCoverage(summary)})`,
     `  result     ${describeResult(summary)}`,
