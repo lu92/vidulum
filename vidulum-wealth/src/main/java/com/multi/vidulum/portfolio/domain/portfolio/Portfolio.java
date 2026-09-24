@@ -5,6 +5,7 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.AmbiguousAssetSelectionException;
 import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.DuplicateAssetPositionException;
+import com.multi.vidulum.portfolio.domain.ImpossibleSynchronisationException;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.portfolio.domain.PortfolioIsNotOpenedException;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioEvents.*;
@@ -429,6 +430,95 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
             throw new DuplicateAssetPositionException(asset.getTicker(), asset.getSubName());
         });
         assets.add(asset);
+    }
+
+    /**
+     * Applies one position's change as a later reading of the exchange found it (task D13).
+     *
+     * <p>The second synchronisation used to build a <b>second portfolio</b> containing only the
+     * differences, so an owner who re-read their account ended up with one portfolio holding last
+     * week's state and another holding this week's change, and neither describing the account.
+     * Applying the change here is what makes a re-read an update rather than a birth.
+     *
+     * <p>Cost follows {@link CostReconciliation}: new units are absorbed into a weighted average,
+     * and a reading that says nothing about cost leaves what we knew alone (task D6).
+     */
+    public void synchronisePosition(
+            Ticker ticker, SubName subName, Quantity delta, CostBasis incomingCost,
+            ZonedDateTime dateTime) {
+
+        PortfolioEvents.PositionSynchronisedEvent event =
+                new PortfolioEvents.PositionSynchronisedEvent(
+                        portfolioId, ticker, subName, delta, incomingCost, dateTime);
+        apply(event);
+        add(event);
+    }
+
+    public void apply(PortfolioEvents.PositionSynchronisedEvent event) {
+        tryWhenPortfolioIsOpen(() -> {
+            Optional<Asset> existing = findAssetByTickerAndSubName(event.ticker(), event.subName());
+            if (event.delta().isNegative()) {
+                reducePosition(existing.orElseThrow(
+                        () -> new AssetNotFoundException(event.ticker())), event.delta());
+                return;
+            }
+            existing.ifPresentOrElse(
+                    asset -> growPosition(asset, event.delta(), event.incomingCost()),
+                    () -> addAsset(Asset.builder()
+                            .ticker(event.ticker())
+                            .subName(event.subName())
+                            .costBasis(event.incomingCost())
+                            .quantity(event.delta())
+                            .locked(Quantity.zero(event.delta().getUnit()))
+                            .free(event.delta())
+                            .activeLocks(new HashSet<>())
+                            .build()));
+        });
+    }
+
+    private void growPosition(Asset asset, Quantity delta, CostBasis incomingCost) {
+        asset.setQuantity(asset.getQuantity().plus(delta));
+        asset.setFree(asset.getFree().plus(delta));
+        asset.setCostBasis(CostReconciliation.afterSynchronisation(asset.getCostBasis(), incomingCost));
+    }
+
+    /**
+     * What is left keeps the price it had; only the covered quantity narrows, and never below what
+     * is still held. No realised result is derived here — selling a part whose cost nobody knows
+     * is a question of its own (task C7), and inventing an answer is what C3 removed.
+     */
+    private void reducePosition(Asset asset, Quantity delta) {
+        Quantity remaining = asset.getQuantity().minus(Quantity.of(-delta.getQty(), delta.getUnit()));
+        if (remaining.isNegative()) {
+            throw new ImpossibleSynchronisationException(
+                    asset.getTicker(), asset.getQuantity(), delta);
+        }
+        if (remaining.isZero()) {
+            assets.remove(asset);
+            return;
+        }
+        asset.setQuantity(remaining);
+        asset.setFree(remaining.minus(asset.getLocked()));
+        if (asset.getCostBasis() != null
+                && asset.getCostBasis().quantity().getQty() > remaining.getQty()) {
+            asset.setCostBasis(asset.getCostBasis().reduceTo(remaining));
+        }
+    }
+
+    /**
+     * Records what the exchange has committed for one ticker (task D5), across every position of
+     * it. Restated on each synchronisation rather than accumulated: a freeze is a fact about now,
+     * and the reading that supersedes it is the next one.
+     */
+    public void applyExchangeFreeze(Ticker ticker, Quantity frozen, ZonedDateTime dateTime) {
+        PortfolioEvents.PositionFrozenEvent event =
+                new PortfolioEvents.PositionFrozenEvent(portfolioId, ticker, frozen, dateTime);
+        apply(event);
+        add(event);
+    }
+
+    public void apply(PortfolioEvents.PositionFrozenEvent event) {
+        ExchangeFreeze.spread(findAssetsByTicker(event.ticker()), event.frozen());
     }
 
     public void lockAsset(Ticker ticker, OrderId orderId, Quantity quantity, ZonedDateTime dateTime) {

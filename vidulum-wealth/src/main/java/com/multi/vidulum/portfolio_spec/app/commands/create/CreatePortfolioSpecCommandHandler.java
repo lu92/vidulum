@@ -40,6 +40,7 @@ public class CreatePortfolioSpecCommandHandler
                 command.userId(),
                 command.connectionId(),
                 command.denominationCurrency(),
+                command.portfolioId(),
                 knownState,
                 command.snapshot(),
                 ZonedDateTime.now(clock));

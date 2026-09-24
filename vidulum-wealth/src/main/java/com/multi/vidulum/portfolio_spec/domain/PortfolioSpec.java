@@ -69,6 +69,18 @@ public class PortfolioSpec {
     /** Set by {@code confirm} (D3). The reference points this way on purpose — see §4.8. */
     private PortfolioId portfolioId;
 
+    /**
+     * The portfolio the differences were computed <b>against</b>, when there was one (task D13).
+     *
+     * <p>Not the same field as {@code portfolioId}, and the distinction is the whole bug: that one
+     * is set on application and answers "has this been applied", while this one answers "what was
+     * this measured from". Without it a specification built against an existing portfolio forgot
+     * which portfolio that was, so applying it built a <b>second</b> one containing only the
+     * differences — and the guard named for exactly this case was really only catching a
+     * specification applied twice.
+     */
+    private final PortfolioId knownPortfolioId;
+
     private final ZonedDateTime createdAt;
     private ZonedDateTime lastRecomputedAt;
 
@@ -83,6 +95,7 @@ public class PortfolioSpec {
             UserId userId,
             String connectionId,
             Currency denominationCurrency,
+            PortfolioId knownPortfolioId,
             List<Asset> knownState,
             ExchangeSnapshot snapshot,
             ZonedDateTime now) {
@@ -105,6 +118,7 @@ public class PortfolioSpec {
                 .userId(userId)
                 .connectionId(connectionId)
                 .denominationCurrency(denominationCurrency)
+                .knownPortfolioId(knownPortfolioId)
                 .snapshot(snapshot)
                 .differences(differences)
                 .status(statusFor(differences))

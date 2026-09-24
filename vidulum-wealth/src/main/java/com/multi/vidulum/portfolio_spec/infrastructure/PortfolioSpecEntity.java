@@ -58,6 +58,9 @@ public class PortfolioSpecEntity {
     private List<DifferenceDocument> differences;
     private String status;
     private String portfolioId;
+
+    /** What the differences were measured from, when there was a portfolio to measure from (D13). */
+    private String knownPortfolioId;
     private Date createdAt;
     private Date lastRecomputedAt;
 
@@ -74,6 +77,7 @@ public class PortfolioSpecEntity {
                 .differences(spec.getDifferences().stream().map(DifferenceDocument::from).toList())
                 .status(spec.getStatus().name())
                 .portfolioId(spec.getPortfolioId() != null ? spec.getPortfolioId().getId() : null)
+                .knownPortfolioId(spec.getKnownPortfolioId() != null ? spec.getKnownPortfolioId().getId() : null)
                 .createdAt(toDate(spec.getCreatedAt()))
                 .lastRecomputedAt(toDate(spec.getLastRecomputedAt()))
                 .build();
@@ -92,6 +96,7 @@ public class PortfolioSpecEntity {
                 .differences(differences.stream().map(DifferenceDocument::toDomain).toList())
                 .status(SpecStatus.valueOf(status))
                 .portfolioId(portfolioId != null ? PortfolioId.of(portfolioId) : null)
+                .knownPortfolioId(knownPortfolioId != null ? PortfolioId.of(knownPortfolioId) : null)
                 .createdAt(toZonedDateTime(createdAt))
                 .lastRecomputedAt(toZonedDateTime(lastRecomputedAt))
                 .build();

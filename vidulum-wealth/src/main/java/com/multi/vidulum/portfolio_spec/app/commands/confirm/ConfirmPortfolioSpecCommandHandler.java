@@ -12,10 +12,12 @@ import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionE
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
+import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
+import com.multi.vidulum.portfolio.domain.portfolio.ExchangeFreeze;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.common.Currency;
@@ -112,7 +114,11 @@ public class ConfirmPortfolioSpecCommandHandler
         Optional<ExchangeConnection> connection = confirmableConnection(command, spec);
 
         if (movedOn(spec.getSnapshot(), command.freshSnapshot())) {
-            spec.markStale(command.freshSnapshot(), List.of(), now);
+            // Recomputed against what the specification was measured from, not against nothing.
+            // Passing an empty state here was right only while every specification onboarded a
+            // new portfolio: for one built against an existing portfolio it restated the whole
+            // account as if it were all new (task D13, and the half of D11 that was missing).
+            spec.markStale(command.freshSnapshot(), knownStateOf(spec), now);
             specRepository.save(spec);
             throw new SnapshotChangedException(spec.getId());
         }
@@ -130,6 +136,31 @@ public class ConfirmPortfolioSpecCommandHandler
                     command.denominationCurrency().getId(), currency.getId(), "specification");
         }
 
+        Portfolio saved = spec.getKnownPortfolioId() != null
+                ? updateExisting(spec, command, now)
+                : createNew(spec, command, broker, currency, now);
+
+        spec.markApplied(saved.getPortfolioId(), now);
+        PortfolioSpec appliedSpec = specRepository.save(spec);
+
+        // Only a portfolio that did not exist yet puts a connection into service; a later
+        // synchronisation finds it already there, and confirming twice is refused by the
+        // connection itself.
+        if (spec.getKnownPortfolioId() == null) {
+            confirmConnection(command, spec, saved.getPortfolioId());
+        }
+
+        log.info("Specification [{}] applied as portfolio [{}] with {} position(s)",
+                spec.getId().getId(), saved.getPortfolioId().getId(), saved.getAssets().size());
+        return appliedSpec;
+    }
+
+    /**
+     * The first reading of an account: a portfolio is born from it.
+     */
+    private Portfolio createNew(PortfolioSpec spec, ConfirmPortfolioSpecCommand command,
+                                Broker broker, Currency currency, ZonedDateTime now) {
+
         List<Asset> assets = assetsOf(spec, command.freshSnapshot());
         Portfolio portfolio = portfolioFactory.withAssets(
                 PortfolioId.generate(),
@@ -139,16 +170,64 @@ public class ConfirmPortfolioSpecCommandHandler
                 currency,
                 assets,
                 List.of(openingContribution(assets, broker, currency, now)));
+        return portfolioRepository.save(portfolio);
+    }
 
-        Portfolio saved = portfolioRepository.save(portfolio);
-        spec.markApplied(saved.getPortfolioId(), now);
-        PortfolioSpec appliedSpec = specRepository.save(spec);
+    /**
+     * Every later reading: the portfolio the differences were measured from is <b>updated</b>
+     * (task D13).
+     *
+     * <p>What used to happen instead is the defect: the specification did not remember which
+     * portfolio it had measured against, so this path built a new one holding only the changes.
+     * An owner who re-read their account ended up with one portfolio showing last week's state
+     * and another showing this week's difference, and neither describing the account.
+     *
+     * <p>No opening contribution is written here. That entry stands for a history we never saw
+     * (C12); a second one would claim the owner paid in again what they had merely kept.
+     */
+    private Portfolio updateExisting(
+            PortfolioSpec spec, ConfirmPortfolioSpecCommand command, ZonedDateTime now) {
 
-        confirmConnection(command, spec, saved.getPortfolioId());
+        Portfolio portfolio = portfolioRepository.findById(spec.getKnownPortfolioId())
+                .orElseThrow(() -> new PortfolioNotFoundException(spec.getKnownPortfolioId()));
 
-        log.info("Specification [{}] applied as portfolio [{}] with {} position(s)",
-                spec.getId().getId(), saved.getPortfolioId().getId(), portfolio.getAssets().size());
-        return appliedSpec;
+        if (!portfolio.getUserId().equals(command.userId())) {
+            // Someone else's portfolio answers as if it did not exist, the rule A9 settled.
+            throw new PortfolioNotFoundException(spec.getKnownPortfolioId());
+        }
+
+        for (Difference difference : spec.getDifferences()) {
+            portfolio.synchronisePosition(
+                    difference.ticker(),
+                    difference.subName(),
+                    signed(difference),
+                    difference.resolvedCost(),
+                    now);
+        }
+
+        // Restated, not accumulated: a freeze is a fact about now, and this reading supersedes
+        // whatever the last one recorded (task D5).
+        command.freshSnapshot().positions().forEach(position ->
+                portfolio.applyExchangeFreeze(position.ticker(), position.frozen(), now));
+
+        return portfolioRepository.save(portfolio);
+    }
+
+    /** A decrease travels as a negative delta; the aggregate needs no second method for it. */
+    private static Quantity signed(Difference difference) {
+        return difference.direction() == DifferenceDirection.INCREASED
+                ? difference.quantity()
+                : Quantity.of(-difference.quantity().getQty(), difference.quantity().getUnit());
+    }
+
+    /** What the specification was measured from, reloaded for a recomputation. */
+    private List<Asset> knownStateOf(PortfolioSpec spec) {
+        if (spec.getKnownPortfolioId() == null) {
+            return List.of();
+        }
+        return portfolioRepository.findById(spec.getKnownPortfolioId())
+                .map(Portfolio::getAssets)
+                .orElse(List.of());
     }
 
     /**
@@ -195,53 +274,17 @@ public class ConfirmPortfolioSpecCommandHandler
     }
 
     /**
-     * Spreads each ticker's frozen quantity over the positions we hold of it.
-     *
-     * <p>The exchange freezes a <b>currency</b>; we keep positions split by where they came from
-     * (C2). Nothing connects the two, because units are fungible — the exchange cannot tell us
-     * which bitcoin an open order committed, and there is no fact of the matter. So the split is
-     * decided by a rule instead of invented per case: the traded part absorbs the freeze first,
-     * the transferred-in part takes what is left over. Traded first because an open order is the
-     * usual cause and it is placed against what was being traded.
-     *
-     * <p>What is exact either way is the total: the sum of {@code locked} over a ticker equals
-     * what the exchange reported, so "how much of my XRP can I move" — the question an owner
-     * actually asks — is answered correctly no matter how the parts fall.
-     *
-     * <p>{@code activeLocks} stays empty on purpose. A lock there is ours, held against one of our
-     * orders and released by unlocking it; these belong to the exchange, and inventing a local
-     * order id for them would create a lock nothing can ever release. The next synchronisation
-     * restates them.
+     * Applies the freeze the exchange reported, one ticker at a time. The rule itself lives with
+     * the aggregate ({@link ExchangeFreeze}) because both paths need it — the first reading here,
+     * and every later one in {@link #updateExisting}.
      */
     private static void applyFrozen(List<Asset> assets, ExchangeSnapshot snapshot) {
         Map<Ticker, List<Asset>> byTicker = assets.stream()
                 .collect(Collectors.groupingBy(Asset::getTicker));
 
-        byTicker.forEach((ticker, held) -> {
-            Quantity frozen = snapshot.find(ticker)
-                    .map(SnapshotPosition::frozen)
-                    .orElse(null);
-            if (frozen == null || frozen.isZero()) {
-                return;
-            }
-            double remaining = frozen.getQty();
-            for (Asset asset : sortedByFreezeOrder(held)) {
-                if (remaining <= 0) {
-                    break;
-                }
-                double share = Math.min(remaining, asset.getQuantity().getQty());
-                asset.setLocked(Quantity.of(share, asset.getQuantity().getUnit()));
-                asset.setFree(asset.getQuantity().minus(asset.getLocked()));
-                remaining -= share;
-            }
-        });
-    }
-
-    /** Traded first, then everything else, so the rule above is applied in one place. */
-    private static List<Asset> sortedByFreezeOrder(List<Asset> assets) {
-        return assets.stream()
-                .sorted(Comparator.comparing(asset -> SubName.traded().equals(asset.getSubName()) ? 0 : 1))
-                .toList();
+        byTicker.forEach((ticker, held) ->
+                snapshot.find(ticker).ifPresent(position ->
+                        ExchangeFreeze.spread(held, position.frozen())));
     }
 
     private static Asset toAsset(Difference difference) {
@@ -282,7 +325,17 @@ public class ConfirmPortfolioSpecCommandHandler
         // had been written. A connection already serving a portfolio is the reachable case: nothing
         // stops a second specification from naming it, and without this the second confirmation
         // left an orphan portfolio behind before failing.
-        if (connection.getStatus() != ConnectionStatus.PENDING) {
+        //
+        // A synchronisation of an existing portfolio is the one case where ACTIVE is right: the
+        // connection went into service at onboarding and is expected to still be there, pointing
+        // at the portfolio being updated. Pointing anywhere else is a mix-up, not a re-read.
+        if (spec.getKnownPortfolioId() != null) {
+            if (connection.getStatus() != ConnectionStatus.ACTIVE
+                    || !spec.getKnownPortfolioId().equals(connection.getPortfolioId())) {
+                throw new IllegalConnectionTransitionException(
+                        connection.getId(), connection.getStatus(), "synchronise");
+            }
+        } else if (connection.getStatus() != ConnectionStatus.PENDING) {
             throw new IllegalConnectionTransitionException(
                     connection.getId(), connection.getStatus(), "confirm");
         }
