@@ -49,40 +49,81 @@ const TRANSFERRED_IN = { ccy: "XRP", cashBal: "500", spotBal: "0", openAvgPx: ""
 const CASH = { ccy: "USDT", cashBal: "1000", spotBal: "0" };
 const DUST = { ccy: "SHIB", cashBal: "0.00000001", spotBal: "0" };
 
+// GET /api/v5/asset/balances - Funding has `bal` and nothing else we need: no spotBal, no
+// openAvgPx, because nothing is traded there.
+const FUNDING_BTC = { ccy: "BTC", bal: "0.7", availBal: "0.7", frozenBal: "0" };
+const FUNDING_ONLY = { ccy: "SOL", bal: "12", availBal: "12", frozenBal: "0" };
+
 console.log("\nE3 - snapshot z odpowiedzi OKX");
 
 check("cashBal staje sie caloscia, spotBal czescia handlowana",
-  buildSnapshotPositions([PART_TRADED]),
+  buildSnapshotPositions({ trading: [PART_TRADED] }),
   [{ ticker: "BTC", total: { qty: 1.3, unit: "Number" }, traded: { qty: 0.3, unit: "Number" },
      reportedAvgPrice: { amount: 77231.15286476455, currency: "USD" } }]);
 
 check("pozycja w calosci handlowana nie rozni sie ksztaltem",
-  buildSnapshotPositions([FULLY_TRADED])[0].traded, { qty: 2, unit: "Number" });
+  buildSnapshotPositions({ trading: [FULLY_TRADED] })[0].traded, { qty: 2, unit: "Number" });
 
 checkThat("pozycja przelana z zewnatrz nie niesie ceny",
-  buildSnapshotPositions([TRANSFERRED_IN])[0].reportedAvgPrice === null);
+  buildSnapshotPositions({ trading: [TRANSFERRED_IN] })[0].reportedAvgPrice === null);
 
 checkThat("brak openAvgPx w ogole to tez brak ceny",
-  buildSnapshotPositions([CASH])[0].reportedAvgPrice === null);
+  buildSnapshotPositions({ trading: [CASH] })[0].reportedAvgPrice === null);
 
 // The backend refuses a cost that covers nothing; dropping it here beats sending it to be rejected.
 checkThat("cena bez czesci handlowanej jest pomijana",
-  buildSnapshotPositions([{ ccy: "DOGE", cashBal: "10", spotBal: "0", openAvgPx: "0.12" }])[0]
+  buildSnapshotPositions({ trading: [{ ccy: "DOGE", cashBal: "10", spotBal: "0", openAvgPx: "0.12" }] })[0]
     .reportedAvgPrice === null);
 
 // spotBal > cashBal should be impossible; if OKX ever says it, the backend would reject the whole
 // snapshot, so it is clamped rather than allowed to poison the request.
 check("czesc handlowana nie przekracza calosci",
-  buildSnapshotPositions([{ ccy: "BTC", cashBal: "1", spotBal: "5", openAvgPx: "100" }])[0].traded,
+  buildSnapshotPositions({ trading: [{ ccy: "BTC", cashBal: "1", spotBal: "5", openAvgPx: "100" }] })[0].traded,
   { qty: 1, unit: "Number" });
 
 check("pylek odrzucany progiem",
-  buildSnapshotPositions([PART_TRADED, DUST], { dustThreshold: 0.000001 }).map((p) => p.ticker),
+  buildSnapshotPositions({ trading: [PART_TRADED, DUST], dustThreshold: 0.000001 }).map((p) => p.ticker),
   ["BTC"]);
 
 check("pozycje sa posortowane, zeby diff byl czytelny",
-  buildSnapshotPositions([TRANSFERRED_IN, PART_TRADED, FULLY_TRADED]).map((p) => p.ticker),
+  buildSnapshotPositions({ trading: [TRANSFERRED_IN, PART_TRADED, FULLY_TRADED] }).map((p) => p.ticker),
   ["BTC", "ETH", "XRP"]);
+
+console.log("\nE10 - oba konta OKX, nie samo Trading");
+
+// Depozyty ladujä w Funding i zostaja tam, dopoki uzytkownik ich nie przesunie. Czytanie samego
+// Trading ukrywalo je w calosci - a kontekst biznesowy od poczatku mowi "Trading + Funding".
+check("saldo Funding dochodzi do calosci, nie do czesci handlowanej",
+  buildSnapshotPositions({ trading: [PART_TRADED], funding: [FUNDING_BTC] }),
+  [{ ticker: "BTC", total: { qty: 2, unit: "Number" }, traded: { qty: 0.3, unit: "Number" },
+     reportedAvgPrice: { amount: 77231.15286476455, currency: "USD" } }]);
+
+checkThat("znany koszt czesci handlowanej przezywa dolaczenie Funding",
+  buildSnapshotPositions({ trading: [PART_TRADED], funding: [FUNDING_BTC] })[0]
+    .reportedAvgPrice.amount === 77231.15286476455);
+
+// Walor lezacy wylacznie w Funding byl dotad dla Vidulum niewidzialny.
+check("walor tylko z Funding pojawia sie w snapshocie",
+  buildSnapshotPositions({ trading: [PART_TRADED], funding: [FUNDING_ONLY] }).map((p) => p.ticker),
+  ["BTC", "SOL"]);
+
+checkThat("walor tylko z Funding nie niesie ceny, bo Funding nie handluje",
+  buildSnapshotPositions({ trading: [], funding: [FUNDING_ONLY] })[0].reportedAvgPrice === null);
+
+check("walor tylko z Funding ma zerowa czesc handlowana",
+  buildSnapshotPositions({ trading: [], funding: [FUNDING_ONLY] })[0].traded,
+  { qty: 0, unit: "Number" });
+
+// Prog pylku osadza calosc, nie jedno konto: slad w Trading obok realnego salda w Funding
+// nie jest pylkiem, a odrzucenie go ukryloby wieksza polowe.
+check("pylek liczy sie po zsumowaniu obu kont",
+  buildSnapshotPositions({
+    trading: [DUST], funding: [{ ccy: "SHIB", bal: "500" }], dustThreshold: 0.000001,
+  }).map((p) => p.total.qty),
+  [500.00000001]);
+
+checkThat("zerowe saldo w Funding nie tworzy pustej pozycji",
+  buildSnapshotPositions({ trading: [], funding: [{ ccy: "DOGE", bal: "0" }] }).length === 0);
 
 checkThat("cena nabycia jest w USD, niezaleznie od waluty wyceny",
   REPORTED_COST_CURRENCY === "USD");
@@ -90,7 +131,7 @@ checkThat("cena nabycia jest w USD, niezaleznie od waluty wyceny",
 check("cale cialo zadania ma ksztalt oczekiwany przez POST /portfolio-spec",
   Object.keys(buildSpecRequest({
     broker: "OKX", connectionId: "conn-1", denominationCurrency: "EUR",
-    takenAt: "2022-01-01T00:00:00Z", details: [PART_TRADED],
+    takenAt: "2022-01-01T00:00:00Z", trading: [PART_TRADED],
   })),
   ["broker", "connectionId", "denominationCurrency", "portfolioId", "snapshotTakenAt",
    "positions"]);
@@ -254,8 +295,8 @@ check("cialo confirm powtarza brokera i walute z polaczenia",
 
 console.log("\nE8 - notowania przed onboardingiem");
 
-const POSITIONS = buildSnapshotPositions([PART_TRADED, FULLY_TRADED, TRANSFERRED_IN,
-  { ccy: "EUR", cashBal: "5000", spotBal: "0" }]);
+const POSITIONS = buildSnapshotPositions({ trading: [PART_TRADED, FULLY_TRADED, TRANSFERRED_IN,
+  { ccy: "EUR", cashBal: "5000", spotBal: "0" }] });
 
 check("kazdy walor potrzebuje kursu przeciwko walucie wyceny",
   requiredSymbols(POSITIONS, "EUR"), ["BTC/EUR", "ETH/EUR", "XRP/EUR"]);
@@ -457,7 +498,7 @@ function routingFetch(routes) {
 
   await client.register({ username: "u", email: "u@example.test", password: "p" });
 
-  const required = requiredSymbols(buildSnapshotPositions([PART_TRADED]), "EUR");
+  const required = requiredSymbols(buildSnapshotPositions({ trading: [PART_TRADED] }), "EUR");
   for (const symbol of required) {
     await client.get(publishPath(publishQuery({ broker: "OKX", symbol,
       ticker: { last: "50000", open24h: "40000" } })));
@@ -471,12 +512,12 @@ function routingFetch(routes) {
     reportedKeyPermissions: "read_only", denominationCurrency: "EUR" }));
   const spec = await client.post("/portfolio-spec", buildSpecRequest({
     broker: "OKX", connectionId: connection.id, denominationCurrency: "EUR",
-    takenAt: "2022-01-01T00:00:00Z", details: [PART_TRADED] }));
+    takenAt: "2022-01-01T00:00:00Z", trading: [PART_TRADED] }));
   const answered = await client.put(`/portfolio-spec/${spec.id}/answers`,
     { answers: planAnswers(spec, ANSWER_POLICY.ASSUME_UNKNOWN) });
   const applied = await client.post(`/portfolio-spec/${spec.id}/confirm`, buildConfirmRequest({
     portfolioName: "My OKX", denominationCurrency: "EUR", broker: "OKX",
-    takenAt: "2022-01-01T00:05:00Z", positions: buildSnapshotPositions([PART_TRADED]) }));
+    takenAt: "2022-01-01T00:05:00Z", positions: buildSnapshotPositions({ trading: [PART_TRADED] }) }));
   const finalConnection = await client.get(`/exchange-connection/${connection.id}`);
   const portfolio = await client.get(`/portfolio/${applied.portfolioId}/EUR`);
   for (const symbol of quotesNeededBy(portfolio, "EUR")) {

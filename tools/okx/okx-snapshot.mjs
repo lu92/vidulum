@@ -1,43 +1,78 @@
 /**
- * Turns an OKX balance reply into the snapshot `POST /portfolio-spec` expects (task E3).
+ * Turns OKX's balances into the snapshot `POST /portfolio-spec` expects (tasks E3, E10).
  *
  * <p>The mapping is short because the backend was shaped around what OKX actually reports:
  *
- *   total   = cashBal    everything held
- *   traded  = spotBal    the part OKX priced
- *   price   = openAvgPx  the average cost of that part
+ *   total   = cashBal + bal   everything held, across both accounts
+ *   traded  = spotBal         the part OKX priced
+ *   price   = openAvgPx       the average cost of that part
  *
  * The difference engine turns those three numbers into two positions - one with a cost, one
  * without. <b>The prototype does not decide that split</b>; it only forwards what the exchange
  * said. Deciding here would put the same rule in two places and let them drift.
+ *
+ * <p><b>Both accounts, not one (E10).</b> OKX keeps money in two places: deposits land in
+ * Funding, trading happens in Trading. Reading only Trading meant a coin paid in and left where
+ * it landed was invisible to Vidulum entirely - while the business context has asked for
+ * "Trading + Funding" from the start. Funding reports no `spotBal` and no `openAvgPx`, because
+ * nothing is traded there, so its balance flows into the untraded part on its own. That is not a
+ * convenient coincidence: the exchange really has not priced it.
  */
 
 /** OKX reports `openAvgPx` in USD regardless of what the account is valued in. */
 export const REPORTED_COST_CURRENCY = "USD";
 
 /**
- * @param details `data[0].details` from `GET /api/v5/account/balance`
+ * Named rather than positional on purpose: a second balance added as another positional argument
+ * would leave every existing caller silently passing nothing, and a snapshot missing half the
+ * account looks exactly like an account with half as much in it.
+ *
+ * @param trading `data[0].details` from `GET /api/v5/account/balance`
+ * @param funding `data` from `GET /api/v5/asset/balances`
  * @returns positions ready to be sent, smallest holdings dropped
  */
-export function buildSnapshotPositions(details = [], { dustThreshold = 0 } = {}) {
-  return details
+export function buildSnapshotPositions({ trading = [], funding = [], dustThreshold = 0 } = {}) {
+  const held = new Map();
+
+  for (const detail of trading) {
+    const total = num(detail.cashBal);
+    if (total === null) continue;
+    held.set(detail.ccy, {
+      ticker: detail.ccy,
+      total,
+      traded: clamp(num(detail.spotBal) ?? 0, 0, total),
+      price: num(detail.openAvgPx),
+    });
+  }
+
+  // Funding adds to what is held and to nothing else. It has no traded part and no reported
+  // price, so whatever sits here lands in the untraded half of the split by arithmetic alone.
+  for (const balance of funding) {
+    const amount = num(balance.bal);
+    if (amount === null || amount === 0) continue;
+    const existing = held.get(balance.ccy);
+    if (existing) {
+      existing.total += amount;
+    } else {
+      held.set(balance.ccy, { ticker: balance.ccy, total: amount, traded: 0, price: null });
+    }
+  }
+
+  return [...held.values()]
+    // Dust is judged on the whole holding, after both accounts are in. A trace in Trading beside
+    // a real balance in Funding is not dust, and dropping it would hide the larger half.
+    .filter((position) => position.total > dustThreshold)
     .map(toPosition)
-    .filter((position) => position !== null)
-    .filter((position) => position.total.qty > dustThreshold)
     .sort((a, b) => a.ticker.localeCompare(b.ticker));
 }
 
-function toPosition(detail) {
-  const total = num(detail.cashBal);
-  if (total === null) return null;
-
-  const traded = clamp(num(detail.spotBal) ?? 0, 0, total);
-  const price = num(detail.openAvgPx);
-
+function toPosition({ ticker, total, traded, price }) {
   return {
-    ticker: detail.ccy,
+    ticker,
     total: { qty: total, unit: "Number" },
-    traded: { qty: traded, unit: "Number" },
+    // Clamped again: Funding raises the total, never the traded part, but a Trading-only
+    // position whose spotBal exceeded cashBal was already clamped above.
+    traded: { qty: clamp(traded, 0, total), unit: "Number" },
     // A price without a traded quantity would claim a cost for nothing, and the backend
     // refuses it - so it is dropped here rather than sent to be rejected.
     reportedAvgPrice: traded > 0 && price !== null
@@ -53,7 +88,7 @@ function toPosition(detail) {
  *                     broker and valuation currency from it, so they are not repeated here
  */
 export function buildSpecRequest({ broker, connectionId, denominationCurrency, portfolioId = null,
-                                   takenAt, details, dustThreshold = 0 }) {
+                                   takenAt, trading, funding, dustThreshold = 0 }) {
   return {
     broker,
     connectionId,
@@ -62,7 +97,7 @@ export function buildSpecRequest({ broker, connectionId, denominationCurrency, p
     denominationCurrency,
     portfolioId,
     snapshotTakenAt: takenAt,
-    positions: buildSnapshotPositions(details, { dustThreshold }),
+    positions: buildSnapshotPositions({ trading, funding, dustThreshold }),
   };
 }
 
