@@ -27,6 +27,8 @@ import com.multi.vidulum.portfolio_spec.domain.DifferenceDirection;
 import com.multi.vidulum.portfolio_spec.domain.DomainPortfolioSpecRepository;
 import com.multi.vidulum.portfolio_spec.domain.ExchangeSnapshot;
 import com.multi.vidulum.portfolio_spec.domain.PortfolioSpec;
+import com.multi.vidulum.common.SubName;
+import com.multi.vidulum.portfolio_spec.domain.SnapshotPosition;
 import com.multi.vidulum.portfolio_spec.domain.SnapshotChangedException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
@@ -34,7 +36,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Optional;
 import java.util.List;
 
@@ -124,7 +130,7 @@ public class ConfirmPortfolioSpecCommandHandler
                     command.denominationCurrency().getId(), currency.getId(), "specification");
         }
 
-        List<Asset> assets = assetsOf(spec);
+        List<Asset> assets = assetsOf(spec, command.freshSnapshot());
         Portfolio portfolio = portfolioFactory.withAssets(
                 PortfolioId.generate(),
                 command.portfolioName(),
@@ -173,11 +179,68 @@ public class ConfirmPortfolioSpecCommandHandler
      * Positions the specification settled become the portfolio's opening state. A difference the
      * user answered "I do not know" yields a position with no cost — which is the honest record,
      * and the whole reason {@code CostBasis} is nullable.
+     *
+     * <p>What the exchange has frozen is applied here rather than asked about (task D5): an open
+     * order is a fact, not a decision, and the only question it could raise — "is this really
+     * locked?" — has one answer.
      */
-    private static List<Asset> assetsOf(PortfolioSpec spec) {
-        return spec.getDifferences().stream()
+    private static List<Asset> assetsOf(PortfolioSpec spec, ExchangeSnapshot snapshot) {
+        List<Asset> assets = spec.getDifferences().stream()
                 .filter(difference -> difference.direction() == DifferenceDirection.INCREASED)
                 .map(ConfirmPortfolioSpecCommandHandler::toAsset)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        applyFrozen(assets, snapshot);
+        return List.copyOf(assets);
+    }
+
+    /**
+     * Spreads each ticker's frozen quantity over the positions we hold of it.
+     *
+     * <p>The exchange freezes a <b>currency</b>; we keep positions split by where they came from
+     * (C2). Nothing connects the two, because units are fungible — the exchange cannot tell us
+     * which bitcoin an open order committed, and there is no fact of the matter. So the split is
+     * decided by a rule instead of invented per case: the traded part absorbs the freeze first,
+     * the transferred-in part takes what is left over. Traded first because an open order is the
+     * usual cause and it is placed against what was being traded.
+     *
+     * <p>What is exact either way is the total: the sum of {@code locked} over a ticker equals
+     * what the exchange reported, so "how much of my XRP can I move" — the question an owner
+     * actually asks — is answered correctly no matter how the parts fall.
+     *
+     * <p>{@code activeLocks} stays empty on purpose. A lock there is ours, held against one of our
+     * orders and released by unlocking it; these belong to the exchange, and inventing a local
+     * order id for them would create a lock nothing can ever release. The next synchronisation
+     * restates them.
+     */
+    private static void applyFrozen(List<Asset> assets, ExchangeSnapshot snapshot) {
+        Map<Ticker, List<Asset>> byTicker = assets.stream()
+                .collect(Collectors.groupingBy(Asset::getTicker));
+
+        byTicker.forEach((ticker, held) -> {
+            Quantity frozen = snapshot.find(ticker)
+                    .map(SnapshotPosition::frozen)
+                    .orElse(null);
+            if (frozen == null || frozen.isZero()) {
+                return;
+            }
+            double remaining = frozen.getQty();
+            for (Asset asset : sortedByFreezeOrder(held)) {
+                if (remaining <= 0) {
+                    break;
+                }
+                double share = Math.min(remaining, asset.getQuantity().getQty());
+                asset.setLocked(Quantity.of(share, asset.getQuantity().getUnit()));
+                asset.setFree(asset.getQuantity().minus(asset.getLocked()));
+                remaining -= share;
+            }
+        });
+    }
+
+    /** Traded first, then everything else, so the rule above is applied in one place. */
+    private static List<Asset> sortedByFreezeOrder(List<Asset> assets) {
+        return assets.stream()
+                .sorted(Comparator.comparing(asset -> SubName.traded().equals(asset.getSubName()) ? 0 : 1))
                 .toList();
     }
 

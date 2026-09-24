@@ -133,8 +133,22 @@ class PortfolioSpecAnswerAndConfirmTest {
 
     private static PortfolioSpecDto.SnapshotPositionJson btc(double total, double traded, Double price) {
         return new PortfolioSpecDto.SnapshotPositionJson(
-                "BTC", Quantity.of(total), Quantity.of(traded),
+                "BTC", Quantity.of(total), Quantity.of(traded), null,
                 price == null ? null : Price.of(price, "USD"));
+    }
+
+    /** The same line, with part of it committed to an open order (task D5). */
+    private static PortfolioSpecDto.SnapshotPositionJson btcFrozen(
+            double total, double traded, double frozen) {
+        return new PortfolioSpecDto.SnapshotPositionJson(
+                "BTC", Quantity.of(total), Quantity.of(traded), Quantity.of(frozen),
+                Price.of(50_000.0, "USD"));
+    }
+
+    private PortfolioSpecDto.ConfirmSpecJson confirmBodyFrozen(
+            double total, double traded, double frozen) {
+        return new PortfolioSpecDto.ConfirmSpecJson(
+                "My OKX", "EUR", "OKX", NOW, List.of(btcFrozen(total, traded, frozen)));
     }
 
     private PortfolioSpecDto.PortfolioSpecJson createSpec() {
@@ -350,6 +364,82 @@ class PortfolioSpecAnswerAndConfirmTest {
         assertThat(summary.getContributionStatus()).isEqualTo(ContributionStatus.COMPUTED);
         assertThat(summary.getNetContributions()).isEqualTo(Money.of(65_000, "EUR"));
         assertThat(summary.getContributionCoverage()).isEqualTo(1.0);
+    }
+
+    /**
+     * What the exchange has frozen arrives as a lock, not as a question (task D5).
+     *
+     * <p>Every position used to be onboarded entirely free, so an account with an open order told
+     * its owner they could move money the exchange would refuse to release.
+     *
+     * <p>The freeze is reported per currency while positions are split by origin (C2), and units
+     * are fungible, so the parts are decided by a rule: traded first, the rest spills over. What
+     * is exact is the total — and that is the number an owner acts on.
+     */
+    @Test
+    void shouldLockWhatTheExchangeHasFrozen() {
+        pendingConnection();
+        String specId = createSpec().id();
+        answerUnknown(specId);
+
+        PortfolioSpecDto.PortfolioSpecJson applied =
+                controller.confirm(specId, confirmBodyFrozen(1.3, 0.3, 0.5));
+
+        Portfolio portfolio = portfolioRepository
+                .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
+
+        Asset traded = position(portfolio, SubName.traded());
+        assertThat(traded.getLocked())
+                .as("the traded part absorbs the freeze first, and 0.3 is all of it")
+                .isEqualTo(Quantity.of(0.3));
+        assertThat(traded.getFree()).isEqualTo(Quantity.zero("Number"));
+
+        Asset transferredIn = position(portfolio, SubName.transferredIn());
+        assertThat(transferredIn.getLocked())
+                .as("0.2 spills over onto what the exchange never priced")
+                .isEqualTo(Quantity.of(0.2));
+        assertThat(transferredIn.getFree()).isEqualTo(Quantity.of(0.8));
+
+        assertThat(traded.getLocked().plus(transferredIn.getLocked()))
+                .as("however the parts fall, the total is what the exchange said")
+                .isEqualTo(Quantity.of(0.5));
+    }
+
+    /**
+     * These locks are the exchange's, not ours. A local {@code AssetLock} is held against one of
+     * our orders and released by unlocking it; minting an order id for a freeze we do not own
+     * would create a lock nothing could ever release.
+     */
+    @Test
+    void shouldNotInventLocalLocksForAnExchangeFreeze() {
+        pendingConnection();
+        String specId = createSpec().id();
+        answerUnknown(specId);
+
+        PortfolioSpecDto.PortfolioSpecJson applied =
+                controller.confirm(specId, confirmBodyFrozen(1.3, 0.3, 0.5));
+
+        Portfolio portfolio = portfolioRepository
+                .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
+
+        assertThat(position(portfolio, SubName.traded()).getActiveLocks()).isEmpty();
+        assertThat(position(portfolio, SubName.transferredIn()).getActiveLocks()).isEmpty();
+    }
+
+    /** Nothing frozen leaves everything free, which is what it meant before D5 existed. */
+    @Test
+    void shouldLeaveEverythingFreeWhenNothingIsFrozen() {
+        pendingConnection();
+        String specId = createSpec().id();
+        answerUnknown(specId);
+
+        PortfolioSpecDto.PortfolioSpecJson applied = controller.confirm(specId, confirmBody(1.3, 0.3));
+
+        Portfolio portfolio = portfolioRepository
+                .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
+
+        assertThat(position(portfolio, SubName.traded()).getFree()).isEqualTo(Quantity.of(0.3));
+        assertThat(position(portfolio, SubName.transferredIn()).getFree()).isEqualTo(Quantity.of(1.0));
     }
 
     /**

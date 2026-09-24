@@ -310,7 +310,11 @@ When the user asks to "restart Docker" or "rebuild Docker image", **ALWAYS** per
 
 ```bash
 # 1. Package the application (create JAR)
-./mvnw package -DskipTests
+# IMPORTANT: `clean`, not a bare `package` - without it the reactor can reuse a stale module jar
+# and the image ships code you already replaced. Verify before shipping:
+#   unzip -p vidulum-app/target/*.jar BOOT-INF/lib/vidulum-wealth-*.jar > /tmp/w.jar
+#   unzip -p /tmp/w.jar <YourClass>.class | grep -ac <yourNewMethod>
+./mvnw clean package -DskipTests
 
 # 2. Build fresh Docker image WITHOUT CACHE
 # IMPORTANT: Always use --no-cache to ensure latest JAR is used
@@ -443,7 +447,7 @@ This guide covers the full 11-step flow:
 **Quick start for fresh test:**
 ```bash
 # Package, build WITHOUT CACHE, and start with CLEAN VOLUMES
-./mvnw package -DskipTests
+./mvnw clean package -DskipTests
 docker build --no-cache -t vidulum-app:latest .
 docker-compose -f docker-compose-final.yml down -v
 docker-compose -f docker-compose-final.yml up -d

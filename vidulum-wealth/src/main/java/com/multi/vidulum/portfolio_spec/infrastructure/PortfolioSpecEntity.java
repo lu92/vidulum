@@ -113,6 +113,7 @@ public class PortfolioSpecEntity {
         private String ticker;
         private Quantity total;
         private Quantity traded;
+        private Quantity frozen;
         private Price reportedAvgPrice;
 
         static SnapshotPositionDocument from(SnapshotPosition position) {
@@ -120,12 +121,13 @@ public class PortfolioSpecEntity {
                     .ticker(position.ticker().getId())
                     .total(position.total())
                     .traded(position.traded())
+                    .frozen(position.frozen())
                     .reportedAvgPrice(position.reportedAvgPrice())
                     .build();
         }
 
         SnapshotPosition toDomain() {
-            return new SnapshotPosition(Ticker.of(ticker), total, traded, reportedAvgPrice);
+            return new SnapshotPosition(Ticker.of(ticker), total, traded, frozen, reportedAvgPrice);
         }
     }
 

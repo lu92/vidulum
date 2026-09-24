@@ -60,6 +60,7 @@ console.log("\nE3 - snapshot z odpowiedzi OKX");
 check("cashBal staje sie caloscia, spotBal czescia handlowana",
   buildSnapshotPositions({ trading: [PART_TRADED] }),
   [{ ticker: "BTC", total: { qty: 1.3, unit: "Number" }, traded: { qty: 0.3, unit: "Number" },
+     frozen: { qty: 0, unit: "Number" },
      reportedAvgPrice: { amount: 77231.15286476455, currency: "USD" } }]);
 
 check("pozycja w calosci handlowana nie rozni sie ksztaltem",
@@ -97,6 +98,7 @@ console.log("\nE10 - oba konta OKX, nie samo Trading");
 check("saldo Funding dochodzi do calosci, nie do czesci handlowanej",
   buildSnapshotPositions({ trading: [PART_TRADED], funding: [FUNDING_BTC] }),
   [{ ticker: "BTC", total: { qty: 2, unit: "Number" }, traded: { qty: 0.3, unit: "Number" },
+     frozen: { qty: 0, unit: "Number" },
      reportedAvgPrice: { amount: 77231.15286476455, currency: "USD" } }]);
 
 checkThat("znany koszt czesci handlowanej przezywa dolaczenie Funding",
@@ -136,6 +138,40 @@ check("cale cialo zadania ma ksztalt oczekiwany przez POST /portfolio-spec",
   })),
   ["broker", "connectionId", "denominationCurrency", "portfolioId", "snapshotTakenAt",
    "positions"]);
+
+console.log("\nD5 - frozenBal z obu kont");
+
+// frozenBal jest po obu stronach: zlecenie w Trading, wyplata w oczekiwaniu w Funding.
+const FROZEN_TRADING = { ccy: "BTC", cashBal: "2", spotBal: "1", frozenBal: "0.4", openAvgPx: "50000" };
+const FROZEN_FUNDING = { ccy: "BTC", bal: "1", availBal: "0.7", frozenBal: "0.3" };
+
+check("frozenBal wchodzi do snapshotu jako osobna liczba",
+  buildSnapshotPositions({ trading: [FROZEN_TRADING] })[0].frozen, { qty: 0.4, unit: "Number" });
+
+// Wlasciciel ma jeden bilans, nie dwa - wiec blokady sumuja sie dokladnie tak jak calosci.
+check("blokady z Trading i Funding sumuja sie",
+  buildSnapshotPositions({ trading: [FROZEN_TRADING], funding: [FROZEN_FUNDING] })[0],
+  { ticker: "BTC", total: { qty: 3, unit: "Number" }, traded: { qty: 1, unit: "Number" },
+    frozen: { qty: 0.7, unit: "Number" },
+    reportedAvgPrice: { amount: 50000, currency: "USD" } });
+
+check("blokada bez odpowiednika w Trading tez sie liczy",
+  buildSnapshotPositions({ funding: [{ ccy: "SOL", bal: "12", frozenBal: "2" }] })[0].frozen,
+  { qty: 2, unit: "Number" });
+
+checkThat("brak frozenBal czyta sie jako zero, nie jako brak danych",
+  buildSnapshotPositions({ trading: [CASH] })[0].frozen.qty === 0);
+
+// Konta czytane sa w dwoch wywolaniach: blokada zwolniona miedzy nimi moglaby przekroczyc calosc
+// odczytana ulamek sekundy wczesniej, a backend odrzuca taki snapshot w calosci.
+check("blokada nie przekracza calosci",
+  buildSnapshotPositions({ trading: [{ ccy: "BTC", cashBal: "1", spotBal: "0", frozenBal: "5" }] })[0].frozen,
+  { qty: 1, unit: "Number" });
+
+checkThat("zadanie spec-u niesie blokady dalej",
+  buildSpecRequest({ broker: "OKX", connectionId: "c-1", denominationCurrency: "EUR",
+                     takenAt: "2026-09-24T12:00:00Z", trading: [FROZEN_TRADING],
+                     funding: [FROZEN_FUNDING] }).positions[0].frozen.qty > 0);
 
 console.log("\nE3 - locki z otwartych zlecen");
 
