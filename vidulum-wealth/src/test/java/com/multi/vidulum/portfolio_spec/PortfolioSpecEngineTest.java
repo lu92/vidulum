@@ -50,7 +50,7 @@ class PortfolioSpecEngineTest {
     }
 
     private static SnapshotPosition btc(double total, double traded, Double price) {
-        return new SnapshotPosition(BTC, Quantity.of(total), Quantity.of(traded),
+        return new SnapshotPosition(BTC, Quantity.of(total), Quantity.of(traded), null,
                 price == null ? null : Price.of(price, "USD"));
     }
 
@@ -114,7 +114,7 @@ class PortfolioSpecEngineTest {
     void shouldStayADraftWhenNothingNeedsAHuman() {
         PortfolioSpec spec = specFrom(List.of(), snapshot(NOW,
                 btc(0.3, 0.3, 50_000.0),
-                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(5_000), Quantity.zero(), null)));
+                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(5_000), Quantity.zero(), null, null)));
 
         assertThat(spec.getStatus()).isEqualTo(SpecStatus.DRAFT);
         assertThat(spec.needsAnswers()).isFalse();
@@ -172,7 +172,7 @@ class PortfolioSpecEngineTest {
                 .getAssets();
 
         PortfolioSpec spec = specFrom(known, snapshot(NOW,
-                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(10), Quantity.zero(), null)));
+                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(10), Quantity.zero(), null, null)));
 
         assertThat(of(spec, SubName.transferredIn()).direction()).isEqualTo(DifferenceDirection.DECREASED);
     }
@@ -196,7 +196,7 @@ class PortfolioSpecEngineTest {
 
     @Test
     void shouldRefuseASnapshotWhoseTradedPartExceedsWhatIsHeld() {
-        assertThatThrownBy(() -> new SnapshotPosition(BTC, Quantity.of(0.5), Quantity.of(1), null))
+        assertThatThrownBy(() -> new SnapshotPosition(BTC, Quantity.of(0.5), Quantity.of(1), null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exceeds");
     }
@@ -260,7 +260,7 @@ class PortfolioSpecEngineTest {
     @Test
     void shouldFileTheValuationCurrencyAsOneCashPosition() {
         PortfolioSpec spec = specFrom(List.of(), snapshot(NOW,
-                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(5_000), Quantity.of(1_200),
+                new SnapshotPosition(Ticker.of("EUR"), Quantity.of(5_000), Quantity.of(1_200), null,
                         Price.of(1, "EUR"))));
 
         assertThat(spec.getDifferences())
@@ -287,7 +287,7 @@ class PortfolioSpecEngineTest {
     @Test
     void shouldStillSplitAParAssetThatIsNotTheValuationCurrency() {
         PortfolioSpec spec = specFrom(List.of(), snapshot(NOW,
-                new SnapshotPosition(Ticker.of("USDC"), Quantity.of(1_000), Quantity.of(400), null)));
+                new SnapshotPosition(Ticker.of("USDC"), Quantity.of(1_000), Quantity.of(400), null, null)));
 
         assertThat(spec.getDifferences()).hasSize(2);
         assertThat(of(spec, Ticker.of("USDC"), SubName.traded()).quantity())

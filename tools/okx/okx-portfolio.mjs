@@ -70,7 +70,11 @@ export function describePositions(summary) {
       ? "unrealised gain not computable"
       : `unrealised ${format(asset.unrealisedProfit)}`;
     const covered = coverage === null ? "" : ` [${(coverage * 100).toFixed(0)}% covered]`;
-    return `${asset.ticker} ${asset.quantity.qty} -> ${value}; ${cost}; ${gain}${covered}`;
+    // Shown only when something is actually held back, so the common line stays readable - but
+    // shown at all, because "you have 50 000 XRP" and "you can move 40 000 of them" are different
+    // statements and only one of them was being made before D5.
+    const locked = (asset.locked?.qty ?? 0) > 0 ? ` (${asset.locked.qty} locked)` : "";
+    return `${asset.ticker} ${asset.quantity.qty}${locked} -> ${value}; ${cost}; ${gain}${covered}`;
   });
 }
 

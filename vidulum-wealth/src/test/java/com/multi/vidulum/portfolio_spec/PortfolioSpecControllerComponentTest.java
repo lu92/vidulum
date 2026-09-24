@@ -104,7 +104,7 @@ class PortfolioSpecControllerComponentTest {
         return new PortfolioSpecDto.CreateSpecJson(
                 "OKX", connectionId, "EUR", portfolioId, NOW,
                 List.of(new PortfolioSpecDto.SnapshotPositionJson(
-                        "BTC", Quantity.of(total), Quantity.of(traded),
+                        "BTC", Quantity.of(total), Quantity.of(traded), null,
                         price == null ? null : Price.of(price, "USD"))));
     }
 

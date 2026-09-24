@@ -247,6 +247,23 @@ for (let run = 1; run <= iterations; run++) {
       portfolio.profitStatus !== "WITHHELD_LOW_COVERAGE" || portfolio.wealthChange !== null,
       `profit ${portfolio.profitStatus}, growth ${JSON.stringify(portfolio.wealthChange)}`);
 
+    // D5: every position used to arrive entirely free, so an account with an open order told its
+    // owner they could move money the exchange would refuse to release.
+    const frozenByTicker = Object.fromEntries(
+      positions.map((p) => [p.ticker, p.frozen?.qty ?? 0]));
+    const lockedByTicker = {};
+    for (const asset of portfolio.assets ?? []) {
+      lockedByTicker[asset.ticker] = (lockedByTicker[asset.ticker] ?? 0) + (asset.locked?.qty ?? 0);
+    }
+    check("what the exchange froze arrives as locked (D5)",
+      Object.entries(lockedByTicker).every(([ticker, locked]) =>
+        Math.abs(locked - (frozenByTicker[ticker] ?? 0)) < 1e-8),
+      JSON.stringify([lockedByTicker, frozenByTicker]));
+    check("every position still adds up: locked plus free is what is held",
+      (portfolio.assets ?? []).every((a) =>
+        Math.abs((a.locked?.qty ?? 0) + (a.free?.qty ?? 0) - a.quantity.qty) < 1e-8),
+      JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.locked, a.free, a.quantity])));
+
     check("a ledger fully valued reports full coverage",
       portfolio.contributionCoverage === 1,
       String(portfolio.contributionCoverage));

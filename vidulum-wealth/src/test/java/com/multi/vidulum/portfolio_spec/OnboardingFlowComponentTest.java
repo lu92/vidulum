@@ -187,7 +187,7 @@ class OnboardingFlowComponentTest {
 
     private static PortfolioSpecDto.SnapshotPositionJson btc(double total, double traded) {
         return new PortfolioSpecDto.SnapshotPositionJson(
-                "BTC", Quantity.of(total), Quantity.of(traded), Price.of(50_000, "EUR"));
+                "BTC", Quantity.of(total), Quantity.of(traded), null, Price.of(50_000, "EUR"));
     }
 
     private static Asset position(Portfolio portfolio, SubName subName) {
@@ -430,7 +430,7 @@ class OnboardingFlowComponentTest {
 
     private static PortfolioSpecDto.SnapshotPositionJson eur(double total) {
         return new PortfolioSpecDto.SnapshotPositionJson(
-                "EUR", Quantity.of(total), Quantity.zero(), null);
+                "EUR", Quantity.of(total), Quantity.zero(), null, null);
     }
 
     /**

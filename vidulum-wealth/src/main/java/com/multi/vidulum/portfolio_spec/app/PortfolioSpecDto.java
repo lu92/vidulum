@@ -64,9 +64,10 @@ public final class PortfolioSpecDto {
     }
 
     /**
-     * One line of what the exchange reports: everything held, the traded part, and the price of
-     * that traded part. OKX supplies exactly these three as {@code cashBal}, {@code spotBal} and
-     * {@code openAvgPx}.
+     * One line of what the exchange reports: everything held, the traded part, the part the
+     * exchange has frozen, and the price of the traded part. OKX supplies these as
+     * {@code cashBal}, {@code spotBal}, {@code frozenBal} and {@code openAvgPx} — and both the
+     * Trading and the Funding account report their own {@code frozenBal}, so the sender sums them.
      */
     public record SnapshotPositionJson(
             @NotBlank(message = "ticker is required")
@@ -78,11 +79,19 @@ public final class PortfolioSpecDto {
             @NotNull(message = "traded is required")
             Quantity traded,
 
+            /**
+             * How much of the total the exchange has committed — open orders and pending
+             * withdrawals (task D5). Optional: {@code null} reads as nothing frozen, which is what
+             * a venue reporting no such column means. Absence is not a claim, unlike a missing
+             * {@code traded}, which would be one about cost.
+             */
+            Quantity frozen,
+
             /** {@code null} when the exchange priced nothing — normal for transferred-in assets. */
             Price reportedAvgPrice) {
 
         SnapshotPosition toDomain() {
-            return new SnapshotPosition(Ticker.of(ticker), total, traded, reportedAvgPrice);
+            return new SnapshotPosition(Ticker.of(ticker), total, traded, frozen, reportedAvgPrice);
         }
     }
 
