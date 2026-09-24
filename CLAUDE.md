@@ -66,6 +66,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `vidulum-app/src/main/` | `./mvnw compile -pl vidulum-app` |
 | `vidulum-app/src/test/` | `./mvnw test -pl vidulum-app -Dtest=YourTestClass` |
 
+### Deciding the scope before you build
+
+**A full `./mvnw clean test` is the exception, not the default.** Decide the scope first, from the
+dependency flow, and say which modules you are running and why — then run only those. The decision
+comes before the command; guessing afterwards from a red log costs more than the analysis.
+
+```
+shared-kernel ← cashflow / exchange ← wealth ← okx ← app
+```
+
+Arrows point from a module to the ones that depend on it. Run **what changed plus everything
+downstream of it**, and nothing else:
+
+| Changed | Run | Why |
+|---------|-----|-----|
+| `vidulum-wealth` | `-pl vidulum-wealth` then `-pl vidulum-okx,vidulum-app` | cashflow does not depend on wealth and cannot break |
+| `vidulum-cashflow` | `-pl vidulum-cashflow` | nothing depends on it except the app bootstrap |
+| `vidulum-exchange` | `-pl vidulum-exchange,vidulum-wealth,vidulum-okx,vidulum-app` | wealth uses connections |
+| `vidulum-shared-kernel` | **full `./mvnw clean test`** | everything depends on it — no exceptions |
+
+A downstream module resolves its dependency from the local repository, so `install` the changed
+module first: `./mvnw install -pl vidulum-wealth -DskipTests`.
+
+Two traps worth remembering:
+
+- **`./mvnw package -DskipTests` compiles every module but runs no tests.** It is cheap, and it is
+  what a Docker rebuild needs — never confuse it with a full test run.
+- **Check `docker ps` before any run that uses Testcontainers.** A `docker-compose` stack left
+  running starves them, and the failures look exactly like regressions: a registration answering
+  500, `TimeoutException: Timed out waiting for a node assignment`, tests taking minutes instead of
+  seconds. Take the stack down (`docker-compose -f docker-compose-final.yml down -v`) rather than
+  debugging the code.
+
 Note: Java 21 with preview features is required (`--enable-preview` is configured in pom.xml).
 
 ## Architecture Overview
