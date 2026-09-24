@@ -98,6 +98,26 @@ export function describeContributions(summary) {
   }
 }
 
+
+/**
+ * How much the owner's wealth has changed since they started (task C5).
+ *
+ * <p>Printed next to the result rather than instead of it, because they answer different
+ * questions: this one says whether there is more than was put in, the result says whether the
+ * buying was good. On this account the result is withheld — 92% of the value has no known cost —
+ * and this line is the only one that can speak.
+ */
+export function describeWealthChange(summary) {
+  if (summary.wealthChange === null || summary.wealthChange === undefined) {
+    // Derived from the ledger, so it falls silent with it and for the same stated reason.
+    return `not computable — ${describeContributions(summary)}`;
+  }
+  const pct = summary.pctWealthChange === null || summary.pctWealthChange === undefined
+    ? ""
+    : ` (${(summary.pctWealthChange * 100).toFixed(2)}%)`;
+  return `${format(summary.wealthChange)}${pct}`;
+}
+
 /**
  * The portfolio as a whole.
  */
@@ -112,6 +132,7 @@ export function describePortfolio(summary) {
         : `  (${(summary.contributionCoverage * 100).toFixed(0)}% of the ledger is valued)`),
     `  coverage   ${coverage === null ? "n/a" : (coverage * 100).toFixed(0) + "% of value has a known cost"}`
       + `  (backend: ${describeBackendCoverage(summary)})`,
+    `  growth     ${describeWealthChange(summary)}`,
     `  result     ${describeResult(summary)}`,
   ];
   return lines.concat(describePositions(summary).map((line) => `  ${line}`));

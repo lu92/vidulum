@@ -199,6 +199,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .pctUnrealisedProfit(0.0)
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(0, "USD"))
+                .pctWealthChange(0.0)
                 .build();
 
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
@@ -328,6 +330,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .pctUnrealisedProfit(0.0)
                                 .profitCoverage(1.0)
                                 .profitStatus(ProfitStatus.COMPUTED)
+                                .wealthChange(Money.of(0, "USD"))
+                                .pctWealthChange(0.0)
                                 .build());
 
         String originOrderId3 = uniqueOriginOrderId("Y");
@@ -440,6 +444,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .pctUnrealisedProfit(0.0)
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(5000, "USD"))
+                .pctWealthChange(0.05)
                 .build();
 
         assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
@@ -611,6 +617,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .pctUnrealisedProfit(0.0)
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(20000, "USD"))
+                .pctWealthChange(0.2)
                 .build();
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
 
@@ -1109,6 +1117,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .pctUnrealisedProfit(0.05409713)
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(5805, "USD"))
+                .pctWealthChange(0.05805)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
@@ -1638,6 +1648,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .pctUnrealisedProfit(-0.01022955)
                 .profitCoverage(1.0)
                 .profitStatus(ProfitStatus.COMPUTED)
+                .wealthChange(Money.of(-165, "USD"))
+                .pctWealthChange(-0.00825)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);

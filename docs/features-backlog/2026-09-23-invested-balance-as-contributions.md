@@ -184,7 +184,8 @@ POC i kilkanaście testów całoobiektowych. Cztery kroki, każdy osobno wysyła
    niewiadomych.
 2. ✅ **Zrobione (C12). Wkład otwarcia przy `confirm`.** Tu wchodzi zależność od notowań i zmiana momentu awarii.
    Osobno, bo to jedyny krok ze strukturalną konsekwencją.
-3. **C5** na gotowym fundamencie.
+3. ✅ **Zrobione (C5).** Zmiana majątku na gotowym fundamencie: `currentValue − netContributions`,
+   od początku istnienia portfela. Okno czasowe czeka na historię wycen (PnL).
 4. **Backfill.** Dopiero wtedy `history-candles` i granica konta z §4.4.
 
 ---

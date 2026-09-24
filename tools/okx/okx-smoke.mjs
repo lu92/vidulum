@@ -236,6 +236,17 @@ for (let run = 1; run <= iterations; run++) {
     check("the opening entry is valued in the portfolio's own currency",
       portfolio.netContributions?.currency === currency,
       JSON.stringify(portfolio.netContributions));
+    // C5: the measure that can speak when the result cannot. Checked against our own arithmetic
+    // rather than against itself - the backend and this script must agree on what it means.
+    check("wealth change is the value less what was put in (C5)",
+      portfolio.wealthChange !== null && portfolio.wealthChange !== undefined
+        && Math.abs(portfolio.wealthChange.amount
+            - (portfolio.currentValue.amount - portfolio.netContributions.amount)) < 0.01,
+      JSON.stringify([portfolio.wealthChange, portfolio.currentValue, portfolio.netContributions]));
+    check("wealth change is stated even though the result is withheld (C5 vs C4)",
+      portfolio.profitStatus !== "WITHHELD_LOW_COVERAGE" || portfolio.wealthChange !== null,
+      `profit ${portfolio.profitStatus}, growth ${JSON.stringify(portfolio.wealthChange)}`);
+
     check("a ledger fully valued reports full coverage",
       portfolio.contributionCoverage === 1,
       String(portfolio.contributionCoverage));

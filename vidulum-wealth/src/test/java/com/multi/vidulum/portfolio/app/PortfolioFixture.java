@@ -122,6 +122,12 @@ public final class PortfolioFixture {
         return this;
     }
 
+    /** Money the owner took back out — lowers what the portfolio is measured against. */
+    public PortfolioFixture withdrawn(Money money) {
+        contributions.add(Contribution.takenOut(nextId(), money, CONTRIBUTED_AT));
+        return this;
+    }
+
     private ContributionId nextId() {
         return ContributionId.of("contribution-" + (contributions.size() + 1));
     }
