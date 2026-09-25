@@ -5,6 +5,7 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.portfolio_spec.app.commands.answer.AnswerPortfolioSpecCommand;
+import com.multi.vidulum.portfolio_spec.app.commands.cancel.CancelPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.confirm.ConfirmPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQuery;
@@ -77,7 +78,8 @@ public class PortfolioSpecRestController {
                 PortfolioSpecId.of(specId),
                 request.answers().stream()
                         .map(PortfolioSpecDto.GivenAnswerJson::toDomain)
-                        .toList()));
+                        .toList(),
+                now()));
 
         return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());
     }
@@ -104,6 +106,19 @@ public class PortfolioSpecRestController {
                 // markStale all date from here, and a clock consulted per use could not promise that.
                 now()));
 
+        return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());
+    }
+
+    /**
+     * The owner gave up on this synchronisation (task D10).
+     *
+     * <p>Terminal on purpose: without it the specification stays in {@code AWAITING_ANSWER}
+     * forever, and nothing can tell a decision still being made from one nobody will ever make.
+     */
+    @PostMapping("/{specId}/cancel")
+    public PortfolioSpecDto.PortfolioSpecJson cancel(@PathVariable String specId) {
+        PortfolioSpec spec = commandGateway.send(
+                new CancelPortfolioSpecCommand(currentUser(), PortfolioSpecId.of(specId)));
         return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());
     }
 

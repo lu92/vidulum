@@ -136,9 +136,19 @@ public class ConfirmPortfolioSpecCommandHandler
                     command.denominationCurrency().getId(), currency.getId(), "specification");
         }
 
-        Portfolio saved = spec.getKnownPortfolioId() != null
-                ? updateExisting(spec, command, now)
-                : createNew(spec, command, broker, currency, now);
+        // A write that fails leaves the specification usable rather than lost: every answer in it
+        // is still valid, and FAILED says "try again", which is a different instruction from
+        // "start over" (task D10).
+        Portfolio saved;
+        try {
+            saved = spec.getKnownPortfolioId() != null
+                    ? updateExisting(spec, command, now)
+                    : createNew(spec, command, broker, currency, now);
+        } catch (RuntimeException failure) {
+            spec.markFailed();
+            specRepository.save(spec);
+            throw failure;
+        }
 
         spec.markApplied(saved.getPortfolioId(), now);
         PortfolioSpec appliedSpec = specRepository.save(spec);

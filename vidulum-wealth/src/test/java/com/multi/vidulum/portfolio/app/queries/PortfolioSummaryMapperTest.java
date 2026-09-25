@@ -75,6 +75,7 @@ class PortfolioSummaryMapperTest {
         AggregatedPortfolio.GroupedAssets cryptoGroupedAssets = AggregatedPortfolio.GroupedAssets.builder().build();
         cryptoGroupedAssets.appendAsset(BROKER, Asset.builder()
                 .ticker(Ticker.of("BTC"))
+                .subName(SubName.traded())
                 .costBasis(CostBasis.of(Quantity.of(0.2), Price.of(40000, "EUR"), Provenance.DERIVED_FROM_FILLS))
                 .quantity(Quantity.of(0.2))
                 .locked(Quantity.of(0))
@@ -83,6 +84,7 @@ class PortfolioSummaryMapperTest {
                 .build());
         cryptoGroupedAssets.appendAsset(BROKER, Asset.builder()
                 .ticker(Ticker.of("ETH"))
+                .subName(SubName.traded())
                 .costBasis(CostBasis.of(Quantity.of(2), Price.of(2000, "EUR"), Provenance.DERIVED_FROM_FILLS))
                 .quantity(Quantity.of(2))
                 .locked(Quantity.of(1))
@@ -94,6 +96,7 @@ class PortfolioSummaryMapperTest {
         AggregatedPortfolio.GroupedAssets cashGroupedAssets = AggregatedPortfolio.GroupedAssets.builder().build();
         cashGroupedAssets.appendAsset(BROKER, Asset.builder()
                 .ticker(Ticker.of("EUR"))
+                .subName(SubName.none())
                 .costBasis(CostBasis.of(Quantity.of(5000), Price.of(1, "EUR"), Provenance.ASSUMED_PAR))
                 .quantity(Quantity.of(5000))
                 .locked(Quantity.of(1000))
@@ -155,6 +158,7 @@ class PortfolioSummaryMapperTest {
                 .assets(List.of(
                         PortfolioDto.AssetSummaryJson.builder()
                                 .ticker("USD")
+                                .subName("none")
                                 .fullName("American Dollar")
                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                         .quantity(Quantity.of(6000))
@@ -174,6 +178,7 @@ class PortfolioSummaryMapperTest {
                                 .build(),
                         PortfolioDto.AssetSummaryJson.builder()
                                 .ticker("BTC")
+                                .subName("traded")
                                 .fullName("Bitcoin")
                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                         .quantity(Quantity.of(0.1))
@@ -234,6 +239,7 @@ class PortfolioSummaryMapperTest {
                 .assets(List.of(
                         PortfolioDto.AssetSummaryJson.builder()
                                 .ticker("USD")
+                                .subName("none")
                                 .fullName("American Dollar")
                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                         .quantity(Quantity.of(6000))
@@ -253,6 +259,7 @@ class PortfolioSummaryMapperTest {
                                 .build(),
                         PortfolioDto.AssetSummaryJson.builder()
                                 .ticker("BTC")
+                                .subName("traded")
                                 .fullName("Bitcoin")
                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                         .quantity(Quantity.of(0.1))
@@ -324,6 +331,7 @@ class PortfolioSummaryMapperTest {
                                         "Crypto", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("BTC")
+                                                        .subName("traded")
                                                         .fullName("Bitcoin")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(0.2))
@@ -343,6 +351,7 @@ class PortfolioSummaryMapperTest {
                                                         .build(),
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("ETH")
+                                                        .subName("traded")
                                                         .fullName("Ethereum")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(2.0))
@@ -363,6 +372,7 @@ class PortfolioSummaryMapperTest {
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("EUR")
+                                                        .subName("none")
                                                         .fullName("Euro")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(5000))

@@ -34,12 +34,16 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio_spec.app.PortfolioSpecDto;
 import com.multi.vidulum.portfolio_spec.app.PortfolioSpecRestController;
 import com.multi.vidulum.portfolio_spec.app.commands.answer.AnswerPortfolioSpecCommandHandler;
+import com.multi.vidulum.portfolio_spec.app.commands.cancel.CancelPortfolioSpecCommandHandler;
 import com.multi.vidulum.portfolio_spec.app.commands.confirm.ConfirmPortfolioSpecCommandHandler;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommandHandler;
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQueryHandler;
 import com.multi.vidulum.portfolio_spec.domain.AnswerKind;
 import com.multi.vidulum.portfolio_spec.domain.AnswerNotApplicableException;
+import com.multi.vidulum.portfolio_spec.domain.IllegalSpecTransitionException;
+import com.multi.vidulum.portfolio_spec.domain.PortfolioSpecNotFoundException;
 import com.multi.vidulum.portfolio_spec.domain.SnapshotChangedException;
+import com.multi.vidulum.portfolio_spec.domain.SnapshotExpiredException;
 import com.multi.vidulum.portfolio_spec.domain.UnansweredQuestionsException;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
@@ -116,6 +120,7 @@ class PortfolioSpecAnswerAndConfirmTest {
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
                 specRepository, portfolioRepository, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
+        gateway.registerCommandHandler(new CancelPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
                 quotes, confirmConnectionHandler));
@@ -154,6 +159,12 @@ class PortfolioSpecAnswerAndConfirmTest {
     private PortfolioSpecDto.PortfolioSpecJson createSpec() {
         return controller.create(new PortfolioSpecDto.CreateSpecJson(
                 "OKX", CONNECTION, "EUR", null, NOW, List.of(btc(1.3, 0.3, 50_000.0))));
+    }
+
+    /** The same specification, anchored to a reading that is already older than the TTL. */
+    private PortfolioSpecDto.PortfolioSpecJson createSpecTakenAt(ZonedDateTime takenAt) {
+        return controller.create(new PortfolioSpecDto.CreateSpecJson(
+                "OKX", CONNECTION, "EUR", null, takenAt, List.of(btc(1.3, 0.3, 50_000.0))));
     }
 
     private PortfolioSpecDto.PortfolioSpecJson answerUnknown(String specId) {
@@ -440,6 +451,52 @@ class PortfolioSpecAnswerAndConfirmTest {
 
         assertThat(position(portfolio, SubName.traded()).getFree()).isEqualTo(Quantity.of(0.3));
         assertThat(position(portfolio, SubName.transferredIn()).getFree()).isEqualTo(Quantity.of(1.0));
+    }
+
+    /**
+     * A refused answer decides something too (task D10): the specification is stale, and that has
+     * to outlive the request. Missed by the aggregate's own tests — they saw the status change on
+     * the object and had no repository to lose it in. A live run found it.
+     */
+    @Test
+    void shouldRememberThatTheAnchorAgedOutAfterRefusingAnAnswer() {
+        pendingConnection();
+        String specId = createSpecTakenAt(NOW.minusMinutes(20)).id();
+
+        assertThatThrownBy(() -> answerUnknown(specId))
+                .isInstanceOf(SnapshotExpiredException.class);
+
+        assertThat(controller.get(specId).status())
+                .as("read back from the repository, not from the object the refusal touched")
+                .isEqualTo("STALE");
+    }
+
+    /**
+     * Walking away is an outcome (task D10). Without it the specification stays in
+     * {@code AWAITING_ANSWER} forever and nothing can tell a decision still being made from one
+     * nobody will ever make.
+     */
+    @Test
+    void shouldLetTheOwnerAbandonASynchronisation() {
+        pendingConnection();
+        String specId = createSpec().id();
+
+        PortfolioSpecDto.PortfolioSpecJson cancelled = controller.cancel(specId);
+
+        assertThat(cancelled.status()).isEqualTo("CANCELLED");
+        assertThatThrownBy(() -> controller.confirm(specId, confirmBody(1.3, 0.3)))
+                .isInstanceOf(IllegalSpecTransitionException.class);
+    }
+
+    /** Someone else's specification cannot be abandoned on their behalf — it answers 404. */
+    @Test
+    void shouldNotLetAStrangerCancelASynchronisation() {
+        pendingConnection();
+        String specId = createSpec().id();
+        caller = UserId.of("U10000002");
+
+        assertThatThrownBy(() -> controller.cancel(specId))
+                .isInstanceOf(PortfolioSpecNotFoundException.class);
     }
 
     /**

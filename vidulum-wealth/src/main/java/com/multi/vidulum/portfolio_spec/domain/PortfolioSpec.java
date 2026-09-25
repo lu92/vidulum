@@ -60,8 +60,14 @@ public class PortfolioSpec {
      */
     private final Currency denominationCurrency;
 
-    /** The anchor: everything is validated against it, and it is what ages. */
-    private final ExchangeSnapshot snapshot;
+    /**
+     * The anchor: everything is validated against it, and it is what ages.
+     *
+     * <p>Replaced by {@link #markStale}, never edited in place. It was final until D10, which made
+     * a recomputation pointless: the differences were refreshed while the clock kept running
+     * against the reading they replaced, so a specification that aged out once stayed aged out.
+     */
+    private ExchangeSnapshot snapshot;
 
     private List<Difference> differences;
     private SpecStatus status;
@@ -146,8 +152,10 @@ public class PortfolioSpec {
      * whichever difference looks closest: the specification is untrusted input and the snapshot
      * is the anchor (§4.7).
      */
-    public void answer(Ticker ticker, SubName subName, Quantity quantity, Answer given) {
+    public void answer(Ticker ticker, SubName subName, Quantity quantity, Answer given,
+                       ZonedDateTime now) {
         requireNotTerminal("answer");
+        requireFreshAnchor(now);
 
         List<Difference> updated = new ArrayList<>(differences.size());
         boolean matched = false;
@@ -213,23 +221,85 @@ public class PortfolioSpec {
         return !openQuestions().isEmpty();
     }
 
-    /** True once the anchor is older than the TTL — a hint for the interface, not a correctness rule. */
+    /** True once the anchor is older than the TTL. */
     public boolean isSnapshotExpired(ZonedDateTime now) {
         return snapshot.takenAt().plus(SNAPSHOT_TTL).isBefore(now);
     }
 
     /**
-     * Recomputes against a newer snapshot after the anchor aged out.
+     * Refuses to take an answer anchored to a reading that has aged out (task D10).
      *
-     * <p>D2 will extend this to carry over answers whose batch survived; until answers exist
-     * there is nothing to carry.
+     * <p>Told early on purpose. The alternative is what happened before: the owner answers a dozen
+     * questions, presses confirm, and only then learns the exchange has moved on — because
+     * {@code confirm} compares against a fresh snapshot and refuses (D11). The work is lost at the
+     * end instead of at the start, which is the version people abandon onboarding over.
+     *
+     * <p>Marking it {@code STALE} rather than leaving it in place is what tells an interface to
+     * offer "read the account again" instead of the same form.
+     */
+    private void requireFreshAnchor(ZonedDateTime now) {
+        if (isSnapshotExpired(now)) {
+            this.status = SpecStatus.STALE;
+            throw new SnapshotExpiredException(id, snapshot.takenAt(), SNAPSHOT_TTL);
+        }
+    }
+
+    /**
+     * Recomputes against a newer reading, keeping every answer whose batch survived (task D10).
+     *
+     * <p><b>The snapshot expires; the answers do not.</b> An answer is anchored to a batch — a
+     * ticker, a position and a quantity (D2) — so a batch that reappears unchanged in the new
+     * reading is the same batch, and the decision made about it still holds. Discarding answers
+     * here would hand the owner the same twelve questions after every refresh, which is the
+     * fastest way to make somebody give up halfway.
+     *
+     * <p>What is new gets asked about; what the rules settle needs no answer at all.
      */
     public void markStale(ExchangeSnapshot fresherSnapshot, List<Asset> knownState, ZonedDateTime now) {
         requireNotTerminal("recompute");
-        this.differences =
+        List<Difference> recomputed =
                 DifferenceEngine.compute(knownState, fresherSnapshot, denominationCurrency);
-        this.status = differences.isEmpty() ? SpecStatus.APPLIED : statusFor(differences);
+        this.differences = carryOverAnswers(recomputed);
+        this.snapshot = fresherSnapshot;
+        this.status = differences.isEmpty() ? SpecStatus.APPLIED : statusAfterRecompute();
         this.lastRecomputedAt = now;
+    }
+
+    /**
+     * {@code DRAFT} means "freshly computed, nothing to ask" — true of a new specification, wrong
+     * for one carrying decisions somebody already made. A recomputation that kept every answer is
+     * ready to apply, and says so.
+     */
+    private SpecStatus statusAfterRecompute() {
+        if (needsAnswers()) {
+            return SpecStatus.AWAITING_ANSWER;
+        }
+        return differences.stream().anyMatch(Difference::isAnswered)
+                ? SpecStatus.CONFIRMED
+                : SpecStatus.DRAFT;
+    }
+
+    private List<Difference> carryOverAnswers(List<Difference> recomputed) {
+        return recomputed.stream().map(fresh -> {
+            if (!fresh.needsAnswer()) {
+                return fresh;
+            }
+            return differences.stream()
+                    .filter(Difference::isAnswered)
+                    .filter(old -> matches(fresh, old.ticker(), old.subName(), old.quantity()))
+                    .findFirst()
+                    .map(old -> applicable(fresh, old))
+                    .orElse(fresh);
+        }).toList();
+    }
+
+    /** An answer of the wrong kind for the question now being asked is dropped, not forced. */
+    private static Difference applicable(Difference fresh, Difference answered) {
+        try {
+            return fresh.answeredWith(answered.answer());
+        } catch (IllegalArgumentException e) {
+            return fresh;
+        }
     }
 
     /**
