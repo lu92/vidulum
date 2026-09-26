@@ -12,4 +12,11 @@ public class AssetPriceMetadata {
     Price currentPrice;
     double pctChange;
     ZonedDateTime dateTime;
+
+    /**
+     * How this price was arrived at. Defaults to {@link PriceOrigin#DIRECT} so a builder written
+     * before B4 keeps saying what it always meant.
+     */
+    @Builder.Default
+    PriceOrigin origin = PriceOrigin.DIRECT;
 }

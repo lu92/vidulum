@@ -3,6 +3,7 @@ package com.multi.vidulum.okx;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Price;
+import com.multi.vidulum.common.PriceOrigin;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
@@ -10,6 +11,7 @@ import com.multi.vidulum.common.Segment;
 import com.multi.vidulum.quotation.domain.BrokerNotFoundException;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
+import com.multi.vidulum.quotation.domain.fx.FxRates;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +48,7 @@ class OkxQuotationComponentTest {
     @BeforeEach
     void setUp() {
         provider = new OkxBrokerQuotationProvider();
-        quotationService = new QuotationService();
+        quotationService = new QuotationService(new FxRates());
         quotationService.registerBroker(provider);
     }
 
@@ -154,15 +156,22 @@ class OkxQuotationComponentTest {
 
     @Test
     void shouldServeUsdQuotesFromUsdtAtParity() {
-        // Inherited from BrokerQuotationProvider: a USD quote falls back to USDT and is returned
-        // one-to-one, with no conversion. Pinned here so that task B4 - which introduces a real
-        // USD/PLN chain - has to change this test deliberately rather than silently.
+        // Inherited from BrokerQuotationProvider: a USD quote falls back to USDT one-to-one, with
+        // no conversion. Pinned here so that task B4 - which introduced a real USD/PLN chain - had
+        // to change it deliberately rather than silently, and it did, twice over.
+        //
+        // The amount is still the USDT one, because parity is the whole assumption. What changed
+        // is that the price is now *labelled* USD, matching the symbol above it: it used to come
+        // back as USDT under a BTC/USD symbol, so the answer contradicted itself - harmless while
+        // nothing checked the currency, and wrong the moment the chain did. And the substitution
+        // now says so in the open, instead of passing for something that was published.
         quotationService.onPriceChange(priceOf("BTC", "USDT", 76702.7, "USDT"));
 
         AssetPriceMetadata usd = quotationService.fetch(OKX, Symbol.of(Ticker.of("BTC"), Ticker.of("USD")));
 
-        assertThat(usd.getCurrentPrice()).isEqualTo(Price.of(76702.7, "USDT"));
+        assertThat(usd.getCurrentPrice()).isEqualTo(Price.of(76702.7, "USD"));
         assertThat(usd.getSymbol()).isEqualTo(Symbol.of(Ticker.of("BTC"), Ticker.of("USD")));
+        assertThat(usd.getOrigin()).isEqualTo(PriceOrigin.SUBSTITUTED);
     }
 
     @Test
