@@ -116,6 +116,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .segmentedAssets(Map.of("Cash", List.of(
                                         PortfolioDto.AssetSummaryJson.builder()
                                                 .ticker("USD")
+                                                .subName("none")
                                                 .fullName("American Dollar")
                                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                                         .quantity(Quantity.of(100000.0))
@@ -259,6 +260,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .segmentedAssets(Map.of("Cash", List.of(
                                         PortfolioDto.AssetSummaryJson.builder()
                                                 .ticker("USD")
+                                                .subName("none")
                                                 .fullName("American Dollar")
                                                 .costBasis(PortfolioDto.CostBasisJson.builder()
                                                         .quantity(Quantity.of(100000.0))
@@ -466,6 +468,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("USD")
+                                                        .subName("none")
                                                         .fullName("American Dollar")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(40000.0))
@@ -490,6 +493,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Crypto", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("BTC")
+                                                        .subName("traded")
                                                         .fullName("Bitcoin")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(1))
@@ -649,6 +653,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("USD")
+                                                        .subName("none")
                                                         .fullName("American Dollar")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(40000.0))
@@ -669,6 +674,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Crypto", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("BTC")
+                                                        .subName("traded")
                                                         .fullName("Bitcoin")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(1))
@@ -786,6 +792,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("USD")
+                                                        .subName("none")
                                                         .fullName("American Dollar")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(40000.0 + 18000.0 + 6000.0))
@@ -806,6 +813,7 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                         "Crypto", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("BTC")
+                                                        .subName("traded")
                                                         .fullName("Bitcoin")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(0.6))

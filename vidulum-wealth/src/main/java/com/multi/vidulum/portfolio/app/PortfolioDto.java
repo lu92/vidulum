@@ -116,6 +116,20 @@ public class PortfolioDto {
     @EqualsAndHashCode
     public static class AssetSummaryJson {
         private String ticker;
+
+        /**
+         * Which position of this ticker this row is — {@code traded}, {@code transferred-in} or
+         * {@code none} for cash (task C15).
+         *
+         * <p>Without it a reader gets two rows called "BTC" and nothing to tell them apart, which
+         * is what a portfolio onboarded from an exchange always produces: one part the exchange
+         * priced, one that arrived from elsewhere with no price at all. The split C2 introduced
+         * lived in the model, the database and the merge rules, and stopped at this boundary — so
+         * the only way to identify a row was to guess from whether it had a cost, and that guess
+         * breaks the moment the owner supplies one.
+         */
+        private String subName;
+
         private String fullName;
 
         /**

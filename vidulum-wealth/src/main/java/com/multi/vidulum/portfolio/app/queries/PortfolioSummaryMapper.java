@@ -358,6 +358,10 @@ public class PortfolioSummaryMapper {
 
         PortfolioDto.AssetSummaryJson json = PortfolioDto.AssetSummaryJson.builder()
                 .ticker(asset.getTicker().getId())
+                // Cash is SubName.none(), whose name is the empty string — which every reader
+                // would show as a blank cell or treat as missing. Named here instead: the row a
+                // client is least able to guess at is the one that must not read as absent.
+                .subName(asset.getSubName().isCash() ? "none" : asset.getSubName().getName())
                 .fullName(assetBasicInfo.getFullName())
                 .costBasis(PortfolioDto.CostBasisJson.from(asset.getCostBasis()))
                 .quantity(asset.getQuantity())

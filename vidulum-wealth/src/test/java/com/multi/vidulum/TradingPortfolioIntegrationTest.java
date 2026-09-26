@@ -153,6 +153,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Crypto", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("BTC")
+                                        .subName("traded")
                                         .fullName("Bitcoin")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(1))
@@ -173,6 +174,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Cash", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("USD")
+                                        .subName("none")
                                         .fullName("American Dollar")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(40000.0))
@@ -284,6 +286,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         "Crypto", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("BTC")
+                                                        .subName("traded")
                                                         .fullName("Bitcoin")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(1))
@@ -304,6 +307,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         "Cash", List.of(
                                                 PortfolioDto.AssetSummaryJson.builder()
                                                         .ticker("USD")
+                                                        .subName("none")
                                                         .fullName("American Dollar")
                                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                                 .quantity(Quantity.of(40000.0))
@@ -389,6 +393,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Crypto", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("BTC")
+                                        .subName("traded")
                                         .fullName("Bitcoin")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(0.75))
@@ -415,6 +420,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Cash", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("USD")
+                                        .subName("none")
                                         .fullName("American Dollar")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(60000))
@@ -590,6 +596,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Cash", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("USD")
+                                        .subName("none")
                                         .fullName("American Dollar")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(120000.0))
@@ -1049,6 +1056,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .segmentedAssets(Map.of("Cash", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("USD")
+                                        .subName("none")
                                         .fullName("American Dollar")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(87100))
@@ -1069,6 +1077,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Crypto", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("ETH")
+                                        .subName("traded")
                                         .fullName("Ethereum")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(1.3))
@@ -1088,6 +1097,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .build(),
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("BTC")
+                                        .subName("traded")
                                         .fullName("Bitcoin")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(0.25))
@@ -1581,6 +1591,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Cash", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("USD")
+                                        .subName("none")
                                         .fullName("American Dollar")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(12160))
@@ -1601,6 +1612,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         "Precious Metals", List.of(
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("XAG")
+                                        .subName("traded")
                                         .fullName("Silver")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(5, "oz"))
@@ -1620,6 +1632,7 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                         .build(),
                                 PortfolioDto.AssetSummaryJson.builder()
                                         .ticker("XAU")
+                                        .subName("traded")
                                         .fullName("Gold")
                                         .costBasis(PortfolioDto.CostBasisJson.builder()
                                                 .quantity(Quantity.of(4, "oz"))

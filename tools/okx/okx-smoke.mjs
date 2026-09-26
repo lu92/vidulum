@@ -206,6 +206,16 @@ for (let run = 1; run <= iterations; run++) {
     check("backend coverage matches our own reckoning of it (C4)",
       agreement.agree,
       `backend ${agreement.theirs}, ours ${agreement.ours}`);
+    // C15: two rows of the same ticker are the normal shape of an onboarded account, and until
+    // now nothing in the payload said which was which.
+    check("every position says which position it is (C15)",
+      (portfolio.assets ?? []).every((a) => ["traded", "transferred-in", "none"].includes(a.subName)),
+      JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.subName])));
+    check("the two rows of one ticker are told apart by name, not by guessing at the cost",
+      new Set((portfolio.assets ?? []).map((a) => `${a.ticker}/${a.subName}`)).size
+        === (portfolio.assets ?? []).length,
+      JSON.stringify((portfolio.assets ?? []).map((a) => `${a.ticker}/${a.subName}`)));
+
     check("every position reports its own coverage",
       (portfolio.assets ?? []).every((a) => typeof a.coverage === "number"),
       JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.coverage])));
