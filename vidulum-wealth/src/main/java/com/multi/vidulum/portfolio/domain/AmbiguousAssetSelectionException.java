@@ -1,5 +1,7 @@
 package com.multi.vidulum.portfolio.domain;
 
+import com.multi.vidulum.common.error.ErrorCode;
+import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Ticker;
 
@@ -13,12 +15,17 @@ import java.util.List;
  * that happens: the lock lands on {@code transferred-in} while the unlock looks for it on
  * {@code traded}.
  */
-public class AmbiguousAssetSelectionException extends RuntimeException {
+public class AmbiguousAssetSelectionException extends BusinessException {
 
     public AmbiguousAssetSelectionException(Ticker ticker, List<SubName> candidates) {
         super(String.format("Asset [%s] is held in %d positions %s - say which one", 
                 ticker.getId(),
                 candidates.size(),
                 candidates.stream().map(SubName::getName).toList()));
+    }
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.PORTFOLIO_AMBIGUOUS_ASSET;
     }
 }

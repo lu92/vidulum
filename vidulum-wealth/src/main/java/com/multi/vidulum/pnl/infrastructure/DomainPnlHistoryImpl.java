@@ -1,5 +1,6 @@
 package com.multi.vidulum.pnl.infrastructure;
 
+import java.util.List;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.domain.PnlHistory;
@@ -14,6 +15,13 @@ import java.util.Optional;
 @AllArgsConstructor
 public class DomainPnlHistoryImpl implements DomainPnlRepository {
     private final PnlMongoRepository pnlMongoRepository;
+
+    @Override
+    public List<UserId> everyOwner() {
+        return pnlMongoRepository.findAll().stream()
+                .map(entity -> UserId.of(entity.getUserId()))
+                .toList();
+    }
 
     @Override
     public Optional<PnlHistory> findById(PnlId pnlId) {
