@@ -53,6 +53,15 @@ public final class PortfolioEvents {
             ZonedDateTime dateTime) implements DomainEvent {
     }
 
+    /** The owner said what a position cost them (task C8). */
+    public record PositionCostStatedEvent(
+            PortfolioId portfolioId,
+            Ticker ticker,
+            SubName subName,
+            Price avgPrice,
+            ZonedDateTime dateTime) implements DomainEvent {
+    }
+
     /** What the exchange has committed for one ticker, as of this reading (task D5). */
     public record PositionFrozenEvent(
             PortfolioId portfolioId,

@@ -151,6 +151,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .realisedResults(List.of())
+                // Ids minted by the backend; what matters here is that the trades were counted
+                // once each, which the quantities above already state (task F10).
+                .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -606,6 +609,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                         settledTradeId(portfolio, 0), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
                         Ticker.of("BTC"), SubName.traded(), Quantity.of(1), Quantity.of(1),
                         Money.of(80000, "USD").withScale(4), Money.of(60000, "USD").withScale(4))))
+                // Ids minted by the backend; what matters here is that the trades were counted
+                // once each, which the quantities above already state (task F10).
+                .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -1079,6 +1085,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 settledTradeId(portfolio, 1), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
                                 Ticker.of("ETH"), SubName.traded(), Quantity.of(0.2), Quantity.of(0.2),
                                 Money.of(600, "USD").withScale(4), Money.of(600, "USD").withScale(4))))
+                // Ids minted by the backend; what matters here is that the trades were counted
+                // once each, which the quantities above already state (task F10).
+                .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 

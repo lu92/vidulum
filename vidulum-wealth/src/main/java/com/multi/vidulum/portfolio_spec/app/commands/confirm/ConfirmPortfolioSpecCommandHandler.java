@@ -22,7 +22,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.portfolio_spec.domain.CannotApplySpecToExistingPortfolioException;
+import com.multi.vidulum.portfolio_spec.domain.SpecificationAlreadyAppliedException;
 import com.multi.vidulum.portfolio_spec.domain.ConnectionMismatchException;
 import com.multi.vidulum.portfolio_spec.domain.Difference;
 import com.multi.vidulum.portfolio_spec.domain.DifferenceDirection;
@@ -103,8 +103,10 @@ public class ConfirmPortfolioSpecCommandHandler
         PortfolioSpec spec = specRepository.findOwnedOrThrow(command.userId(), command.specId());
         ZonedDateTime now = command.dateTime();
 
+        // Applied once already — a retried request or a second click. Refused before anything
+        // is read or written, so the answer is the same every time: nothing changed (task D8).
         if (spec.getPortfolioId() != null) {
-            throw new CannotApplySpecToExistingPortfolioException(spec.getPortfolioId());
+            throw new SpecificationAlreadyAppliedException(spec.getId(), spec.getPortfolioId());
         }
 
         // Checked before anything is written. There is no transaction spanning the portfolio and

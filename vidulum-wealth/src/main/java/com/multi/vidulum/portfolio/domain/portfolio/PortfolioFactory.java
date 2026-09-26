@@ -6,6 +6,7 @@ import com.multi.vidulum.shared.ddd.event.DomainEvent;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 public class PortfolioFactory {
 
@@ -27,6 +28,7 @@ public class PortfolioFactory {
                 .allowedDepositCurrency(allowedDepositCurrency)
                 .contributions(new LinkedList<>())
                 .realisedResults(new LinkedList<>())
+                .appliedTrades(new java.util.LinkedHashSet<>())
                 .status(PortfolioStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();
@@ -65,8 +67,10 @@ public class PortfolioFactory {
                 assets.stream().map(PortfolioFactory::toSnapshot).toList(),
                 PortfolioStatus.OPEN,
                 List.copyOf(contributions),
-                // Nothing has been sold yet, whichever way the portfolio was opened (F6).
+                // Nothing has been sold yet, whichever way the portfolio was opened (F6), and no
+                // trade has been counted into it (F10).
                 List.of(),
+                Set.of(),
                 allowedDepositCurrency));
     }
 

@@ -46,6 +46,25 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
      * all (C7). Summing is the reader's job, under the coverage rule.
      */
     private List<RealisedResult> realisedResults;
+
+    /**
+     * Trades this portfolio has already counted (task F10).
+     *
+     * <p>F1 stopped the same trade being <b>stored</b> twice. Nothing stopped a stored one being
+     * <b>applied</b> twice: a redelivered {@code TradeCapturedEvent} — Kafka retries, and I have
+     * watched one retry nine times — would add the same purchase to the holdings again, and since
+     * F6 count its settled result again too.
+     *
+     * <p>Kept inside the portfolio rather than in a table of processed events, because then the
+     * check and the change are <b>one write</b>. Split across two documents without a transaction,
+     * either order loses: mark first and a failed apply drops the trade for good; apply first and a
+     * crash before marking counts it twice. Here there is no in-between state to crash in.
+     *
+     * <p>The cost is a set that only grows — a portfolio with a hundred thousand fills carries a
+     * hundred thousand ids. That is fine at this size and will not be forever; it is a known bound,
+     * not an oversight.
+     */
+    private Set<TradeId> appliedTrades;
     private PortfolioStatus status;
     private Currency allowedDepositCurrency;
     private List<DomainEvent> uncommittedEvents;
@@ -80,6 +99,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 status,
                 List.copyOf(contributions),
                 List.copyOf(realisedResults),
+                Set.copyOf(appliedTrades()),
                 allowedDepositCurrency
         );
     }
@@ -116,6 +136,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .status(snapshot.getStatus())
                 .contributions(new LinkedList<>(snapshot.getContributions()))
                 .realisedResults(new LinkedList<>(snapshot.getRealisedResults()))
+                .appliedTrades(new LinkedHashSet<>(snapshot.getAppliedTrades()))
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency())
                 .build();
     }
@@ -139,10 +160,28 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
 
     public void apply(PortfolioEvents.TradeProcessedEvent event) {
         tryWhenPortfolioIsOpen(() -> {
+            if (hasAlreadyCounted(event.tradeId())) {
+                log.info("[{}] trade [{}] was already counted - ignoring the repeat",
+                        portfolioId, event.tradeId());
+                return;
+            }
             AssetPortion purchasedPortion = calculatePurchasedPortionOfAsset(event);
             AssetPortion soldPortion = calculateSoldPortionOfAsset(event);
             swing(event, soldPortion, purchasedPortion);
+            appliedTrades().add(event.tradeId());
         });
+    }
+
+    /** Whether this trade has already moved this portfolio (task F10). */
+    public boolean hasAlreadyCounted(TradeId tradeId) {
+        return tradeId != null && appliedTrades().contains(tradeId);
+    }
+
+    private Set<TradeId> appliedTrades() {
+        if (appliedTrades == null) {
+            appliedTrades = new LinkedHashSet<>();
+        }
+        return appliedTrades;
     }
 
     private void tryWhenPortfolioIsOpen(Runnable action) {
@@ -562,6 +601,35 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 && asset.getCostBasis().quantity().getQty() > remaining.getQty()) {
             asset.setCostBasis(asset.getCostBasis().reduceTo(remaining));
         }
+    }
+
+    /**
+     * The owner states what a position cost them (task C8).
+     *
+     * <p>Covers what is held <b>now</b>, at the price given. If the position later grows without a
+     * cost for the new units, coverage falls rather than the price stretching over units it never
+     * described — the rule C4 established and D6 kept.
+     *
+     * <p>Recorded as {@link Provenance#USER_PROVIDED}, which is the one provenance no
+     * synchronisation may overwrite silently (D6). That protection is the whole reason the owner
+     * can be asked at all: an answer that the next exchange reading would erase is not worth
+     * asking for.
+     */
+    public void stateCostOfPosition(
+            Ticker ticker, SubName subName, Price avgPrice, ZonedDateTime dateTime) {
+        PortfolioEvents.PositionCostStatedEvent event =
+                new PortfolioEvents.PositionCostStatedEvent(
+                        portfolioId, ticker, subName, avgPrice, dateTime);
+        apply(event);
+        add(event);
+    }
+
+    public void apply(PortfolioEvents.PositionCostStatedEvent event) {
+        tryWhenPortfolioIsOpen(() -> {
+            Asset position = requireAsset(event.ticker(), event.subName());
+            position.setCostBasis(CostBasis.of(
+                    position.getQuantity(), event.avgPrice(), Provenance.USER_PROVIDED));
+        });
     }
 
     /**

@@ -17,6 +17,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -36,6 +38,9 @@ public class PortfolioEntity {
     private PortfolioStatus status;
     private List<ContributionEntity> contributions;
     private List<RealisedResultEntity> realisedResults;
+
+    /** Ids of trades already counted into this portfolio (task F10). */
+    private List<String> appliedTrades;
     private String allowedDepositCurrency;
 
 
@@ -79,6 +84,7 @@ public class PortfolioEntity {
                         .map(ContributionEntity::from).toList())
                 .realisedResults(snapshot.getRealisedResults().stream()
                         .map(RealisedResultEntity::from).toList())
+                .appliedTrades(snapshot.getAppliedTrades().stream().map(TradeId::getId).toList())
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency().getId())
                 .build();
     }
@@ -117,6 +123,10 @@ public class PortfolioEntity {
                 realisedResults == null
                         ? List.of()
                         : realisedResults.stream().map(RealisedResultEntity::toDomain).toList(),
+                appliedTrades == null
+                        ? Set.of()
+                        : appliedTrades.stream().map(TradeId::of)
+                                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)),
                 Currency.of(allowedDepositCurrency)
         );
     }

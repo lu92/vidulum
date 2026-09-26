@@ -34,6 +34,7 @@ import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecC
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQueryHandler;
 import com.multi.vidulum.portfolio_spec.domain.AnswerKind;
 import com.multi.vidulum.portfolio_spec.domain.NothingToSynchroniseException;
+import com.multi.vidulum.portfolio_spec.domain.SpecificationAlreadyAppliedException;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import org.junit.jupiter.api.Test;
@@ -307,6 +308,42 @@ class SecondSynchronisationComponentTest {
         assertThat(position(portfolio, SubName.transferredIn()).getLocked().getQty())
                 .as("0.1 spills over onto what the exchange never priced")
                 .isCloseTo(0.1, within(1e-9));
+    }
+
+    /**
+     * Confirming twice (task D8). A request can arrive again — retried, or clicked twice — and the
+     * second one must change nothing: the differences were already applied, and applying them
+     * again would add the same units to the portfolio a second time.
+     *
+     * <p>The guard existed before this test and nothing exercised it, which is how a guard quietly
+     * stops working: it was written for a case D13 later made legitimate, and only its condition
+     * still said what it meant.
+     */
+    @Test
+    void shouldRefuseToApplyTheSameSpecificationTwiceAndChangeNothing() {
+        PortfolioId portfolioId = onboard();
+        String specId = synchronise(portfolioId, btc(1.5, 0.5, 60_000.0, null));
+        PortfolioSpecDto.ConfirmSpecJson body = new PortfolioSpecDto.ConfirmSpecJson(
+                "My OKX", "EUR", "OKX", NOW, List.of(btc(1.5, 0.5, 60_000.0, null)));
+
+        controller.confirm(specId, body);
+        Portfolio afterFirst = reload(portfolioId);
+
+        assertThatThrownBy(() -> controller.confirm(specId, body))
+                .isInstanceOf(SpecificationAlreadyAppliedException.class)
+                .hasMessageContaining("nothing was changed");
+
+        Portfolio afterSecond = reload(portfolioId);
+        assertThat(afterSecond.getAssets())
+                .as("the same purchase must not be added to the portfolio twice")
+                .usingRecursiveComparison()
+                .isEqualTo(afterFirst.getAssets());
+        assertThat(portfolioRepository.findByUserId(ALICE)).hasSize(1);
+        assertThat(specRepository.findOwnedOrThrow(ALICE,
+                        com.multi.vidulum.portfolio_spec.domain.PortfolioSpecId.of(specId))
+                        .getPortfolioId())
+                .as("and the specification still points at the portfolio it produced")
+                .isEqualTo(portfolioId);
     }
 
     /** An account that has not moved produces no specification at all — there is nothing to decide. */

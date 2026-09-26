@@ -878,6 +878,21 @@ Notes:
 - Not the same question as `GET /exchange-connection/{id}`: that one is per-user.
 - A quote of an asset against itself (`EUR/EUR`) is computed as 1 and never needs publishing.
 
+### Portfolio (`/portfolio`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/portfolio` | Open an empty portfolio |
+| GET | `/portfolio/{id}/{currency}` | Read it, valued in that currency; every row says which position it is (`subName`) and whether it is `awaitingCost` |
+| POST | `/portfolio/deposit` / `/portfolio/withdraw` | Money in and out; both write the contribution ledger |
+| POST | `/portfolio/asset/cost` | The owner states what a position cost (task C8) — recorded as `USER_PROVIDED`, which no synchronisation overwrites silently |
+| POST | `/portfolio/asset/lock` / `/portfolio/asset/unlock` | Reserve units against one of our own orders |
+| GET | `/aggregated-portfolio/{currency}` | The caller's holdings across portfolios |
+
+Notes:
+- `POST /trades` answers with the stored trade. Sending the same `originTradeId` twice records one
+  trade and returns it again (task F1); omitting it has the backend mint one, which keeps the
+  index valid but protects nobody — idempotency comes from the caller's key.
+
 ### Portfolio Specification (`/portfolio-spec`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|

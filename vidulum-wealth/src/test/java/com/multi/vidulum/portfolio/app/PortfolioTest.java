@@ -85,6 +85,7 @@ class PortfolioTest {
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .realisedResults(List.of())
+                .appliedTrades(Set.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -157,6 +158,7 @@ class PortfolioTest {
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .realisedResults(List.of())
+                .appliedTrades(Set.of(TradeId.of("trade-1")))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -257,6 +259,7 @@ class PortfolioTest {
                         TradeId.of("trade-2"), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
                         Ticker.of("BTC"), SubName.traded(), Quantity.of(0.1), Quantity.of(0.1),
                         Money.of(4000.0000, "USD"), Money.of(4000.0000, "USD"))))
+                .appliedTrades(Set.of(TradeId.of("trade-1"), TradeId.of("trade-2")))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -371,6 +374,7 @@ class PortfolioTest {
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
                 .realisedResults(List.of())
+                .appliedTrades(Set.of(TradeId.of("trade-1")))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -460,6 +464,7 @@ class PortfolioTest {
                 .status(PortfolioStatus.CLOSED)
                 .contributions(List.of())
                 .realisedResults(List.of())
+                .appliedTrades(Set.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -514,6 +519,7 @@ class PortfolioTest {
                         Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME),
                         Contribution.takenOut(ContributionId.of("withdrawal-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME)))
                 .realisedResults(List.of())
+                .appliedTrades(Set.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -599,6 +605,7 @@ class PortfolioTest {
                         TradeId.of("trade-2"), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
                         Ticker.of("BTC"), SubName.traded(), Quantity.of(0.1), Quantity.of(0.1),
                         Money.of(4000.0000, "EUR"), Money.of(4000.0000, "EUR"))))
+                .appliedTrades(Set.of(TradeId.of("trade-1"), TradeId.of("trade-2")))
                 .allowedDepositCurrency(Currency.of("EUR"))
                 .build());
 
