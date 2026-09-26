@@ -659,6 +659,15 @@ class PreciousMetalsLifecycleComponentTest {
         }
 
         @Override
+        public Optional<Trade> findByOrigin(PortfolioId portfolioId,
+                                            com.multi.vidulum.common.OriginTradeId originTradeId) {
+            return store.stream()
+                    .filter(trade -> trade.getPortfolioId().equals(portfolioId)
+                            && trade.getOriginTradeId().equals(originTradeId))
+                    .findFirst();
+        }
+
+        @Override
         public List<Trade> findByUserIdAndPortfolioId(UserId userId, PortfolioId portfolioId) {
             return store.stream()
                     .filter(trade -> trade.getUserId().equals(userId)

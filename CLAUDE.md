@@ -290,6 +290,14 @@ Implications:
 
 Each Maven module has its own `DataCleaner` that clears its MongoDB collections on startup. `VidulumApplication` collects all `DataCleaner` beans via `List<DataCleaner>`.
 
+**Indexes**: `@Indexed` and `@CompoundIndex` create nothing unless index creation is switched on,
+and Spring Boot has defaulted it to `false` since 3.0 — 28 annotations in this codebase were
+decoration until task F1. It is enabled in `vidulum-app/src/main/resources/application.yml` under
+**`spring.data.mongodb.auto-index-creation`** — note the key: Boot 4 moved the connection
+properties to `spring.mongodb`, but not this one, and under the wrong key it fails silently. A test
+that asserts an annotation exists proves nothing; assert the index is in the database
+(`mongoTemplate.indexOps(X.class).getIndexInfo()`), as `TradeUniquenessIndexTest` does.
+
 **Checklist for new entity:**
 1. Create entity class with `@Document("collection_name")` annotation
 2. Add `mongoTemplate.dropCollection(NewEntity.class);` to the `DataCleaner` in the entity's module
