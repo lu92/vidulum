@@ -140,6 +140,8 @@ public final class PortfolioFixture {
         return Portfolio.from(new PortfolioSnapshot(
                 portfolioId, userId, name, broker, List.copyOf(assets),
                 status, List.copyOf(contributions), List.copyOf(realisedResults),
+                // No trade has been counted into a fixture-built portfolio (task F10).
+                java.util.Set.of(),
                 allowedDepositCurrency));
     }
 }

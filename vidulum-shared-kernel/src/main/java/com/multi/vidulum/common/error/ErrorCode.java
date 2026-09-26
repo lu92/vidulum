@@ -168,7 +168,7 @@ public enum ErrorCode {
     PORTFOLIO_SPEC_SNAPSHOT_CHANGED(HttpStatus.CONFLICT, "Exchange state changed since the specification was built"),
     PORTFOLIO_SPEC_SNAPSHOT_EXPIRED(HttpStatus.CONFLICT, "The reading this specification is anchored to has aged out"),
     PORTFOLIO_SYNCHRONISATION_IMPOSSIBLE(HttpStatus.CONFLICT, "Synchronisation would take a position below zero"),
-    PORTFOLIO_SPEC_APPLY_NOT_SUPPORTED(HttpStatus.NOT_IMPLEMENTED, "Applying a specification to an existing portfolio is not supported yet"),
+    PORTFOLIO_SPEC_ALREADY_APPLIED(HttpStatus.CONFLICT, "This specification has already been applied"),
     PORTFOLIO_SPEC_CONNECTION_MISMATCH(HttpStatus.CONFLICT, "Confirmation contradicts the exchange connection");
 
     private final HttpStatus httpStatus;

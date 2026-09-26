@@ -9,6 +9,7 @@ import lombok.Value;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Value
 public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
@@ -21,6 +22,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     PortfolioStatus status;
     List<Contribution> contributions;
     List<RealisedResult> realisedResults;
+    Set<TradeId> appliedTrades;
     Currency allowedDepositCurrency;
 
     @Override

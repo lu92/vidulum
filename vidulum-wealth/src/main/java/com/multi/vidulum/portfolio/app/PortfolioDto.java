@@ -129,6 +129,22 @@ public class PortfolioDto {
         private RealisedStatus realisedStatus;
     }
 
+    /** Body of {@code POST /portfolio/asset/cost} (task C8). */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StateCostJson {
+        private String portfolioId;
+        private String ticker;
+
+        /** Which position of that ticker — {@code traded}, {@code transferred-in} (task C15). */
+        private String subName;
+
+        /** Per unit, in the currency it was paid in; not converted on the way in. */
+        private Price avgPrice;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -181,6 +197,17 @@ public class PortfolioDto {
          * needs the rule.
          */
         private Double coverage;
+
+        /**
+         * Whether this row is waiting for the owner to say what it cost (task C8).
+         *
+         * <p>Derived rather than stored — it is {@code coverage < 1} — but stated in the payload
+         * so an interface has a task to show instead of a reader having to infer one from a
+         * number. This is what turns "unknown" from a permanent property of the data into
+         * something somebody can finish: the result stays withheld (C3) and a sale settles nothing
+         * computable (C7) until it is answered, and at a tax office that gap is money.
+         */
+        private boolean awaitingCost;
 
         private Price currentPrice;
         private Money currentValue;

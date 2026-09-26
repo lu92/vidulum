@@ -469,6 +469,10 @@ public class PortfolioSummaryMapper {
                 // would show as a blank cell or treat as missing. Named here instead: the row a
                 // client is least able to guess at is the one that must not read as absent.
                 .subName(asset.getSubName().isCash() ? "none" : asset.getSubName().getName())
+                // Cash is never awaiting a price: one euro cost one euro, and asking would be
+                // asking somebody to confirm arithmetic.
+                .awaitingCost(!asset.getSubName().isCash()
+                        && asset.coveredQuantity().getQty() < asset.getQuantity().getQty())
                 .fullName(assetBasicInfo.getFullName())
                 .costBasis(PortfolioDto.CostBasisJson.from(asset.getCostBasis()))
                 .quantity(asset.getQuantity())

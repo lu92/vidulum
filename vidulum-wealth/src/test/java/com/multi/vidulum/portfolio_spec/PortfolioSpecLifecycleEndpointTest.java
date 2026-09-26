@@ -199,6 +199,22 @@ class PortfolioSpecLifecycleEndpointTest {
                         org.assertj.core.groups.Tuple.tuple("BTC", "transferred-in"));
     }
 
+    /** Confirming twice over HTTP: 409 with a code a client can branch on, and nothing changed (D8). */
+    @Test
+    void shouldRefuseASecondConfirmationOfTheSameSpecification() {
+        PortfolioSpecDto.PortfolioSpecJson created = createSpec(NOW);
+        actor.answer(created.id(), unknownCost());
+        String portfolioId = actor.confirm(created.id(), confirmWith(1.3, 0.3)).getBody().portfolioId();
+
+        ResponseEntity<ApiError> again = actor.confirmExpectingError(created.id(), confirmWith(1.3, 0.3));
+
+        assertThat(again.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(again.getBody().code()).isEqualTo(ErrorCode.PORTFOLIO_SPEC_ALREADY_APPLIED.name());
+        assertThat(actor.get(created.id()).getBody().portfolioId())
+                .as("still the portfolio the first confirmation produced")
+                .isEqualTo(portfolioId);
+    }
+
     // --- D10: the anchor ages out ---------------------------------------------------------------
 
     /**

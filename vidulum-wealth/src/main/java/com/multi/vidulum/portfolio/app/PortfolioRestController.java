@@ -3,11 +3,13 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.OrderId;
+import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand;
+import com.multi.vidulum.portfolio.app.commands.price.StateCostOfPositionCommand;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand;
 import com.multi.vidulum.portfolio.app.commands.withdraw.WithdrawMoneyCommand;
 import com.multi.vidulum.portfolio.app.queries.*;
@@ -77,6 +79,28 @@ public class PortfolioRestController {
                 .dateTime(ZonedDateTime.now(clock))
                 .build();
         commandGateway.send(command);
+    }
+
+    /**
+     * The owner says what a position cost them (task C8).
+     *
+     * <p>Until now this could only be answered during onboarding, while a specification was open.
+     * A holding that arrived afterwards — a transfer in, an airdrop — had no route at all, so its
+     * result stayed withheld forever and selling it settled nothing computable.
+     */
+    @PostMapping("/portfolio/asset/cost")
+    public PortfolioDto.PortfolioSummaryJson stateCostOfPosition(
+            @RequestBody PortfolioDto.StateCostJson request) {
+
+        Portfolio portfolio = commandGateway.send(StateCostOfPositionCommand.builder()
+                .portfolioId(access.requireOwned(request.getPortfolioId()))
+                .ticker(Ticker.of(request.getTicker()))
+                .subName(SubName.of(request.getSubName()))
+                .avgPrice(request.getAvgPrice())
+                .dateTime(ZonedDateTime.now(clock))
+                .build());
+
+        return portfolioSummaryMapper.map(portfolio, portfolio.getAllowedDepositCurrency());
     }
 
     @PostMapping("/portfolio/asset/lock")
