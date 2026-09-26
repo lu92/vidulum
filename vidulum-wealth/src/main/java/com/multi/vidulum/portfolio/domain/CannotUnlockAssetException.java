@@ -1,10 +1,12 @@
 package com.multi.vidulum.portfolio.domain;
 
+import com.multi.vidulum.common.error.ErrorCode;
+import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Ticker;
 
-public class CannotUnlockAssetException extends RuntimeException {
+public class CannotUnlockAssetException extends BusinessException {
 
 
     public CannotUnlockAssetException(String message) {
@@ -20,4 +22,9 @@ public class CannotUnlockAssetException extends RuntimeException {
     }
 
 
+
+    @Override
+    public ErrorCode getErrorCode() {
+        return ErrorCode.PORTFOLIO_CANNOT_UNLOCK;
+    }
 }

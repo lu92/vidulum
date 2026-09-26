@@ -11,6 +11,10 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import com.multi.vidulum.pnl.app.queries.GetWealthChangeQuery;
+import com.multi.vidulum.pnl.domain.WealthChangeOverWindow;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -33,6 +37,26 @@ public class PnlRestController {
         PnlHistory pnlHistory = queryGateway.send(query);
 
         return toJson(pnlHistory);
+    }
+
+    /**
+     * How much the owner's wealth changed since a given moment (task C14).
+     *
+     * <p>{@code GET /pnl/wealth-change?portfolioId=…&since=2026-09-01T00:00:00Z}. The answer always
+     * carries a status: a window starting before the first recorded valuation has no reference
+     * point, and saying so beats computing one from today's prices.
+     */
+    @GetMapping("/pnl/wealth-change")
+    public PnlDto.WealthChangeJson getWealthChange(
+            @RequestParam String portfolioId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime since) {
+
+        WealthChangeOverWindow change = queryGateway.send(new GetWealthChangeQuery(
+                access.currentUser(), access.requireOwned(portfolioId), since));
+
+        return new PnlDto.WealthChangeJson(
+                change.since(), change.measuredFrom(), change.change(), change.pct(),
+                change.status().name());
     }
 
     @PostMapping("/pnl")

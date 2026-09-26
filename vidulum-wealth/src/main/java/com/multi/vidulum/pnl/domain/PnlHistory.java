@@ -5,7 +5,10 @@ import com.multi.vidulum.shared.ddd.Aggregate;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
 
@@ -15,6 +18,28 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
     PnlId pnlId;
     UserId userId;
     List<PnlStatement> pnlStatements;
+
+    /**
+     * What this portfolio was worth as of {@code at} (task F9).
+     *
+     * <p>The most recent snapshot taken <b>at or before</b> that moment — never a later one, which
+     * would answer the question with information the date did not have. Empty when nothing was
+     * recorded that early: the honest answer for a window that starts before we were watching, and
+     * the reason a windowed measure withholds instead of guessing.
+     */
+    public Optional<PortfolioValuation> valuationAt(PortfolioId portfolioId, ZonedDateTime at) {
+        return pnlStatements.stream()
+                .filter(statement -> !statement.getDateTime().isAfter(at))
+                .sorted(Comparator.comparing(PnlStatement::getDateTime).reversed())
+                .flatMap(statement -> statement.getPnlPortfolioStatements().stream()
+                        .filter(portfolio -> portfolioId.equals(portfolio.getPortfolioId()))
+                        .map(portfolio -> new PortfolioValuation(
+                                portfolioId,
+                                statement.getDateTime(),
+                                portfolio.getCurrentValue(),
+                                portfolio.getNetContributions())))
+                .findFirst();
+    }
 
     @Override
     public PnlHistorySnapshot getSnapshot() {

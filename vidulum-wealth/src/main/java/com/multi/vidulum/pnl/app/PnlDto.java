@@ -14,6 +14,22 @@ import java.util.List;
 
 public class PnlDto {
 
+    /**
+     * Answer of {@code GET /pnl/wealth-change} (task C14).
+     *
+     * @param measuredFrom when the valuation that answered was actually taken — a daily record
+     *                     rarely lands on the requested instant, and the reader is entitled to
+     *                     know which day it got
+     */
+    public record WealthChangeJson(
+            java.time.ZonedDateTime since,
+            java.time.ZonedDateTime measuredFrom,
+            com.multi.vidulum.common.Money change,
+            Double pct,
+            String status) {
+    }
+
+
     @Data
     @Builder
     @NoArgsConstructor

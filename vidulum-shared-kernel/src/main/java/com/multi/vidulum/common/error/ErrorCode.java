@@ -160,6 +160,16 @@ public enum ErrorCode {
 
     // ============ Portfolio specification ============
     PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "Portfolio not found"),
+
+    // Refusals a portfolio makes about itself (task G6). They were RuntimeExceptions, so every one
+    // of them reached the client as 500 - indistinguishable from the backend falling over, and
+    // impossible to act on: "you do not hold that" and "we crashed" deserve different answers.
+    PORTFOLIO_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "The portfolio does not hold that position"),
+    PORTFOLIO_INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_ENTITY, "Not enough of it is available"),
+    PORTFOLIO_NOT_OPENED(HttpStatus.CONFLICT, "The portfolio is not open"),
+    PORTFOLIO_CANNOT_UNLOCK(HttpStatus.UNPROCESSABLE_ENTITY, "Those units cannot be released"),
+    PORTFOLIO_AMBIGUOUS_ASSET(HttpStatus.UNPROCESSABLE_ENTITY, "The ticker is held in several positions - say which"),
+    PORTFOLIO_DUPLICATE_POSITION(HttpStatus.CONFLICT, "That position is already held"),
     PORTFOLIO_SPEC_NOT_FOUND(HttpStatus.NOT_FOUND, "Portfolio specification not found"),
     PORTFOLIO_SPEC_NOTHING_TO_SYNCHRONISE(HttpStatus.CONFLICT, "Snapshot matches the known state"),
     PORTFOLIO_SPEC_INVALID_TRANSITION(HttpStatus.CONFLICT, "Operation not allowed in current specification status"),
