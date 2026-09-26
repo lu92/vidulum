@@ -38,6 +38,10 @@ public final class PortfolioFixture {
     private Broker broker = Broker.of("BROKER");
     private Currency allowedDepositCurrency = Currency.of("USD");
     private final List<Contribution> contributions = new ArrayList<>();
+
+    /** Settled sales the portfolio carries (task F6); most fixtures have none. */
+    private final List<com.multi.vidulum.portfolio.domain.portfolio.RealisedResult> realisedResults =
+            new ArrayList<>();
     private PortfolioStatus status = PortfolioStatus.OPEN;
 
     private static final ZonedDateTime CONTRIBUTED_AT = ZonedDateTime.parse("2022-01-01T00:00:00Z");
@@ -135,6 +139,7 @@ public final class PortfolioFixture {
     public Portfolio build() {
         return Portfolio.from(new PortfolioSnapshot(
                 portfolioId, userId, name, broker, List.copyOf(assets),
-                status, List.copyOf(contributions), allowedDepositCurrency));
+                status, List.copyOf(contributions), List.copyOf(realisedResults),
+                allowedDepositCurrency));
     }
 }

@@ -1,6 +1,8 @@
 package com.multi.vidulum.portfolio.app;
 
 
+import com.multi.vidulum.common.TradeId;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.CannotUnlockAssetException;
@@ -82,6 +84,7 @@ class PortfolioTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -121,7 +124,8 @@ class PortfolioTest {
                         .side(Side.BUY)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
 
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
@@ -152,6 +156,7 @@ class PortfolioTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -182,7 +187,8 @@ class PortfolioTest {
                                 Side.BUY,
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "USD")
-                        )
+                        ,
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                 );
     }
 
@@ -209,7 +215,8 @@ class PortfolioTest {
                         .side(Side.BUY)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
         portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.1), DATE_TIME);
         portfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -221,7 +228,8 @@ class PortfolioTest {
                         .side(Side.SELL)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
 
         Portfolio savedPortfolio = portfolioRepository.save(portfolio);
 
@@ -243,6 +251,12 @@ class PortfolioTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                // The sale closed at what it cost, so the settled result is zero — a number,
+                // not a silence, and that distinction is the whole of F6.
+                .realisedResults(List.of(new RealisedResult(
+                        TradeId.of("trade-2"), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                        Ticker.of("BTC"), SubName.traded(), Quantity.of(0.1), Quantity.of(0.1),
+                        Money.of(4000.0000, "USD"), Money.of(4000.0000, "USD"))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -273,7 +287,8 @@ class PortfolioTest {
                                 Side.BUY,
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "USD")
-                        ),
+                        ,
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z")),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
@@ -290,7 +305,8 @@ class PortfolioTest {
                                 SubName.none(),
                                 Side.SELL,
                                 Quantity.of(0.1),
-                                Price.of(40000.0, "USD"))
+                                Price.of(40000.0, "USD"),
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                 );
     }
 
@@ -317,7 +333,8 @@ class PortfolioTest {
                         .side(Side.BUY)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
 
         portfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.03), DATE_TIME);
         portfolio.lockAsset(Ticker.of("USD"), ORDER_ID_3, Quantity.of(2000), DATE_TIME);
@@ -353,6 +370,7 @@ class PortfolioTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -383,7 +401,8 @@ class PortfolioTest {
                                 Side.BUY,
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "USD")
-                        ),
+                        ,
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z")),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
@@ -440,6 +459,7 @@ class PortfolioTest {
                 .assets(List.of())
                 .status(PortfolioStatus.CLOSED)
                 .contributions(List.of())
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -493,6 +513,7 @@ class PortfolioTest {
                 .contributions(List.of(
                         Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME),
                         Contribution.takenOut(ContributionId.of("withdrawal-1"), Money.of(10000.0, "USD"), FIXED_CONTRIBUTION_TIME)))
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build());
 
@@ -536,7 +557,8 @@ class PortfolioTest {
                         .side(Side.BUY)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "EUR"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
         persistedPortfolio.lockAsset(Ticker.of("BTC"), ORDER_ID_2, Quantity.of(0.1), DATE_TIME);
         persistedPortfolio.handleExecutedTrade(
                 ExecutedTrade.builder()
@@ -548,7 +570,8 @@ class PortfolioTest {
                         .side(Side.SELL)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "EUR"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
 
         Portfolio savedPortfolio = portfolioRepository.save(persistedPortfolio);
 
@@ -570,6 +593,12 @@ class PortfolioTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(10000.0, "EUR"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                // The sale closed at what it cost, so the settled result is zero — a number,
+                // not a silence, and that distinction is the whole of F6.
+                .realisedResults(List.of(new RealisedResult(
+                        TradeId.of("trade-2"), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                        Ticker.of("BTC"), SubName.traded(), Quantity.of(0.1), Quantity.of(0.1),
+                        Money.of(4000.0000, "EUR"), Money.of(4000.0000, "EUR"))))
                 .allowedDepositCurrency(Currency.of("EUR"))
                 .build());
 
@@ -600,7 +629,8 @@ class PortfolioTest {
                                 Side.BUY,
                                 Quantity.of(0.1),
                                 Price.of(40000.0, "EUR")
-                        ),
+                        ,
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z")),
                         new PortfolioEvents.AssetLockedEvent(
                                 portfolio.getPortfolioId(),
                                 Ticker.of("BTC"),
@@ -617,7 +647,8 @@ class PortfolioTest {
                                 SubName.none(),
                                 Side.SELL,
                                 Quantity.of(0.1),
-                                Price.of(40000.0, "EUR"))
+                                Price.of(40000.0, "EUR"),
+                        ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                 );
     }
 

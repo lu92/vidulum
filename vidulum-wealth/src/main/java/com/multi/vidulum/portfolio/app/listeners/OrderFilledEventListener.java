@@ -1,5 +1,5 @@
 package com.multi.vidulum.portfolio.app.listeners;
-import com.multi.vidulum.common.PortfolioId;
+
 import com.multi.vidulum.common.events.OrderFilledEvent;
 import com.multi.vidulum.portfolio.app.commands.update.ProcessTradeCommand;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -31,6 +31,7 @@ public class OrderFilledEventListener {
                 .side(event.getSide())
                 .quantity(event.getQuantity())
                 .price(event.getPrice())
+                .dateTime(event.getDateTime())
                 .build();
 
         commandGateway.send(command);

@@ -3,6 +3,7 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -107,6 +108,25 @@ public class PortfolioDto {
          */
         private Money wealthChange;
         private Double pctWealthChange;
+
+        /**
+         * What sales have actually made, and how much of them the figure speaks for (task F6).
+         *
+         * <p>{@code unrealisedProfit} answers for what is <b>still held</b>, so an owner who
+         * bought at 40 000, sold at 60 000 and now holds cash used to see nothing: there is no
+         * position left to carry a gain. It is also the only figure here a tax office recognises —
+         * settled, not paper.
+         *
+         * <p>Distinct from {@code wealthChange} (C5), which mixes closed and open positions and
+         * therefore cannot answer "how much did I make on what I sold".
+         *
+         * <p>{@code null} unless {@code realisedStatus} is {@code COMPUTED}. Selling units whose
+         * cost nobody knows is a real event with no computable result (task C7), and zero there
+         * would claim the entire proceeds as profit.
+         */
+        private Money realisedProfit;
+        private Double realisedCoverage;
+        private RealisedStatus realisedStatus;
     }
 
     @Data
@@ -271,6 +291,11 @@ public class PortfolioDto {
         /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */
         private Money wealthChange;
         private Double pctWealthChange;
+
+        /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */
+        private Money realisedProfit;
+        private Double realisedCoverage;
+        private RealisedStatus realisedStatus;
     }
 
     @Data

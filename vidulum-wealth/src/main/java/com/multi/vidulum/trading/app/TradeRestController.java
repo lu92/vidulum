@@ -46,10 +46,24 @@ public class TradeRestController {
                 .fee(new MakeTradeCommand.Fee(
                         tradeExecutedJson.getFee().getExchangeCurrencyFee(),
                         tradeExecutedJson.getFee().getTransactionFee()))
-                .originDateTime(tradeExecutedJson.getOriginDateTime())
+                .originDateTime(momentOf(tradeExecutedJson))
                 .build();
 
         commandGateway.send(command);
+    }
+
+    /**
+     * When the trade happened, or when we heard about it.
+     *
+     * <p>A payload may leave it out — plenty did, and nothing complained, because nothing read it.
+     * Now something does: a settled sale is dated by it (task F6), and a fact with no date is one
+     * nobody can put in a tax year. Defaulting to the moment of recording is the honest reading of
+     * a caller who did not say: we know when we were told, and we do not know more than that.
+     */
+    private ZonedDateTime momentOf(TradingDto.TradeExecutedJson json) {
+        return json.getOriginDateTime() != null
+                ? json.getOriginDateTime()
+                : ZonedDateTime.now(clock);
     }
 
     /**

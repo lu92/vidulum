@@ -1,5 +1,8 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.common.TradeId;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.*;
@@ -33,6 +36,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
+
+    /**
+     * The id of the sale the backend settled (task F6). Read from the portfolio rather than
+     * written into the expectation: the backend mints it, so pinning a literal would assert that
+     * a random value equals itself. Every other field of the entry is stated exactly.
+     */
+    private static TradeId settledTradeId(Portfolio portfolio, int index) {
+        return portfolio.getRealisedResults().get(index).tradeId();
+    }
 
     @Test
     void shouldBuyBitcoinTest() {
@@ -138,9 +150,11 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of())
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
+        // The trade id is the backend's; everything the sale settled at is pinned (F6).
         assertThat(portfolio).isEqualTo(expectedPortfolio);
         List<TradingDto.TradeSummaryJson> allTrades = tradeRestController.getAllTrades(registeredPortfolio.portfolioId());
         assertThat(allTrades).hasSize(1);
@@ -203,6 +217,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(0, "USD"))
                 .pctWealthChange(0.0)
+                .realisedProfit(null)
+                .realisedCoverage(null)
+                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                 .build();
 
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregatedPortfolio);
@@ -336,6 +353,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(null)
+                                .realisedCoverage(null)
+                                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                                 .build());
 
         String originOrderId3 = uniqueOriginOrderId("Y");
@@ -452,6 +472,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(5000, "USD"))
                 .pctWealthChange(0.05)
+                .realisedProfit(Money.of(5000.0000, "USD"))
+                .realisedCoverage(1.0)
+                .realisedStatus(RealisedStatus.COMPUTED)
                 .build();
 
         assertThat(aggregatedPortfolio2).isEqualTo(expectedAggregatedPortfolio2);
@@ -579,6 +602,10 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of(new RealisedResult(
+                        settledTradeId(portfolio, 0), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                        Ticker.of("BTC"), SubName.traded(), Quantity.of(1), Quantity.of(1),
+                        Money.of(80000, "USD").withScale(4), Money.of(60000, "USD").withScale(4))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -626,6 +653,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(20000, "USD"))
                 .pctWealthChange(0.2)
+                .realisedProfit(Money.of(20000.0000, "USD"))
+                .realisedCoverage(1.0)
+                .realisedStatus(RealisedStatus.COMPUTED)
                 .build();
         assertThat(aggregatedPortfolio).isEqualTo(expectedAggregagedPortfolio);
 
@@ -1040,6 +1070,15 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 ))
                 .status(PortfolioStatus.OPEN)
                 .contributions(List.of(Contribution.paidIn(ContributionId.of("deposit-1"), Money.of(100000.0, "USD"), ZonedDateTime.parse("2022-01-01T00:00:00Z"))))
+                .realisedResults(List.of(
+                        new RealisedResult(
+                                settledTradeId(portfolio, 0), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                                Ticker.of("BTC"), SubName.traded(), Quantity.of(0.15), Quantity.of(0.15),
+                                Money.of(6000, "USD").withScale(4), Money.of(5625, "USD").withScale(4)),
+                        new RealisedResult(
+                                settledTradeId(portfolio, 1), ZonedDateTime.parse("2022-01-01T00:00:00Z"),
+                                Ticker.of("ETH"), SubName.traded(), Quantity.of(0.2), Quantity.of(0.2),
+                                Money.of(600, "USD").withScale(4), Money.of(600, "USD").withScale(4))))
                 .allowedDepositCurrency(Currency.of("USD"))
                 .build();
 
@@ -1129,6 +1168,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(5805, "USD"))
                 .pctWealthChange(0.05805)
+                .realisedProfit(Money.of(375, "USD").withScale(4))
+                .realisedCoverage(1.0)
+                .realisedStatus(RealisedStatus.COMPUTED)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolio);
@@ -1663,6 +1705,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(-165, "USD"))
                 .pctWealthChange(-0.00825)
+                .realisedProfit(Money.of(40.0000, "USD"))
+                .realisedCoverage(1.0)
+                .realisedStatus(RealisedStatus.COMPUTED)
                 .build();
 
         assertThat(expectedAggregatedPortfolio).isEqualTo(aggregatedPortfolioJson);

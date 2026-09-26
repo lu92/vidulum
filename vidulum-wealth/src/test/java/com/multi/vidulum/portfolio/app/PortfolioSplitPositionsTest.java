@@ -173,6 +173,7 @@ class PortfolioSplitPositionsTest {
                 .side(side)
                 .quantity(quantity)
                 .price(Price.of(price, "USD"))
+                .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
                 .build());
     }
 

@@ -1,9 +1,10 @@
 package com.multi.vidulum.portfolio.domain.trades;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.common.PortfolioId;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.ZonedDateTime;
 
 @Getter
 @Builder
@@ -16,4 +17,7 @@ public class ExecutedTrade {
     Side side;
     Quantity quantity;
     Price price;
+
+    /** When it happened — what a realised result is dated by (task F6). */
+    ZonedDateTime dateTime;
 }

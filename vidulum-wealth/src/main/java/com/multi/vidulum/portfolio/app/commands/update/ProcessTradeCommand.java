@@ -17,4 +17,7 @@ public class ProcessTradeCommand implements Command {
     Side side;
     Quantity quantity;
     Price price;
+
+    /** When the trade happened; the realised result it may produce is dated by it (F6). */
+    java.time.ZonedDateTime dateTime;
 }

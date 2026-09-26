@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.app.queries;
 
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
@@ -68,7 +69,8 @@ class PortfolioSummaryMapperTest {
                         .side(Side.BUY)
                         .quantity(Quantity.of(0.1))
                         .price(Price.of(40000.0, "USD"))
-                        .build());
+                        .dateTime(ZonedDateTime.parse("2022-01-01T00:00:00Z"))
+                .build());
     }
 
     static {
@@ -207,6 +209,9 @@ class PortfolioSummaryMapperTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(0, "USD"))
                 .pctWealthChange(0.0)
+                .realisedProfit(null)
+                .realisedCoverage(null)
+                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                 .build());
     }
 
@@ -288,6 +293,9 @@ class PortfolioSummaryMapperTest {
                 .profitStatus(ProfitStatus.COMPUTED)
                 .wealthChange(Money.of(0, "EUR"))
                 .pctWealthChange(0.0)
+                .realisedProfit(null)
+                .realisedCoverage(null)
+                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                 .build());
     }
 
@@ -408,6 +416,9 @@ class PortfolioSummaryMapperTest {
                         .profitStatus(ProfitStatus.COMPUTED)
                         .wealthChange(Money.of(-3900, "USD"))
                         .pctWealthChange(-0.18795180722891566)
+                        .realisedProfit(null)
+                        .realisedCoverage(null)
+                        .realisedStatus(RealisedStatus.NOTHING_SOLD)
                         .build());
     }
 }

@@ -1,6 +1,7 @@
 package com.multi.vidulum.portfolio.domain.portfolio.snapshots;
 
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.ddd.EntitySnapshot;
@@ -19,6 +20,7 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     List<AssetSnapshot> assets;
     PortfolioStatus status;
     List<Contribution> contributions;
+    List<RealisedResult> realisedResults;
     Currency allowedDepositCurrency;
 
     @Override

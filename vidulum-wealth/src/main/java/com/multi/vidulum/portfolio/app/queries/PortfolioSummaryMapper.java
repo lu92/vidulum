@@ -10,6 +10,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.common.PortfolioId;
 import lombok.AllArgsConstructor;
@@ -51,6 +53,9 @@ public class PortfolioSummaryMapper {
                 denominationCurrency);
         Result result = resultOf(mapped, denominationCurrency);
         WealthChange wealthChange = wealthChangeOf(currentValue, ledger);
+        Realised realised = realisedOf(
+                denominatedResults(portfolio.getRealisedResults(), broker, denominationCurrency),
+                denominationCurrency);
 
         return PortfolioDto.PortfolioSummaryJson.builder()
                 .portfolioId(portfolio.getPortfolioId().getId())
@@ -69,7 +74,98 @@ public class PortfolioSummaryMapper {
                 .profitStatus(result.status())
                 .wealthChange(wealthChange.amount())
                 .pctWealthChange(wealthChange.pct())
+                .realisedProfit(realised.amount())
+                .realisedCoverage(realised.coverageShare())
+                .realisedStatus(realised.status())
                 .build();
+    }
+
+    /**
+     * What the sales have made (task F6), under the rule every total here follows.
+     *
+     * <p>Coverage is weighted by what was sold, not averaged over sales: one fully priced sale of
+     * a hundred euro beside an unpriced one of a hundred thousand is barely covered, and an
+     * average of the two shares would answer 50% about exactly the portfolio the rule exists to
+     * warn about.
+     *
+     * <p>A sale of units nobody could price contributes nothing to the sum and everything to the
+     * gap — which is C7's whole point: the event is real, the result is not computable, and zero
+     * would be a claim rather than a silence.
+     */
+    private Realised realisedOf(List<RealisedResult> sales, Currency denominationCurrency) {
+
+        if (sales == null || sales.isEmpty()) {
+            return Realised.absent(RealisedStatus.NOTHING_SOLD, null);
+        }
+
+        Optional<ProfitCoverage> coverage = ProfitCoverage.weighted(sales.stream()
+                .map(sale -> new ProfitCoverage.Weight(
+                        sale.quantity().getQty(), sale.coverageShare()))
+                .collect(toList()));
+        if (coverage.isEmpty()) {
+            return Realised.absent(RealisedStatus.NOTHING_SOLD, null);
+        }
+
+        List<RealisedResult> computable = sales.stream()
+                .filter(RealisedResult::isComputable).collect(toList());
+        if (computable.isEmpty()) {
+            return Realised.absent(RealisedStatus.NO_KNOWN_COST, coverage.get().share());
+        }
+        if (!coverage.get().isMeaningful()) {
+            return Realised.absent(RealisedStatus.WITHHELD_LOW_COVERAGE, coverage.get().share());
+        }
+
+        // Each sale settled in the currency it was priced in, which need not be the one being
+        // asked for — the same conversion the ledger needs, for the same reason.
+        // Both sides restated in one currency first, then subtracted. The aggregate deliberately
+        // did not do this: it has no rates, and Money.minus would have mixed them silently.
+        Money total = computable.stream()
+                .map(PortfolioSummaryMapper::resultOf)
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+
+        return new Realised(total.withScale(4), coverage.get().share(), RealisedStatus.COMPUTED);
+    }
+
+    /**
+     * Restates each settled result in the currency being asked for, before any of them meet.
+     * Summing first and converting after would add zloty to euro and call the answer dollars —
+     * the mistake the contribution ledger already made once.
+     */
+    private List<RealisedResult> denominatedResults(
+            List<RealisedResult> sales, Broker broker, Currency denominationCurrency) {
+
+        if (sales == null) {
+            return List.of();
+        }
+        return sales.stream()
+                .map(sale -> sale.isComputable()
+                        ? new RealisedResult(sale.tradeId(), sale.dateTime(), sale.ticker(),
+                                sale.subName(), sale.quantity(), sale.covered(),
+                                denominateInCurrency(sale.proceeds(), broker, denominationCurrency),
+                                denominateInCurrency(sale.cost(), broker, denominationCurrency))
+                        : sale)
+                .toList();
+    }
+
+    /**
+     * What one sale settled at, over the part of it that had a cost.
+     *
+     * <p>The proceeds are for everything sold, the cost only for the priced part, so the proceeds
+     * are taken at the same share. A sale has one price, which is what makes that exact rather
+     * than an approximation — and subtracting the two whole figures instead reported the unpriced
+     * units as pure profit.
+     */
+    private static Money resultOf(RealisedResult sale) {
+        Money proceedsOfCovered = sale.coverageShare() == 1
+                ? sale.proceeds()
+                : sale.proceeds().multiply(sale.coverageShare());
+        return proceedsOfCovered.minus(sale.cost()).withScale(4);
+    }
+
+    private record Realised(Money amount, Double coverageShare, RealisedStatus status) {
+        static Realised absent(RealisedStatus status, Double coverageShare) {
+            return new Realised(null, coverageShare, status);
+        }
     }
 
     /**
@@ -291,6 +387,14 @@ public class PortfolioSummaryMapper {
                 denominationCurrency);
 
         WealthChange aggregatedWealthChange = wealthChangeOf(currentValue.withScale(4), ledger);
+        Realised aggregatedRealised = realisedOf(
+                aggregatedPortfolio.getPortfolioRealisedResults() == null
+                        ? List.of()
+                        : aggregatedPortfolio.getPortfolioRealisedResults().stream()
+                                .flatMap(entry -> denominatedResults(
+                                        entry.results(), entry.broker(), denominationCurrency).stream())
+                                .toList(),
+                denominationCurrency);
 
         return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
                 .userId(aggregatedPortfolio.getUserId().getId())
@@ -308,6 +412,9 @@ public class PortfolioSummaryMapper {
                 .profitStatus(result.status())
                 .wealthChange(aggregatedWealthChange.amount())
                 .pctWealthChange(aggregatedWealthChange.pct())
+                .realisedProfit(aggregatedRealised.amount())
+                .realisedCoverage(aggregatedRealised.coverageShare())
+                .realisedStatus(aggregatedRealised.status())
                 .build();
     }
 

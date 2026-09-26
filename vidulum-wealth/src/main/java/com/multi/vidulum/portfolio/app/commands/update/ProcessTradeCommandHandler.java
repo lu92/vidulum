@@ -34,6 +34,7 @@ public class ProcessTradeCommandHandler implements CommandHandler<ProcessTradeCo
                 .side(command.getSide())
                 .quantity(command.getQuantity())
                 .price(command.getPrice())
+                .dateTime(command.getDateTime())
                 .build();
 
         portfolio.handleExecutedTrade(executedTrade);

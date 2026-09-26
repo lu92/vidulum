@@ -45,6 +45,7 @@ public class FillOrderCommandHandler implements CommandHandler<FillOrderCommand,
                 .side(order.getParameters().side())
                 .quantity(command.quantity())
                 .price(command.price())
+                .dateTime(command.dateTime())
                 .build();
 
         log.info("OrderFilledEvent emitted: [{}]", event);

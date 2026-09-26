@@ -274,6 +274,12 @@ for (let run = 1; run <= iterations; run++) {
         Math.abs((a.locked?.qty ?? 0) + (a.free?.qty ?? 0) - a.quantity.qty) < 1e-8),
       JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.locked, a.free, a.quantity])));
 
+    // F6: an account that was only read, never traded through us, has settled nothing — and says
+    // so, rather than reporting a result of zero that nobody made.
+    check("an account we never traded through reports nothing settled (F6)",
+      portfolio.realisedStatus === "NOTHING_SOLD" && portfolio.realisedProfit === null,
+      JSON.stringify([portfolio.realisedStatus, portfolio.realisedProfit]));
+
     check("a ledger fully valued reports full coverage",
       portfolio.contributionCoverage === 1,
       String(portfolio.contributionCoverage));
