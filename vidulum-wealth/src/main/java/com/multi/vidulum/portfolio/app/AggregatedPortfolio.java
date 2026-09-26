@@ -20,6 +20,7 @@ public class AggregatedPortfolio {
     private Map<Segment, GroupedAssets> segmentedAssets = new HashMap<>();
     private List<PortfolioId> portfolioIds = new LinkedList<>();
     private List<PortfolioContributions> portfolioContributions;
+    private List<PortfolioRealisedResults> portfolioRealisedResults;
 
     public void addAssets(Segment segment, Broker broker, List<Asset> assets) {
 
@@ -59,6 +60,24 @@ public class AggregatedPortfolio {
             portfolioContributions = new LinkedList<>();
         }
         portfolioContributions.add(contributions);
+    }
+
+    public void appendPortfolioRealisedResults(PortfolioRealisedResults results) {
+        if (portfolioRealisedResults == null) {
+            portfolioRealisedResults = new LinkedList<>();
+        }
+        portfolioRealisedResults.add(results);
+    }
+
+    /**
+     * One portfolio's settled sales (task F6), kept per portfolio for the same reason its ledger
+     * is: each was priced at its own broker, and what they add up to depends on the currency being
+     * asked for.
+     */
+    public record PortfolioRealisedResults(
+            PortfolioId portfolioId,
+            List<com.multi.vidulum.portfolio.domain.portfolio.RealisedResult> results,
+            Broker broker) {
     }
 
     @Value

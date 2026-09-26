@@ -87,6 +87,7 @@ public final class PortfolioEvents {
             SubName subName,
             Side side,
             Quantity quantity,
-            Price price) implements DomainEvent {
+            Price price,
+            ZonedDateTime dateTime) implements DomainEvent {
     }
 }

@@ -10,6 +10,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.multi.vidulum.common.Provenance;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
+import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import java.time.ZoneOffset;
@@ -33,6 +35,7 @@ public class PortfolioEntity {
     private List<AssetEntity> assets;
     private PortfolioStatus status;
     private List<ContributionEntity> contributions;
+    private List<RealisedResultEntity> realisedResults;
     private String allowedDepositCurrency;
 
 
@@ -74,6 +77,8 @@ public class PortfolioEntity {
                 .status(snapshot.getStatus())
                 .contributions(snapshot.getContributions().stream()
                         .map(ContributionEntity::from).toList())
+                .realisedResults(snapshot.getRealisedResults().stream()
+                        .map(RealisedResultEntity::from).toList())
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency().getId())
                 .build();
     }
@@ -109,6 +114,9 @@ public class PortfolioEntity {
                 contributions == null
                         ? List.of()
                         : contributions.stream().map(ContributionEntity::toDomain).toList(),
+                realisedResults == null
+                        ? List.of()
+                        : realisedResults.stream().map(RealisedResultEntity::toDomain).toList(),
                 Currency.of(allowedDepositCurrency)
         );
     }
@@ -146,6 +154,42 @@ public class PortfolioEntity {
                     what,
                     valueAtArrival,
                     provenance);
+        }
+    }
+
+    /** One settled sale, as stored (task F6). {@code result} is null when nothing was priced. */
+    public record RealisedResultEntity(
+            String tradeId,
+            Date dateTime,
+            String ticker,
+            String subName,
+            Quantity quantity,
+            Quantity covered,
+            Money proceeds,
+            Money cost) {
+
+        static RealisedResultEntity from(RealisedResult realised) {
+            return new RealisedResultEntity(
+                    realised.tradeId().getId(),
+                    Date.from(realised.dateTime().toInstant()),
+                    realised.ticker().getId(),
+                    realised.subName().getName(),
+                    realised.quantity(),
+                    realised.covered(),
+                    realised.proceeds(),
+                    realised.cost());
+        }
+
+        RealisedResult toDomain() {
+            return new RealisedResult(
+                    TradeId.of(tradeId),
+                    ZonedDateTime.ofInstant(dateTime.toInstant(), ZoneOffset.UTC),
+                    Ticker.of(ticker),
+                    SubName.of(subName),
+                    quantity,
+                    covered,
+                    proceeds,
+                    cost);
         }
     }
 

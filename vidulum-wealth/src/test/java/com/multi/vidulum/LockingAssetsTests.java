@@ -1,5 +1,7 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
+import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
@@ -149,6 +151,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(null)
+                                .realisedCoverage(null)
+                                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                                 .build());
     }
 
@@ -289,6 +294,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(null)
+                                .realisedCoverage(null)
+                                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                                 .build());
     }
 
@@ -527,6 +535,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(null)
+                                .realisedCoverage(null)
+                                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                                 .build());
     }
 
@@ -704,6 +715,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(null)
+                                .realisedCoverage(null)
+                                .realisedStatus(RealisedStatus.NOTHING_SOLD)
                                 .build());
 
         TradingDto.OrderSummaryJson placedBuyOrder3 = placeOrder(
@@ -843,6 +857,9 @@ class LockingAssetsTests extends WealthIntegrationTest {
                                 .profitStatus(ProfitStatus.COMPUTED)
                                 .wealthChange(Money.of(0, "USD"))
                                 .pctWealthChange(0.0)
+                                .realisedProfit(Money.of(0.0000, "USD"))
+                                .realisedCoverage(1.0)
+                                .realisedStatus(RealisedStatus.COMPUTED)
                                 .build());
     }
 }

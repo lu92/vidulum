@@ -37,6 +37,15 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
      * not hold it.
      */
     private List<Contribution> contributions;
+
+    /**
+     * Every sale that has been settled, with what it made (task F6).
+     *
+     * <p>Kept as a list rather than a running total for the reason C9 kept contributions as one:
+     * a total cannot say how much of itself is known, and some sales have no computable result at
+     * all (C7). Summing is the reader's job, under the coverage rule.
+     */
+    private List<RealisedResult> realisedResults;
     private PortfolioStatus status;
     private Currency allowedDepositCurrency;
     private List<DomainEvent> uncommittedEvents;
@@ -70,6 +79,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 assetSnapshots,
                 status,
                 List.copyOf(contributions),
+                List.copyOf(realisedResults),
                 allowedDepositCurrency
         );
     }
@@ -105,6 +115,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .assets(assets)
                 .status(snapshot.getStatus())
                 .contributions(new LinkedList<>(snapshot.getContributions()))
+                .realisedResults(new LinkedList<>(snapshot.getRealisedResults()))
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency())
                 .build();
     }
@@ -119,7 +130,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 trade.getSubName(),
                 trade.getSide(),
                 trade.getQuantity(),
-                trade.getPrice()
+                trade.getPrice(),
+                trade.getDateTime()
         );
         apply(event);
         add(event);
@@ -129,7 +141,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         tryWhenPortfolioIsOpen(() -> {
             AssetPortion purchasedPortion = calculatePurchasedPortionOfAsset(event);
             AssetPortion soldPortion = calculateSoldPortionOfAsset(event);
-            swing(event.orderId(), soldPortion, purchasedPortion);
+            swing(event, soldPortion, purchasedPortion);
         });
     }
 
@@ -174,8 +186,13 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
         }
     }
 
-    private void swing(OrderId orderId, AssetPortion soldPortion, AssetPortion purchasedPortion) {
+    private void swing(PortfolioEvents.TradeProcessedEvent event,
+                       AssetPortion soldPortion, AssetPortion purchasedPortion) {
+        OrderId orderId = event.orderId();
+        // Read before the position is touched: after it, the cost of what was sold is gone.
+        Optional<RealisedResult> realised = realisedBy(event, soldPortion);
         reduceAsset(orderId, soldPortion);
+        realised.ifPresent(realisedResults::add);
         increaseAsset(purchasedPortion);
         log.info("[{}] amount of reduced asset [{}]", portfolioId, soldPortion);
         log.info("[{}] amount of increased asset [{}]", portfolioId, purchasedPortion);
@@ -214,6 +231,48 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                             .build();
                     addAsset(newAsset);
                 });
+    }
+
+    /**
+     * What a sale actually made (task F6), and what to do when nobody knows (task C7).
+     *
+     * <p>Only a sale of a holding produces one. The cash side of a purchase is also "reduced", but
+     * spending money at par settles nothing — there is no gain in handing over a euro for a euro.
+     *
+     * <p>What the sale brought in and what those units cost are both recorded; the subtraction
+     * happens where exchange rates live (the read side), for the reason {@link RealisedResult}
+     * gives.
+     *
+     * <p>The cost may cover fewer units than were sold: a position can outgrow what we can price
+     * (D6's silence rule does exactly that). The result is then computed over the covered part and
+     * says what share that was, rather than being stretched over units it never described. Cover
+     * nothing and the result is <b>absent</b> — never zero, which would claim the whole proceeds
+     * as profit and, at settlement, claim it against the owner.
+     */
+    private Optional<RealisedResult> realisedBy(
+            PortfolioEvents.TradeProcessedEvent event, AssetPortion soldPortion) {
+
+        if (soldPortion.subName().isCash()) {
+            return Optional.empty();
+        }
+        Asset sold = findAssetByTickerAndSubName(soldPortion.ticker(), soldPortion.subName())
+                .orElseThrow(() -> new AssetNotFoundException(soldPortion.ticker()));
+
+        Quantity quantity = soldPortion.quantity();
+        Quantity covered = Quantity.of(
+                Math.min(quantity.getQty(), sold.coveredQuantity().getQty()), quantity.getUnit());
+        Money proceeds = soldPortion.price().multiply(quantity);
+
+        // Recorded, not subtracted: the cost may be in another currency than the sale, and the
+        // aggregate has no rates. Money.minus would not object — it keeps the left currency and
+        // subtracts the amounts — so the wrong answer would look like a right one.
+        Money cost = covered.isZero()
+                ? null
+                : sold.getCostBasis().avgPrice().multiply(covered).withScale(4);
+
+        return Optional.of(new RealisedResult(
+                event.tradeId(), event.dateTime(), soldPortion.ticker(), soldPortion.subName(),
+                quantity, covered, proceeds.withScale(4), cost));
     }
 
     /**

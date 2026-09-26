@@ -48,6 +48,7 @@ public class TradeCapturedEventListener {
                 .side(event.getSide())
                 .quantity(event.getQuantity())
                 .price(event.getPrice())
+                .dateTime(event.getDateTime())
                 .build());
     }
 }

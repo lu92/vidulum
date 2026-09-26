@@ -66,6 +66,11 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
                                             portfolio.getContributions(),
                                             portfolio.getBroker())
                             );
+                            aggregatedPortfolio.appendPortfolioRealisedResults(
+                                    new AggregatedPortfolio.PortfolioRealisedResults(
+                                            portfolio.getPortfolioId(),
+                                            portfolio.getRealisedResults(),
+                                            portfolio.getBroker()));
                             return aggregatedPortfolio;
                         },
                         (firstAggregatedPortfolio, secondAggregatedPortfolio) -> {

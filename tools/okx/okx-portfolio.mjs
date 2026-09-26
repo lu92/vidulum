@@ -122,6 +122,30 @@ export function describeWealthChange(summary) {
   return `${format(summary.wealthChange)}${pct}`;
 }
 
+
+/**
+ * What the sales have settled at (task F6).
+ *
+ * <p>Separate from both neighbours on the report: the result speaks for what is still held, the
+ * growth for wealth as a whole. This one is the only figure a tax office recognises, and the only
+ * one that survives selling everything.
+ */
+export function describeRealised(summary) {
+  switch (summary.realisedStatus) {
+    case "COMPUTED":
+      return `${format(summary.realisedProfit)} settled`;
+    case "WITHHELD_LOW_COVERAGE":
+      return "withheld — too little of what was sold had a known cost";
+    case "NO_KNOWN_COST":
+      // Task C7: the sale happened, the result did not become computable by happening.
+      return "not computable — nothing sold had a known cost";
+    case "NOTHING_SOLD":
+      return "nothing sold";
+    default:
+      return `unknown status: ${summary.realisedStatus}`;
+  }
+}
+
 /**
  * The portfolio as a whole.
  */
@@ -138,6 +162,7 @@ export function describePortfolio(summary) {
       + `  (backend: ${describeBackendCoverage(summary)})`,
     `  growth     ${describeWealthChange(summary)}`,
     `  result     ${describeResult(summary)}`,
+    `  settled    ${describeRealised(summary)}`,
   ];
   return lines.concat(describePositions(summary).map((line) => `  ${line}`));
 }

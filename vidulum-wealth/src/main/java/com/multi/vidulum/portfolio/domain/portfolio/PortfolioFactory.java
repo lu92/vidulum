@@ -26,6 +26,7 @@ public class PortfolioFactory {
                 .assets(new LinkedList<>())
                 .allowedDepositCurrency(allowedDepositCurrency)
                 .contributions(new LinkedList<>())
+                .realisedResults(new LinkedList<>())
                 .status(PortfolioStatus.OPEN)
                 .uncommittedEvents(uncommittedEvents)
                 .build();
@@ -64,6 +65,8 @@ public class PortfolioFactory {
                 assets.stream().map(PortfolioFactory::toSnapshot).toList(),
                 PortfolioStatus.OPEN,
                 List.copyOf(contributions),
+                // Nothing has been sold yet, whichever way the portfolio was opened (F6).
+                List.of(),
                 allowedDepositCurrency));
     }
 

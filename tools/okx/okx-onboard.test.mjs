@@ -19,7 +19,7 @@ import { ANSWER_POLICY, buildConfirmRequest, buildConnectionRequest, describeQue
 import { backoffDelay, describeCycle, instrumentIdFor, missingSymbols, publishPath, publishQuery,
          requiredSymbols, unquotableSymbols } from "./okx-quotes.mjs";
 import { coverageAgreement, coverageOf, describeContributions, describePortfolio, describePositions,
-         describeResult, describeWealthChange,
+         describeRealised, describeResult, describeWealthChange,
          portfolioCoverage, quotesNeededBy } from "./okx-portfolio.mjs";
 
 let pass = 0, fail = 0;
@@ -392,6 +392,8 @@ const SUMMARY = {
   // C5: majatek urosl o 11 500 wzgledem tego, co wlozono - i ta liczba jest podawana mimo
   // wstrzymanego wyniku, bo nie potrzebuje ceny nabycia.
   wealthChange: { amount: 11500, currency: "EUR" }, pctWealthChange: 0.19166666666666668,
+  // F6: nic nie sprzedano, wiec wynik zrealizowany nie istnieje - co jest innym zdaniem niz zero.
+  realisedProfit: null, realisedCoverage: null, realisedStatus: "NOTHING_SOLD",
   // Zaledwie 23% wartosci ma znany koszt, wiec backend wstrzymuje liczbe wyniku (C4).
   unrealisedProfit: null, pctUnrealisedProfit: null,
   profitCoverage: 0.23076923076923078, profitStatus: "WITHHELD_LOW_COVERAGE",
@@ -478,6 +480,18 @@ checkThat("wzrost majatku milknie razem z ksiega i mowi dlaczego",
     .includes("not computable")
   && describeWealthChange({ wealthChange: null, contributionStatus: "WITHHELD_LOW_COVERAGE" })
     .includes("withheld"));
+
+checkThat("portfel, ktory nic nie sprzedal, mowi to wprost (F6)",
+  describeRealised(SUMMARY) === "nothing sold"
+    && describePortfolio(SUMMARY).some((l) => l.includes("settled") && l.includes("nothing sold")));
+
+checkThat("sprzedaz bez znanego kosztu nie udaje wyniku zerowego (C7)",
+  describeRealised({ realisedStatus: "NO_KNOWN_COST" }).includes("not computable")
+    && !describeRealised({ realisedStatus: "NO_KNOWN_COST" }).includes("0"));
+
+checkThat("policzony wynik zrealizowany podaje kwote",
+  describeRealised({ realisedStatus: "COMPUTED",
+                     realisedProfit: { amount: 20000, currency: "EUR" } }) === "20000 EUR settled");
 
 checkThat("portfel bez zadnego wkladu mowi to wprost",
   describeContributions({ contributionStatus: "NOTHING_CONTRIBUTED" }) === "nothing put in");
