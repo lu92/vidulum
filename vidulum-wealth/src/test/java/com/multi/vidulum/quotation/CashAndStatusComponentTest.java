@@ -11,6 +11,7 @@ import com.multi.vidulum.quotation.app.Reachability;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
+import com.multi.vidulum.quotation.domain.fx.FxRates;
 import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ class CashAndStatusComponentTest {
 
     @BeforeEach
     void setUp() {
-        quotationService = new QuotationService();
+        quotationService = new QuotationService(new FxRates());
         quotationService.registerBroker(new TestProvider(OKX));
         controller = new ExchangeStatusRestController(quotationService, clock);
     }

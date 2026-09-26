@@ -7,6 +7,7 @@ import com.multi.vidulum.quotation.app.DegiroBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.QuotationService;
+import com.multi.vidulum.quotation.domain.fx.FxRates;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -84,8 +85,10 @@ public class KafkaTopicConfig {
     //    ******* Quotation Service & Broker Providers *******
 
     @Bean
-    public QuotationService quotationService(@Autowired List<BrokerQuotationProvider> brokerQuotationProviders) {
-        QuotationService quotationService = new QuotationService();
+    public QuotationService quotationService(
+            @Autowired List<BrokerQuotationProvider> brokerQuotationProviders,
+            @Autowired FxRates fxRates) {
+        QuotationService quotationService = new QuotationService(fxRates);
         brokerQuotationProviders.forEach(quotationService::registerBroker);
         return quotationService;
     }

@@ -5,6 +5,10 @@
 vidulum:
   ai:
     enabled: false
+  # Currency fixings are fetched from the central bank on a schedule; tests have no business
+  # reaching it. The keeper bean stays, so the denomination chain is still wired and testable.
+  fx:
+    enabled: false
 
 spring:
   # Disable ALL AI auto-configuration for tests (no API keys available)

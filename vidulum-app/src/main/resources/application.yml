@@ -67,3 +67,14 @@ application:
       expiration: 86400000 # a day
       refresh-token:
         expiration: 604800000 # 7 days
+
+vidulum:
+  # Currency rates the backend keeps for itself. The pairs are the currencies users are valued in,
+  # against the pivot every route goes through (USD); the schedule is hourly because the fixing is
+  # daily and a container started at noon should not wait until tomorrow for its first rate.
+  fx:
+    enabled: true
+    pairs: USD/PLN,EUR/PLN
+    cron: "0 5 * * * *"
+    nbp:
+      base-url: https://api.nbp.pl
