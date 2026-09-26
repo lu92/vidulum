@@ -29,14 +29,21 @@ public class TradeRestController {
     private final PortfolioAccess access;
     private final Clock clock;
 
+    /**
+     * Records a trade, and answers with the trade that is now stored (task F1).
+     *
+     * <p>It used to answer {@code void}, which was survivable while the caller supplied every
+     * identifier. It is not survivable now: when the caller sends no {@code originTradeId} the
+     * backend mints one, and that value is exactly what they would need to send on a retry.
+     */
     @PostMapping("/trades")
-    public void makeTrade(@RequestBody TradingDto.TradeExecutedJson tradeExecutedJson) {
+    public TradingDto.TradeSummaryJson makeTrade(@RequestBody TradingDto.TradeExecutedJson tradeExecutedJson) {
         MakeTradeCommand command = MakeTradeCommand.builder()
                 // Both from the caller, not the payload: a trade used to be recorded under one
                 // user's id inside another user's portfolio, and neither was checked.
                 .userId(access.currentUser())
                 .portfolioId(access.requireOwned(tradeExecutedJson.getPortfolioId()))
-                .originTradeId(OriginTradeId.of(tradeExecutedJson.getOriginTradeId()))
+                .originTradeId(identityOf(tradeExecutedJson))
                 .orderId(orderIdOf(tradeExecutedJson))
                 .symbol(Symbol.of(tradeExecutedJson.getSymbol()))
                 .side(tradeExecutedJson.getSide())
@@ -49,7 +56,27 @@ public class TradeRestController {
                 .originDateTime(momentOf(tradeExecutedJson))
                 .build();
 
-        commandGateway.send(command);
+        Trade stored = commandGateway.send(command);
+        return mapper.toJson(stored);
+    }
+
+    /**
+     * What the trade is called at its origin.
+     *
+     * <p>An exchange fill arrives with the exchange's own id, and a CSV export carries the same
+     * string — which is what makes re-importing an overlapping range harmless. A hand-entered
+     * trade has no such origin but still needs identity: a client that mints one when the form
+     * opens and resends it on a retry turns a double-click into one trade.
+     *
+     * <p>When nothing is sent we mint one. That keeps the column free of nulls, so the unique
+     * index needs no sparse variant — but it protects nobody, and saying so is the point: the
+     * protection comes from the caller's key, not from ours.
+     */
+    private static OriginTradeId identityOf(TradingDto.TradeExecutedJson json) {
+        String stated = json.getOriginTradeId();
+        return stated != null && !stated.isBlank()
+                ? OriginTradeId.of(stated)
+                : OriginTradeId.generate();
     }
 
     /**

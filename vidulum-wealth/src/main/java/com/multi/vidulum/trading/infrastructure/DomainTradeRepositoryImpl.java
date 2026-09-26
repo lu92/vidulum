@@ -1,5 +1,6 @@
 package com.multi.vidulum.trading.infrastructure;
 
+import com.multi.vidulum.common.OriginTradeId;
 import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.PortfolioId;
@@ -35,6 +36,14 @@ public class DomainTradeRepositoryImpl implements DomainTradeRepository {
         return Trade.from(
                 savedTradeEntity
                         .toSnapshot());
+    }
+
+    @Override
+    public Optional<Trade> findByOrigin(PortfolioId portfolioId, OriginTradeId originTradeId) {
+        return mongoRepository
+                .findByPortfolioIdAndOriginTradeId(portfolioId.getId(), originTradeId.getId())
+                .map(TradeEntity::toSnapshot)
+                .map(Trade::from);
     }
 
     @Override

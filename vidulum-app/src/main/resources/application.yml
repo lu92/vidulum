@@ -36,6 +36,13 @@ spring:
     host: mongodb
 #    host: localhost
     port: 27017
+  # Boot 4 moved the connection properties to spring.mongodb, but not this one — and under the
+  # wrong key it fails silently, leaving every @Indexed and @CompoundIndex in the codebase as
+  # decoration. Uniqueness that lives only in application code loses the race it exists to
+  # prevent (task F1).
+  data:
+    mongodb:
+      auto-index-creation: true
   kafka:
     bootstrap-servers: kafka:9092
 #    bootstrap-servers: 127.0.0.1:9092

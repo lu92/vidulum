@@ -9,8 +9,11 @@ import com.multi.vidulum.trading.infrastructure.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.*;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -23,6 +26,18 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
 
     @Override
     public Trade handle(MakeTradeCommand command) {
+
+        // Already recorded under this name: answer with what we have and change nothing (task F1).
+        // A duplicate is a success from the caller's side — a retried message, a re-exported CSV
+        // range, a second click — and failing it would only send the same message round again.
+        Optional<Trade> alreadyRecorded =
+                repository.findByOrigin(command.getPortfolioId(), command.getOriginTradeId());
+        if (alreadyRecorded.isPresent()) {
+            log.info("Trade [{}] of portfolio [{}] is already recorded as [{}] - nothing to do",
+                    command.getOriginTradeId().getId(), command.getPortfolioId().getId(),
+                    alreadyRecorded.get().getTradeId().getId());
+            return alreadyRecorded.get();
+        }
 
         // A trade may arrive two ways. Filled on an exchange, it belongs to an order that told us
         // what was bought and which way - and that order still has to be found, because the fill
@@ -51,7 +66,18 @@ public class MakeTradeCommandHandler implements CommandHandler<MakeTradeCommand,
                 .totalValue(value.plus(fee.totalFee()))
                 .dateTime(command.getOriginDateTime())
                 .build();
-        Trade savedTrade = repository.save(newTrade);
+        Trade savedTrade;
+        try {
+            savedTrade = repository.save(newTrade);
+        } catch (DuplicateKeyException lostTheRace) {
+            // The check above and the write are not one operation, so two concurrent deliveries
+            // can both pass it. The index is what actually decides; this is the loser reading the
+            // winner's row rather than failing a request that asked for something already true.
+            log.info("Concurrent delivery of trade [{}] lost the race; reading the stored one",
+                    command.getOriginTradeId().getId());
+            return repository.findByOrigin(command.getPortfolioId(), command.getOriginTradeId())
+                    .orElseThrow(() -> lostTheRace);
+        }
 
         // One event for both routes; the listener decides which way it goes. Carrying the symbol
         // and side rather than leaving them to be looked up is what makes the order optional.
