@@ -22,5 +22,13 @@ public enum ProfitStatus {
     NO_KNOWN_COST,
 
     /** Nothing is held at all. Not the same claim as "costs are unknown". */
-    NOTHING_HELD
+    NOTHING_HELD,
+
+    /**
+     * Something held could not be priced at all, so the value side of the subtraction is
+     * incomplete (task C16). Unlike {@link #WITHHELD_LOW_COVERAGE} there is no share to report:
+     * the missing part cannot be measured, because measuring it is precisely what failed. A
+     * profit computed from the rest would be understated by an unknown amount.
+     */
+    WITHHELD_UNPRICED_POSITIONS
 }

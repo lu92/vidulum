@@ -3,6 +3,7 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
+import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,6 +62,20 @@ public class PortfolioDto {
         private ContributionStatus contributionStatus;
 
         private Money currentValue;
+        /**
+         * Whether everything held could be priced (task C16).
+         *
+         * <p>{@code currentValue} is a total over the positions that could be — which is not the
+         * same claim as the portfolio's value, and is indistinguishable from it as a number. No
+         * share accompanies it: the missing part's value is precisely what nobody can state, so
+         * {@code unpricedAssets} names the positions instead, as {@code ticker/subName}.
+         *
+         * <p>{@code currentValue} is {@code null} when nothing could be priced — a portfolio of
+         * coins nobody quotes is not a portfolio worth zero.
+         */
+        private ValuationStatus valuationStatus;
+        private List<String> unpricedAssets;
+
 
         /**
          * Gain on what is <b>currently held</b>, and how much of the value it speaks for
@@ -209,6 +224,13 @@ public class PortfolioDto {
          */
         private boolean awaitingCost;
 
+        /**
+         * Nobody quotes this position, so {@code currentPrice} and {@code currentValue} are
+         * absent (task C16). Stated rather than left to {@code null}, which a reader cannot tell
+         * from a field that was never filled in.
+         */
+        private boolean priceUnknown;
+
         private Price currentPrice;
         private Money currentValue;
         private List<String> tags;
@@ -308,6 +330,20 @@ public class PortfolioDto {
         private ContributionStatus contributionStatus;
 
         private Money currentValue;
+        /**
+         * Whether everything held could be priced (task C16).
+         *
+         * <p>{@code currentValue} is a total over the positions that could be — which is not the
+         * same claim as the portfolio's value, and is indistinguishable from it as a number. No
+         * share accompanies it: the missing part's value is precisely what nobody can state, so
+         * {@code unpricedAssets} names the positions instead, as {@code ticker/subName}.
+         *
+         * <p>{@code currentValue} is {@code null} when nothing could be priced — a portfolio of
+         * coins nobody quotes is not a portfolio worth zero.
+         */
+        private ValuationStatus valuationStatus;
+        private List<String> unpricedAssets;
+
         private Money totalUnrealisedProfit;
 
         /** Same rule as one portfolio — see {@link PortfolioSummaryJson}. */

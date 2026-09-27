@@ -6,6 +6,7 @@ import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 
 public interface QuoteRestClient {
+
     AssetPriceMetadata fetch(Broker broker, Symbol symbol);
 
     AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker);

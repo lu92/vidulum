@@ -10,6 +10,7 @@ import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
+import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
@@ -202,6 +203,8 @@ class PortfolioSummaryMapperTest {
                 .netContributions(Money.of(10000, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(10000, "USD"))
                 .pctUnrealisedProfit(0.0)
                 .unrealisedProfit(Money.zero("USD"))
@@ -286,6 +289,8 @@ class PortfolioSummaryMapperTest {
                 .netContributions(Money.of(9500, "EUR"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(9500, "EUR"))
                 .pctUnrealisedProfit(0.0)
                 .unrealisedProfit(Money.zero("EUR"))
@@ -406,6 +411,8 @@ class PortfolioSummaryMapperTest {
                         .netContributions(Money.of(20750, "USD"))
                         .contributionCoverage(1.0)
                         .contributionStatus(ContributionStatus.COMPUTED)
+                        .valuationStatus(ValuationStatus.COMPLETE)
+                        .unpricedAssets(List.of())
                         .currentValue(Money.of(16850, "USD"))
                         // -800 (BTC) - 200 (ETH) + 0 (EUR). Wcześniej -3900: wartość aktywów
                         // minus investedBalance dwóch innych portfeli - liczby z różnych
