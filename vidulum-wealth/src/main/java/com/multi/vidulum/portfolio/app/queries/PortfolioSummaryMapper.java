@@ -5,6 +5,7 @@ import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
@@ -13,6 +14,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
+import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
 import com.multi.vidulum.common.PortfolioId;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,15 +46,13 @@ public class PortfolioSummaryMapper {
                 .map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency))
                 .collect(toList());
 
-        Money currentValue = mapped.stream()
-                .map(m -> m.json().getCurrentValue())
-                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+        Valuation valuation = valuationOf(mapped, denominationCurrency);
 
         Ledger ledger = ledgerOf(
                 denominated(portfolio.getContributions(), broker, denominationCurrency),
                 denominationCurrency);
         Result result = resultOf(mapped, denominationCurrency);
-        WealthChange wealthChange = wealthChangeOf(currentValue, ledger);
+        WealthChange wealthChange = wealthChangeOf(valuation, ledger);
         Realised realised = realisedOf(
                 denominatedResults(portfolio.getRealisedResults(), broker, denominationCurrency),
                 denominationCurrency);
@@ -67,7 +67,9 @@ public class PortfolioSummaryMapper {
                 .netContributions(ledger.net())
                 .contributionCoverage(ledger.coverageShare())
                 .contributionStatus(ledger.status())
-                .currentValue(currentValue)
+                .currentValue(valuation.total())
+                .valuationStatus(valuation.status())
+                .unpricedAssets(valuation.unpriced())
                 .unrealisedProfit(result.profit())
                 .pctUnrealisedProfit(result.pctProfit())
                 .profitCoverage(result.coverageShare())
@@ -78,6 +80,50 @@ public class PortfolioSummaryMapper {
                 .realisedCoverage(realised.coverageShare())
                 .realisedStatus(realised.status())
                 .build();
+    }
+
+    /**
+     * The portfolio's value, over the positions that could be priced (task C16).
+     *
+     * <p>A position nobody quotes used to throw, and the owner got a 404 where a portfolio should
+     * have been. It now costs that position its value and nothing else — but the total must then
+     * say what it is a total <b>of</b>, because "value over the part we could price" and "value"
+     * are different claims and look identical as a number.
+     *
+     * <p>No share is reported beside it, unlike every other partial figure here. Coverage is
+     * weighted by value, and the value of a position nobody can price is exactly what is unknown;
+     * a percentage would have to invent the number it is measuring. What can be said is
+     * <b>which</b> positions are missing, so the reader can go and look.
+     *
+     * <p>Nothing priced at all answers {@code null}, not zero: a portfolio of coins nobody quotes
+     * is not a portfolio worth nothing, and every interface renders zero as a fact.
+     */
+    private Valuation valuationOf(List<MappedAsset> mapped, Currency denominationCurrency) {
+        if (mapped.isEmpty()) {
+            return new Valuation(Money.zero(denominationCurrency.getId()),
+                    ValuationStatus.NOTHING_HELD, List.of());
+        }
+        List<String> unpriced = mapped.stream()
+                .filter(m -> m.json().getCurrentValue() == null)
+                .map(m -> m.json().getTicker() + "/" + m.json().getSubName())
+                .collect(toList());
+        if (unpriced.size() == mapped.size()) {
+            return new Valuation(null, ValuationStatus.NOTHING_PRICED, unpriced);
+        }
+        Money total = mapped.stream()
+                .map(m -> m.json().getCurrentValue())
+                .filter(java.util.Objects::nonNull)
+                .reduce(Money.zero(denominationCurrency.getId()), Money::plus)
+                .withScale(4);
+        return new Valuation(total,
+                unpriced.isEmpty() ? ValuationStatus.COMPLETE : ValuationStatus.PARTIAL,
+                unpriced);
+    }
+
+    private record Valuation(Money total, ValuationStatus status, List<String> unpriced) {
+        boolean isComplete() {
+            return status == ValuationStatus.COMPLETE || status == ValuationStatus.NOTHING_HELD;
+        }
     }
 
     /**
@@ -139,12 +185,29 @@ public class PortfolioSummaryMapper {
         }
         return sales.stream()
                 .map(sale -> sale.isComputable()
-                        ? new RealisedResult(sale.tradeId(), sale.dateTime(), sale.ticker(),
-                                sale.subName(), sale.quantity(), sale.covered(),
-                                denominateInCurrency(sale.proceeds(), broker, denominationCurrency),
-                                denominateInCurrency(sale.cost(), broker, denominationCurrency))
+                        ? denominatedSale(sale, broker, denominationCurrency)
                         : sale)
                 .toList();
+    }
+
+    /**
+     * One settled sale, restated — or, when no route between the currencies exists, demoted to a
+     * sale whose cost is not known (task C16).
+     *
+     * <p>Demoted rather than dropped, and rather than left in its own currency: an untouched sale
+     * would be added to sums in another currency, which is the mistake F6 already paid for. As an
+     * uncosted sale it counts towards coverage and contributes nothing to the total, which is
+     * exactly what is true of it.
+     */
+    private RealisedResult denominatedSale(RealisedResult sale, Broker broker, Currency currency) {
+        Money proceeds = denominateInCurrency(sale.proceeds(), broker, currency);
+        Money cost = denominateInCurrency(sale.cost(), broker, currency);
+        if (proceeds == null || cost == null) {
+            return new RealisedResult(sale.tradeId(), sale.dateTime(), sale.ticker(), sale.subName(),
+                    sale.quantity(), Quantity.zero(sale.quantity().getUnit()), sale.proceeds(), null);
+        }
+        return new RealisedResult(sale.tradeId(), sale.dateTime(), sale.ticker(), sale.subName(),
+                sale.quantity(), sale.covered(), proceeds, cost);
     }
 
     /**
@@ -185,11 +248,18 @@ public class PortfolioSummaryMapper {
      * — an owner who has taken more out than they put in has a change with no meaningful base, and
      * a percentage against a negative denominator flips sign without flipping meaning.
      */
-    private WealthChange wealthChangeOf(Money currentValue, Ledger ledger) {
+    private WealthChange wealthChangeOf(Valuation valuation, Ledger ledger) {
         if (ledger.net() == null) {
             return WealthChange.absent();
         }
-        Money change = currentValue.minus(ledger.net()).withScale(4);
+        if (!valuation.isComplete()) {
+            // The second reason, added by C16. Contributions are complete and the value is not,
+            // so the subtraction understates by however much the unpriced positions are worth -
+            // an amount nobody can state, which is why the figure goes rather than gets a caveat.
+            // The portfolio's valuationStatus names the reason; this does not repeat it.
+            return WealthChange.absent();
+        }
+        Money change = valuation.total().minus(ledger.net()).withScale(4);
         double contributed = ledger.net().getAmount().doubleValue();
         Double pct = contributed > 0
                 ? change.getAmount().doubleValue() / contributed
@@ -223,6 +293,14 @@ public class PortfolioSummaryMapper {
         String currency = denominationCurrency.getId();
         if (mapped.isEmpty()) {
             return Result.absent(ProfitStatus.NOTHING_HELD, null);
+        }
+
+        // A position with no price cannot take part in a comparison against cost, and cannot be
+        // weighted either: coverage is weighted by value, and its value is the unknown. So the
+        // figure goes, with a status that says which kind of silence this is (task C16).
+        boolean anythingUnpriced = mapped.stream().anyMatch(m -> m.json().getCurrentValue() == null);
+        if (anythingUnpriced) {
+            return Result.absent(ProfitStatus.WITHHELD_UNPRICED_POSITIONS, null);
         }
 
         List<ProfitCoverage.Weight> weights = new ArrayList<>(mapped.size());
@@ -309,13 +387,24 @@ public class PortfolioSummaryMapper {
         }
         return contributions.stream()
                 .map(contribution -> contribution.hasKnownValue()
-                        ? new Contribution(
-                                contribution.id(), contribution.dateTime(), contribution.direction(),
-                                contribution.what(),
-                                denominateInCurrency(contribution.valueAtArrival(), broker, denominationCurrency),
-                                contribution.provenance())
+                        ? denominated(contribution, broker, denominationCurrency)
                         : contribution)
                 .toList();
+    }
+
+    /**
+     * One entry restated, or the same entry with its value removed when no route between the
+     * currencies exists (task C16).
+     *
+     * <p>Its provenance goes with the value, because a contribution that states no value may not
+     * claim where that value came from — the record enforces it, and the rule is right: an
+     * unconvertible entry is one whose worth we do not know, not one we know from a weaker source.
+     */
+    private Contribution denominated(Contribution contribution, Broker broker, Currency currency) {
+        Money value = denominateInCurrency(contribution.valueAtArrival(), broker, currency);
+        return new Contribution(
+                contribution.id(), contribution.dateTime(), contribution.direction(),
+                contribution.what(), value, value == null ? null : contribution.provenance());
     }
 
     private Ledger ledgerOf(List<Contribution> contributions, Currency denominationCurrency) {
@@ -362,9 +451,9 @@ public class PortfolioSummaryMapper {
                             .collect(toList());
                 }));
 
-        Money currentValue = mappedAssets.values().stream().flatMap(Collection::stream)
-                .map(m -> m.json().getCurrentValue())
-                .reduce(Money.zero(denominationCurrency.getId()), Money::plus);
+        Valuation valuation = valuationOf(
+                mappedAssets.values().stream().flatMap(Collection::stream).collect(toList()),
+                denominationCurrency);
 
         List<String> portfolioIds = aggregatedPortfolio.getPortfolioIds().stream()
                 .map(PortfolioId::getId)
@@ -386,7 +475,7 @@ public class PortfolioSummaryMapper {
                 mappedAssets.values().stream().flatMap(Collection::stream).collect(toList()),
                 denominationCurrency);
 
-        WealthChange aggregatedWealthChange = wealthChangeOf(currentValue.withScale(4), ledger);
+        WealthChange aggregatedWealthChange = wealthChangeOf(valuation, ledger);
         Realised aggregatedRealised = realisedOf(
                 aggregatedPortfolio.getPortfolioRealisedResults() == null
                         ? List.of()
@@ -405,7 +494,9 @@ public class PortfolioSummaryMapper {
                 .netContributions(ledger.net())
                 .contributionCoverage(ledger.coverageShare())
                 .contributionStatus(ledger.status())
-                .currentValue(currentValue.withScale(4))
+                .currentValue(valuation.total())
+                .valuationStatus(valuation.status())
+                .unpricedAssets(valuation.unpriced())
                 .totalUnrealisedProfit(result.profit())
                 .pctUnrealisedProfit(result.pctProfit())
                 .profitCoverage(result.coverageShare())
@@ -418,39 +509,85 @@ public class PortfolioSummaryMapper {
                 .build();
     }
 
+    /**
+     * Restates an amount in the currency being asked for, or answers {@code null} when no route
+     * between the two currencies exists.
+     *
+     * <p>{@code null} rather than an exception for the reason C16 exists: this is called while
+     * converting contributions and settled sales, and one unconvertible entry used to take the
+     * whole response with it. An entry that cannot be converted becomes an entry with no known
+     * value, which the ledger and the realised total already know how to carry.
+     */
     private Money denominateInCurrency(Money money, Broker broker, Currency currency) {
         Symbol currencySymbol = Symbol.of(Ticker.of(money.getCurrency()), Ticker.of(currency.getId()));
         log.info("Getting price metadata of [{}]", currencySymbol);
-        Price currencyPrice = quoteRestClient.fetch(broker, currencySymbol).getCurrentPrice();
-        BigDecimal updatedAmount = money.multiply(currencyPrice.getAmount().doubleValue()).getAmount();
-        return Money.of(updatedAmount, currency.getId());
+        return priceOf(broker, currencySymbol)
+                .map(quote -> {
+                    BigDecimal updatedAmount = money
+                            .multiply(quote.getCurrentPrice().getAmount().doubleValue()).getAmount();
+                    return Money.of(updatedAmount, currency.getId());
+                })
+                .orElse(null);
+    }
+
+    /**
+     * The price of one pair, where its absence is an answer rather than a failure (task C16).
+     *
+     * <p>Wrapped here rather than widened into {@link QuoteRestClient}: the port has one way of
+     * asking, and a second one would have to be honoured by every stub and mock that already
+     * implements it — several of which would then silently answer "no price" to everything.
+     */
+    private Optional<AssetPriceMetadata> priceOf(Broker broker, Symbol symbol) {
+        try {
+            return Optional.ofNullable(quoteRestClient.fetch(broker, symbol));
+        } catch (QuoteNotFoundException noQuote) {
+            return Optional.empty();
+        }
     }
 
     private List<MappedAsset> mapAssets(Broker broker, List<Asset> assets, Currency denominationCurrency) {
         return assets.stream().map(asset -> mapAssetWithDenomination(broker, asset, denominationCurrency)).collect(toList());
     }
 
+    /**
+     * One position, priced if anybody quotes it (task C16).
+     *
+     * <p>When nobody does, the row still stands: quantity, locks, cost basis, everything the
+     * portfolio knows without a market. Only price and value are silent, with {@code priceUnknown}
+     * saying which silence this is — {@code null} alone could not be told from a field nobody
+     * filled in, the lesson C15 paid for.
+     */
     private MappedAsset mapAssetWithDenomination(Broker broker, Asset asset, Currency denominatedCurrency) {
         Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(denominatedCurrency.getId()));
         log.info("Getting price metadata of [{}]", symbol);
-        AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, symbol);
-        Money currentValue = assetPriceMetadata.getCurrentPrice().multiply(asset.getQuantity());
+        Optional<AssetPriceMetadata> quote = priceOf(broker, symbol);
+        if (quote.isEmpty()) {
+            log.info("No price for [{}] - the position is carried without a value", symbol);
+        }
+        Money currentValue = quote
+                .map(priced -> priced.getCurrentPrice().multiply(asset.getQuantity()))
+                .orElse(null);
 
         // Profit is computed only over the part whose cost we know, and only if we know any.
         // Both sides of the subtraction refer to the same units: the old code multiplied the
         // known part's average price by the WHOLE balance, so a position with 0.3 bought out of
         // 100 held reported an invented profit. When nothing is known, the figures stay absent
         // rather than defaulting to zero - reporting zero would present a guess as a fact.
+        //
+        // A position with no price has no value to compare a cost against, so it produces neither
+        // - the cost it does know is still reported in costBasis.
         Money profit = null;
         Double pctProfit = null;
         Money knownCost = null;
         Money coveredValue = null;
-        if (asset.hasKnownCost()) {
+        if (quote.isPresent() && asset.hasKnownCost()) {
             knownCost = denominateInCurrency(
                     asset.knownCost().orElseThrow(), broker, denominatedCurrency);
-            coveredValue = assetPriceMetadata.getCurrentPrice().multiply(asset.coveredQuantity());
-            profit = coveredValue.minus(knownCost);
-            pctProfit = coveredValue.diffPct(knownCost);
+            if (knownCost != null) {
+                coveredValue = quote.get().getCurrentPrice().multiply(asset.coveredQuantity());
+                profit = coveredValue.minus(knownCost);
+                pctProfit = coveredValue.diffPct(knownCost);
+            }
         }
         ProfitCoverage coverage = ProfitCoverage.ofPosition(asset).orElse(null);
         log.info("Getting info about asset [{}]", asset.getTicker());
@@ -473,6 +610,7 @@ public class PortfolioSummaryMapper {
                 // asking somebody to confirm arithmetic.
                 .awaitingCost(!asset.getSubName().isCash()
                         && asset.coveredQuantity().getQty() < asset.getQuantity().getQty())
+                .priceUnknown(quote.isEmpty())
                 .fullName(assetBasicInfo.getFullName())
                 .costBasis(PortfolioDto.CostBasisJson.from(asset.getCostBasis()))
                 .quantity(asset.getQuantity())
@@ -482,8 +620,8 @@ public class PortfolioSummaryMapper {
                 .tags(assetBasicInfo.getTags())
                 .pctUnrealisedProfit(pctProfit)
                 .unrealisedProfit(profit != null ? profit.withScale(4) : null)
-                .currentPrice(assetPriceMetadata.getCurrentPrice().withScale(4))
-                .currentValue(currentValue.withScale(4))
+                .currentPrice(quote.map(priced -> priced.getCurrentPrice().withScale(4)).orElse(null))
+                .currentValue(currentValue != null ? currentValue.withScale(4) : null)
                 .coverage(coverage != null ? coverage.share() : null)
                 .build();
 

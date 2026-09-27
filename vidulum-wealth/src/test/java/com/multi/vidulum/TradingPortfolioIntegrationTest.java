@@ -16,6 +16,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
+import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
@@ -27,6 +28,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.*;
 
 import static com.multi.vidulum.common.Side.BUY;
@@ -213,6 +215,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .netContributions(Money.of(100000.0, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(100000.0, "USD"))
                 .totalUnrealisedProfit(Money.zero("USD"))
                 .pctUnrealisedProfit(0.0)
@@ -349,6 +353,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                                 .netContributions(Money.of(100000.0, "USD"))
                                 .contributionCoverage(1.0)
                                 .contributionStatus(ContributionStatus.COMPUTED)
+                                .valuationStatus(ValuationStatus.COMPLETE)
+                                .unpricedAssets(List.of())
                                 .currentValue(Money.of(100000.0, "USD"))
                                 .totalUnrealisedProfit(Money.zero("USD"))
                                 .pctUnrealisedProfit(0.0)
@@ -465,6 +471,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .netContributions(Money.of(100000.0, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(105000.0, "USD"))
                 // BTC stoi w cenie zakupu, gotowka po parze - niezrealizowanego zysku nie ma.
                 // Wczesniej 5000: zysk ze sprzedazy, czyli wielkosc zrealizowana. Nie znika -
@@ -651,6 +659,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .netContributions(Money.of(100000.0, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(120000.0, "USD"))
                 // Zostaje sama gotowka, po parze. Wczesniej 20000 - zysk zrealizowany.
                 .totalUnrealisedProfit(Money.zero("USD"))
@@ -1168,6 +1178,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .netContributions(Money.of(100000.0, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(105805, "USD"))
                 // -195 (ETH) + 5625 (BTC) + 0 (USD), wzgledem 100375 kosztu. Wczesniej 5805:
                 // wartosc minus wplaty, co mieszalo w to zysk juz zrealizowany.
@@ -1706,6 +1718,8 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .netContributions(Money.of(20000, "USD"))
                 .contributionCoverage(1.0)
                 .contributionStatus(ContributionStatus.COMPUTED)
+                .valuationStatus(ValuationStatus.COMPLETE)
+                .unpricedAssets(List.of())
                 .currentValue(Money.of(19835, "USD"))
                 // 25 (XAG) - 230 (XAU) + 0 (USD).
                 .totalUnrealisedProfit(Money.of(-205, "USD"))

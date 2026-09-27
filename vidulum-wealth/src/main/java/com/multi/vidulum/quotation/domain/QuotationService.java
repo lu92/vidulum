@@ -83,10 +83,14 @@ public class QuotationService {
      * anything else get consulted.
      */
     public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
+        return find(broker, symbol).orElseThrow(() -> new QuoteNotFoundException(symbol));
+    }
+
+    /** The same search, for a caller that treats "no price" as an answer rather than a failure. */
+    public Optional<AssetPriceMetadata> find(Broker broker, Symbol symbol) {
         return findBrokerOrRaiseException(broker, provider -> provider.find(symbol)
                 .or(() -> fromFixing(symbol))
-                .or(() -> chainThroughPivot(provider, symbol))
-                .orElseThrow(() -> new QuoteNotFoundException(symbol)));
+                .or(() -> chainThroughPivot(provider, symbol)));
     }
 
     /**
