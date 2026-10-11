@@ -512,6 +512,107 @@ vidulum-shared-kernel        CQRS, DDD base, auth, error, Money/Currency — i n
 Rozbicie `vidulum-wealth` na siedem artefaktów jest celem, nie pierwszym krokiem. Sam podział na
 `-api` / impl daje 80% zysku już wtedy, gdy reszta zostaje w jednym module.
 
+### Reaktor Maven i blast radius
+
+**Blast radius** modułu = on sam plus wszystko, co od niego zależy tranzytywnie — czyli to, co
+trzeba przebudować i przetestować po jego zmianie. Liczby poniżej policzone z dzisiejszych
+`pom.xml`, czasy z tabeli w CLAUDE.md.
+
+```
+                           REAKTOR DZIŚ — 8 modułów
+
+┌────────────────────────────────────┐   ┌──────────────────────────────────────┐
+│ vidulum-shared-kernel              │   │ vidulum-user-financial-profile-api   │
+│ 7/8 modułów · pełny build ~12 min  │   │ 3/8 · ~10 min                        │
+│ zależą od niego wszystkie          │   │ jedyny moduł bez shared-kernel       │
+│ poza ufp-api                       │   └───────────────┬──────────────────────┘
+└────────────────────────────────────┘                   │
+                                                         │
+┌──────────────────────┐              ┌──────────────────┼──────────┐
+│ recurring-rules      │              │ vidulum-exchange │          │
+│ 3/8 · ~10 min        │              │ 4/8 · ~3 min     │          │
+└──────────┬───────────┘              └──────────┬───────┘          │
+           │                                     │                  │
+           ▼                                     ▼                  │
+┌──────────────────────────────┐      ┌──────────────────────┐      │
+│ vidulum-cashflow             │◀─────┤ vidulum-wealth       │      │
+│ 2/8 · ~10 min — 723 testy    │      │ 3/8 · ~2,5 min       │      │
+└──────────────┬───────────────┘      │ 23 testy             │      │
+               │          (ufp-api ───┴──────────┬───────────┘──────┘
+               │           → cashflow)           │
+               │                                 ▼
+               │                      ┌──────────────────────┐
+               │                      │ vidulum-okx          │
+               │                      │ 2/8 · ~2 min         │
+               │                      └──────────┬───────────┘
+               ▼                                 │
+┌──────────────────────────────┐◀────────────────┘
+│ vidulum-app   1/8 · ~2 min   │
+└──────────────────────────────┘
+
+strzałka = „jest zależnością"; krawędzie od shared-kernel i do app pominięte
+```
+
+**Punkt do zauważenia: liczba modułów i minuty nie korelują.** `cashflow` dotyka dwóch modułów i
+kosztuje ~10 min; `exchange` dotyka czterech i kosztuje ~3 min. Blast radius trzeba mierzyć w
+minutach, nie w węzłach.
+
+```
+                      REAKTOR DOCELOWY — 17 modułów
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ vidulum-shared-kernel      16/17 · po P5 tylko framework                  │
+└───────────────────────────────────────────────────────────────────────────┘
+
+KONTRAKTY — konsumenci kompilują się przeciw tym
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────┐
+│ portfolio-api│ │ trading-api  │ │ quotation-api│ │ exchange-api │ │ user-api │
+│ 7/17         │ │ 5/17         │ │ 9/17         │ │ 5/17         │ │ 3/17     │
+└──────▲───────┘ └──────▲───────┘ └──────▲───────┘ └──────▲───────┘ └──────────┘
+       │     ▲          │                │                │
+       │     └──────────┼── trading → portfolio-api: CYKL ODWRÓCONY
+       │                │                │                │
+IMPLEMENTACJE — nikt ich nie importuje   │                │
+┌──────┴───────┐ ┌──────┴───────┐ ┌──────┴───────┐ ┌──────┴───────┐ ┌──────────────┐
+│ portfolio    │ │ trading      │ │ quotation    │ │ exchange     │ │ cashflow     │
+│ 2/17         │ │ 2/17         │ │ 2/17         │ │ 2/17         │ │ recurring-r. │
+└──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ │ ufp-api      │
+                                                                    │ 2–3/17       │
+CZYŚCI KONSUMENCI — nic od nich nie zależy                          │ ~10 min      │
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │ bez zmian    │
+│ pnl   2/17   │ │ risk  2/17   │ │ p-spec 2/17  │ │ okx   2/17   │ └──────────────┘
+└──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ vidulum-app   1/17 · zależy od wszystkich implementacji,                  │
+│                      od żadnego kontraktu wprost                          │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+Rola wiersza mówi wszystko o krawędziach: konsumenci z dolnego wiersza kompilują się przeciw
+górnemu i **nie mają na classpath ani jednej implementacji**. Dlatego **blast radius każdej
+implementacji jest równy 2** — ona sama i `vidulum-app`.
+
+| Moduł | Dziś | Docelowo | Co to zmienia |
+|---|---|---|---|
+| `shared-kernel` | 7 / 8 · ~12 min | 16 / 17 · ~12 min | nic — i dlatego ma zostać wyłącznie framework (P5) |
+| `cashflow` | 2 / 8 · ~10 min | bez zmian | poza zakresem; tu minuty bolą najbardziej i to osobne zadanie |
+| `ufp-api`, `recurring-rules` | 3 / 8 · ~10 min | bez zmian | kontrakt cashflow jest tani w węzłach, drogi w minutach |
+| `exchange` | 4 / 8 · ~3 min | `exchange-api` 5 / 17, `exchange` 2 / 17 | zmiana wnętrza przestaje ruszać wealth i okx |
+| `wealth` | 3 / 8 · ~2,5 min | 7 artefaktów, każda impl 2 / 17 | **zysk informacyjny, nie czasowy** |
+| `okx` | 2 / 8 · ~2 min | 2 / 17 | nic — już dziś jest czystym konsumentem |
+| `app` | 1 / 8 · ~2 min | 1 / 17 | nic — liść grafu z definicji |
+
+> **Uczciwie o zysku w wealth: on nie jest w minutach.** Dzisiejszy `vidulum-wealth` ma **23 testy
+> i 11 sekund** — przy takim pakiecie podział na siedem artefaktów nie skróci niczego odczuwalnie.
+> Zysk jest w tym, że **liczba modułów w buildzie zaczyna nieść informację**: ruszyłem jedną
+> implementację (2) czy zmieniłem kontrakt, który widzi pięciu konsumentów (7)? Dziś obie zmiany
+> kosztują dokładnie tyle samo i nie da się ich rozróżnić z logu builda.
+>
+> I druga rzecz, którą te liczby mówią przy okazji: **wealth ma 23 testy, cashflow 723** — przy
+> porównywalnej złożoności domeny. Blast radius wealth jest dziś tani nie dlatego, że moduł jest
+> czysty, a dlatego, że pokrycie jest cienkie.
+
 ---
 
 ## 12. Szkic kontraktu portfolio
