@@ -707,7 +707,13 @@ class PreciousMetalsLifecycleComponentTest {
         }
 
         @Override
-        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId) {
+        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId id, Currency denominatedIn) {
+            return summaryMapper.map(portfolios.findById(id).orElseThrow(), denominatedIn);
+        }
+
+        @Override
+        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(
+                UserId userId, Currency denominatedIn) {
             throw new UnsupportedOperationException("not part of this walk - see C6");
         }
     }

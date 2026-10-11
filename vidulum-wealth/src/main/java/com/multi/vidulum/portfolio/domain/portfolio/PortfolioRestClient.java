@@ -20,5 +20,22 @@ public interface PortfolioRestClient {
      */
     PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId);
 
-    PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId);
+    /**
+     * The portfolio valued in the currency asked for (task C17).
+     *
+     * <p>Separate from {@link #getPortfolio(PortfolioId)}, which answers in the portfolio's own
+     * currency and is what an order's balance check wants. Recording history wants this one: the
+     * currency has to be the same across every portfolio in a statement, and the portfolios need
+     * not agree on one.
+     */
+    PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId, Currency denominatedIn);
+
+    /**
+     * Everything the owner holds, valued in the currency asked for.
+     *
+     * <p>The currency used to be {@code USD}, written into the implementation — invisible to every
+     * caller and impossible to disagree with. That was not a decision while the backend could not
+     * value a portfolio in anything else; after B4 it is, so it is made by whoever asks.
+     */
+    PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId, Currency denominatedIn);
 }

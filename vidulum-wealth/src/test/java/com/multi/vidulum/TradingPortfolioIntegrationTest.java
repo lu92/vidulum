@@ -1751,6 +1751,9 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 .usingElementComparatorIgnoringFields("dateTime", "portfolioStatements")
                 .isEqualTo(List.of(
                         PnlDto.PnlStatementJson.builder()
+                                // The statement now says what it is denominated in (C17). No rate
+                                // beside it: the dollar is the pivot, so there is nothing to undo.
+                                .basis(new PnlDto.ValuationBasisJson("USD", null, null, null))
                                 .netContributions(Money.of(20000, "USD"))
                                 .currentValue(Money.of(19835, "USD"))
                                 // Migawka PnL bierze liczbe z podsumowania portfela, wiec

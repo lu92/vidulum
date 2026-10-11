@@ -73,6 +73,7 @@ public class PnlHistoryEntity {
                             .collect(toList());
 
                     return new PnlStatementEntity(
+                            ValuationBasisEntity.from(pnlStatementSnapshot.getBasis()),
                             pnlStatementSnapshot.getNetContributions(),
                             pnlStatementSnapshot.getCurrentValue(),
                             pnlStatementSnapshot.getTotalUnrealisedProfit(),
@@ -133,6 +134,11 @@ public class PnlHistoryEntity {
                             null;
 
                     return new PnlHistorySnapshot.PnlStatementSnapshot(
+                            // Null on anything written before C17: those documents cannot say what
+                            // they were denominated in, and guessing "dollars" would be inventing
+                            // the very fact this field exists to stop being guessed at.
+                            pnlStatementEntity.getBasis() == null
+                                    ? null : pnlStatementEntity.getBasis().toDomain(),
                             pnlStatementEntity.getNetContributions(),
                             pnlStatementEntity.getCurrentValue(),
                             pnlStatementEntity.getTotalUnrealisedProfit(),

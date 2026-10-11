@@ -1,5 +1,6 @@
 package com.multi.vidulum.pnl;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
@@ -10,6 +11,7 @@ import com.multi.vidulum.pnl.domain.PnlHistory;
 import com.multi.vidulum.pnl.domain.PnlId;
 import com.multi.vidulum.pnl.domain.PnlPortfolioStatement;
 import com.multi.vidulum.pnl.domain.PnlStatement;
+import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.WealthChangeOverWindow;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
@@ -22,6 +24,7 @@ import java.util.Optional;
 
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.COMPUTED;
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.CONTRIBUTIONS_UNKNOWN;
+import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.CURRENCY_CHANGED;
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.NOT_WATCHING_YET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -84,7 +87,16 @@ class WealthChangeOverWindowComponentTest {
         }
 
         @Override
-        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId) {
+        public PortfolioDto.PortfolioSummaryJson getPortfolio(
+                PortfolioId portfolioId, com.multi.vidulum.common.Currency denominatedIn) {
+            // Answers what the test set up regardless of the currency asked for, which is how a
+            // mismatch between the two ends can be staged at all - the real client would convert.
+            return today;
+        }
+
+        @Override
+        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(
+                UserId userId, com.multi.vidulum.common.Currency denominatedIn) {
             throw new UnsupportedOperationException("not needed here");
         }
 
@@ -114,10 +126,15 @@ class WealthChangeOverWindowComponentTest {
             new GetWealthChangeQueryHandler(repository, portfolios);
 
     private static PortfolioDto.PortfolioSummaryJson summary(double value, Double contributed) {
+        return summaryIn("EUR", value, contributed);
+    }
+
+    private static PortfolioDto.PortfolioSummaryJson summaryIn(
+            String currency, double value, Double contributed) {
         return PortfolioDto.PortfolioSummaryJson.builder()
                 .portfolioId(PORTFOLIO.getId())
-                .currentValue(Money.of(value, "EUR"))
-                .netContributions(contributed == null ? null : Money.of(contributed, "EUR"))
+                .currentValue(Money.of(value, currency))
+                .netContributions(contributed == null ? null : Money.of(contributed, currency))
                 .build();
     }
 
@@ -129,13 +146,19 @@ class WealthChangeOverWindowComponentTest {
     }
 
     private static PnlStatement recorded(ZonedDateTime when, double value, Double contributed) {
+        return recordedIn("EUR", when, value, contributed);
+    }
+
+    private static PnlStatement recordedIn(
+            String currency, ZonedDateTime when, double value, Double contributed) {
         return PnlStatement.builder()
                 .dateTime(when)
-                .currentValue(Money.of(value, "EUR"))
+                .basis(ValuationBasis.pivot(Currency.of(currency)))
+                .currentValue(Money.of(value, currency))
                 .pnlPortfolioStatements(List.of(PnlPortfolioStatement.builder()
                         .portfolioId(PORTFOLIO)
-                        .currentValue(Money.of(value, "EUR"))
-                        .netContributions(contributed == null ? null : Money.of(contributed, "EUR"))
+                        .currentValue(Money.of(value, currency))
+                        .netContributions(contributed == null ? null : Money.of(contributed, currency))
                         .executedTrades(List.of())
                         .build()))
                 .build();
@@ -217,6 +240,54 @@ class WealthChangeOverWindowComponentTest {
 
         history = historyWith(recorded(RECORDED, 100_000, 100_000d));
         today = summary(120_000, null);
+
+        assertThat(changeSince(MONTH_START).status()).isEqualTo(CONTRIBUTIONS_UNKNOWN);
+    }
+
+    /**
+     * A third silence, added by C17: the two ends are not in the same currency.
+     *
+     * <p>It has to be a refusal, not a conversion. Restating the older end at today's rate folds
+     * the currency's movement into the portfolio's and reports them as one number — the confusion
+     * C17 exists to end — and restating at the older rate misstates today. It also cannot be left
+     * to subtract quietly: {@code Money.minus} keeps the left-hand currency and ignores the right,
+     * so an unlike pair would answer in whichever came first, the defect F6 paid for once already.
+     */
+    @Test
+    void shouldRefuseToCompareTwoEndsInDifferentCurrencies() {
+        history = historyWith(recordedIn("USD", RECORDED, 100_000, 100_000d));
+        today = summaryIn("PLN", 480_000, 400_000d);
+
+        WealthChangeOverWindow change = changeSince(MONTH_START);
+
+        assertThat(change.status()).isEqualTo(CURRENCY_CHANGED);
+        assertThat(change.change())
+                .as("no figure can span a change of currency")
+                .isNull();
+        assertThat(change.pct()).isNull();
+    }
+
+    /** Same currency on both ends is the ordinary case, and it still computes. */
+    @Test
+    void shouldCompareTwoEndsInTheSameCurrency() {
+        history = historyWith(recordedIn("PLN", RECORDED, 400_000, 400_000d));
+        today = summaryIn("PLN", 480_000, 400_000d);
+
+        WealthChangeOverWindow change = changeSince(MONTH_START);
+
+        assertThat(change.status()).isEqualTo(COMPUTED);
+        assertThat(change.change()).isEqualTo(Money.of(80_000, "PLN"));
+    }
+
+    /**
+     * An end that does not know what was put in is asked about first. It has no currency to
+     * disagree about, and answering CURRENCY_CHANGED there would name the wrong reason — found by
+     * this very test when the two checks were the other way round.
+     */
+    @Test
+    void shouldNameTheMissingContributionRatherThanTheCurrencyWhenBothCouldApply() {
+        history = historyWith(recordedIn("USD", RECORDED, 100_000, null));
+        today = summaryIn("PLN", 480_000, 400_000d);
 
         assertThat(changeSince(MONTH_START).status()).isEqualTo(CONTRIBUTIONS_UNKNOWN);
     }

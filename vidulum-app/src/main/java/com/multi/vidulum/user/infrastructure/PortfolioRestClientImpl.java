@@ -73,11 +73,19 @@ public class PortfolioRestClientImpl implements PortfolioRestClient {
     }
 
     @Override
-    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId) {
+    public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId, Currency denominatedIn) {
+        GetPortfolioQuery query = GetPortfolioQuery.builder()
+                .portfolioId(portfolioId)
+                .build();
+        return portfolioSummaryMapper.map(getPortfolioQueryHandler.query(query), denominatedIn);
+    }
+
+    @Override
+    public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(UserId userId, Currency denominatedIn) {
         GetAggregatedPortfolioQuery query = GetAggregatedPortfolioQuery.builder()
                 .userId(userId)
                 .build();
         AggregatedPortfolio aggregatedPortfolio = getAggregatedPortfolioQueryHandler.query(query);
-        return portfolioSummaryMapper.map(aggregatedPortfolio, Currency.of("USD"));
+        return portfolioSummaryMapper.map(aggregatedPortfolio, denominatedIn);
     }
 }
