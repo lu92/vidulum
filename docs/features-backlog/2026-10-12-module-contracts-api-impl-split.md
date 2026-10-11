@@ -1,0 +1,1079 @@
+# Kontrakty modułów: podział `-api` / impl (wzorzec NPay)
+
+| | |
+|---|---|
+| **Status** | analiza + design, **nic nie zaimplementowane** |
+| **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
+| **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
+| **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
+| **Data** | 2026-10-12 |
+
+---
+
+## 1. Wnioski w skrócie
+
+NPay nie używa żadnego frameworka do modułów. Cały wzorzec to **pięć decyzji** (sekcja 3) i jeden
+mechanizm egzekwowania: `internal` + granica assembly. W Javie odpowiednikiem tego mechanizmu jest
+**granica artefaktu Maven** — nie `package-private`.
+
+Sześć problemów w dzisiejszym `vidulum-wealth`, od najdroższego:
+
+| | Problem | Sekcja |
+|---|---|---|
+| **P1** | `PortfolioRestClientImpl` leży w `vidulum-app` i wstrzykuje 5 konkretnych handlerów portfolio | 10 |
+| **P2** | Cykle: portfolio ↔ trading (13/11 importów), quotation → portfolio | 10 |
+| **P3** | `trading/infrastructure/WealthDataCleaner` importuje encje trzech innych poddomen | 10 |
+| **P4** | 7 integration eventów w `shared-kernel/common/events` zamiast u producentów | 10 |
+| **P5** | 45 typów w `common`, w tym typy cudzych domen | 10 |
+| **P6** | Zero ArchUnit — nic nie pilnuje granic | 10 |
+
+Najtańszy pierwszy ruch: **`vidulum-quotation-api`** (sekcja 13) — siedem typów w kontrakcie,
+pięciu konsumentów, zero ryzyka, a przy okazji usuwa `QuoteRestClient` i jego adapter.
+
+---
+
+## 2. NPay — anatomia modułu
+
+Trzy moduły biznesowe, jeden globalny shared, jeden bootstrapper. Każdy moduł to **kilka
+projektów `.csproj`**, nie jeden — i to rozbicie jest całą esencją wzorca, bo właśnie na granicy
+projektów kompilator C# zaczyna pilnować dostępu.
+
+```
+src/
+├── Shared/NPay.Shared                     # framework: ICommand, IEvent, IClock,
+│                                          #   IMessageBroker, error handling, Postgres
+│                                          #   ZERO typów biznesowych
+├── Modules/
+│   ├── Users/
+│   │   ├── Users.Shared        PUBLIC     # IUsersModuleApi + DTO + Events
+│   │   ├── Users.Core          internal   # User, UsersService, UsersDbContext, migracje
+│   │   └── Users.Api           public     # UsersController + AddUsersModule()
+│   ├── Wallets/
+│   │   ├── Wallets.Shared      PUBLIC     # IWalletsModuleApi + DTO + Events
+│   │   ├── Wallets.Core        internal   # Wallet, Owner, VO, I*Repository, domain services
+│   │   ├── Wallets.Application internal   # commands/queries + handlery, ExternalEvents,
+│   │   │                                  #   WalletsModuleApi (impl), IWalletStorage (port)
+│   │   ├── Wallets.Infrastructure         # WalletsDbContext, repozytoria, WalletStorage
+│   │   └── Wallets.Api         public     # 3 kontrolery + AddWalletsModule()
+│   └── Notifications/
+│       ├── Notifications.Shared PUBLIC    # INotificationsModuleApi
+│       └── Notifications.Api              # handlery eventów + EmailSender
+└── Bootstrapper/NPay.Bootstrapper         # referencje TYLKO do *.Api
+```
+
+Notifications nie ma `Core` ani `Application`. **Moduł dostaje tyle warstw, ile ma logiki** —
+Wallets ma pięć projektów, Notifications dwa. Nie ma „szablonu modułu", do którego wszystko się
+dopasowuje.
+
+### Co w którym projekcie
+
+| Projekt | Zawiera | Widoczność | Zależy od |
+|---|---|---|---|
+| `*.Shared` | `I<X>ModuleApi`, DTO, integration events | public | `NPay.Shared` |
+| `*.Core` | agregaty, VO, interfejsy repozytoriów, domain services | **internal** + `InternalsVisibleTo(Application, Infrastructure)` | `NPay.Shared` |
+| `*.Application` | komendy, zapytania, handlery, `ExternalEvents/Handlers`, impl `ModuleApi`, porty read-modelu | internal, API publiczne | `Core`, `Shared`, **obce `*.Shared`** |
+| `*.Infrastructure` | `DbContext`, konfiguracje EF, migracje, repozytoria, storage | internal | `Application` |
+| `*.Api` | kontrolery + `AddXModule()` / `UseXModule()` | public | `Infrastructure` |
+
+---
+
+## 3. Pięć reguł, które to trzyma
+
+### R1 — jedna powierzchnia
+
+Moduł ma **dokładnie jeden** publiczny projekt kontraktowy: `*.Shared`. Interfejs module-api, DTO
+i integration eventy. I nic więcej — zero agregatów, zero repozytoriów, zero handlerów.
+
+```
+Wallets.Shared/ → IWalletsModuleApi.cs
+                  DTO/{WalletDto, TransferDto}
+                  Events/{WalletAdded, FundsAdded, FundsTransfered, OwnerVerified}
+```
+
+### R2 — referencja tylko do `*.Shared`
+
+Cross-module referencja wolno pokazać wyłącznie na obcy `*.Shared`. Nie ma **ani jednej**
+referencji na obce `Core`, `Application` czy `Infrastructure`:
+
+```
+Wallets.Application.csproj → Users.Shared, Wallets.Core, Wallets.Shared
+Notifications.Api.csproj   → Users.Shared, Wallets.Shared, Notifications.Shared
+Bootstrapper.csproj        → Users.Api, Wallets.Api, Notifications.Api   (i nic więcej)
+```
+
+### R3 — wnętrze jest `internal`
+
+Wszystko poza kontraktem jest `internal sealed`, a dostęp między warstwami tego samego modułu
+otwiera jawna lista `InternalsVisibleTo`. **Impl module-api też jest internal** — publiczny jest
+tylko interfejs.
+
+```csharp
+// Wallets.Core/Extensions.cs
+[assembly: InternalsVisibleTo("NPay.Modules.Wallets.Application")]
+[assembly: InternalsVisibleTo("NPay.Modules.Wallets.Infrastructure")]
+
+// Wallets.Application/Services/WalletsModuleApi.cs
+internal sealed class WalletsModuleApi : IWalletsModuleApi
+```
+
+### R4 — dwa tryby, bez trzeciego
+
+Synchronicznie przez `I<X>ModuleApi`, asynchronicznie przez `IMessageBroker` + integration event.
+Nic innego nie przechodzi granicy: żadnych wstrzykiwanych obcych serwisów, żadnych joinów po
+tabelach obcego modułu.
+
+### R5 — bootstrapper nic nie wie
+
+```csharp
+// Startup.ConfigureServices
+services.AddNotificationsModule();
+services.AddUsersModule();
+services.AddWalletsModule();
+services.AddSharedFramework(_configuration);
+```
+
+> **Co tu robi pracę:** R2 i R3 są egzekwowane przez **kompilator**. Próba sięgnięcia do
+> `Wallets.Core.Wallet` z modułu Users to błąd kompilacji, nie code review. To jedyny realny
+> mechanizm w tym repo i jednocześnie jedyna rzecz, której Java nie daje za darmo. Reszta wzorca
+> jest tylko uporządkowaną konwencją.
+
+---
+
+## 4. Dwa tryby integracji
+
+### 4.1 Synchroniczny: `I<X>ModuleApi`
+
+Interfejs jest celowo **mikroskopijny** — tyle metod, ile ktoś naprawdę woła. To nie „publiczne API
+domeny", a lista konkretnych pytań, które inne moduły zadają.
+
+```csharp
+public interface IWalletsModuleApi {
+    Task<WalletDto> GetWalletAsync(Guid walletId);
+}
+
+public interface IUsersModuleApi {
+    Task<UserDetailsDto> GetUserAsync(Guid userId);
+    Task<UserDetailsDto> GetUserAsync(string email);
+}
+
+public interface INotificationsModuleApi {
+    Task SendEmailAsync(string receiver, string template);
+}
+```
+
+Implementacja nie ma własnej logiki — deleguje do **własnego dispatchera**, czyli przechodzi
+normalną ścieżką CQRS modułu:
+
+```csharp
+internal sealed class WalletsModuleApi : IWalletsModuleApi {
+    private readonly IDispatcher _dispatcher;   // nie konkretny handler!
+
+    public Task<WalletDto> GetWalletAsync(Guid walletId)
+        => _dispatcher.QueryAsync(new GetWallet { WalletId = walletId });
+}
+```
+
+Konsument wstrzykuje **tylko interfejs**:
+
+```csharp
+internal sealed class AddOwnerHandler : ICommandHandler<AddOwner> {
+    private readonly IUsersModuleApi _usersModuleApi;   // obcy kontrakt
+    private readonly IOwnerRepository _ownerRepository; // własna domena
+
+    public async Task HandleAsync(AddOwner command, CancellationToken ct = default) {
+        var user = await _usersModuleApi.GetUserAsync(command.Email);
+        if (user is null) throw new UserNotFoundException(command.Email);
+        await _ownerRepository.AddAsync(
+            new Owner(user.UserId, user.FullName, user.Nationality, now));
+    }
+}
+```
+
+### 4.2 Asynchroniczny: integration event
+
+Event jest **własnością producenta** i leży w jego `*.Shared`. To ustawia kierunek zależności raz
+na zawsze: konsument zależy od kontraktu producenta, nigdy odwrotnie. Nazwa w czasie przeszłym,
+record, minimum danych — ale **wystarczające**, żeby konsument nie musiał dopytywać.
+
+```csharp
+// Users.Shared/Events — niesie wszystko, czego potrzebują Wallets i Notifications
+public record UserCreated(Guid UserId, string Email, string FullName, string Nationality) : IEvent;
+
+// Wallets.Shared/Events
+public record WalletAdded(Guid WalletId, Guid OwnerId, string Currency) : IEvent;
+```
+
+Handler konsumenta leży w **jego własnym** module, w katalogu `ExternalEvents/`:
+
+```
+Wallets.Application/
+├── Owners/ExternalEvents/Handlers/UserCreatedHandler.cs    # UserCreated  → utwórz Ownera
+├── Owners/ExternalEvents/Handlers/UserVerifiedHandler.cs
+└── Wallets/ExternalEvents/Handlers/UserVerifiedHandler.cs  # UserVerified → utwórz Wallet
+                                                            #   + publikuj własny WalletAdded
+Notifications.Api/Handlers/
+├── Users/{UserCreatedHandler, UserVerifiedHandler}.cs
+└── Wallets/{WalletAddedHandler, FundsAddedHandler, FundsTransferredHandler}.cs
+```
+
+Pod spodem: `IMessageBroker` → `Channel<IEvent>` → `EventDispatcherJob` (BackgroundService) →
+`IEventHandler<T>` z kontenera. Moduły widzą wyłącznie `IMessageBroker.PublishAsync`, więc podmiana
+in-memory na Kafkę nie dotyka ani jednego handlera.
+
+### 4.3 Reguła wyboru
+
+| Pytanie | Tryb | Przykład z NPay |
+|---|---|---|
+| Potrzebuję **odpowiedzi, żeby podjąć decyzję** tu i teraz | module-api (sync) | `AddOwnerHandler` pyta Users o usera, zanim utworzy Ownera — bez tego nie wie, czy komenda jest legalna |
+| **Reaguję na fakt**, który już się stał | event (async) | `UserVerified` → Wallets zakłada portfel; `WalletAdded` → Notifications wysyła maila |
+| Chcę wysłać event, a potem **dopytać producenta o szczegóły** | **nie wolno** | to sync przebrany za async; dlatego `UserCreated` niesie `Email`, `FullName` i `Nationality`, a nie tylko `UserId` |
+
+---
+
+## 5. Dane: replikacja, nie współdzielenie
+
+Najmocniejsza i najmniej oczywista decyzja w NPay. Users ma agregat `User`. Wallets **nie używa**
+`Usera` — ma własny agregat `Owner` (`fullName`, `nationality`), budowany z eventu `UserCreated`
+i trzymany we własnej tabeli.
+
+- Każdy moduł ma **własny DbContext i własne migracje** (`UsersDbContext`, `WalletsDbContext`) —
+  jedna baza, osobne zestawy tabel, **zero FK przez granicę**.
+- Globalny `NPay.Shared` ma **zero typów biznesowych**. Nie ma w nim `Money`, nie ma `UserId`.
+  `Currency`, `Amount`, `OwnerId` są w `Wallets.Core` i są internal.
+- Read-model omija repozytorium agregatu: query handler dostaje osobny port `IWalletStorage`
+  (internal interfejs w Application, impl na `DbSet` w Infrastructure, `AsNoTracking`).
+- **Wyjątków też się nie reużywa.** Wallets ma własny `Owners/Exceptions/UserNotFoundException`,
+  mimo że Users ma klasę o identycznej nazwie. Centralne mapowanie na HTTP robi
+  `ExceptionToResponseMapper` po wspólnym `NPayException`.
+
+Widać to też w miejscu, gdzie wzorzec zaboli: `Notifications/Services/EmailResolver` ma
+`// TODO: Resolve the user/owner email address from other modules` i tymczasowo generuje
+`{ownerId}@npay.io`. Autor nie mógł sięgnąć do tabeli userów — musiałby albo zawołać
+`IUsersModuleApi`, albo dołożyć email do eventu. **Kontrakt wymusił świadomą decyzję zamiast
+cichego joina.**
+
+---
+
+## 6. Kontrolery i DTO
+
+Kontrolery siedzą w **osobnym projekcie `*.Api`** — drugim i ostatnim publicznym obok `*.Shared`.
+Łańcuch to `Api → Infrastructure → Application → Core`, więc kontroler widzi komendy i zapytania
+(są `public`), ale nie widzi handlerów ani agregatów (są `internal`).
+
+I rzecz nieoczywista: **kontrolery NPay nie mają własnych DTO.**
+
+```csharp
+// Wallets.Api/Controllers/WalletsController.cs
+public async Task<ActionResult<WalletDto>> Get(Guid walletId)     // ← DTO z Wallets.Shared
+    => Ok(await _dispatcher.QueryAsync(new GetWallet { WalletId = walletId }));
+
+public async Task<IActionResult> Post(AddWallet command)          // ← request body TO KOMENDA
+    { await _dispatcher.SendAsync(command); … }
+
+// Wallets.Api/Controllers/FundsController.cs — to samo dwa razy
+public async Task<IActionResult> Post(AddFunds command)
+public async Task<IActionResult> Post(TransferFunds command)
+```
+
+| Warstwa HTTP | Czym jest w NPay | Gdzie leży |
+|---|---|---|
+| request body | klasa komendy (`public record AddWallet(…) : ICommand`) | `*.Application` |
+| response body | DTO kontraktowe (`WalletDto`) | `*.Shared` |
+| mapper agregat → DTO | `internal static Extensions.AsDto()` | `*.Application/Queries/Handlers/` |
+| kontroler | `public class`, wstrzykuje tylko `IDispatcher` | `*.Api` |
+
+Zero klas `*Json`, zero osobnej warstwy webowej. Users idzie jeszcze dalej: `UserDetailsDto` jest
+request **i** response, z `[Required]` / `[EmailAddress]` wprost w DTO kontraktowym, a
+`UsersController` wstrzykuje `IUsersService` i pomija dispatcher.
+
+### Decyzja dla Vidulum
+
+NPay łączy DTO webowe z kontraktowym świadomie, ale **dla portfolio rozdzielamy je** — z jawnego
+powodu, nie przez analogię:
+
+- `PortfolioDto.PortfolioSummaryJson` ma już zobowiązania wobec frontendu i nazwy JSON-owe,
+- trzej konsumenci w procesie (trading, pnl, risk) potrzebują z niego **ułamka** pól,
+- jedno DTO sprzęgłoby front z tradingiem bez żadnego zysku.
+
+**Reguła: jedno DTO i HTTP, gdy po drugiej stronie faktycznie jest sieć; zwykły interfejs i własne
+DTO kontraktowe, gdy wywołanie jest w procesie.** Dlatego w `user-financial-profile-api` wasze
+jedno DTO jest słuszne — tam konsument naprawdę jest klientem HTTP.
+
+---
+
+## 7. Mapowanie C# → Java/Maven
+
+| NPay (.NET) | Odpowiednik w Vidulum | Uwaga |
+|---|---|---|
+| `*.Shared` projekt | osobny moduł Maven `vidulum-<x>-api` | macie już: `vidulum-cashflow/user-financial-profile-api` |
+| `internal` + `InternalsVisibleTo` | **granica artefaktu Maven** + `package-private` w obrębie pakietu + ArchUnit | reactor wykrywa cykl jako błąd builda — ten sam efekt co kompilator C# |
+| `I<X>ModuleApi` | interfejs w module `-api`, impl `@Component` package-private w module właściwym | dziś rolę grają `PortfolioRestClient` / `TradingRestClient` / `QuoteRestClient` |
+| `IDispatcher` w impl api | `CommandGateway` / `QueryGateway` | klucz: api wstrzykuje **gateway**, nigdy konkretnego handlera |
+| `IMessageBroker` + in-memory channel | Kafka + `EventEmitter` + `@KafkaListener` | wasza wersja jest mocniejsza — macie trwałość |
+| `*.Shared/Events` | **u was wszystko w `shared-kernel/common/events`** | do rozdania producentom (P4) |
+| `AddXModule()` extension | `@AutoConfiguration` / `@Configuration` per moduł | wzorzec już macie: `OkxQuotationConfiguration` |
+| osobny `DbContext` per moduł | osobne kolekcje + `DataCleaner` per moduł | macie, z jednym wyciekiem (P3) |
+| `ExternalEvents/Handlers/` | `<modul>/app/listeners/` | nazewnictwo inne, układ ten sam |
+
+### Model mentalny: `internal` = artefakt, nie pakiet
+
+**`internal` w C# to widoczność w obrębie assembly, czyli w Javie widoczność w obrębie artefaktu
+Maven.** Nie ma sensu walczyć o `package-private` *wewnątrz* `vidulum-portfolio` — `Portfolio` musi
+być `public`, żeby handler z innego pakietu go użył, i to jest w porządku: **ścianą jest jar, nie
+modyfikator**. `package-private` zostawiamy tam, gdzie klasy siedzą w jednym pakiecie: impl obok
+interfejsu, mapper obok kontrolera.
+
+---
+
+## 8. Composition root: `Startup.cs` kontra `VidulumApplication`
+
+```csharp
+ConfigureServices:  AddNotificationsModule();  AddUsersModule();  AddWalletsModule();
+                    AddSharedFramework(_configuration);
+Configure:          UseSharedFramework();  UseNotificationsModule(); UseUsersModule();
+                    UseWalletsModule();  UseEndpoints(e => e.MapControllers());
+```
+
+Dziewięć linii treści, a cała wartość w tym, czego **nie** zawiera:
+
+1. **Kolejność jest nieistotna** — moduły rejestrują się przed frameworkiem, bo DI rozwiązuje
+   leniwie. Jeśli composition root wymaga kolejności, moduły nie są rozłączne.
+2. **`Use*Module()` dla Users i Wallets są puste** — szew na middleware per moduł zostawiony przed
+   tym, zanim był potrzebny. U was odpowiednikiem byłby per-modułowy `WebMvcConfigurer` /
+   `SecurityFilterChain`; dziś macie jedną globalną konfigurację bezpieczeństwa w shared-kernel.
+3. **`MapControllers()` jeden na całość** — kontrolery z wszystkich modułów są wykrywane, bo
+   projekty `*.Api` są referowane. Odpowiednik waszego component scanu.
+
+### Różnice po stronie Vidulum
+
+- `@SpringBootApplication` w `com.multi.vidulum` **skanuje wszystko** pod tym pakietem na
+  classpath → rejestracja beanów jest niejawna. NPay-owa jawność to `@AutoConfiguration` +
+  `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` per moduł.
+- `VidulumApplication` buduje `CommandGateway` z `List<CommandHandler<?,?>>` — **jeden gateway dla
+  wszystkich modułów**. To jest mechanizm, którym dzieje się przekroczenie granicy w sekcji 14:
+  `TradeCapturedEventListener` wysyła `ProcessTradeCommand` przez globalny gateway. Podział na
+  artefakty zamyka to **nie** przez zmianę gatewaya, a przez usunięcie klasy komendy z classpath
+  tradingu.
+- `VidulumApplication` robi dziś rzeczy, których bootstrapper NPay nie robi: rejestruje konta
+  Admin/Manager w `CommandLineRunner` i hostuje `PortfolioRestClientImpl`.
+
+> **Test, czy app jest już tylko composition rootem:** czy da się z niego usunąć wszystko poza
+> `@Bean`-ami i `main()`.
+
+---
+
+## 9. Vidulum: co już działa jak w NPay
+
+### `vidulum-okx` to wzorcowy plugin
+
+Cztery pliki. Implementuje `ExchangeAdapter` (SPI z `vidulum-exchange`) i rozszerza
+`BrokerQuotationProvider` (SPI z `vidulum-wealth`). Nikt nie zależy od okx poza bootstrapem.
+`ExchangeAdapter` jest celowo malutki (`broker()` + `validateRegion()`), zamiast próbować
+generalizować całą giełdę.
+
+### `user-financial-profile-api` — moduł kontraktowy już istnieje
+
+Osobny artefakt Maven z interfejsem `@HttpExchange` i sześcioma DTO, bez implementacji.
+Implementowany przez kontroler po stronie serwera, zamieniany w klienta HTTP przez
+`HttpServiceProxyFactory` po stronie konsumenta.
+
+```
+impl serwera: user_financial_profile/app/UserFinancialProfileRestController
+klient:       bank_data_ingestion/infrastructure/CashFlowServiceClientConfig
+              → OwnedAccountRegistry, StageTransactionsCommandHandler
+```
+
+To jest R1 + R2. Różnica: dla modułów w jednym procesie (portfolio ↔ trading) interfejs ma być
+zwykłym javowym interfejsem, nie `@HttpExchange` — HTTP między portfolio a tradingiem to koszt bez
+zysku.
+
+### Listenery Kafki = `ExternalEvents/Handlers`
+
+`portfolio/app/listeners/OrderFilledEventListener` odbiera event i zamienia go na własną komendę
+przez `CommandGateway` — nie dotyka cudzego agregatu. Jeden do jednego
+`Wallets/ExternalEvents/Handlers/UserVerifiedHandler`.
+
+---
+
+## 10. Vidulum: sześć realnych problemów
+
+### P1 — implementacja kontraktu portfolio leży w `vidulum-app` i wstrzykuje konkretne handlery
+
+`PortfolioRestClient` to w zamyśle module-api portfolio. Jego jedyna produkcyjna implementacja
+siedzi w module aplikacyjnym, w pakiecie `user.infrastructure`:
+
+```
+vidulum-app/.../user/infrastructure/PortfolioRestClientImpl.java
+  private final CreateEmptyPortfolioCommandHandler ...;
+  private final LockAssetCommandHandler ...;
+  private final UnlockAssetCommandHandler ...;
+  private final GetAggregatedPortfolioQueryHandler ...;
+  private final GetPortfolioQueryHandler ...;
+  private final PortfolioSummaryMapper ...;
+```
+
+Skutki: handlery portfolio są de facto publicznym API, a trading/pnl/risk nie uruchomią się bez
+całego `vidulum-app`. Dodatkowo interfejs leży w `portfolio.domain.portfolio`, a zwraca
+`PortfolioDto.PortfolioSummaryJson` z `portfolio.app` — typ domenowy oddaje DTO warstwy webowej,
+więc zmiana JSON-a w REST zmienia kontrakt dla tradingu, pnl i risk.
+
+### P2 — nie ma kierunku zależności, są cykle
+
+```
+liczba importów cross-package w vidulum-wealth/src/main:
+  portfolio       → trading 13  · quotation 2
+  trading         → portfolio 11 · pnl 1 · portfolio_spec 1
+  pnl             → portfolio 6  · quotation 4 · trading 1
+  risk_management → portfolio 5  · trading 1
+  quotation       → portfolio 1    (AssetBasicInfo)
+  portfolio_spec  → portfolio 13 · exchange_connection 10
+```
+
+W NPay każdy z tych cykli byłby błędem kompilacji. Najtańszy do naprawy: `AssetBasicInfo` leży w
+`portfolio/domain/`, a używają go `QuotationService`, `BrokerQuotationProvider` i
+`QuoteRestController` — przeniesienie **jednej klasy** zrywa całą zależność quotation → portfolio.
+
+Odwrócenie przez moduły `-api`: `trading → portfolio-api`, `portfolio → trading-api`, a oba `-api`
+zależą tylko od shared-kernel. Cykl znika bez łamania żadnej funkcji.
+
+### P3 — wyciek infrastruktury przez granice
+
+```
+vidulum-wealth/.../trading/infrastructure/WealthDataCleaner.java
+  → portfolio.infrastructure.portfolio.entities.PortfolioEntity
+  → pnl.infrastructure.entities.PnlHistoryEntity
+  → portfolio_spec.infrastructure.PortfolioSpecEntity
+```
+
+Klasa w `trading` zna typy persystencji trzech innych poddomen. To zadanie composition-rootu.
+`VidulumApplication` i tak zbiera `List<DataCleaner>` — mechanizm istnieje, trzeba go użyć per
+moduł.
+
+### P4 — integration eventy leżą w shared-kernel, nie u producenta
+
+```
+shared-kernel/common/events/ → OrderFilledEvent · TradeCapturedEvent · TradeAppliedToPortfolioEvent
+                               UserCreatedEvent · CashFlowUnifiedEvent
+                               BankDataIngestionUnifiedEvent · UserFinancialProfileUnifiedEvent
+```
+
+Każda zmiana kontraktu któregokolwiek z nich to zmiana shared-kernel — a CLAUDE.md mówi, co to
+oznacza: *„vidulum-shared-kernel → pełny `./mvnw clean test` — wszystko od niego zależy, bez
+wyjątków"*, czyli ~12 minut przy zmianie jednego pola w jednym evencie.
+
+Docelowo: `OrderFilledEvent`, `TradeCapturedEvent` → `vidulum-trading-api`;
+`TradeAppliedToPortfolioEvent` → `vidulum-portfolio-api`; `UserCreatedEvent` → `vidulum-user-api`.
+
+### P5 — gruby shared kernel
+
+45 typów w `common`. Obok uczciwie wspólnych `Money`, `Currency`, `UserId` leżą `CashFlowId`,
+`BankAccountId`, `BankName`, `CategoryName` (cashflow) oraz `PortfolioId`, `Broker`, `Ticker`,
+`OrderStatus`, `StoredTrade`, `PortfolioStatus`, `CostBasis` (wealth). Dla porównania
+`NPay.Shared` ma **zero** typów biznesowych.
+
+Efekt docelowy: zmiana `CashFlowId` przestaje przebudowywać wealth, a zmiana `OrderStatus`
+przestaje przebudowywać cashflow.
+
+### P6 — nic nie pilnuje granic
+
+Zero wystąpień ArchUnit / ArchRule w repo. Wszystkie reguły z sekcji 3 są dziś konwencją w głowie,
+a w NPay są błędem kompilacji.
+
+---
+
+## 11. Docelowy graf modułów
+
+```
+vidulum-shared-kernel        CQRS, DDD base, auth, error, Money/Currency — i nic więcej
+    │
+    ├── vidulum-portfolio-api      PortfolioModuleApi + DTO + TradeAppliedToPortfolioEvent
+    ├── vidulum-trading-api        TradingModuleApi + DTO + TradeConfirmedEvent
+    ├── vidulum-quotation-api      QuotationApi + AssetBasicInfo + BrokerQuotationProvider (SPI)
+    ├── vidulum-exchange-api       ExchangeConnectionApi + ExchangeAdapter (SPI)
+    ├── vidulum-user-api           UserModuleApi + UserCreatedEvent
+    │
+    ├── vidulum-portfolio      → portfolio-api, quotation-api
+    ├── vidulum-trading        → trading-api, portfolio-api, quotation-api
+    ├── vidulum-quotation      → quotation-api
+    ├── vidulum-exchange       → exchange-api
+    ├── vidulum-pnl            → portfolio-api, trading-api, quotation-api
+    ├── vidulum-risk           → portfolio-api, trading-api, quotation-api
+    ├── vidulum-portfolio-spec → portfolio-api, exchange-api, quotation-api
+    ├── vidulum-okx            → exchange-api, quotation-api
+    │
+    └── vidulum-app            tylko @Configuration + Mongo/Kafka/security.
+                               ZERO logiki, ZERO *RestClientImpl
+```
+
+> **Test, czy się udało:** `vidulum-pnl` i `vidulum-risk` to czyści konsumenci — **nic** nie
+> powinno od nich zależeć. Jeśli po przebudowie coś importuje `pnl` (dziś robi to `trading`, przez
+> `PnlHistoryEntity`), granica jest w złym miejscu.
+
+Rozbicie `vidulum-wealth` na siedem artefaktów jest celem, nie pierwszym krokiem. Sam podział na
+`-api` / impl daje 80% zysku już wtedy, gdy reszta zostaje w jednym module.
+
+---
+
+## 12. Szkic kontraktu portfolio
+
+```java
+// === vidulum-portfolio-api ================================================
+// Pakiet: com.multi.vidulum.portfolio.api — jedyna publiczna powierzchnia modułu.
+// Nazwa bez „RestClient": to nie jest HTTP i nigdy nie było.
+
+public interface PortfolioModuleApi {
+
+    // --- zapis: tyle metod, ile ktoś realnie woła ---
+    PortfolioId open(OpenPortfolioRequest request);
+    void lock(PortfolioId id, Ticker ticker, OrderId orderId, Quantity quantity);
+    void unlock(PortfolioId id, Ticker ticker, OrderId orderId, Quantity quantity);
+
+    // --- czytanie: wycenione w walucie, o którą pyta wołający (B4/C17) ---
+    PortfolioView get(PortfolioId id);                       // w walucie portfela
+    PortfolioView get(PortfolioId id, Currency valuedIn);
+    AggregatedPortfolioView aggregate(UserId owner, Currency valuedIn);
+}
+
+// Kto pyta o własność portfela (dziś: PortfolioAccess, komponent portfolio
+// wstrzykiwany przez cztery kontrolery z trzech modułów).
+public interface PortfolioOwnership {
+    /** Zwraca id portfela albo rzuca PortfolioNotFoundException — także dla
+        cudzego portfela, bo wołający nie ma prawa się dowiedzieć, że istnieje. */
+    PortfolioId requireOwned(String portfolioId);
+    UserId currentUser();
+}
+
+// DTO kontraktowe — płaskie recordy, własne, NIE PortfolioDto.*Json z warstwy web.
+public record PortfolioView(
+        PortfolioId portfolioId, UserId owner, Broker broker,
+        Currency valuationCurrency, Money value, Money investedBalance,
+        List<PositionView> positions) {}
+
+public record PositionView(
+        Ticker ticker, SubName subName, Quantity quantity,
+        Money value, boolean awaitingCost) {}
+
+// === vidulum-portfolio (implementacja) ====================================
+// package-private: odpowiednik `internal sealed class WalletsModuleApi`.
+
+@Component
+@AllArgsConstructor
+class PortfolioModuleApiImpl implements PortfolioModuleApi {
+
+    private final CommandGateway commandGateway;   // ⟵ gateway,
+    private final QueryGateway queryGateway;       //    NIE konkretne handlery
+
+    @Override
+    public PortfolioView get(PortfolioId id, Currency valuedIn) {
+        Portfolio portfolio = queryGateway.send(new GetPortfolioQuery(id));
+        return PortfolioViewMapper.map(portfolio, valuedIn);
+    }
+}
+```
+
+### Dlaczego gateway, a nie handler
+
+To jedyna linijka, która odróżnia dzisiejszy `PortfolioRestClientImpl` od wzorca NPay — i decyduje
+o wszystkim. Wstrzyknięty handler to zależność od **środka** modułu; gateway to zależność od jego
+**ścieżki wejściowej**. Przy gatewayu implementację api można przenieść do modułu portfolio, bo nie
+potrzebuje niczego spoza niego; przy handlerach musi zostać tam, gdzie widać wszystkie bean
+definitions — czyli w `vidulum-app`.
+
+### Układ pakietów
+
+```
+vidulum-portfolio-api/   com.multi.vidulum.portfolio.api
+   PortfolioModuleApi, PortfolioOwnership            (interfejsy)
+   PortfolioView, PositionView, OpenPortfolioRequest
+   TradeAppliedToPortfolioEvent
+   PortfolioNotFoundException, AssetNotFoundException, NotSufficientBalance
+
+vidulum-portfolio/       com.multi.vidulum.portfolio.rest          ← KONTROLERY TU
+   PortfolioRestController        @RestController, może być package-private
+   PortfolioDto                   kształt JSON-a — package-private, obok kontrolera
+   PortfolioJsonMapper            Portfolio → PortfolioDto.*Json
+                         com.multi.vidulum.portfolio.app
+   commands/, queries/            komendy public — kontroler je widzi
+   *CommandHandler                nie wychodzą z artefaktu
+   PortfolioModuleApiImpl         wstrzykuje gateway, nie handlery
+   PortfolioAutoConfiguration     ← odpowiednik AddPortfolioModule()
+                         com.multi.vidulum.portfolio.domain / .infrastructure
+   Portfolio, Asset, Mongo        nieosiągalne z zewnątrz — nie ma ich na classpath
+```
+
+### Dwa wejścia do modułu — i dlaczego żadne nie jest HTTP
+
+**`vidulum-portfolio-api` to zwykły javowy interfejs w jarze.** Trading wstrzykuje go Springiem i
+woła metodę: ta sama JVM, ten sam wątek, ta sama transakcja, zero serializacji, zero gniazda.
+Kontroler REST to **drugie, równoległe wejście** — to, którym wchodzi świat zewnętrzny, nie inne
+moduły.
+
+```
+  świat zewnętrzny (przeglądarka, curl, frontend)
+        │  HTTP
+        ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │ vidulum-portfolio                     (jar — nikt go nie │
+  │                                        importuje)        │
+  │   PortfolioRestController ──┐                            │
+  │   + PortfolioDto            │                            │
+  │                             ├──▶ CommandGateway /        │
+  │   PortfolioModuleApiImpl ───┘    QueryGateway             │
+  │   (package-private)                   │                  │
+  │         ▲                             ▼                  │
+  │         │                   *CommandHandler              │
+  │         │                   *QueryHandler                │
+  │         │                             │                  │
+  │         │                             ▼                  │
+  │         │                   Portfolio (agregat) → Mongo  │
+  └─────────┼────────────────────────────────────────────────┘
+            │ implementuje
+  ┌─────────┴───────────────────┐
+  │ vidulum-portfolio-api (jar) │   interface PortfolioModuleApi
+  └─────────▲───────────────────┘
+            │ wywołanie metody w tej samej JVM
+  ┌─────────┴───────────────────┐
+  │ vidulum-trading             │   @Autowired PortfolioModuleApi api;
+  └─────────────────────────────┘
+
+✕ czego na tej drodze nie ma: żądania HTTP, serializacji JSON, RestClienta, timeoutu, retry
+```
+
+**Uwaga na nazwę:** dzisiejszy `PortfolioRestClient` kłamie. Jego implementacja wstrzykuje
+handlery i woła je bezpośrednio — **już dziś nie ma tam ani jednego żądania HTTP**. Nazwa sugeruje
+transport, którego nigdy nie było, i to jest właściwy powód, żeby interfejs nazywał się
+`PortfolioModuleApi`.
+
+Ten sam wzorzec pakowania, dwa różne transporty:
+
+| | `user-financial-profile-api` | `portfolio-api` (propozycja) |
+|---|---|---|
+| interfejs | `@HttpExchange("/api/v1/...")` | zwykły interfejs, zero adnotacji |
+| co dostaje konsument | proxy z `HttpServiceProxyFactory` | bean z kontenera |
+| co się dzieje przy wywołaniu | żądanie HTTP, serializacja JSON | wywołanie metody |
+| po co tak | przewidziane rozdzielenie na usługi | monolit modularny |
+
+### Classpath kompilacji ≠ classpath runtime
+
+- **kompilacja tradingu** — widzi tylko interfejs; próba dotknięcia `Portfolio` to błąd kompilacji
+- **runtime produkcyjny** — `vidulum-app` wciąga oba jary, Spring wstrzykuje `PortfolioModuleApiImpl`
+- **test komponentowy tradingu** — podstawia dwudziestolinijkowy stub `PortfolioModuleApi` i nie
+  potrzebuje ani Mongo, ani portfolio; dziś potrzebuje, bo jedyna implementacja żyje w `vidulum-app`
+  (i dlatego istnieją trzy ręcznie utrzymywane stuby: `TestPortfolioRestClient`,
+  `ComponentPortfolioRestClient`, impl produkcyjny)
+- **zapomniana implementacja** — `NoSuchBeanDefinitionException` przy starcie kontekstu, nie 500 w produkcji
+
+Skoro interfejs jest cienki, **transport staje się decyzją odwracalną**: gdyby portfolio poszło
+kiedyś jako osobny deployment, podmienia się to, co stoi za `PortfolioModuleApi` (proxy HTTP
+zamiast lokalnego beana) i żaden konsument się nie zmienia.
+
+---
+
+## 13. Najtańszy przykład: `quotation`
+
+24 pliki w module, a cały świat zewnętrzny używa z niego **pięciu rzeczy**.
+
+### Co dziś wychodzi na zewnątrz — pełna lista, nie próbka
+
+```
+QuotationService        1× → portfolio/infrastructure/QuoteRestClientAdapter
+QuoteNotFoundException  2× → portfolio
+fx.FxRate               2× → pnl
+fx.FxRates              1× → pnl
+fx.RateSourceId         1× → pnl
+
+i jedna zależność w złą stronę:
+quotation → portfolio.domain.AssetBasicInfo
+   w QuotationService, BrokerQuotationProvider, QuoteRestController
+```
+
+### Podział na dwa jary
+
+```
+vidulum-quotation-api/          ← 7 typów, zero Springa, zero Kafki
+  com.multi.vidulum.quotation.api
+     QuotationApi                  interface
+     AssetBasicInfo                ← PRZENIESIONE z portfolio.domain
+     QuoteNotFoundException
+     BrokerNotFoundException
+     FxRate, RateSourceId          ← tylko to, czego potrzebuje pnl
+     BrokerQuotationProvider       SPI — klasa bazowa providerów
+     PriceChangedEvent             ← musi jechać: jest w sygnaturze SPI
+
+vidulum-quotation/              ← 17 plików, nikt tego nie importuje
+     QuotationService implements QuotationApi
+       PIVOT · fromFixing() · chainThroughPivot()   cała logika tras
+     FxRates, FxRateSource, FxRateRefresher
+     NbpApi, NbpFxRateSource                        integracja z NBP
+     Binance / PM / Degiro / Exante QuotationProvider
+     QuoteRestController, ExchangeStatusRestController
+     QuotationDto, ExchangeStatusDto, Reachability
+     FxConfiguration, QuotationKafkaConfig
+```
+
+```java
+// vidulum-quotation-api
+public interface QuotationApi {
+    AssetPriceMetadata fetch(Broker broker, Symbol symbol);           // rzuca QuoteNotFound
+    Optional<AssetPriceMetadata> find(Broker broker, Symbol symbol);  // brak ceny to odpowiedź
+    AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker);
+    void registerAssetBasicInfo(Broker broker, AssetBasicInfo info);
+    boolean isRegistered(Broker broker);
+    Set<Symbol> quotedSymbols(Broker broker);
+}
+```
+
+To jest dosłownie dzisiejsze publiczne API `QuotationService` minus `registerBroker`,
+`onPriceChange` i `clearCaches` — bo te trzy są wołane tylko z wewnątrz modułu (odpowiednio z
+`KafkaTopicConfig`, z Kafki i z testów).
+
+### Siedem krawędzi zależności
+
+```
+vidulum-quotation-api  → shared-kernel
+
+vidulum-quotation      → quotation-api, spring-web, spring-kafka
+vidulum-portfolio      → quotation-api          wycena pozycji
+vidulum-pnl            → quotation-api          FxRate, RateSourceId
+vidulum-portfolio-spec → quotation-api          wycena snapshotu
+vidulum-okx            → quotation-api          SPI — rozszerza BrokerQuotationProvider
+vidulum-app            → vidulum-quotation      jedyny, kto wciąga implementację
+
+            ┌──────────────────────────┐
+            │  vidulum-quotation-api   │  ← 5 modułów kompiluje się przeciw
+            └──────────────────────────┘
+              ▲    ▲    ▲    ▲      ▲
+              │    │    │    │      │ implements / extends
+    portfolio ┘    │    │    │      │
+          pnl ─────┘    │    │   ┌──┴──────────────────┐
+  portfolio-spec ───────┘    │   │  vidulum-quotation  │ ← tylko app
+                        okx ─┘   │  (NBP, cache, REST) │
+                                 └─────────────────────┘
+
+✕ quotation → portfolio          znika — AssetBasicInfo przeniesione
+✕ portfolio → QuoteRestClient    znika — patrz ① niżej
+```
+
+### ① `QuoteRestClient` i jego adapter znikają — minus dwa pliki
+
+Dziś portfolio ma własny port `QuoteRestClient` (trzy metody) i `QuoteRestClientAdapter`, który
+jest czystym przekazaniem:
+
+```
+portfolio/infrastructure/QuoteRestClientAdapter
+  fetch(broker, symbol)                 → quotationService.fetch(broker, symbol)
+  fetchBasicInfoAboutAsset(broker, tic) → quotationService.fetchBasicInfoAboutAsset(…)
+  registerBasicInfoAboutAsset(…)        → quotationService.registerAssetBasicInfo(…)
+```
+
+Port po stronie konsumenta istnieje dlatego, że **nie ma kontraktu po stronie dostawcy**. Gdy
+`QuotationApi` leży w `-api`, portfolio wstrzykuje go wprost, a obie klasy są do usunięcia.
+NPay nie ma w Wallets portu `IUsersClient` — ma wstrzyknięty `IUsersModuleApi` z `Users.Shared`.
+
+### ② Pułapka SPI — i to, że podział ją naprawia
+
+`BrokerQuotationProvider` ma trzy metody **package-private**: `onPriceChange`, `fetch`, `find`.
+Woła je `QuotationService`, bo siedzi w tym samym pakiecie `quotation.domain`. Jest to celowe —
+komentarz w `OkxBrokerQuotationProvider` mówi wprost: *„those members are package-private […], so
+no provider outside that package can override them"*.
+
+Po przeniesieniu klasy bazowej do osobnego jara sztuczka przestaje działać: `QuotationService` jest
+w innym pakiecie. Rozwiązanie jest **mocniejsze od dzisiejszego**:
+
+```java
+// vidulum-quotation-api
+public abstract class BrokerQuotationProvider {
+    public final Optional<AssetPriceMetadata> find(Symbol symbol) { … }
+    public final AssetPriceMetadata fetch(Symbol symbol) { … }
+    public final void onPriceChange(PriceChangedEvent event) { … }
+}
+```
+
+`final` daje **dokładnie tę ochronę, którą opisuje komentarz** — żaden provider nie nadpisze — a
+`public` pozwala wołać z drugiego jara. Dzisiejsze package-private jest słabsze: provider
+umieszczony w pakiecie `quotation.domain` mógłby je nadpisać i nikt by nie zauważył. Ten przypadek
+nie jest kosztem podziału, a jego produktem ubocznym: **ochrona przypadkowa zamieniona na jawną**.
+
+### ③ Jeden typ ciągnie drugi
+
+`PriceChangedEvent` jest dziś w całości wewnętrzny: produkuje go `QuoteRestController`
+(`pricingKafkaTemplate.send("quotes", …)`), konsumuje `QuotationService.onPriceChange`. Normalnie
+zostałby w implementacji — ale jest w sygnaturze metody klasy bazowej SPI, więc **musi pojechać do
+`-api` razem z nią**. Takich pociągnięć zawsze jest kilka i one decydują, czy kontrakt zostanie
+wąski.
+
+### Co zostaje w środku i nikogo nie interesuje
+
+Trasa przez pivota USD, czytanie fixingu NBP **przed** łańcuchem, podstawianie USDT za USD,
+`EUR/EUR = 1` liczone przed cache'em, branie **starszego** z dwóch znaczników czasu,
+`FxRateRefresher` z cronem, cztery providery brokerów, dwa kontrolery z DTO — **nic z tego nie
+przecieka do kontraktu**. Konsument pyta „ile kosztuje X w Y" i dostaje odpowiedź albo
+`Optional.empty()`.
+
+> **Test, czy granica jest w dobrym miejscu: siedem typów na zewnątrz, siedemnaście plików decyzji
+> w środku.** Gdy proporcja idzie w drugą stronę — jak dziś w portfolio, gdzie na zewnątrz wychodzą
+> agregat, fabryka i repozytorium — granica jest narysowana w złym miejscu albo nie istnieje.
+
+---
+
+## 14. Przebieg: trade zmienia balans portfela
+
+### 14.1 Kto co posiada (docelowo)
+
+| Moduł | Agregaty / stan | Mongo | Endpointy | Emituje | Konsumuje | Nie wie o |
+|---|---|---|---|---|---|---|
+| `trading-api` | kontrakt — zero stanu | — | — | `TradeConfirmedEvent` (klasa) | — | — |
+| `trading` | `Order`, `Trade`, `Position` | `orders`, `trades` | `POST /trades`, `/orders`, `GET /trades` | `TradeConfirmedEvent` | — | `Portfolio`, `Asset`, wycena |
+| `portfolio-api` | kontrakt | — | — | `TradeAppliedToPortfolioEvent` (klasa) | — | — |
+| `portfolio` | `Portfolio` + `Asset`, `Contribution`, `ExchangeFreeze` | `portfolios` | `/portfolio/**`, `/aggregated-portfolio` | `TradeAppliedToPortfolioEvent` | `TradeConfirmedEvent` | `Order`, `Trade`, OKX |
+| `quotation` | cache cen per broker | — | `GET /quote` | — | — | `Portfolio`, `Trade`, użytkownik |
+| `pnl` | `PnlHistory` | `pnl_history` | `GET /pnl` | — | `TradeAppliedToPortfolioEvent` | agregat `Portfolio`, agregat `Trade` |
+| `okx` | — | — | — | notowania do `quotation` | — | wszystko poza SPI |
+| `app` | `@Configuration`, Mongo, Kafka, security | — | — | — | — | logiki biznesowej |
+
+> Najmocniejsza linia: **`trading` nie wie o wycenie, a `portfolio` nie wie o zleceniach.** Trade to
+> dla portfela „ileś jednostek X wymienione na ileś jednostek Y w danym momencie" — czy stało za tym
+> zlecenie na giełdzie, czy zakup u dealera, jest nieistotne. Dziś portfolio musi to wiedzieć, bo
+> odbiera `order_filled`.
+
+### 14.2 Przebieg dzisiejszy
+
+```
+POST /trades
+ │
+ 01  TradeRestController (trading)
+ │     userId z tokenu, nie z payloadu (G2); originTradeId — generowany, gdy brak
+ │
+ 02  access.requireOwned(portfolioId) ───────────▶ PortfolioAccess (portfolio)   ① GRANICA
+ │     trading woła komponent portfolio → DomainPortfolioRepository
+ │
+ 03  MakeTradeCommandHandler (trading)
+ │     findByOrigin (F1, + DuplicateKeyException przy wyścigu)
+ │     symbol/side ze zlecenia, jeśli istnieje — inaczej z żądania
+ │     save(Trade) → Mongo
+ │
+ 04  ──▶ Kafka "trade_captured"
+ 05  ◀── TradeCapturedEventListener (trading)        ← event wraca do tego samego modułu:
+ │                                                     to tam jest routing
+ 06  orderId zdefiniowany?
+ │     ├── tak ──▶ 07 FillOrderCommandHandler (trading)
+ │     │             order.addExecution() · save
+ │     │           08 ──▶ Kafka "order_filled"
+ │     │           09 ──▶ OrderFilledEventListener (portfolio) → ProcessTradeCommand
+ │     │
+ │     └── nie ──▶ 10 ProcessTradeCommand ─────────▶ (portfolio)                ② GRANICA
+ │                   trading buduje komendę portfolio i wysyła globalnym gatewayem
+ │
+ 11  ProcessTradeCommandHandler (portfolio)
+ │     portfolio.handleExecutedTrade() → PortfolioEvents.TradeProcessedEvent
+ │     hasAlreadyCounted(tradeId) (F10) · calculatePurchased/SoldPortion · swing()
+ │     repository.save() → Mongo "portfolios"
+ │
+ 12  ⟂ KONIEC — balans zmieniony, NIE WYCHODZI ŻADEN EVENT
+```
+
+Dwa odkrycia z czytania kodu:
+
+1. **`TradeAppliedToPortfolioEvent` leży w shared-kernel i nikt go nigdy nie emituje ani nie
+   konsumuje.** Jedyne wystąpienie w repo to własna definicja. Ktoś przewidział krok 12 i nie
+   dokończył — dziś to martwy kontrakt w najdroższym możliwym miejscu.
+2. **Zdarzenia domenowe agregatu idą do `Map<PortfolioId, List<StoredDomainEvent>>` w pamięci**
+   (`DomainPortfolioRepositoryImpl`), czyli giną przy restarcie. To nie jest event store, mimo
+   nazwy.
+
+### 14.3 Co widzi kompilator po podziale
+
+Podział na artefakty nie jest przenoszeniem plików — jest **listą błędów kompilacji, z których
+każdy jest decyzją projektową**. Dla ścieżki trade'u lista ma siedem pozycji:
+
+| Import, który przestaje istnieć | Kto go ma | Decyzja |
+|---|---|---|
+| `portfolio.app.PortfolioAccess` | `TradeRestController`, `OrderRestController`, `PnlRestController`, `RiskManagementRestController` | interfejs `PortfolioOwnership` → `portfolio-api`; dzisiejsza klasa zostaje jako impl |
+| `portfolio.app.commands.update.ProcessTradeCommand` | `TradeCapturedEventListener` | portfolio słucha samo — patrz 14.4 |
+| `portfolio.app.PortfolioDto` | trading, pnl, risk | `PortfolioView` / `PositionView` → `portfolio-api` |
+| `portfolio.domain.AssetNotFoundException`, `NotSufficientBalance` | trading | wyjątki kontraktowe → `portfolio-api` |
+| `trading.domain.{Order, Trade, Position, OpenedPositions}` | `portfolio/infrastructure/TradingRestClientAdapter` oraz **`PortfolioRestController`** (kontroler portfolio zwraca typ domenowy tradingu) | `TradingModuleApi` → `trading-api` + własny typ widoku; adapter znika |
+| `portfolio...PortfolioEntity`, `pnl...PnlHistoryEntity` | `trading/infrastructure/WealthDataCleaner` | `DataCleaner` per moduł |
+| `portfolio.domain.portfolio.{Portfolio, Asset, Contribution, PortfolioFactory, DomainPortfolioRepository, ExchangeFreeze}` | `portfolio_spec` | **najtrudniejszy przypadek** — portfolio_spec składa agregat ręcznie; musi dostać `PortfolioModuleApi.open(...)` przyjmujące gotową listę pozycji |
+
+Siedem pozycji na całą ścieżkę trade'u. To mało — i to dobra wiadomość o dzisiejszym kodzie:
+granice są w większości w porządku, brakuje tylko czegoś, co je utrzyma.
+
+### 14.4 Przebieg docelowy
+
+```
+vidulum-trading                           vidulum-portfolio
+  Trade + Order                              swing() → balans
+  routing fill/manual ZOSTAJE WEWNĄTRZ
+        │                                        │
+        │ TradeConfirmedEvent                    │ TradeAppliedToPortfolioEvent
+        │ (trading-api)                          │ (portfolio-api) ← NOWE
+        ▼                                        ▼
+   Kafka "trade_confirmed" ──────────▶      Kafka "trade_applied"
+                                                 │
+                            ┌────────────────────┼────────────────────┐
+                            ▼                    ▼                    ▼
+                     websocket-gateway      vidulum-risk          vidulum-pnl
+                       push do UI           przelicz RAG       własny read-model
+
+  ⟵ wszyscy trzej dziś musieliby odpytać portfolio przez PortfolioRestClient,
+     bo nie mają skąd się dowiedzieć, że coś się zmieniło
+```
+
+### 14.5 Trzy decyzje, które podział wyciąga na wierzch
+
+**① Kto pyta o własność portfela.** Dziś cztery kontrolery z trzech modułów wstrzykują
+`PortfolioAccess` i przez niego czytają repozytorium portfolio. Po podziale zostaje
+`PortfolioOwnership` w kontrakcie. Zysk nie jest kosmetyczny: reguła „cudzy portfel odpowiada 404,
+nie 403" przestaje być właściwością klasy, którą każdy może obejść, sięgając do repozytorium obok.
+
+**② Kto nalicza trade do portfela.** Dziś dwie drogi dla jednej operacji. Po podziale druga jest
+niemożliwa, więc trzeba wybrać:
+
+- *portfolio słucha dwóch tematów* (`trade_captured` dla ręcznych, `order_filled` dla giełdowych) —
+  i wtedy **powtarza routing tradingu**: musiałoby samo sprawdzać `OrderId.isDefined(...)`, żeby nie
+  naliczyć trade'u dwa razy. **Zły wybór: ta sama decyzja w dwóch modułach.**
+- *trading publikuje jeden `TradeConfirmedEvent`* na końcu swojego routingu — po wypełnieniu
+  zlecenia albo od razu, gdy zlecenia nie ma. `trade_captured` zostaje tematem wewnętrznym
+  tradingu, `order_filled` traci konsumenta spoza modułu. **Portfolio ma jeden listener i przestaje
+  wiedzieć, czym jest zlecenie.**
+
+Drugi wariant jest tym, co mówi reguła z sekcji 4.3: event niesie to, czego potrzebuje konsument.
+Portfel potrzebuje „co, ile, po jakiej cenie, kiedy, do którego portfela" — `orderId` jest w tym
+zestawie przypadkowym gościem.
+
+**③ Kto się dowiaduje o nowym balansie.** Dziś nikt, więc `pnl` i `risk` muszą pytać —
+`MakePnlSnapshotCommandHandler` i `RiskManagementEngine` wstrzykują `PortfolioRestClient` i
+`TradingRestClient`. Po podziale wystarczy dokończyć to, co ktoś zaczął: przenieść
+`TradeAppliedToPortfolioEvent` do `portfolio-api` i emitować po `repository.save(portfolio)`.
+Wtedy `pnl` staje się tym, czym w NPay jest `Owner` w module Wallets: **własnym read-modelem
+budowanym z eventów**, a nie klientem cudzego agregatu.
+
+---
+
+## 15. Ścieżka czytania: skąd się bierze balans
+
+Zapis zmienia ilości aktywów. **Balans w złotówkach czy dolarach nie jest nigdzie zapisany** —
+powstaje przy czytaniu.
+
+```
+GET /portfolio/{id}/{currency}
+  │
+  ├─ portfolio · PortfolioRestController
+  │     access.requireOwned(id)                      ← własność
+  │     GetPortfolioQuery → agregat z Mongo
+  │
+  ├─ portfolio · PortfolioSummaryMapper
+  │     dla każdego aktywa: ile jednostek × jaka cena
+  │     │
+  │     └─▶ quotation · QuotationService.fetch(broker, symbol)
+  │              ├─ cache per broker
+  │              └─ BrokerQuotationProvider ◀── okx publikuje notowania
+  │                 (EUR/EUR liczone jako 1, bez pytania giełdy)
+  │
+  └─ PortfolioSummaryJson: wartość pozycji, wartość portfela,
+     per pozycja: subName + awaitingCost
+```
+
+Dzisiejsza granica: portfolio woła `QuoteRestClient` (interfejs w `portfolio.domain`, adapter w
+`portfolio.infrastructure`) — port po stronie konsumenta, co jest OK. Ale typ zwracany
+`AssetBasicInfo` leży też w `portfolio.domain`, więc quotation musi importować portfolio, żeby go
+oddać. Jedna klasa i jedna zależność do zerwania (sekcja 13).
+
+> Warto zauważyć, czego tu **nie ma**: `trading` nie występuje w ścieżce czytania balansu ani razu.
+> Zlecenia i trade'y są historią operacji, balans jest stanem aktywów — i to dlatego te dwa moduły
+> dają się rozciąć mimo 24 wzajemnych importów w dzisiejszym kodzie.
+
+---
+
+## 16. Event czy module-api — tabela decyzji dla Vidulum
+
+| Przepływ | Tryb | Dlaczego |
+|---|---|---|
+| `PlaceOrderCommandHandler` sprawdza saldo przed przyjęciem zlecenia | **module-api** | bez odpowiedzi nie wie, czy komenda jest legalna; musi to być stan *teraz*, nie z eventu |
+| `OrderFilledEvent` → `ProcessTradeCommand` w portfolio | **event** | reakcja na fakt; dziś już tak działa |
+| `RiskManagementEngine` liczy RAG / stop-loss | **module-api** (czytanie) | zapytanie na żądanie; dziś bierze `PortfolioDto` + `TradingDto` + trzy porty — powinny być dwa wąskie `-api` |
+| `pnl` robi snapshot wyceny | **event** + własny read-model | pnl to historia — powinien budować własny obraz z eventów, nie odpytywać portfolio o przeszłość |
+| `portfolio_spec.confirm` tworzy portfel i aktywuje połączenie | **module-api ×2** | potrzebuje wyniku obu operacji; dziś sięga do `PortfolioFactory`, `DomainPortfolioRepository` i `ConfirmExchangeConnectionCommandHandler` |
+| okx rejestruje się jako obsługiwana giełda | **SPI** (trzeci tryb, świadomie) | odwrotny kierunek: moduł wstawia *swoją* implementację do cudzego rejestru |
+
+Ostatni wiersz to rozszerzenie wzorca NPay, nie jego naruszenie. NPay ma trzy moduły znane z góry;
+Vidulum ma rodzinę giełd, która ma rosnąć. **SPI (adapter + rejestr) to właściwa odpowiedź na
+„pluginy", a module-api na „inny moduł czegoś potrzebuje".**
+
+---
+
+## 17. Kolejność migracji
+
+Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
+
+| # | Krok | Uwaga |
+|---|---|---|
+| 01 | **ArchUnit na stanie dzisiejszym** | reguły opisujące docelowy graf + jawna lista odstępstw. Nie naprawia niczego, ale zamraża regres i daje mierzalną listę do odhaczania. Koszt: jeden plik testowy |
+| 02 | **`vidulum-quotation-api`** (sekcja 13) | `AssetBasicInfo` zrywa zależność quotation → portfolio, a `QuotationApi` usuwa przy okazji `QuoteRestClient` i jego adapter. Siedem typów, pięciu konsumentów, zero ryzyka |
+| 03 | **`DataCleaner` per poddomena** | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
+| 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
+| 05 | **Eventy do modułów `-api` producentów** | P4. Wymaga ustalenia właściciela każdego z siedmiu eventów — przy `*UnifiedEvent` z cashflow to osobna rozmowa, bo te są zbiorcze |
+| 06 | **`vidulum-trading-api` i rozcięcie cyklu portfolio ↔ trading** | P2. Dopiero tu wychodzi, czy podział poddomen jest dobry — najlepszy moment, żeby sprawdzić, czy `trading` potrzebuje całego `PortfolioDto`, czy tylko salda jednego aktywa |
+| 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
+
+---
+
+## 18. Ściąga: dodaję X, ruszam Y
+
+| Zmiana | Dotykam | Rebuild |
+|---|---|---|
+| nowa reguła liczenia pozycji w portfelu | `vidulum-portfolio` | 1 moduł + app |
+| nowe pole w odpowiedzi `GET /portfolio` | `vidulum-portfolio` (PortfolioDto to jego prywatna sprawa) | 1 moduł + app |
+| nowe pole, którego potrzebuje **pnl** | `portfolio-api` + `portfolio` + `pnl` | 3 moduły — i to jest sygnał, nie koszt |
+| nowy typ zlecenia (trailing stop) | `vidulum-trading` | 1 moduł + app |
+| nowa giełda (Binance) | nowy `vidulum-binance` + `@Configuration` w app | 1 nowy moduł |
+| nowe pole w `TradeConfirmedEvent` | `trading-api` → `trading`, `portfolio` | producent + konsumenci eventu |
+| nowe pole w `Money` | `shared-kernel` | **wszystko** — i dlatego shared-kernel ma być chudy |
+
+Dziś każdy wiersz ma tę samą odpowiedź: `vidulum-wealth` + `vidulum-okx` + `vidulum-app`, a przy
+dotknięciu shared-kernel pełne 12 minut. Różnica w czasie builda jest skutkiem ubocznym; prawdziwy
+zysk w tym, że **liczba modułów, które muszę ruszyć, mówi mi, czy zmiana jest lokalna, czy zmieniam
+kontrakt** — a tej informacji dzisiejszy układ nie potrafi dać.
+
+---
+
+## 19. Czego z NPay nie kopiować
+
+Repo jest materiałem szkoleniowym i w kilku miejscach to widać.
+
+- **Brak outboxa.** `InMemoryMessageBroker` wrzuca event do `Channel<IEvent>` poza transakcją —
+  przy restarcie proces gubi zdarzenia. Z NPay bierzemy **abstrakcję** (`IMessageBroker` jako
+  jedyny punkt styku), nie implementację; Kafka jest tu mocniejsza.
+- **Brak jakichkolwiek testów.** W całym repo nie ma projektu testowego. Trzy poziomy testów z
+  CLAUDE.md są wyraźnie dalej.
+- **`OwnerId` z `implicit operator Guid`.** Value object, który sam się rozpakowuje do primitywu —
+  traci dokładnie tę ochronę, po którą się go wprowadza. Nasze `PortfolioId`/`UserId` z `of()` są
+  lepsze.
+- **DTO jako mutowalne klasy z setterami** (`WalletDto`) obok recordów dla eventów. Niespójne; nasze
+  DTO z `@AllArgsConstructor` wymuszanym przez wytyczne testowe są lepsze.
+- **Trzy moduły to mało.** NPay nie zderza się z problemem, który nas czeka: poddomena (`pnl`,
+  `risk`), która potrzebuje danych z trzech innych i nie ma własnych. Odpowiedź z sekcji 5 (własny
+  read-model z eventów) jest w NPay tylko zarysowana przez `Owner`.
+
+---
+
+## 20. Pytania otwarte
+
+1. **Właściciel `*UnifiedEvent`.** `CashFlowUnifiedEvent`, `BankDataIngestionUnifiedEvent`,
+   `UserFinancialProfileUnifiedEvent` są zbiorcze (sealed interface z wariantami?) — nie jest
+   oczywiste, czy rozdawać je per producent, czy traktować jako jeden kontrakt cashflow.
+2. **`portfolio_spec` i tworzenie agregatu.** Dziś składa `Portfolio` ręcznie przez
+   `PortfolioFactory` + `DomainPortfolioRepository`. `PortfolioModuleApi.open(...)` musi przyjąć
+   gotową listę pozycji, kontrybucje i `ExchangeFreeze` — do zaprojektowania.
+3. **Czy `pnl` i `risk` dostają własne `-api`.** Nic od nich nie zależy, więc kontrakt może być
+   zbędny. Decyzja: `-api` tylko wtedy, gdy ktoś konsumuje.
+4. **Granulacja `DataCleaner`** po rozbiciu wealth na siedem artefaktów — jeden per artefakt czy
+   jeden per kolekcja.
+5. **`@AutoConfiguration` kontra component scan.** Przejście na jawną rejestrację per moduł jest
+   zgodne z NPay, ale dotyka startu całej aplikacji — osobne zadanie, nie część podziału.
+
+---
+
+*Wersje z diagramami (prywatne artefakty): [granice modułów](https://claude.ai/code/artifact/c907e225-fdb1-43b3-8a5a-e0d38503421b) ·
+[droga trade'u](https://claude.ai/code/artifact/38ba3010-e999-485d-9716-9296ad662fb8)*

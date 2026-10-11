@@ -940,6 +940,7 @@ Files in `docs/features-backlog/` - these are designs waiting for implementation
 | `TODO-integration-tests-with-jwt-authentication.md` | Add JWT to all integration tests | High |
 | `TODO-kafka-dead-letter-queue.md` | Dead letter queue for failed events | Medium |
 | `VID-103-maven-multi-module-migration.md` | Split into Maven modules | Low |
+| `2026-10-12-module-contracts-api-impl-split.md` | Module contracts: `-api` / impl split in wealth (NPay pattern) | Medium |
 | `AI_CATEGORIZATION_PLAN.md` | AI-powered transaction categorization | Medium |
 | `AI_USE_CASES.md` | AI use cases overview | Medium |
 | `2026-02-07-intelligent-cashflow-reconciliation.md` | Smart reconciliation | Medium |
