@@ -4,6 +4,11 @@ Analiza krok po kroku: od zarejestrowania brokera OKX, przez zmiany w modelu `Po
 po listę atomowych zadań. Punkt wyjścia to prototyp w `tools/okx/` (Node 22, read-only) — działający,
 zweryfikowany na żywym koncie demo, ale kończący się na plikach i logu.
 
+Ścieżka **H** — synchronizacja po przerwie — ma własny plik:
+[2026-10-11-okx-reconnect-reconciliation.md](2026-10-11-okx-reconnect-reconciliation.md).
+Wyszła z A7, gdy okazało się, że „ponowne podłączenie” to nie przestawienie statusu,
+a wyrównanie stanu krok po kroku — z historii operacji, weryfikowane snapshotem.
+
 Dokumenty źródłowe: `tools/okx/PODSUMOWANIE.md` (ustalenia o API), `tools/okx/OKX-CONTEXT.md`
 (fakty techniczne), `tools/okx/IMPROVEMENTS.md` (34 poprawki prototypu).
 
