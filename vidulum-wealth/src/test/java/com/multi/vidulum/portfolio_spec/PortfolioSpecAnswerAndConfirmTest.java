@@ -20,6 +20,7 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
 import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
@@ -123,7 +124,8 @@ class PortfolioSpecAnswerAndConfirmTest {
         gateway.registerCommandHandler(new CancelPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, confirmConnectionHandler));
+                quotes, confirmConnectionHandler,
+                new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }
 
@@ -330,6 +332,10 @@ class PortfolioSpecAnswerAndConfirmTest {
      * answered {@code 0} here — beside six figures of holdings, which reads as profit out of thin
      * air. The ledger opens instead with one entry: what the account was worth on the day we first
      * read it, marked {@code OPENING_SNAPSHOT} so nobody mistakes it for a deposit somebody made.
+     *
+     * <p>One entry <b>per holding</b> since C18, not one summed figure. The sum is the same; what
+     * changed is that a holding nobody can price now costs its own line rather than the whole
+     * onboarding.
      */
     @Test
     void shouldOpenTheLedgerWithWhatTheAccountWasWorthOnArrival() {
@@ -342,20 +348,25 @@ class PortfolioSpecAnswerAndConfirmTest {
         Portfolio portfolio = portfolioRepository
                 .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
 
-        assertThat(portfolio.getContributions()).singleElement().satisfies(opening -> {
-            assertThat(opening.provenance())
-                    .as("not EXCHANGE_REPORTED: the exchange said what is held, not how it arrived")
-                    .isEqualTo(Provenance.OPENING_SNAPSHOT);
-            assertThat(opening.direction()).isEqualTo(Contribution.Direction.IN);
-            assertThat(opening.valueAtArrival().getAmount().doubleValue())
-                    .as("1.3 BTC at 50 000, both positions counted - the unpriced one included")
-                    .isEqualTo(65_000);
-            assertThat(opening.valueAtArrival().getCurrency()).isEqualTo("EUR");
-            assertThat(opening.dateTime())
-                    .as("the moment of confirmation, taken from the clock rather than invented inside")
-                    .isEqualTo(NOW);
-            assertThat(opening.id().getId()).isNotBlank();
-        });
+        assertThat(portfolio.getContributions())
+                .as("one entry per position, both of them priced here")
+                .hasSize(2)
+                .allSatisfy(opening -> {
+                    assertThat(opening.provenance())
+                            .as("not EXCHANGE_REPORTED: the exchange said what is held, not how it arrived")
+                            .isEqualTo(Provenance.OPENING_SNAPSHOT);
+                    assertThat(opening.direction()).isEqualTo(Contribution.Direction.IN);
+                    assertThat(opening.valueAtArrival().getCurrency()).isEqualTo("EUR");
+                    assertThat(opening.dateTime())
+                            .as("the moment of confirmation, from the clock rather than invented inside")
+                            .isEqualTo(NOW);
+                    assertThat(opening.id().getId()).isNotBlank();
+                });
+        assertThat(portfolio.getContributions().stream()
+                .map(opening -> opening.valueAtArrival().getAmount().doubleValue())
+                .reduce(0d, Double::sum))
+                .as("1.3 BTC at 50 000, both positions counted - the unpriced one included")
+                .isEqualTo(65_000);
     }
 
     /** And the summary states it, rather than reporting a zero it never learned. */

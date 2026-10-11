@@ -128,6 +128,7 @@ class ExchangeConnectionControllerComponentTest {
                         null,
                         null,
                         null,
+                        null,
                         NOW));
     }
 
@@ -193,6 +194,9 @@ class ExchangeConnectionControllerComponentTest {
                         "ACTIVE",
                         null,
                         LATER,
+                        // synchronised when the specification was confirmed, and the status has
+                        // not moved since (H1)
+                        NOW,
                         NOW,
                         NOW));
     }
@@ -234,8 +238,8 @@ class ExchangeConnectionControllerComponentTest {
         ExchangeConnectionDto.ExchangeConnectionJson read = controller.get(created.id());
 
         assertThat(read.lastSnapshotAt()).isEqualTo(LATER);
-        assertThat(read.lastSyncAt()).isEqualTo(NOW);
-        assertThat(read.lastSnapshotAt()).isNotEqualTo(read.lastSyncAt());
+        assertThat(read.portfolioSyncedAt()).isEqualTo(NOW);
+        assertThat(read.lastSnapshotAt()).isNotEqualTo(read.portfolioSyncedAt());
     }
 
     @Test

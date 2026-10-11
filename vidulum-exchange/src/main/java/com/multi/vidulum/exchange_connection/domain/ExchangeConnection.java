@@ -104,8 +104,29 @@ public class ExchangeConnection {
     /** When the account state was last read from the exchange. Basis for the spec TTL. */
     private ZonedDateTime lastSnapshotAt;
 
-    /** When a snapshot was last applied to the portfolio. Drifts apart from the one above. */
-    private ZonedDateTime lastSyncAt;
+    /**
+     * When the portfolio was last brought into agreement with the exchange (task H1).
+     *
+     * <p>One meaning, and only {@link #recordSync} writes it. The field it replaces was called
+     * {@code lastSyncAt} and claimed exactly this, while {@code confirm}, {@code reconnect},
+     * {@code revoke} <b>and</b> {@code fail} all overwrote it — so resuming a connection recorded
+     * "synchronised just now" over a portfolio holding week-old numbers, and a failure recorded it
+     * too. Nothing in production ever called {@code recordSync}, so the one event the field is
+     * named after was the only one that never touched it.
+     *
+     * <p>{@code null} until a snapshot has actually been applied. That is a real state — a
+     * connection can be {@code ACTIVE} with a portfolio and no synchronisation behind it — and it
+     * is the anchor the gap replay will read (H5), which is why it must not be guessed.
+     */
+    private ZonedDateTime portfolioSyncedAt;
+
+    /**
+     * When the status last changed. What {@code lastSyncAt} actually held, under its own name.
+     *
+     * <p>Kept because it answers a real question — how long has this been revoked — which is a
+     * different question from how old the numbers are.
+     */
+    private ZonedDateTime statusChangedAt;
 
     private final ZonedDateTime createdAt;
 
@@ -164,7 +185,10 @@ public class ExchangeConnection {
         this.portfolioId = portfolioId;
         this.status = ConnectionStatus.ACTIVE;
         this.statusReason = null;
-        this.lastSyncAt = now;
+        this.statusChangedAt = now;
+        // The one status transition that is also a synchronisation: a portfolio is born from the
+        // snapshot being confirmed, so at this instant the two genuinely agree.
+        this.portfolioSyncedAt = now;
     }
 
     /**
@@ -182,7 +206,10 @@ public class ExchangeConnection {
         }
         this.status = ConnectionStatus.ACTIVE;
         this.statusReason = null;
-        this.lastSyncAt = now;
+        this.statusChangedAt = now;
+        // Deliberately does NOT touch portfolioSyncedAt. Coming back into service says nothing
+        // about the numbers: they are exactly as old as they were during the break, and claiming
+        // otherwise is what made ACTIVE a status that could not be trusted (task H1).
     }
 
     /**
@@ -194,7 +221,7 @@ public class ExchangeConnection {
         requireStatus(ConnectionStatus.ACTIVE, "revoke");
         this.status = ConnectionStatus.REVOKED;
         this.statusReason = reason;
-        this.lastSyncAt = now;
+        this.statusChangedAt = now;
     }
 
     /**
@@ -209,7 +236,7 @@ public class ExchangeConnection {
         requireAnyStatus("fail", ConnectionStatus.PENDING, ConnectionStatus.ACTIVE);
         this.status = ConnectionStatus.ERROR;
         this.statusReason = reason;
-        this.lastSyncAt = now;
+        this.statusChangedAt = now;
     }
 
     /** A corrected key after {@link #fail} — back to the start of onboarding. */
@@ -224,9 +251,16 @@ public class ExchangeConnection {
         this.lastSnapshotAt = now;
     }
 
-    /** A snapshot was applied to the portfolio. */
+    /**
+     * A snapshot was applied to the portfolio, so the two now agree (task H1).
+     *
+     * <p>The only writer of {@link #portfolioSyncedAt}, and called from where a specification is
+     * actually confirmed — including the case where there was nothing to apply, because "already
+     * in agreement" is agreement. Status is untouched: bringing the numbers up to date is not a
+     * transition.
+     */
     public void recordSync(ZonedDateTime now) {
-        this.lastSyncAt = now;
+        this.portfolioSyncedAt = now;
     }
 
     public boolean isActive() {

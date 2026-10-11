@@ -7,7 +7,9 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.portfolio_spec.app.commands.answer.AnswerPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.cancel.CancelPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.confirm.ConfirmPortfolioSpecCommand;
+import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommand;
+import com.multi.vidulum.portfolio_spec.app.commands.resume.ResumeConnectionCommand;
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQuery;
 import com.multi.vidulum.portfolio_spec.domain.PortfolioSpec;
 import com.multi.vidulum.portfolio_spec.domain.PortfolioSpecId;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.time.ZonedDateTime;
 
 /**
@@ -54,6 +57,35 @@ public class PortfolioSpecRestController {
                 request.toSnapshot()));
 
         return PortfolioSpecDto.PortfolioSpecJson.from(spec, now());
+    }
+
+    /**
+     * The same exchange account is back after a break (task H3).
+     *
+     * <p>Puts the connection back into service <b>and</b> reads the account, because the first
+     * without the second leaves {@code ACTIVE} standing over figures from before the break. The
+     * specification that comes out is computed against the portfolio that survived the break, so
+     * the owner is asked about what changed rather than about everything they hold.
+     *
+     * <p>Answers {@code 200} either way: a specification to settle, or
+     * {@code nothingToSynchronise} when the account did not move. The second is not an error — and
+     * it still records the synchronisation, because already being in agreement is agreement.
+     */
+    @PostMapping("/resume/{connectionId}")
+    public PortfolioSpecDto.ResumeConnectionResultJson resume(
+            @PathVariable String connectionId,
+            @Valid @RequestBody PortfolioSpecDto.ResumeConnectionJson request) {
+
+        Optional<PortfolioSpec> spec = commandGateway.send(new ResumeConnectionCommand(
+                currentUser(),
+                ExchangeConnectionId.of(connectionId),
+                request.toSnapshot()));
+
+        return new PortfolioSpecDto.ResumeConnectionResultJson(
+                connectionId,
+                spec.isEmpty(),
+                spec.map(applicable -> PortfolioSpecDto.PortfolioSpecJson.from(applicable, now()))
+                        .orElse(null));
     }
 
     /** What still has to be decided. Answers {@code 404} for someone else's specification. */

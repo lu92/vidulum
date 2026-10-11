@@ -202,10 +202,18 @@ for (let run = 1; run <= iterations; run++) {
         .every((a) => a.unrealisedProfit === null));
 
     // C3 + C4: the backend now answers both "what is the result" and "of how much".
+    //
+    // C16 added a case this comparison has to respect: when something held cannot be priced at
+    // all, the backend reports no share rather than a share of what it happened to price. That is
+    // not a disagreement - the quantity our reckoning divides by is the unknown itself - so the
+    // comparison is only meaningful once every position has a value.
+    const unpriced = (portfolio.assets ?? []).filter((a) => a.priceUnknown);
     const agreement = coverageAgreement(portfolio);
     check("backend coverage matches our own reckoning of it (C4)",
-      agreement.agree,
-      `backend ${agreement.theirs}, ours ${agreement.ours}`);
+      unpriced.length > 0 ? portfolio.profitCoverage === null : agreement.agree,
+      unpriced.length > 0
+        ? `withheld because ${unpriced.map((a) => a.ticker).join(", ")} cannot be priced; backend ${agreement.theirs}`
+        : `backend ${agreement.theirs}, ours ${agreement.ours}`);
     // C15: two rows of the same ticker are the normal shape of an onboarded account, and until
     // now nothing in the payload said which was which.
     check("every position says which position it is (C15)",
@@ -220,14 +228,20 @@ for (let run = 1; run <= iterations; run++) {
       (portfolio.assets ?? []).every((a) => typeof a.coverage === "number"),
       JSON.stringify((portfolio.assets ?? []).map((a) => [a.ticker, a.coverage])));
 
-    const expectedStatus = portfolioCoverage(portfolio) >= 0.5 ? "COMPUTED" : "WITHHELD_LOW_COVERAGE";
+    // Three outcomes, not two. A holding nobody can price takes the result away for a different
+    // reason than thin coverage does - the value side of the subtraction is incomplete by an
+    // amount nobody can state - and C16 gave that its own status rather than letting it pass as
+    // low coverage, which would have implied a measurable share.
+    const expectedStatus = unpriced.length > 0
+      ? "WITHHELD_UNPRICED_POSITIONS"
+      : (portfolioCoverage(portfolio) >= 0.5 ? "COMPUTED" : "WITHHELD_LOW_COVERAGE");
     check("a result computed from a minority of the value is withheld, not printed (C4)",
       portfolio.profitStatus === expectedStatus,
-      `status ${portfolio.profitStatus}, coverage ${agreement.theirs}`);
+      `status ${portfolio.profitStatus}, expected ${expectedStatus}, coverage ${agreement.theirs}`);
     check("a withheld result carries no figure to misread",
-      portfolio.profitStatus !== "WITHHELD_LOW_COVERAGE"
+      portfolio.profitStatus === "COMPUTED"
         || (portfolio.unrealisedProfit === null && portfolio.pctUnrealisedProfit === null),
-      JSON.stringify([portfolio.unrealisedProfit, portfolio.pctUnrealisedProfit]));
+      JSON.stringify([portfolio.profitStatus, portfolio.unrealisedProfit, portfolio.pctUnrealisedProfit]));
 
     // The defect C3 fixed, checked where it actually appeared: the result used to be
     // "value - invested", and a snapshot-built portfolio invested nothing, so the old formula
@@ -248,11 +262,18 @@ for (let run = 1; run <= iterations; run++) {
       JSON.stringify(portfolio.netContributions));
     // C5: the measure that can speak when the result cannot. Checked against our own arithmetic
     // rather than against itself - the backend and this script must agree on what it means.
+    // Withheld while the valuation is incomplete (C16): it would subtract a complete ledger from
+    // an incomplete value and come out short by however much the unpriced holdings are worth -
+    // which is precisely the figure nobody can state. Otherwise it is value less what went in,
+    // checked against our own arithmetic rather than against itself.
     check("wealth change is the value less what was put in (C5)",
-      portfolio.wealthChange !== null && portfolio.wealthChange !== undefined
-        && Math.abs(portfolio.wealthChange.amount
-            - (portfolio.currentValue.amount - portfolio.netContributions.amount)) < 0.01,
-      JSON.stringify([portfolio.wealthChange, portfolio.currentValue, portfolio.netContributions]));
+      portfolio.valuationStatus !== "COMPLETE"
+        ? portfolio.wealthChange === null
+        : (portfolio.wealthChange !== null && portfolio.wealthChange !== undefined
+            && Math.abs(portfolio.wealthChange.amount
+                - (portfolio.currentValue.amount - portfolio.netContributions.amount)) < 0.01),
+      JSON.stringify([portfolio.valuationStatus, portfolio.wealthChange,
+        portfolio.currentValue, portfolio.netContributions]));
     check("wealth change is stated even though the result is withheld (C5 vs C4)",
       portfolio.profitStatus !== "WITHHELD_LOW_COVERAGE" || portfolio.wealthChange !== null,
       `profit ${portfolio.profitStatus}, growth ${JSON.stringify(portfolio.wealthChange)}`);
@@ -280,9 +301,14 @@ for (let run = 1; run <= iterations; run++) {
       portfolio.realisedStatus === "NOTHING_SOLD" && portfolio.realisedProfit === null,
       JSON.stringify([portfolio.realisedStatus, portfolio.realisedProfit]));
 
-    check("a ledger fully valued reports full coverage",
-      portfolio.contributionCoverage === 1,
-      String(portfolio.contributionCoverage));
+    // Full coverage only when every holding could be priced when the account was first read. One
+    // that could not becomes an opening entry with no value (C18) - which is what lets the account
+    // be onboarded at all, instead of the whole confirmation being refused over one token.
+    check("the ledger's coverage matches how much of it could be valued (C9, C18)",
+      unpriced.length > 0
+        ? portfolio.contributionCoverage < 1 && portfolio.contributionCoverage > 0
+        : portfolio.contributionCoverage === 1,
+      `coverage ${portfolio.contributionCoverage}, unpriced ${unpriced.map((a) => a.ticker).join(", ") || "none"}`);
     outcome.value = portfolio.currentValue;
 
     // 9. refresh quotes and read again

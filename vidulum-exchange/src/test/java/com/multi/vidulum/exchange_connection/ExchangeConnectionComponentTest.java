@@ -97,7 +97,7 @@ class ExchangeConnectionComponentTest {
         ExchangeConnection active = repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow();
         assertThat(active.getStatus()).isEqualTo(ConnectionStatus.ACTIVE);
         assertThat(active.getPortfolioId()).isEqualTo(PORTFOLIO);
-        assertThat(active.getLastSyncAt()).isEqualTo(daysLater(1));
+        assertThat(active.getPortfolioSyncedAt()).isEqualTo(daysLater(1));
         assertThat(repository.size()).isEqualTo(1);
     }
 
@@ -130,7 +130,12 @@ class ExchangeConnectionComponentTest {
         assertThat(reconnected.getStatus()).isEqualTo(ConnectionStatus.ACTIVE);
         assertThat(reconnected.getStatusReason()).isNull();
         assertThat(reconnected.getPortfolioId()).isEqualTo(PORTFOLIO);
-        assertThat(reconnected.getLastSyncAt()).isEqualTo(daysLater(120));
+        assertThat(reconnected.getStatusChangedAt()).isEqualTo(daysLater(120));
+        assertThat(reconnected.getPortfolioSyncedAt())
+                .as("the numbers are as old as they were during the break — this assertion used "
+                        + "to expect day 120 and so pinned the defect H1 fixed: coming back into "
+                        + "service recorded itself as a synchronisation")
+                .isEqualTo(daysLater(1));
         assertThat(repository.size()).as("reconnect must not create a second record").isEqualTo(1);
     }
 
@@ -241,7 +246,7 @@ class ExchangeConnectionComponentTest {
 
         ExchangeConnection afterSnapshot = repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow();
         assertThat(afterSnapshot.getLastSnapshotAt()).isEqualTo(daysLater(5));
-        assertThat(afterSnapshot.getLastSyncAt()).isEqualTo(daysLater(1));
+        assertThat(afterSnapshot.getPortfolioSyncedAt()).isEqualTo(daysLater(1));
 
         afterSnapshot.recordSync(daysLater(5));
         repository.save(afterSnapshot);
@@ -252,7 +257,7 @@ class ExchangeConnectionComponentTest {
         assertThat(repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow())
                 .extracting(
                         reloaded -> reloaded.getLastSnapshotAt().toInstant(),
-                        reloaded -> reloaded.getLastSyncAt().toInstant())
+                        reloaded -> reloaded.getPortfolioSyncedAt().toInstant())
                 .containsExactly(daysLater(5).toInstant(), daysLater(5).toInstant());
     }
 

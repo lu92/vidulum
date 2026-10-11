@@ -61,7 +61,8 @@ class ExchangeConnectionTest {
         assertThat(connection.isOnboarded()).isFalse();
         assertThat(connection.isActive()).isFalse();
         assertThat(connection.getCreatedAt()).isEqualTo(DAY_1);
-        assertThat(connection.getLastSyncAt()).isNull();
+        assertThat(connection.getPortfolioSyncedAt()).isNull();
+        assertThat(connection.getStatusChangedAt()).isNull();
         assertThat(connection.getLastSnapshotAt()).isNull();
     }
 
@@ -118,7 +119,11 @@ class ExchangeConnectionTest {
         assertThat(connection.getStatus()).isEqualTo(ConnectionStatus.ACTIVE);
         assertThat(connection.getPortfolioId()).isEqualTo(PORTFOLIO);
         assertThat(connection.isOnboarded()).isTrue();
-        assertThat(connection.getLastSyncAt()).isEqualTo(DAY_2);
+        assertThat(connection.getStatusChangedAt()).isEqualTo(DAY_2);
+        assertThat(connection.getPortfolioSyncedAt())
+                .as("confirming a specification is also a synchronisation — a portfolio is born "
+                        + "from the snapshot, so at this instant the two agree (H1)")
+                .isEqualTo(DAY_2);
     }
 
     @Test
@@ -163,7 +168,11 @@ class ExchangeConnectionTest {
         assertThat(connection.getStatus()).isEqualTo(ConnectionStatus.ACTIVE);
         assertThat(connection.getStatusReason()).isNull();
         assertThat(connection.getPortfolioId()).isEqualTo(PORTFOLIO);
-        assertThat(connection.getLastSyncAt()).isEqualTo(DAY_4);
+        assertThat(connection.getStatusChangedAt()).isEqualTo(DAY_4);
+        assertThat(connection.getPortfolioSyncedAt())
+                .as("coming back into service says nothing about the numbers: they are exactly as "
+                        + "old as they were during the break (H1)")
+                .isEqualTo(DAY_2);
     }
 
     @Test
@@ -207,7 +216,7 @@ class ExchangeConnectionTest {
 
         assertThat(connection.getStatus()).isEqualTo(ConnectionStatus.ERROR);
         assertThat(connection.getStatusReason()).isEqualTo("second reason");
-        assertThat(connection.getLastSyncAt()).isEqualTo(DAY_2);
+        assertThat(connection.getStatusChangedAt()).isEqualTo(DAY_2);
     }
 
     @Test
@@ -231,11 +240,14 @@ class ExchangeConnectionTest {
         connection.recordSnapshot(DAY_3);
 
         assertThat(connection.getLastSnapshotAt()).isEqualTo(DAY_3);
-        assertThat(connection.getLastSyncAt()).isEqualTo(DAY_2);
+        assertThat(connection.getPortfolioSyncedAt()).isEqualTo(DAY_2);
 
         connection.recordSync(DAY_4);
 
         assertThat(connection.getLastSnapshotAt()).isEqualTo(DAY_3);
-        assertThat(connection.getLastSyncAt()).isEqualTo(DAY_4);
+        assertThat(connection.getPortfolioSyncedAt()).isEqualTo(DAY_4);
+        assertThat(connection.getStatusChangedAt())
+                .as("bringing the numbers up to date is not a transition")
+                .isEqualTo(DAY_2);
     }
 }

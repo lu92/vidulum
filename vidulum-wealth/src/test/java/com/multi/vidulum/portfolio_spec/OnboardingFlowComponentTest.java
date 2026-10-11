@@ -19,6 +19,7 @@ import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionRestController;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.connect.ConnectExchangeCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.revoke.RevokeExchangeConnectionCommandHandler;
@@ -144,7 +145,8 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler));
+                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler,
+                new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }
 

@@ -13,6 +13,7 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
+import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
 import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
@@ -23,6 +24,7 @@ import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
+import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
@@ -106,7 +108,8 @@ class SecondSynchronisationComponentTest {
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, new ConfirmExchangeConnectionCommandHandler(connections, clock)));
+                quotes, new ConfirmExchangeConnectionCommandHandler(connections, clock),
+                new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }
 
@@ -266,15 +269,18 @@ class SecondSynchronisationComponentTest {
     @Test
     void shouldNotWriteASecondOpeningContribution() {
         PortfolioId portfolioId = onboard();
-        assertThat(reload(portfolioId).getContributions()).hasSize(1);
+        // Two, because onboarding writes one per holding since C18 — what matters here is that a
+        // later synchronisation adds none.
+        List<Contribution> afterOnboarding = List.copyOf(reload(portfolioId).getContributions());
+        assertThat(afterOnboarding).hasSize(2);
 
         String specId = synchronise(portfolioId, btc(1.5, 0.5, 60_000.0, null));
         controller.confirm(specId, new PortfolioSpecDto.ConfirmSpecJson(
                 "My OKX", "EUR", "OKX", NOW, List.of(btc(1.5, 0.5, 60_000.0, null))));
 
         assertThat(reload(portfolioId).getContributions())
-                .as("still the one entry from onboarding")
-                .hasSize(1)
+                .as("still exactly the entries from onboarding, same ids")
+                .containsExactlyElementsOf(afterOnboarding)
                 .allSatisfy(entry ->
                         assertThat(entry.provenance()).isEqualTo(Provenance.OPENING_SNAPSHOT));
     }
