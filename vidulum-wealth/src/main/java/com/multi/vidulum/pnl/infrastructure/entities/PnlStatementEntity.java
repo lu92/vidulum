@@ -10,6 +10,8 @@ import java.util.List;
 @Value
 @Builder
 public class PnlStatementEntity {
+    /** Null on documents written before C17 — they cannot say what they were denominated in. */
+    ValuationBasisEntity basis;
     Money netContributions;
     Money currentValue;
     Money totalUnrealisedProfit;

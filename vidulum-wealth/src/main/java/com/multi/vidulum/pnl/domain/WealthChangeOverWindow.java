@@ -51,6 +51,18 @@ public record WealthChangeOverWindow(
          * netted out — and an unnetted figure reports a transfer as profit. Same rule as C5, and
          * the reason it is a status rather than a {@code null} to be guessed at.
          */
-        CONTRIBUTIONS_UNKNOWN
+        CONTRIBUTIONS_UNKNOWN,
+
+        /**
+         * The two ends are not in the same currency, so the subtraction would be arithmetic on
+         * unlike things (task C17).
+         *
+         * <p>It has to be a refusal rather than a conversion. Restating the older end at today's
+         * rate would fold the currency's movement into the portfolio's and report them as one
+         * number — the very confusion C17 exists to end — and restating at the older rate would
+         * misstate today. Changing what a history is kept in is a real event; this is how a reader
+         * finds out it happened rather than reading a figure that quietly spans both.
+         */
+        CURRENCY_CHANGED
     }
 }

@@ -29,6 +29,7 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
     private final PortfolioRestClient portfolioRestClient;
     private final TradingRestClient tradingRestClient;
     private final DomainPnlRepository pnlRepository;
+    private final ValuationRates valuationRates;
     private final Clock clock;
 
     @Override
@@ -36,13 +37,24 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
         PnlHistory pnlHistory = pnlRepository.findByUser(command.getUserId())
                 .orElseThrow(() -> new UserNotFoundException(command.getUserId()));
 
-        PnlStatement pnlStatement = createProfitAndLossStatement(command.getUserId(), command.getDateTimeRange());
+        PnlStatement pnlStatement = createProfitAndLossStatement(
+                command.getUserId(), command.getDateTimeRange(), command.getValuationCurrency());
         pnlHistory.getPnlStatements().add(pnlStatement);
         return pnlRepository.save(pnlHistory);
     }
 
-    private PnlStatement createProfitAndLossStatement(UserId userId, Range<ZonedDateTime> dateTimeRange) {
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio = portfolioRestClient.getAggregatedPortfolio(userId);
+    private PnlStatement createProfitAndLossStatement(
+            UserId userId, Range<ZonedDateTime> dateTimeRange, Currency valuationCurrency) {
+
+        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio =
+                portfolioRestClient.getAggregatedPortfolio(userId, valuationCurrency);
+
+        // Recorded beside the figures, not derived from them later: what a currency was worth last
+        // Tuesday cannot be looked up on Friday, so a rate not written down now is lost. Absent
+        // when none is held - a valuation without its rate is still the valuation, and refusing to
+        // record one would leave a permanent hole instead of an incomplete entry.
+        ValuationBasis basis = valuationRates.basisFor(valuationCurrency)
+                .orElseGet(() -> ValuationBasis.pivot(valuationCurrency));
 
         Map<String, List<TradingDto.TradeSummaryJson>> groupedTradesByPortfolio =
                 tradingRestClient.getTradesInDateRange(userId, dateTimeRange).stream()
@@ -52,7 +64,11 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                 .map(portfolioId -> {
 
                     // get portfolio stats
-                    PortfolioDto.PortfolioSummaryJson portfolioSummaryJson = portfolioRestClient.getPortfolio(PortfolioId.of(portfolioId));
+                    // In the statement's currency, not each portfolio's own. They used to be read
+                    // in whatever currency each portfolio settled in while the total beside them
+                    // was in dollars, so one statement mixed currencies and nothing said so.
+                    PortfolioDto.PortfolioSummaryJson portfolioSummaryJson =
+                            portfolioRestClient.getPortfolio(PortfolioId.of(portfolioId), valuationCurrency);
 
                     // calculate trades from given period of time
                     List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId, List.of()));
@@ -69,6 +85,7 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                 .collect(toList());
 
         return PnlStatement.builder()
+                .basis(basis)
                 .netContributions(aggregatedPortfolio.getNetContributions())
                 .currentValue(aggregatedPortfolio.getCurrentValue())
                 .totalUnrealisedProfit(aggregatedPortfolio.getTotalUnrealisedProfit())

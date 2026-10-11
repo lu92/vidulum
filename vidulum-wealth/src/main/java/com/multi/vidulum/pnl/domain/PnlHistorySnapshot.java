@@ -23,6 +23,7 @@ public class PnlHistorySnapshot implements EntitySnapshot<PnlId> {
 
     @Value
     public static class PnlStatementSnapshot {
+        ValuationBasis basis;
         Money netContributions;
         Money currentValue;
         Money totalUnrealisedProfit;

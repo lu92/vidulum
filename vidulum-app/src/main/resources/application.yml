@@ -69,6 +69,12 @@ application:
         expiration: 604800000 # 7 days
 
 vidulum:
+  # What recorded valuations are denominated in (C17). The one decision a history can never
+  # revisit, so it is stated here rather than defaulted deep in a client; each statement also
+  # records what this currency was worth, which is what lets a reader separate the portfolio's
+  # movement from the currency's afterwards.
+  valuation:
+    currency: USD
   # Currency rates the backend keeps for itself. The pairs are the currencies users are valued in,
   # against the pivot every route goes through (USD); the schedule is hourly because the fixing is
   # daily and a container started at noon should not wait until tomorrow for its first rate.

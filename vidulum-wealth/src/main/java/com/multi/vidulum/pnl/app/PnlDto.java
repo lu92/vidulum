@@ -2,6 +2,7 @@ package com.multi.vidulum.pnl.app;
 
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
+import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Side;
 import lombok.AllArgsConstructor;
@@ -37,6 +38,9 @@ public class PnlDto {
     public static class MakePnlSnapshotJson {
         private ZonedDateTime from;
         private ZonedDateTime to;
+
+        /** Optional; the configured default is used when absent (task C17). */
+        private String valuationCurrency;
     }
 
     @Data
@@ -54,6 +58,17 @@ public class PnlDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PnlStatementJson {
+
+        /**
+         * What this statement is denominated in, and what that currency was worth when it was
+         * taken (task C17).
+         *
+         * <p>Reported rather than left implicit, because a figure whose currency the reader has to
+         * assume is a figure they will assume wrongly one day. {@code null} on statements written
+         * before C17 — they genuinely cannot say.
+         */
+        private ValuationBasisJson basis;
+
         /** Absent when the portfolio summary could not add one up - see {@code ContributionStatus}. */
     private Money netContributions;
         private Money currentValue;
@@ -61,6 +76,34 @@ public class PnlDto {
         private Double pctUnrealisedProfit;
         private List<PnlPortfolioStatementJson> portfolioStatements;
         private ZonedDateTime dateTime;
+    }
+
+    /**
+     * The currency a statement is in, plus the rate that lets a reader undo the conversion.
+     *
+     * <p>{@code rate} and its companions are absent when the statement is in the pivot currency
+     * itself, or when no rate was held at the time — see {@code ValuationBasis}.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ValuationBasisJson {
+        private String currency;
+        private Price rate;
+        private ZonedDateTime rateAsOf;
+        private String rateSource;
+
+        public static ValuationBasisJson from(ValuationBasis basis) {
+            if (basis == null) {
+                return null;
+            }
+            return basis.knownRate()
+                    .map(rate -> new ValuationBasisJson(
+                            basis.currency().getId(), rate.rate(), rate.asOf(), rate.source().id()))
+                    .orElseGet(() -> new ValuationBasisJson(
+                            basis.currency().getId(), null, null, null));
+        }
     }
 
     @Data

@@ -1,5 +1,6 @@
 package com.multi.vidulum.pnl.app;
 import com.multi.vidulum.common.PortfolioId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Range;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.PortfolioAccess;
@@ -8,7 +9,7 @@ import com.multi.vidulum.pnl.app.queries.GetPnlHistoryQuery;
 import com.multi.vidulum.pnl.domain.PnlHistory;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import com.multi.vidulum.pnl.app.queries.GetWealthChangeQuery;
@@ -20,12 +21,25 @@ import java.util.List;
 import static java.util.stream.Collectors.toList;
 
 @RestController
-@AllArgsConstructor
 public class PnlRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final PortfolioAccess access;
+
+    /** The same default the nightly job uses, so ad-hoc snapshots join the same history. */
+    private final Currency defaultValuationCurrency;
+
+    public PnlRestController(
+            CommandGateway commandGateway,
+            QueryGateway queryGateway,
+            PortfolioAccess access,
+            @Value("${vidulum.valuation.currency:USD}") String defaultValuationCurrency) {
+        this.commandGateway = commandGateway;
+        this.queryGateway = queryGateway;
+        this.access = access;
+        this.defaultValuationCurrency = Currency.of(defaultValuationCurrency);
+    }
 
     /** The caller's own history. The user id used to be a path variable anyone could set. */
     @GetMapping("/pnl")
@@ -59,11 +73,21 @@ public class PnlRestController {
                 change.status().name());
     }
 
+    /**
+     * Records a valuation now, rather than waiting for the nightly job.
+     *
+     * <p>The currency may be asked for, and otherwise falls back to the one the scheduler uses —
+     * so an ad-hoc snapshot lands in the same currency as the history it joins, instead of
+     * quietly creating a statement nothing can be compared against (task C17).
+     */
     @PostMapping("/pnl")
     public void makePnlSnapshot(@RequestBody PnlDto.MakePnlSnapshotJson request) {
         MakePnlSnapshotCommand command = MakePnlSnapshotCommand.builder()
                 .userId(access.currentUser())
                 .dateTimeRange(Range.of(request.getFrom(), request.getTo()))
+                .valuationCurrency(request.getValuationCurrency() == null
+                        ? defaultValuationCurrency
+                        : Currency.of(request.getValuationCurrency()))
                 .build();
 
         commandGateway.send(command);
@@ -100,6 +124,7 @@ public class PnlRestController {
                             .collect(toList());
 
                     return PnlDto.PnlStatementJson.builder()
+                            .basis(PnlDto.ValuationBasisJson.from(pnlStatement.getBasis()))
                             .netContributions(pnlStatement.getNetContributions())
                             .currentValue(pnlStatement.getCurrentValue())
                             .totalUnrealisedProfit(pnlStatement.getTotalUnrealisedProfit())

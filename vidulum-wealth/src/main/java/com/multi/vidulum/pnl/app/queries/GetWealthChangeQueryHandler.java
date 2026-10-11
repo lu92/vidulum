@@ -1,5 +1,6 @@
 package com.multi.vidulum.pnl.app.queries;
 
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.domain.PortfolioValuation;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.CONTRIBUTIONS_UNKNOWN;
+import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.CURRENCY_CHANGED;
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.COMPUTED;
 import static com.multi.vidulum.pnl.domain.WealthChangeOverWindow.WealthChangeStatus.NOT_WATCHING_YET;
 
@@ -40,12 +42,24 @@ public class GetWealthChangeQueryHandler
         }
 
         PortfolioValuation then = start.get();
-        PortfolioDto.PortfolioSummaryJson now = portfolioRestClient.getPortfolio(query.portfolioId());
+
+        // Read in the currency the recorded end is in, so the two are comparable by construction
+        // rather than by luck. Before C17 the stored end was always dollars and this one was the
+        // portfolio's own currency, so a portfolio settling in zloty was compared against dollars
+        // and the difference was reported as growth.
+        PortfolioDto.PortfolioSummaryJson now = portfolioRestClient.getPortfolio(
+                query.portfolioId(), Currency.of(then.currentValue().getCurrency()));
 
         // Both ends have to know what had been put in by their date, or the deposits inside the
         // window cannot be netted out — and an unnetted figure reports a transfer as growth (C5).
+        // Asked before the currency, because an end that says nothing has no currency to disagree
+        // about, and answering CURRENCY_CHANGED there would name the wrong reason.
         if (then.netContributions() == null || now.getNetContributions() == null) {
             return WealthChangeOverWindow.absent(query.since(), CONTRIBUTIONS_UNKNOWN);
+        }
+
+        if (!sameCurrency(then, now)) {
+            return WealthChangeOverWindow.absent(query.since(), CURRENCY_CHANGED);
         }
 
         Money grew = now.getCurrentValue().minus(then.currentValue());
@@ -58,5 +72,21 @@ public class GetWealthChangeQueryHandler
         Double pct = base > 0 ? change.getAmount().doubleValue() / base : null;
 
         return new WealthChangeOverWindow(query.since(), then.takenAt(), change, pct, COMPUTED);
+    }
+
+    /**
+     * Whether the two ends of the window speak of the same thing.
+     *
+     * <p>{@code Money.minus} keeps the left-hand currency and ignores the right, so unlike ends
+     * would subtract silently and answer in whichever currency happened to come first — the defect
+     * F6 already paid for once, where 2 200 EUR minus 2 000 USD produced "200 EUR".
+     */
+    private static boolean sameCurrency(PortfolioValuation then, PortfolioDto.PortfolioSummaryJson now) {
+        if (now.getCurrentValue() == null) {
+            // Nothing could be priced today (C16) — a different silence, decided further down.
+            return true;
+        }
+        return then.currentValue().getCurrency().equals(now.getCurrentValue().getCurrency())
+                && then.netContributions().getCurrency().equals(now.getNetContributions().getCurrency());
     }
 }

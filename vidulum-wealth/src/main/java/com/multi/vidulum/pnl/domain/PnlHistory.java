@@ -75,6 +75,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                                     .collect(toList());
 
                     return new PnlHistorySnapshot.PnlStatementSnapshot(
+                            pnlStatement.getBasis(),
                             pnlStatement.getNetContributions(),
                             pnlStatement.getCurrentValue(),
                             pnlStatement.getTotalUnrealisedProfit(),
@@ -122,6 +123,7 @@ public class PnlHistory implements Aggregate<PnlId, PnlHistorySnapshot> {
                             })
                             .collect(toList());
                     return PnlStatement.builder()
+                            .basis(pnlStatementSnapshot.getBasis())
                             .netContributions(pnlStatementSnapshot.getNetContributions())
                             .currentValue(pnlStatementSnapshot.getCurrentValue())
                             .totalUnrealisedProfit(pnlStatementSnapshot.getTotalUnrealisedProfit())
