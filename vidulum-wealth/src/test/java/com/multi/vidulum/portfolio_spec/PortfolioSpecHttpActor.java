@@ -38,6 +38,32 @@ public class PortfolioSpecHttpActor {
         return post(PATH, request, ApiError.class);
     }
 
+    /** Resuming a connection after a break (task H3). */
+    public ResponseEntity<PortfolioSpecDto.ResumeConnectionResultJson> resume(
+            String connectionId, PortfolioSpecDto.ResumeConnectionJson request) {
+        return post(PATH + "/resume/" + connectionId, request,
+                PortfolioSpecDto.ResumeConnectionResultJson.class);
+    }
+
+    public ResponseEntity<ApiError> resumeExpectingError(
+            String connectionId, PortfolioSpecDto.ResumeConnectionJson request) {
+        return post(PATH + "/resume/" + connectionId, request, ApiError.class);
+    }
+
+    /** The connection endpoints live in another module; driven here over HTTP like any client. */
+    public <T> ResponseEntity<T> registerConnection(Object request, Class<T> type) {
+        return post("/exchange-connection", request, type);
+    }
+
+    public <T> ResponseEntity<T> revokeConnection(String connectionId, Object request, Class<T> type) {
+        return post("/exchange-connection/" + connectionId + "/revoke", request, type);
+    }
+
+    public <T> ResponseEntity<T> readConnection(String connectionId, Class<T> type) {
+        return restTemplate.exchange(baseUrl + "/exchange-connection/" + connectionId,
+                HttpMethod.GET, new HttpEntity<>(jsonHeaders()), type);
+    }
+
     public ResponseEntity<PortfolioSpecDto.PortfolioSpecJson> get(String specId) {
         return restTemplate.exchange(baseUrl + PATH + "/" + specId, HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()), PortfolioSpecDto.PortfolioSpecJson.class);

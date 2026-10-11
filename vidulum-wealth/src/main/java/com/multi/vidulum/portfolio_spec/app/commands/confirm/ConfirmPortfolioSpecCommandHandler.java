@@ -1,9 +1,12 @@
 package com.multi.vidulum.portfolio_spec.app.commands.confirm;
 
+import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommand;
+import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommand;
+import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
 import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
@@ -14,6 +17,7 @@ import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -97,6 +101,7 @@ public class ConfirmPortfolioSpecCommandHandler
      * lives with the aggregate that owns it; only the delivery is direct.
      */
     private final ConfirmExchangeConnectionCommandHandler confirmConnectionHandler;
+    private final RecordPortfolioSyncCommandHandler recordSyncHandler;
 
     @Override
     public PortfolioSpec handle(ConfirmPortfolioSpecCommand command) {
@@ -162,6 +167,13 @@ public class ConfirmPortfolioSpecCommandHandler
             confirmConnection(command, spec, saved.getPortfolioId());
         }
 
+        // Both branches, because both bring the portfolio into agreement with the exchange — and
+        // the second synchronisation used to touch the connection not at all, so nothing recorded
+        // that the numbers had been refreshed (task H1). Stamped with the moment the snapshot
+        // describes, not with "now": the anchor has to match the state that was applied, since the
+        // gap replay will read operations from it (H5).
+        recordSync(command, spec);
+
         log.info("Specification [{}] applied as portfolio [{}] with {} position(s)",
                 spec.getId().getId(), saved.getPortfolioId().getId(), saved.getAssets().size());
         return appliedSpec;
@@ -181,7 +193,7 @@ public class ConfirmPortfolioSpecCommandHandler
                 broker,
                 currency,
                 assets,
-                List.of(openingContribution(assets, broker, currency, now)));
+                openingContributions(assets, broker, currency, now));
         return portfolioRepository.save(portfolio);
     }
 
@@ -245,25 +257,58 @@ public class ConfirmPortfolioSpecCommandHandler
     /**
      * What this account was worth on the day we first read it (task C12).
      *
-     * <p>One entry, not a reconstructed history: the exchange told us what is held, not how it got
-     * there. Its provenance says exactly that — {@code OPENING_SNAPSHOT}, never
-     * {@code EXCHANGE_REPORTED} — so nobody later mistakes it for a deposit somebody made. Backfill
-     * (C13) replaces it once real deposits can be read, which is why it carries an id.
+     * <p>Not a reconstructed history: the exchange told us what is held, not how it got there.
+     * Provenance says exactly that — {@code OPENING_SNAPSHOT}, never {@code EXCHANGE_REPORTED} —
+     * so nobody later mistakes it for a deposit somebody made. Backfill (C13) replaces these once
+     * real deposits can be read, which is why each carries an id.
      *
-     * <p>Valued position by position rather than as one figure, so a single unpriced holding costs
-     * one line instead of the whole number — the same reason the design chose a list over a scalar.
+     * <p><b>One entry per holding, each valued on its own</b> (task C18). The design always said
+     * so — this returns a list, and the comment here promised "a single unpriced holding costs one
+     * line instead of the whole number" — but the code summed through {@code fetch}, which throws,
+     * so one unquoted token refused the entire onboarding. Found on a live account that had come
+     * to hold USDC, which the OKX demo market does not quote in euro: five positions out of six
+     * were priced and the owner still could not open a portfolio.
+     *
+     * <p>A holding nobody quotes becomes an entry with no value rather than no entry at all. It
+     * then counts towards the ledger's coverage (C9), so the net contribution either says how much
+     * of itself it speaks for or withholds itself — which is the honest answer, and is not the
+     * same as pretending the holding was not there.
      */
-    private Contribution openingContribution(
+    private List<Contribution> openingContributions(
             List<Asset> assets, Broker broker, Currency currency, ZonedDateTime now) {
 
-        Money opening = assets.stream()
-                .map(asset -> quoteRestClient
-                        .fetch(broker, Symbol.of(asset.getTicker(), Ticker.of(currency.getId())))
-                        .getCurrentPrice()
-                        .multiply(asset.getQuantity()))
-                .reduce(Money.zero(currency.getId()), Money::plus);
+        return assets.stream()
+                .map(asset -> openingContribution(asset, broker, currency, now))
+                .toList();
+    }
 
-        return Contribution.opening(opening.withScale(4), now);
+    private Contribution openingContribution(
+            Asset asset, Broker broker, Currency currency, ZonedDateTime now) {
+
+        Symbol symbol = Symbol.of(asset.getTicker(), Ticker.of(currency.getId()));
+        Optional<AssetPriceMetadata> quote = priceOf(broker, symbol);
+        if (quote.isEmpty()) {
+            log.info("No price for [{}] - its opening contribution is recorded without a value", symbol);
+            return Contribution.openingOfUnknownValue(
+                    Money.of(asset.getQuantity().getQty(), asset.getTicker().getId()), now);
+        }
+        return Contribution.opening(
+                quote.get().getCurrentPrice().multiply(asset.getQuantity()).withScale(4), now);
+    }
+
+    /**
+     * The price of one pair, where its absence is an answer rather than a failure.
+     *
+     * <p>Wrapped here rather than widened into {@code QuoteRestClient}, for the reason C16 found:
+     * a second method on that port would be a default one, and a mock stubbing {@code fetch} would
+     * silently answer "no price" to everything.
+     */
+    private Optional<AssetPriceMetadata> priceOf(Broker broker, Symbol symbol) {
+        try {
+            return Optional.ofNullable(quoteRestClient.fetch(broker, symbol));
+        } catch (QuoteNotFoundException noQuote) {
+            return Optional.empty();
+        }
     }
 
     /**
@@ -374,6 +419,23 @@ public class ConfirmPortfolioSpecCommandHandler
                 command.userId(),
                 ExchangeConnectionId.of(spec.getConnectionId()),
                 portfolioId));
+    }
+
+    /**
+     * Writes down that the portfolio now agrees with the exchange (task H1).
+     *
+     * <p>Through the connection's own command, like {@link #confirmConnection} and for the same
+     * reason: what a synchronisation does to a connection is that module's business.
+     */
+    private void recordSync(ConfirmPortfolioSpecCommand command, PortfolioSpec spec) {
+        if (spec.getConnectionId() == null) {
+            // A portfolio kept by hand has no connection to stamp — see the precious metals walk.
+            return;
+        }
+        recordSyncHandler.handle(new RecordPortfolioSyncCommand(
+                command.userId(),
+                ExchangeConnectionId.of(spec.getConnectionId()),
+                command.freshSnapshot().takenAt()));
     }
 
     /**

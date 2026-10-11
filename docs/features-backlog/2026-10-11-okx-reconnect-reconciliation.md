@@ -222,15 +222,50 @@ tutaj sztywna.
 
 | # | zadanie | dlaczego teraz |
 |---|---|---|
-| **H1** | znacznik synchronizacji o jednym znaczeniu | bez niego odtworzenie startuje z błędnego punktu |
+| **H1** ✅ | znacznik synchronizacji o jednym znaczeniu | bez niego odtworzenie startuje z błędnego punktu |
 | **H2** | `ContributionId` z identyfikatora giełdy | bez niego nakładające się okno dubluje wkłady |
-| **H3** | reconnect kończy się spec-em (dawne A7) | kończy stan „`ACTIVE` z liczbami sprzed tygodnia"; nie zależy od H4, więc idzie wcześniej |
+| **H3** ✅ | reconnect kończy się spec-em (dawne A7) | kończy stan „`ACTIVE` z liczbami sprzed tygodnia"; nie zależy od H4, więc idzie wcześniej |
 | **H4** | czytanie historii w `tools/okx` | nowa zdolność: `fills-history`, `bills-archive`, `deposit-history` |
 | **H5** | odtworzenie + weryfikacja snapshotem | rdzeń; wymaga H1, H2, H4 |
 | **H6** | raport przerwy | to, co właściciel faktycznie czyta; wymaga H5 |
 
 H3 jest świadomie **przed** rdzeniem: jego wartość nie zależy od odtworzenia (sam spec wobec
 niepustego stanu znanego już usuwa kłamiący status), a maszyneria pod niego stoi od D13.
+
+## 13a. Co już zrobione (H1, H3)
+
+**H1 okazało się gorsze, niż mówi §9.** `lastSyncAt` nadpisywały `confirm`, `reconnect`, `revoke`
+**i** `fail`, a jedyne zdarzenie, po którym pole jest nazwane, nie dotykało go nigdy — `recordSync`
+**nie miało w produkcji ani jednego wywołania**. Pole trzymało więc wyłącznie historię zmian
+statusu, pod nazwą obiecującą co innego.
+
+Teraz są dwa pola o jednym znaczeniu każde: `portfolioSyncedAt` (pisze **tylko** `recordSync`)
+i `statusChangedAt` (to, co stare pole naprawdę trzymało, pod własną nazwą). `confirm` ustawia oba,
+bo zatwierdzenie spec-u *jest* synchronizacją. `reconnect` nie rusza znacznika — to cała poprawka.
+
+Dołożony `RecordPortfolioSyncCommand` jest wołany przy zatwierdzeniu **obu** gałęzi: druga
+synchronizacja nie dotykała połączenia w ogóle, więc nic nie zapisywało, że dane odświeżono.
+Znacznik dostaje **moment snapshotu**, nie „teraz" — bo to on ma pasować do zastosowanego stanu,
+gdy H5 zacznie od niego czytać historię.
+
+**H3 to `POST /portfolio-spec/resume/{connectionId}`.** Przyjmuje snapshot i oddaje spec liczony
+wobec portfela, który przeżył przerwę. Mieszka w `vidulum-wealth`, bo spina dwa moduły, a zależność
+idzie jednokierunkowo (§12); każda połowa nadal przez własną komendę. Gdy konto się **nie ruszyło**,
+spec nie powstaje (pusty byłby pytaniem bez treści, D8), ale **synchronizacja jest zapisywana** —
+„już się zgadza" to zgodność; inaczej znacznik zostałby przed przerwą i odtwarzanie szukałoby
+różnic, których nie ma.
+
+**Asercja, która utrwalała błąd:** `ExchangeConnectionComponentTest` oczekiwał
+`portfolioSyncedAt == daysLater(120)` po reconnekcie, czyli twierdził, że powrót synchronizuje.
+Przepisany na `daysLater(1)` z wyjaśnieniem, co pilnował.
+
+13 nowych przypadków (8 komponentowych, 5 endpointowych — bo spięcie dwóch modułów i to, czy
+payload kłamie o świeżości, istnieje wyłącznie po stronie HTTP). exchange 102, wealth 346, okx 31,
+app 39 — zielone.
+
+**Co nadal nie jest zrobione:** przerwa jest **policzona, nie wyjaśniona**. Różnica wie, że saldo
+się zmieniło, nie czy coś kupiono, czy przyszło przelewem — a to decyduje o koszcie i o księdze
+wkładów (§2). To H5, i jest tak napisane w javadocu handlera.
 
 ## 14. Co da się pokazać na żywo
 

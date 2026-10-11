@@ -59,7 +59,9 @@ public class ExchangeConnectionEntity {
     private String status;
     private String statusReason;
     private Date lastSnapshotAt;
-    private Date lastSyncAt;
+    /** See {@code ExchangeConnection.portfolioSyncedAt} — one meaning, written only on a sync. */
+    private Date portfolioSyncedAt;
+    private Date statusChangedAt;
     private Date createdAt;
 
     public static ExchangeConnectionEntity from(ExchangeConnection connection) {
@@ -77,7 +79,8 @@ public class ExchangeConnectionEntity {
                 .status(connection.getStatus().name())
                 .statusReason(connection.getStatusReason())
                 .lastSnapshotAt(toDate(connection.getLastSnapshotAt()))
-                .lastSyncAt(toDate(connection.getLastSyncAt()))
+                .portfolioSyncedAt(toDate(connection.getPortfolioSyncedAt()))
+                .statusChangedAt(toDate(connection.getStatusChangedAt()))
                 .createdAt(toDate(connection.getCreatedAt()))
                 .build();
     }
@@ -97,7 +100,8 @@ public class ExchangeConnectionEntity {
                 .status(ConnectionStatus.valueOf(status))
                 .statusReason(statusReason)
                 .lastSnapshotAt(toZonedDateTime(lastSnapshotAt))
-                .lastSyncAt(toZonedDateTime(lastSyncAt))
+                .portfolioSyncedAt(toZonedDateTime(portfolioSyncedAt))
+                .statusChangedAt(toZonedDateTime(statusChangedAt))
                 .createdAt(toZonedDateTime(createdAt))
                 .build();
     }

@@ -165,6 +165,47 @@ public final class PortfolioSpecDto {
         }
     }
 
+    /**
+     * Resuming a connection after a break (task H3).
+     *
+     * <p>Only the snapshot. Neither the currency nor the portfolio is accepted: the connection
+     * already knows both, and taking a second opinion on a settled fact is how a specification
+     * came to be built on the wrong currency once before (C10).
+     */
+    public record ResumeConnectionJson(
+            @NotBlank(message = "broker is required")
+            String broker,
+
+            @NotNull(message = "snapshotTakenAt is required")
+            ZonedDateTime snapshotTakenAt,
+
+            @NotEmpty(message = "at least one position is required")
+            @Valid
+            List<SnapshotPositionJson> positions) {
+
+        public ExchangeSnapshot toSnapshot() {
+            return new ExchangeSnapshot(
+                    Broker.of(broker),
+                    snapshotTakenAt,
+                    positions.stream().map(SnapshotPositionJson::toDomain).toList());
+        }
+    }
+
+    /**
+     * What resuming produced: the specification to settle, or nothing to settle at all.
+     *
+     * <p>Two outcomes rather than one, because they call for different behaviour from the client:
+     * a specification has to be answered and confirmed, while an unchanged account is already
+     * done. {@code specification} is {@code null} exactly when {@code nothingToSynchronise} is
+     * true — and the flag is reported instead of being left for the reader to infer from an
+     * absence, the rule this codebase applies to every other silence.
+     */
+    public record ResumeConnectionResultJson(
+            String connectionId,
+            boolean nothingToSynchronise,
+            PortfolioSpecJson specification) {
+    }
+
     /** A specification as the API returns it. */
     public record PortfolioSpecJson(
             String id,

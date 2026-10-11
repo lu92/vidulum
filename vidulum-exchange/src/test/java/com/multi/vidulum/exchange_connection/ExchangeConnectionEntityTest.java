@@ -76,7 +76,7 @@ class ExchangeConnectionEntityTest {
 
         assertThat(restored).usingRecursiveComparison().isEqualTo(original);
         assertThat(restored.getPortfolioId()).isNull();
-        assertThat(restored.getLastSyncAt()).isNull();
+        assertThat(restored.getPortfolioSyncedAt()).isNull();
         assertThat(restored.getLastSnapshotAt()).isNull();
     }
 
@@ -119,6 +119,7 @@ class ExchangeConnectionEntityTest {
                         "ACTIVE",
                         null,
                         Date.from(SNAPSHOT_AT.toInstant()),
+                        Date.from(SYNC_AT.toInstant()),
                         Date.from(SYNC_AT.toInstant()),
                         Date.from(CREATED.toInstant())));
     }

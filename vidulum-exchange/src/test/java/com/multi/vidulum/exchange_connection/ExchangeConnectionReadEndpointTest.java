@@ -127,10 +127,10 @@ class ExchangeConnectionReadEndpointTest {
         ExchangeConnectionDto.ExchangeConnectionJson read = actor.get(id).getBody();
 
         assertThat(read.lastSnapshotAt()).isEqualTo(SNAPSHOT_AT);
-        assertThat(read.lastSyncAt()).isEqualTo(SYNC_AT);
+        assertThat(read.portfolioSyncedAt()).isEqualTo(SYNC_AT);
         assertThat(read.lastSnapshotAt())
                 .as("collapsing the two into one field would hide which one is stale")
-                .isNotEqualTo(read.lastSyncAt());
+                .isNotEqualTo(read.portfolioSyncedAt());
         assertThat(read.portfolioId()).isEqualTo("portfolio-1");
     }
 

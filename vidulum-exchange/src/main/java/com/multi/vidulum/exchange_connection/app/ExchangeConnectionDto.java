@@ -64,11 +64,16 @@ public final class ExchangeConnectionDto {
     /**
      * Connection as the API returns it.
      *
-     * <p>The two timestamps are separate fields on purpose. {@code lastSnapshotAt} says when the
-     * account was last <i>read</i> from the exchange, {@code lastSyncAt} when what was read was
-     * last <i>applied</i> to the portfolio, and they drift apart in both directions. Collapsing
-     * them into one "updated at" would make balances from three days ago priced five seconds ago
-     * look fresh.
+     * <p>Three timestamps, separate on purpose. {@code lastSnapshotAt} says when the account was
+     * last <i>read</i> from the exchange; {@code portfolioSyncedAt} when what was read was last
+     * <i>applied</i> to the portfolio; {@code statusChangedAt} when the connection last changed
+     * state. They drift apart in every direction, and collapsing them into one "updated at" would
+     * make balances from three days ago priced five seconds ago look fresh.
+     *
+     * <p>{@code portfolioSyncedAt} is the one a reader should judge freshness by, and it is
+     * {@code null} until a snapshot has actually been applied. It used to be called
+     * {@code lastSyncAt} and was overwritten by every status transition, so a resumed connection
+     * reported itself synchronised the moment it came back (task H1).
      */
     public record ExchangeConnectionJson(
             String id,
@@ -84,7 +89,8 @@ public final class ExchangeConnectionDto {
             String status,
             String statusReason,
             ZonedDateTime lastSnapshotAt,
-            ZonedDateTime lastSyncAt,
+            ZonedDateTime portfolioSyncedAt,
+            ZonedDateTime statusChangedAt,
             ZonedDateTime createdAt) {
 
         public static ExchangeConnectionJson from(ExchangeConnection connection) {
@@ -102,7 +108,8 @@ public final class ExchangeConnectionDto {
                     connection.getStatus().name(),
                     connection.getStatusReason(),
                     connection.getLastSnapshotAt(),
-                    connection.getLastSyncAt(),
+                    connection.getPortfolioSyncedAt(),
+                    connection.getStatusChangedAt(),
                     connection.getCreatedAt());
         }
     }

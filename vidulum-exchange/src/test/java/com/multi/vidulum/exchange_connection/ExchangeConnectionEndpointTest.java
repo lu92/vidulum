@@ -126,6 +126,7 @@ class ExchangeConnectionEndpointTest {
                         null,
                         null,
                         null,
+                        null,
                         FIXED_NOW));
 
         assertThat(mongoRepository.count()).isEqualTo(1);

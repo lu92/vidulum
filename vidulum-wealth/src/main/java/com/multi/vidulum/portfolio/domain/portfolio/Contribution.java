@@ -77,6 +77,24 @@ public record Contribution(
                 value, value, Provenance.OPENING_SNAPSHOT);
     }
 
+    /**
+     * One holding that was already there when we first read the account, at a price nobody
+     * published (task C18).
+     *
+     * <p>{@code what} names the holding — a quantity of a ticker — and the value is absent, which
+     * is the state this record was built to carry. Provenance goes with the value, because it
+     * describes where <b>the value</b> came from and there is none to describe; the entry is still
+     * recognisable as an opening one by the company it keeps, and replaceable by backfill (C13)
+     * because it carries an id.
+     *
+     * <p>Without this the whole onboarding was refused over a single unquoted token — the account
+     * could be read, valued five positions out of six, and still not be turned into a portfolio.
+     */
+    public static Contribution openingOfUnknownValue(Money what, ZonedDateTime dateTime) {
+        return new Contribution(ContributionId.generate(), dateTime, Direction.IN,
+                what, null, null);
+    }
+
     public boolean hasKnownValue() {
         return valueAtArrival != null;
     }
