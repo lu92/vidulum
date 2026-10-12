@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | analiza + design, **nic nie zaimplementowane** |
+| **Status** | kroki **02 wykonany** (VID-199, w masterze) i **02b wykonany** (VID-200, gałąź) — reszta analiza + design |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
-| **Data** | 2026-10-12 |
+| **Data** | 2026-10-12, zaktualizowany 2026-10-13 |
 
 ---
 
@@ -27,8 +27,9 @@ Sześć problemów w dzisiejszym `vidulum-wealth`, od najdroższego:
 | **P5** | 45 typów w `common`, w tym typy cudzych domen | 10 |
 | **P6** | Zero ArchUnit — nic nie pilnuje granic | 10 |
 
-Najtańszy pierwszy ruch: **`vidulum-quotation-api`** (sekcja 13) — siedem typów w kontrakcie,
-pięciu konsumentów, zero ryzyka, a przy okazji usuwa `QuoteRestClient` i jego adapter.
+Najtańszy pierwszy ruch — **`vidulum-quotation-api`** (sekcja 13) — jest **zrobiony** (VID-199),
+podobnie jak wydzielenie samej implementacji (VID-200). Reaktor ma dziś jedenaście modułów.
+Następny krok, który usuwa realne sprzężenie, to **P1** i `vidulum-portfolio-api` (krok 04).
 
 ---
 
@@ -791,14 +792,15 @@ quotation → portfolio.domain.AssetBasicInfo
 ### Podział na dwa jary
 
 ```
-vidulum-quotation-api/          ← 7 typów, zero Springa, zero Kafki
+vidulum-quotation-api/          ← 9 typów, zero Springa, zero Kafki
   com.multi.vidulum.quotation.api
      QuotationApi                  interface
      AssetBasicInfo                ← PRZENIESIONE z portfolio.domain
      QuoteNotFoundException
      BrokerNotFoundException
      FxRate, RateSourceId          ← tylko to, czego potrzebuje pnl
-     BrokerQuotationProvider       SPI — klasa bazowa providerów
+     FxRateLookup                  ← czytanie kursów; FxRates (magazyn stanu) zostaje w impl
+     BrokerQuotationProvider       SPI — klasa bazowa providerów, metody public final
      PriceChangedEvent             ← musi jechać: jest w sygnaturze SPI
 
 vidulum-quotation/              ← 17 plików, nikt tego nie importuje
@@ -911,7 +913,7 @@ Trasa przez pivota USD, czytanie fixingu NBP **przed** łańcuchem, podstawianie
 przecieka do kontraktu**. Konsument pyta „ile kosztuje X w Y" i dostaje odpowiedź albo
 `Optional.empty()`.
 
-> **Test, czy granica jest w dobrym miejscu: siedem typów na zewnątrz, siedemnaście plików decyzji
+> **Test, czy granica jest w dobrym miejscu: dziewięć typów na zewnątrz, osiemnaście plików decyzji
 > w środku.** Gdy proporcja idzie w drugą stronę — jak dziś w portfolio, gdzie na zewnątrz wychodzą
 > agregat, fabryka i repozytorium — granica jest narysowana w złym miejscu albo nie istnieje.
 
@@ -1110,10 +1112,11 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 
 | # | Krok | Uwaga |
 |---|---|---|
-| 01 | **ArchUnit na stanie dzisiejszym** | reguły opisujące docelowy graf + jawna lista odstępstw. Nie naprawia niczego, ale zamraża regres i daje mierzalną listę do odhaczania. Koszt: jeden plik testowy |
-| 02 | **`vidulum-quotation-api`** (sekcja 13) | `AssetBasicInfo` zrywa zależność quotation → portfolio, a `QuotationApi` usuwa przy okazji `QuoteRestClient` i jego adapter. Siedem typów, pięciu konsumentów, zero ryzyka |
-| 03 | **`DataCleaner` per poddomena** | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
-| 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
+| 01 | **ArchUnit na stanie dzisiejszym** — *nie zrobione* | reguły opisujące docelowy graf + jawna lista odstępstw. Nie naprawia niczego, ale zamraża regres i daje mierzalną listę do odhaczania. Koszt: jeden plik testowy |
+| 02 | **`vidulum-quotation-api`** (sekcja 13) — ✅ **VID-199**, w masterze | `AssetBasicInfo` zerwało zależność quotation → portfolio, `QuotationApi` usunęło `QuoteRestClient` i jego adapter. Kontrakt wyszedł na **trzy metody**, nie sześć — patrz sekcja 21 |
+| 02b | **`vidulum-quotation` jako artefakt** — ✅ **VID-200**, gałąź | Wymagało najpierw rozbicia `KafkaTopicConfig`; szczegóły w sekcji 21 |
+| 03 | **`DataCleaner` per poddomena** — *nie zrobione* | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
+| 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** — *następny krok* | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
 | 05 | **Eventy do modułów `-api` producentów** | P4. Wymaga ustalenia właściciela każdego z siedmiu eventów — przy `*UnifiedEvent` z cashflow to osobna rozmowa, bo te są zbiorcze |
 | 06 | **`vidulum-trading-api` i rozcięcie cyklu portfolio ↔ trading** | P2. Dopiero tu wychodzi, czy podział poddomen jest dobry — najlepszy moment, żeby sprawdzić, czy `trading` potrzebuje całego `PortfolioDto`, czy tylko salda jednego aktywa |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
@@ -1173,6 +1176,135 @@ Repo jest materiałem szkoleniowym i w kilku miejscach to widać.
    jeden per kolekcja.
 5. **`@AutoConfiguration` kontra component scan.** Przejście na jawną rejestrację per moduł jest
    zgodne z NPay, ale dotyka startu całej aplikacji — osobne zadanie, nie część podziału.
+
+---
+
+## 21. Co pokazało wykonanie kroków 02 i 02b
+
+Sekcje 1–20 to analiza sprzed implementacji. Ta jest po — i notuje tylko to, czego analiza nie
+przewidziała. Trzy rzeczy wyszły dopiero przy kontakcie z kodem, dwie z nich zmieniły projekt.
+
+### Kontrakt jest trzema metodami, nie sześcioma
+
+Analiza przepisała publiczne API `QuotationService` i wyszło sześć metod. Sprawdzenie, kto każdą z
+nich **naprawdę** woła, dało trzy:
+
+| metoda | konsument |
+|---|---|
+| `fetch` | portfolio, risk, portfolio_spec |
+| `fetchBasicInfoAboutAsset` | portfolio |
+| `registerBasicInfoAboutAsset` | portfolio |
+| ~~`find`~~ | tylko `QuotationService` wewnętrznie, przy wyczerpywaniu tras |
+| ~~`isRegistered`~~, ~~`quotedSymbols`~~ | tylko `ExchangeStatusRestController`, w tym samym module |
+
+Skutek praktyczny był duży: `QuotationApi` to **przemianowany `QuoteRestClient`** z identyczną
+sygnaturą, więc piętnaście testowych atrap zmieniło jedną linijkę zamiast dorabiać po trzy metody.
+Przy szóstce ta zmiana byłaby dwa razy większa i w całości w testach.
+
+**Reguła do zapamiętania przy krokach 04 i 06:** kontraktu nie wyprowadza się z publicznego API
+klasy, tylko z listy realnych wywołań. `PortfolioRestClient` ma dziś sześć metod — przed
+`vidulum-portfolio-api` trzeba je policzyć tak samo.
+
+### `FxRates` nie mogło pojechać do kontraktu
+
+Analiza wpisała `FxRates` na listę typów kontraktowych. Błąd: to **mutowalny magazyn stanu**
+(`record()`, `clear()`), a `pnl/infrastructure/FxValuationRates` wstrzykiwał tę klasę konkretną.
+Konsument mogący wołać `record()` przestawiłby kurs, przeciw któremu wszyscy inni wyceniają
+portfel.
+
+Rozwiązaniem był nowy, trzyliniowy interfejs `FxRateLookup` — połowa do czytania w kontrakcie,
+`FxRates` implementuje go i zostaje w implementacji.
+
+**Reguła:** dzieląc typ na kontrakt i implementację, osobno sprawdzić, czy niesie **stan**. Jeśli
+tak, do kontraktu idzie interfejs czytający, nie klasa.
+
+### Package-private w SPI przestaje działać przez granicę jara — i dobrze
+
+`BrokerQuotationProvider.find`/`fetch`/`onPriceChange` były package-private, a javadoc w
+`OkxBrokerQuotationProvider` twierdził, że to uniemożliwia providerom nadpisanie ich. Uniemożliwiało
+providerom w **innych** pakietach; jeden umieszczony w `quotation.domain` mógł nadpisać bez
+przeszkód.
+
+Po wyjściu klasy bazowej do osobnego artefaktu `QuotationService` jej nie dosięga, więc metody
+musiały zrobić się `public` — i przy okazji `final`, co daje dokładnie tę ochronę, jaką opisywał
+komentarz. **Podział zamienił ochronę przypadkową na jawną.**
+
+Dodatkowo `public onPriceChange` okazało się warunkiem, bez którego nie da się napisać atrapy —
+to przez nie `InMemoryQuotationApi` karmi prawdziwy cache zamiast udawać jego zachowanie.
+
+### Trzynaście atrap było objawem braku właściciela kontraktu
+
+Port zadeklarowany w pakiecie konsumenta nie ma oczywistego miejsca na atrapę, więc każdy autor
+testu pisał własną. Trzynaście klas anonimowych, 309 linii, już rozjechanych: dwanaście rzucało
+`AssertionError` przy braku ceny, jedna `QuoteNotFoundException` (bo testuje właśnie tę ścieżkę),
+jedna nie miała tabeli cen i odpowiadała 70 000 na wszystko.
+
+Dwie rzeczy, które to kosztowało:
+
+- **Jedna atrapa karmiła asercję bzdurą** — `USD/EUR = 50 000`. Nic na tym nie stało, ale nikt by
+  nie zauważył, gdyby stało.
+- **Brak wspólnej atrapy kształtował API produkcyjne.** `PortfolioSummaryMapper.priceOf` ma
+  komentarz, że `find` nie wszedł do kontraktu, bo *„a second one would have to be honoured by
+  every stub and mock that already implements it"*. Decyzja projektowa podjęta z powodu duplikacji
+  w testach.
+
+**Reguła:** modul `-api` dostaje też atrapę swojego kontraktu, w `src/test` i publikowaną jako
+`test-jar`. Właściciel kontraktu jest właścicielem jego atrapy. Atrapa powinna **delegować** do
+kodu produkcyjnego wszystko, co produkcja już implementuje, i decydować tylko o tym, czego w
+produkcji nie ma (tu: co znaczy brak ceny — stąd `strict()` i `asInProduction()`).
+
+### Wydzielenie implementacji blokował jeden plik konfiguracyjny
+
+`quotation/KafkaTopicConfig` trzymał trzy niezwiązane rzeczy, w tym **jedyny `KafkaAdmin` w całej
+aplikacji**. Konsekwencja, której nikt nie zapisał: topiki cashflow (`cash_flow`,
+`bank_data_ingestion`, `user_financial_profile`) powstawały tylko dlatego, że `vidulum-wealth` był
+na classpath. `NewTopic` bez admina jest cicho ignorowany, a broker ma
+`KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'`, więc pierwszym objawem byłby producent w timeout.
+
+Rozbicie, wykonane **przed** przenoszeniem plików i zweryfikowane osobnym pełnym buildem:
+
+| co | gdzie | dlaczego |
+|---|---|---|
+| `kafkaAdmin()` | `shared-kernel/shared/kafka/KafkaAdminConfig` | nie należy do żadnego modułu, potrzebują go wszystkie |
+| `user_created` topic + producer + template | `vidulum-app/user/infrastructure/UserCreatedKafkaConfig` | obok `UserCreatedEventEmitter` — i dokładnie tam, gdzie javadoc cashflow twierdził, że już jest |
+| consumer + containerFactory | `vidulum-wealth/pnl/infrastructure/UserCreatedConsumerConfig` | bliźniak konfiguracji cashflow; każdy słuchający przynosi własne fabryki |
+| `quotationService()` + providery | `vidulum-quotation/QuotationConfiguration` | odpowiednik `AddQuotationModule()` |
+
+**Reguła przy krokach 04 i 06:** najpierw rozbić konfigurację *w miejscu*, osobnym buildem, potem
+przenosić pliki. Tryb awarii wiringu Kafki jest cichy, a przy jednym wielkim PR nie wiadomo, która
+połowa zawiniła.
+
+### Co się nie potwierdziło
+
+**Zysk w minutach.** Sekcja 11 obiecywała, że blast radius zacznie nieść informację — i tak jest —
+ale czas builda wealth nie spadł: 1:15 przed i po. Quotation ma 33 testy, wealth 309. Przy tych
+rozmiarach cały zysk jest w tym, **co** build mówi, nie jak długo trwa.
+
+**Scope testowy nie zniknął.** `vidulum-wealth` i `vidulum-okx` mają `vidulum-quotation` w
+`<scope>test</scope>`: testy integracyjne sieją ceny przez `QuoteRestController`, a
+`OkxQuotationComponentTest` konstruuje prawdziwy `QuotationService`. Własność „nikt nie zależy od
+implementacji" dotyczy wyłącznie classpathu kompilacji. Żeby objęła też testy, harness musiałby
+publikować ceny na topic `quotes` albo przez `InMemoryQuotationApi` — osobne zadanie.
+
+### Pytania z sekcji 20, na które jest już odpowiedź
+
+- **Granulacja `DataCleaner`** (pytanie 4) — nieaktualne dla quotation: moduł nie ma kolekcji Mongo,
+  więc `WealthDataCleaner` był nietknięty. Pytanie wraca przy portfolio i pnl.
+- **`@AutoConfiguration` kontra component scan** (pytanie 5) — podział wykonany **bez** przejścia na
+  jawną rejestrację. `@SpringBootApplication` w `com.multi.vidulum` skanuje nowy jar bez żadnej
+  zmiany, pod warunkiem że `vidulum-app` go wciąga. Jawna rejestracja nie jest warunkiem podziału.
+
+### Co zostało otwarte po 02b
+
+1. **`QuoteFeedListener`** — `@KafkaListener` nadal na metodzie `QuotationService`. Po wydzieleniu
+   jest to już wyłącznie wewnętrzna sprawa quotation, więc nie blokuje niczego.
+2. **`ExchangeStatusRestController`** odpowiada na `/exchange/status`, a mieszka w quotation.
+   Konceptualnie należy do exchange; ruszenie go wciąga `exchange-api` w zakres.
+3. **Providery Binance/PM/Degiro/Exante** zostały w `vidulum-quotation`, choć kształtem są
+   identyczne z `OkxBrokerQuotationProvider`, który ma własny moduł. Wyjdą, gdy któraś giełda
+   dostanie własny adapter.
+4. **`FxRateSource`** nie wyszedł do kontraktu — nikt z zewnątrz go nie implementuje. Wyjdzie przy
+   drugim źródle kursów spoza modułu.
 
 ---
 

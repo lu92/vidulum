@@ -96,6 +96,16 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- The quotation implementation, for integration tests that seed prices through
+             QuoteRestController and for component tests that drive the real QuotationService.
+             Test scope only: nothing in src/main may see it. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- TestRestTemplate for the endpoint tests: the actor pattern needs a real HTTP client. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Registry of the exchanges this instance can connect to.
  *
- * <p>Adapters are collected from the context the same way {@code KafkaTopicConfig} collects
+ * <p>Adapters are collected from the context the same way {@code QuotationConfiguration} collects
  * quotation providers, so adding an exchange means adding a module rather than editing this one.
  * The registry is also the answer to "which exchanges are supported", which the list query needs
  * and the connect command needs anyway in order to reject an unknown broker.
