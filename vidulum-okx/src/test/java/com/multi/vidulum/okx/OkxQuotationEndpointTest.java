@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Proves the wiring the component test cannot reach: that the bean declared in
  * {@link OkxQuotationConfiguration} is collected into {@code List<BrokerQuotationProvider>} by
- * {@code KafkaTopicConfig#quotationService}, and that the REST path
+ * {@code QuotationConfiguration#quotationService}, and that the REST path
  * publish -> Kafka -> provider cache -> fetch works end to end for broker OKX.
  *
  * <p>Before this module existed, every one of these calls ended in

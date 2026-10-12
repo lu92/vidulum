@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Publishes the OKX quotation provider as a bean.
  *
- * <p>The registration itself happens in {@code KafkaTopicConfig#quotationService}, which injects
+ * <p>The registration itself happens in {@code QuotationConfiguration#quotationService}, which injects
  * {@code List<BrokerQuotationProvider>} and registers every bean it finds. Declaring the bean here
  * rather than there keeps {@code vidulum-wealth} free of any reference to OKX - a bean method in
  * wealth would make wealth depend on this module, which already depends on wealth.
