@@ -5,7 +5,7 @@ import com.multi.vidulum.common.events.UserCreatedEvent;
 import com.multi.vidulum.quotation.app.BinanceBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.DegiroBrokerQuotationProvider;
 import com.multi.vidulum.quotation.app.PMBrokerQuotationProvider;
-import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
+import com.multi.vidulum.quotation.api.BrokerQuotationProvider;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
 import org.apache.kafka.clients.admin.AdminClientConfig;

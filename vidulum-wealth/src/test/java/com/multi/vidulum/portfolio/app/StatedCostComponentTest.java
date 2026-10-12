@@ -12,8 +12,8 @@ import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.CostReconciliation;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
@@ -40,34 +40,11 @@ class StatedCostComponentTest {
     private static final Currency EUR = Currency.of("EUR");
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 
-    private final Map<String, Double> prices = new HashMap<>();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol).currentPrice(Price.one(symbol.getDestination().getId())).build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new AssertionError("test published no price for " + symbol.getId());
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol).currentPrice(Price.of(price, symbol.getDestination().getId())).build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    });
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
 
     private Portfolio onboarded() {
-        prices.put("BTC/EUR", 70_000.0);
+        quotes.publish("BTC/EUR", 70_000.0);
         return PortfolioFixture.portfolio()
                 .at(BROKER).denominatedIn("EUR")
                 .withUnknownCost("BTC", Quantity.of(1))

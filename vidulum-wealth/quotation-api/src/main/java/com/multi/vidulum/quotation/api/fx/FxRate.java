@@ -1,4 +1,4 @@
-package com.multi.vidulum.quotation.domain.fx;
+package com.multi.vidulum.quotation.api.fx;
 
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Price;

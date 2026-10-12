@@ -6,8 +6,13 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PriceOrigin;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.BrokerNotFoundException;
+import com.multi.vidulum.quotation.api.BrokerQuotationProvider;
+import com.multi.vidulum.quotation.api.PriceChangedEvent;
+import com.multi.vidulum.quotation.api.QuotationApi;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
 import org.springframework.kafka.annotation.KafkaListener;
 
@@ -19,7 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-public class QuotationService {
+public class QuotationService implements QuotationApi {
 
     /**
      * The one currency every route goes through. Exchanges quote against the dollar and the
@@ -82,6 +87,7 @@ public class QuotationService {
      * needs no reconstruction. Only when it has nothing does the chain run, and only then does
      * anything else get consulted.
      */
+    @Override
     public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
         return find(broker, symbol).orElseThrow(() -> new QuoteNotFoundException(symbol));
     }
@@ -164,11 +170,13 @@ public class QuotationService {
         return one.isBefore(other) ? one : other;
     }
 
+    @Override
     public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
         return findBrokerOrRaiseException(broker, brokerProvider -> brokerProvider.fetchBasicInfoAboutAsset(ticker));
     }
 
-    public void registerAssetBasicInfo(Broker broker, AssetBasicInfo assetBasicInfo) {
+    @Override
+    public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
         findBrokerOrRaiseException(broker, brokerQuotationProvider -> {
             brokerQuotationProvider.registerBasicInfoAboutAsset(assetBasicInfo);
             return null;

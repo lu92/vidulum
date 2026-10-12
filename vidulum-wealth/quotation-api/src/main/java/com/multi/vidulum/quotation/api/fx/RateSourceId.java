@@ -1,4 +1,4 @@
-package com.multi.vidulum.quotation.domain.fx;
+package com.multi.vidulum.quotation.api.fx;
 
 /**
  * Who published a rate. Not a {@code Broker}: nobody keeps assets at the central bank, and a

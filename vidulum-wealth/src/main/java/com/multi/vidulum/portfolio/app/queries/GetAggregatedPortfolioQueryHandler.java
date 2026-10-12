@@ -3,8 +3,8 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Segment;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.QuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -24,7 +24,7 @@ import static java.util.stream.Collectors.toMap;
 public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggregatedPortfolioQuery, AggregatedPortfolio> {
 
     private final DomainPortfolioRepository repository;
-    private final QuoteRestClient quoteRestClient;
+    private final QuotationApi quoteRestClient;
 
     @Override
     public AggregatedPortfolio query(GetAggregatedPortfolioQuery query) {

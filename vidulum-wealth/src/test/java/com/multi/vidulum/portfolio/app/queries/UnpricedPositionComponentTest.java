@@ -12,13 +12,13 @@ import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioFixture;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import org.junit.jupiter.api.Test;
 
 import com.multi.vidulum.common.Segment;
@@ -51,38 +51,11 @@ class UnpricedPositionComponentTest {
     private static final Broker OKX = Broker.of("OKX");
     private static final Currency EUR = Currency.of("EUR");
 
-    private final Map<String, Double> prices = new HashMap<>();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol)
-                        .currentPrice(Price.one(symbol.getDestination().getId()))
-                        .build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new QuoteNotFoundException(symbol);
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(Price.of(price, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    });
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.asInProduction();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
 
     private void price(String symbol, double amount) {
-        prices.put(symbol, amount);
+        quotes.publish(symbol, amount);
     }
 
     private static CostBasis cost(double quantity, double price, String currency) {

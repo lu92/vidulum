@@ -19,8 +19,8 @@ import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -35,7 +35,7 @@ import com.multi.vidulum.portfolio_spec.app.commands.confirm.ConfirmPortfolioSpe
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommandHandler;
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQueryHandler;
 import com.multi.vidulum.portfolio_spec.domain.AnswerKind;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import org.junit.jupiter.api.Test;
@@ -78,37 +78,8 @@ class UnpricedHoldingAtOnboardingComponentTest {
             new InMemoryExchangeConnectionRepositoryForSpec();
 
     /** Only what the test publishes has a price; everything else refuses, as the live one does. */
-    private final Map<String, Double> prices = new HashMap<>();
 
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol)
-                        .currentPrice(Price.one(symbol.getDestination().getId()))
-                        .build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new QuoteNotFoundException(symbol);
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(Price.of(price, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.asInProduction();
     private final CommandGateway commandGateway = commandGateway();
 
     private CommandGateway commandGateway() {
@@ -154,8 +125,8 @@ class UnpricedHoldingAtOnboardingComponentTest {
      * against the euro at all.
      */
     private Portfolio onboardWithAnUnquotedHolding() {
-        prices.put("BTC/EUR", 50_000d);
-        prices.put("USD/EUR", 0.9);
+        quotes.publish("BTC/EUR", 50_000d);
+        quotes.publish("USD/EUR", 0.9);
         pendingConnection();
 
         List<PortfolioSpecDto.SnapshotPositionJson> snapshot = List.of(
@@ -234,8 +205,8 @@ class UnpricedHoldingAtOnboardingComponentTest {
      */
     @Test
     void shouldWithholdTheTotalWhenMostOfTheLedgerHasNoValue() {
-        prices.put("BTC/EUR", 50_000d);
-        prices.put("USD/EUR", 0.9);
+        quotes.publish("BTC/EUR", 50_000d);
+        quotes.publish("USD/EUR", 0.9);
         pendingConnection();
 
         List<PortfolioSpecDto.SnapshotPositionJson> snapshot = List.of(
@@ -262,9 +233,9 @@ class UnpricedHoldingAtOnboardingComponentTest {
     /** Nothing changes for an account every part of which can be priced. */
     @Test
     void shouldStillSumTheWholeLedgerWhenEverythingIsPriced() {
-        prices.put("BTC/EUR", 50_000d);
-        prices.put("USDC/EUR", 0.9);
-        prices.put("USD/EUR", 0.9);
+        quotes.publish("BTC/EUR", 50_000d);
+        quotes.publish("USDC/EUR", 0.9);
+        quotes.publish("USD/EUR", 0.9);
         pendingConnection();
 
         List<PortfolioSpecDto.SnapshotPositionJson> snapshot = List.of(

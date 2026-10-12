@@ -3,7 +3,7 @@ package com.multi.vidulum.pnl.infrastructure;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.ValuationRates;
-import com.multi.vidulum.quotation.domain.fx.FxRates;
+import com.multi.vidulum.quotation.api.fx.FxRateLookup;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +22,7 @@ public class FxValuationRates implements ValuationRates {
 
     private static final Currency PIVOT = Currency.of("USD");
 
-    private final FxRates fxRates;
+    private final FxRateLookup fxRates;
 
     @Override
     public Optional<ValuationBasis> basisFor(Currency currency) {

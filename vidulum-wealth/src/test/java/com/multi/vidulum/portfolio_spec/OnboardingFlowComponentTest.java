@@ -2,8 +2,8 @@ package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Currency;
@@ -113,27 +113,8 @@ class OnboardingFlowComponentTest {
      * Prices for the opening contribution (C12). Confirmation now needs them: it records what the
      * account was worth on arrival, and that cannot wait until the first read.
      */
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(50_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 50_000);
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 

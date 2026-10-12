@@ -3,9 +3,9 @@ package com.multi.vidulum.pnl;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.infrastructure.FxValuationRates;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;

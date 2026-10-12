@@ -29,9 +29,9 @@ import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler
 import com.multi.vidulum.portfolio.app.commands.update.ProcessTradeCommandHandler;
 import com.multi.vidulum.portfolio.app.listeners.OrderFilledEventListener;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
@@ -112,7 +112,6 @@ class PreciousMetalsLifecycleComponentTest {
     private final DomainPortfolioRepository portfolios = new InMemoryPortfolioRepository(clock);
     private final InMemoryOrders orders = new InMemoryOrders();
     private final InMemoryTrades trades = new InMemoryTrades();
-    private final Map<String, Double> prices = new HashMap<>();
 
     private final CommandGateway gateway = new CommandGateway();
     private PortfolioId portfolioId;
@@ -121,34 +120,7 @@ class PreciousMetalsLifecycleComponentTest {
 
     // --- wiring -----------------------------------------------------------------------------
 
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            // A currency against itself is one, as the real provider decided in B5.
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol).currentPrice(Price.one(symbol.getDestination().getId())).build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new AssertionError("no quote published for " + symbol.getId());
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(Price.of(price, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
     private final PortfolioSummaryMapper summaryMapper = new PortfolioSummaryMapper(quotes);
     private final LockAssetCommandHandler lockHandler = new LockAssetCommandHandler(portfolios, clock);
     private final UnlockAssetCommandHandler unlockHandler = new UnlockAssetCommandHandler(portfolios, clock);
@@ -168,8 +140,8 @@ class PreciousMetalsLifecycleComponentTest {
         gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectOrderFilledEmitter()));
         gateway.registerCommandHandler(new MakeTradeCommandHandler(trades, orders, new DirectTradeCapturedEmitter()));
 
-        prices.put("XAU/USD", 1800.0);
-        prices.put("XAG/USD", 25.0);
+        quotes.publish("XAU/USD", 1800.0);
+        quotes.publish("XAG/USD", 25.0);
 
         Portfolio created = gateway.send(CreateEmptyPortfolioCommand.builder()
                 .portfolioId(PortfolioId.generate())
@@ -232,7 +204,7 @@ class PreciousMetalsLifecycleComponentTest {
     }
 
     private void quote(String symbol, double price) {
-        prices.put(symbol, price);
+        quotes.publish(symbol, price);
     }
 
     /** A purchase from a dealer: no order, only a fill. */

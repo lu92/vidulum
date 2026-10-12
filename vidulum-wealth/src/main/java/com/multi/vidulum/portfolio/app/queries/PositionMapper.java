@@ -3,7 +3,7 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.QuotationApi;
 import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ import static java.util.stream.Collectors.toList;
 @AllArgsConstructor
 public class PositionMapper {
 
-    private final QuoteRestClient quoteRestClient;
+    private final QuotationApi quoteRestClient;
 
     public PortfolioDto.OpenedPositionsJson map(OpenedPositions openedPositions) {
         List<PortfolioDto.PositionSummaryJson> portfolioSummaries = openedPositions

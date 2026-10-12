@@ -1,8 +1,8 @@
 package com.multi.vidulum.quotation.app;
 
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.quotation.domain.PriceChangedEvent;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ public class QuoteRestController {
                 .segment(Segment.of(assetBasicInfoJson.getSegment()))
                 .tags(assetBasicInfoJson.getTags())
                 .build();
-        quotationService.registerAssetBasicInfo(Broker.of(broker), assetBasicInfo);
+        quotationService.registerBasicInfoAboutAsset(Broker.of(broker), assetBasicInfo);
     }
 
 //    @GetMapping(value = "/{broker}/{ticker}/basic-info")

@@ -3,8 +3,8 @@ package com.multi.vidulum.pnl.infrastructure.entities;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import lombok.Builder;
 import lombok.Value;
 

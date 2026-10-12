@@ -11,8 +11,8 @@ import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
@@ -41,34 +41,11 @@ class WealthChangeComponentTest {
     private static final Broker BROKER = Broker.of("OKX");
     private static final Currency EUR = Currency.of("EUR");
 
-    private final Map<String, Double> prices = new HashMap<>();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol).currentPrice(Price.one(symbol.getDestination().getId())).build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new AssertionError("test published no price for " + symbol.getId());
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol).currentPrice(Price.of(price, symbol.getDestination().getId())).build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    });
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
 
     private void price(String symbol, double amount) {
-        prices.put(symbol, amount);
+        quotes.publish(symbol, amount);
     }
 
     private PortfolioDto.PortfolioSummaryJson summaryOf(Portfolio portfolio) {

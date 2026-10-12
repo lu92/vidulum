@@ -15,8 +15,8 @@ import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
@@ -49,31 +49,8 @@ class RealisedResultComponentTest {
     private static final Currency EUR = Currency.of("EUR");
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 
-    private final Map<String, Double> prices = new HashMap<>();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            if (symbol.getOrigin().equals(symbol.getDestination())) {
-                return AssetPriceMetadata.builder()
-                        .symbol(symbol).currentPrice(Price.one(symbol.getDestination().getId())).build();
-            }
-            Double price = prices.get(symbol.getId());
-            if (price == null) {
-                throw new AssertionError("test published no price for " + symbol.getId());
-            }
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol).currentPrice(Price.of(price, symbol.getDestination().getId())).build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    });
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
 
     private static Portfolio holding(String ticker, double quantity, Double knownCostPrice, double cash) {
         PortfolioFixture fixture = PortfolioFixture.portfolio().at(BROKER).denominatedIn("EUR");
@@ -104,8 +81,8 @@ class RealisedResultComponentTest {
     private PortfolioDto.PortfolioSummaryJson summaryOf(Portfolio portfolio) {
         // Reading a portfolio values whatever is still held, so anything left over needs a price.
         // The settled result never did — that is the point of the measure.
-        prices.putIfAbsent("BTC/EUR", 70_000.0);
-        prices.putIfAbsent("XRP/EUR", 2.0);
+        quotes.publish("BTC/EUR", 70_000.0);
+        quotes.publish("XRP/EUR", 2.0);
         return mapper.map(portfolio, EUR);
     }
 
@@ -151,7 +128,7 @@ class RealisedResultComponentTest {
 
     @Test
     void shouldSayWhenNothingHasBeenSold() {
-        prices.put("BTC/EUR", 70_000.0);
+        quotes.publish("BTC/EUR", 70_000.0);
         Portfolio portfolio = holding("BTC", 1, 40_000.0, 0);
 
         PortfolioDto.PortfolioSummaryJson summary = summaryOf(portfolio);
@@ -271,7 +248,7 @@ class RealisedResultComponentTest {
     /** It answers a different question from the gain on what is still held. */
     @Test
     void shouldStandBesideTheUnrealisedFigureWithoutReplacingIt() {
-        prices.put("BTC/EUR", 70_000.0);
+        quotes.publish("BTC/EUR", 70_000.0);
         Portfolio portfolio = holding("BTC", 2, 40_000.0, 0);
 
         sell(portfolio, "trade-1", "BTC", SubName.traded(), 1, 60_000);
@@ -297,7 +274,7 @@ class RealisedResultComponentTest {
      */
     @Test
     void shouldNotSubtractOneCurrencyFromAnother() {
-        prices.put("USD/EUR", 0.9);
+        quotes.publish("USD/EUR", 0.9);
         Portfolio portfolio = PortfolioFixture.portfolio()
                 .at(BROKER).denominatedIn("EUR")
                 .with("XAU", Quantity.of(1), CostBasis.of(

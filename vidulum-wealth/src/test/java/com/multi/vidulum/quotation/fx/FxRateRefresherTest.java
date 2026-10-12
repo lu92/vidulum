@@ -3,10 +3,10 @@ package com.multi.vidulum.quotation.fx;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.quotation.app.FxRateRefresher;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRateSource;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;

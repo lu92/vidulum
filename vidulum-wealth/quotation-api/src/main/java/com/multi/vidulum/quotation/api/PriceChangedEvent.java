@@ -1,4 +1,4 @@
-package com.multi.vidulum.quotation.domain;
+package com.multi.vidulum.quotation.api;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Price;

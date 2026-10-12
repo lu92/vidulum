@@ -1,6 +1,8 @@
 package com.multi.vidulum.quotation.domain.fx;
 
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.quotation.api.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRateLookup;
 import com.multi.vidulum.common.Symbol;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link FxRate#asOf()}, so staleness is visible rather than enforced here.
  */
 @Slf4j
-public class FxRates {
+public class FxRates implements FxRateLookup {
 
     private final ConcurrentHashMap<Symbol, FxRate> known = new ConcurrentHashMap<>();
 
@@ -40,6 +42,7 @@ public class FxRates {
      * EUR/EUR}), and answering it here would invent a moment and a source for a fact that has
      * neither.
      */
+    @Override
     public Optional<FxRate> rateOf(Currency base, Currency quote) {
         if (base.equals(quote)) {
             throw new IllegalArgumentException(

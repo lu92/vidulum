@@ -16,8 +16,8 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.QuotationApi;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -90,7 +90,7 @@ public class ConfirmPortfolioSpecCommandHandler
      * fails instead of the first read. That is the better failure: no portfolio beats one that
      * cannot be read.
      */
-    private final QuoteRestClient quoteRestClient;
+    private final QuotationApi quoteRestClient;
     /**
      * The exchange module's handler, injected directly rather than reached through
      * {@code CommandGateway}.
@@ -299,7 +299,7 @@ public class ConfirmPortfolioSpecCommandHandler
     /**
      * The price of one pair, where its absence is an answer rather than a failure.
      *
-     * <p>Wrapped here rather than widened into {@code QuoteRestClient}, for the reason C16 found:
+     * <p>Wrapped here rather than widened into {@code QuotationApi}, for the reason C16 found:
      * a second method on that port would be a default one, and a mock stubbing {@code fetch} would
      * silently answer "no price" to everything.
      */

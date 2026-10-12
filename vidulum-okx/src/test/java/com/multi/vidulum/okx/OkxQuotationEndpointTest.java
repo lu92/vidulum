@@ -2,7 +2,7 @@ package com.multi.vidulum.okx;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
+import com.multi.vidulum.quotation.api.BrokerQuotationProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;

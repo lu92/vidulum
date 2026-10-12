@@ -3,9 +3,9 @@ package com.multi.vidulum.portfolio.app.queries;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.QuotationApi;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
@@ -37,7 +37,7 @@ import static java.util.stream.Collectors.toMap;
 @AllArgsConstructor
 public class PortfolioSummaryMapper {
 
-    private final QuoteRestClient quoteRestClient;
+    private final QuotationApi quoteRestClient;
 
     public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
         Broker broker = portfolio.getBroker();
@@ -533,7 +533,7 @@ public class PortfolioSummaryMapper {
     /**
      * The price of one pair, where its absence is an answer rather than a failure (task C16).
      *
-     * <p>Wrapped here rather than widened into {@link QuoteRestClient}: the port has one way of
+     * <p>Wrapped here rather than widened into {@link QuotationApi}: the port has one way of
      * asking, and a second one would have to be honoured by every stub and mock that already
      * implements it — several of which would then silently answer "no price" to everything.
      */

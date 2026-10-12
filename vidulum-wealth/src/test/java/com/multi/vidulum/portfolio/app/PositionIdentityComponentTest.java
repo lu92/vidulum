@@ -10,8 +10,8 @@ import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import org.junit.jupiter.api.Test;
 
@@ -33,26 +33,9 @@ class PositionIdentityComponentTest {
     private static final Broker BROKER = Broker.of("OKX");
     private static final Currency EUR = Currency.of("EUR");
 
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(70_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    });
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 70_000);
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
 
     @Test
     void shouldSayWhichPositionEachRowIs() {

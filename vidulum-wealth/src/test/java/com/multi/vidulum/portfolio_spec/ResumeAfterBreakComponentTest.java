@@ -21,8 +21,8 @@ import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.portfolio_spec.app.PortfolioSpecDto;
@@ -84,27 +84,8 @@ class ResumeAfterBreakComponentTest {
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
 
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(50_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 50_000);
     private final CommandGateway commandGateway = commandGateway();
 
     private CommandGateway commandGateway() {
