@@ -2,7 +2,7 @@ package com.multi.vidulum.quotation.app;
 
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRateSource;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
 import lombok.AllArgsConstructor;

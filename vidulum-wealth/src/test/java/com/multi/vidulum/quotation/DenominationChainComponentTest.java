@@ -15,14 +15,13 @@ import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioFixture;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
-import com.multi.vidulum.portfolio.infrastructure.QuoteRestClientAdapter;
-import com.multi.vidulum.quotation.domain.BrokerQuotationProvider;
-import com.multi.vidulum.quotation.domain.PriceChangedEvent;
+import com.multi.vidulum.quotation.api.BrokerQuotationProvider;
+import com.multi.vidulum.quotation.api.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
@@ -284,7 +283,7 @@ class DenominationChainComponentTest {
                 .build();
 
         PortfolioDto.PortfolioSummaryJson summary =
-                new PortfolioSummaryMapper(new QuoteRestClientAdapter(quotationService)).map(portfolio, PLN);
+                new PortfolioSummaryMapper(quotationService).map(portfolio, PLN);
 
         assertThat(summary.getCurrentValue()).isEqualTo(Money.of(382_777.50, "PLN"));
         assertThat(summary.getNetContributions())

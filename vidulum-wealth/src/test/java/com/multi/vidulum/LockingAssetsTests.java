@@ -1,6 +1,5 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
@@ -12,7 +11,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.quotation.app.QuotationDto;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import com.multi.vidulum.trading.app.TradingDto;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;

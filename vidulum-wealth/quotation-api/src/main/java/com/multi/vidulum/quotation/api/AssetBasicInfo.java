@@ -1,4 +1,4 @@
-package com.multi.vidulum.portfolio.domain;
+package com.multi.vidulum.quotation.api;
 
 import com.multi.vidulum.common.Segment;
 import com.multi.vidulum.common.Ticker;

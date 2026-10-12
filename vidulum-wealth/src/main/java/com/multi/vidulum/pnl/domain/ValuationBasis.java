@@ -1,7 +1,7 @@
 package com.multi.vidulum.pnl.domain;
 
 import com.multi.vidulum.common.Currency;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 
 import java.util.Objects;
 import java.util.Optional;

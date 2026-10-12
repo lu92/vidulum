@@ -2,9 +2,9 @@ package com.multi.vidulum.quotation.infrastructure.nbp;
 
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Price;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.domain.fx.FxRateSource;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import lombok.AllArgsConstructor;
 import org.springframework.web.client.HttpClientErrorException;
 

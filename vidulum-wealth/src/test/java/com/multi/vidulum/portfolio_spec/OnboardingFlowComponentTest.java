@@ -2,10 +2,7 @@ package com.multi.vidulum.portfolio_spec;
 
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
 import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.AssetPriceMetadata;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.PortfolioId;
@@ -113,27 +110,8 @@ class OnboardingFlowComponentTest {
      * Prices for the opening contribution (C12). Confirmation now needs them: it records what the
      * account was worth on arrival, and that cannot wait until the first read.
      */
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(50_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 50_000);
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 
@@ -145,7 +123,7 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specs, connections, portfolios, new PortfolioFactory(), quotes, confirmConnectionHandler,
+                specs, connections, portfolios, new PortfolioFactory(), quotationApiFake, confirmConnectionHandler,
                 new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }
@@ -271,7 +249,7 @@ class OnboardingFlowComponentTest {
     }
 
     /**
-     * The valuation currency belongs to the connection: quotes are published against it and must
+     * The valuation currency belongs to the connection: quotationApiFake are published against it and must
      * be cached before the portfolio exists. A confirmation that states another one has the wrong
      * picture and is told so, rather than silently getting a portfolio nothing can price.
      */

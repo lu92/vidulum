@@ -22,6 +22,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Quotation contract: what portfolio, pnl, risk and portfolio_spec may ask about prices.
+             The implementation (QuotationService, NBP, the caches) stays private to this module. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Exchange: PortfolioSpec closes onboarding by confirming the connection that started
              it. The direction was planned when vidulum-exchange was extracted (see the analysis,
              section 5.9) - exchange depends on shared-kernel only, precisely so that wealth can
@@ -117,6 +125,15 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- The quotation contract's own fake, for tests that need prices but are not about
+             prices. See InMemoryQuotationApi. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>

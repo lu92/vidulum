@@ -1,6 +1,5 @@
 package com.multi.vidulum.portfolio_spec;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
@@ -8,8 +7,6 @@ import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.SubName;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
@@ -21,8 +18,7 @@ import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -77,27 +73,8 @@ class SecondSynchronisationComponentTest {
             new InMemoryExchangeConnectionRepositoryForSpec();
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> ALICE;
 
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(50_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 50_000);
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 
@@ -108,7 +85,7 @@ class SecondSynchronisationComponentTest {
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, new ConfirmExchangeConnectionCommandHandler(connections, clock),
+                quotationApiFake, new ConfirmExchangeConnectionCommandHandler(connections, clock),
                 new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }

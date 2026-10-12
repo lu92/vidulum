@@ -6,13 +6,13 @@ import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.PriceOrigin;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
+import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.common.Segment;
-import com.multi.vidulum.quotation.domain.BrokerNotFoundException;
-import com.multi.vidulum.quotation.domain.PriceChangedEvent;
+import com.multi.vidulum.quotation.api.BrokerNotFoundException;
+import com.multi.vidulum.quotation.api.PriceChangedEvent;
 import com.multi.vidulum.quotation.domain.QuotationService;
 import com.multi.vidulum.quotation.domain.fx.FxRates;
-import com.multi.vidulum.quotation.domain.QuoteNotFoundException;
+import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -191,7 +191,7 @@ class OkxQuotationComponentTest {
                 .tags(List.of("crypto"))
                 .build();
 
-        quotationService.registerAssetBasicInfo(OKX, bitcoin);
+        quotationService.registerBasicInfoAboutAsset(OKX, bitcoin);
 
         assertThat(quotationService.fetchBasicInfoAboutAsset(OKX, Ticker.of("BTC")))
                 .usingRecursiveComparison()

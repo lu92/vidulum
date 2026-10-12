@@ -22,6 +22,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Quotation contract: what portfolio, pnl, risk and portfolio_spec may ask about prices.
+             The implementation (QuotationService, NBP, the caches) stays private to this module. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Exchange: the exchange-agnostic connection model. This module is one adapter on top
              of it, so the dependency points this way and never the other. -->
         <dependency>

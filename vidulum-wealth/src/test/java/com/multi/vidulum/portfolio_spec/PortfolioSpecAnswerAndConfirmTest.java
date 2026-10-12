@@ -6,17 +6,13 @@ import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.AssetPriceMetadata;
+import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
 import com.multi.vidulum.common.SubName;
-import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
@@ -92,27 +88,9 @@ class PortfolioSpecAnswerAndConfirmTest {
      * Prices for the opening contribution (C12). Confirmation now needs them: it records what the
      * account was worth on arrival, and that cannot wait until the first read.
      */
-    private final QuoteRestClient quotes = new QuoteRestClient() {
-        @Override
-        public AssetPriceMetadata fetch(Broker broker, Symbol symbol) {
-            return AssetPriceMetadata.builder()
-                    .symbol(symbol)
-                    .currentPrice(symbol.getOrigin().equals(symbol.getDestination())
-                            ? Price.one(symbol.getDestination().getId())
-                            : Price.of(50_000, symbol.getDestination().getId()))
-                    .build();
-        }
-
-        @Override
-        public AssetBasicInfo fetchBasicInfoAboutAsset(Broker broker, Ticker ticker) {
-            return AssetBasicInfo.notFound(ticker);
-        }
-
-        @Override
-        public void registerBasicInfoAboutAsset(Broker broker, AssetBasicInfo assetBasicInfo) {
-        }
-    };
-
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict()
+            .publish("BTC/EUR", 50_000)
+            .publish("USD/EUR", 0.9);
     private final CommandGateway commandGateway = commandGateway();
     private final QueryGateway queryGateway = queryGateway();
 
@@ -124,7 +102,7 @@ class PortfolioSpecAnswerAndConfirmTest {
         gateway.registerCommandHandler(new CancelPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, confirmConnectionHandler,
+                quotationApiFake, confirmConnectionHandler,
                 new RecordPortfolioSyncCommandHandler(connections)));
         return gateway;
     }
@@ -381,7 +359,7 @@ class PortfolioSpecAnswerAndConfirmTest {
                 .findById(PortfolioId.of(applied.portfolioId())).orElseThrow();
 
         PortfolioDto.PortfolioSummaryJson summary =
-                new PortfolioSummaryMapper(quotes).map(portfolio, Currency.of("EUR"));
+                new PortfolioSummaryMapper(quotationApiFake).map(portfolio, Currency.of("EUR"));
 
         assertThat(summary.getContributionStatus()).isEqualTo(ContributionStatus.COMPUTED);
         assertThat(summary.getNetContributions()).isEqualTo(Money.of(65_000, "EUR"));

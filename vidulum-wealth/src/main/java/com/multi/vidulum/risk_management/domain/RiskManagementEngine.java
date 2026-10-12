@@ -2,7 +2,7 @@ package com.multi.vidulum.risk_management.domain;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.QuoteRestClient;
+import com.multi.vidulum.quotation.api.QuotationApi;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.trading.app.TradingDto;
@@ -21,7 +21,7 @@ public class RiskManagementEngine {
 
     private final PortfolioRestClient portfolioRestClient;
     private final TradingRestClient tradingRestClient;
-    private final QuoteRestClient quoteRestClient;
+    private final QuotationApi quotationApi;
 
     public RiskManagementStatement accept(PortfolioId portfolioId) {
         PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(portfolioId);
@@ -131,7 +131,7 @@ public class RiskManagementEngine {
             return stopLoss.getPrice();
         } else {
             Symbol usdSymbol = Symbol.of(stopLoss.getSymbol().getOrigin(), Ticker.of("USD"));
-            AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, usdSymbol);
+            AssetPriceMetadata assetPriceMetadata = quotationApi.fetch(broker, usdSymbol);
             return assetPriceMetadata.getCurrentPrice();
         }
     }

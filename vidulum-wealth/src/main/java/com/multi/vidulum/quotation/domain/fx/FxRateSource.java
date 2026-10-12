@@ -1,6 +1,8 @@
 package com.multi.vidulum.quotation.domain.fx;
 
 import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.quotation.api.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 
 import java.util.Optional;
 

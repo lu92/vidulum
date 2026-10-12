@@ -17,8 +17,8 @@ import com.multi.vidulum.pnl.domain.ValuationRates;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
-import com.multi.vidulum.quotation.domain.fx.FxRate;
-import com.multi.vidulum.quotation.domain.fx.RateSourceId;
+import com.multi.vidulum.quotation.api.fx.FxRate;
+import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import com.multi.vidulum.trading.app.TradingDto;
 import org.junit.jupiter.api.Test;
 

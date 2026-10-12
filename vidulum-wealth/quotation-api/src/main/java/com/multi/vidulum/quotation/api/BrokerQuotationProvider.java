@@ -1,4 +1,4 @@
-package com.multi.vidulum.quotation.domain;
+package com.multi.vidulum.quotation.api;
 
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
@@ -6,7 +6,6 @@ import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.PriceOrigin;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.portfolio.domain.AssetBasicInfo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +15,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * The per-exchange half of quote lookup: a cache of what one broker has published, plus the two
+ * substitutions that are true for every exchange rather than for one.
+ *
+ * <p>An exchange's own module extends this and declares nothing but its broker identity — see
+ * {@code OkxBrokerQuotationProvider}. Everything a provider could get wrong is {@code final} here
+ * on purpose: the USD/USDT stand-in, the identity pair, and feeding the cache are rules of the
+ * whole system, not of one venue. They are {@code public} only because the service that drives
+ * them lives in another artifact, and {@code final} is what carries the protection that used to
+ * come from them being package-private — which guarded against providers in other packages while
+ * leaving one in this package free to override.
+ */
 @Slf4j
 @AllArgsConstructor
 public abstract class BrokerQuotationProvider {
@@ -25,7 +36,7 @@ public abstract class BrokerQuotationProvider {
     private final ConcurrentHashMap<Ticker, AssetBasicInfo> basicInfo = new ConcurrentHashMap<>();
 
 
-    void onPriceChange(PriceChangedEvent event) {
+    public final void onPriceChange(PriceChangedEvent event) {
         AssetPriceMetadata priceMetadata = AssetPriceMetadata.builder()
                 .symbol(event.getSymbol())
                 .currentPrice(event.getCurrentPrice())
@@ -44,7 +55,7 @@ public abstract class BrokerQuotationProvider {
         return Set.copyOf(cache.keySet());
     }
 
-    AssetPriceMetadata fetch(Symbol symbol) {
+    public final AssetPriceMetadata fetch(Symbol symbol) {
         return find(symbol).orElseThrow(() -> new QuoteNotFoundException(symbol));
     }
 
@@ -55,7 +66,7 @@ public abstract class BrokerQuotationProvider {
      * the denomination chain in {@code QuotationService} — is not made to catch an exception to
      * find out. Exhausting every route and only then refusing is that caller's job, not this one's.
      */
-    Optional<AssetPriceMetadata> find(Symbol symbol) {
+    public final Optional<AssetPriceMetadata> find(Symbol symbol) {
         // A currency against itself is one, by definition. Checked before the cache on purpose:
         // it is arithmetic, not market data, so nothing published should be able to contradict it.
         //
