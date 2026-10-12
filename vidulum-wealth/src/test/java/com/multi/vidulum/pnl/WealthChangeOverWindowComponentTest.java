@@ -14,7 +14,9 @@ import com.multi.vidulum.pnl.domain.PnlStatement;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.WealthChangeOverWindow;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.view.AggregatedPortfolioView;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
@@ -53,7 +55,7 @@ class WealthChangeOverWindowComponentTest {
      */
     private static final ZonedDateTime RECORDED = ZonedDateTime.parse("2022-01-31T01:00:00Z");
 
-    private PortfolioDto.PortfolioSummaryJson today = summary(120_000, 100_000d);
+    private PortfolioView today = summary(120_000, 100_000d);
     private PnlHistory history = historyWith();
 
     private final DomainPnlRepository repository = new DomainPnlRepository() {
@@ -80,44 +82,43 @@ class WealthChangeOverWindowComponentTest {
     };
 
     /** Only the read this measure needs; the rest of the interface is not this test's subject. */
-    private final PortfolioRestClient portfolios = new PortfolioRestClient() {
+    private final PortfolioModuleApi portfolios = new PortfolioModuleApi() {
         @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId) {
+        public PortfolioView get(PortfolioId portfolioId) {
             return today;
         }
 
         @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(
-                PortfolioId portfolioId, com.multi.vidulum.common.Currency denominatedIn) {
+        public PortfolioView get(PortfolioId portfolioId, com.multi.vidulum.common.Currency valuedIn) {
             // Answers what the test set up regardless of the currency asked for, which is how a
-            // mismatch between the two ends can be staged at all - the real client would convert.
+            // mismatch between the two ends can be staged at all - the real module would convert.
             return today;
         }
 
         @Override
-        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(
-                UserId userId, com.multi.vidulum.common.Currency denominatedIn) {
+        public AggregatedPortfolioView aggregate(
+                UserId owner, com.multi.vidulum.common.Currency valuedIn) {
             throw new UnsupportedOperationException("not needed here");
         }
 
         @Override
-        public PortfolioId createPortfolio(String name, UserId userId,
-                                           com.multi.vidulum.common.Broker broker,
-                                           com.multi.vidulum.common.Currency currency) {
+        public PortfolioId open(String name, UserId owner,
+                                com.multi.vidulum.common.Broker broker,
+                                com.multi.vidulum.common.Currency allowedDepositCurrency) {
             throw new UnsupportedOperationException("not needed here");
         }
 
         @Override
-        public void lockAsset(PortfolioId portfolioId, com.multi.vidulum.common.Ticker ticker,
-                              com.multi.vidulum.common.OrderId orderId,
-                              com.multi.vidulum.common.Quantity quantity) {
+        public void lock(PortfolioId portfolioId, com.multi.vidulum.common.Ticker ticker,
+                         com.multi.vidulum.common.OrderId orderId,
+                         com.multi.vidulum.common.Quantity quantity) {
             throw new UnsupportedOperationException("not needed here");
         }
 
         @Override
-        public void unlockAsset(PortfolioId portfolioId, com.multi.vidulum.common.Ticker ticker,
-                                com.multi.vidulum.common.OrderId orderId,
-                                com.multi.vidulum.common.Quantity quantity) {
+        public void unlock(PortfolioId portfolioId, com.multi.vidulum.common.Ticker ticker,
+                           com.multi.vidulum.common.OrderId orderId,
+                           com.multi.vidulum.common.Quantity quantity) {
             throw new UnsupportedOperationException("not needed here");
         }
     };
@@ -125,17 +126,17 @@ class WealthChangeOverWindowComponentTest {
     private final GetWealthChangeQueryHandler handler =
             new GetWealthChangeQueryHandler(repository, portfolios);
 
-    private static PortfolioDto.PortfolioSummaryJson summary(double value, Double contributed) {
+    private static PortfolioView summary(double value, Double contributed) {
         return summaryIn("EUR", value, contributed);
     }
 
-    private static PortfolioDto.PortfolioSummaryJson summaryIn(
+    private static PortfolioView summaryIn(
             String currency, double value, Double contributed) {
-        return PortfolioDto.PortfolioSummaryJson.builder()
-                .portfolioId(PORTFOLIO.getId())
-                .currentValue(Money.of(value, currency))
-                .netContributions(contributed == null ? null : Money.of(contributed, currency))
-                .build();
+        return new PortfolioView(
+                PORTFOLIO, ALICE, "Alice's", com.multi.vidulum.common.Broker.of("PM"),
+                Money.of(value, currency),
+                contributed == null ? null : Money.of(contributed, currency),
+                null, null, java.util.List.of());
     }
 
     private PnlHistory historyWith(PnlStatement... statements) {

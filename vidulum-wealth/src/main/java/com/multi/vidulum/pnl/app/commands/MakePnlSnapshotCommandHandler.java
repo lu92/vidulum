@@ -2,13 +2,14 @@ package com.multi.vidulum.pnl.app.commands;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.pnl.domain.*;
-import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.api.view.AggregatedPortfolioView;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.common.UserNotFoundException;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,7 @@ import static java.util.stream.Collectors.toList;
 @AllArgsConstructor
 public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnapshotCommand, PnlHistory> {
 
-    private final PortfolioRestClient portfolioRestClient;
+    private final PortfolioModuleApi portfolioApi;
     private final TradingRestClient tradingRestClient;
     private final DomainPnlRepository pnlRepository;
     private final ValuationRates valuationRates;
@@ -46,8 +47,8 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
     private PnlStatement createProfitAndLossStatement(
             UserId userId, Range<ZonedDateTime> dateTimeRange, Currency valuationCurrency) {
 
-        PortfolioDto.AggregatedPortfolioSummaryJson aggregatedPortfolio =
-                portfolioRestClient.getAggregatedPortfolio(userId, valuationCurrency);
+        AggregatedPortfolioView aggregatedPortfolio =
+                portfolioApi.aggregate(userId, valuationCurrency);
 
         // Recorded beside the figures, not derived from them later: what a currency was worth last
         // Tuesday cannot be looked up on Friday, so a rate not written down now is lost. Absent
@@ -60,25 +61,24 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                 tradingRestClient.getTradesInDateRange(userId, dateTimeRange).stream()
                         .collect(groupingBy(TradingDto.TradeSummaryJson::getPortfolioId));
 
-        List<PnlPortfolioStatement> pnlPortfolioStatements = aggregatedPortfolio.getPortfolioIds().stream()
+        List<PnlPortfolioStatement> pnlPortfolioStatements = aggregatedPortfolio.portfolioIds().stream()
                 .map(portfolioId -> {
 
                     // get portfolio stats
                     // In the statement's currency, not each portfolio's own. They used to be read
                     // in whatever currency each portfolio settled in while the total beside them
                     // was in dollars, so one statement mixed currencies and nothing said so.
-                    PortfolioDto.PortfolioSummaryJson portfolioSummaryJson =
-                            portfolioRestClient.getPortfolio(PortfolioId.of(portfolioId), valuationCurrency);
+                    PortfolioView portfolio = portfolioApi.get(portfolioId, valuationCurrency);
 
                     // calculate trades from given period of time
-                    List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId, List.of()));
+                    List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId.getId(), List.of()));
 
                     return PnlPortfolioStatement.builder()
-                            .portfolioId(PortfolioId.of(portfolioSummaryJson.getPortfolioId()))
-                            .netContributions(portfolioSummaryJson.getNetContributions())
-                            .currentValue(portfolioSummaryJson.getCurrentValue())
-                            .totalUnrealisedProfit(portfolioSummaryJson.getUnrealisedProfit())
-                            .pctUnrealisedProfit(portfolioSummaryJson.getPctUnrealisedProfit())
+                            .portfolioId(portfolio.portfolioId())
+                            .netContributions(portfolio.netContributions())
+                            .currentValue(portfolio.currentValue())
+                            .totalUnrealisedProfit(portfolio.unrealisedProfit())
+                            .pctUnrealisedProfit(portfolio.pctUnrealisedProfit())
                             .executedTrades(tradeDetails)
                             .build();
                 })
@@ -86,10 +86,10 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
 
         return PnlStatement.builder()
                 .basis(basis)
-                .netContributions(aggregatedPortfolio.getNetContributions())
-                .currentValue(aggregatedPortfolio.getCurrentValue())
-                .totalUnrealisedProfit(aggregatedPortfolio.getTotalUnrealisedProfit())
-                .pctUnrealisedProfit(aggregatedPortfolio.getPctUnrealisedProfit())
+                .netContributions(aggregatedPortfolio.netContributions())
+                .currentValue(aggregatedPortfolio.currentValue())
+                .totalUnrealisedProfit(aggregatedPortfolio.totalUnrealisedProfit())
+                .pctUnrealisedProfit(aggregatedPortfolio.pctUnrealisedProfit())
                 .pnlPortfolioStatements(pnlPortfolioStatements)
                 .dateTime(ZonedDateTime.now(clock))
                 .build();

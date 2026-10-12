@@ -28,12 +28,14 @@ import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler
 import com.multi.vidulum.portfolio.app.commands.update.ProcessTradeCommandHandler;
 import com.multi.vidulum.portfolio.app.listeners.OrderFilledEventListener;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
+import com.multi.vidulum.portfolio.api.error.NotSufficientBalance;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.app.queries.GetPortfolioQueryHandler;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
@@ -122,18 +124,23 @@ class PreciousMetalsLifecycleComponentTest {
     private final LockAssetCommandHandler lockHandler = new LockAssetCommandHandler(portfolios, clock);
     private final UnlockAssetCommandHandler unlockHandler = new UnlockAssetCommandHandler(portfolios, clock);
 
-    /** Stands in for {@code PortfolioRestClientImpl}, which lives in another module. */
-    private final PortfolioRestClient portfolioClient = new ComponentPortfolioRestClient();
+    /**
+     * The real contract implementation. It used to be a thirty-eight line inner class, because the
+     * only implementation lived in {@code vidulum-app} and a component test could not reach it.
+     */
+    private final QueryGateway queries = new QueryGateway();
+    private final PortfolioModuleApi portfolioApi = new PortfolioModuleApiImpl(gateway, queries, summaryMapper);
 
     @BeforeEach
     void wire() {
+        queries.registerQueryHandler(new GetPortfolioQueryHandler(portfolios));
         gateway.registerCommandHandler(new CreateEmptyPortfolioCommandHandler(portfolios, new PortfolioFactory()));
         gateway.registerCommandHandler(new DepositMoneyCommandHandler(portfolios));
         gateway.registerCommandHandler(lockHandler);
         gateway.registerCommandHandler(unlockHandler);
         gateway.registerCommandHandler(new ProcessTradeCommandHandler(portfolios));
-        gateway.registerCommandHandler(new PlaceOrderCommandHandler(orders, new OrderFactory(), portfolioClient));
-        gateway.registerCommandHandler(new CancelOrderCommandHandler(orders, portfolioClient));
+        gateway.registerCommandHandler(new PlaceOrderCommandHandler(orders, new OrderFactory(), portfolioApi));
+        gateway.registerCommandHandler(new CancelOrderCommandHandler(orders, portfolioApi));
         gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectOrderFilledEmitter()));
         gateway.registerCommandHandler(new MakeTradeCommandHandler(trades, orders, new DirectTradeCapturedEmitter()));
 
@@ -533,7 +540,7 @@ class PreciousMetalsLifecycleComponentTest {
      * A portfolio that settles in something other than dollars can still place an order.
      *
      * <p>The balance check ahead of an order reads the portfolio through
-     * {@code PortfolioRestClient}, and every implementation valued it in USD whatever it actually
+     * {@code PortfolioModuleApi}, and every implementation valued it in USD whatever it actually
      * settled in. A zloty portfolio was compared against dollar amounts and needed USD quotationApiFake for
      * assets nobody had priced that way — so it could not trade at all.
      */
@@ -651,39 +658,4 @@ class PreciousMetalsLifecycleComponentTest {
         }
     }
 
-    private final class ComponentPortfolioRestClient implements PortfolioRestClient {
-        @Override
-        public PortfolioId createPortfolio(String name, UserId userId, Broker broker, Currency currency) {
-            throw new UnsupportedOperationException("the walk creates its portfolio through the gateway");
-        }
-
-        @Override
-        public void lockAsset(PortfolioId id, Ticker ticker, OrderId orderId, Quantity quantity) {
-            lockHandler.handle(com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommand.builder()
-                    .portfolioId(id).ticker(ticker).orderId(orderId).quantity(quantity).build());
-        }
-
-        @Override
-        public void unlockAsset(PortfolioId id, Ticker ticker, OrderId orderId, Quantity quantity) {
-            unlockHandler.handle(com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommand.builder()
-                    .portfolioId(id).ticker(ticker).orderId(orderId).quantity(quantity).build());
-        }
-
-        @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId id) {
-            Portfolio portfolio = portfolios.findById(id).orElseThrow();
-            return summaryMapper.map(portfolio, portfolio.getAllowedDepositCurrency());
-        }
-
-        @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId id, Currency denominatedIn) {
-            return summaryMapper.map(portfolios.findById(id).orElseThrow(), denominatedIn);
-        }
-
-        @Override
-        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(
-                UserId userId, Currency denominatedIn) {
-            throw new UnsupportedOperationException("not part of this walk - see C6");
-        }
-    }
 }

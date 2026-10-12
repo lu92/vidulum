@@ -6,7 +6,7 @@ import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class CancelOrderCommandHandler implements CommandHandler<CancelOrderCommand, Order> {
 
     private final DomainOrderRepository orderRepository;
-    private final PortfolioRestClient portfolioRestClient;
+    private final PortfolioModuleApi portfolioApi;
 
     @Override
     public Order handle(CancelOrderCommand command) {
@@ -47,7 +47,7 @@ public class CancelOrderCommandHandler implements CommandHandler<CancelOrderComm
         Quantity quantityToUnlocked = order.isPurchaseAttempt()
                 ? Quantity.of(order.getTotal().getAmount().doubleValue())
                 : order.getParameters().quantity();
-        portfolioRestClient.unlockAsset(
+        portfolioApi.unlock(
                 order.getPortfolioId(),
                 ticker,
                 order.getOrderId(),

@@ -9,7 +9,7 @@ import com.multi.vidulum.portfolio.app.PortfolioRestController;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.quotation.app.QuoteRestController;
 import com.multi.vidulum.risk_management.app.RiskManagementRestController;
 import com.multi.vidulum.pnl.app.PnlRestController;
@@ -130,7 +130,7 @@ public abstract class WealthIntegrationTest {
     protected OrderFactory orderFactory;
 
     @Autowired
-    protected PortfolioRestClient portfolioRestClient;
+    protected PortfolioModuleApi portfolioApi;
 
     @Autowired
     protected TestAuthenticatedUser testAuthenticatedUser;
@@ -183,10 +183,10 @@ public abstract class WealthIntegrationTest {
     }
 
     /**
-     * Creates a portfolio directly via PortfolioRestClient (bypasses user domain).
+     * Creates a portfolio directly through the portfolio module (bypasses the user domain).
      */
     protected TestPortfolioSummary registerPortfolio(String name, String broker, String userId, String currency) {
-        PortfolioId portfolioId = portfolioRestClient.createPortfolio(
+        PortfolioId portfolioId = portfolioApi.open(
                 name, new UserId(userId), Broker.of(broker), Currency.of(currency));
 
         // Creating a portfolio also means acting as its owner from here on. Ownership is now

@@ -2,14 +2,14 @@ package com.multi.vidulum.trading.app.commands.orders.execute;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.portfolio.app.PortfolioDto;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.Trade;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCommand, OrderExecutionSummary> {
     private final DomainOrderRepository orderRepository;
     private final MakeTradeCommandHandler makeTradeCommandHandler;
-    private final PortfolioRestClient portfolioRestClient;
+    private final PortfolioModuleApi portfolioApi;
 
     @Override
     public OrderExecutionSummary handle(ExecuteOrderCommand command) {
@@ -31,10 +31,10 @@ public class ExecuteOrderCommandHandler implements CommandHandler<ExecuteOrderCo
             throw new IllegalArgumentException(String.format("Order [%s] is not open!", order.getOriginOrderId()));
         }
 
-        PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(order.getPortfolioId());
+        PortfolioView portfolio = portfolioApi.get(order.getPortfolioId());
 
         MakeTradeCommand makeTradeCommand = MakeTradeCommand.builder()
-                .userId(UserId.of(portfolio.getUserId()))
+                .userId(portfolio.owner())
                 .portfolioId(order.getPortfolioId())
                 .originTradeId(command.getOriginTradeId())
                 .orderId(order.getOrderId())

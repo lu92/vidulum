@@ -22,6 +22,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Portfolio contract: what trading, pnl, risk and the user domain may ask of a
+             portfolio. The aggregate, the handlers and the web DTO stay private to this module. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Quotation contract: what portfolio, pnl, risk and portfolio_spec may ask about prices.
              The implementation (QuotationService, NBP, the caches) stays private to this module. -->
         <dependency>

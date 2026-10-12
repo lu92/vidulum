@@ -1,7 +1,7 @@
 package com.multi.vidulum.portfolio.app.queries;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.*;
-import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;

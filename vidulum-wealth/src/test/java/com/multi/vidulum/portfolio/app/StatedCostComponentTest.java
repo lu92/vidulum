@@ -138,6 +138,6 @@ class StatedCostComponentTest {
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> portfolio.stateCostOfPosition(
                         Ticker.of("ETH"), SubName.transferredIn(), Price.of(2_000, "EUR"), NOW))
-                .isInstanceOf(com.multi.vidulum.portfolio.domain.AssetNotFoundException.class);
+                .isInstanceOf(com.multi.vidulum.portfolio.api.error.AssetNotFoundException.class);
     }
 }

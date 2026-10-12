@@ -15,7 +15,7 @@ import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionE
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
-import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
 import com.multi.vidulum.quotation.api.QuotationApi;
 import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;

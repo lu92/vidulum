@@ -36,6 +36,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- The portfolio contract: the user domain opens a portfolio through it. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- The only module that wires the quotation implementation into a running application. -->
         <dependency>
             <groupId>com.multi</groupId>
