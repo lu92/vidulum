@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | kroki **02 wykonany** (VID-199, w masterze) i **02b wykonany** (VID-200, gałąź) — reszta analiza + design |
+| **Status** | kroki **02**, **02b** i **04** wykonane i w masterze (VID-199, VID-198/5f94715, VID-200/2648036) — reszta analiza + design |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
-| **Data** | 2026-10-12, zaktualizowany 2026-10-13 |
+| **Data** | 2026-10-12, zaktualizowany 2026-10-13 (po kroku 04) |
 
 ---
 
@@ -1116,8 +1116,8 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 02 | **`vidulum-quotation-api`** (sekcja 13) — ✅ **VID-199**, w masterze | `AssetBasicInfo` zerwało zależność quotation → portfolio, `QuotationApi` usunęło `QuoteRestClient` i jego adapter. Kontrakt wyszedł na **trzy metody**, nie sześć — patrz sekcja 21 |
 | 02b | **`vidulum-quotation` jako artefakt** — ✅ **VID-200**, gałąź | Wymagało najpierw rozbicia `KafkaTopicConfig`; szczegóły w sekcji 21 |
 | 03 | **`DataCleaner` per poddomena** — *nie zrobione* | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
-| 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** — *następny krok* | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
-| 05 | **Eventy do modułów `-api` producentów** | P4. Wymaga ustalenia właściciela każdego z siedmiu eventów — przy `*UnifiedEvent` z cashflow to osobna rozmowa, bo te są zbiorcze |
+| 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** — ✅ **wykonane**, patrz 21 | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
+| 05 | **Eventy do modułów `-api` producentów** — *następny krok* | P4. Wymaga ustalenia właściciela każdego z siedmiu eventów — przy `*UnifiedEvent` z cashflow to osobna rozmowa, bo te są zbiorcze |
 | 06 | **`vidulum-trading-api` i rozcięcie cyklu portfolio ↔ trading** | P2. Dopiero tu wychodzi, czy podział poddomen jest dobry — najlepszy moment, żeby sprawdzić, czy `trading` potrzebuje całego `PortfolioDto`, czy tylko salda jednego aktywa |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
@@ -1179,7 +1179,7 @@ Repo jest materiałem szkoleniowym i w kilku miejscach to widać.
 
 ---
 
-## 21. Co pokazało wykonanie kroków 02 i 02b
+## 21. Co pokazało wykonanie kroków 02, 02b i 04
 
 Sekcje 1–20 to analiza sprzed implementacji. Ta jest po — i notuje tylko to, czego analiza nie
 przewidziała. Trzy rzeczy wyszły dopiero przy kontakcie z kodem, dwie z nich zmieniły projekt.
@@ -1294,7 +1294,183 @@ publikować ceny na topic `quotes` albo przez `InMemoryQuotationApi` — osobne 
   jawną rejestrację. `@SpringBootApplication` w `com.multi.vidulum` skanuje nowy jar bez żadnej
   zmiany, pod warunkiem że `vidulum-app` go wciąga. Jawna rejestracja nie jest warunkiem podziału.
 
-### Co zostało otwarte po 02b
+### Krok 04: kontrakt odpowiadał publicznemu API, ale DTO już nie
+
+Reguła z kroku 02 — licz wywołania, nie metody — tu nie dała redukcji. Wszystkie sześć metod
+`PortfolioRestClient` ma realnych wołających, więc `PortfolioModuleApi` ma sześć metod. Redukcja
+wyszła **po stronie danych**:
+
+| | było (web DTO) | jest (kontrakt) |
+|---|---|---|
+| `PortfolioView` | 21 pól `PortfolioSummaryJson` | **9** |
+| `PositionView` | 16 pól `AssetSummaryJson` | **7** |
+| `AggregatedPortfolioView` | 18 pól | **6** |
+
+Dwanaście pominiętych pól w widoku portfela to statusy wyceny i kontrybucji, współczynniki pokrycia,
+lista niewycenionych aktywów i figury realised/wealth-change — istnieją, żeby `GET /portfolio`
+mogło powiedzieć właścicielowi, **jak pewna jest odpowiedź**. Nikt poza tym ekranem ich nigdy nie
+czytał, a kontrakt, który by je niósł, zamieniałby każdą zmianę tego ekranu w zmianę jednostki
+kompilacji tradingu.
+
+Identyfikatory w kontrakcie są value objectami, nie Stringami. `PortfolioId.of(portfolio.getPortfolioId())`
+występowało w trzech konsumentach i zniknęło.
+
+### Gateway tworzy cykl z własną konstrukcją — i to tłumaczy, czemu impl siedział w app
+
+`commandGateway` powstaje z `List<CommandHandler<?, ?>>`; wśród nich jest
+`MakePnlSnapshotCommandHandler`, który potrzebuje `PortfolioModuleApi`; implementacja kontraktu
+potrzebuje gatewaya. Spring przerywa to jako `BeanCurrentlyInCreationException` i **38 testów
+integracyjnych wealth nie wstało**.
+
+Stary `PortfolioRestClientImpl` nie miał tego problemu, bo wstrzykiwał pięć konkretnych handlerów —
+czyli **ucieczka od cyklu była niezapisanym powodem, dla którego implementacja mieszkała w
+`vidulum-app`**. Usunięty `TestPortfolioRestClient` miał `@Lazy CommandGateway`; ten modyfikator był
+jedynym śladem problemu w całym repo.
+
+Rozwiązanie: jawny konstruktor z `@Lazy` na obu gatewayach. Proxy rozwiązywane przy pierwszym
+wywołaniu jest mniejszym ustępstwem niż zależność od środka modułu.
+
+**Reguła przy kroku 06:** każdy `*ModuleApiImpl` oparty na gatewayach będzie miał ten cykl, jeśli
+dowolny handler w tym samym kontekście konsumuje jego kontrakt. Zakładać `@Lazy` od razu, nie po
+czerwonym buildzie.
+
+### Lekcja o atrapach z kroku 02 nie generalizuje się
+
+W kroku 02 trzynaście atrap powtarzało te same reguły produkcyjne i wspólny `InMemoryQuotationApi`
+był oczywisty. Napisałem więc analogiczny `InMemoryPortfolioModuleApi` — i **usunąłem go, bo nie
+miał użytkownika**:
+
+- `PreciousMetalsLifecycleComponentTest` używa teraz **prawdziwej** implementacji
+  (`new PortfolioModuleApiImpl(gateway, queries, summaryMapper)` — ten sam pakiet, więc
+  package-private wystarcza). Trzydziestoośmiolinijkowa klasa wewnętrzna istniała wyłącznie dlatego,
+  że jedyna implementacja była w innym module.
+- dwie atrapy w pnl **kodują asercje specyficzne dla testu**: `ValuationCurrencyComponentTest`
+  zapisuje, o którą walutę pytano (to jest jego temat) i rzuca `AssertionError`, gdy ktoś czyta
+  portfel w jego własnej walucie; `WealthChangeOverWindowComponentTest` celowo ignoruje walutę, żeby
+  zainscenizować rozjazd.
+
+**Reguła:** wspólna atrapa opłaca się, gdy doublów jest wiele i **powtarzają regułę produkcyjną**.
+Double, który jest nośnikiem asercji, nie jest duplikatem i nie ma czego zastąpić. Przy kroku 06
+sprawdzić to przed napisaniem atrapy, nie po.
+
+### Grupowanie kontraktu w podpakiety
+
+`vidulum-portfolio-api` ma `error/` (trzy wyjątki dziedziczące `BusinessException`) i `view/` (trzy
+recordy). `error` to słowo tego repo — shared-kernel ma `common/error`. `view`, nie `dto`, bo `dto`
+oznacza tu kształt JSON-a wystawiany przez kontroler (`PortfolioDto`, `QuotationDto`), a całym
+sensem kroku 04 było rozdzielenie tych dwóch rzeczy.
+
+Efekt uboczny: lista importów u konsumenta mówi, **co** bierze z portfolio — operację, dane, czy
+też łapie wyjątki biznesowe. Przy ośmiu typach na płasko to się rozmywało.
+
+`vidulum-quotation-api` został płaski. Przeniesienie go na ten sam układ nie wychodzi dosłownie:
+`AssetBasicInfo` jest i zwracane, i przyjmowane przez kontrakt, więc nie jest widokiem i zostaje w
+korzeniu; naturalny podział tam to `error/` plus **`spi/`** dla `BrokerQuotationProvider` i
+`PriceChangedEvent` (ten drugi jest w kontrakcie wyłącznie dlatego, że siedzi w sygnaturze SPI).
+
+### Propozycja na krok 05: deklarowana obsługa eventów
+
+Dziś nie da się odpowiedzieć na pytanie „kto słucha tego eventu" inaczej niż grepem po nazwie
+topicu. Kontrakt mówi, co można modułowi **zapytać**, i milczy o tym, czego on **słucha** — a po
+kroku 05/06 eventy przeniosą większość zapisów do portfela, więc to będzie ważniejsza połowa
+granicy.
+
+Problemem nie jest testowalność — listenery są już wołalne bezpośrednio
+(`new OrderFilledEventListener(gateway).on(event)` w `PreciousMetalsLifecycleComponentTest`).
+Problemem są **magiczne stringi subskrypcji**:
+
+```java
+// portfolio/app/listeners/OrderFilledEventListener
+@KafkaListener(
+        groupId = "group_id6",
+        topics = "order_filled",                          // ← własność tradingu, string
+        containerFactory = "orderFilledContainerFactory")  // ← bean z trading/infrastructure, string
+```
+
+Klasa eventu jest sprawdzana przez kompilator; subskrypcja nie. Zmiana nazwy topicu przez tradingu
+ucisza portfolio bez żadnego błędu, zmiana nazwy beana nie pozwala wstać aplikacji.
+
+**Czego nie robić:** deklaracji „portfolio obsługuje X" w `portfolio-api`. Wszyscy zależni od
+portfolio-api dowiedzieliby się o evencie tradingu — zależność przecieka na boki — i znika jedyna
+realna korzyść z eventów, czyli to, że producent nie zna konsumentów. **Deklaracja konsumpcji nie
+należy do kontraktu konsumenta.**
+
+**Co robić:** interfejs handlera w kontrakcie **producenta**, razem z faktami subskrypcji, których
+producent jest właścicielem.
+
+```java
+// vidulum-trading-api
+public interface OrderFilledHandler {
+
+    String TOPIC = "order_filled";
+    String CONTAINER_FACTORY = "orderFilledContainerFactory";
+
+    void onOrderFilled(OrderFilledEvent event);
+}
+```
+
+```java
+// vidulum-portfolio — package-private, nikt z zewnątrz tego nie nazywa
+@Component
+@AllArgsConstructor
+class OrderFilledToPortfolio implements OrderFilledHandler {
+
+    private final CommandGateway commandGateway;
+
+    @Override
+    @KafkaListener(topics = TOPIC, containerFactory = CONTAINER_FACTORY, groupId = "portfolio")
+    public void onOrderFilled(OrderFilledEvent event) {
+        commandGateway.send(ProcessTradeCommand.builder()… );
+    }
+}
+```
+
+`groupId` zostaje po stronie konsumenta — każdy wybiera własny, a nazwanie go po module jest tym, co
+czyni opóźnienie czytelnym per moduł.
+
+Reguła, która z tego wychodzi:
+
+> **W `X-api`:** co można zapytać X **i co X ogłasza** (event + kształt handlera).
+> **W `X` (impl):** czego X słucha — wyrażone przez *implementowanie* interfejsów handlerów innych
+> modułów.
+
+| pytanie | jak się odpowiada |
+|---|---|
+| czego słucha portfolio? | które interfejsy `*Handler` implementuje `vidulum-portfolio` |
+| kto słucha `OrderFilledEvent`? | implementacje `OrderFilledHandler` — **dziś bez odpowiedzi** |
+| co ogłasza portfolio? | interfejsy `*Handler` w `vidulum-portfolio-api` |
+
+Co to kupuje: topic i fabryka przestają być stringami, „kto słucha X" staje się odpowiadalne, da się
+to wyegzekwować, `groupId` per moduł zamiast `group_id1`/`group_id4`/`group_id6`. Czego nie kupuje:
+testowalności (już jest) ani luźniejszego sprzężenia kompilacyjnego (konsument i tak zależy od
+`trading-api`).
+
+Egzekwowanie — bez tego zostaje konwencją:
+
+```java
+methods().that().areAnnotatedWith(KafkaListener.class)
+    .should().beDeclaredInClassesThat()
+        .implement(nameMatching(".*\\.api\\..*Handler"));
+```
+
+Odrzucone warianty:
+
+- **generyczny `IntegrationEventHandler<E>` w shared-kernel** — spójny z `CommandHandler` i
+  `QueryHandler`, ale nie da się do niego przypiąć topicu, a „znajdź implementacje" zwraca wszystkie
+  handlery w systemie, nie odpowiedź per event. Wasz idiom SPI (`ExchangeAdapter`,
+  `BrokerQuotationProvider`) to małe interfejsy nazwane konkretem, nie jedna generyczna rama.
+- **klasa-manifest** (`PortfolioEvents.CONSUMED = Set.of(...)`) — rozjedzie się z rzeczywistością bez
+  testu, a jeśli i tak piszesz test, niech pilnuje typów.
+- **Spring Modulith** — generuje taki spis sam (module canvas z published/consumed events) i
+  weryfikuje granice, czyli „kup, nie buduj". Ale chce własnych konwencji pakietowych i jego szyna
+  zdarzeń jest in-process, a te eventy jadą przez Kafkę. Do rozważenia przy kroku 07.
+
+**Kiedy:** nie osobno. Portfolio ma dziś jeden listener, interfejs dla jednego handlera to ceremonia.
+Właściwy moment to krok 05, gdzie i tak przenosisz siedem eventów do modułów producentów — ta sama
+robota na tych samych plikach. Jedno wyjątkowo wcześniej i niezależnie: **nazwane `groupId`**,
+darmowe do poprawienia i od razu daje czytelne opóźnienia per moduł.
+
+### Co zostało otwarte po 04
 
 1. **`QuoteFeedListener`** — `@KafkaListener` nadal na metodzie `QuotationService`. Po wydzieleniu
    jest to już wyłącznie wewnętrzna sprawa quotation, więc nie blokuje niczego.
