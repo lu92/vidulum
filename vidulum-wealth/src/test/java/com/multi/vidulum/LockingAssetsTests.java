@@ -6,7 +6,7 @@ import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
-import com.multi.vidulum.portfolio.domain.AssetNotFoundException;
+import com.multi.vidulum.portfolio.api.error.AssetNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;

@@ -3,7 +3,7 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Range;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.portfolio.app.PortfolioAccess;
+import com.multi.vidulum.portfolio.api.PortfolioOwnership;
 import com.multi.vidulum.pnl.app.commands.MakePnlSnapshotCommand;
 import com.multi.vidulum.pnl.app.queries.GetPnlHistoryQuery;
 import com.multi.vidulum.pnl.domain.PnlHistory;
@@ -25,7 +25,7 @@ public class PnlRestController {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
-    private final PortfolioAccess access;
+    private final PortfolioOwnership access;
 
     /** The same default the nightly job uses, so ad-hoc snapshots join the same history. */
     private final Currency defaultValuationCurrency;
@@ -33,7 +33,7 @@ public class PnlRestController {
     public PnlRestController(
             CommandGateway commandGateway,
             QueryGateway queryGateway,
-            PortfolioAccess access,
+            PortfolioOwnership access,
             @Value("${vidulum.valuation.currency:USD}") String defaultValuationCurrency) {
         this.commandGateway = commandGateway;
         this.queryGateway = queryGateway;

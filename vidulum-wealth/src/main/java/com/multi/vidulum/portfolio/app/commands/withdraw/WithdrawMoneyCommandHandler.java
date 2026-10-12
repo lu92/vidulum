@@ -1,6 +1,6 @@
 package com.multi.vidulum.portfolio.app.commands.withdraw;
 
-import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;

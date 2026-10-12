@@ -16,7 +16,9 @@ import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.ValuationRates;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.domain.TradingRestClient;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.view.AggregatedPortfolioView;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.api.fx.RateSourceId;
 import com.multi.vidulum.trading.app.TradingDto;
@@ -90,52 +92,51 @@ class ValuationCurrencyComponentTest {
     /** Remembers what it was asked for, which is the whole subject here. */
     private final List<String> askedFor = new ArrayList<>();
 
-    private final PortfolioRestClient portfolios = new PortfolioRestClient() {
+    private final PortfolioModuleApi portfolios = new PortfolioModuleApi() {
         @Override
-        public PortfolioDto.AggregatedPortfolioSummaryJson getAggregatedPortfolio(
-                UserId userId, Currency denominatedIn) {
-            askedFor.add("aggregate:" + denominatedIn.getId());
-            return PortfolioDto.AggregatedPortfolioSummaryJson.builder()
-                    .userId(userId.getId())
-                    .portfolioIds(List.of(EUROS.getId(), ZLOTYS.getId()))
-                    .currentValue(Money.of(50_000, denominatedIn.getId()))
-                    .netContributions(Money.of(40_000, denominatedIn.getId()))
-                    .build();
+        public AggregatedPortfolioView aggregate(UserId owner, Currency valuedIn) {
+            askedFor.add("aggregate:" + valuedIn.getId());
+            return new AggregatedPortfolioView(
+                    owner,
+                    List.of(EUROS, ZLOTYS),
+                    Money.of(50_000, valuedIn.getId()),
+                    Money.of(40_000, valuedIn.getId()),
+                    null, null);
         }
 
         @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId, Currency denominatedIn) {
-            askedFor.add(portfolioId.getId() + ":" + denominatedIn.getId());
-            return PortfolioDto.PortfolioSummaryJson.builder()
-                    .portfolioId(portfolioId.getId())
-                    .currentValue(Money.of(25_000, denominatedIn.getId()))
-                    .netContributions(Money.of(20_000, denominatedIn.getId()))
-                    .build();
+        public PortfolioView get(PortfolioId portfolioId, Currency valuedIn) {
+            askedFor.add(portfolioId.getId() + ":" + valuedIn.getId());
+            return new PortfolioView(
+                    portfolioId, ALICE, "portfolio", com.multi.vidulum.common.Broker.of("PM"),
+                    Money.of(25_000, valuedIn.getId()),
+                    Money.of(20_000, valuedIn.getId()),
+                    null, null, List.of());
         }
 
         @Override
-        public PortfolioDto.PortfolioSummaryJson getPortfolio(PortfolioId portfolioId) {
+        public PortfolioView get(PortfolioId portfolioId) {
             throw new AssertionError("a recorded statement must never read a portfolio "
                     + "in its own currency - that is how one statement came to mix them");
         }
 
         @Override
-        public PortfolioId createPortfolio(String name, UserId userId,
-                                           com.multi.vidulum.common.Broker broker, Currency currency) {
+        public PortfolioId open(String name, UserId owner,
+                                com.multi.vidulum.common.Broker broker, Currency allowedDepositCurrency) {
             throw new UnsupportedOperationException("not needed here");
         }
 
         @Override
-        public void lockAsset(PortfolioId portfolioId, Ticker ticker,
-                              com.multi.vidulum.common.OrderId orderId,
-                              com.multi.vidulum.common.Quantity quantity) {
+        public void lock(PortfolioId portfolioId, Ticker ticker,
+                         com.multi.vidulum.common.OrderId orderId,
+                         com.multi.vidulum.common.Quantity quantity) {
             throw new UnsupportedOperationException("not needed here");
         }
 
         @Override
-        public void unlockAsset(PortfolioId portfolioId, Ticker ticker,
-                                com.multi.vidulum.common.OrderId orderId,
-                                com.multi.vidulum.common.Quantity quantity) {
+        public void unlock(PortfolioId portfolioId, Ticker ticker,
+                           com.multi.vidulum.common.OrderId orderId,
+                           com.multi.vidulum.common.Quantity quantity) {
             throw new UnsupportedOperationException("not needed here");
         }
     };

@@ -2,7 +2,7 @@ package com.multi.vidulum.trading.app;
 
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.common.PortfolioId;
-import com.multi.vidulum.portfolio.app.PortfolioAccess;
+import com.multi.vidulum.portfolio.api.PortfolioOwnership;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.trading.app.commands.orders.cancel.CancelOrderCommand;
@@ -28,7 +28,7 @@ public class OrderRestController {
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final TradingMapper mapper;
-    private final PortfolioAccess access;
+    private final PortfolioOwnership access;
     private final Clock clock;
 
     @PostMapping("/orders")

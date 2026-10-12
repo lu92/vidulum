@@ -5,8 +5,8 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.pnl.domain.DomainPnlRepository;
 import com.multi.vidulum.pnl.domain.PortfolioValuation;
 import com.multi.vidulum.pnl.domain.WealthChangeOverWindow;
-import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
+import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -31,7 +31,7 @@ public class GetWealthChangeQueryHandler
         implements QueryHandler<GetWealthChangeQuery, WealthChangeOverWindow> {
 
     private final DomainPnlRepository repository;
-    private final PortfolioRestClient portfolioRestClient;
+    private final PortfolioModuleApi portfolioApi;
 
     @Override
     public WealthChangeOverWindow query(GetWealthChangeQuery query) {
@@ -47,14 +47,14 @@ public class GetWealthChangeQueryHandler
         // rather than by luck. Before C17 the stored end was always dollars and this one was the
         // portfolio's own currency, so a portfolio settling in zloty was compared against dollars
         // and the difference was reported as growth.
-        PortfolioDto.PortfolioSummaryJson now = portfolioRestClient.getPortfolio(
+        PortfolioView now = portfolioApi.get(
                 query.portfolioId(), Currency.of(then.currentValue().getCurrency()));
 
         // Both ends have to know what had been put in by their date, or the deposits inside the
         // window cannot be netted out — and an unnetted figure reports a transfer as growth (C5).
         // Asked before the currency, because an end that says nothing has no currency to disagree
         // about, and answering CURRENCY_CHANGED there would name the wrong reason.
-        if (then.netContributions() == null || now.getNetContributions() == null) {
+        if (then.netContributions() == null || now.netContributions() == null) {
             return WealthChangeOverWindow.absent(query.since(), CONTRIBUTIONS_UNKNOWN);
         }
 
@@ -62,8 +62,8 @@ public class GetWealthChangeQueryHandler
             return WealthChangeOverWindow.absent(query.since(), CURRENCY_CHANGED);
         }
 
-        Money grew = now.getCurrentValue().minus(then.currentValue());
-        Money paidIn = now.getNetContributions().minus(then.netContributions());
+        Money grew = now.currentValue().minus(then.currentValue());
+        Money paidIn = now.netContributions().minus(then.netContributions());
         Money change = grew.minus(paidIn).withScale(4);
 
         // Measured against what the portfolio was worth at the start of the window, which is what
@@ -81,12 +81,12 @@ public class GetWealthChangeQueryHandler
      * would subtract silently and answer in whichever currency happened to come first — the defect
      * F6 already paid for once, where 2 200 EUR minus 2 000 USD produced "200 EUR".
      */
-    private static boolean sameCurrency(PortfolioValuation then, PortfolioDto.PortfolioSummaryJson now) {
-        if (now.getCurrentValue() == null) {
+    private static boolean sameCurrency(PortfolioValuation then, PortfolioView now) {
+        if (now.currentValue() == null) {
             // Nothing could be priced today (C16) — a different silence, decided further down.
             return true;
         }
-        return then.currentValue().getCurrency().equals(now.getCurrentValue().getCurrency())
-                && then.netContributions().getCurrency().equals(now.getNetContributions().getCurrency());
+        return then.currentValue().getCurrency().equals(now.currentValue().getCurrency())
+                && then.netContributions().getCurrency().equals(now.netContributions().getCurrency());
     }
 }

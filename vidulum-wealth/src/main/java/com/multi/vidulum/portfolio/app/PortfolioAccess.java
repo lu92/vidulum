@@ -3,6 +3,7 @@ package com.multi.vidulum.portfolio.app;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
+import com.multi.vidulum.portfolio.api.PortfolioOwnership;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,12 +25,13 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @AllArgsConstructor
-public class PortfolioAccess {
+public class PortfolioAccess implements PortfolioOwnership {
 
     private final DomainPortfolioRepository repository;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
     /** The caller, taken from the token and never from the request. */
+    @Override
     public UserId currentUser() {
         return authenticatedUserProvider.getCurrentUserId();
     }
@@ -37,9 +39,10 @@ public class PortfolioAccess {
     /**
      * Resolves a portfolio the caller owns, or fails as though it did not exist.
      *
-     * @throws com.multi.vidulum.portfolio.domain.PortfolioNotFoundException for a stranger's
+     * @throws com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException for a stranger's
      *         portfolio as well as a missing one — the caller may not learn which
      */
+    @Override
     public PortfolioId requireOwned(String portfolioId) {
         PortfolioId id = PortfolioId.of(portfolioId);
         repository.findOwnedOrThrow(currentUser(), id);

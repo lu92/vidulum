@@ -5,7 +5,7 @@ import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.user.app.UserNotActiveException;
 import com.multi.vidulum.common.UserNotFoundException;
 import com.multi.vidulum.user.domain.DomainUserRepository;
-import com.multi.vidulum.portfolio.domain.portfolio.PortfolioRestClient;
+import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class RegisterPortfolioCommandHandler implements CommandHandler<RegisterPortfolioCommand, PortfolioId> {
 
     private final DomainUserRepository repository;
-    private final PortfolioRestClient portfolioRestClient;
+    private final PortfolioModuleApi portfolioApi;
 
     @Override
     public PortfolioId handle(RegisterPortfolioCommand command) {
@@ -28,7 +28,7 @@ public class RegisterPortfolioCommandHandler implements CommandHandler<RegisterP
             throw new UserNotActiveException(command.getUserId());
         }
 
-        PortfolioId portfolioId = portfolioRestClient.createPortfolio(
+        PortfolioId portfolioId = portfolioApi.open(
                 command.getName(),
                 command.getUserId(),
                 command.getBroker(),

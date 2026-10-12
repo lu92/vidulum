@@ -1,7 +1,7 @@
 package com.multi.vidulum.portfolio.domain.portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.portfolio.domain.PortfolioNotFoundException;
+import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
 import com.multi.vidulum.shared.ddd.DomainRepository;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 

@@ -1,4 +1,4 @@
-package com.multi.vidulum.portfolio.domain;
+package com.multi.vidulum.portfolio.api.error;
 
 import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.common.error.BusinessException;
