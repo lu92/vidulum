@@ -85,12 +85,12 @@ public class ConfirmPortfolioSpecCommandHandler
      * hand now. Deferring it would record the price of whenever somebody first looked, which is a
      * different number and a non-deterministic one.
      *
-     * <p>The data was already required: E8 makes quotes precede onboarding, because without them
+     * <p>The data was already required: E8 makes quotationApi precede onboarding, because without them
      * the first read throws. What changes is <b>when a missing quote is felt</b> — confirmation
      * fails instead of the first read. That is the better failure: no portfolio beats one that
      * cannot be read.
      */
-    private final QuotationApi quoteRestClient;
+    private final QuotationApi quotationApi;
     /**
      * The exchange module's handler, injected directly rather than reached through
      * {@code CommandGateway}.
@@ -269,7 +269,7 @@ public class ConfirmPortfolioSpecCommandHandler
      * to hold USDC, which the OKX demo market does not quote in euro: five positions out of six
      * were priced and the owner still could not open a portfolio.
      *
-     * <p>A holding nobody quotes becomes an entry with no value rather than no entry at all. It
+     * <p>A holding nobody quotationApi becomes an entry with no value rather than no entry at all. It
      * then counts towards the ledger's coverage (C9), so the net contribution either says how much
      * of itself it speaks for or withholds itself — which is the honest answer, and is not the
      * same as pretending the holding was not there.
@@ -299,13 +299,15 @@ public class ConfirmPortfolioSpecCommandHandler
     /**
      * The price of one pair, where its absence is an answer rather than a failure.
      *
-     * <p>Wrapped here rather than widened into {@code QuotationApi}, for the reason C16 found:
-     * a second method on that port would be a default one, and a mock stubbing {@code fetch} would
-     * silently answer "no price" to everything.
+     * <p>Wrapped here rather than widened into {@code QuotationApi}, as in
+     * {@code PortfolioSummaryMapper} and for the same reason — the contract carries the one way of
+     * asking that every consumer shares. C16's original argument, that a mock stubbing
+     * {@code fetch} would silently answer "no price" to everything, no longer applies now that the
+     * doubles are a single {@code InMemoryQuotationApi}.
      */
     private Optional<AssetPriceMetadata> priceOf(Broker broker, Symbol symbol) {
         try {
-            return Optional.ofNullable(quoteRestClient.fetch(broker, symbol));
+            return Optional.ofNullable(quotationApi.fetch(broker, symbol));
         } catch (QuoteNotFoundException noQuote) {
             return Optional.empty();
         }

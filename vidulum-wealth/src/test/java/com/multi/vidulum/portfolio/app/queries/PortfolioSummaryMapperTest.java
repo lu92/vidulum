@@ -39,7 +39,7 @@ class PortfolioSummaryMapperTest {
 
 
     @Mock
-    private QuotationApi quoteRestClientMock;
+    private QuotationApi quotationApiMock;
 
     @InjectMocks
     private PortfolioSummaryMapper mapper;
@@ -135,16 +135,16 @@ class PortfolioSummaryMapperTest {
     @Test
     public void shouldDenominatePortfolioInOriginCurrency() {
         // Given
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("USD/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("USD/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(1, "USD")).build());
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("BTC/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("BTC/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(40000, "USD")).build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("USD")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("USD")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("American Dollar")
                         .tags(List.of("Cash"))
                         .build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("Bitcoin")
                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -221,16 +221,16 @@ class PortfolioSummaryMapperTest {
     @Test
     public void shouldDenominatePortfolioInOtherCurrency() {
         // Given
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("USD/EUR")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("USD/EUR")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(0.95, "EUR")).build());
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("BTC/EUR")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("BTC/EUR")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(38000, "EUR")).build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("USD")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("USD")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("American Dollar")
                         .tags(List.of("Cash"))
                         .build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("Bitcoin")
                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
@@ -308,25 +308,25 @@ class PortfolioSummaryMapperTest {
     public void shouldMapAggregatedPortfolioWithTwoDifferentOriginCurrencies() {
 
         // When
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("EUR/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("EUR/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(1.05, "USD")).build());
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("BTC/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("BTC/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(38000, "USD")).build());
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("ETH/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("ETH/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(2000, "USD")).build());
-        when(quoteRestClientMock.fetch(BROKER, Symbol.of("PLN/USD")))
+        when(quotationApiMock.fetch(BROKER, Symbol.of("PLN/USD")))
                 .thenReturn(AssetPriceMetadata.builder().currentPrice(Price.of(0.25, "USD")).build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("BTC")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("Bitcoin")
                         .tags(List.of("Bitcoin", "Crypto", "BTC"))
                         .build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("ETH")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("ETH")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("Ethereum")
                         .tags(List.of("Ethereum", "Crypto", "ETH"))
                         .build());
-        when(quoteRestClientMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("EUR")))
+        when(quotationApiMock.fetchBasicInfoAboutAsset(BROKER, Ticker.of("EUR")))
                 .thenReturn(AssetBasicInfo.builder()
                         .fullName("Euro")
                         .tags(List.of("Cash"))

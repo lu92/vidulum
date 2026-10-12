@@ -16,14 +16,14 @@ import static java.util.stream.Collectors.toList;
 @AllArgsConstructor
 public class PositionMapper {
 
-    private final QuotationApi quoteRestClient;
+    private final QuotationApi quotationApi;
 
     public PortfolioDto.OpenedPositionsJson map(OpenedPositions openedPositions) {
         List<PortfolioDto.PositionSummaryJson> portfolioSummaries = openedPositions
                 .getPositions()
                 .stream()
                 .map(position -> {
-                    AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(openedPositions.getBroker(), position.getSymbol());
+                    AssetPriceMetadata assetPriceMetadata = quotationApi.fetch(openedPositions.getBroker(), position.getSymbol());
                     Money value = assetPriceMetadata.getCurrentPrice().multiply(position.getQuantity());
                     assetPriceMetadata.getCurrentPrice().minus(position.getEntryPrice());
                     double pctProfit = assetPriceMetadata.getCurrentPrice().diffPct(position.getEntryPrice());

@@ -37,7 +37,7 @@ import static java.util.stream.Collectors.toMap;
 @AllArgsConstructor
 public class PortfolioSummaryMapper {
 
-    private final QuotationApi quoteRestClient;
+    private final QuotationApi quotationApi;
 
     public PortfolioDto.PortfolioSummaryJson map(Portfolio portfolio, Currency denominationCurrency) {
         Broker broker = portfolio.getBroker();
@@ -85,7 +85,7 @@ public class PortfolioSummaryMapper {
     /**
      * The portfolio's value, over the positions that could be priced (task C16).
      *
-     * <p>A position nobody quotes used to throw, and the owner got a 404 where a portfolio should
+     * <p>A position nobody quotationApi used to throw, and the owner got a 404 where a portfolio should
      * have been. It now costs that position its value and nothing else — but the total must then
      * say what it is a total <b>of</b>, because "value over the part we could price" and "value"
      * are different claims and look identical as a number.
@@ -95,7 +95,7 @@ public class PortfolioSummaryMapper {
      * a percentage would have to invent the number it is measuring. What can be said is
      * <b>which</b> positions are missing, so the reader can go and look.
      *
-     * <p>Nothing priced at all answers {@code null}, not zero: a portfolio of coins nobody quotes
+     * <p>Nothing priced at all answers {@code null}, not zero: a portfolio of coins nobody quotationApi
      * is not a portfolio worth nothing, and every interface renders zero as a fact.
      */
     private Valuation valuationOf(List<MappedAsset> mapped, Currency denominationCurrency) {
@@ -533,13 +533,16 @@ public class PortfolioSummaryMapper {
     /**
      * The price of one pair, where its absence is an answer rather than a failure (task C16).
      *
-     * <p>Wrapped here rather than widened into {@link QuotationApi}: the port has one way of
-     * asking, and a second one would have to be honoured by every stub and mock that already
-     * implements it — several of which would then silently answer "no price" to everything.
+     * <p>Wrapped here rather than widened into {@link QuotationApi}, which has one way of asking
+     * on purpose. The original reason was that a second method would have to be honoured by
+     * thirteen hand-written test doubles, several of which would then have answered "no price" to
+     * everything; those are now one {@code InMemoryQuotationApi}, so that reason has expired. What
+     * remains is that only this caller treats a missing price as an answer, and a contract carries
+     * what crosses the boundary rather than what one consumer finds convenient.
      */
     private Optional<AssetPriceMetadata> priceOf(Broker broker, Symbol symbol) {
         try {
-            return Optional.ofNullable(quoteRestClient.fetch(broker, symbol));
+            return Optional.ofNullable(quotationApi.fetch(broker, symbol));
         } catch (QuoteNotFoundException noQuote) {
             return Optional.empty();
         }
@@ -550,7 +553,7 @@ public class PortfolioSummaryMapper {
     }
 
     /**
-     * One position, priced if anybody quotes it (task C16).
+     * One position, priced if anybody quotationApi it (task C16).
      *
      * <p>When nobody does, the row still stands: quantity, locks, cost basis, everything the
      * portfolio knows without a market. Only price and value are silent, with {@code priceUnknown}
@@ -591,7 +594,7 @@ public class PortfolioSummaryMapper {
         }
         ProfitCoverage coverage = ProfitCoverage.ofPosition(asset).orElse(null);
         log.info("Getting info about asset [{}]", asset.getTicker());
-        AssetBasicInfo assetBasicInfo = quoteRestClient.fetchBasicInfoAboutAsset(broker, asset.getTicker());
+        AssetBasicInfo assetBasicInfo = quotationApi.fetchBasicInfoAboutAsset(broker, asset.getTicker());
 
         Set<PortfolioDto.AssetLockJson> activeLocks = asset.getActiveLocks().stream()
                 .map(lock -> PortfolioDto.AssetLockJson.builder()

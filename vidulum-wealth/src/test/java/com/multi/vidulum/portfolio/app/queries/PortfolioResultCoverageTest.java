@@ -1,17 +1,13 @@
 package com.multi.vidulum.portfolio.app.queries;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioFixture;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitCoverage;
@@ -19,9 +15,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,11 +39,11 @@ class PortfolioResultCoverageTest {
     private static final Broker BROKER = Broker.of("OKX");
     private static final Currency EUR = Currency.of("EUR");
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotationApiFake);
 
     private void price(String symbol, double amount) {
-        quotes.publish(symbol, amount);
+        quotationApiFake.publish(symbol, amount);
     }
 
     private PortfolioDto.PortfolioSummaryJson summaryOf(Portfolio portfolio) {

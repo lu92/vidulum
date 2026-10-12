@@ -1,6 +1,5 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.portfolio.domain.portfolio.RealisedResult;
 import com.multi.vidulum.portfolio.domain.portfolio.RealisedStatus;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.app.PortfolioDto;

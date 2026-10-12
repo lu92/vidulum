@@ -1,13 +1,10 @@
 package com.multi.vidulum.portfolio_spec;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
@@ -21,7 +18,6 @@ import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
@@ -38,7 +34,6 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -84,7 +79,7 @@ class ResumeAfterBreakComponentTest {
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict()
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict()
             .publish("BTC/EUR", 50_000);
     private final CommandGateway commandGateway = commandGateway();
 
@@ -103,7 +98,7 @@ class ResumeAfterBreakComponentTest {
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
                 specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotes, new ConfirmExchangeConnectionCommandHandler(connections, clock), recordSync));
+                quotationApiFake, new ConfirmExchangeConnectionCommandHandler(connections, clock), recordSync));
         gateway.registerCommandHandler(new ResumeConnectionCommandHandler(
                 connections, reconnect, recordSync, createSpec));
         return gateway;

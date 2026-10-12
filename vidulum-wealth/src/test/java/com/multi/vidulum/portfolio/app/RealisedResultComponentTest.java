@@ -1,6 +1,5 @@
 package com.multi.vidulum.portfolio.app;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Currency;
@@ -15,7 +14,6 @@ import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
@@ -25,8 +23,6 @@ import com.multi.vidulum.portfolio.domain.trades.ExecutedTrade;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -49,8 +45,8 @@ class RealisedResultComponentTest {
     private static final Currency EUR = Currency.of("EUR");
     private static final ZonedDateTime NOW = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotationApiFake);
 
     private static Portfolio holding(String ticker, double quantity, Double knownCostPrice, double cash) {
         PortfolioFixture fixture = PortfolioFixture.portfolio().at(BROKER).denominatedIn("EUR");
@@ -81,8 +77,8 @@ class RealisedResultComponentTest {
     private PortfolioDto.PortfolioSummaryJson summaryOf(Portfolio portfolio) {
         // Reading a portfolio values whatever is still held, so anything left over needs a price.
         // The settled result never did — that is the point of the measure.
-        quotes.publish("BTC/EUR", 70_000.0);
-        quotes.publish("XRP/EUR", 2.0);
+        quotationApiFake.publish("BTC/EUR", 70_000.0);
+        quotationApiFake.publish("XRP/EUR", 2.0);
         return mapper.map(portfolio, EUR);
     }
 
@@ -128,7 +124,7 @@ class RealisedResultComponentTest {
 
     @Test
     void shouldSayWhenNothingHasBeenSold() {
-        quotes.publish("BTC/EUR", 70_000.0);
+        quotationApiFake.publish("BTC/EUR", 70_000.0);
         Portfolio portfolio = holding("BTC", 1, 40_000.0, 0);
 
         PortfolioDto.PortfolioSummaryJson summary = summaryOf(portfolio);
@@ -248,7 +244,7 @@ class RealisedResultComponentTest {
     /** It answers a different question from the gain on what is still held. */
     @Test
     void shouldStandBesideTheUnrealisedFigureWithoutReplacingIt() {
-        quotes.publish("BTC/EUR", 70_000.0);
+        quotationApiFake.publish("BTC/EUR", 70_000.0);
         Portfolio portfolio = holding("BTC", 2, 40_000.0, 0);
 
         sell(portfolio, "trade-1", "BTC", SubName.traded(), 1, 60_000);
@@ -274,7 +270,7 @@ class RealisedResultComponentTest {
      */
     @Test
     void shouldNotSubtractOneCurrencyFromAnother() {
-        quotes.publish("USD/EUR", 0.9);
+        quotationApiFake.publish("USD/EUR", 0.9);
         Portfolio portfolio = PortfolioFixture.portfolio()
                 .at(BROKER).denominatedIn("EUR")
                 .with("XAU", Quantity.of(1), CostBasis.of(

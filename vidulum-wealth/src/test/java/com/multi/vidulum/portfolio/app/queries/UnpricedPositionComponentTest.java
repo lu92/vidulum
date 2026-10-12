@@ -1,6 +1,5 @@
 package com.multi.vidulum.portfolio.app.queries;
 
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.CostBasis;
 import com.multi.vidulum.common.Currency;
@@ -8,17 +7,14 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.portfolio.app.PortfolioFixture;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.ProfitStatus;
 import com.multi.vidulum.portfolio.domain.portfolio.ValuationStatus;
-import com.multi.vidulum.quotation.api.QuoteNotFoundException;
 import org.junit.jupiter.api.Test;
 
 import com.multi.vidulum.common.Segment;
@@ -27,7 +23,6 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.portfolio.app.AggregatedPortfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,11 +46,11 @@ class UnpricedPositionComponentTest {
     private static final Broker OKX = Broker.of("OKX");
     private static final Currency EUR = Currency.of("EUR");
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.asInProduction();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.asInProduction();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotationApiFake);
 
     private void price(String symbol, double amount) {
-        quotes.publish(symbol, amount);
+        quotationApiFake.publish(symbol, amount);
     }
 
     private static CostBasis cost(double quantity, double price, String currency) {
@@ -197,7 +192,7 @@ class UnpricedPositionComponentTest {
     }
 
     /**
-     * Nothing priced answers {@code null}, not zero. A portfolio of coins nobody quotes is not a
+     * Nothing priced answers {@code null}, not zero. A portfolio of coins nobody quotationApiFake is not a
      * portfolio worth nothing, and every interface renders zero as a fact.
      */
     @Test

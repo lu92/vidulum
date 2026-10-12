@@ -1,7 +1,6 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -29,7 +28,6 @@ import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler
 import com.multi.vidulum.portfolio.app.commands.update.ProcessTradeCommandHandler;
 import com.multi.vidulum.portfolio.app.listeners.OrderFilledEventListener;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.portfolio.domain.NotSufficientBalance;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -62,7 +60,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -90,7 +87,7 @@ import static org.assertj.core.api.Assertions.within;
  *   <li><b>Troy ounces stay troy ounces.</b> {@code Quantity} carries its unit as a free string
  *       and its arithmetic ignores it, so nothing but a test notices a lock counted in
  *       {@code "Number"} against a position held in {@code "oz"}.
- *   <li><b>Valuation follows quotes, not activity.</b> Buying and selling at the market price move
+ *   <li><b>Valuation follows quotationApiFake, not activity.</b> Buying and selling at the market price move
  *       what is held, never what it is worth; only a new quote does that.
  * </ul>
  *
@@ -120,8 +117,8 @@ class PreciousMetalsLifecycleComponentTest {
 
     // --- wiring -----------------------------------------------------------------------------
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
-    private final PortfolioSummaryMapper summaryMapper = new PortfolioSummaryMapper(quotes);
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper summaryMapper = new PortfolioSummaryMapper(quotationApiFake);
     private final LockAssetCommandHandler lockHandler = new LockAssetCommandHandler(portfolios, clock);
     private final UnlockAssetCommandHandler unlockHandler = new UnlockAssetCommandHandler(portfolios, clock);
 
@@ -140,8 +137,8 @@ class PreciousMetalsLifecycleComponentTest {
         gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectOrderFilledEmitter()));
         gateway.registerCommandHandler(new MakeTradeCommandHandler(trades, orders, new DirectTradeCapturedEmitter()));
 
-        quotes.publish("XAU/USD", 1800.0);
-        quotes.publish("XAG/USD", 25.0);
+        quotationApiFake.publish("XAU/USD", 1800.0);
+        quotationApiFake.publish("XAG/USD", 25.0);
 
         Portfolio created = gateway.send(CreateEmptyPortfolioCommand.builder()
                 .portfolioId(PortfolioId.generate())
@@ -204,7 +201,7 @@ class PreciousMetalsLifecycleComponentTest {
     }
 
     private void quote(String symbol, double price) {
-        quotes.publish(symbol, price);
+        quotationApiFake.publish(symbol, price);
     }
 
     /** A purchase from a dealer: no order, only a fill. */
@@ -537,7 +534,7 @@ class PreciousMetalsLifecycleComponentTest {
      *
      * <p>The balance check ahead of an order reads the portfolio through
      * {@code PortfolioRestClient}, and every implementation valued it in USD whatever it actually
-     * settled in. A zloty portfolio was compared against dollar amounts and needed USD quotes for
+     * settled in. A zloty portfolio was compared against dollar amounts and needed USD quotationApiFake for
      * assets nobody had priced that way — so it could not trade at all.
      */
     @Test

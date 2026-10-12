@@ -24,7 +24,7 @@ import static java.util.stream.Collectors.toMap;
 public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggregatedPortfolioQuery, AggregatedPortfolio> {
 
     private final DomainPortfolioRepository repository;
-    private final QuotationApi quoteRestClient;
+    private final QuotationApi quotationApi;
 
     @Override
     public AggregatedPortfolio query(GetAggregatedPortfolioQuery query) {
@@ -45,7 +45,7 @@ public class GetAggregatedPortfolioQueryHandler implements QueryHandler<GetAggre
 
                             // TODO: improve aggregation per all portfolios
                             Map<Ticker, List<AssetBasicInfo>> assetInfoMap = portfolio.getAssets().stream()
-                                    .map(asset -> quoteRestClient.fetchBasicInfoAboutAsset(portfolio.getBroker(), asset.getTicker()))
+                                    .map(asset -> quotationApi.fetchBasicInfoAboutAsset(portfolio.getBroker(), asset.getTicker()))
                                     .collect(groupingBy(AssetBasicInfo::getTicker));
                             Map<Ticker, Segment> segmentMap = assetInfoMap.entrySet().stream().collect(toMap(Map.Entry::getKey, tickerListEntry -> tickerListEntry.getValue().get(0).getSegment()));
 

@@ -21,7 +21,7 @@ public class RiskManagementEngine {
 
     private final PortfolioRestClient portfolioRestClient;
     private final TradingRestClient tradingRestClient;
-    private final QuotationApi quoteRestClient;
+    private final QuotationApi quotationApi;
 
     public RiskManagementStatement accept(PortfolioId portfolioId) {
         PortfolioDto.PortfolioSummaryJson portfolio = portfolioRestClient.getPortfolio(portfolioId);
@@ -131,7 +131,7 @@ public class RiskManagementEngine {
             return stopLoss.getPrice();
         } else {
             Symbol usdSymbol = Symbol.of(stopLoss.getSymbol().getOrigin(), Ticker.of("USD"));
-            AssetPriceMetadata assetPriceMetadata = quoteRestClient.fetch(broker, usdSymbol);
+            AssetPriceMetadata assetPriceMetadata = quotationApi.fetch(broker, usdSymbol);
             return assetPriceMetadata.getCurrentPrice();
         }
     }

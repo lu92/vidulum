@@ -1,18 +1,13 @@
 package com.multi.vidulum.portfolio.app;
 
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionId;
-import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.PortfolioId;
-import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Provenance;
-import com.multi.vidulum.common.Symbol;
-import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
-import com.multi.vidulum.quotation.api.AssetBasicInfo;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
 import com.multi.vidulum.portfolio.domain.portfolio.Contribution;
 import com.multi.vidulum.portfolio.domain.portfolio.ContributionStatus;
@@ -21,8 +16,6 @@ import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,8 +39,8 @@ class ContributionLedgerComponentTest {
     private static final Currency USD = Currency.of("USD");
     private static final ZonedDateTime WHEN = ZonedDateTime.parse("2022-01-01T00:00:00Z");
 
-    private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
-    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotes);
+    private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict();
+    private final PortfolioSummaryMapper mapper = new PortfolioSummaryMapper(quotationApiFake);
 
     private Portfolio emptyPortfolio() {
         return new PortfolioFactory().empty(PortfolioId.generate(), "Ledger", OWNER, BROKER, USD);
@@ -165,7 +158,7 @@ class ContributionLedgerComponentTest {
      */
     @Test
     void shouldRestateTheLedgerInWhicheverCurrencyIsAskedFor() {
-        quotes.publish("USD/EUR", 0.95);
+        quotationApiFake.publish("USD/EUR", 0.95);
         Portfolio portfolio = emptyPortfolio();
         portfolio.depositMoney(Money.of(10_000, "USD"), ContributionId.of("in"), WHEN);
 

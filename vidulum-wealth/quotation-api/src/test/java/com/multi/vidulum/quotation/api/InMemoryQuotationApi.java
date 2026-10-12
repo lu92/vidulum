@@ -21,9 +21,9 @@ import java.time.ZonedDateTime;
  * differs between callers — hence two named constructors rather than a flag:
  *
  * <pre>
- *   private final InMemoryQuotationApi quotes = InMemoryQuotationApi.strict();
+ *   private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.strict();
  *   …
- *   quotes.publish("BTC/EUR", 70_000);
+ *   quotationApiFake.publish("BTC/EUR", 70_000);
  * </pre>
  *
  * <p>It replaced thirteen anonymous implementations which had already drifted apart: twelve
