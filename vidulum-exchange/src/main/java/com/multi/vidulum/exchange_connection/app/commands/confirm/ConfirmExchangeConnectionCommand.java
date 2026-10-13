@@ -2,7 +2,7 @@ package com.multi.vidulum.exchange_connection.app.commands.confirm;
 
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 
 /**

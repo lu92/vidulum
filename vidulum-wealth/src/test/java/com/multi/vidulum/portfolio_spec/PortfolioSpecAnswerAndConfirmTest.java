@@ -17,11 +17,11 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
-import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
@@ -78,6 +78,10 @@ class PortfolioSpecAnswerAndConfirmTest {
     private final InMemoryExchangeConnectionRepositoryForSpec connections =
             new InMemoryExchangeConnectionRepositoryForSpec();
 
+    /** The real exchange handlers over that store — a connection genuinely transitions. */
+    private final ExchangeConnectionApiForSpec exchangeApi =
+            new ExchangeConnectionApiForSpec(connections, clock);
+
     private final ConfirmExchangeConnectionCommandHandler confirmConnectionHandler =
             new ConfirmExchangeConnectionCommandHandler(connections, clock);
 
@@ -97,13 +101,12 @@ class PortfolioSpecAnswerAndConfirmTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, connections, clock));
+                specRepository, portfolioRepository, exchangeApi, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new CancelPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotationApiFake, confirmConnectionHandler,
-                new RecordPortfolioSyncCommandHandler(connections)));
+                specRepository, portfolioRepository, new PortfolioFactory(),
+                quotationApiFake, exchangeApi));
         return gateway;
     }
 

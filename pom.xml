@@ -20,6 +20,7 @@
 		<module>vidulum-cashflow/user-financial-profile-api</module>
 		<module>vidulum-cashflow/recurring-rules</module>
 		<module>vidulum-cashflow</module>
+		<module>vidulum-exchange-api</module>
 		<module>vidulum-exchange</module>
 		<module>vidulum-quotation-api</module>
 		<module>vidulum-quotation</module>

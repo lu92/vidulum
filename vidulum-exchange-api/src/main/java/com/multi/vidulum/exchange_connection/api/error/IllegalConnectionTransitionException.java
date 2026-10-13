@@ -1,7 +1,9 @@
-package com.multi.vidulum.exchange_connection.domain;
+package com.multi.vidulum.exchange_connection.api.error;
 
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
 
 public class IllegalConnectionTransitionException extends BusinessException {
 

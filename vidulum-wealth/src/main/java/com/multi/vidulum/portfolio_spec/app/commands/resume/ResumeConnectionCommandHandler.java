@@ -1,11 +1,7 @@
 package com.multi.vidulum.portfolio_spec.app.commands.resume;
 
-import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommand;
-import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
-import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommand;
-import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
-import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionApi;
+import com.multi.vidulum.exchange_connection.api.view.ConnectionView;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommandHandler;
 import com.multi.vidulum.portfolio_spec.domain.NothingToSynchroniseException;
@@ -42,9 +38,7 @@ import java.util.Optional;
 public class ResumeConnectionCommandHandler
         implements CommandHandler<ResumeConnectionCommand, Optional<PortfolioSpec>> {
 
-    private final DomainExchangeConnectionRepository connectionRepository;
-    private final ReconnectExchangeCommandHandler reconnectHandler;
-    private final RecordPortfolioSyncCommandHandler recordSyncHandler;
+    private final ExchangeConnectionApi exchangeApi;
     private final CreatePortfolioSpecCommandHandler createSpecHandler;
 
     /**
@@ -55,17 +49,17 @@ public class ResumeConnectionCommandHandler
     public Optional<PortfolioSpec> handle(ResumeConnectionCommand command) {
         // Ownership and state are checked before anything is written: a connection that cannot be
         // resumed must not leave a specification behind.
-        ExchangeConnection connection =
-                connectionRepository.findOwnedOrThrow(command.userId(), command.connectionId());
+        ConnectionView connection =
+                exchangeApi.ownedOrThrow(command.userId(), command.connectionId());
 
-        reconnectHandler.handle(new ReconnectExchangeCommand(command.userId(), command.connectionId()));
+        exchangeApi.reconnect(command.userId(), command.connectionId());
 
         try {
             PortfolioSpec spec = createSpecHandler.handle(new CreatePortfolioSpecCommand(
                     command.userId(),
                     command.connectionId().getId(),
-                    connection.getPortfolioId(),
-                    connection.getDenominationCurrency(),
+                    connection.portfolioId(),
+                    connection.denominationCurrency(),
                     command.snapshot()));
 
             log.info("Connection [{}] resumed with {} difference(s) to settle",
@@ -86,8 +80,8 @@ public class ResumeConnectionCommandHandler
      * would later go looking through history for differences that do not exist.
      */
     private Optional<PortfolioSpec> alreadyInAgreement(ResumeConnectionCommand command) {
-        recordSyncHandler.handle(new RecordPortfolioSyncCommand(
-                command.userId(), command.connectionId(), command.snapshot().takenAt()));
+        exchangeApi.recordSync(
+                command.userId(), command.connectionId(), command.snapshot().takenAt());
 
         log.info("Connection [{}] resumed; the account is unchanged since the break",
                 command.connectionId().getId());

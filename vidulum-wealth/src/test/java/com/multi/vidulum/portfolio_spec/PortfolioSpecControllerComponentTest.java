@@ -11,7 +11,7 @@ import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
@@ -56,6 +56,10 @@ class PortfolioSpecControllerComponentTest {
     private final InMemoryExchangeConnectionRepositoryForSpec connections =
             new InMemoryExchangeConnectionRepositoryForSpec();
 
+    /** The real exchange handlers over that store — a connection genuinely transitions. */
+    private final ExchangeConnectionApiForSpec exchangeApi =
+            new ExchangeConnectionApiForSpec(connections, clock);
+
     /**
      * The specification is now refused if it names a connection that says something else, so every
      * caller in this test needs one of their own to name.
@@ -82,7 +86,7 @@ class PortfolioSpecControllerComponentTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, connections, clock));
+                specRepository, portfolioRepository, exchangeApi, clock));
         return gateway;
     }
 

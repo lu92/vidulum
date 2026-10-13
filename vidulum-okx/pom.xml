@@ -22,6 +22,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Exchange contract: OkxExchangeAdapter implements its SPI. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Quotation contract: what portfolio, pnl, risk and portfolio_spec may ask about prices.
              The implementation (QuotationService, NBP, the caches) stays private to this module. -->
         <dependency>
@@ -30,12 +37,14 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Exchange: the exchange-agnostic connection model. This module is one adapter on top
-             of it, so the dependency points this way and never the other. -->
+        <!-- The exchange implementation, for the endpoint tests that stand up a real connection.
+             Test scope only: OkxExchangeAdapter compiles against the SPI in vidulum-exchange-api,
+             so this module needs nothing of the connection aggregate at build time. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-exchange</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Wealth: BrokerQuotationProvider and QuotationService live here.

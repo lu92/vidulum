@@ -10,12 +10,12 @@ import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExchangeCommandHandler;
 import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
-import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
@@ -76,6 +76,10 @@ class ResumeAfterBreakComponentTest {
     private final DomainPortfolioRepository portfolioRepository = new InMemoryPortfolioRepository(clock);
     private final InMemoryExchangeConnectionRepositoryForSpec connections =
             new InMemoryExchangeConnectionRepositoryForSpec();
+
+    /** The real exchange handlers over that store — a connection genuinely transitions. */
+    private final ExchangeConnectionApiForSpec exchangeApi =
+            new ExchangeConnectionApiForSpec(connections, clock);
     private UserId caller = ALICE;
     private final AuthenticatedUserProvider authenticatedUserProvider = () -> caller;
 
@@ -86,7 +90,7 @@ class ResumeAfterBreakComponentTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         CreatePortfolioSpecCommandHandler createSpec = new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, connections, clock);
+                specRepository, portfolioRepository, exchangeApi, clock);
         ReconnectExchangeCommandHandler reconnect =
                 new ReconnectExchangeCommandHandler(connections, clock);
         RecordPortfolioSyncCommandHandler recordSync =
@@ -97,10 +101,10 @@ class ResumeAfterBreakComponentTest {
         gateway.registerCommandHandler(recordSync);
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotationApiFake, new ConfirmExchangeConnectionCommandHandler(connections, clock), recordSync));
+                specRepository, portfolioRepository, new PortfolioFactory(),
+                quotationApiFake, exchangeApi));
         gateway.registerCommandHandler(new ResumeConnectionCommandHandler(
-                connections, reconnect, recordSync, createSpec));
+                exchangeApi, createSpec));
         return gateway;
     }
 

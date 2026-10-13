@@ -12,7 +12,7 @@ import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchang
 import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
@@ -69,6 +69,10 @@ class UnpricedHoldingAtOnboardingComponentTest {
     private final InMemoryExchangeConnectionRepositoryForSpec connections =
             new InMemoryExchangeConnectionRepositoryForSpec();
 
+    /** The real exchange handlers over that store — a connection genuinely transitions. */
+    private final ExchangeConnectionApiForSpec exchangeApi =
+            new ExchangeConnectionApiForSpec(connections, clock);
+
     /** Only what the test publishes has a price; everything else refuses, as the live one does. */
 
     private final InMemoryQuotationApi quotationApiFake = InMemoryQuotationApi.asInProduction();
@@ -77,12 +81,11 @@ class UnpricedHoldingAtOnboardingComponentTest {
     private CommandGateway commandGateway() {
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(
-                specRepository, portfolioRepository, connections, clock));
+                specRepository, portfolioRepository, exchangeApi, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specRepository));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specRepository, connections, portfolioRepository, new PortfolioFactory(),
-                quotationApiFake, new ConfirmExchangeConnectionCommandHandler(connections, clock),
-                new RecordPortfolioSyncCommandHandler(connections)));
+                specRepository, portfolioRepository, new PortfolioFactory(),
+                quotationApiFake, exchangeApi));
         return gateway;
     }
 

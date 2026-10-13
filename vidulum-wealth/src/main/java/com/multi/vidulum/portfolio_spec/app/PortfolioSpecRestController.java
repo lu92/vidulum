@@ -7,7 +7,7 @@ import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.portfolio_spec.app.commands.answer.AnswerPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.cancel.CancelPortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.confirm.ConfirmPortfolioSpecCommand;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.portfolio_spec.app.commands.create.CreatePortfolioSpecCommand;
 import com.multi.vidulum.portfolio_spec.app.commands.resume.ResumeConnectionCommand;
 import com.multi.vidulum.portfolio_spec.app.queries.GetPortfolioSpecQuery;

@@ -2,7 +2,7 @@ package com.multi.vidulum.exchange_connection;
 
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
-import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;

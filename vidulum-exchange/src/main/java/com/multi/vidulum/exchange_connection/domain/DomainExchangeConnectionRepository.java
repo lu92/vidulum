@@ -6,6 +6,8 @@ import com.multi.vidulum.common.UserId;
 
 import java.util.List;
 import java.util.Optional;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.ExchangeConnectionNotFoundException;
 
 public interface DomainExchangeConnectionRepository {
 

@@ -15,13 +15,13 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionNotFoundException;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.ExchangeConnectionNotFoundException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ExchangeNotSupportedException;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.KeyPermissionsTooBroadException;
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 

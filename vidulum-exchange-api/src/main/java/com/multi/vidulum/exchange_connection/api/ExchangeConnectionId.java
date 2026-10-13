@@ -1,4 +1,4 @@
-package com.multi.vidulum.exchange_connection.domain;
+package com.multi.vidulum.exchange_connection.api;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

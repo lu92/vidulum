@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
 
 /**
  * Registry of the exchanges this instance can connect to.

@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * Identity of one entry in a portfolio's contribution ledger.
  *
- * <p>Mirrors {@code PortfolioId} and {@link com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId}:
+ * <p>Mirrors {@code PortfolioId} and {@link com.multi.vidulum.exchange_connection.api.ExchangeConnectionId}:
  * a UUID, never shown to the user or typed by hand. A bare {@code String} said nothing about what
  * it identified, and the deposit path passes an id, a portfolio id and a currency code side by
  * side — three strings the compiler was happy to see swapped.

@@ -1,13 +1,14 @@
-package com.multi.vidulum.exchange_connection.domain;
+package com.multi.vidulum.exchange_connection.api.spi;
 
 import com.multi.vidulum.common.Broker;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 
 /**
  * What an exchange's own module has to provide before a connection to it can be created.
  *
  * <p>Deliberately small. Almost everything about a connection is the same everywhere — the
  * account id, the environment, the permissions, the valuation currency — and lives in
- * {@link ExchangeConnection}. The genuinely per-exchange part is the region vocabulary, which
+ * {@code ExchangeConnection}. The genuinely per-exchange part is the region vocabulary, which
  * does not generalise: OKX splits the world into {@code EEA}/{@code GLOBAL}/{@code US}, Binance
  * into {@code .com} and {@code .US}.
  *

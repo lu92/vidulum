@@ -3,15 +3,15 @@ package com.multi.vidulum.exchange_connection;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.exchange_connection.domain.KeyPermissionsTooBroadException;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import org.junit.jupiter.api.Test;
 
 import java.time.ZonedDateTime;

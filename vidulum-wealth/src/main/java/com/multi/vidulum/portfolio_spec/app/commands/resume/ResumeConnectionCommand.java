@@ -1,7 +1,7 @@
 package com.multi.vidulum.portfolio_spec.app.commands.resume;
 
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.portfolio_spec.domain.ExchangeSnapshot;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 
