@@ -1,8 +1,8 @@
 package com.multi.vidulum.trading.app.commands.orders.fill;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.SubName;
-import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.trading.infrastructure.OrderFilledEventEmitter;
+import com.multi.vidulum.trading.api.TradeConfirmedEvent;
+import com.multi.vidulum.trading.infrastructure.TradeConfirmedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.DomainOrderRepository;
 import com.multi.vidulum.trading.domain.Order;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class FillOrderCommandHandler implements CommandHandler<FillOrderCommand, Void> {
 
     private final DomainOrderRepository orderRepository;
-    private final OrderFilledEventEmitter eventEmitter;
+    private final TradeConfirmedEventEmitter eventEmitter;
 
     @Override
     public Void handle(FillOrderCommand command) {
@@ -36,7 +36,7 @@ public class FillOrderCommandHandler implements CommandHandler<FillOrderCommand,
         Order savedOrder = orderRepository.save(order);
         log.info("Order [{}]: execution of trade [{}] has been applied successfully!", savedOrder.getOrderId(), command.tradeId());
 
-        OrderFilledEvent event = OrderFilledEvent.builder()
+        TradeConfirmedEvent event = TradeConfirmedEvent.builder()
                 .orderId(savedOrder.getOrderId())
                 .portfolioId(savedOrder.getPortfolioId())
                 .tradeId(command.tradeId())
@@ -48,7 +48,7 @@ public class FillOrderCommandHandler implements CommandHandler<FillOrderCommand,
                 .dateTime(command.dateTime())
                 .build();
 
-        log.info("OrderFilledEvent emitted: [{}]", event);
+        log.info("TradeConfirmedEvent emitted after a fill: [{}]", event);
         eventEmitter.emit(event);
         return null;
     }

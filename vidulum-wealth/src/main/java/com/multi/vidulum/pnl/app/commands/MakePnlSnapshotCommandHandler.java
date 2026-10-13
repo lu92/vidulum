@@ -5,7 +5,8 @@ import com.multi.vidulum.pnl.domain.*;
 import com.multi.vidulum.portfolio.api.view.AggregatedPortfolioView;
 import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.portfolio.api.view.PortfolioView;
-import com.multi.vidulum.portfolio.domain.TradingRestClient;
+import com.multi.vidulum.trading.api.TradingModuleApi;
+import com.multi.vidulum.trading.api.view.TradeView;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.app.TradingDto;
@@ -28,7 +29,7 @@ import static java.util.stream.Collectors.toList;
 public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnapshotCommand, PnlHistory> {
 
     private final PortfolioModuleApi portfolioApi;
-    private final TradingRestClient tradingRestClient;
+    private final TradingModuleApi tradingApi;
     private final DomainPnlRepository pnlRepository;
     private final ValuationRates valuationRates;
     private final Clock clock;
@@ -57,9 +58,9 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
         ValuationBasis basis = valuationRates.basisFor(valuationCurrency)
                 .orElseGet(() -> ValuationBasis.pivot(valuationCurrency));
 
-        Map<String, List<TradingDto.TradeSummaryJson>> groupedTradesByPortfolio =
-                tradingRestClient.getTradesInDateRange(userId, dateTimeRange).stream()
-                        .collect(groupingBy(TradingDto.TradeSummaryJson::getPortfolioId));
+        Map<PortfolioId, List<TradeView>> groupedTradesByPortfolio =
+                tradingApi.tradesInRange(userId, dateTimeRange).stream()
+                        .collect(groupingBy(TradeView::portfolioId));
 
         List<PnlPortfolioStatement> pnlPortfolioStatements = aggregatedPortfolio.portfolioIds().stream()
                 .map(portfolioId -> {
@@ -71,7 +72,7 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                     PortfolioView portfolio = portfolioApi.get(portfolioId, valuationCurrency);
 
                     // calculate trades from given period of time
-                    List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId.getId(), List.of()));
+                    List<PnlTradeDetails> tradeDetails = mapToSnapshots(groupedTradesByPortfolio.getOrDefault(portfolioId, List.of()));
 
                     return PnlPortfolioStatement.builder()
                             .portfolioId(portfolio.portfolioId())
@@ -95,18 +96,18 @@ public class MakePnlSnapshotCommandHandler implements CommandHandler<MakePnlSnap
                 .build();
     }
 
-    private List<PnlTradeDetails> mapToSnapshots(List<TradingDto.TradeSummaryJson> executedTrades) {
+    private List<PnlTradeDetails> mapToSnapshots(List<TradeView> executedTrades) {
         return executedTrades.stream()
-                .map(tradeSummaryJson -> PnlTradeDetails.builder()
-                        .originTradeId(OriginTradeId.of(tradeSummaryJson.getOriginTradeId()))
-                        .tradeId(TradeId.of(tradeSummaryJson.getTradeId()))
-                        .portfolioId(PortfolioId.of(tradeSummaryJson.getPortfolioId()))
-                        .symbol(Symbol.of(tradeSummaryJson.getSymbol()))
-                        .subName(SubName.of(tradeSummaryJson.getSubName()))
-                        .side(tradeSummaryJson.getSide())
-                        .quantity(tradeSummaryJson.getQuantity())
-                        .price(tradeSummaryJson.getPrice())
-                        .originDateTime(tradeSummaryJson.getOriginDateTime())
+                .map(trade -> PnlTradeDetails.builder()
+                        .originTradeId(trade.originTradeId())
+                        .tradeId(trade.tradeId())
+                        .portfolioId(trade.portfolioId())
+                        .symbol(trade.symbol())
+                        .subName(trade.subName())
+                        .side(trade.side())
+                        .quantity(trade.quantity())
+                        .price(trade.price())
+                        .originDateTime(trade.originDateTime())
                         .build())
                 .collect(toList());
     }

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | kroki **02**, **02b** i **04** wykonane i w masterze (VID-199, VID-198/5f94715, VID-200/2648036) — reszta analiza + design |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**. Pozostaje: 01, 05b, 05c, 05d, 06b, 06c, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1115,11 +1115,128 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 01 | **ArchUnit na stanie dzisiejszym** — *nie zrobione* | reguły opisujące docelowy graf + jawna lista odstępstw. Nie naprawia niczego, ale zamraża regres i daje mierzalną listę do odhaczania. Koszt: jeden plik testowy |
 | 02 | **`vidulum-quotation-api`** (sekcja 13) — ✅ **VID-199**, w masterze | `AssetBasicInfo` zerwało zależność quotation → portfolio, `QuotationApi` usunęło `QuoteRestClient` i jego adapter. Kontrakt wyszedł na **trzy metody**, nie sześć — patrz sekcja 21 |
 | 02b | **`vidulum-quotation` jako artefakt** — ✅ **VID-200**, gałąź | Wymagało najpierw rozbicia `KafkaTopicConfig`; szczegóły w sekcji 21 |
-| 03 | **`DataCleaner` per poddomena** — *nie zrobione* | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
+| 03 | **`DataCleaner` per poddomena** — ✅ **wykonane** | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
 | 04 | **`vidulum-portfolio-api` + `PortfolioModuleApi`** — ✅ **wykonane**, patrz 21 | sedno zmiany (P1). Implementacja przeniesiona z `vidulum-app` do portfolio i przepisana na gateway. Konsumenci zmieniają import i typ DTO |
-| 05 | **Eventy do modułów `-api` producentów** — *następny krok* | P4. Wymaga ustalenia właściciela każdego z siedmiu eventów — przy `*UnifiedEvent` z cashflow to osobna rozmowa, bo te są zbiorcze |
-| 06 | **`vidulum-trading-api` i rozcięcie cyklu portfolio ↔ trading** | P2. Dopiero tu wychodzi, czy podział poddomen jest dobry — najlepszy moment, żeby sprawdzić, czy `trading` potrzebuje całego `PortfolioDto`, czy tylko salda jednego aktywa |
+| 04b | **`OpenedPositions` + `Position` → portfolio** — ✅ **wykonane** | Leżą w `trading.domain`, a używa ich wyłącznie portfolio: to jego read-model zapisany u sąsiada. Zdejmuje 5 z 13 importów portfolio → trading i **nie wymaga `trading-api`** |
+| 05a | **Eventy wealth** — ✅ **wykonane**, patrz 21 | P4 w zakresie, w którym pracujemy. `OrderFilledEvent` → `trading-api`, `TradeCapturedEvent` → `vidulum-trading` (nie kontrakt), decyzja o `TradeAppliedToPortfolioEvent`, nazwane `groupId`. **Zamyka ostatni wyciek z kroku 04** |
+| 05b | **`UserCreatedEvent`** | Producent siedzi w `vidulum-app`, konsumenci w cashflow i wealth. Wymaga `vidulum-user-api` albo wyjścia domeny użytkownika z bootstrapu — decyzja, nie przenoszenie klasy. Przy okazji: payload na **record** |
+| 05c | **Trzy `*UnifiedEvent` z cashflow** | Najpierw o kształcie, potem o pakowaniu. Dwa z nich czyta `websocket-gateway`, który jest **osobnym deploymentem**. Przy okazji: payloady na **record** |
+| 05d | **Prowizja w koszcie bazowym** — `2026-10-13-fee-in-cost-basis.md` | Decyzja podjęta: **prowizja wchodzi**. Dziś `fee` nie wychodzi z tradingu wcale, więc koszt nabycia jest zaniżony, a zysk zawyżony. Pole w `TradeConfirmedEvent` → `ProcessTradeCommand` → `ExecutedTrade` → `swing()`. Dotyka 23 plików testowych — osobna zmiana |
+| 06 | **`TradingModuleApi` — domknięcie `vidulum-trading-api`** — ✅ **wykonane**, patrz 21 | P2. Artefakt powstał w 05a z samymi eventami; tu dochodzą dwie metody czytające i typy widoku, znika `TradingRestClient` z `portfolio.domain` razem z adapterem, a `pnl` i `risk` przestają zależeć od portfolio po kontrakt tradingu |
+| 06b | **`vidulum-exchange-api`** — *następny krok* | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
+| 06c | **`vidulum-portfolio` + `portfolio_spec` jako artefakt** | 04b, 05a, 03 i 06 zrobione — **zostaje tylko 06b** — patrz „Co blokuje artefakt portfolio" niżej |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
+
+### Właściciele siedmiu eventów — policzone, nie zgadnięte
+
+Jednolinijkowe „eventy do producentów" ukrywało cztery różne zadania. Stan faktyczny na dzień
+rozbicia kroku 05:
+
+| event | producent | konsumenci | gdzie trafia | krok |
+|---|---|---|---|---|
+| `OrderFilledEvent` | trading | **portfolio** | `trading-api` | 05a |
+| `TradeCapturedEvent` | trading | **trading** | `vidulum-trading` — **nie kontrakt** | 05a |
+| `TradeAppliedToPortfolioEvent` | **nikt** | **nikt** | decyzja: emitować albo usunąć | 05a |
+| `UserCreatedEvent` | `vidulum-app` (user) | cashflow + wealth/pnl | wymaga `vidulum-user-api` | 05b |
+| `CashFlowUnifiedEvent` | cashflow, **22 handlery** | cashflow ×2 + websocket-gateway | osobna rozmowa | 05c |
+| `BankDataIngestionUnifiedEvent` | cashflow | **tylko** websocket-gateway | jw. | 05c |
+| `UserFinancialProfileUnifiedEvent` | cashflow | **nikt** | decyzja | 05c |
+
+Cztery rzeczy, których opis kroku 05 nie oddawał:
+
+**`TradeCapturedEvent` nigdy nie przechodzi granicy modułu.** Produkuje go
+`MakeTradeCommandHandler`, konsumuje `TradeCapturedEventListener` — oba w tradingu; jedyna wzmianka
+w portfolio to javadoc w `Portfolio.java`. Ten event **nie należy do żadnego kontraktu**, ma tylko
+wyjść z shared-kernel do implementacji. Jeden z siedmiu rozwiązuje się bez `-api`.
+
+**`websocket-gateway` nie jest w reaktorze.** Własny `pom.xml`, własny `Dockerfile`, zero wystąpień
+w głównym pomie — to osobny deployment czytający dwa eventy cashflow z Kafki. Czyli te kontrakty już
+dziś przechodzą granicę **procesu**, a nie modułu: wersjonowanie przestaje być kwestią rebuildu, bo
+stary gateway i nowy cashflow będą chodzić obok siebie.
+
+**`*UnifiedEvent` to nie sealed interface, a koperta.** `CashFlowUnifiedEvent` ma dwa pola:
+`Map<String, Object> metadata` i `JsonContent content`. Typ nie mówi nic o treści — wariant siedzi w
+metadanych, payload jest nieotypowanym JSON-em. Pytanie przestaje być „gdzie umieścić tę klasę", a
+staje się **„czy to w ogóle jest kontrakt"**, bo kompilator nie sprawdza tu niczego poza tym, że coś
+przyszło.
+
+**Dwa eventy są martwe z dwóch różnych stron.** `TradeAppliedToPortfolioEvent` nikt nie emituje —
+klasa czeka na krok, którego nie dokończono. `UserFinancialProfileUnifiedEvent` jest emitowany w
+pustkę: ma emitter i konfigurację topicu, nie ma konsumenta.
+
+**Dlaczego 05a pierwsze:** mieści się w jednym PR, nie dotyka cashflow ani domeny użytkownika
+(scope testów: wealth + okx + app), zamyka wyciek `TradeCapturedEventListener → ProcessTradeCommand`
+pozostawiony po kroku 04 i stawia wzorzec `*Handler` z sekcji 21, który 05b i 05c potem kopiują.
+
+### Co blokuje artefakt portfolio
+
+Po kroku 02 quotation miał **zero** wychodzących zależności do innych poddomen wealth i wydzielenie
+było mechaniczne. Portfolio po kroku 04 ma **trzynaście** — wszystkie do tradingu:
+
+```
+portfolio/domain/TradingRestClient                 ← port na trading, w pakiecie portfolio
+portfolio/infrastructure/TradingRestClientAdapter  ← wstrzykuje DWA query handlery tradingu
+portfolio/app/queries/GetPositionViewOfPortfolioQueryHandler
+portfolio/app/queries/PositionMapper
+portfolio/app/PortfolioRestController
+```
+
+To ten sam kształt, który krok 02 usunął przy quotation (`QuoteRestClient` + adapter wstrzykujący
+`QuotationService`), tylko wycelowany w trading. Krok 04 nie mógł go ruszyć: dotyczył tego, o co
+**inni pytają portfolio**, a nie tego, o co **portfolio pyta trading**.
+
+Trzy rzeczy wyszły przy pomiarze:
+
+**`OpenedPositions` i `Position` są w `trading.domain`, a używa ich wyłącznie portfolio.** Trading
+sam ich nie dotyka. To read-model portfolio (co trzymam ∩ jakie mam otwarte zlecenia, czyli
+`GET /portfolio/opened-positions/{id}`) zapisany w pakiecie domenowym sąsiada. Tanie do naprawy i
+niezależne od `trading-api` — stąd krok 04b.
+
+**`TradingRestClient` leży w `portfolio.domain`, a importują go `pnl` i `risk_management`.** Port na
+trading zadeklarowany w trzecim module. Po wydzieleniu portfolio te dwa moduły zależałyby od niego
+**tylko po to, żeby dostać kontrakt tradingu**. To twarda blokada, nie niedogodność — i dlatego 06c
+jest poniżej 06.
+
+**Strona testowa jest szeroka.** `WealthTestApplication` robi
+`@Import({PortfolioAppConfig.class, TradingAppConfig.class})`, a szesnaście plików testowych spoza
+portfolio sięga do jego wnętrza — w tym cały `portfolio_spec` (9 plików) i dwa testy pnl. Przy 06c
+wealth, okx i app wezmą `vidulum-portfolio` w `<scope>test</scope>`, dokładnie jak przy quotation.
+
+Drobiazg do zrobienia razem z 05a: `OrderFilledEventListener` bierze
+`containerFactory = "orderFilledContainerFactory"` — bean zdefiniowany w
+`trading/infrastructure/TradingKafkaConfig`, przez string. Po stronie kontraktu to konstanta
+(propozycja `*Handler` w sekcji 21).
+
+### portfolio_spec jedzie razem z portfolio
+
+`ConfirmPortfolioSpecCommandHandler` (460 linii) nie używa portfela — **pisze jego agregat**:
+`portfolioFactory.withAssets(...)`, `portfolioRepository.save(portfolio)`,
+`portfolio.applyExchangeFreeze(...)`, `Contribution.opening(...)`, `ExchangeFreeze.spread(...)`.
+Sześć z siedmiu importów to wnętrze portfolio, a druga ścieżka czyta istniejący portfel i go
+aktualizuje.
+
+Osobny moduł wymagałby w kontrakcie czegoś takiego:
+
+```java
+PortfolioId openFromSnapshot(String name, UserId owner, Broker broker, Currency currency,
+                             List<Asset> assets, List<Contribution> opening,
+                             Map<Ticker, ExchangeFreeze> freezes);
+void resynchronise(PortfolioId id, List<Asset> assets, Map<Ticker, ExchangeFreeze> freezes);
+```
+
+czyli **agregatu wystawionego przez interfejs** — dokładnie tego, przed czym broni reguła z sekcji
+21. Dwa agregaty w jednym module to norma (Wallets w NPay ma `Wallet` i `Owner`), a granicą jest
+artefakt, nie agregat. Dodatkowy sygnał: **nikt nie importuje portfolio_spec** poza
+`WealthDataCleaner`, czyli to czysty konsument i własnego `-api` nie potrzebuje.
+
+Cena: `vidulum-portfolio` dziś nie zależy od exchange w ogóle, a po dołączeniu spec zacznie — stąd
+06b, żeby zależał od kontraktu, a nie od handlerów.
+
+**Docelowo** spec powinien przestać pisać agregat i publikować `PortfolioSpecConfirmedEvent`, na
+który portfolio reaguje własną komendą. Blokada nie jest techniczna:
+`POST /portfolio-spec/{id}/confirm` zwraca dziś `portfolioId` synchronicznie i frontend na tym
+stoi, a ścieżka drugiej synchronizacji oraz odmowa „giełda się ruszyła" zakładają synchroniczność.
+To decyzja produktowa, nie porządkowa — patrz pytanie 2 w sekcji 20.
 
 ---
 
@@ -1164,12 +1281,19 @@ Repo jest materiałem szkoleniowym i w kilku miejscach to widać.
 
 ## 20. Pytania otwarte
 
-1. **Właściciel `*UnifiedEvent`.** `CashFlowUnifiedEvent`, `BankDataIngestionUnifiedEvent`,
-   `UserFinancialProfileUnifiedEvent` są zbiorcze (sealed interface z wariantami?) — nie jest
-   oczywiste, czy rozdawać je per producent, czy traktować jako jeden kontrakt cashflow.
-2. **`portfolio_spec` i tworzenie agregatu.** Dziś składa `Portfolio` ręcznie przez
-   `PortfolioFactory` + `DomainPortfolioRepository`. `PortfolioModuleApi.open(...)` musi przyjąć
-   gotową listę pozycji, kontrybucje i `ExchangeFreeze` — do zaprojektowania.
+1. **Kształt `*UnifiedEvent`** (zaktualizowane przy rozbiciu kroku 05). Nie są sealed interface —
+   `CashFlowUnifiedEvent` to koperta: `Map<String, Object> metadata` + `JsonContent content`.
+   Pytanie nie brzmi więc „komu je przydzielić", a czy zostają kopertą — i wtedy nazwać to wprost,
+   bo kontrakt jest fikcją — czy rozchodzą się na otypowane eventy per fakt. Komplikacja:
+   `websocket-gateway` czyta dwa z nich jako osobny deployment, więc zmiana kształtu jest zmianą
+   kontraktu międzyprocesowego. Patrz krok 05c.
+2. **`portfolio_spec` i tworzenie agregatu** — *rozstrzygnięte inaczej, niż zakładało pytanie*.
+   Kontrakt **nie** dostaje szerokiego `openFromSnapshot(...)`; spec zostaje w tym samym artefakcie
+   co portfolio (krok 06c), bo metoda przyjmująca listę aktywów, kontrybucje i `ExchangeFreeze` to
+   agregat wystawiony przez interfejs. Otwarte zostaje tylko jedno: **czy onboarding może być
+   asynchroniczny** — bo dopiero wtedy spec mógłby być osobnym modułem publikującym
+   `PortfolioSpecConfirmedEvent`. Dziś `confirm` zwraca `portfolioId` synchronicznie i frontend na
+   tym stoi. Decyzja produktowa.
 3. **Czy `pnl` i `risk` dostają własne `-api`.** Nic od nich nie zależy, więc kontrakt może być
    zbędny. Decyzja: `-api` tylko wtedy, gdy ktoś konsumuje.
 4. **Granulacja `DataCleaner`** po rozbiciu wealth na siedem artefaktów — jeden per artefakt czy
@@ -1469,6 +1593,130 @@ Odrzucone warianty:
 Właściwy moment to krok 05, gdzie i tak przenosisz siedem eventów do modułów producentów — ta sama
 robota na tych samych plikach. Jedno wyjątkowo wcześniej i niezależnie: **nazwane `groupId`**,
 darmowe do poprawienia i od razu daje czytelne opóźnienia per moduł.
+
+### Krok 05a i dlaczego `vidulum-trading-api` nie jest końcowy
+
+Artefakt powstał w 05a niosąc **dwa typy**: `TradeConfirmedEvent` i `TradeConfirmedHandler`.
+Zamknął ostatnie przekroczenie granicy po kroku 04 — `TradeCapturedEventListener` budował
+`ProcessTradeCommand`, czyli komendę portfolio, i wysyłał ją wspólnym gatewayem. Teraz oba przebiegi
+tradingu kończą się jednym eventem, a grep po `portfolio.app` i `portfolio.domain` w pakiecie
+tradingu daje zero.
+
+Przy okazji z shared-kernel zniknęły trzy eventy z siedmiu: `OrderFilledEvent` (zastąpiony),
+`TradeCapturedEvent` (przeniesiony do `trading/app` — nigdy nie przechodził granicy) i
+`TradeAppliedToPortfolioEvent` (**usunięty jako martwy**; emitowanie eventu bez konsumenta to
+dokładnie zarzut postawiony `UserFinancialProfileUnifiedEvent`, więc wróci razem z konsumentem).
+
+**Czytanie nadal chodzi obok kontraktu.** Cztery miejsca, ten sam układ co przed krokiem 02 i 04 —
+port zadeklarowany u konsumenta plus adapter wstrzykujący handlery dostawcy:
+
+| kto | przez co | co czyta |
+|---|---|---|
+| `portfolio/.../GetPositionViewOfPortfolioQueryHandler` | `TradingRestClient` | `getOpenedOrders` → `TradingDto.OrderSummaryJson` |
+| `risk_management/domain/RiskManagementEngine` | `TradingRestClient` | `getOpenedOrders` |
+| `pnl/.../MakePnlSnapshotCommandHandler` | `TradingRestClient` | `getTradesInDateRange` → `TradingDto.TradeSummaryJson` |
+| `portfolio/infrastructure/TradingRestClientAdapter` | — | wstrzykuje **dwa query handlery** i mapuje `Order`/`Trade` na Json |
+
+Dodatkowo `pnl` i `risk` importują ten port **z pakietu portfolio**, czyli żeby dostać kontrakt
+tradingu, zależą od trzeciego modułu. Konsumenci używają łącznie **18 różnych getterów**
+(`getQuantity` ×9, `getSymbol` ×4, `getSide` ×3, `getOriginOrderId` ×3, `getLimitPrice`,
+`getStopPrice`, `getTargetPrice`, `getEntryValue`, `getStopLossValue`…) — to lista, z której w kroku
+06 wyprowadza się typy widoku.
+
+**Trzy uwagi o samym module:**
+
+- `TradeConfirmedEvent` jest **mutowalny** (`@Data` daje settery), więc konsument może przestawić
+  pola otrzymanego eventu. `portfolio-api` używa recordów i nie ma Lomboka wcale.
+- `CONTAINER_FACTORY = "tradeConfirmedContainerFactory"` to **nazwa springowego beana w module,
+  który Springa nie widzi**. Działa, bo to string, ale kontrakt wie o konwencji wiringu konsumenta.
+  Alternatywa oddaje magiczny string konsumentowi — świadomy kompromis.
+- Nic nie pilnuje, żeby moduł został kontraktem; po kroku 01 pilnowałby ArchUnit.
+
+### Trzy decyzje podjęte po 05a
+
+**1. `trading-api` domyka się w kroku 06.** Artefakt rodzi się z eventami, metody czytające dochodzą
+razem z usunięciem `TradingRestClient`. Dwie metody, bo tylko dwie mają wołających.
+
+**2. Prowizja wchodzi do kosztu bazowego** — krok 05d.
+
+Stan faktyczny: `fee` żyje w `trading/domain/Trade`, `MakeTradeCommand`, `TradeRestController` i
+`TradingDto`, a w całym pakiecie `portfolio` słowo „fee" **nie występuje ani razu**.
+`MakeTradeCommandHandler` liczy `totalValue = value + totalFee` i zapisuje je w trade'ie, ale
+`TradeConfirmedEvent`, `ProcessTradeCommand` i `ExecutedTrade` nie mają pola prowizji — więc
+`Portfolio.swing()` wycenia nabycie jako `cena × ilość`. Koszt jest zaniżony, a `unrealisedProfit` i
+`realisedResult` zawyżone.
+
+To nie jest skutek 05a — tak było w `OrderFilledEvent` i `TradeCapturedEvent`. Ale
+`TradeConfirmedEvent` jest teraz **jedyną** drogą trade'u do portfela, czyli jedynym miejscem, gdzie
+prowizję da się dołożyć.
+
+Rozpisane jako osobne zadanie w `2026-10-13-fee-in-cost-basis.md` — przy pisaniu wyszło, że luk
+jest **trzy**, nie jedna: koszt nabycia, wynik zrealizowany, oraz prowizja zapłacona w trzecim
+aktywie, która nie jest odejmowana ze stanu w ogóle (`swing()` rusza dokładnie dwie nogi). Oraz że
+agregat celowo nie liczy na walutach — ten sam komentarz, który tłumaczy, dlaczego `cost` jest
+„recorded, not subtracted", zabrania składania prowizji w `Portfolio`.
+
+Zasięg: pole w evencie → `ProcessTradeCommand` → `ExecutedTrade` →
+`PortfolioEvents.TradeProcessedEvent` (a to zdarzenie **persystowane**) →
+`calculatePurchasedPortionOfAsset` i `swing()`. Po stronie testów dotyka **23 plików** asertujących
+`costBasis`, `unrealisedProfit` lub `realisedResult` — i część ich liczb się zmieni, co jest
+właściwym zachowaniem, nie regresją. Osobna zmiana z własnym przebiegiem, nie dodatek do czegoś
+innego.
+
+**3. Payloady Kafki jako recordy.** Dziś **każdy** payload w projekcie jest klasą z Lombokiem —
+`CashFlowUnifiedEvent`, `PriceChangedEvent`, `UserCreatedEvent`, `TradeCapturedEvent`,
+`TradeConfirmedEvent`, `KafkaEvent`. Czyli 05a poszło za istniejącym idiomem, ale moduły kontraktowe
+mają teraz dwa style: `portfolio-api` niemutowalny bez Lomboka, `trading-api` mutowalny z Lombokiem.
+
+Decyzja: **record**. Zmiana jest cross-cutting, więc idzie razem z przenoszeniem eventów w 05b i 05c,
+nie osobno dla jednego z nich. Wymaga sprawdzenia deserializacji — `JsonDeserializer` na recordzie
+działa od Jacksona 2.12 przy włączonym module parameter-names (Spring Boot włącza go domyślnie), ale
+w tym repo nie ma jeszcze ani jednego precedensu, więc pierwszy konwertowany event potrzebuje testu
+przez prawdziwą Kafkę, nie tylko komponentowego.
+
+### Krok 06: kontrakt tradingu domknięty
+
+`TradingModuleApi` ma **dwie metody**, bo dwie mają wołających: `openedOrders(portfolioId)` (portfolio
+i risk) oraz `tradesInRange(owner, window)` (pnl). Składanie, anulowanie i wykonanie zlecenia
+przychodzą po HTTP od właściciela, a rozliczony trade wychodzi jako `TradeConfirmedEvent` — żadne z
+tego nie potrzebuje miejsca w kontrakcie.
+
+Redukcja znów wyszła po stronie danych:
+
+| | web DTO | kontrakt |
+|---|---|---|
+| `OrderView` | 12 pól `OrderSummaryJson` | **8** |
+| `TradeView` | 10 pól `TradeSummaryJson` | **9** |
+
+Z widoku zlecenia wypadły: wewnętrzny `orderId` (konsumenci kluczują po `originOrderId`, czyli po
+tym, jak zlecenie nazywa giełda), `portfolioId` (każdy wołający i tak pytał o jeden portfel) oraz
+`type` i `status` — rodzaj zlecenia i jego miejsce we własnym cyklu życia to sprawa tradingu, a
+jedyne, co konsument z tą listą robi, to filtr po `side`.
+
+Usunięte: `portfolio.domain.TradingRestClient` i `portfolio.infrastructure.TradingRestClientAdapter`.
+**`pnl` i `risk` nie importują już z portfolio niczego poza `portfolio.api`** — wcześniej brały
+stamtąd kontrakt tradingu, czyli po dane jednego modułu szły przez trzeci.
+
+**Reguła `@Lazy` z kroku 04 sprawdziła się dokładnie tak, jak zapisana.** `QueryGateway` powstaje z
+`List<QueryHandler>`, wśród nich jest `GetPositionViewOfPortfolioQueryHandler`, który konsumuje ten
+kontrakt — więc `TradingModuleApiImpl` zamyka ten sam cykl co `PortfolioModuleApiImpl`. Tym razem
+`@Lazy` było na miejscu od pierwszej kompilacji, bez 38 czerwonych testów.
+
+Trzy drobiazgi, które wyszły przy przejściu na value objecty:
+
+- **`StopLoss.originOrderId` było typu `OrderId`**, a budowane z *origin* id zlecenia
+  (`OrderId.of(orderSummaryJson.getOriginOrderId())`). Kontrakt zwraca `OriginOrderId`, więc
+  pomyłka typów wyszła sama; `StopLoss` nie jest persystowany, poprawione.
+- `GetPositionViewOfPortfolioQueryHandler` miał **martwy import** `TradingDto` — jedno wystąpienie,
+  samego importu.
+- pnl grupowało trade'y po `String` id portfela i robiło `getOrDefault(portfolioId.getId(), …)`;
+  z `TradeView::portfolioId` mapa kluczuje się po `PortfolioId` i konwersja znika.
+
+**Czego `trading-api` nadal nie ma:** dla dzisiejszych wołających — niczego. Ale moduł trzyma teraz
+**dwa style obok siebie**: `TradeConfirmedEvent` to mutowalna klasa z Lombokiem, a `OrderView` i
+`TradeView` są recordami. Niespójność przeniosła się z poziomu „dwa moduły kontraktowe" na poziom
+„jeden moduł", co tylko wzmacnia decyzję 3 z poprzedniej podsekcji: payloady Kafki na recordy razem
+z 05b i 05c.
 
 ### Co zostało otwarte po 04
 

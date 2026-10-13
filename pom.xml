@@ -24,6 +24,7 @@
 		<module>vidulum-quotation-api</module>
 		<module>vidulum-quotation</module>
 		<module>vidulum-portfolio-api</module>
+		<module>vidulum-trading-api</module>
 		<module>vidulum-wealth</module>
 		<module>vidulum-okx</module>
 		<module>vidulum-app</module>

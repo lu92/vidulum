@@ -15,7 +15,9 @@ import com.multi.vidulum.pnl.domain.PnlStatement;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.ValuationRates;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
-import com.multi.vidulum.portfolio.domain.TradingRestClient;
+import com.multi.vidulum.trading.api.TradingModuleApi;
+import com.multi.vidulum.trading.api.view.OrderView;
+import com.multi.vidulum.trading.api.view.TradeView;
 import com.multi.vidulum.portfolio.api.view.AggregatedPortfolioView;
 import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.portfolio.api.view.PortfolioView;
@@ -141,15 +143,15 @@ class ValuationCurrencyComponentTest {
         }
     };
 
-    private final TradingRestClient trades = new TradingRestClient() {
+    /** No trades: this test is about which currency each read asks for, not about what was traded. */
+    private final TradingModuleApi trades = new TradingModuleApi() {
         @Override
-        public List<TradingDto.OrderSummaryJson> getOpenedOrders(PortfolioId portfolioId) {
+        public List<OrderView> openedOrders(PortfolioId portfolioId) {
             return List.of();
         }
 
         @Override
-        public List<TradingDto.TradeSummaryJson> getTradesInDateRange(
-                UserId userId, Range<ZonedDateTime> dateTimeRange) {
+        public List<TradeView> tradesInRange(UserId owner, Range<ZonedDateTime> window) {
             return List.of();
         }
     };

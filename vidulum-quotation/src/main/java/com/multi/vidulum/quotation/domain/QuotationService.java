@@ -56,7 +56,7 @@ public class QuotationService implements QuotationApi {
     }
 
     @KafkaListener(
-            groupId = "group_id1",
+            groupId = "quotation",
             topics = "quotes",
             containerFactory = "priceChangingContainerFactory")
     public void onPriceChange(PriceChangedEvent event) {

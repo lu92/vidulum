@@ -11,7 +11,7 @@ import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.TradeId;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.common.events.TradeCapturedEvent;
+import com.multi.vidulum.trading.app.TradeCapturedEvent;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommand;
 import com.multi.vidulum.trading.app.commands.trades.execute.MakeTradeCommandHandler;
 import com.multi.vidulum.trading.domain.DomainTradeRepository;

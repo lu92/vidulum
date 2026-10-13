@@ -4,7 +4,6 @@ import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.quotation.api.QuotationApi;
-import com.multi.vidulum.trading.domain.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
