@@ -1,8 +1,8 @@
 package com.multi.vidulum.portfolio_spec.app.commands.create;
 
-import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionApi;
+import com.multi.vidulum.exchange_connection.api.view.ConnectionView;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
@@ -27,7 +27,7 @@ public class CreatePortfolioSpecCommandHandler
 
     private final DomainPortfolioSpecRepository specRepository;
     private final DomainPortfolioRepository portfolioRepository;
-    private final DomainExchangeConnectionRepository connectionRepository;
+    private final ExchangeConnectionApi exchangeApi;
     private final Clock clock;
 
     @Override
@@ -66,15 +66,15 @@ public class CreatePortfolioSpecCommandHandler
         if (command.connectionId() == null) {
             return;
         }
-        ExchangeConnection connection = connectionRepository.findOwnedOrThrow(
+        ConnectionView connection = exchangeApi.ownedOrThrow(
                 command.userId(), ExchangeConnectionId.of(command.connectionId()));
 
         requireSame("denominationCurrency",
                 command.denominationCurrency().getId(),
-                connection.getDenominationCurrency().getId());
+                connection.denominationCurrency().getId());
         requireSame("broker",
                 command.snapshot().broker().getId(),
-                connection.getBroker().getId());
+                connection.broker().getId());
     }
 
     private static void requireSame(String field, String stated, String onConnection) {

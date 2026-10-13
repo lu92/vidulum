@@ -22,11 +22,11 @@ import com.multi.vidulum.exchange_connection.app.commands.reconnect.ReconnectExc
 import com.multi.vidulum.exchange_connection.app.commands.revoke.RevokeExchangeConnectionCommandHandler;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQueryHandler;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
-import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionNotFoundException;
+import com.multi.vidulum.exchange_connection.api.error.ExchangeConnectionNotFoundException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 import com.multi.vidulum.portfolio.app.InMemoryPortfolioRepository;
 import com.multi.vidulum.portfolio.domain.portfolio.Asset;
 import com.multi.vidulum.portfolio.domain.portfolio.DomainPortfolioRepository;
@@ -82,6 +82,10 @@ class OnboardingFlowComponentTest {
 
     private final InMemoryExchangeConnectionRepositoryForSpec connections =
             new InMemoryExchangeConnectionRepositoryForSpec();
+
+    /** The real exchange handlers over that store — a connection genuinely transitions. */
+    private final ExchangeConnectionApiForSpec exchangeApi =
+            new ExchangeConnectionApiForSpec(connections, clock);
     private final InMemorySpecRepository specs = new InMemorySpecRepository();
     private final DomainPortfolioRepository portfolios = new InMemoryPortfolioRepository(clock);
 
@@ -120,11 +124,10 @@ class OnboardingFlowComponentTest {
         gateway.registerCommandHandler(new ConnectExchangeCommandHandler(connections, adapters, clock));
         gateway.registerCommandHandler(new ReconnectExchangeCommandHandler(connections, clock));
         gateway.registerCommandHandler(new RevokeExchangeConnectionCommandHandler(connections, clock));
-        gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, connections, clock));
+        gateway.registerCommandHandler(new CreatePortfolioSpecCommandHandler(specs, portfolios, exchangeApi, clock));
         gateway.registerCommandHandler(new AnswerPortfolioSpecCommandHandler(specs));
         gateway.registerCommandHandler(new ConfirmPortfolioSpecCommandHandler(
-                specs, connections, portfolios, new PortfolioFactory(), quotationApiFake, confirmConnectionHandler,
-                new RecordPortfolioSyncCommandHandler(connections)));
+                specs, portfolios, new PortfolioFactory(), quotationApiFake, exchangeApi));
         return gateway;
     }
 

@@ -6,8 +6,8 @@ import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepo
 import com.multi.vidulum.exchange_connection.domain.ExchangeAccountAlreadyConnectedException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
-import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
 import com.multi.vidulum.exchange_connection.domain.ReportedKeyPermissions;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;

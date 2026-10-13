@@ -46,13 +46,12 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Exchange: PortfolioSpec closes onboarding by confirming the connection that started
-             it. The direction was planned when vidulum-exchange was extracted (see the analysis,
-             section 5.9) - exchange depends on shared-kernel only, precisely so that wealth can
-             depend on it and not the other way round. -->
+        <!-- Exchange contract: onboarding closes a connection and records a synchronisation
+             through it. The connection aggregate, its repository and its command handlers stay
+             private to vidulum-exchange, which only the application and these tests see. -->
         <dependency>
             <groupId>com.multi</groupId>
-            <artifactId>vidulum-exchange</artifactId>
+            <artifactId>vidulum-exchange-api</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -113,6 +112,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- The exchange implementation, for onboarding's component tests, which wire its real
+             handlers. Test scope only: nothing in src/main may see it. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- The quotation implementation, for integration tests that seed prices through
              QuoteRestController and for component tests that drive the real QuotationService.
              Test scope only: nothing in src/main may see it. -->

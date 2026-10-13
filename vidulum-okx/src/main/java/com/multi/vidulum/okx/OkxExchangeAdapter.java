@@ -1,8 +1,8 @@
 package com.multi.vidulum.okx;
 
 import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;

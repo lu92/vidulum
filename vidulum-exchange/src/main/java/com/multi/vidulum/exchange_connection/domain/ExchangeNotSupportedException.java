@@ -5,6 +5,7 @@ import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
 
 import java.util.Collection;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
 
 /**
  * No {@link ExchangeAdapter} is registered for the requested broker — either the name is wrong or

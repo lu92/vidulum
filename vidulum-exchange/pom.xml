@@ -26,6 +26,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- The contract this module implements, plus the SPI an exchange's own module provides. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-classic</artifactId>

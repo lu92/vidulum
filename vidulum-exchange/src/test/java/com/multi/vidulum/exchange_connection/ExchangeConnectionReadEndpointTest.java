@@ -7,7 +7,7 @@ import com.multi.vidulum.common.error.ErrorCode;
 import com.multi.vidulum.exchange_connection.app.ExchangeConnectionDto;
 import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.infrastructure.ExchangeConnectionMongoRepository;
 import lombok.extern.slf4j.Slf4j;

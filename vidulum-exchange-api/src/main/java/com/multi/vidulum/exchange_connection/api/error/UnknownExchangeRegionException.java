@@ -1,4 +1,4 @@
-package com.multi.vidulum.exchange_connection.domain;
+package com.multi.vidulum.exchange_connection.api.error;
 
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.error.BusinessException;

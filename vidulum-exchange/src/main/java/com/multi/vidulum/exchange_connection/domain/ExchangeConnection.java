@@ -12,6 +12,9 @@ import lombok.ToString;
 
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 
 /**
  * Link between a Vidulum user and one account on an exchange.

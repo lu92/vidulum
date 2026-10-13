@@ -13,17 +13,17 @@ import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQu
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQuery;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAdapters;
-import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
 import com.multi.vidulum.exchange_connection.domain.CredentialsMode;
 import com.multi.vidulum.exchange_connection.domain.ExchangeAccountAlreadyConnectedException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionNotFoundException;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.ExchangeConnectionNotFoundException;
 import com.multi.vidulum.exchange_connection.domain.ExchangeEnvironment;
 import com.multi.vidulum.exchange_connection.domain.ExchangeNotSupportedException;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import com.multi.vidulum.exchange_connection.domain.KeyPermissionsTooBroadException;
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;

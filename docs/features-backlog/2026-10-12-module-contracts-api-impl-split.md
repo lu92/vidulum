@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**. Pozostaje: 01, 05b, 05c, 05d, 06b, 06c, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**. Pozostaje: 01, 05b, 05c, 05d, **06c**, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1123,8 +1123,8 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 05c | **Trzy `*UnifiedEvent` z cashflow** | Najpierw o kształcie, potem o pakowaniu. Dwa z nich czyta `websocket-gateway`, który jest **osobnym deploymentem**. Przy okazji: payloady na **record** |
 | 05d | **Prowizja w koszcie bazowym** — `2026-10-13-fee-in-cost-basis.md` | Decyzja podjęta: **prowizja wchodzi**. Dziś `fee` nie wychodzi z tradingu wcale, więc koszt nabycia jest zaniżony, a zysk zawyżony. Pole w `TradeConfirmedEvent` → `ProcessTradeCommand` → `ExecutedTrade` → `swing()`. Dotyka 23 plików testowych — osobna zmiana |
 | 06 | **`TradingModuleApi` — domknięcie `vidulum-trading-api`** — ✅ **wykonane**, patrz 21 | P2. Artefakt powstał w 05a z samymi eventami; tu dochodzą dwie metody czytające i typy widoku, znika `TradingRestClient` z `portfolio.domain` razem z adapterem, a `pnl` i `risk` przestają zależeć od portfolio po kontrakt tradingu |
-| 06b | **`vidulum-exchange-api`** — *następny krok* | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
-| 06c | **`vidulum-portfolio` + `portfolio_spec` jako artefakt** | 04b, 05a, 03 i 06 zrobione — **zostaje tylko 06b** — patrz „Co blokuje artefakt portfolio" niżej |
+| 06b | **`vidulum-exchange-api`** — ✅ **wykonane**, patrz 21 | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
+| 06c | **`vidulum-portfolio` + `portfolio_spec` jako artefakt** — *następny krok* | Wszystkie blokady zdjęte (04b, 05a, 03, 06, 06b) — zostało przeniesienie plików i pomy — patrz „Co blokuje artefakt portfolio" niżej |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -1717,6 +1717,49 @@ Trzy drobiazgi, które wyszły przy przejściu na value objecty:
 `TradeView` są recordami. Niespójność przeniosła się z poziomu „dwa moduły kontraktowe" na poziom
 „jeden moduł", co tylko wzmacnia decyzję 3 z poprzedniej podsekcji: payloady Kafki na recordy razem
 z 05b i 05c.
+
+### Krok 06b: kontrakt exchange
+
+`ExchangeConnectionApi` ma **cztery metody**, bo tyle woła onboarding: `ownedOrThrow`, `confirm`,
+`reconnect`, `recordSync`. Rejestrowanie, odbieranie i listowanie połączeń przychodzi po HTTP od
+właściciela.
+
+`portfolio_spec` wstrzykiwał wcześniej **trzy command handlery exchange** —
+`ConfirmExchangeConnectionCommandHandler`, `ReconnectExchangeCommandHandler`,
+`RecordPortfolioSyncCommandHandler` — **i czytał połączenia prosto z
+`DomainExchangeConnectionRepository`**. Trzynaście importów do wnętrza obcego modułu.
+
+| | agregat | kontrakt |
+|---|---|---|
+| `ConnectionView` | 16 pól `ExchangeConnection` | **5** |
+
+Poza widokiem wypadły: account uid, środowisko, region, zgłoszone uprawnienia klucza, tryb
+poświadczeń, powód statusu i cztery znaczniki czasu — wszystko to odpowiedzi na pytania właściciela
+o jego własne połączenie, czytane przez `GET /exchange-connection/{id}` i przez nikogo więcej.
+
+Do kontraktu pojechały też typy, które przechodziły granicę: `ExchangeConnectionId` i
+`ConnectionStatus` do korzenia, trzy wyjątki do `error/`, a **`ExchangeAdapter` do `spi/`** — tak
+jak `BrokerQuotationProvider` w quotation-api.
+
+**Nieoczekiwany zysk: `vidulum-okx` schodzi na `test` scope.** Jego kod produkcyjny implementuje
+dwumetodowe SPI, a kompilował się przeciw całemu modelowi połączenia. Teraz `okx/src/main` zna tylko
+`api.spi.ExchangeAdapter` i `api.error.UnknownExchangeRegionException`; implementacja jest potrzebna
+wyłącznie testom endpointowym. **`vidulum-app` jest jedynym modułem z `vidulum-exchange` w compile
+scope** — dokładnie jak przy quotation.
+
+**Strona testowa zachowała to, co sprawdza.** Sześć testów portfolio_spec wiązało po trzy prawdziwe
+handlery exchange plus dubler repozytorium. Zastąpione jednym `ExchangeConnectionApiForSpec`, który
+odpowiada na kontrakt **prawdziwymi handlerami** nad magazynem w pamięci — więc połączenie nadal
+faktycznie przechodzi między stanami, a to jest przedmiotem tych testów (onboarding ma zostawić
+połączenie w służbie, a wznowienie ma przesunąć kotwicę synchronizacji). Podmieniono tylko Mongo.
+
+Przy okazji poprawiony komentarz w `ConfirmPortfolioSpecCommandHandler`: twierdził, że połączenie
+„jest zamykane własną komendą, a nie przez sięganie do jego repozytorium". Była to połowa prawdy —
+komendy owszem, ale **odczyt sięgał do repozytorium**. Teraz zdanie jest prawdziwe.
+
+**06c jest odblokowane.** Po 04b, 05a, 03, 06 i 06b wydzielenie `vidulum-portfolio` razem z
+`portfolio_spec` to już tylko przeniesienie plików i pomy: `wealth` i `okx` wezmą implementacje w
+`test` scope, `app` w compile.
 
 ### Co zostało otwarte po 04
 

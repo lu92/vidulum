@@ -11,7 +11,7 @@ import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQu
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQuery;
 import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionsOfUserQueryHandler;
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import jakarta.validation.Valid;

@@ -1,8 +1,8 @@
 package com.multi.vidulum.exchange_connection;
 
 import com.multi.vidulum.common.Broker;
-import com.multi.vidulum.exchange_connection.domain.ExchangeAdapter;
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 
 import java.util.List;
 import java.util.Locale;

@@ -1,4 +1,4 @@
-package com.multi.vidulum.exchange_connection.domain;
+package com.multi.vidulum.exchange_connection.api;
 
 /**
  * Lifecycle of a connection. <b>None of these states is terminal</b> — losing contact with the

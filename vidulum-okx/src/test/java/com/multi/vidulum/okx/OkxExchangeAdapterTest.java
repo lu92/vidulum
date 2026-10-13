@@ -1,6 +1,6 @@
 package com.multi.vidulum.okx;
 
-import com.multi.vidulum.exchange_connection.domain.UnknownExchangeRegionException;
+import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

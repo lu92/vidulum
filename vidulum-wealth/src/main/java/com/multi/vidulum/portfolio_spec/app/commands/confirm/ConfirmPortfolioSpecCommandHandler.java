@@ -4,14 +4,9 @@ import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Quantity;
-import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommand;
-import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommand;
-import com.multi.vidulum.exchange_connection.app.commands.sync.RecordPortfolioSyncCommandHandler;
-import com.multi.vidulum.exchange_connection.app.commands.confirm.ConfirmExchangeConnectionCommandHandler;
-import com.multi.vidulum.exchange_connection.domain.DomainExchangeConnectionRepository;
-import com.multi.vidulum.exchange_connection.domain.ConnectionStatus;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnectionId;
-import com.multi.vidulum.exchange_connection.domain.IllegalConnectionTransitionException;
+import com.multi.vidulum.exchange_connection.api.ConnectionStatus;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionId;
+import com.multi.vidulum.exchange_connection.api.error.IllegalConnectionTransitionException;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
@@ -25,7 +20,8 @@ import com.multi.vidulum.portfolio.domain.portfolio.ExchangeFreeze;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.portfolio.domain.portfolio.PortfolioFactory;
 import com.multi.vidulum.common.Currency;
-import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
+import com.multi.vidulum.exchange_connection.api.ExchangeConnectionApi;
+import com.multi.vidulum.exchange_connection.api.view.ConnectionView;
 import com.multi.vidulum.portfolio_spec.domain.SpecificationAlreadyAppliedException;
 import com.multi.vidulum.portfolio_spec.domain.ConnectionMismatchException;
 import com.multi.vidulum.portfolio_spec.domain.Difference;
@@ -74,7 +70,6 @@ public class ConfirmPortfolioSpecCommandHandler
         implements CommandHandler<ConfirmPortfolioSpecCommand, PortfolioSpec> {
 
     private final DomainPortfolioSpecRepository specRepository;
-    private final DomainExchangeConnectionRepository connectionRepository;
     private final DomainPortfolioRepository portfolioRepository;
     private final PortfolioFactory portfolioFactory;
 
@@ -100,8 +95,7 @@ public class ConfirmPortfolioSpecCommandHandler
      * its own gateway would ever notice. The rule that a connection may be confirmed once still
      * lives with the aggregate that owns it; only the delivery is direct.
      */
-    private final ConfirmExchangeConnectionCommandHandler confirmConnectionHandler;
-    private final RecordPortfolioSyncCommandHandler recordSyncHandler;
+    private final ExchangeConnectionApi exchangeApi;
 
     @Override
     public PortfolioSpec handle(ConfirmPortfolioSpecCommand command) {
@@ -118,7 +112,7 @@ public class ConfirmPortfolioSpecCommandHandler
         // the connection, so a connection that cannot be confirmed must stop the operation here
         // rather than after a portfolio exists - otherwise a failure leaves a portfolio behind
         // with a connection still PENDING, and nothing to tell them apart from a real one.
-        Optional<ExchangeConnection> connection = confirmableConnection(command, spec);
+        Optional<ConnectionView> connection = confirmableConnection(command, spec);
 
         if (movedOn(spec.getSnapshot(), command.freshSnapshot())) {
             // Recomputed against what the specification was measured from, not against nothing.
@@ -130,7 +124,7 @@ public class ConfirmPortfolioSpecCommandHandler
             throw new SnapshotChangedException(spec.getId());
         }
 
-        Broker broker = connection.map(ExchangeConnection::getBroker)
+        Broker broker = connection.map(ConnectionView::broker)
                 .orElse(command.freshSnapshot().broker());
 
         // The specification's currency wins, and is not merely one of three opinions. It is what
@@ -364,21 +358,21 @@ public class ConfirmPortfolioSpecCommandHandler
      * <p>Empty when the specification has no connection — then the request is the only source,
      * and the fields it carries are used as given.
      */
-    private Optional<ExchangeConnection> confirmableConnection(
+    private Optional<ConnectionView> confirmableConnection(
             ConfirmPortfolioSpecCommand command, PortfolioSpec spec) {
 
         if (spec.getConnectionId() == null) {
             return Optional.empty();
         }
-        ExchangeConnection connection = connectionRepository.findOwnedOrThrow(
+        ConnectionView connection = exchangeApi.ownedOrThrow(
                 command.userId(), ExchangeConnectionId.of(spec.getConnectionId()));
 
         requireSame("denominationCurrency",
                 command.denominationCurrency().getId(),
-                connection.getDenominationCurrency().getId());
+                connection.denominationCurrency().getId());
         requireSame("broker",
                 command.freshSnapshot().broker().getId(),
-                connection.getBroker().getId());
+                connection.broker().getId());
 
         // Asked here rather than left to the aggregate, which would raise it after the portfolio
         // had been written. A connection already serving a portfolio is the reachable case: nothing
@@ -389,14 +383,14 @@ public class ConfirmPortfolioSpecCommandHandler
         // connection went into service at onboarding and is expected to still be there, pointing
         // at the portfolio being updated. Pointing anywhere else is a mix-up, not a re-read.
         if (spec.getKnownPortfolioId() != null) {
-            if (connection.getStatus() != ConnectionStatus.ACTIVE
-                    || !spec.getKnownPortfolioId().equals(connection.getPortfolioId())) {
+            if (connection.status() != ConnectionStatus.ACTIVE
+                    || !spec.getKnownPortfolioId().equals(connection.portfolioId())) {
                 throw new IllegalConnectionTransitionException(
-                        connection.getId(), connection.getStatus(), "synchronise");
+                        connection.id(), connection.status(), "synchronise");
             }
-        } else if (connection.getStatus() != ConnectionStatus.PENDING) {
+        } else if (connection.status() != ConnectionStatus.PENDING) {
             throw new IllegalConnectionTransitionException(
-                    connection.getId(), connection.getStatus(), "confirm");
+                    connection.id(), connection.status(), "confirm");
         }
 
         return Optional.of(connection);
@@ -410,17 +404,17 @@ public class ConfirmPortfolioSpecCommandHandler
 
     /**
      * The connection is a separate aggregate in a separate module, so it is closed through its
-     * own command rather than by reaching into its repository.
+     * own contract rather than by reaching into its repository or its handlers.
      */
     private void confirmConnection(
             ConfirmPortfolioSpecCommand command, PortfolioSpec spec, PortfolioId portfolioId) {
         if (spec.getConnectionId() == null) {
             return;
         }
-        confirmConnectionHandler.handle(new ConfirmExchangeConnectionCommand(
+        exchangeApi.confirm(
                 command.userId(),
                 ExchangeConnectionId.of(spec.getConnectionId()),
-                portfolioId));
+                portfolioId);
     }
 
     /**
@@ -434,10 +428,10 @@ public class ConfirmPortfolioSpecCommandHandler
             // A portfolio kept by hand has no connection to stamp — see the precious metals walk.
             return;
         }
-        recordSyncHandler.handle(new RecordPortfolioSyncCommand(
+        exchangeApi.recordSync(
                 command.userId(),
                 ExchangeConnectionId.of(spec.getConnectionId()),
-                command.freshSnapshot().takenAt()));
+                command.freshSnapshot().takenAt());
     }
 
     /**
