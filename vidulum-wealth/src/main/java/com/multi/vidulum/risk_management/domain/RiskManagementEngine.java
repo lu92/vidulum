@@ -7,7 +7,6 @@ import com.multi.vidulum.quotation.api.QuotationApi;
 import com.multi.vidulum.trading.api.TradingModuleApi;
 import com.multi.vidulum.trading.api.view.OrderView;
 import com.multi.vidulum.common.PortfolioId;
-import com.multi.vidulum.trading.app.TradingDto;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 

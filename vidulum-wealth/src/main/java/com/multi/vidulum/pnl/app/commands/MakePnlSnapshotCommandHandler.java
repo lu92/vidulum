@@ -9,7 +9,6 @@ import com.multi.vidulum.trading.api.TradingModuleApi;
 import com.multi.vidulum.trading.api.view.TradeView;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.trading.app.TradingDto;
 import com.multi.vidulum.common.UserNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

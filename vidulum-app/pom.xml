@@ -36,6 +36,18 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- The portfolio and trading implementations. Only this module wires them. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-trading</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- The portfolio contract: the user domain opens a portfolio through it. -->
         <dependency>
             <groupId>com.multi</groupId>

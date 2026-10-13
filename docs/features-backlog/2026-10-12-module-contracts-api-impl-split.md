@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**. Pozostaje: 01, 05b, 05c, 05d, **06c**, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**. Pozostaje: 01, 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1124,7 +1124,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 05d | **Prowizja w koszcie bazowym** — `2026-10-13-fee-in-cost-basis.md` | Decyzja podjęta: **prowizja wchodzi**. Dziś `fee` nie wychodzi z tradingu wcale, więc koszt nabycia jest zaniżony, a zysk zawyżony. Pole w `TradeConfirmedEvent` → `ProcessTradeCommand` → `ExecutedTrade` → `swing()`. Dotyka 23 plików testowych — osobna zmiana |
 | 06 | **`TradingModuleApi` — domknięcie `vidulum-trading-api`** — ✅ **wykonane**, patrz 21 | P2. Artefakt powstał w 05a z samymi eventami; tu dochodzą dwie metody czytające i typy widoku, znika `TradingRestClient` z `portfolio.domain` razem z adapterem, a `pnl` i `risk` przestają zależeć od portfolio po kontrakt tradingu |
 | 06b | **`vidulum-exchange-api`** — ✅ **wykonane**, patrz 21 | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
-| 06c | **`vidulum-portfolio` + `portfolio_spec` jako artefakt** — *następny krok* | Wszystkie blokady zdjęte (04b, 05a, 03, 06, 06b) — zostało przeniesienie plików i pomy — patrz „Co blokuje artefakt portfolio" niżej |
+| 06c | **`vidulum-portfolio` + `vidulum-trading` jako artefakty** — ✅ **wykonane**, patrz 21 | Wykonane razem (wariant A), bo wydzielenie portfolio w pojedynkę zamyka cykl w reaktorze po stronie testów — patrz 21 |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -1757,9 +1757,65 @@ Przy okazji poprawiony komentarz w `ConfirmPortfolioSpecCommandHandler`: twierdz
 „jest zamykane własną komendą, a nie przez sięganie do jego repozytorium". Była to połowa prawdy —
 komendy owszem, ale **odczyt sięgał do repozytorium**. Teraz zdanie jest prawdziwe.
 
-**06c jest odblokowane.** Po 04b, 05a, 03, 06 i 06b wydzielenie `vidulum-portfolio` razem z
-`portfolio_spec` to już tylko przeniesienie plików i pomy: `wealth` i `okx` wezmą implementacje w
-`test` scope, `app` w compile.
+**06c jest odblokowane po stronie produkcyjnej.** Po 04b, 05a, 03, 06 i 06b żaden main nie sięga
+już do wnętrza drugiego poddomeny. ~~To już tylko przeniesienie plików i pomy.~~ **To zdanie było
+nieprawdziwe** — zostało tu przekreślone, a nie usunięte, bo pomyłka jest pouczająca: patrz „Krok
+06c" niżej. Strona testowa miała własną blokadę, której nie widać w importach maina.
+
+### Krok 06c: dwa artefakty naraz, bo jeden zamykał cykl
+
+**Napisałem w tym dokumencie, że zostało „tylko przeniesienie plików i pomy". Nieprawda.** Importy
+maina były czyste, więc wyglądało na gotowe — ale zależności Mavena liczą też `test` scope, a tam:
+
+```
+portfolio/test  →  trading   (PreciousMetalsLifecycleComponentTest wiąże handlery obu)
+trading/test    →  portfolio (TradingPortfolioIntegrationTest, LockingAssetsTests)
+```
+
+Wydzielenie `vidulum-portfolio` w pojedynkę dawałoby **cykl w reaktorze**, bo testy portfolio
+potrzebują tradingu, a testy pnl i korzeń wealth potrzebują portfolio. Wyjście: **wariant A** —
+wydzielić portfolio (z `portfolio_spec`) i trading **w jednym kroku**, a testy międzymodułowe
+zostawić w `vidulum-wealth`, który bierze oba artefakty w `test` scope. Wealth przestaje być
+modułem domenowym i staje się tym, czym faktycznie jest: pnl + risk + miejscem na testy, które
+celowo przechodzą przez więcej niż jedną granicę.
+
+```
+                     przed 06c                              po 06c
+          ┌────────────────────────────┐    ┌──────────────┬──────────────┬───────────┐
+          │       vidulum-wealth       │    │  portfolio   │   trading    │  wealth   │
+          │ portfolio · portfolio_spec │ →  │ + spec       │              │ pnl·risk  │
+          │ trading · pnl · risk       │    │ 100 main     │ 45 main      │ 46 main   │
+          │ 191 main / 55 test         │    │  29 test     │  3 test      │ 23 test   │
+          └────────────────────────────┘    └──────────────┴──────────────┴───────────┘
+                                                      208 + 10 + 91 = 309 testów
+```
+
+**Nic nie zginęło przy podziale** — 309 testów przed i po, bo liczba jest pierwszą rzeczą, którą
+łatwo stracić przy `git mv` i pomach (wystarczy, że katalog testów nie trafi pod `testSourceDirectory`
+i suita cichnie, zamiast świecić na czerwono).
+
+**Co potwierdziło, że granica jest prawdziwa**, a nie tylko przeniesionymi plikami:
+
+| sprawdzenie | wynik |
+|---|---|
+| `portfolio/main` → trading, pnl, risk, quotation, exchange poza `.api` | 0 |
+| `trading/main` → portfolio, pnl, quotation, exchange poza `.api` | 0 |
+| `wealth/main` → portfolio, trading, quotation, exchange poza `.api` | 0 |
+| implementacje w `wealth` i `okx` | `test` scope |
+| implementacje w `app` | `compile` scope — bootstrap jako jedyny |
+
+Ostatni wiersz jest tym, o co szła cała seria: **tylko `vidulum-app` kompiluje się przeciw
+implementacjom**. Każdy inny moduł widzi wyłącznie kontrakty, a implementacje dociąga najwyżej po to,
+żeby odpalić test.
+
+Dwa drobne długi zostawione świadomie: `pnl/ValuationCurrencyComponentTest` i
+`pnl/WealthChangeOverWindowComponentTest` asertują na `PortfolioDto`, choć testują pnl — należy im
+się `PortfolioView`; `UnpricedPositionEndpointTest` sięga w jednym miejscu po `TradingDto`.
+Przeniesione bez zmian, żeby podział nie mieszał się z przepisywaniem asercji.
+
+Przy okazji usunięte dwa martwe `import TradingDto` z `MakePnlSnapshotCommandHandler` i
+`RiskManagementEngine` — zostały po kroku 06, kompilowały się, bo artefakt był jeszcze jeden, i
+upadłyby dopiero teraz.
 
 ### Co zostało otwarte po 04
 

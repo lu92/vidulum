@@ -112,6 +112,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- The portfolio and trading implementations, for the walks that span both and so
+             stayed here: an order is placed, filled, and the balance moves. Test scope only —
+             pnl and risk compile against the contracts. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-trading</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- The exchange implementation, for onboarding's component tests, which wire its real
              handlers. Test scope only: nothing in src/main may see it. -->
         <dependency>
