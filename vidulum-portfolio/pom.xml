@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-portfolio</artifactId>
+    <name>Vidulum Portfolio Module</name>
+    <description>A portfolio and what onboarding settles into one: the aggregate, its positions, contributions and locks, and the specification that creates it from an exchange snapshot. Nobody compiles against this - consumers compile against vidulum-portfolio-api.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-portfolio-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-trading-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- InMemoryQuotationApi: component tests need prices but are not about prices. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <!-- Onboarding component tests drive the real exchange handlers over an in-memory store. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-exchange</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- PortfolioFixture and InMemoryPortfolioRepository ship as a test-jar: the
+                 cross-module walks that stayed in vidulum-wealth build portfolios with them. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
