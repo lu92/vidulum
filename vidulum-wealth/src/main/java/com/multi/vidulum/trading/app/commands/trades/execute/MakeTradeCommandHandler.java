@@ -4,7 +4,7 @@ import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Side;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.events.TradeCapturedEvent;
+import com.multi.vidulum.trading.app.TradeCapturedEvent;
 import com.multi.vidulum.trading.infrastructure.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.trading.domain.*;

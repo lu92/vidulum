@@ -300,17 +300,33 @@ that asserts an annotation exists proves nothing; assert the index is in the dat
 
 **Checklist for new entity:**
 1. Create entity class with `@Document("collection_name")` annotation
-2. Add `mongoTemplate.dropCollection(NewEntity.class);` to the `DataCleaner` in the entity's module
+2. Add `mongoTemplate.remove(new Query(), NewEntity.class);` to the `DataCleaner` in the entity's module
 3. Add appropriate import statement
+
+**Empty the collection, never drop it.** `dropCollection` takes the indexes with it, and the
+cleaners run moments after startup created them from the annotations — so every index lived for a
+fraction of a second and then vanished, and the first write recreated the collection bare. The
+uniqueness task F1 depends on survived the tests and did not survive the container. `remove` leaves
+the collection and its indexes in place, which is what "start from clean data" was always supposed
+to mean. The rule is stated on the `DataCleaner` interface itself.
 
 **DataCleaner implementations:**
 
 | Module | Class | Collections |
 |--------|-------|-------------|
 | vidulum-cashflow | `CashFlowDataCleaner` | CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity, StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity, AiCsvTransformationDocument, MappingRules, RecurringRuleEntity, UserFinancialProfileEntity |
-| vidulum-wealth | `WealthDataCleaner` | PortfolioEntity, PortfolioSpecEntity, OrderEntity, TradeEntity, PnlHistoryEntity |
+| vidulum-cashflow/recurring-rules | `RecurringRuleDataCleaner` | RecurringRuleEntity |
+| vidulum-cashflow (user-financial-profile) | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
+| vidulum-wealth (portfolio) | `PortfolioDataCleaner` | PortfolioEntity |
+| vidulum-wealth (portfolio_spec) | `PortfolioSpecDataCleaner` | PortfolioSpecEntity |
+| vidulum-wealth (trading) | `TradingDataCleaner` | OrderEntity, TradeEntity |
+| vidulum-wealth (pnl) | `PnlDataCleaner` | PnlHistoryEntity |
 | vidulum-exchange | `ExchangeConnectionDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
+
+One cleaner per subdomain, not per Maven module: the subdomain that owns an entity is the one that
+notices when a new one appears, and the split survives extracting it into its own artifact.
+`vidulum-quotation` has no cleaner because it persists nothing — its caches are in memory.
 
 ## Docker Rebuild (Full Restart)
 
@@ -941,6 +957,7 @@ Files in `docs/features-backlog/` - these are designs waiting for implementation
 | `TODO-kafka-dead-letter-queue.md` | Dead letter queue for failed events | Medium |
 | `VID-103-maven-multi-module-migration.md` | Split into Maven modules | Low |
 | `2026-10-12-module-contracts-api-impl-split.md` | Module contracts: `-api` / impl split in wealth (NPay pattern) | Medium |
+| `2026-10-13-fee-in-cost-basis.md` | Trading fees must reach the portfolio: cost basis, realised result, and a fee paid in a third asset | High |
 | `AI_CATEGORIZATION_PLAN.md` | AI-powered transaction categorization | Medium |
 | `AI_USE_CASES.md` | AI use cases overview | Medium |
 | `2026-02-07-intelligent-cashflow-reconciliation.md` | Smart reconciliation | Medium |

@@ -18,7 +18,7 @@ import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.trading.domain.OpenedPositions;
+import com.multi.vidulum.portfolio.app.queries.OpenedPositions;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

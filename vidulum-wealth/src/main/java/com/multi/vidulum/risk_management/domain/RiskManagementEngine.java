@@ -4,7 +4,8 @@ import com.multi.vidulum.common.*;
 import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.quotation.api.QuotationApi;
-import com.multi.vidulum.portfolio.domain.TradingRestClient;
+import com.multi.vidulum.trading.api.TradingModuleApi;
+import com.multi.vidulum.trading.api.view.OrderView;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.trading.app.TradingDto;
 import lombok.AllArgsConstructor;
@@ -20,12 +21,12 @@ import java.util.stream.Collectors;
 public class RiskManagementEngine {
 
     private final PortfolioModuleApi portfolioApi;
-    private final TradingRestClient tradingRestClient;
+    private final TradingModuleApi tradingApi;
     private final QuotationApi quotationApi;
 
     public RiskManagementStatement accept(PortfolioId portfolioId) {
         PortfolioView portfolio = portfolioApi.get(portfolioId);
-        List<TradingDto.OrderSummaryJson> openedOrders = tradingRestClient.getOpenedOrders(portfolioId);
+        List<OrderView> openedOrders = tradingApi.openedOrders(portfolioId);
         List<StopLoss> stopLosses = fetchStopLosses(openedOrders);
         List<AssetRiskManagementStatement> assetStatements = buildAssetStatements(portfolio, stopLosses);
         Money totalRiskMoney = assetStatements.stream()
@@ -53,16 +54,16 @@ public class RiskManagementEngine {
                 .build();
     }
 
-    private List<StopLoss> fetchStopLosses(List<TradingDto.OrderSummaryJson> openedOrders) {
+    private List<StopLoss> fetchStopLosses(List<OrderView> openedOrders) {
         return openedOrders.stream()
-                .filter(orderSummaryJson -> Side.SELL.equals(orderSummaryJson.getSide()))
-                .map(orderSummaryJson ->
+                .filter(order -> Side.SELL.equals(order.side()))
+                .map(order ->
                         StopLoss.builder()
-                                .symbol(Symbol.of(orderSummaryJson.getSymbol()))
-                                .originOrderId(OrderId.of(orderSummaryJson.getOriginOrderId()))
-                                .quantity(orderSummaryJson.getQuantity())
-                                .price(orderSummaryJson.getLimitPrice())
-                                .dateTime(orderSummaryJson.getOriginDateTime())
+                                .symbol(order.symbol())
+                                .originOrderId(order.originOrderId())
+                                .quantity(order.quantity())
+                                .price(order.limitPrice())
+                                .dateTime(order.originDateTime())
                                 .build())
                 .collect(Collectors.toList());
     }

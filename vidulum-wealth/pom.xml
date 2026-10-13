@@ -30,6 +30,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Trading contract: the event a settled trade arrives on, and the shape of handling
+             it. TradingModuleApi joins it at step 06. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-trading-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Quotation contract: what portfolio, pnl, risk and portfolio_spec may ask about prices.
              The implementation (QuotationService, NBP, the caches) stays private to this module. -->
         <dependency>

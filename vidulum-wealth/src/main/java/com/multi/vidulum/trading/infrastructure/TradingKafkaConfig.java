@@ -1,7 +1,8 @@
 package com.multi.vidulum.trading.infrastructure;
 
-import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.common.events.TradeCapturedEvent;
+import com.multi.vidulum.trading.api.TradeConfirmedEvent;
+import com.multi.vidulum.trading.api.TradeConfirmedHandler;
+import com.multi.vidulum.trading.app.TradeCapturedEvent;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -26,7 +27,7 @@ public class TradingKafkaConfig {
 
     @Bean
     public NewTopic tradeCapturedTopic() {
-        return new NewTopic("trade_captured", 1, (short) 1);
+        return new NewTopic(TradeCapturedEvent.TOPIC, 1, (short) 1);
     }
 
     @Bean
@@ -67,12 +68,12 @@ public class TradingKafkaConfig {
     // ******* Order Filled *******
 
     @Bean
-    public NewTopic orderFilledTopic() {
-        return new NewTopic("order_filled", 1, (short) 1);
+    public NewTopic tradeConfirmedTopic() {
+        return new NewTopic(TradeConfirmedHandler.TOPIC, 1, (short) 1);
     }
 
     @Bean
-    public ProducerFactory<String, OrderFilledEvent> orderFilledProducerFactory() {
+    public ProducerFactory<String, TradeConfirmedEvent> tradeConfirmedProducerFactory() {
         Map<String, Object> configProps = Map.of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
@@ -81,12 +82,12 @@ public class TradingKafkaConfig {
     }
 
     @Bean
-    public KafkaTemplate<String, OrderFilledEvent> orderFilledKafkaTemplate() {
-        return new KafkaTemplate<>(orderFilledProducerFactory());
+    public KafkaTemplate<String, TradeConfirmedEvent> tradeConfirmedKafkaTemplate() {
+        return new KafkaTemplate<>(tradeConfirmedProducerFactory());
     }
 
     @Bean
-    public ConsumerFactory<String, OrderFilledEvent> orderFilledConsumerFactory() {
+    public ConsumerFactory<String, TradeConfirmedEvent> tradeConfirmedConsumerFactory() {
         Map<String, Object> configProps = Map.of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
@@ -95,14 +96,14 @@ public class TradingKafkaConfig {
         return new DefaultKafkaConsumerFactory<>(
                 configProps,
                 new StringDeserializer(),
-                new JsonDeserializer<>(OrderFilledEvent.class));
+                new JsonDeserializer<>(TradeConfirmedEvent.class));
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, OrderFilledEvent> orderFilledContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, OrderFilledEvent> factory =
+    public ConcurrentKafkaListenerContainerFactory<String, TradeConfirmedEvent> tradeConfirmedContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, TradeConfirmedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(orderFilledConsumerFactory());
+        factory.setConsumerFactory(tradeConfirmedConsumerFactory());
         return factory;
     }
 }

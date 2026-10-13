@@ -1,4 +1,4 @@
-package com.multi.vidulum.trading.domain;
+package com.multi.vidulum.portfolio.app.queries;
 
 import com.multi.vidulum.common.*;
 import lombok.Builder;

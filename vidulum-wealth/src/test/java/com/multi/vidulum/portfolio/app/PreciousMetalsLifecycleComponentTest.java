@@ -17,8 +17,8 @@ import com.multi.vidulum.common.SubName;
 import com.multi.vidulum.common.Symbol;
 import com.multi.vidulum.common.Ticker;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.common.events.OrderFilledEvent;
-import com.multi.vidulum.common.events.TradeCapturedEvent;
+import com.multi.vidulum.trading.api.TradeConfirmedEvent;
+import com.multi.vidulum.trading.app.TradeCapturedEvent;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommand;
 import com.multi.vidulum.portfolio.app.commands.create.CreateEmptyPortfolioCommandHandler;
 import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommand;
@@ -26,7 +26,7 @@ import com.multi.vidulum.portfolio.app.commands.deposit.DepositMoneyCommandHandl
 import com.multi.vidulum.portfolio.app.commands.lock.LockAssetCommandHandler;
 import com.multi.vidulum.portfolio.app.commands.unlock.UnlockAssetCommandHandler;
 import com.multi.vidulum.portfolio.app.commands.update.ProcessTradeCommandHandler;
-import com.multi.vidulum.portfolio.app.listeners.OrderFilledEventListener;
+import com.multi.vidulum.portfolio.app.listeners.TradeConfirmedToPortfolio;
 import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.api.error.NotSufficientBalance;
 import com.multi.vidulum.quotation.api.InMemoryQuotationApi;
@@ -51,7 +51,7 @@ import com.multi.vidulum.trading.domain.DomainTradeRepository;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.OrderFactory;
 import com.multi.vidulum.trading.domain.Trade;
-import com.multi.vidulum.trading.infrastructure.OrderFilledEventEmitter;
+import com.multi.vidulum.trading.infrastructure.TradeConfirmedEventEmitter;
 import com.multi.vidulum.trading.infrastructure.TradeCapturedEventEmitter;
 import com.multi.vidulum.shared.ddd.event.DomainEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,7 +141,7 @@ class PreciousMetalsLifecycleComponentTest {
         gateway.registerCommandHandler(new ProcessTradeCommandHandler(portfolios));
         gateway.registerCommandHandler(new PlaceOrderCommandHandler(orders, new OrderFactory(), portfolioApi));
         gateway.registerCommandHandler(new CancelOrderCommandHandler(orders, portfolioApi));
-        gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectOrderFilledEmitter()));
+        gateway.registerCommandHandler(new FillOrderCommandHandler(orders, new DirectTradeConfirmedEmitter()));
         gateway.registerCommandHandler(new MakeTradeCommandHandler(trades, orders, new DirectTradeCapturedEmitter()));
 
         quotationApiFake.publish("XAU/USD", 1800.0);
@@ -167,18 +167,23 @@ class PreciousMetalsLifecycleComponentTest {
 
         @Override
         public void emit(TradeCapturedEvent event) {
-            new TradeCapturedEventListener(gateway).on(event);
+            new TradeCapturedEventListener(gateway, new DirectTradeConfirmedEmitter()).on(event);
         }
     }
 
-    private final class DirectOrderFilledEmitter extends OrderFilledEventEmitter {
-        private DirectOrderFilledEmitter() {
+    /**
+     * Both of trading's routes now end here, which is what the walk exercises: a fill arrives
+     * through the order, a hand-entered purchase arrives straight away, and the portfolio cannot
+     * tell the difference.
+     */
+    private final class DirectTradeConfirmedEmitter extends TradeConfirmedEventEmitter {
+        private DirectTradeConfirmedEmitter() {
             super(null);
         }
 
         @Override
-        public void emit(OrderFilledEvent event) {
-            new OrderFilledEventListener(gateway).on(event);
+        public void emit(TradeConfirmedEvent event) {
+            new TradeConfirmedToPortfolio(gateway).onTradeConfirmed(event);
         }
     }
 
