@@ -194,6 +194,14 @@ commandGateway.send(new CreateCashFlowCommand(...));
 queryGateway.send(new GetCashFlowQuery(cashFlowId));
 ```
 
+**Both gateway beans come from `CqrsGatewayConfiguration` in shared-kernel — `@Import` it, never
+redeclare them.** A gateway is deliberately built with **no dependencies**, and a
+`SmartInitializingSingleton` registers the handlers once the context has created its singletons.
+Collecting `List<CommandHandler>` inside the gateway's own bean method instead closes a cycle —
+gateway → handler → module contract → implementation → gateway — which used to be papered over with
+`@Lazy` in eight places. `CqrsGatewayConfigurationTest` pins this, including a negative test that
+asserts the old arrangement fails to start, so **a new `*ModuleApiImpl` needs no `@Lazy`**.
+
 ### Domain Aggregates
 
 Key aggregates with their events:

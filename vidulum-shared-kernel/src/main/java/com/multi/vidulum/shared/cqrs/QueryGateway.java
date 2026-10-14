@@ -35,7 +35,9 @@ public class QueryGateway {
             QueryHandler<T, R> queryHandler = (QueryHandler<T, R>) queryHandlers.get(query.getClass());
             return queryHandler.query(query);
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(
+                    "No query handler registered for [%s]. Either the handler is not a bean in this context, or the gateway was used before registration ran."
+                            .formatted(query.getClass().getName()));
         }
     }
 }

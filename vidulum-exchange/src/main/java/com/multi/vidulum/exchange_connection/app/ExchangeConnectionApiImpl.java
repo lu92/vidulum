@@ -12,7 +12,6 @@ import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQu
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
@@ -31,11 +30,11 @@ class ExchangeConnectionApiImpl implements ExchangeConnectionApi {
     private final QueryGateway queryGateway;
 
     /**
-     * {@code @Lazy} for the cycle every gateway-based contract in this codebase runs into: a
-     * gateway is assembled from every handler in the context, and onboarding's own handlers — which
-     * are handlers — consume this contract.
+     * Eager. The cycle that once forced {@code @Lazy} here — onboarding's three command handlers
+     * consume this contract, and a gateway used to be assembled from every handler in the context —
+     * is removed at its source in {@code CqrsGatewayConfiguration}.
      */
-    ExchangeConnectionApiImpl(@Lazy CommandGateway commandGateway, @Lazy QueryGateway queryGateway) {
+    ExchangeConnectionApiImpl(CommandGateway commandGateway, QueryGateway queryGateway) {
         this.commandGateway = commandGateway;
         this.queryGateway = queryGateway;
     }

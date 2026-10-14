@@ -14,7 +14,6 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -22,9 +21,12 @@ import java.util.*;
 
 /**
  * Test implementation of CashFlowServiceClient that uses QueryGateway and CommandGateway.
- * Used in integration tests to avoid HTTP communication overhead and circular dependencies.
- * Uses @Lazy on CommandGateway to break the circular dependency:
- * CommandGateway -> ConfigureCategoryMappingCommandHandler -> CashFlowServiceClient -> CommandGateway
+ * Used in integration tests to avoid HTTP communication overhead.
+ *
+ * <p>Both gateways arrive eagerly. This class used to need {@code @Lazy} on the command gateway for
+ * the cycle CommandGateway -> ConfigureCategoryMappingCommandHandler -> CashFlowServiceClient ->
+ * CommandGateway; {@code CqrsGatewayConfiguration} removed it by registering handlers after the
+ * singletons exist instead of while a gateway is being built.
  */
 @Slf4j
 public class TestCashFlowServiceClient implements CashFlowServiceClient {
@@ -32,7 +34,7 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
     private final QueryGateway queryGateway;
     private final CommandGateway commandGateway;
 
-    public TestCashFlowServiceClient(QueryGateway queryGateway, @Lazy CommandGateway commandGateway) {
+    public TestCashFlowServiceClient(QueryGateway queryGateway, CommandGateway commandGateway) {
         this.queryGateway = queryGateway;
         this.commandGateway = commandGateway;
     }

@@ -11,7 +11,6 @@ import com.multi.vidulum.trading.app.queries.GetAllOpenedOrdersForPortfolioQuery
 import com.multi.vidulum.trading.app.queries.GetTradesForUserInDateRangeQuery;
 import com.multi.vidulum.trading.domain.Order;
 import com.multi.vidulum.trading.domain.Trade;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
@@ -35,12 +34,12 @@ class TradingModuleApiImpl implements TradingModuleApi {
     private final QueryGateway queryGateway;
 
     /**
-     * {@code @Lazy} for the cycle the portfolio contract already ran into: a gateway is built from
-     * every handler in the context, and {@code GetPositionViewOfPortfolioQueryHandler} — itself a
-     * query handler — asks for this contract. Eager injection closes the loop and Spring reports
-     * {@code BeanCurrentlyInCreationException} at startup.
+     * Eager, since {@code CqrsGatewayConfiguration} fills the gateways after the singletons exist
+     * rather than while one is being built. Before that, this bean needed {@code @Lazy}:
+     * {@code GetPositionViewOfPortfolioQueryHandler} is itself a query handler and asks for this
+     * contract, so the query gateway could not be assembled without it.
      */
-    TradingModuleApiImpl(@Lazy QueryGateway queryGateway) {
+    TradingModuleApiImpl(QueryGateway queryGateway) {
         this.queryGateway = queryGateway;
     }
 

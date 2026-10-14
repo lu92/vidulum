@@ -3,15 +3,13 @@ package com.multi.vidulum;
 import com.multi.vidulum.security.auth.AuthenticationService;
 import com.multi.vidulum.security.auth.RegisterRequest;
 import com.multi.vidulum.shared.DataCleaner;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
+import com.multi.vidulum.shared.cqrs.CqrsGatewayConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Clock;
@@ -19,6 +17,7 @@ import java.util.List;
 
 
 @SpringBootApplication
+@Import(CqrsGatewayConfiguration.class)
 public class VidulumApplication {
 
     @Autowired
@@ -27,20 +26,6 @@ public class VidulumApplication {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
-    }
-
-    @Bean
-    public CommandGateway commandGateway(@Autowired List<CommandHandler<?, ?>> commandHandlers) {
-        CommandGateway commandGateway = new CommandGateway();
-        commandHandlers.forEach(commandGateway::registerCommandHandler);
-        return commandGateway;
-    }
-
-    @Bean
-    public QueryGateway queryGateway(@Autowired List<QueryHandler<?, ?>> queryHandlers) {
-        QueryGateway queryGateway = new QueryGateway();
-        queryHandlers.forEach(queryGateway::registerQueryHandler);
-        return queryGateway;
     }
 
     public static void main(String[] args) {
