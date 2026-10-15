@@ -14,7 +14,6 @@ import com.multi.vidulum.pnl.domain.PnlId;
 import com.multi.vidulum.pnl.domain.PnlStatement;
 import com.multi.vidulum.pnl.domain.ValuationBasis;
 import com.multi.vidulum.pnl.domain.ValuationRates;
-import com.multi.vidulum.portfolio.app.PortfolioDto;
 import com.multi.vidulum.trading.api.TradingModuleApi;
 import com.multi.vidulum.trading.api.view.OrderView;
 import com.multi.vidulum.trading.api.view.TradeView;
@@ -23,7 +22,6 @@ import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.portfolio.api.view.PortfolioView;
 import com.multi.vidulum.quotation.api.fx.FxRate;
 import com.multi.vidulum.quotation.api.fx.RateSourceId;
-import com.multi.vidulum.trading.app.TradingDto;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;

@@ -29,10 +29,17 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Wealth Module -->
+        <!-- PnL and risk. Leaves: they consume contracts and answer over HTTP, and this is the
+             only module that wires them. vidulum-wealth is no longer here - it holds nothing but
+             the tests that deliberately cross a module boundary. -->
         <dependency>
             <groupId>com.multi</groupId>
-            <artifactId>vidulum-wealth</artifactId>
+            <artifactId>vidulum-pnl</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-risk</artifactId>
             <version>${project.version}</version>
         </dependency>
 

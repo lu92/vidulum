@@ -4,6 +4,13 @@
 **Status:** Analysis & Design Extension
 **Autor:** Claude Code + User
 
+> **Sekcja 7 („Alert System Design") jest sprzed podziału na moduły Mavena** — jej scheduler sięga
+> prosto do `cashChangeRepository` i zmienia stan setterami, a `CashFlow` jest agregatem ze
+> snapshotami i zdarzeniami. Aktualny projekt modułu alertów:
+> [`2026-10-15-alerts-module-design.md`](2026-10-15-alerts-module-design.md). Analiza biznesowa,
+> porównanie z Agicapem i katalog typów alertów w tym dokumencie zostają aktualne; warunkiem
+> alertów o przeterminowaniu są statusy `OVERDUE`/`UNMATCHED` z sekcji 5 i 6 poniżej.
+
 ---
 
 ## Spis treści

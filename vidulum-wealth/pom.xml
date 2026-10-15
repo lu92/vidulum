@@ -12,7 +12,12 @@
 
     <artifactId>vidulum-wealth</artifactId>
     <name>Vidulum Wealth Module</name>
-    <description>Wealth management domain: portfolio, trading, PnL, risk management, quotation</description>
+    <description>
+        Test-only: this module has no src/main. Portfolio, trading, quotation, pnl and risk all left
+        for their own artifacts (steps 02b-09 of the module split); what stayed are the tests that
+        deliberately cross a module boundary and would otherwise force a reactor cycle - portfolio's
+        tests needing trading, trading's needing portfolio. Nothing depends on this artifact.
+    </description>
 
     <dependencies>
         <!-- Shared Kernel -->
@@ -22,8 +27,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- The contracts below are declared at compile scope out of inertia, not need: with no
+             main sources they only ever serve the test classpath. Harmless, and worth remembering
+             before reading anything into the scopes here. -->
+
         <!-- Portfolio contract: what trading, pnl, risk and the user domain may ask of a
-             portfolio. The aggregate, the handlers and the web DTO stay private to this module. -->
+             portfolio. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-portfolio-api</artifactId>
@@ -131,6 +140,20 @@
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-trading</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- ValuationBasisPersistenceTest asserts what Mongo stores, and WealthIntegrationTest
+             exposes both modules' controllers to the cross-module walks. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-pnl</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-risk</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>

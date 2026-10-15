@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw compile -pl vidulum-cashflow
 ./mvnw compile -pl vidulum-portfolio
 ./mvnw compile -pl vidulum-trading
-./mvnw compile -pl vidulum-wealth
+./mvnw compile -pl vidulum-pnl
 ./mvnw compile -pl vidulum-app
 
 # Test only the class you changed
@@ -38,7 +38,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test -pl vidulum-cashflow      # ~4min (49 test classes)
 ./mvnw test -pl vidulum-portfolio     # ~10s  (208 tests)
 ./mvnw test -pl vidulum-trading       # ~1s   (10 tests)
-./mvnw test -pl vidulum-wealth        # ~1min (91 tests, cross-module + pnl + risk)
+./mvnw test -pl vidulum-pnl           # ~2s   (31 tests)
+./mvnw test -pl vidulum-wealth        # ~1min (60 cross-module tests, no main sources)
 ./mvnw test -pl vidulum-app           # ~1min
 ```
 
@@ -67,7 +68,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `vidulum-cashflow/src/test/` | `./mvnw test -pl vidulum-cashflow -Dtest=YourTestClass` |
 | `vidulum-portfolio/src/main/` | `./mvnw compile -pl vidulum-portfolio` |
 | `vidulum-trading/src/main/` | `./mvnw compile -pl vidulum-trading` |
-| `vidulum-wealth/src/main/` | `./mvnw compile -pl vidulum-wealth` |
+| `vidulum-pnl/src/main/` | `./mvnw compile -pl vidulum-pnl` |
+| `vidulum-risk/src/main/` | `./mvnw compile -pl vidulum-risk` |
 | `vidulum-*/src/test/` | `./mvnw test -pl vidulum-<module> -Dtest=YourTestClass` |
 | any `vidulum-*-api/` (contract) | `install` it, then rebuild **every** module that depends on it |
 | `vidulum-app/src/main/` | `./mvnw compile -pl vidulum-app` |
@@ -96,7 +98,8 @@ downstream of it**, and nothing else:
 |---------|-----|-----|
 | `vidulum-portfolio` | `-pl vidulum-portfolio` then `-pl vidulum-wealth,vidulum-app` | wealth's cross-module tests and the bootstrap use it |
 | `vidulum-trading` | `-pl vidulum-trading,vidulum-wealth,vidulum-app` | same reason |
-| `vidulum-wealth` | `-pl vidulum-wealth` then `-pl vidulum-okx,vidulum-app` | cashflow does not depend on wealth and cannot break |
+| `vidulum-pnl` / `vidulum-risk` | `-pl vidulum-pnl` (or `-pl vidulum-risk`) then `-pl vidulum-wealth,vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
+| `vidulum-wealth` | `-pl vidulum-wealth` | **nothing depends on it** — it is tests only |
 | `vidulum-cashflow` | `-pl vidulum-cashflow` | nothing depends on it except the app bootstrap |
 | `vidulum-exchange` | `-pl vidulum-exchange,vidulum-portfolio,vidulum-wealth,vidulum-okx,vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | everything downstream of its implementations | the contract is the compile-time surface |
@@ -154,12 +157,17 @@ vidulum/
 │
 ├── vidulum-trading/             # Orders, trades, execution (10 tests)
 │
+├── vidulum-pnl/                 # Recorded valuations, wealth change (31 tests)
+│   └── pnl/                     #   Daily snapshots, PortfolioValuation, ValuationBasis
+│
+├── vidulum-risk/                # Risk assessment: RAG status, stop-loss (no tests yet)
+│   └── risk_management/         #   Stores nothing - composed from three contracts
+│
 ├── vidulum-okx/                 # OKX adapter
 │   └── okx/                     #   Quotation provider, OkxExchangeAdapter, OkxRegion
 │
-├── vidulum-wealth/              # pnl, risk + cross-module tests (91 tests)
-│   └── pnl/                     #   Profit & Loss snapshots
-│   └── risk_management/         #   Risk assessment (RAG status, stop-loss)
+├── vidulum-wealth/              # TEST-ONLY: no src/main. Holds the tests that deliberately
+│                                #   cross a module boundary (60 tests)
 │
 └── vidulum-app/                 # Bootstrap & cross-module integration (32 tests)
     └── user/                    #   User registration, activation
@@ -170,14 +178,20 @@ vidulum/
 
 **Dependency flow**: contracts first, then implementations, then the bootstrap — no cycles. The
 reactor order is fixed in the parent pom: shared-kernel → cashflow → exchange-api → exchange →
-quotation-api → quotation → portfolio-api → trading-api → portfolio → trading → wealth → okx → app.
+quotation-api → quotation → portfolio-api → trading-api → portfolio → trading → pnl → risk →
+wealth → okx → app.
 
 Two rules make it hold:
 - **A module never imports another module's internals** — only its `*-api` contract. `portfolio`
   sees `trading.api`, never `trading.app`.
-- **`vidulum-wealth` keeps the tests that deliberately cross a boundary** (`LockingAssetsTests`,
-  `TradingPortfolioIntegrationTest`, `PreciousMetalsLifecycleComponentTest`). Without that,
-  portfolio's tests would need trading and trading's would need portfolio — a reactor cycle.
+- **`vidulum-wealth` has no `src/main` at all.** It exists for the tests that deliberately cross a
+  boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
+  `PreciousMetalsLifecycleComponentTest`, the portfolio and portfolio_spec endpoint tests,
+  `ValuationBasisPersistenceTest`). Without it, portfolio's tests would need trading and trading's
+  would need portfolio — a reactor cycle.
+- **`vidulum-pnl` and `vidulum-risk` have no `-api` module**, because nothing asks them anything:
+  they consume contracts and answer over HTTP. The contract gets written when a consumer exists —
+  see `docs/features-backlog/2026-10-15-alerts-module-design.md` for the first plausible one.
 
 The design and its reasoning: `docs/features-backlog/2026-10-12-module-contracts-api-impl-split.md`.
 
@@ -241,8 +255,8 @@ Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own inte
 | Module | Base class | Description |
 |--------|-----------|-------------|
 | vidulum-cashflow | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers |
-| vidulum-wealth | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio + trading, so cross-module Spring tests live here |
-| vidulum-portfolio, vidulum-trading | *(none)* | Unit and component tests only — no Spring, in-memory repositories |
+| vidulum-wealth | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
+| vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, in-memory repositories |
 | vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
 Key patterns:
@@ -364,14 +378,15 @@ to mean. The rule is stated on the `DataCleaner` interface itself.
 | vidulum-portfolio (portfolio) | `PortfolioDataCleaner` | PortfolioEntity |
 | vidulum-portfolio (portfolio_spec) | `PortfolioSpecDataCleaner` | PortfolioSpecEntity |
 | vidulum-trading | `TradingDataCleaner` | OrderEntity, TradeEntity |
-| vidulum-wealth (pnl) | `PnlDataCleaner` | PnlHistoryEntity |
+| vidulum-pnl | `PnlDataCleaner` | PnlHistoryEntity |
 | vidulum-exchange | `ExchangeConnectionDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
 One cleaner per subdomain, not per Maven module: the subdomain that owns an entity is the one that
 notices when a new one appears, and the split survives extracting it into its own artifact.
-`vidulum-quotation` has no cleaner because it persists nothing — its caches are in memory. Step 06c
-proved the rule: `TradingDataCleaner` moved into `vidulum-trading` unchanged.
+`vidulum-quotation` and `vidulum-risk` have no cleaner because they persist nothing — quotation's
+caches are in memory and risk composes every answer from other modules. Steps 06c and 09 proved the
+rule: `TradingDataCleaner` and `PnlDataCleaner` moved into their own artifacts unchanged.
 
 ## Docker Rebuild (Full Restart)
 
@@ -1001,7 +1016,8 @@ column before planning against one.
 | File | Feature | Status | Priority |
 |------|---------|--------|----------|
 | `2026-10-13-fee-in-cost-basis.md` | Trading fees must reach the portfolio: cost basis, realised result, and a fee paid in a third asset | open | High |
-| `2026-02-14-business-analysis-alerts-cashchange-lifecycle.md` | Alerts system | open | Medium |
+| `2026-10-15-alerts-module-design.md` | Alerts module: who decides something is an alert — `vidulum-alerts` as a leaf consumer of domain facts | open | Medium |
+| `2026-02-14-business-analysis-alerts-cashchange-lifecycle.md` | Alerts system — business analysis + `CashChange` lifecycle; its section 7 design is superseded by the file above | open | Medium |
 | `2026-02-07-intelligent-cashflow-reconciliation.md` | Smart reconciliation | open | Medium |
 | `AI_CATEGORIZATION_PLAN.md` | AI-powered transaction categorization | open | Medium |
 | `AI_USE_CASES.md` | AI use cases overview | open | Medium |
