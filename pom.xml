@@ -32,6 +32,38 @@
 		<spring-ai.version>2.0.0-M3</spring-ai.version>
 	</properties>
 
+	<!--
+		Dependencies every module needs and none of them is characterised by. Hoisted here in step
+		11a so that each module's own pom lists only what says something about that module.
+
+		What does NOT belong here, deliberately: spring-boot-starter-webmvc, -data-mongodb and
+		spring-kafka. Their presence in a pom is information - "this module has HTTP endpoints",
+		"this one persists", "this one speaks events". vidulum-risk shows at a glance that it has
+		neither Mongo nor Kafka, which is exactly what step 09 established about it; inheriting those
+		would turn that fact into a dependency:tree exercise. Nor does spring-boot-starter-classic
+		belong here: declaring it says "this module runs inside Spring", which a *-api contract does
+		not.
+
+		lombok is optional and so non-transitive; it is already absent from the repackaged app jar.
+	-->
+	<dependencies>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test-classic</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>

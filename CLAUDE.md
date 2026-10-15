@@ -197,6 +197,13 @@ Two rules make it hold:
 - **The `market` → `wealth` edge is one-way, and it is checked.** No module under `market/` imports
   anything from portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices
   and venues do not know who owns what.
+- **`lombok` and the two test starters come from the root pom** (step 11a), so a module's own pom
+  lists only dependencies that say something about that module. Keep it that way: declaring
+  `spring-boot-starter-webmvc` means "this module has HTTP endpoints", `-data-mongodb` means "it
+  persists", `spring-kafka` means "it speaks events", and `spring-boot-starter-classic` means "it
+  runs inside Spring" — which is why a `*-api` contract declares none of them and has exactly one
+  dependency. Do not hoist those four; they would turn a readable pom into a `dependency:tree`
+  exercise.
 
 The design and its reasoning: `docs/features-backlog/2026-10-12-module-contracts-api-impl-split.md`.
 

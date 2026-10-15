@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**. Pozostaje: 01, 05b, 05c, 05d, 07, 11 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**. Pozostaje: 01, 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1128,7 +1128,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 08 | **Cykl beanów na gatewayach** — ✅ **wykonane**, patrz 21 | Nie było w pierwotnym planie: wyszło z pytania, czy cykl z kroku 04 nadal występuje. `@Lazy` w trzech implementacjach i w pięciu miejscach testowych odkładało cykl, nie usuwało go. Gateway przestał zbierać handlery w swoim konstruktorze — cykl zniknął, `@Lazy` zniknęło |
 | 09 | **`vidulum-pnl` + `vidulum-risk` jako artefakty, bez `-api`** — ✅ **wykonane**, patrz 21 | Oba są liśćmi: nikt ich o nic nie pyta, więc moduł kontraktowy miałby zero konsumentów. `vidulum-wealth` zostaje bez `src/main` — jako moduł testowy |
 | 10 | **Dwa agregatory: `market/` i `wealth/`** — ✅ **wykonane**, patrz 21 | Jedenaście modułów pod dwa foldery; korzeń z 17 wpisów do ośmiu. Agregatory, nie rodzice: ani jedna zależność i ani jeden `artifactId` się nie zmienia |
-| 11 | **`wealth/pom.xml` jako rodzic swoich modułów** | Cztery pomy powtarzają ten sam blok Springa, Mongo, Kafki i Lomboka. Pośredni rodzic to usuwa, ale zmienia `<parent>` w sześciu pomach — osobny krok, żeby nie mieszać „przeniosłem katalogi" z „zmieniłem, skąd moduły biorą zależności" |
+| 11a | **Trzy zależności infrastrukturalne do korzenia** — ✅ **wykonane**, patrz 21 | `lombok` i dwa startery testowe wyszły z 15 pomów do `<dependencies>` korzenia. Pierwotny pomysł — „`wealth/pom.xml` jako rodzic" — **odrzucony po pomiarze**, patrz 21 |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -2013,6 +2013,72 @@ Nazwa `vidulum-wealth` wróciła — tym razem jako `artifactId` agregatora z `p
 grupy, a nie jara. Moduł testowy pozostaje `vidulum-wealth-tests` **w korzeniu**, bo testuje
 przejścia między grupami (portfolio↔trading, portfolio_spec↔exchange, pnl↔Mongo,
 `DenominationChainComponentTest` dotyka quotation) — należy do obu naraz, czyli do żadnej.
+
+### Krok 11a: co wolno wyciągnąć do rodzica, a czego nie
+
+Pytanie było proste: „skoro mamy agregatory, czy `wealth/pom.xml` może nieść zależności, żeby pomy
+w środku były chudsze?". Pomiar odpowiedział, że **nie tam**.
+
+**Agregator to nie rodzic.** `market/pom.xml` i `wealth/pom.xml` mają tylko `<modules>`; dziedziczenie
+wymagałoby zmiany `<parent>` w jedenastu pomach. A wspólny zbiór zależności **całej grupy** to:
+
+| grupa | wspólne dla wszystkich modułów | wspólne dla samych implementacji |
+|---|---|---|
+| `wealth/` (6) | `vidulum-shared-kernel` | 9 wpisów |
+| `market/` (5) | `vidulum-shared-kernel` | 5 wpisów |
+
+Czyli rodzic grupy odchudziłby każdy pom **o jedną linię**. Wrzucenie tam zbioru implementacji jest
+niemożliwe z dwóch powodów, z których pierwszy jest twardy:
+
+1. **Maven to odrzuca.** W zbiorze implementacji wealth są `vidulum-portfolio-api` i
+   `vidulum-trading-api` — odziedziczyłby je też sam `vidulum-portfolio-api`. Sprawdzone na
+   minimalnym projekcie: `'dependencies.dependency.[com.test:kid:1]' for com.test:kid:1 is
+   referencing itself` — build nie czyta nawet pomu.
+2. **Kontrakt przestałby być kontraktem w czytelny sposób.** Deklaracja `spring-boot-starter-classic`
+   w pomie mówi „ten moduł żyje wewnątrz Springa", a `*-api` nie żyje.
+
+**Miejsce było inne: korzeń, który już jest rodzicem wszystkich 18 modułów** i nie miał ani jednego
+`<dependencies>` — tylko `dependencyManagement`. Powtórzenia są zresztą repo-wide, nie per grupa:
+`lombok` w 15/18 pomów, `spring-boot-starter-test` w 13/18, `spring-boot-starter-test-classic` w
+10/18. Te trzy **nie mówią nic o żadnym module**. Wyciągnięte: 38 deklaracji mniej w 15 pomach, zero
+nowych pomów, zero zmian w `<parent>`.
+
+Efekt najlepiej widać na kontraktach — **wszystkie cztery mają teraz dokładnie jedną zależność**:
+
+```
+                      przed 11a    po 11a
+portfolio-api              1          1
+trading-api                2          1
+quotation-api              3          1
+exchange-api               2          1
+portfolio / trading       15 / 11    12 / 8
+pnl / risk                13 / 10    10 / 7
+quotation / exchange       8 / 10     5 / 7
+okx                       13         10
+```
+
+**Czego nie wyciągnąłem i dlaczego — to jest właściwa treść tego kroku.** `spring-boot-starter-webmvc`
+(11/18), `spring-boot-starter-data-mongodb` (9/18), `spring-kafka` (8/18) i
+`spring-boot-starter-classic` (11/18) **są informacją o module**: pom `vidulum-risk` pokazuje na
+pierwszy rzut oka, że risk nie ma ani Mongo, ani Kafki — fakt ustalony w kroku 09 (ten moduł nic nie
+przechowuje), który czytelnik weryfikuje w trzy sekundy. Po odziedziczeniu „czego ten moduł naprawdę
+potrzebuje" wymagałoby `mvn dependency:tree`. W repozytorium, którego cała historia modularna polega
+na jawnych granicach, to nie jest koszt stylistyczny.
+
+Dwa drobiazgi z wykonania:
+
+- **Lombok był deklarowany w dwóch wariantach** — `<optional>true</optional>` w dwunastu pomach i
+  `<scope>provided</scope>" w trzech. Ujednolicony na wariant większościowy; oba są nietranzytywne, a
+  że lombok i tak nie wchodzi do repakowanego jara, sprawdziłem przed i po: `unzip -l` na
+  `vidulum-app` daje zero wpisów lomboka w obu przypadkach.
+- **Trzy komentarze osierociały** po usunięciu zależności, które opisywały — w `vidulum-quotation-api`
+  („FxRateTest exercises a contract type"), w `vidulum-shared-kernel` („First tests in this module…")
+  i puste `<!-- Lombok -->` w `recurring-rules`. Zdjęte; komentarz bez swojej zależności jest
+  gorszy niż jego brak, bo wygląda na opis czegoś, czego nie ma.
+
+Grupy pozostają **czystymi agregatorami**, i to świadomie: dzięki temu przeniesienie modułu między
+folderami nadal nie zmienia żadnej zależności ani żadnego `artifactId` — zaleta, którą dał krok 10 i
+której nie warto tracić, gdy w `market/` wyląduje drugi adapter giełdy.
 
 ### Co zostało otwarte po 04
 
