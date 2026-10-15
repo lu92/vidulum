@@ -30,7 +30,7 @@
         </dependency>
 
         <!-- PnL and risk. Leaves: they consume contracts and answer over HTTP, and this is the
-             only module that wires them. vidulum-wealth is no longer here - it holds nothing but
+             only module that wires them. vidulum-wealth-tests is not here - it holds nothing but
              the tests that deliberately cross a module boundary. -->
         <dependency>
             <groupId>com.multi</groupId>

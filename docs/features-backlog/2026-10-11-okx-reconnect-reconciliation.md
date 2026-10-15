@@ -249,7 +249,7 @@ Znacznik dostaje **moment snapshotu**, nie „teraz" — bo to on ma pasować do
 gdy H5 zacznie od niego czytać historię.
 
 **H3 to `POST /portfolio-spec/resume/{connectionId}`.** Przyjmuje snapshot i oddaje spec liczony
-wobec portfela, który przeżył przerwę. Mieszka w `vidulum-wealth`, bo spina dwa moduły, a zależność
+wobec portfela, który przeżył przerwę. Mieszka w `vidulum-portfolio`, bo spina dwa moduły, a zależność
 idzie jednokierunkowo (§12); każda połowa nadal przez własną komendę. Gdy konto się **nie ruszyło**,
 spec nie powstaje (pusty byłby pytaniem bez treści, D8), ale **synchronizacja jest zapisywana** —
 „już się zgadza" to zgodność; inaczej znacznik zostałby przed przerwą i odtwarzanie szukałoby

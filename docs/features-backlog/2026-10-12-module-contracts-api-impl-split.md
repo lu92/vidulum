@@ -1912,8 +1912,17 @@ alertów — `2026-10-15-alerts-module-design.md`).
 
 **`vidulum-wealth` nie ma już `src/main`.** To nie skutek uboczny, a wniosek: od kroku 06c ten moduł
 istniał tylko po to, żeby trzymać testy przechodzące przez więcej niż jedną granicę, a pnl i risk
-były w nim ostatnimi lokatorami. Nazwa mówi teraz o domenie, której tam nie ma — zmiana nazwy to
-osobna decyzja, nierozstrzygnięta.
+były w nim ostatnimi lokatorami.
+
+**Dlatego nazywa się teraz `vidulum-wealth-tests`.** Nazwa `vidulum-wealth` mówiła o domenie, której
+w tym module nie ma — a moduł bez `src/main`, od którego nic nie zależy, jest zbiorem testów i tylko
+tym. Zmiana nazwy artefaktu dotyka całego reaktora, więc wyszły przy niej **wszystkie nieaktualne
+wskazania nazwy**: dziewięć komentarzy w kodzie i trzy w pomach mówiły „vidulum-wealth" tam, gdzie
+chodziło o portfolio albo quotation (przeniesione w krokach 02b–06c), a tabela endpointów w
+`2026-09-18-okx-exchange-backend-integration.md` przypisywała `/portfolio`, `/portfolio-spec` i
+`/quote` do wealth. Poprawione; historyczne wystąpienia w opisach „jak było" zostawione z notą.
+Klasy `WealthIntegrationTest` i `WealthTestApplication` zachowują nazwy — opisują rolę w testach,
+nie moduł.
 
 **Tylko `vidulum-app` kompiluje się przeciw implementacjom** — już przeciw sześciu. `vidulum-risk`
 jest przy tym najczystszym modułem w repo: **ani jednej zależności od implementacji**, nawet w

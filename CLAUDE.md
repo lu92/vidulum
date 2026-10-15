@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test -pl vidulum-portfolio     # ~10s  (208 tests)
 ./mvnw test -pl vidulum-trading       # ~1s   (10 tests)
 ./mvnw test -pl vidulum-pnl           # ~2s   (31 tests)
-./mvnw test -pl vidulum-wealth        # ~1min (60 cross-module tests, no main sources)
+./mvnw test -pl vidulum-wealth-tests  # ~1min (60 cross-module tests, no main sources)
 ./mvnw test -pl vidulum-app           # ~1min
 ```
 
@@ -96,17 +96,17 @@ downstream of it**, and nothing else:
 
 | Changed | Run | Why |
 |---------|-----|-----|
-| `vidulum-portfolio` | `-pl vidulum-portfolio` then `-pl vidulum-wealth,vidulum-app` | wealth's cross-module tests and the bootstrap use it |
-| `vidulum-trading` | `-pl vidulum-trading,vidulum-wealth,vidulum-app` | same reason |
-| `vidulum-pnl` / `vidulum-risk` | `-pl vidulum-pnl` (or `-pl vidulum-risk`) then `-pl vidulum-wealth,vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
-| `vidulum-wealth` | `-pl vidulum-wealth` | **nothing depends on it** — it is tests only |
+| `vidulum-portfolio` | `-pl vidulum-portfolio` then `-pl vidulum-wealth-tests,vidulum-app` | the cross-module tests and the bootstrap use it |
+| `vidulum-trading` | `-pl vidulum-trading,vidulum-wealth-tests,vidulum-app` | same reason |
+| `vidulum-pnl` / `vidulum-risk` | `-pl vidulum-pnl` (or `-pl vidulum-risk`) then `-pl vidulum-wealth-tests,vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
+| `vidulum-wealth-tests` | `-pl vidulum-wealth-tests` | **nothing depends on it** — it is tests only |
 | `vidulum-cashflow` | `-pl vidulum-cashflow` | nothing depends on it except the app bootstrap |
-| `vidulum-exchange` | `-pl vidulum-exchange,vidulum-portfolio,vidulum-wealth,vidulum-okx,vidulum-app` | portfolio_spec uses connections |
+| `vidulum-exchange` | `-pl vidulum-exchange,vidulum-portfolio,vidulum-wealth-tests,vidulum-okx,vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | everything downstream of its implementations | the contract is the compile-time surface |
 | `vidulum-shared-kernel` | **full `./mvnw clean test`** | everything depends on it — no exceptions |
 
 A downstream module resolves its dependency from the local repository, so `install` the changed
-module first: `./mvnw install -pl vidulum-wealth -DskipTests`.
+module first: `./mvnw install -pl vidulum-portfolio -DskipTests`.
 
 Two traps worth remembering:
 
@@ -166,8 +166,8 @@ vidulum/
 ├── vidulum-okx/                 # OKX adapter
 │   └── okx/                     #   Quotation provider, OkxExchangeAdapter, OkxRegion
 │
-├── vidulum-wealth/              # TEST-ONLY: no src/main. Holds the tests that deliberately
-│                                #   cross a module boundary (60 tests)
+├── vidulum-wealth-tests/        # No src/main. The tests that deliberately cross a module
+│                                #   boundary, kept together to avoid a reactor cycle (60 tests)
 │
 └── vidulum-app/                 # Bootstrap & cross-module integration (32 tests)
     └── user/                    #   User registration, activation
@@ -179,13 +179,13 @@ vidulum/
 **Dependency flow**: contracts first, then implementations, then the bootstrap — no cycles. The
 reactor order is fixed in the parent pom: shared-kernel → cashflow → exchange-api → exchange →
 quotation-api → quotation → portfolio-api → trading-api → portfolio → trading → pnl → risk →
-wealth → okx → app.
+wealth-tests → okx → app.
 
 Two rules make it hold:
 - **A module never imports another module's internals** — only its `*-api` contract. `portfolio`
   sees `trading.api`, never `trading.app`.
-- **`vidulum-wealth` has no `src/main` at all.** It exists for the tests that deliberately cross a
-  boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
+- **`vidulum-wealth-tests` has no `src/main` at all** — the name says what the module is. It exists
+  for the tests that deliberately cross a boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
   `PreciousMetalsLifecycleComponentTest`, the portfolio and portfolio_spec endpoint tests,
   `ValuationBasisPersistenceTest`). Without it, portfolio's tests would need trading and trading's
   would need portfolio — a reactor cycle.
@@ -255,7 +255,7 @@ Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own inte
 | Module | Base class | Description |
 |--------|-----------|-------------|
 | vidulum-cashflow | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers |
-| vidulum-wealth | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
+| vidulum-wealth-tests | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
 | vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, in-memory repositories |
 | vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
@@ -396,8 +396,8 @@ When the user asks to "restart Docker" or "rebuild Docker image", **ALWAYS** per
 # 1. Package the application (create JAR)
 # IMPORTANT: `clean`, not a bare `package` - without it the reactor can reuse a stale module jar
 # and the image ships code you already replaced. Verify before shipping:
-#   unzip -p vidulum-app/target/*.jar BOOT-INF/lib/vidulum-wealth-*.jar > /tmp/w.jar
-#   unzip -p /tmp/w.jar <YourClass>.class | grep -ac <yourNewMethod>
+#   unzip -p vidulum-app/target/*.jar BOOT-INF/lib/vidulum-portfolio-*.jar > /tmp/m.jar
+#   unzip -p /tmp/m.jar <YourClass>.class | grep -ac <yourNewMethod>
 ./mvnw clean package -DskipTests
 
 # 2. Build fresh Docker image WITHOUT CACHE

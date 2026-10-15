@@ -13,7 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * Test-only application for the OKX module. Not part of the production jar.
  *
  * <p>Component scanning is deliberately narrowed to this module plus {@code quotation} from
- * vidulum-wealth. That package is self-contained - its only import from outside is
+ * vidulum-quotation. That package is self-contained - its only import from outside is
  * {@code UserCreatedEvent} - so the context needs Kafka but not MongoDB, which keeps the test to
  * a single container. Scanning all of {@code com.multi.vidulum} would drag in the portfolio and
  * trading repositories and force a Mongo container for no benefit.

@@ -1,5 +1,5 @@
 # Test configuration for the OKX module.
-# Mirrors vidulum-wealth: shorter timeouts so Testcontainers shut down promptly.
+# Mirrors vidulum-wealth-tests: shorter timeouts so Testcontainers shut down promptly.
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 5s

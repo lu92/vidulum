@@ -10,11 +10,11 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>vidulum-wealth</artifactId>
-    <name>Vidulum Wealth Module</name>
+    <artifactId>vidulum-wealth-tests</artifactId>
+    <name>Vidulum Wealth Cross-Module Tests</name>
     <description>
-        Test-only: this module has no src/main. Portfolio, trading, quotation, pnl and risk all left
-        for their own artifacts (steps 02b-09 of the module split); what stayed are the tests that
+        No src/main, and the name says so. Portfolio, trading, quotation, pnl and risk all left for
+        their own artifacts (steps 02b-09 of the module split); what stayed are the tests that
         deliberately cross a module boundary and would otherwise force a reactor cycle - portfolio's
         tests needing trading, trading's needing portfolio. Nothing depends on this artifact.
     </description>

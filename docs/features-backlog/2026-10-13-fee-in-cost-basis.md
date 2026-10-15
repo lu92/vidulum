@@ -5,7 +5,7 @@
 | **Status** | zadanie, **nic nie zaimplementowane** |
 | **Decyzja** | podjęta: **prowizja wchodzi** do kosztu bazowego |
 | **Skąd** | krok **05d** w `2026-10-12-module-contracts-api-impl-split.md`; wyszło przy przeglądzie `vidulum-trading-api` po kroku 05a |
-| **Zakres** | `vidulum-trading-api`, `vidulum-wealth` (portfolio, trading) |
+| **Zakres** | `vidulum-trading-api`, `vidulum-trading`, `vidulum-portfolio` (od kroku 06c osobne artefakty; luka (c) jest w agregacie portfela) |
 | **Data** | 2026-10-13 |
 
 ---
@@ -128,8 +128,8 @@ trade z repozytorium.
   `LockingAssetsTests`…). Część liczb **ma** się zmienić — to właściwe zachowanie, nie regresja, i
   każda zmieniona liczba wymaga sprawdzenia ręcznie, a nie przeklejenia tego, co wyszło.
 - Zdarzenie persystowane → patrz punkt 5.3.
-- Scope buildu: `vidulum-trading-api`, `vidulum-wealth`, potem `vidulum-okx` i `vidulum-app`.
-  Cashflow nietknięty.
+- Scope buildu: `vidulum-trading-api`, potem `vidulum-trading`, `vidulum-portfolio`,
+  `vidulum-pnl`, `vidulum-wealth-tests` i `vidulum-app`. Cashflow nietknięty.
 
 ## 8. Jak sprawdzić, że zrobione
 
