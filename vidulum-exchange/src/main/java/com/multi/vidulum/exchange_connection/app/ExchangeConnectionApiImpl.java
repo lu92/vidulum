@@ -12,7 +12,7 @@ import com.multi.vidulum.exchange_connection.app.queries.GetExchangeConnectionQu
 import com.multi.vidulum.exchange_connection.domain.ExchangeConnection;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import org.springframework.context.annotation.Lazy;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
@@ -23,22 +23,18 @@ import java.time.ZonedDateTime;
  * <p>Package-private and through the gateways, as with the portfolio and trading contracts. The
  * predecessor was no class at all: {@code portfolio_spec} injected three of this module's command
  * handlers and read connections out of {@code DomainExchangeConnectionRepository} directly.
+ *
+ * <p>The gateways arrive through Lombok's generated constructor, eagerly. The cycle that once
+ * forced {@code @Lazy} here — onboarding's three command handlers consume this contract, and a
+ * gateway used to be assembled from every handler in the context — is removed at its source in
+ * {@code CqrsGatewayConfiguration}, so there is nothing left for an explicit constructor to carry.
  */
 @Component
+@AllArgsConstructor
 class ExchangeConnectionApiImpl implements ExchangeConnectionApi {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
-
-    /**
-     * {@code @Lazy} for the cycle every gateway-based contract in this codebase runs into: a
-     * gateway is assembled from every handler in the context, and onboarding's own handlers — which
-     * are handlers — consume this contract.
-     */
-    ExchangeConnectionApiImpl(@Lazy CommandGateway commandGateway, @Lazy QueryGateway queryGateway) {
-        this.commandGateway = commandGateway;
-        this.queryGateway = queryGateway;
-    }
 
     @Override
     public ConnectionView ownedOrThrow(UserId owner, ExchangeConnectionId connectionId) {

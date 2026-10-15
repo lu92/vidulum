@@ -39,7 +39,9 @@ public class CommandGateway {
             CommandHandler<T, R> commandHandler = (CommandHandler<T, R>) commandHandlers.get(command.getClass());
             return commandHandler.handle(command);
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(
+                    "No command handler registered for [%s]. Either the handler is not a bean in this context, or the gateway was used before registration ran."
+                            .formatted(command.getClass().getName()));
         }
     }
 }

@@ -3,10 +3,7 @@ package com.multi.vidulum.exchange_connection;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
 import com.multi.vidulum.exchange_connection.api.spi.ExchangeAdapter;
-import com.multi.vidulum.shared.cqrs.CommandGateway;
-import com.multi.vidulum.shared.cqrs.QueryGateway;
-import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
-import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
+import com.multi.vidulum.shared.cqrs.CqrsGatewayConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import com.multi.vidulum.security.config.ErrorHttpHandler;
@@ -16,7 +13,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.Clock;
-import java.util.List;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
@@ -31,27 +27,8 @@ import java.time.ZoneOffset;
  * not need. Without it every business exception would answer 500 instead of its own status.
  */
 @SpringBootApplication(scanBasePackages = "com.multi.vidulum.exchange_connection")
-@Import(ErrorHttpHandler.class)
+@Import({ErrorHttpHandler.class, CqrsGatewayConfiguration.class})
 public class ExchangeTestApplication {
-
-    /**
-     * Gateways are declared by {@code VidulumApplication} in production, which this test
-     * application does not scan — so they are rebuilt here the same way, by registering every
-     * handler the context found.
-     */
-    @Bean
-    CommandGateway commandGateway(List<CommandHandler<?, ?>> commandHandlers) {
-        CommandGateway commandGateway = new CommandGateway();
-        commandHandlers.forEach(commandGateway::registerCommandHandler);
-        return commandGateway;
-    }
-
-    @Bean
-    QueryGateway queryGateway(List<QueryHandler<?, ?>> queryHandlers) {
-        QueryGateway queryGateway = new QueryGateway();
-        queryHandlers.forEach(queryGateway::registerQueryHandler);
-        return queryGateway;
-    }
 
     /** Fixed, so {@code createdAt} and the two sync timestamps can be asserted exactly. */
     @Bean

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**. Pozostaje: 01, 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**. Pozostaje: 01, 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1125,6 +1125,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 06 | **`TradingModuleApi` — domknięcie `vidulum-trading-api`** — ✅ **wykonane**, patrz 21 | P2. Artefakt powstał w 05a z samymi eventami; tu dochodzą dwie metody czytające i typy widoku, znika `TradingRestClient` z `portfolio.domain` razem z adapterem, a `pnl` i `risk` przestają zależeć od portfolio po kontrakt tradingu |
 | 06b | **`vidulum-exchange-api`** — ✅ **wykonane**, patrz 21 | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
 | 06c | **`vidulum-portfolio` + `vidulum-trading` jako artefakty** — ✅ **wykonane**, patrz 21 | Wykonane razem (wariant A), bo wydzielenie portfolio w pojedynkę zamyka cykl w reaktorze po stronie testów — patrz 21 |
+| 08 | **Cykl beanów na gatewayach** — ✅ **wykonane**, patrz 21 | Nie było w pierwotnym planie: wyszło z pytania, czy cykl z kroku 04 nadal występuje. `@Lazy` w trzech implementacjach i w pięciu miejscach testowych odkładało cykl, nie usuwało go. Gateway przestał zbierać handlery w swoim konstruktorze — cykl zniknął, `@Lazy` zniknęło |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -1451,12 +1452,16 @@ czyli **ucieczka od cyklu była niezapisanym powodem, dla którego implementacja
 `vidulum-app`**. Usunięty `TestPortfolioRestClient` miał `@Lazy CommandGateway`; ten modyfikator był
 jedynym śladem problemu w całym repo.
 
-Rozwiązanie: jawny konstruktor z `@Lazy` na obu gatewayach. Proxy rozwiązywane przy pierwszym
-wywołaniu jest mniejszym ustępstwem niż zależność od środka modułu.
+Rozwiązanie **doraźne**: jawny konstruktor z `@Lazy` na obu gatewayach. Proxy rozwiązywane przy
+pierwszym wywołaniu jest mniejszym ustępstwem niż zależność od środka modułu.
 
 **Reguła przy kroku 06:** każdy `*ModuleApiImpl` oparty na gatewayach będzie miał ten cykl, jeśli
 dowolny handler w tym samym kontekście konsumuje jego kontrakt. Zakładać `@Lazy` od razu, nie po
 czerwonym buildzie.
+
+> **Nieaktualne od kroku 08.** Reguła działała, ale leczyła objaw: `@Lazy` nie usuwa cyklu, tylko
+> odkłada go za proxy. Cykl zniknął u źródła — patrz „Krok 08" w tej sekcji. Żadna implementacja
+> kontraktu nie potrzebuje już `@Lazy`.
 
 ### Lekcja o atrapach z kroku 02 nie generalizuje się
 
@@ -1697,7 +1702,8 @@ Usunięte: `portfolio.domain.TradingRestClient` i `portfolio.infrastructure.Trad
 **`pnl` i `risk` nie importują już z portfolio niczego poza `portfolio.api`** — wcześniej brały
 stamtąd kontrakt tradingu, czyli po dane jednego modułu szły przez trzeci.
 
-**Reguła `@Lazy` z kroku 04 sprawdziła się dokładnie tak, jak zapisana.** `QueryGateway` powstaje z
+**Reguła `@Lazy` z kroku 04 sprawdziła się dokładnie tak, jak zapisana** (i została zniesiona w
+kroku 08, który usunął cykl u źródła). `QueryGateway` powstaje z
 `List<QueryHandler>`, wśród nich jest `GetPositionViewOfPortfolioQueryHandler`, który konsumuje ten
 kontrakt — więc `TradingModuleApiImpl` zamyka ten sam cykl co `PortfolioModuleApiImpl`. Tym razem
 `@Lazy` było na miejscu od pierwszej kompilacji, bez 38 czerwonych testów.
@@ -1816,6 +1822,66 @@ Przeniesione bez zmian, żeby podział nie mieszał się z przepisywaniem asercj
 Przy okazji usunięte dwa martwe `import TradingDto` z `MakePnlSnapshotCommandHandler` i
 `RiskManagementEngine` — zostały po kroku 06, kompilowały się, bo artefakt był jeszcze jeden, i
 upadłyby dopiero teraz.
+
+### Krok 08: cykl beanów usunięty u źródła, a nie odłożony
+
+Pytanie „czy ten cykl nadal występuje" miało jedną poprawną odpowiedź: **tak, i było go więcej niż
+w kroku 04.** `@Lazy` nigdy nie usunęło cyklu — wstawiło proxy, które rozwiązuje się przy pierwszym
+wywołaniu. Policzone przed zmianą: trzy implementacje kontraktów (`PortfolioModuleApiImpl`,
+`TradingModuleApiImpl`, `ExchangeConnectionApiImpl`) i **jeszcze pięć miejsc po stronie testów**
+(`TestCashFlowServiceClient` ×2 plus trzy klasy bazowe testów integracyjnych) — ostatnie z zupełnie
+innego powodu biznesowego, ale z identycznym kształtem:
+
+```
+CommandGateway → ConfigureCategoryMappingCommandHandler → CashFlowServiceClient → CommandGateway
+```
+
+**Przyczyną nie są kontrakty, tylko sposób składania gatewaya.** `commandGateway(List<CommandHandler>)`
+wymaga, żeby każdy handler istniał, zanim gateway powstanie. Grupą kontrolną jest `QuotationApi`:
+realizuje je `QuotationService`, które **nie rozmawia przez gateway** — i nie miało ani jednego
+`@Lazy`.
+
+Gateway nie potrzebuje jednak handlerów w momencie konstrukcji, tylko przy `send`. Nowy
+`CqrsGatewayConfiguration` w shared-kernel wygląda więc tak:
+
+```java
+@Bean CommandGateway commandGateway() { return new CommandGateway(); }   // zero zależności
+
+@Bean SmartInitializingSingleton cqrsHandlerRegistration(
+        CommandGateway cg, QueryGateway qg,
+        ObjectProvider<CommandHandler<?, ?>> commands,
+        ObjectProvider<QueryHandler<?, ?>> queries) {
+    return () -> { commands.orderedStream().forEach(cg::registerCommandHandler);
+                   queries.orderedStream().forEach(qg::registerQueryHandler); };
+}
+```
+
+Krawędź `gateway → handlery` przestaje istnieć na etapie tworzenia beanów, więc **cykl znika dla
+całego repozytorium naraz**, a nie dla jednego beana. Rejestracja biegnie przed startem beanów
+`SmartLifecycle`, czyli kontenery listenerów Kafki nie mogą dostarczyć wiadomości do pustego
+gatewaya.
+
+Efekty uboczne, wszystkie w dobrą stronę:
+
+| | przed | po |
+|---|---|---|
+| `@Lazy` w repo | 8 miejsc | **0** |
+| definicje gatewayów | 4 kopie (`VidulumApplication` + 3 konteksty testowe) | 1 konfiguracja, importowana |
+| brak handlera | `IllegalArgumentException` **bez komunikatu**, przy pierwszym żądaniu | komunikat z nazwą komendy, a kontekst znów nie wstaje przy starcie |
+
+Ostatni wiersz jest tym, co `@Lazy` cicho zabierało: **start aplikacji przestał dowodzić, że graf
+się spina.** Teraz znowu dowodzi.
+
+**Test pilnuje przyczyny, nie objawu.** `CqrsGatewayConfigurationTest` stawia minimalny kontekst o
+produkcyjnym kształcie — implementacja kontraktu bierze gateway *eagerly*, a handler konsumuje ten
+kontrakt — i **czwarty test stawia ten sam zestaw beanów ze starą konfiguracją, oczekując, że
+kontekst nie wstanie.** Bez tego testu nie wiedziałbym, czy nowa konfiguracja jest konieczna, czy
+tylko nieszkodliwa.
+
+Przy pierwszej próbie ten negatywny test **przeszedł zamiast upaść** — zbudowałem kształt, w którym
+implementacja brała tylko `QueryGateway`, a konsumentem był `CommandHandler`, więc pętla się nie
+domykała. Dopóki test negatywny nie upadnie na starej konfiguracji, nie dowodzi niczego; to ten sam
+błąd co zielony test, który nic nie sprawdza.
 
 ### Co zostało otwarte po 04
 

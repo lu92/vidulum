@@ -23,7 +23,7 @@ import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
-import org.springframework.context.annotation.Lazy;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -45,35 +45,20 @@ import java.util.List;
  * directly. Valuation is involved — the denomination chain, unpriced positions, contribution
  * coverage — and computing it twice would eventually mean computing it differently. The web DTO is
  * therefore an internal detail of this class, which is fine: both are private to the module.
+ *
+ * <p>The gateways arrive through Lombok's generated constructor, eagerly. They could not, until
+ * {@code CqrsGatewayConfiguration} stopped assembling a gateway from its handlers at construction
+ * time: seven handlers across trading, pnl, risk and the bootstrap consume this contract, so a
+ * gateway that needed them all before it existed made this bean part of a cycle. {@code @Lazy} used
+ * to hide that, and carrying it forced an explicit constructor. Nothing left to carry.
  */
 @Component
+@AllArgsConstructor
 class PortfolioModuleApiImpl implements PortfolioModuleApi {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
-
-    /**
-     * Both gateways arrive {@code @Lazy}, and they have to.
-     *
-     * <p>A gateway is built by collecting every handler in the context, and one of those handlers —
-     * {@code MakePnlSnapshotCommandHandler} — asks for this contract. Injecting the gateway eagerly
-     * therefore closes a cycle: gateway needs the handler, handler needs this, this needs the
-     * gateway. Spring reports it as {@code BeanCurrentlyInCreationException} at startup.
-     *
-     * <p>Injecting the handlers directly, as the predecessor in {@code vidulum-app} did, dodges the
-     * cycle by never touching the gateway — at the price of depending on the middle of this module
-     * and of only being constructible where every bean definition is visible. A proxy that resolves
-     * on first call is the smaller concession, and it is the one the test double this class replaced
-     * had already made.
-     */
-    PortfolioModuleApiImpl(@Lazy CommandGateway commandGateway,
-                           @Lazy QueryGateway queryGateway,
-                           PortfolioSummaryMapper portfolioSummaryMapper) {
-        this.commandGateway = commandGateway;
-        this.queryGateway = queryGateway;
-        this.portfolioSummaryMapper = portfolioSummaryMapper;
-    }
 
     @Override
     public PortfolioId open(String name, UserId owner, Broker broker, Currency allowedDepositCurrency) {

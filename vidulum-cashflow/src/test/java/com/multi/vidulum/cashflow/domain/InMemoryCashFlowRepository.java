@@ -12,6 +12,7 @@ import java.time.YearMonth;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 /**
  * In-memory implementation of {@link DomainCashFlowRepository} for unit tests.
@@ -20,15 +21,12 @@ import java.util.stream.Collectors;
  * (fromSnapshot → toSnapshot) to verify that entity mapping is correct,
  * without requiring a MongoDB container.</p>
  */
+@RequiredArgsConstructor
 class InMemoryCashFlowRepository implements DomainCashFlowRepository {
 
     private final Map<String, CashFlowEntity> store = new ConcurrentHashMap<>();
     private final Map<CashFlowId, List<StoredDomainEvent>> eventStore = new ConcurrentHashMap<>();
     private final Clock clock;
-
-    InMemoryCashFlowRepository(Clock clock) {
-        this.clock = clock;
-    }
 
     @Override
     public Optional<CashFlow> findById(CashFlowId id) {

@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 /**
  * In-memory implementation of {@link DomainPortfolioRepository} for unit tests.
@@ -23,15 +24,12 @@ import java.util.stream.Collectors;
  * <p>Public because the portfolio-spec tests need a known state to compute a difference against,
  * and building one through deposits and trades would obscure what those tests are about.
  */
+@RequiredArgsConstructor
 public class InMemoryPortfolioRepository implements DomainPortfolioRepository {
 
     private final Map<String, PortfolioEntity> store = new ConcurrentHashMap<>();
     private final Map<PortfolioId, List<StoredDomainEvent>> eventStore = new ConcurrentHashMap<>();
     private final Clock clock;
-
-    public InMemoryPortfolioRepository(Clock clock) {
-        this.clock = clock;
-    }
 
     @Override
     public Optional<Portfolio> findById(PortfolioId portfolioId) {

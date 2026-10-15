@@ -25,7 +25,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -75,7 +74,7 @@ public abstract class CashFlowIntegrationTest {
         @Bean
         public CashFlowServiceClient cashFlowServiceClient(
                 QueryGateway queryGateway,
-                @Lazy CommandGateway commandGateway) {
+                CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
 

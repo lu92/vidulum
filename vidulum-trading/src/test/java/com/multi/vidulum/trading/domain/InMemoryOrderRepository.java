@@ -15,20 +15,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 /**
  * In-memory implementation of {@link DomainOrderRepository} for unit tests.
  * Uses {@link OrderEntity} for snapshot round-trip (fromSnapshot/toSnapshot).
  */
+@RequiredArgsConstructor
 class InMemoryOrderRepository implements DomainOrderRepository {
 
     private final Map<String, OrderEntity> store = new ConcurrentHashMap<>();
     private final Map<OrderId, List<StoredDomainEvent>> eventStore = new ConcurrentHashMap<>();
     private final Clock clock;
-
-    InMemoryOrderRepository(Clock clock) {
-        this.clock = clock;
-    }
 
     @Override
     public Optional<Order> findById(OrderId orderId) {

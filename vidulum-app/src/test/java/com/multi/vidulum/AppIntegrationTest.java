@@ -22,7 +22,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
@@ -49,7 +48,7 @@ public abstract class AppIntegrationTest {
         @Bean
         public CashFlowServiceClient cashFlowServiceClient(
                 com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
-                @Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
+                com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
             return new TestCashFlowServiceClient(queryGateway, commandGateway);
         }
 
