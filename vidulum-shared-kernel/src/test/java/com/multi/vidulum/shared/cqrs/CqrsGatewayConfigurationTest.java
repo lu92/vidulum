@@ -4,6 +4,7 @@ import com.multi.vidulum.shared.cqrs.commands.Command;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.shared.cqrs.queries.Query;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
+import lombok.AllArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -139,15 +140,11 @@ class CqrsGatewayConfigurationTest {
      * makes the cycle reachable from a command handler — and because the real implementations hold
      * both for the same reason: a contract has reads and writes.
      */
+    @AllArgsConstructor
     static class LocationApiImpl implements LocationApi {
 
         private final CommandGateway commandGateway;
         private final QueryGateway queryGateway;
-
-        LocationApiImpl(CommandGateway commandGateway, QueryGateway queryGateway) {
-            this.commandGateway = commandGateway;
-            this.queryGateway = queryGateway;
-        }
 
         @Override
         public String where() {
@@ -159,13 +156,10 @@ class CqrsGatewayConfigurationTest {
      * A named class rather than a lambda: the gateways find a handler's command type by reflecting
      * over its declared {@code handle} method, which a lambda does not expose.
      */
+    @AllArgsConstructor
     static class GreetHandler implements CommandHandler<Greet, String> {
 
         private final LocationApi locationApi;
-
-        GreetHandler(LocationApi locationApi) {
-            this.locationApi = locationApi;
-        }
 
         @Override
         public String handle(Greet command) {

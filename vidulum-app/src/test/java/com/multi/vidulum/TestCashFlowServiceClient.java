@@ -14,6 +14,7 @@ import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.YearMonth;
@@ -30,15 +31,11 @@ import java.util.*;
  * singletons exist instead of while a gateway is being built.
  */
 @Slf4j
+@AllArgsConstructor
 public class TestCashFlowServiceClient implements CashFlowServiceClient {
 
     private final QueryGateway queryGateway;
     private final CommandGateway commandGateway;
-
-    public TestCashFlowServiceClient(QueryGateway queryGateway, CommandGateway commandGateway) {
-        this.queryGateway = queryGateway;
-        this.commandGateway = commandGateway;
-    }
 
     @Override
     public CashFlowInfo getCashFlowInfo(String cashFlowId) {

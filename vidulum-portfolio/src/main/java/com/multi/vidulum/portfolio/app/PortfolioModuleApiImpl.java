@@ -23,6 +23,7 @@ import com.multi.vidulum.portfolio.app.queries.PortfolioSummaryMapper;
 import com.multi.vidulum.portfolio.domain.portfolio.Portfolio;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -44,28 +45,20 @@ import java.util.List;
  * directly. Valuation is involved — the denomination chain, unpriced positions, contribution
  * coverage — and computing it twice would eventually mean computing it differently. The web DTO is
  * therefore an internal detail of this class, which is fine: both are private to the module.
+ *
+ * <p>The gateways arrive through Lombok's generated constructor, eagerly. They could not, until
+ * {@code CqrsGatewayConfiguration} stopped assembling a gateway from its handlers at construction
+ * time: seven handlers across trading, pnl, risk and the bootstrap consume this contract, so a
+ * gateway that needed them all before it existed made this bean part of a cycle. {@code @Lazy} used
+ * to hide that, and carrying it forced an explicit constructor. Nothing left to carry.
  */
 @Component
+@AllArgsConstructor
 class PortfolioModuleApiImpl implements PortfolioModuleApi {
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
     private final PortfolioSummaryMapper portfolioSummaryMapper;
-
-    /**
-     * Both gateways arrive eagerly. They could not, until {@code CqrsGatewayConfiguration} stopped
-     * assembling a gateway from its handlers at construction time: seven handlers across trading,
-     * pnl, risk and the bootstrap consume this contract, so a gateway that needed them all before
-     * it existed made this bean part of a cycle. {@code @Lazy} used to hide that; now there is
-     * nothing to hide, and a context that cannot be wired fails at startup again.
-     */
-    PortfolioModuleApiImpl(CommandGateway commandGateway,
-                           QueryGateway queryGateway,
-                           PortfolioSummaryMapper portfolioSummaryMapper) {
-        this.commandGateway = commandGateway;
-        this.queryGateway = queryGateway;
-        this.portfolioSummaryMapper = portfolioSummaryMapper;
-    }
 
     @Override
     public PortfolioId open(String name, UserId owner, Broker broker, Currency allowedDepositCurrency) {
