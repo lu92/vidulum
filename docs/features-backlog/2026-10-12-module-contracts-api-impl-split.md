@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**. Pozostaje: 01, 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**. Pozostaje: 01, 05b, 05c, 05d, 07, 11 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1127,6 +1127,8 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 06c | **`vidulum-portfolio` + `vidulum-trading` jako artefakty** — ✅ **wykonane**, patrz 21 | Wykonane razem (wariant A), bo wydzielenie portfolio w pojedynkę zamyka cykl w reaktorze po stronie testów — patrz 21 |
 | 08 | **Cykl beanów na gatewayach** — ✅ **wykonane**, patrz 21 | Nie było w pierwotnym planie: wyszło z pytania, czy cykl z kroku 04 nadal występuje. `@Lazy` w trzech implementacjach i w pięciu miejscach testowych odkładało cykl, nie usuwało go. Gateway przestał zbierać handlery w swoim konstruktorze — cykl zniknął, `@Lazy` zniknęło |
 | 09 | **`vidulum-pnl` + `vidulum-risk` jako artefakty, bez `-api`** — ✅ **wykonane**, patrz 21 | Oba są liśćmi: nikt ich o nic nie pyta, więc moduł kontraktowy miałby zero konsumentów. `vidulum-wealth` zostaje bez `src/main` — jako moduł testowy |
+| 10 | **Dwa agregatory: `market/` i `wealth/`** — ✅ **wykonane**, patrz 21 | Jedenaście modułów pod dwa foldery; korzeń z 17 wpisów do ośmiu. Agregatory, nie rodzice: ani jedna zależność i ani jeden `artifactId` się nie zmienia |
+| 11 | **`wealth/pom.xml` jako rodzic swoich modułów** | Cztery pomy powtarzają ten sam blok Springa, Mongo, Kafki i Lomboka. Pośredni rodzic to usuwa, ale zmienia `<parent>` w sześciu pomach — osobny krok, żeby nie mieszać „przeniosłem katalogi" z „zmieniłem, skąd moduły biorą zależności" |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -1949,6 +1951,68 @@ Jeden wyjątek od „testy jadą z modułem": `FxValuationRatesTest` bierze **pr
 musiałaby powtórzyć testowaną regułę. Dlatego `vidulum-pnl` ma `vidulum-quotation` w **test scope**,
 a main widzi wyłącznie `quotation-api`. `ValuationBasisPersistenceTest` został w module testowym, bo
 jest springowy i stawia Testcontainers — tak jak testy endpointów portfolio po 06c.
+
+### Krok 10: foldery zamiast siedemnastu wpisów w korzeniu
+
+Po kroku 09 korzeń repozytorium miał **17 modułów w jednym płaskim wykazie** — i nic w drzewie nie
+mówiło, że `vidulum-quotation` i `vidulum-portfolio` należą do dwóch różnych warstw. Jedenaście z
+nich zjechało pod dwa agregatory:
+
+```
+vidulum/
+├── vidulum-shared-kernel/
+├── vidulum-cashflow/        (kontener + 2 zagnieżdżone, jak dotąd)
+├── market/      ← quotation±api · exchange±api · okx
+├── wealth/      ← portfolio±api · trading±api · pnl · risk
+├── vidulum-wealth-tests/
+└── vidulum-app/
+```
+
+**Podział na te dwie grupy nie jest estetyczny, jest zmierzony.** Zanim powstały foldery,
+policzyłem krawędź:
+
+| | importy do `portfolio`, `trading`, `pnl`, `risk` |
+|---|---|
+| `vidulum-quotation-api`, `vidulum-quotation` | **0** |
+| `vidulum-exchange-api`, `vidulum-exchange` | **0** |
+| `vidulum-okx` | **0** |
+
+A w drugą stronę wealth bierze wyłącznie kontrakty: portfolio → `quotation.api` +
+`exchange_connection.api`, pnl → `quotation.api.fx`, risk → `quotation.api`, trading → nic. Czyli
+`market → wealth` nie istnieje, a `wealth → market` idzie tylko przez `*-api`. Dwa foldery to dwie
+warstwy, nie dwa worki — **ceny i giełdy nie wiedzą, kto co posiada**.
+
+`vidulum-okx` wylądował w `market/`, bo implementuje SPI **obu** kontraktów z tego folderu
+(`BrokerQuotationProvider` i `ExchangeAdapter`) i kompiluje się wyłącznie przeciw nim. Drugi adapter
+giełdy trafi obok; osobny folder `adapters/` dla jednego modułu byłby na dziś szumem.
+
+**Agregatory, nie rodzice.** `market/pom.xml` i `wealth/pom.xml` mają `packaging=pom` i tylko listę
+modułów; każdy moduł **nadal dziedziczy po korzeniu** (`relativePath` zmieniony na `../../pom.xml`).
+Dzięki temu krok 10 nie zmienia ani jednej zależności, ani jednego `artifactId`, ani jednej linii
+Javy — co czyni go weryfikowalnym jednym zdaniem: albo reaktor się składa, albo `relativePath` jest
+zły. Dziedziczenie zależności przez `wealth/pom.xml` to osobny **krok 11**, świadomie nierobiony tu.
+
+**Kolejność reaktora wylicza się z zależności, nie z folderów** — i to warto zobaczyć, bo zmieniła
+się bez szkody: `vidulum-okx` buduje się teraz **przed** portfolio (jest ostatni w `market/`, a
+`market/` idzie pierwszy), co jest poprawne, bo okx zależy tylko od kontraktów quotation i exchange.
+
+**Koszt, który trzeba było zapłacić: `-pl`.** Sprawdzone na module, który był zagnieżdżony już
+wcześniej:
+
+| polecenie | wynik |
+|---|---|
+| `./mvnw validate -pl :vidulum-recurring-rules` | ✅ |
+| `./mvnw validate -pl recurring-rules` | ❌ `Could not find the selected project in the reactor` |
+
+Czyli `-pl vidulum-portfolio` przestało działać. **36 wyrażeń `-pl` w `CLAUDE.md` przepisanych na
+formę `:artifactId`**, która jest odporna na każde kolejne przenoszenie katalogów — razem z notą,
+dlaczego tak, i z dwiema nowymi możliwościami: `-f market/pom.xml` i `-f wealth/pom.xml` budują całą
+grupę (ten reaktor nie zawiera shared-kernela, więc bierze go z lokalnego repozytorium).
+
+Nazwa `vidulum-wealth` wróciła — tym razem jako `artifactId` agregatora z `packaging=pom`, czyli
+grupy, a nie jara. Moduł testowy pozostaje `vidulum-wealth-tests` **w korzeniu**, bo testuje
+przejścia między grupami (portfolio↔trading, portfolio_spec↔exchange, pnl↔Mongo,
+`DenominationChainComponentTest` dotyka quotation) — należy do obu naraz, czyli do żadnej.
 
 ### Co zostało otwarte po 04
 

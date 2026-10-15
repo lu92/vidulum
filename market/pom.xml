@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-market</artifactId>
+    <packaging>pom</packaging>
+    <name>Vidulum Market</name>
+    <description>
+        The outside world: what things are worth and which venues the owner is connected to.
+
+        An aggregator, not a parent - every module below still inherits from the root pom, so moving
+        a module in or out of this folder changes no dependency and no artifactId. Build the group
+        with `./mvnw test -f market/pom.xml`; that reactor does not contain vidulum-shared-kernel,
+        so it resolves it from the local repository.
+
+        The boundary with wealth is one-way and checked: no module here imports anything from
+        portfolio, trading, pnl or risk, while wealth reaches in through *-api only. Prices and
+        venues know nothing about who owns what.
+
+        vidulum-okx lives here because it implements the SPI of both contracts in this folder -
+        BrokerQuotationProvider from quotation-api and ExchangeAdapter from exchange-api - and
+        compiles against nothing else. A second venue adapter belongs next to it.
+    </description>
+
+    <modules>
+        <module>vidulum-quotation-api</module>
+        <module>vidulum-quotation</module>
+        <module>vidulum-exchange-api</module>
+        <module>vidulum-exchange</module>
+        <module>vidulum-okx</module>
+    </modules>
+
+</project>

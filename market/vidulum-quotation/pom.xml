@@ -8,12 +8,14 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>vidulum-trading</artifactId>
-    <name>Vidulum Trading Module</name>
-    <description>Orders and trades. Nobody compiles against this - consumers compile against vidulum-trading-api.</description>
+    <artifactId>vidulum-quotation</artifactId>
+    <name>Vidulum Quotation Module</name>
+    <description>What an asset is worth: per-broker quote caches, the route through the pivot
+        currency, and the central bank fixing. Nobody compiles against this - consumers compile
+        against vidulum-quotation-api.</description>
 
     <dependencies>
         <dependency>
@@ -21,19 +23,16 @@
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- The contract this module implements. -->
         <dependency>
             <groupId>com.multi</groupId>
-            <artifactId>vidulum-trading-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-portfolio-api</artifactId>
+            <artifactId>vidulum-quotation-api</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-        </dependency>
+
+        <!-- QuoteRestController, ExchangeStatusRestController, and the NBP client built with
+             HttpServiceProxyFactory. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
@@ -42,14 +41,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-classic</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-jackson2</artifactId>
-        </dependency>
+
+        <!-- Prices arrive on the quotes topic; FxRateRefresher runs on @Scheduled. -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

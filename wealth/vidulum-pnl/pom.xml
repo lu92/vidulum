@@ -8,12 +8,16 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>vidulum-portfolio</artifactId>
-    <name>Vidulum Portfolio Module</name>
-    <description>A portfolio and what onboarding settles into one: the aggregate, its positions, contributions and locks, and the specification that creates it from an exchange snapshot. Nobody compiles against this - consumers compile against vidulum-portfolio-api.</description>
+    <artifactId>vidulum-pnl</artifactId>
+    <name>Vidulum PnL Module</name>
+    <description>
+        Recorded valuations and wealth change. A leaf: it consumes portfolio, trading and FX
+        contracts and answers over HTTP, and no module asks it for anything - which is why there is
+        no vidulum-pnl-api. The contract gets written when the first consumer exists.
+    </description>
 
     <dependencies>
         <dependency>
@@ -21,23 +25,24 @@
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Contracts only. The implementations are wired by vidulum-app. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-portfolio-api</artifactId>
             <version>${project.version}</version>
-        </dependency>        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-quotation-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-exchange-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>        <dependency>
+        </dependency>
+        <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-trading-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
@@ -54,6 +59,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
+        <!-- The nightly snapshot is set up from UserCreatedEvent, which arrives over Kafka. -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
@@ -62,6 +68,17 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Test scope only, and deliberately the implementation: FxValuationRatesTest exercises
+             the inversion of a held fixing (USD/PLN -> PLN/USD) against the real FxRates store
+             rather than a stub that would have to repeat the rule being tested. Main code sees
+             nothing but vidulum-quotation-api. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -74,38 +91,6 @@
             <artifactId>spring-boot-starter-test-classic</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- InMemoryQuotationApi: component tests need prices but are not about prices. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-quotation-api</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <!-- Onboarding component tests drive the real exchange handlers over an in-memory store. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-exchange</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>    </dependencies>
-
-    <build>
-        <plugins>
-            <!-- PortfolioFixture and InMemoryPortfolioRepository ship as a test-jar: the
-                 cross-module walks in vidulum-wealth-tests build portfolios with them. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+    </dependencies>
 
 </project>

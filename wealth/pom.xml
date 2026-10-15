@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-wealth</artifactId>
+    <packaging>pom</packaging>
+    <name>Vidulum Wealth</name>
+    <description>
+        What the owner holds, what they trade, what it was worth and what is at risk. The six
+        modules that used to be one artifact called vidulum-wealth, split across steps 04-09.
+
+        An aggregator, not a parent - every module below still inherits from the root pom, so this
+        folder changes no dependency and no artifactId. Build the group with
+        `./mvnw test -f wealth/pom.xml`, after market and shared-kernel are installed.
+
+        The tests that cross out of this group live in vidulum-wealth-tests at the root, not here:
+        they exercise portfolio against trading, portfolio_spec against exchange and pnl against
+        Mongo, so they belong to no single group.
+    </description>
+
+    <modules>
+        <module>vidulum-portfolio-api</module>
+        <module>vidulum-trading-api</module>
+        <module>vidulum-portfolio</module>
+        <module>vidulum-trading</module>
+        <module>vidulum-pnl</module>
+        <module>vidulum-risk</module>
+    </modules>
+
+</project>

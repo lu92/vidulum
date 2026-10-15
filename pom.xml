@@ -20,18 +20,9 @@
 		<module>vidulum-cashflow/user-financial-profile-api</module>
 		<module>vidulum-cashflow/recurring-rules</module>
 		<module>vidulum-cashflow</module>
-		<module>vidulum-exchange-api</module>
-		<module>vidulum-exchange</module>
-		<module>vidulum-quotation-api</module>
-		<module>vidulum-quotation</module>
-		<module>vidulum-portfolio-api</module>
-		<module>vidulum-trading-api</module>
-		<module>vidulum-portfolio</module>
-		<module>vidulum-trading</module>
-		<module>vidulum-pnl</module>
-		<module>vidulum-risk</module>
+		<module>market</module>
+		<module>wealth</module>
 		<module>vidulum-wealth-tests</module>
-		<module>vidulum-okx</module>
 		<module>vidulum-app</module>
 	</modules>
 

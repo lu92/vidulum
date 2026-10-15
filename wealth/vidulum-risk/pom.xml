@@ -8,47 +8,59 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>vidulum-exchange</artifactId>
-    <name>Vidulum Exchange Module</name>
-    <description>Exchange-agnostic model: the link between a user, an exchange account and a portfolio</description>
+    <artifactId>vidulum-risk</artifactId>
+    <name>Vidulum Risk Management Module</name>
+    <description>
+        Risk assessment: RAG status per position, stop-loss coverage, how much of a portfolio is at
+        risk. Stores nothing - every answer is composed from three other modules' contracts. A leaf,
+        like vidulum-pnl, so there is no vidulum-risk-api either.
+    </description>
 
     <dependencies>
-        <!-- Shared Kernel is the ONLY Vidulum dependency, deliberately.
-             ExchangeConnection needs UserId, PortfolioId, Currency and Broker - all of which live
-             there - so this module can sit early in the reactor. That matters: PortfolioSpec (D1)
-             lives in vidulum-portfolio and has to read the connection to learn the known state, so
-             portfolio depends on this module and not the other way round. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <!-- The contract this module implements, plus the SPI an exchange's own module provides. -->
+        <!-- Contracts only. The implementations are wired by vidulum-app. -->
         <dependency>
             <groupId>com.multi</groupId>
-            <artifactId>vidulum-exchange-api</artifactId>
+            <artifactId>vidulum-portfolio-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-trading-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation-api</artifactId>
             <version>${project.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-classic</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+            <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -59,20 +71,6 @@
             <artifactId>spring-boot-starter-test-classic</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-resttestclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
 </project>
