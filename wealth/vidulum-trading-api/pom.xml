@@ -8,24 +8,19 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>vidulum-exchange-api</artifactId>
-    <name>Vidulum Exchange API</name>
-    <description>What other modules may ask of an exchange connection, and what an exchange's own
-        module must provide. No Spring, no persistence.</description>
+    <artifactId>vidulum-trading-api</artifactId>
+    <name>Vidulum Trading API</name>
+    <description>What trading announces, and the shape of handling it. Born carrying events only;
+        TradingModuleApi joins it when portfolio, pnl and risk stop reading trading's internals.</description>
 
     <dependencies>
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-shared-kernel</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 

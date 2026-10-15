@@ -8,15 +8,15 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>vidulum-risk</artifactId>
-    <name>Vidulum Risk Management Module</name>
+    <artifactId>vidulum-pnl</artifactId>
+    <name>Vidulum PnL Module</name>
     <description>
-        Risk assessment: RAG status per position, stop-loss coverage, how much of a portfolio is at
-        risk. Stores nothing - every answer is composed from three other modules' contracts. A leaf,
-        like vidulum-pnl, so there is no vidulum-risk-api either.
+        Recorded valuations and wealth change. A leaf: it consumes portfolio, trading and FX
+        contracts and answers over HTTP, and no module asks it for anything - which is why there is
+        no vidulum-pnl-api. The contract gets written when the first consumer exists.
     </description>
 
     <dependencies>
@@ -45,6 +45,10 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
@@ -55,22 +59,23 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
+        <!-- The nightly snapshot is set up from UserCreatedEvent, which arrives over Kafka. -->
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Test scope only, and deliberately the implementation: FxValuationRatesTest exercises
+             the inversion of a held fixing (USD/PLN -> PLN/USD) against the real FxRates store
+             rather than a stub that would have to repeat the rule being tested. Main code sees
+             nothing but vidulum-quotation-api. -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-quotation</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test-classic</artifactId>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
 
 </project>

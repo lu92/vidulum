@@ -18,29 +18,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **IMPORTANT**: When modifying code, build and test ONLY the affected module — not the entire project. This is significantly faster.
 
+**`-pl` takes `:artifactId`, not a path.** Since step 10 the modules live under `market/` and
+`wealth/`, so `-pl vidulum-portfolio` no longer resolves — Maven looks for a directory of that name
+at the root. The `:artifactId` form below is independent of where a module sits, so it survives the
+next move too. A whole group builds with `-f market/pom.xml` or `-f wealth/pom.xml`.
+
 ```bash
 # Compile only the module you changed (~1-3s each)
-./mvnw compile -pl vidulum-cashflow
-./mvnw compile -pl vidulum-portfolio
-./mvnw compile -pl vidulum-trading
-./mvnw compile -pl vidulum-pnl
-./mvnw compile -pl vidulum-app
+./mvnw compile -pl :vidulum-cashflow
+./mvnw compile -pl :vidulum-portfolio
+./mvnw compile -pl :vidulum-trading
+./mvnw compile -pl :vidulum-pnl
+./mvnw compile -pl :vidulum-app
 
 # Test only the class you changed
-./mvnw test -pl vidulum-cashflow -Dtest=CashFlowAggregateTest           # 0.2s
-./mvnw test -pl vidulum-portfolio -Dtest=PortfolioTest                  # 0.1s
-./mvnw test -pl vidulum-app -Dtest=UserPortfolioOnboardingTest          # ~7s
+./mvnw test -pl :vidulum-cashflow -Dtest=CashFlowAggregateTest           # 0.2s
+./mvnw test -pl :vidulum-portfolio -Dtest=PortfolioTest                  # 0.1s
+./mvnw test -pl :vidulum-app -Dtest=UserPortfolioOnboardingTest          # ~7s
 
 # Test a specific method
-./mvnw test -pl vidulum-cashflow -Dtest=CashFlowControllerTest#shouldCreateCashFlow
+./mvnw test -pl :vidulum-cashflow -Dtest=CashFlowControllerTest#shouldCreateCashFlow
 
 # Test entire module
-./mvnw test -pl vidulum-cashflow      # ~4min (49 test classes)
-./mvnw test -pl vidulum-portfolio     # ~10s  (208 tests)
-./mvnw test -pl vidulum-trading       # ~1s   (10 tests)
-./mvnw test -pl vidulum-pnl           # ~2s   (31 tests)
-./mvnw test -pl vidulum-wealth-tests  # ~1min (60 cross-module tests, no main sources)
-./mvnw test -pl vidulum-app           # ~1min
+./mvnw test -pl :vidulum-cashflow      # ~4min (49 test classes)
+./mvnw test -pl :vidulum-portfolio     # ~10s  (208 tests)
+./mvnw test -pl :vidulum-trading       # ~1s   (10 tests)
+./mvnw test -pl :vidulum-pnl           # ~2s   (31 tests)
+./mvnw test -pl :vidulum-wealth-tests  # ~1min (60 cross-module tests, no main sources)
+./mvnw test -pl :vidulum-app           # ~1min
 ```
 
 ### Full project builds (before PR or after cross-module changes)
@@ -50,30 +55,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw clean test                     # ~7min, 15 modules
 
 # Install shared-kernel after changing it (other modules depend on it)
-./mvnw install -pl vidulum-shared-kernel -DskipTests
+./mvnw install -pl :vidulum-shared-kernel -DskipTests
 
 # Package the application
 ./mvnw package -DskipTests
 
 # Run the application
-./mvnw spring-boot:run -pl vidulum-app
+./mvnw spring-boot:run -pl :vidulum-app
 ```
 
 ### When to rebuild which module
 
 | Changed file location | Command |
 |----------------------|---------|
-| `vidulum-shared-kernel/` | `./mvnw install -pl vidulum-shared-kernel -DskipTests` then rebuild dependent modules |
-| `vidulum-cashflow/src/main/` | `./mvnw compile -pl vidulum-cashflow` |
-| `vidulum-cashflow/src/test/` | `./mvnw test -pl vidulum-cashflow -Dtest=YourTestClass` |
-| `vidulum-portfolio/src/main/` | `./mvnw compile -pl vidulum-portfolio` |
-| `vidulum-trading/src/main/` | `./mvnw compile -pl vidulum-trading` |
-| `vidulum-pnl/src/main/` | `./mvnw compile -pl vidulum-pnl` |
-| `vidulum-risk/src/main/` | `./mvnw compile -pl vidulum-risk` |
-| `vidulum-*/src/test/` | `./mvnw test -pl vidulum-<module> -Dtest=YourTestClass` |
+| `vidulum-shared-kernel/` | `./mvnw install -pl :vidulum-shared-kernel -DskipTests` then rebuild dependent modules |
+| `vidulum-cashflow/src/main/` | `./mvnw compile -pl :vidulum-cashflow` |
+| `vidulum-cashflow/src/test/` | `./mvnw test -pl :vidulum-cashflow -Dtest=YourTestClass` |
+| `wealth/vidulum-portfolio/src/main/` | `./mvnw compile -pl :vidulum-portfolio` |
+| `wealth/vidulum-trading/src/main/` | `./mvnw compile -pl :vidulum-trading` |
+| `wealth/vidulum-pnl/src/main/` | `./mvnw compile -pl :vidulum-pnl` |
+| `wealth/vidulum-risk/src/main/` | `./mvnw compile -pl :vidulum-risk` |
+| `market/vidulum-quotation/src/main/`, `market/vidulum-exchange/src/main/`, `market/vidulum-okx/src/main/` | `./mvnw compile -pl :vidulum-quotation` (etc.) |
+| `vidulum-*/src/test/` | `./mvnw test -pl :vidulum-<module> -Dtest=YourTestClass` |
 | any `vidulum-*-api/` (contract) | `install` it, then rebuild **every** module that depends on it |
-| `vidulum-app/src/main/` | `./mvnw compile -pl vidulum-app` |
-| `vidulum-app/src/test/` | `./mvnw test -pl vidulum-app -Dtest=YourTestClass` |
+| `vidulum-app/src/main/` | `./mvnw compile -pl :vidulum-app` |
+| `vidulum-app/src/test/` | `./mvnw test -pl :vidulum-app -Dtest=YourTestClass` |
 
 ### Deciding the scope before you build
 
@@ -83,7 +89,10 @@ comes before the command; guessing afterwards from a red log costs more than the
 
 ```
 shared-kernel ← cashflow
-              ← *-api contracts ← portfolio / trading / quotation / exchange ← wealth ← okx ← app
+              ← market/ (quotation±api · exchange±api · okx)
+                   ↑ *-api only
+                wealth/ (portfolio±api · trading±api · pnl · risk) ← wealth-tests
+                                                                  ← app
 ```
 
 Contracts (`vidulum-portfolio-api`, `vidulum-trading-api`, `vidulum-quotation-api`,
@@ -96,17 +105,18 @@ downstream of it**, and nothing else:
 
 | Changed | Run | Why |
 |---------|-----|-----|
-| `vidulum-portfolio` | `-pl vidulum-portfolio` then `-pl vidulum-wealth-tests,vidulum-app` | the cross-module tests and the bootstrap use it |
-| `vidulum-trading` | `-pl vidulum-trading,vidulum-wealth-tests,vidulum-app` | same reason |
-| `vidulum-pnl` / `vidulum-risk` | `-pl vidulum-pnl` (or `-pl vidulum-risk`) then `-pl vidulum-wealth-tests,vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
-| `vidulum-wealth-tests` | `-pl vidulum-wealth-tests` | **nothing depends on it** — it is tests only |
-| `vidulum-cashflow` | `-pl vidulum-cashflow` | nothing depends on it except the app bootstrap |
-| `vidulum-exchange` | `-pl vidulum-exchange,vidulum-portfolio,vidulum-wealth-tests,vidulum-okx,vidulum-app` | portfolio_spec uses connections |
+| `vidulum-portfolio` | `-pl :vidulum-portfolio` then `-pl :vidulum-wealth-tests,:vidulum-app` | the cross-module tests and the bootstrap use it |
+| `vidulum-trading` | `-pl :vidulum-trading,:vidulum-wealth-tests,:vidulum-app` | same reason |
+| `vidulum-pnl` / `vidulum-risk` | `-pl :vidulum-pnl` (or `-pl :vidulum-risk`) then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
+| `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — it is tests only |
+| `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the app bootstrap |
+| `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | everything downstream of its implementations | the contract is the compile-time surface |
+| several modules in one group | `-f market/pom.xml` or `-f wealth/pom.xml` | the aggregator's own reactor; needs the other group installed |
 | `vidulum-shared-kernel` | **full `./mvnw clean test`** | everything depends on it — no exceptions |
 
 A downstream module resolves its dependency from the local repository, so `install` the changed
-module first: `./mvnw install -pl vidulum-portfolio -DskipTests`.
+module first: `./mvnw install -pl :vidulum-portfolio -DskipTests`.
 
 Two traps worth remembering:
 
@@ -141,30 +151,20 @@ vidulum/
 │   └── recurring_rules/         #   Recurring transaction rules
 │   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
-├── vidulum-exchange-api/        # CONTRACT: ExchangeConnectionApi, spi/ExchangeAdapter
-├── vidulum-exchange/            # Exchange-agnostic connection model
-│   └── exchange_connection/     #   ExchangeConnection, connect/reconnect commands, REST
+├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
+│   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
+│   ├── vidulum-quotation/       #   Price quotations, broker providers, FX rates
+│   ├── vidulum-exchange-api/    #   CONTRACT: ExchangeConnectionApi, spi/ExchangeAdapter
+│   ├── vidulum-exchange/        #   ExchangeConnection, connect/reconnect commands, REST
+│   └── vidulum-okx/             #   OKX adapter: implements both SPIs above
 │
-├── vidulum-quotation-api/       # CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
-├── vidulum-quotation/           # Price quotations, broker providers, FX rates
-│
-├── vidulum-portfolio-api/       # CONTRACT: PortfolioModuleApi, view/, error/
-├── vidulum-trading-api/         # CONTRACT: TradingModuleApi, TradeConfirmedEvent + Handler
-│
-├── vidulum-portfolio/           # Portfolios (208 tests)
-│   └── portfolio/               #   Assets, deposit/withdraw, cost basis, locking
-│   └── portfolio_spec/          #   Onboarding from an exchange snapshot
-│
-├── vidulum-trading/             # Orders, trades, execution (10 tests)
-│
-├── vidulum-pnl/                 # Recorded valuations, wealth change (31 tests)
-│   └── pnl/                     #   Daily snapshots, PortfolioValuation, ValuationBasis
-│
-├── vidulum-risk/                # Risk assessment: RAG status, stop-loss (no tests yet)
-│   └── risk_management/         #   Stores nothing - composed from three contracts
-│
-├── vidulum-okx/                 # OKX adapter
-│   └── okx/                     #   Quotation provider, OkxExchangeAdapter, OkxRegion
+├── wealth/                      # AGGREGATOR: holdings, trades, valuation, risk
+│   ├── vidulum-portfolio-api/   #   CONTRACT: PortfolioModuleApi, view/, error/
+│   ├── vidulum-trading-api/     #   CONTRACT: TradingModuleApi, TradeConfirmedEvent + Handler
+│   ├── vidulum-portfolio/       #   Assets, cost basis, locking + portfolio_spec (208 tests)
+│   ├── vidulum-trading/         #   Orders, trades, execution (10 tests)
+│   ├── vidulum-pnl/             #   Daily valuations, PortfolioValuation, wealth change (31)
+│   └── vidulum-risk/            #   RAG status, stop-loss; stores nothing (no tests yet)
 │
 ├── vidulum-wealth-tests/        # No src/main. The tests that deliberately cross a module
 │                                #   boundary, kept together to avoid a reactor cycle (60 tests)
@@ -177,9 +177,11 @@ vidulum/
 ```
 
 **Dependency flow**: contracts first, then implementations, then the bootstrap — no cycles. The
-reactor order is fixed in the parent pom: shared-kernel → cashflow → exchange-api → exchange →
-quotation-api → quotation → portfolio-api → trading-api → portfolio → trading → pnl → risk →
-wealth-tests → okx → app.
+reactor order is **computed from the dependencies**, not from the folders: shared-kernel → cashflow
+→ market (quotation-api → quotation → exchange-api → exchange → okx) → wealth (portfolio-api →
+trading-api → portfolio → trading → pnl → risk) → wealth-tests → app. The two aggregators are
+`pom`-packaged grouping only — they are not parents, so no module's dependencies or `artifactId`
+depend on which folder it sits in.
 
 Two rules make it hold:
 - **A module never imports another module's internals** — only its `*-api` contract. `portfolio`
@@ -192,6 +194,16 @@ Two rules make it hold:
 - **`vidulum-pnl` and `vidulum-risk` have no `-api` module**, because nothing asks them anything:
   they consume contracts and answer over HTTP. The contract gets written when a consumer exists —
   see `docs/features-backlog/2026-10-15-alerts-module-design.md` for the first plausible one.
+- **The `market` → `wealth` edge is one-way, and it is checked.** No module under `market/` imports
+  anything from portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices
+  and venues do not know who owns what.
+- **`lombok` and the two test starters come from the root pom** (step 11a), so a module's own pom
+  lists only dependencies that say something about that module. Keep it that way: declaring
+  `spring-boot-starter-webmvc` means "this module has HTTP endpoints", `-data-mongodb` means "it
+  persists", `spring-kafka` means "it speaks events", and `spring-boot-starter-classic` means "it
+  runs inside Spring" — which is why a `*-api` contract declares none of them and has exactly one
+  dependency. Do not hoist those four; they would turn a readable pom into a `dependency:tree`
+  exercise.
 
 The design and its reasoning: `docs/features-backlog/2026-10-12-module-contracts-api-impl-split.md`.
 
