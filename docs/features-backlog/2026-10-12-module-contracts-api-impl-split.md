@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**. Pozostaje: 01, 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**. Pozostaje: 01, 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1126,6 +1126,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 06b | **`vidulum-exchange-api`** — ✅ **wykonane**, patrz 21 | `portfolio_spec` wstrzykuje trzy handlery i repozytorium exchange (13 importów do wnętrza). Ta sama choroba co P1, inny kierunek. Warunek dla 06c, bo spec jedzie razem z portfolio |
 | 06c | **`vidulum-portfolio` + `vidulum-trading` jako artefakty** — ✅ **wykonane**, patrz 21 | Wykonane razem (wariant A), bo wydzielenie portfolio w pojedynkę zamyka cykl w reaktorze po stronie testów — patrz 21 |
 | 08 | **Cykl beanów na gatewayach** — ✅ **wykonane**, patrz 21 | Nie było w pierwotnym planie: wyszło z pytania, czy cykl z kroku 04 nadal występuje. `@Lazy` w trzech implementacjach i w pięciu miejscach testowych odkładało cykl, nie usuwało go. Gateway przestał zbierać handlery w swoim konstruktorze — cykl zniknął, `@Lazy` zniknęło |
+| 09 | **`vidulum-pnl` + `vidulum-risk` jako artefakty, bez `-api`** — ✅ **wykonane**, patrz 21 | Oba są liśćmi: nikt ich o nic nie pyta, więc moduł kontraktowy miałby zero konsumentów. `vidulum-wealth` zostaje bez `src/main` — jako moduł testowy |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -1882,6 +1883,72 @@ Przy pierwszej próbie ten negatywny test **przeszedł zamiast upaść** — zbu
 implementacja brała tylko `QueryGateway`, a konsumentem był `CommandHandler`, więc pętla się nie
 domykała. Dopóki test negatywny nie upadnie na starej konfiguracji, nie dowodzi niczego; to ten sam
 błąd co zielony test, który nic nie sprawdza.
+
+### Krok 09: dwa liście wychodzą bez kontraktu, a wealth zostaje bez maina
+
+Pytanie było o `pnl` i `risk` — „są skromne, wydzielmy je jak resztę, razem z `-api`". Przegląd
+importów odpowiedział inaczej:
+
+| | importuje z zewnątrz | **jest importowane przez** |
+|---|---|---|
+| `pnl` | `portfolio.api` (3 typy), `trading.api` (2), `quotation.api.fx` (3) | **nic w mainie** |
+| `risk_management` | `portfolio.api` (3), `trading.api` (2), `quotation.api` (1) | **nic w mainie** |
+
+Oba są **liśćmi**: konsumują cudze kontrakty i odpowiadają po HTTP. `vidulum-pnl-api` i
+`vidulum-risk-api` miałyby dziś **zero konsumentów** — czyli byłyby tym samym, co skasowany
+`InMemoryPortfolioModuleApi`. Więc artefakty tak, kontrakty nie; kształt obu `ModuleApi` jest
+rozpisany na papierze w rozmowie i wróci, gdy pojawi się pierwszy konsument (najpewniej moduł
+alertów — `2026-10-15-alerts-module-design.md`).
+
+```
+                   przed 09                                        po 09
+     ┌────────────────────────────────┐        ┌──────────┬──────────┬──────────────────────┐
+     │         vidulum-wealth         │        │   pnl    │   risk   │   wealth             │
+     │ pnl · risk_management          │   →    │ 36 main  │ 10 main  │ 0 main / 18 test     │
+     │ 46 main / 23 test              │        │  5 test  │  0 test  │ testy międzymodułowe │
+     └────────────────────────────────┘        └──────────┴──────────┴──────────────────────┘
+                                                        31 + 0 + 60 = 91 testów
+```
+
+**`vidulum-wealth` nie ma już `src/main`.** To nie skutek uboczny, a wniosek: od kroku 06c ten moduł
+istniał tylko po to, żeby trzymać testy przechodzące przez więcej niż jedną granicę, a pnl i risk
+były w nim ostatnimi lokatorami.
+
+**Dlatego nazywa się teraz `vidulum-wealth-tests`.** Nazwa `vidulum-wealth` mówiła o domenie, której
+w tym module nie ma — a moduł bez `src/main`, od którego nic nie zależy, jest zbiorem testów i tylko
+tym. Zmiana nazwy artefaktu dotyka całego reaktora, więc wyszły przy niej **wszystkie nieaktualne
+wskazania nazwy**: dziewięć komentarzy w kodzie i trzy w pomach mówiły „vidulum-wealth" tam, gdzie
+chodziło o portfolio albo quotation (przeniesione w krokach 02b–06c), a tabela endpointów w
+`2026-09-18-okx-exchange-backend-integration.md` przypisywała `/portfolio`, `/portfolio-spec` i
+`/quote` do wealth. Poprawione; historyczne wystąpienia w opisach „jak było" zostawione z notą.
+Klasy `WealthIntegrationTest` i `WealthTestApplication` zachowują nazwy — opisują rolę w testach,
+nie moduł.
+
+**Tylko `vidulum-app` kompiluje się przeciw implementacjom** — już przeciw sześciu. `vidulum-risk`
+jest przy tym najczystszym modułem w repo: **ani jednej zależności od implementacji**, nawet w
+testach.
+
+Trzy rzeczy, które wyszły po drodze i których nie było w planie:
+
+- **Dług zapisany po 06c nie istniał.** Notowałem, że dwa testy komponentowe pnl „asertują na
+  `PortfolioDto`". Nieprawda: to były **nieużywane importy** — dokładnie ten sam przypadek co dwa
+  martwe `import TradingDto` w mainie, znalezione w 06c. Kompilowały się, bo artefakt był jeden.
+  Usunięte; pnl nie potrzebuje w testach ani portfolio, ani tradingu.
+- **`vidulum-okx` zależał od `vidulum-wealth` bez powodu.** Komentarz w pomie mówił, że „tu mieszka
+  `BrokerQuotationProvider` i `QuotationService`" — a quotation wyszło w kroku 02b. okx nie importuje
+  z pnl ani riska niczego; zależność usunięta.
+- **`vidulum-wealth/src/main/resources/application.yml` wjeżdżał z sekretem JWT na classpath
+  aplikacji.** Przy opróżnianiu maina plik wypadł razem z katalogiem; przywrócony do
+  `src/test/resources`, bo służy wyłącznie testom springowym tego modułu (`WealthTestApplication`
+  skanuje całe `com.multi.vidulum`, więc podnosi `JwtService` z shared-kernel, a ten bez klucza się
+  nie zbuduje). Produkcja ma swój plik w `vidulum-app` — czyli jeden `application.yml` mniej na
+  classpathzie, o którym nikt nie wiedział.
+
+Jeden wyjątek od „testy jadą z modułem": `FxValuationRatesTest` bierze **prawdziwy** magazyn kursów
+`quotation.domain.fx.FxRates`, bo sprawdza odwrócenie fixingu (`USD/PLN` → `PLN/USD`) — atrapa
+musiałaby powtórzyć testowaną regułę. Dlatego `vidulum-pnl` ma `vidulum-quotation` w **test scope**,
+a main widzi wyłącznie `quotation-api`. `ValuationBasisPersistenceTest` został w module testowym, bo
+jest springowy i stawia Testcontainers — tak jak testy endpointów portfolio po 06c.
 
 ### Co zostało otwarte po 04
 

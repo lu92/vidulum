@@ -93,7 +93,7 @@
     <build>
         <plugins>
             <!-- PortfolioFixture and InMemoryPortfolioRepository ship as a test-jar: the
-                 cross-module walks that stayed in vidulum-wealth build portfolios with them. -->
+                 cross-module walks in vidulum-wealth-tests build portfolios with them. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

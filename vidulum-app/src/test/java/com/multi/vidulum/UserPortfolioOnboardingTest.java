@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests the cross-module onboarding flow: register user → activate → create portfolio → deposit.
- * Verifies integration between user domain (vidulum-app) and wealth domain (vidulum-wealth).
+ * Verifies integration between user domain (vidulum-app) and portfolio domain (vidulum-portfolio).
  */
 @Slf4j
 class UserPortfolioOnboardingTest extends AppIntegrationTest {

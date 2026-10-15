@@ -1,0 +1,15 @@
+# Was vidulum-wealth/src/main/resources/application.yml until pnl and risk were extracted and this
+# module became test-only. It serves the Spring tests here: WealthTestApplication scans all of
+# com.multi.vidulum, which picks up shared-kernel's JwtService, and that bean needs a secret key to
+# be constructible. Nothing in production reads these values - vidulum-app has its own.
+spring:
+  main:
+    allow-bean-definition-overriding: true
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000
+      refresh-token:
+        expiration: 604800000

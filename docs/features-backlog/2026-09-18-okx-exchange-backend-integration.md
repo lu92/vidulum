@@ -1128,23 +1128,27 @@ Wszystko wyłącznie `GET` — narzędzie w `tools/okx` nie ma metody POST.
 
 ### 4.2 Vidulum — wołane przez POC
 
+> Kolumna „moduł" jest aktualna. Dalej w tym dokumencie `vidulum-wealth` występuje w opisach stanu
+> z września 2026, kiedy portfolio, trading i quotation jeszcze tam mieszkały; od kroku 09 podziału
+> modułów ten artefakt nazywa się `vidulum-wealth-tests` i nie ma `src/main`.
+
 | URL | metoda | moduł | status |
 |---|---|---|---|
 | `/api/v1/auth/register` | POST | `vidulum-shared-kernel` · `AuthenticationController` | istnieje — **jedyny publiczny**, reszta wymaga JWT |
-| `/portfolio` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje |
+| `/portfolio` | POST | `vidulum-portfolio` · `PortfolioRestController` | istnieje |
 | `/exchange-connection` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — rejestruje konto, zwraca cały stan połączenia |
 | `/exchange-connection/{id}/revoke` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A11) — rozłączenie, portfel zostaje |
 | `/exchange-connection/{id}/reconnect` | POST | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A8) — powrót po przerwie, zachowuje portfel |
 | `/exchange-connection/{id}` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — stan jednego połączenia |
 | `/exchange-connection` | GET | `vidulum-exchange` · `ExchangeConnectionRestController` | istnieje (A9) — połączenia użytkownika + `supportedExchanges` |
-| `/portfolio-spec` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D1) — liczy różnicę, snapshot w ciele żądania |
-| `/portfolio-spec/{id}` | GET | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D1) — czego brakuje |
-| `/portfolio-spec/{id}/answers` | PUT | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D2) — odpowiedzi zakotwiczone w partii |
-| `/portfolio-spec/{id}/confirm` | POST | `vidulum-wealth` · `PortfolioSpecRestController` | istnieje (D3) — świeży snapshot w ciele, tworzy portfel, potwierdza połączenie |
-| `/portfolio/{id}/{currency}` | GET | `vidulum-wealth` · `PortfolioRestController` | istnieje |
-| `/portfolio/asset/lock` | POST | `vidulum-wealth` · `PortfolioRestController` | istnieje, alternatywa dla D3 |
-| `/quote/publish` | GET | `vidulum-wealth` · `QuoteRestController` | istnieje |
-| `/quote/{broker}/{origin}/{destination}` | GET | `vidulum-wealth` · `QuoteRestController` | istnieje, do weryfikacji providera |
+| `/portfolio-spec` | POST | `vidulum-portfolio` · `PortfolioSpecRestController` | istnieje (D1) — liczy różnicę, snapshot w ciele żądania |
+| `/portfolio-spec/{id}` | GET | `vidulum-portfolio` · `PortfolioSpecRestController` | istnieje (D1) — czego brakuje |
+| `/portfolio-spec/{id}/answers` | PUT | `vidulum-portfolio` · `PortfolioSpecRestController` | istnieje (D2) — odpowiedzi zakotwiczone w partii |
+| `/portfolio-spec/{id}/confirm` | POST | `vidulum-portfolio` · `PortfolioSpecRestController` | istnieje (D3) — świeży snapshot w ciele, tworzy portfel, potwierdza połączenie |
+| `/portfolio/{id}/{currency}` | GET | `vidulum-portfolio` · `PortfolioRestController` | istnieje |
+| `/portfolio/asset/lock` | POST | `vidulum-portfolio` · `PortfolioRestController` | istnieje, alternatywa dla D3 |
+| `/quote/publish` | GET | `vidulum-quotation` · `QuoteRestController` | istnieje |
+| `/quote/{broker}/{origin}/{destination}` | GET | `vidulum-quotation` · `QuoteRestController` | istnieje, do weryfikacji providera |
 
 Uwaga do `/quote/publish`: jest to `GET` ze skutkiem ubocznym (publikuje na Kafkę). Wystarczy dla
 POC, ale nie jest to API do produkcyjnej ingesty notowań.

@@ -28,7 +28,9 @@
 		<module>vidulum-trading-api</module>
 		<module>vidulum-portfolio</module>
 		<module>vidulum-trading</module>
-		<module>vidulum-wealth</module>
+		<module>vidulum-pnl</module>
+		<module>vidulum-risk</module>
+		<module>vidulum-wealth-tests</module>
 		<module>vidulum-okx</module>
 		<module>vidulum-app</module>
 	</modules>

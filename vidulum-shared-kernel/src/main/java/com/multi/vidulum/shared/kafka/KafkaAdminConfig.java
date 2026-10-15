@@ -17,7 +17,8 @@ import java.util.Map;
  * <p>Here rather than in a module because it belongs to no module and all of them need it. It used
  * to live in {@code quotation.KafkaTopicConfig}, which made the topics of <b>cashflow</b> —
  * {@code cash_flow}, {@code bank_data_ingestion}, {@code user_financial_profile} — depend on
- * {@code vidulum-wealth} being on the classpath. Nothing said so, and nothing would have failed
+ * the quotation module - then still part of {@code vidulum-wealth} - being on the classpath.
+ * Nothing said so, and nothing would have failed
  * loudly if it stopped being true: a {@code NewTopic} with no admin to create it is silently
  * ignored, and the broker is configured with {@code KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'}, so
  * the first symptom would have been a producer timing out against a topic nobody made.

@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Component tests: the aggregate driven through {@link DomainExchangeConnectionRepository} with
  * {@link InMemoryExchangeConnectionRepository}, no Spring and no containers — the level
- * {@code PortfolioTest} uses in vidulum-wealth.
+ * {@code PortfolioTest} uses in vidulum-portfolio.
  *
  * <p>The division of labour against the other two suites is deliberate.
  * {@code ExchangeConnectionTest} asserts single transitions in memory;

@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Test-only Spring Boot application for vidulum-wealth integration tests.
+ * Test-only Spring Boot application for the cross-module tests in vidulum-wealth-tests.
  * Not included in production JAR.
  */
 @SpringBootApplication

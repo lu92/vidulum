@@ -18,7 +18,7 @@ import java.util.Optional;
  * (task H3).
  *
  * <p>Lives in this module rather than beside the connection because it spans both, and the
- * dependency runs one way: {@code vidulum-wealth} knows about {@code vidulum-exchange}, never the
+ * dependency runs one way: {@code vidulum-portfolio} knows about {@code vidulum-exchange}, never the
  * reverse. Each half is still driven through its own command, so neither module reaches into the
  * other's repository.
  *

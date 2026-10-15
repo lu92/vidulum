@@ -48,7 +48,7 @@ import static org.awaitility.Awaitility.await;
  * Resuming a connection, over the wire (tasks H1 and H3).
  *
  * <p>The level matters here for two reasons. Resuming spans <b>two modules</b> — the connection
- * lives in {@code vidulum-exchange}, the specification in {@code vidulum-wealth} — and only a
+ * lives in {@code vidulum-exchange}, the specification in {@code vidulum-portfolio} — and only a
  * running server proves they compose. And the freshness of the numbers is something a <b>client</b>
  * reads off the connection payload, so whether that payload lies is a question that exists only
  * out here.

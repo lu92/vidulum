@@ -47,15 +47,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Wealth: BrokerQuotationProvider and QuotationService live here.
-             The dependency points this way on purpose: wealth must stay unaware of OKX,
-             otherwise registering the provider would create a cycle. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-wealth</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -17,9 +17,9 @@
     <dependencies>
         <!-- Shared Kernel is the ONLY Vidulum dependency, deliberately.
              ExchangeConnection needs UserId, PortfolioId, Currency and Broker - all of which live
-             there - so this module can sit before vidulum-wealth in the reactor. That matters:
-             PortfolioSpec (D1) lives in wealth and has to read the connection to learn the known
-             state, so wealth depends on this module and not the other way round. -->
+             there - so this module can sit early in the reactor. That matters: PortfolioSpec (D1)
+             lives in vidulum-portfolio and has to read the connection to learn the known state, so
+             portfolio depends on this module and not the other way round. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-shared-kernel</artifactId>

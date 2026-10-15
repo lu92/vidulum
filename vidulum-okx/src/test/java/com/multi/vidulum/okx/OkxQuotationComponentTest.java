@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Component test: real collaborators, no Spring context, no containers - the same level as
- * {@code PortfolioTest} in vidulum-wealth. Nothing needs stubbing here because this slice holds
+ * {@code PortfolioTest} in vidulum-portfolio. Nothing needs stubbing here because this slice holds
  * no infrastructure; the cache is in memory by nature.
  *
  * <p>Wiring is NOT covered here - whether the bean from {@code OkxQuotationConfiguration} reaches
