@@ -32,6 +32,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- CashFlow's own contract: what other modules may ask of it. This module implements it;
+             consumers compile against the contract alone. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-cashflow-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- User Financial Profile API (contract) -->
         <dependency>
             <groupId>com.multi</groupId>

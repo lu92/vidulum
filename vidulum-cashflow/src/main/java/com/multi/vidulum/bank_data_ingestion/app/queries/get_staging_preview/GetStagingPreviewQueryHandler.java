@@ -3,8 +3,10 @@ package com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
 import lombok.AllArgsConstructor;
@@ -26,7 +28,7 @@ public class GetStagingPreviewQueryHandler
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final DomainCashFlowRepository domainCashFlowRepository;
+    private final CashFlowModuleApi cashFlowApi;
     private final Clock clock;
 
     @Override
@@ -63,14 +65,15 @@ public class GetStagingPreviewQueryHandler
                 : null;
 
         // Load CashFlow for category breakdown
-        CashFlow cashFlow = domainCashFlowRepository.findById(query.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(query.cashFlowId()));
-
-        CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+        // The skeleton, not the cash flow: this preview needs the category names and nothing
+        // else, and asking for the skeleton costs the same whether the cash flow holds four
+        // transactions or four years of them.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(query.cashFlowId());
+        Set<CategoryName> existingCategories = skeleton.allCategoryNames();
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(query.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        return buildResult(query, stagedTransactions, snapshot, mappingMap, expiresAt, metadata);
+        return buildResult(query, stagedTransactions, existingCategories, mappingMap, expiresAt, metadata);
     }
 
     private GetStagingPreviewResult createExpiredResult(GetStagingPreviewQuery query, ZonedDateTime expiresAt) {
@@ -91,7 +94,7 @@ public class GetStagingPreviewQueryHandler
     private GetStagingPreviewResult buildResult(
             GetStagingPreviewQuery query,
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot,
+            Set<CategoryName> existingCategories,
             Map<MappingKey, CategoryMapping> mappingMap,
             ZonedDateTime expiresAt,
             GetStagingPreviewResult.SessionMetadata metadata) {
@@ -114,11 +117,11 @@ public class GetStagingPreviewQueryHandler
 
         // Build category breakdown (only for valid transactions)
         List<GetStagingPreviewResult.CategoryBreakdown> categoryBreakdown =
-                buildCategoryBreakdown(stagedTransactions, snapshot);
+                buildCategoryBreakdown(stagedTransactions, existingCategories);
 
         // Build categories to create
         List<GetStagingPreviewResult.CategoryToCreate> categoriesToCreate =
-                buildCategoriesToCreate(stagedTransactions, snapshot, mappingMap);
+                buildCategoriesToCreate(stagedTransactions, existingCategories, mappingMap);
 
         // Build monthly breakdown (only for valid transactions)
         List<GetStagingPreviewResult.MonthlyBreakdown> monthlyBreakdown =
@@ -185,10 +188,9 @@ public class GetStagingPreviewQueryHandler
 
     private List<GetStagingPreviewResult.CategoryBreakdown> buildCategoryBreakdown(
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot) {
+            Set<CategoryName> existingCategories) {
 
         Map<String, CategoryBreakdownBuilder> builderMap = new HashMap<>();
-        Set<String> existingCategories = getExistingCategoryNames(snapshot);
 
         for (StagedTransaction st : stagedTransactions) {
             if (!st.isValid()) continue;
@@ -196,7 +198,7 @@ public class GetStagingPreviewQueryHandler
             String categoryKey = st.mappedData().categoryName().name() + ":" + st.mappedData().type();
             CategoryBreakdownBuilder builder = builderMap.computeIfAbsent(categoryKey,
                     k -> new CategoryBreakdownBuilder(
-                            st.mappedData().categoryName().name(),
+                            st.mappedData().categoryName(),
                             st.mappedData().parentCategoryName() != null
                                     ? st.mappedData().parentCategoryName().name() : null,
                             st.mappedData().type(),
@@ -213,16 +215,16 @@ public class GetStagingPreviewQueryHandler
     }
 
     private static class CategoryBreakdownBuilder {
-        private final String categoryName;
+        private final CategoryName categoryName;
         private final String parentCategory;
         private final Type type;
         private final String currency;
-        private final Set<String> existingCategories;
+        private final Set<CategoryName> existingCategories;
         private int count = 0;
         private BigDecimal totalAmount = BigDecimal.ZERO;
 
-        CategoryBreakdownBuilder(String categoryName, String parentCategory, Type type,
-                                 String currency, Set<String> existingCategories) {
+        CategoryBreakdownBuilder(CategoryName categoryName, String parentCategory, Type type,
+                                 String currency, Set<CategoryName> existingCategories) {
             this.categoryName = categoryName;
             this.parentCategory = parentCategory;
             this.type = type;
@@ -238,7 +240,7 @@ public class GetStagingPreviewQueryHandler
         GetStagingPreviewResult.CategoryBreakdown build() {
             boolean isNewCategory = !existingCategories.contains(categoryName);
             return new GetStagingPreviewResult.CategoryBreakdown(
-                    categoryName,
+                    categoryName.name(),
                     parentCategory,
                     count,
                     Money.of(totalAmount.doubleValue(), currency),
@@ -248,34 +250,19 @@ public class GetStagingPreviewQueryHandler
         }
     }
 
-    private Set<String> getExistingCategoryNames(CashFlowSnapshot snapshot) {
-        Set<String> names = new HashSet<>();
-        collectCategoryNames(snapshot.inflowCategories(), names);
-        collectCategoryNames(snapshot.outflowCategories(), names);
-        return names;
-    }
-
-    private void collectCategoryNames(List<Category> categories, Set<String> names) {
-        for (Category cat : categories) {
-            names.add(cat.getCategoryName().name());
-            collectCategoryNames(cat.getSubCategories(), names);
-        }
-    }
-
     private List<GetStagingPreviewResult.CategoryToCreate> buildCategoriesToCreate(
             List<StagedTransaction> stagedTransactions,
-            CashFlowSnapshot snapshot,
+            Set<CategoryName> existingCategories,
             Map<MappingKey, CategoryMapping> mappingMap) {
 
-        Set<String> existingCategories = getExistingCategoryNames(snapshot);
         Set<String> newCategoriesAdded = new HashSet<>();
         List<GetStagingPreviewResult.CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : stagedTransactions) {
             if (!st.isValid()) continue;
 
-            String categoryName = st.mappedData().categoryName().name();
-            String categoryKey = categoryName + ":" + st.mappedData().type();
+            CategoryName categoryName = st.mappedData().categoryName();
+            String categoryKey = categoryName.name() + ":" + st.mappedData().type();
 
             if (!existingCategories.contains(categoryName) && !newCategoriesAdded.contains(categoryKey)) {
                 MappingKey mappingKey = new MappingKey(st.originalData().bankCategory(), st.mappedData().type());
@@ -285,7 +272,7 @@ public class GetStagingPreviewQueryHandler
                         mapping.action() == MappingAction.CREATE_SUBCATEGORY)) {
 
                     result.add(new GetStagingPreviewResult.CategoryToCreate(
-                            categoryName,
+                            categoryName.name(),
                             st.mappedData().parentCategoryName() != null
                                     ? st.mappedData().parentCategoryName().name() : null,
                             st.mappedData().type()
