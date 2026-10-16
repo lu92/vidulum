@@ -7,7 +7,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -52,7 +52,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         try {
             cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
         } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+            throw new CashFlowNotFoundException(command.cashFlowId());
         }
 
         // Allow import in both SETUP mode (historical backfill) and OPEN mode (ongoing sync/gap filling)

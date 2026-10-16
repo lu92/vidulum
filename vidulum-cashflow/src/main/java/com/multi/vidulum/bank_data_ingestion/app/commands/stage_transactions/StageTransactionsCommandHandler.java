@@ -9,7 +9,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.BankAccountId;
@@ -50,7 +50,7 @@ public class StageTransactionsCommandHandler
         try {
             cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
         } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+            throw new CashFlowNotFoundException(command.cashFlowId());
         }
 
         ZonedDateTime now = ZonedDateTime.now(clock);

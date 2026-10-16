@@ -9,7 +9,7 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.Rev
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class AcceptAiSuggestionsCommandHandler
 
         // Verify CashFlow exists
         if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+            throw new CashFlowNotFoundException(command.cashFlowId());
         }
 
         // Verify session exists
