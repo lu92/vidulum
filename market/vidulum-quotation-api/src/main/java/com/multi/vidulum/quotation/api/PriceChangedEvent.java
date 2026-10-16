@@ -1,5 +1,6 @@
 package com.multi.vidulum.quotation.api;
 
+import com.multi.vidulum.shared.ddd.event.IntegrationEvent;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Price;
 import com.multi.vidulum.common.Symbol;
@@ -14,7 +15,7 @@ import java.time.ZonedDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PriceChangedEvent {
+public class PriceChangedEvent implements IntegrationEvent {
     private Broker broker;
     private Symbol symbol;
     private Price currentPrice;

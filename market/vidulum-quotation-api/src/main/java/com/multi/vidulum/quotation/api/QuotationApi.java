@@ -1,5 +1,6 @@
 package com.multi.vidulum.quotation.api;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Symbol;
@@ -22,7 +23,7 @@ import com.multi.vidulum.common.Ticker;
  * adapt because the provider had no contract of its own. The name also lied: no HTTP was ever
  * involved, and none is now.
  */
-public interface QuotationApi {
+public interface QuotationApi extends ModuleApi {
 
     /**
      * @throws QuoteNotFoundException when no route can price the pair

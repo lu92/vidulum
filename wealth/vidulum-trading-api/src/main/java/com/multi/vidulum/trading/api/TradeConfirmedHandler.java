@@ -1,5 +1,7 @@
 package com.multi.vidulum.trading.api;
 
+import com.multi.vidulum.shared.module.ModuleEventHandler;
+
 /**
  * Trading announces a settled trade; whoever wants to act on it implements this.
  *
@@ -15,7 +17,7 @@ package com.multi.vidulum.trading.api;
  * <p>Which also answers a question that had no answer before: who listens to this event is the set
  * of implementations of this interface.
  */
-public interface TradeConfirmedHandler {
+public interface TradeConfirmedHandler extends ModuleEventHandler {
 
     String TOPIC = "trade_confirmed";
     String CONTAINER_FACTORY = "tradeConfirmedContainerFactory";

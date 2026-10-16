@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.api;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.OrderId;
@@ -26,7 +27,7 @@ import com.multi.vidulum.portfolio.api.view.PortfolioView;
  * be exercised without the whole application. The name lied twice over: no HTTP was involved, and
  * it was not a client of anything.
  */
-public interface PortfolioModuleApi {
+public interface PortfolioModuleApi extends ModuleApi {
 
     /** @return the id of the portfolio that now exists */
     PortfolioId open(String name, UserId owner, Broker broker, Currency allowedDepositCurrency);

@@ -1,5 +1,6 @@
 package com.multi.vidulum.exchange_connection.api.spi;
 
+import com.multi.vidulum.shared.module.ModuleSpi;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionException;
 
@@ -15,7 +16,7 @@ import com.multi.vidulum.exchange_connection.api.error.UnknownExchangeRegionExce
  * <p>The set of registered adapters doubles as the answer to "which exchanges do we support",
  * which the service has to know anyway in order to reject an unknown broker.
  */
-public interface ExchangeAdapter {
+public interface ExchangeAdapter extends ModuleSpi {
 
     /** Broker constant declared by the exchange's own module. */
     Broker broker();

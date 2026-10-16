@@ -1,5 +1,6 @@
 package com.multi.vidulum.common.events;
 
+import com.multi.vidulum.shared.ddd.event.IntegrationEvent;
 import com.multi.vidulum.common.UserId;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserCreatedEvent {
+public class UserCreatedEvent implements IntegrationEvent {
     UserId userId;
 }
