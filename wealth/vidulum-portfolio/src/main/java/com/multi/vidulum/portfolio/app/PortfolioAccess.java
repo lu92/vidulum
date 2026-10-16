@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @AllArgsConstructor
-public class PortfolioAccess implements PortfolioOwnership {
+class PortfolioAccess implements PortfolioOwnership {
 
     private final DomainPortfolioRepository repository;
     private final AuthenticatedUserProvider authenticatedUserProvider;

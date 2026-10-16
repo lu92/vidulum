@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**. Pozostaje: 01, 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**, **12** (zawiera **01**). Pozostaje: 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1112,7 +1112,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 
 | # | Krok | Uwaga |
 |---|---|---|
-| 01 | **ArchUnit na stanie dzisiejszym** — *nie zrobione* | reguły opisujące docelowy graf + jawna lista odstępstw. Nie naprawia niczego, ale zamraża regres i daje mierzalną listę do odhaczania. Koszt: jeden plik testowy |
+| 01 | **ArchUnit na stanie dzisiejszym** — ✅ **wykonane w kroku 12** | reguły opisujące docelowy graf + jawna lista odstępstw. Osiem reguł w `ModuleBoundariesArchTest` (`vidulum-app`), trzy listy odstępstw, każda tylko do skracania |
 | 02 | **`vidulum-quotation-api`** (sekcja 13) — ✅ **VID-199**, w masterze | `AssetBasicInfo` zerwało zależność quotation → portfolio, `QuotationApi` usunęło `QuoteRestClient` i jego adapter. Kontrakt wyszedł na **trzy metody**, nie sześć — patrz sekcja 21 |
 | 02b | **`vidulum-quotation` jako artefakt** — ✅ **VID-200**, gałąź | Wymagało najpierw rozbicia `KafkaTopicConfig`; szczegóły w sekcji 21 |
 | 03 | **`DataCleaner` per poddomena** — ✅ **wykonane** | rozbija `WealthDataCleaner`, usuwa wyciek encji (P3). Mechanizm zbierania już jest |
@@ -1129,6 +1129,7 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 09 | **`vidulum-pnl` + `vidulum-risk` jako artefakty, bez `-api`** — ✅ **wykonane**, patrz 21 | Oba są liśćmi: nikt ich o nic nie pyta, więc moduł kontraktowy miałby zero konsumentów. `vidulum-wealth` zostaje bez `src/main` — jako moduł testowy |
 | 10 | **Dwa agregatory: `market/` i `wealth/`** — ✅ **wykonane**, patrz 21 | Jedenaście modułów pod dwa foldery; korzeń z 17 wpisów do ośmiu. Agregatory, nie rodzice: ani jedna zależność i ani jeden `artifactId` się nie zmienia |
 | 11a | **Trzy zależności infrastrukturalne do korzenia** — ✅ **wykonane**, patrz 21 | `lombok` i dwa startery testowe wyszły z 15 pomów do `<dependencies>` korzenia. Pierwotny pomysł — „`wealth/pom.xml` jako rodzic" — **odrzucony po pomiarze**, patrz 21 |
+| 12 | **Markery kontraktów + ArchUnit** — ✅ **wykonane**, patrz 21 | `ModuleApi`, `ModuleSpi`, `ModuleEventHandler`, `IntegrationEvent` w shared-kernel; osiem reguł, które je czytają. Marker bez reguły byłby dekoracją, więc weszły razem |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
@@ -2079,6 +2080,80 @@ Dwa drobiazgi z wykonania:
 Grupy pozostają **czystymi agregatorami**, i to świadomie: dzięki temu przeniesienie modułu między
 folderami nadal nie zmienia żadnej zależności ani żadnego `artifactId` — zaleta, którą dał krok 10 i
 której nie warto tracić, gdy w `market/` wyląduje drugi adapter giełdy.
+
+### Krok 12: markery, które mają konsumenta
+
+Pytanie było o nawigację: „chcę oznaczyć `ModuleApi` jednym interfejsem, żeby wiedzieć, kto go
+implementuje i gdzie jest używana implementacja". Odpowiedź wyszła z przeglądu: w modułach `-api`
+leży **dziewięć interfejsów w trzech różnych rolach**, więc jeden marker zlałby trzy przeciwne
+kierunki wywołania.
+
+| rola | kto implementuje | marker | ile typów |
+|---|---|---|---|
+| **pytanie** („zapytaj mnie") | moduł-właściciel | `ModuleApi` | 6 |
+| **gniazdo** („wepnij się we mnie") | ktoś z zewnątrz | `ModuleSpi` | 2 |
+| **reakcja** („zareaguj na to, co ogłaszam") | konsument | `ModuleEventHandler` | 1 |
+| **ładunek przez Kafkę** | — | `IntegrationEvent` | 7 |
+
+Czwarty marker postawiony **obok `DomainEvent`**, bo różnica między nimi jest treścią obu: zdarzenie
+domenowe to fakt wewnątrz agregatu, zapisywany przez `StoredDomainEvent`; zdarzenie integracyjne to
+fakt opuszczający proces, serializowany na topic. `CashFlowEvent` jest jednym i drugim — marker
+siedzi na tym, **co faktycznie jest serializowane**, czyli na kopercie `CashFlowUnifiedEvent`.
+
+**Marker interfejsowy, nie adnotacja** — świadomie, bo celem jest nawigacja. `Ctrl+H` na `ModuleApi`
+pokazuje marker → sześć kontraktów → ich implementacje, czyli oba pytania z pierwotnego pytania
+jednym skrótem. „Find usages" adnotacji dałoby listę deklaracji, nie przejście do implementacji.
+Precedens też jest w repo: `DomainEvent` to marker, który **nie jest dekoracją** — `Portfolio` trzyma
+`List<DomainEvent> uncommittedEvents`, repozytoria zwracają `findDomainEvents`.
+
+**I to jest warunek, który przesądził o kształcie kroku.** Marker spłaca się, gdy coś trzyma ten typ.
+Trzech nowych nikt trzymać nie będzie, więc ich jedynym konsumentem może być **zadanie 01 (ArchUnit)**
+— a lekcja z usuniętego `InMemoryPortfolioModuleApi` mówi, co się dzieje z abstrakcją bez
+użytkownika. Dlatego markery i reguły weszły **jednym krokiem**, i dlatego 01 jest odhaczone tutaj.
+
+#### Osiem reguł w `ModuleBoundariesArchTest`
+
+Test mieszka w `vidulum-app`, bo **to jedyny moduł, który widzi wszystkie implementacje na
+classpathzie** — co samo jest jedną ze sprawdzanych reguł.
+
+| reguła | stan |
+|---|---|
+| kontrakt `ModuleApi` jest interfejsem w pakiecie `..api..` | zielona |
+| implementacja `ModuleApi` nie jest publiczna | zielona, 3 odstępstwa |
+| kontrakt nie zależy od Springa | zielona |
+| implementacja `ModuleSpi` nie mieszka obok gniazda | zielona, 4 odstępstwa |
+| `@KafkaListener` tylko w klasie implementującej `ModuleEventHandler` | zielona, 6 odstępstw |
+| listener nie jest publiczny | zielona (wyprzedzająca) |
+| `IntegrationEvent` jest rekordem | zielona (wyprzedzająca, 7 odstępstw) |
+| **nikt nie sięga do `app`/`domain`/`infrastructure` innego modułu** | **zielona, zero odstępstw** |
+
+Ostatni wiersz to rezultat ośmiu wcześniejszych kroków, teraz zamrożony: granica, której pilnował
+`grep` w każdej z tych rozmów, pilnuje się sama. Przy okazji potwierdzone, że `vidulum-app`
+**nie importuje z wnętrza żadnego modułu ani jednej klasy** — tylko kontrakty.
+
+#### Co reguły znalazły od razu
+
+- **`PortfolioAccess` był publiczny bez powodu.** Reguła „implementacja kontraktu nie jest
+  publiczna" wskazała cztery klasy; przy trzech z nich okazało się, że publiczność jest potrzebna dla
+  testu z innego artefaktu (`FxValuationRatesTest` buduje prawdziwe `FxRates`,
+  `DenominationChainComponentTest` i `OkxQuotationComponentTest` prawdziwe `QuotationService`,
+  `PreciousMetalsLifecycleComponentTest` wiąże `TradeConfirmedToPortfolio`). Czwarta —
+  `PortfolioAccess` — miała **wszystkie wystąpienia poza artefaktem w javadocu**, więc jest już
+  pakietowo-prywatna.
+- **`UserFinancialProfileApi` nie jest tym samym gatunkiem kontraktu** i markera nie dostał. To
+  deklaratywny interfejs HTTP (`@HttpExchange`, `@GetExchange`), bez zależności od shared-kernel,
+  implementowany przez **publiczny** `@RestController`. Oznaczenie go wymagałoby dociągnięcia
+  shared-kernela do kontraktu, który celowo go nie ma, i złamałoby dwie reguły naraz.
+- **`TradeCapturedEvent` trzyma `TOPIC` i `CONTAINER_FACTORY` na samej klasie zdarzenia** — trzeci
+  styl subskrypcji w repo, obok handlera i surowych stringów. Został na liście odstępstw.
+
+#### Czego ten krok nie rozwiązał
+
+Sześć z siedmiu listenerów nadal nazywa topic i fabrykę stringiem. Dwa z nich zatrzymują się nie na
+czasie, a na granicy: **`user_created` i `cash_flow` nie mają kontraktu producenta** — pierwszy czeka
+na `vidulum-user-api` (krok 05b), drugi na to, że cashflow nie ma żadnego `-api`. To jest właściwa
+treść tych odstępstw: lista nie jest długiem technicznym do przeklikania, tylko miarą tego, ile
+kontraktów jeszcze nie istnieje.
 
 ### Co zostało otwarte po 04
 

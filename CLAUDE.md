@@ -197,6 +197,14 @@ Two rules make it hold:
 - **The `market` → `wealth` edge is one-way, and it is checked.** No module under `market/` imports
   anything from portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices
   and venues do not know who owns what.
+- **Contracts are marked, and the markers are checked.** `ModuleApi` (what another module may ask),
+  `ModuleSpi` (a socket somebody else plugs into), `ModuleEventHandler` (reacting to what another
+  module announces) and `IntegrationEvent` (a payload serialised onto a topic) live in
+  shared-kernel's `shared/module` and `shared/ddd/event`. They carry no methods: their job is that
+  `Ctrl+H` answers "what can be asked of which module, and where is the implementation", and that
+  `ModuleBoundariesArchTest` in `vidulum-app` has something to key its rules on. **A new contract
+  extends the right marker; a new `@KafkaListener` goes through a handler interface.** Three
+  exemption lists in that test record how far today's code is from the rules — they may only shrink.
 - **`lombok` and the two test starters come from the root pom** (step 11a), so a module's own pom
   lists only dependencies that say something about that module. Keep it that way: declaring
   `spring-boot-starter-webmvc` means "this module has HTTP endpoints", `-data-mongodb` means "it

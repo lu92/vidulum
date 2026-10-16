@@ -1,5 +1,6 @@
 package com.multi.vidulum.quotation.api.fx;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.Currency;
 
 import java.util.Optional;
@@ -15,7 +16,7 @@ import java.util.Optional;
  * <p>Separating the two halves is also what lets a test state a rate outright instead of standing
  * up a central bank.
  */
-public interface FxRateLookup {
+public interface FxRateLookup extends ModuleApi {
 
     /**
      * The pair from either direction of the same observation — an inverted rate keeps the moment

@@ -1,5 +1,6 @@
 package com.multi.vidulum.trading.api;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Range;
 import com.multi.vidulum.common.UserId;
@@ -21,7 +22,7 @@ import java.util.List;
  * Risk and pnl imported it from there, so to obtain trading's contract they depended on a third
  * module. The name lied as its portfolio counterpart did — no HTTP, no client.
  */
-public interface TradingModuleApi {
+public interface TradingModuleApi extends ModuleApi {
 
     /** Orders still open on one portfolio. Empty when it has none. */
     List<OrderView> openedOrders(PortfolioId portfolioId);

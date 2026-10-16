@@ -1,5 +1,6 @@
 package com.multi.vidulum.quotation.api;
 
+import com.multi.vidulum.shared.module.ModuleSpi;
 import com.multi.vidulum.common.AssetPriceMetadata;
 import com.multi.vidulum.common.Broker;
 import com.multi.vidulum.common.Price;
@@ -29,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @AllArgsConstructor
-public abstract class BrokerQuotationProvider {
+public abstract class BrokerQuotationProvider implements ModuleSpi {
     @Getter
     protected Broker broker;
     private final ConcurrentHashMap<Symbol, AssetPriceMetadata> cache = new ConcurrentHashMap<>();

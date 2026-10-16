@@ -1,5 +1,6 @@
 package com.multi.vidulum.trading.api;
 
+import com.multi.vidulum.shared.ddd.event.IntegrationEvent;
 import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
@@ -37,7 +38,7 @@ import java.time.ZonedDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TradeConfirmedEvent {
+public class TradeConfirmedEvent implements IntegrationEvent {
     OrderId orderId;
     PortfolioId portfolioId;
     TradeId tradeId;

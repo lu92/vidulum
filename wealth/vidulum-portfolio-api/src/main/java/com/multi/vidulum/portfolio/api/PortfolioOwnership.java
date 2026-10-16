@@ -1,5 +1,6 @@
 package com.multi.vidulum.portfolio.api;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
@@ -15,7 +16,7 @@ import com.multi.vidulum.portfolio.api.error.PortfolioNotFoundException;
  *
  * <p>The implementation still lives in the portfolio module, where the repository is.
  */
-public interface PortfolioOwnership {
+public interface PortfolioOwnership extends ModuleApi {
 
     /** The caller, taken from the token and never from the request. */
     UserId currentUser();

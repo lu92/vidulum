@@ -1,5 +1,6 @@
 package com.multi.vidulum.trading.app;
 
+import com.multi.vidulum.shared.ddd.event.IntegrationEvent;
 import com.multi.vidulum.common.OrderId;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.Price;
@@ -31,7 +32,7 @@ import java.time.ZonedDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TradeCapturedEvent {
+public class TradeCapturedEvent implements IntegrationEvent {
 
     public static final String TOPIC = "trade_captured";
     public static final String CONTAINER_FACTORY = "tradeCapturedContainerFactory";

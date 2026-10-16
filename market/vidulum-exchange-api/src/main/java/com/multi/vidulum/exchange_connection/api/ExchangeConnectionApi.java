@@ -1,5 +1,6 @@
 package com.multi.vidulum.exchange_connection.api;
 
+import com.multi.vidulum.shared.module.ModuleApi;
 import com.multi.vidulum.common.PortfolioId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.exchange_connection.api.error.ExchangeConnectionNotFoundException;
@@ -20,7 +21,7 @@ import java.time.ZonedDateTime;
  * straight out of {@code DomainExchangeConnectionRepository}. Thirteen imports into another
  * module's internals, the same shape the portfolio and trading contracts have already removed.
  */
-public interface ExchangeConnectionApi {
+public interface ExchangeConnectionApi extends ModuleApi {
 
     /**
      * The caller's own connection.
