@@ -141,6 +141,22 @@ class ModuleBoundariesArchTest {
         assertSealed("quotation", "com.multi.vidulum.quotation..");
         assertSealed("exchange_connection", "com.multi.vidulum.exchange_connection..");
         assertSealed("okx", "com.multi.vidulum.okx..");
+        assertSealed("recurring_rules", "com.multi.vidulum.recurring_rules..");
+
+        // cashflow carries its exemptions as extra "own" packages rather than as a name list,
+        // because that is what they are: three subdomains inside the same artifact that still read
+        // the aggregate directly. Everything outside this set - portfolio, trading, pnl, the
+        // bootstrap - is already forbidden, which is the half worth freezing today.
+        //
+        // bank_data_ingestion reaches in for Type and CashFlowSnapshot, user_financial_profile for
+        // BankAccount and CashFlowEvent, cashflow_forecast_processor for six types it projects
+        // from. Each stops when vidulum-cashflow-api exists; see
+        // docs/features-backlog/2026-10-16-cashflow-module-boundaries.md.
+        assertSealed("cashflow",
+                "com.multi.vidulum.cashflow..",
+                "com.multi.vidulum.cashflow_forecast_processor..",
+                "com.multi.vidulum.bank_data_ingestion..",
+                "com.multi.vidulum.user_financial_profile..");
     }
 
     /**

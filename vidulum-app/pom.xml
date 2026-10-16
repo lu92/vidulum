@@ -29,6 +29,16 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Recurring rules: an implementation module like any other, so the bootstrap names it.
+             It used to arrive transitively through vidulum-cashflow, which declared it at compile
+             scope while using nothing from it - so the only module whose beans reached the
+             application by accident rather than by declaration. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-recurring-rules</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- PnL and risk. Leaves: they consume contracts and answer over HTTP, and this is the
              only module that wires them. vidulum-wealth-tests is not here - it holds nothing but
              the tests that deliberately cross a module boundary. -->
