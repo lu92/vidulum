@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–2 kolejności **wykonane**, 3–5 otwarte |
+| **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–3 **wykonane**, pozycja 4 **zaczęta** (kontrakt istnieje z jedną metodą), 5 otwarta |
 | **Skąd** | cztery pytania z rzędu: „czy można wydzielić `user_financial_profile`? `recurring_rules`? `bank_data_ingestion`? a co z cashflow i jego api?" |
 | **Zakres** | `vidulum-cashflow` i jego cztery poddomeny, `vidulum-recurring-rules`, przyszły `vidulum-cashflow-api` |
 | **Data** | 2026-10-16 |
@@ -161,8 +161,8 @@ Siedem typów cashflow-owych i cztery zdarzenia integracyjne, **których produce
 | **1** | `DataCleaner` per poddomena; `cashflow` i `recurring_rules` do reguły `assertSealed` | ✅ **wykonane** (krok 13) |
 | **2** | `recurring_rules`: bootstrap deklaruje jawnie, cashflow → `test` scope | ✅ **wykonane** (krok 13) |
 | 3 | decyzja HTTP vs w procesie | ✅ **podjęta**: HTTP jest celowe |
-| 4 | `vidulum-cashflow-api` w kształcie z sekcji 6 | otwarte — **tu jest praca** |
-| 5 | wydzielenia: `user_financial_profile` → `bank_data_ingestion` | otwarte, tanie po 4 |
+| **4** | `vidulum-cashflow-api` w kształcie z sekcji 6 | 🔸 **zaczęte** (krok 14): moduł istnieje, **jedna metoda**, jeden konsument, jeden wyjątek. Zostaje osiem metod kontraktu klienta i adapter HTTP |
+| 5 | wydzielenia: `user_financial_profile` → `bank_data_ingestion` | otwarte, ale **jedna z pięciu blokad `bank_data_ingestion` zdjęta** — patrz krok 14 |
 
 ## 8. Co zrobił krok 13
 
@@ -183,3 +183,109 @@ Sprawdziłem, że ten test faktycznie upada: po tymczasowym usunięciu zależno�
 - `2026-10-12-module-contracts-api-impl-split.md` — kroki **04**/**06** (ten sam anty-wzorzec portu w konsumencie), **03** (cleaner per poddomena), **12** (markery i ArchUnit), **13** (ten dokument), oraz **05c**/**07** jako F23/F24
 - `2026-10-15-alerts-module-design.md` — pierwszy krój alertów blokuje się na tym, że zdarzenia cashflow nie noszą `UserId`; kontrakt zdarzenia z sekcji 6 to zdejmuje
 - `2026-02-08-canonical-csv-architecture.md` — dotyczy `bank_data_ingestion`, warto przeczytać przed jego wydzielaniem
+
+## 9. Co zrobił krok 14
+
+### Kontrakt z jedną metodą, wyprowadzoną z jednego wywołania
+
+```java
+public interface CashFlowModuleApi extends ModuleApi {
+    CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId);
+}
+```
+
+`vidulum-cashflow-api` zagnieżdżony w `vidulum-cashflow/`, zależny **tylko od shared-kernela**: bez
+Springa, bez HTTP, bez `cashflow.domain` — w tym **bez `Type`**, bo kierunek wyraża to, na której z
+dwóch list kategoria leży. To jedyna reprezentacja, która nie może sobie zaprzeczyć, i ona właśnie
+uwalnia kontrakt od enuma dzielonego przez 39 plików `bank_data_ingestion`.
+
+Widok ma siedem pól tam, gdzie snapshot agregatu ma szesnaście, z czego jedno to mapa wszystkich
+transakcji. Trzy kształty rozstrzygnięte w rozmowie:
+
+- **`parentName` zostaje** w `CategoryNodeView` — płaskie wyszukiwania w kategoryzacji są pisane
+  przeciw niemu. Skoro jest nadmiarowe wobec drzewa, konstruktor zwarty **sprawdza zgodność**:
+  nadmiarowość, której nikt nie waliduje, to pole, które kiedyś skłamie.
+- **`archived` zostaje** — zarchiwizowana kategoria nie przyjmuje nowych transakcji, ale wskazują na
+  nią historyczne, więc importer musi wiedzieć, że istnieje.
+- **`LifecyclePhase` jest własnym enumem kontraktu**, nie `CashFlow.CashFlowStatus`. Ten słownik
+  istniał w trzech kopiach; implementacja mapuje go `switch`em po enumie, nie `valueOf` — dodanie
+  statusu w agregacie ma **przestać się kompilować**, a nie zaskoczyć konsumenta w runtime.
+
+### Konsument: koniec z ładowaniem agregatu po dwa pola
+
+`GetStagingPreviewQueryHandler` tracą: `DomainCashFlowRepository`, `CashFlow`, `CashFlowSnapshot`
+**z czterech sygnatur**, 192-linijkową klasę `Category`, dwie prywatne metody przechodzące drzewo i
+rzucanie wyjątku obcej domeny. Gwiazdkowy `import cashflow.domain.*` zwężony do jednego `Type`.
+Bilans **+25/−38** linii. Porównania idą teraz **między typami** (`Set<CategoryName>`), a łańcuch
+pojawia się wyłącznie na wyjściu do DTO.
+
+### Jeden wyjątek zamiast trzech
+
+| usunięta klasa | gdzie była | użyć |
+|---|---|---|
+| `cashflow.domain.CashFlowDoesNotExistsException` | `vidulum-cashflow` | **41 plików** |
+| `CashFlowServiceClient.CashFlowNotFoundException` | zagnieżdżona w interfejsie portu, `extends RuntimeException` | klient HTTP, 5 bloków `catch`, dubler |
+| `recurring_rules…CashFlowNotFoundException` | `vidulum-recurring-rules` | klient HTTP |
+
+Została jedna: `cashflow/api/error/CashFlowNotFoundException` — `BusinessException` z
+`ErrorCode.CASHFLOW_NOT_FOUND`, czyli 404 bez niczyjego tłumaczenia. `vidulum-recurring-rules` dostał
+zależność od `vidulum-cashflow-api`, co jest właściwym kierunkiem: jest konsumentem cashflow, więc
+zależy od jego kontraktu; reszta jego komunikacji nadal jedzie po HTTP.
+
+**Pięć bloków `try/catch` zniknęło w całości**, bo przestały mieć sens — nie ma już niezmapowanego
+typu do przechwycenia.
+
+### Jedna zmiana zachowania, nazwana wprost
+
+Dwa z tych pięciu bloków **nie tłumaczyły na wyjątek biznesowy**:
+
+```java
+} catch (CashFlowServiceClient.CashFlowNotFoundException e) {
+    throw new IllegalStateException("CashFlow not found: " + command.cashFlowId().id());
+}
+```
+
+`RevalidateStagingCommandHandler` i `ForceUncategorizedCommandHandler`. `IllegalStateException` nie
+ma `ErrorCode`, a `ErrorHttpHandler` nie obsługuje `RuntimeException` — więc te dwa endpointy
+odpowiadały **500** na nieistniejący cashflow. Teraz odpowiadają 404. Żaden test tego nie złapał, co
+jest spójne z **F19**: ścieżki błędu w `bank_data_ingestion` są słabo pokryte, a trzy testy, które je
+pokrywały, są `@Disabled`.
+
+### Testy: dwa dowody negatywne
+
+`CashFlowSkeletonComponentTest` (6 przypadków, bez Springa) przypina przechodzenie drzewa,
+`parentName` na każdym poziomie, archiwizację, trzy fazy, typowane nazwy — i to, po co ta metoda
+istnieje: **przepływ z 500 transakcjami odpowiada identycznie jak bez żadnej**.
+
+Siedemset dwa testy cashflow przeszły bez edycji **ani jednego pliku testowego** — ale po
+sprawdzeniu okazało się, że **żaden nie asertował `categoryBreakdown[].isNewCategory` ani
+`categoriesToCreate`**, czyli dwóch pól liczonych z podmienionego zbioru. „Testy przeszły" znaczyło
+„handler się nie wywrócił", nie „odpowiada tak samo". Asercja dopisana do istniejącego
+`DirectCategoryMatchIntegrationTest`, z `hasSize(3)` **przed** `allSatisfy`, bo `allSatisfy` na
+pustej liście przechodzi.
+
+Oba nowe zabezpieczenia sprawdzone **dowodem negatywnym**, bo zielony test, który nie upada bez
+swojego przedmiotu, nie dowodzi niczego:
+
+| test | podstawione | wynik |
+|---|---|---|
+| asercja `isNewCategory` | `Set.of()` zamiast `skeleton.allCategoryNames()` | upadł: „category [Transport] exists in the cash flow, so it is not new" |
+| `BootstrapWiresEveryModuleTest` (krok 13) | usunięta zależność w pomie `vidulum-app` | upadł, nazywając recurring rules |
+
+Przy usuwaniu klas wyszła jeszcze jedna rzecz warta zapamiętania: **pierwszy `test-compile` przeszedł
+fałszywie zielono** na przeterminowanych klasach i dopiero `clean test-compile` pokazał dwa pliki
+testowe odwołujące się do usuniętego typu.
+
+### Weryfikacja
+
+Pełny reaktor: **1274 testy, zero porażek, 6 pominiętych**, `BUILD SUCCESS`.
+
+### Czego krok 14 nie zrobił
+
+`bank_data_ingestion` nadal importuje `cashflow.domain.Type` w **39 plikach**, z czego cztery to
+encje Mongo — czyli ten enum jest częścią schematu bazy i jego przeniesienie to zmiana schematu, nie
+dopisek. Pozostałe sześć wywołań idzie dalej przez port i jego dwa żądania HTTP; wycofanie
+`getCashFlowInfo` i `exists` to osobny krok, a pierwszym kandydatem jest `AiCategorizeCommandHandler`,
+bo używa `CashFlowInfo` **do jednej rzeczy** — zbudowania struktury kategorii, czyli dokładnie tego,
+co nosi szkielet.
+

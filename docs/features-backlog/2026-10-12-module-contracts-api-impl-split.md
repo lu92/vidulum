@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**, **12** (zawiera **01**). Pozostaje: 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**, **12** (zawiera **01**), **13**, **14**. Pozostaje: 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1130,6 +1130,8 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 10 | **Dwa agregatory: `market/` i `wealth/`** — ✅ **wykonane**, patrz 21 | Jedenaście modułów pod dwa foldery; korzeń z 17 wpisów do ośmiu. Agregatory, nie rodzice: ani jedna zależność i ani jeden `artifactId` się nie zmienia |
 | 11a | **Trzy zależności infrastrukturalne do korzenia** — ✅ **wykonane**, patrz 21 | `lombok` i dwa startery testowe wyszły z 15 pomów do `<dependencies>` korzenia. Pierwotny pomysł — „`wealth/pom.xml` jako rodzic" — **odrzucony po pomiarze**, patrz 21 |
 | 12 | **Markery kontraktów + ArchUnit** — ✅ **wykonane**, patrz 21 | `ModuleApi`, `ModuleSpi`, `ModuleEventHandler`, `IntegrationEvent` w shared-kernel; osiem reguł, które je czytają. Marker bez reguły byłby dekoracją, więc weszły razem |
+| 13 | **Granice poddomen cashflow, część tania** — ✅ **wykonane**, opisane w `2026-10-16-cashflow-module-boundaries.md` | Cztery cleanery zamiast jednego czyszczącego 10 kolekcji; `cashflow` i `recurring_rules` w regule `assertSealed`; `recurring_rules` przestał trafiać do aplikacji tranzytywnie; `BootstrapWiresEveryModuleTest` |
+| 14 | **`vidulum-cashflow-api` — pierwsza metoda** — ✅ **wykonane**, opisane tam samo | Kontrakt z `skeletonOf`, jeden konsument (`GetStagingPreviewQueryHandler` przestaje ładować agregat po dwa pola), i **jeden wyjątek zamiast trzech**. Zostaje osiem metod kontraktu klienta i adapter HTTP |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte
