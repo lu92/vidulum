@@ -1,0 +1,185 @@
+# Granice modułów cashflow: cztery poddomeny i jeden brakujący kontrakt
+
+| | |
+|---|---|
+| **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–2 kolejności **wykonane**, 3–5 otwarte |
+| **Skąd** | cztery pytania z rzędu: „czy można wydzielić `user_financial_profile`? `recurring_rules`? `bank_data_ingestion`? a co z cashflow i jego api?" |
+| **Zakres** | `vidulum-cashflow` i jego cztery poddomeny, `vidulum-recurring-rules`, przyszły `vidulum-cashflow-api` |
+| **Data** | 2026-10-16 |
+
+---
+
+## 0. Wniosek najpierw
+
+Cztery analizy skończyły się tym samym zdaniem: **każda z poddomen upiera się o to, czego nie ma — kontraktu cashflow.** Nie trzeba czterech wydzieleń; trzeba jednego kontraktu, po którym każde wydzielenie staje się tanie — tak jak po krokach 04 i 06 tanie stało się 06c.
+
+| poddomena | czego brakuje, żeby wyszła |
+|---|---|
+| `user_financial_profile` | `CashFlowEvent` jako cel deserializacji + dwa value objecty |
+| `recurring_rules` | **nic — już jest osobnym artefaktem**; został własny klient HTTP do cashflow |
+| `bank_data_ingestion` | drugi własny klient HTTP + jeden odczyt przez repozytorium cashflow |
+| `cashflow` | kontrakt, którego nie ma, przez co trzy powyższe piszą go sobie same |
+
+## 1. Rozmiar: z czym mamy do czynienia
+
+```
+vidulum-cashflow/                              357 plików main
+├── cashflow/                      119   rdzeń: agregat, komendy, zdarzenia, REST
+├── bank_data_ingestion/           121   staging, mapowania, import, kategoryzacja AI
+├── cashflow_forecast_processor/     52   projekcja prognozy ze zdarzeń
+├── bank_data_adapter/               44   transformacja CSV przez AI
+├── user_financial_profile/          21   własne konta, wykrywanie przelewów własnych
+└── recurring-rules/  (osobny artefakt, 64)  reguły cykliczne
+```
+
+Kontrakt można zrobić **bez wydzielania czegokolwiek** — i to jest właściwa kolejność, bo kształt kontraktu nie zależy od tego, w którym jarze siedzi implementacja.
+
+## 2. Decyzja: HTTP między poddomenami jest celowe
+
+Rozstrzygnięte przez właściciela projektu (2026-10-16). To zmienia kształt kontraktu z `ModuleApi` na **deklaratywny interfejs HTTP**, i oznacza, że wzorzec już w repo jest wzorcem docelowym:
+
+```java
+// vidulum-cashflow/user-financial-profile-api — istnieje dziś
+@HttpExchange("/api/v1/user/owned-accounts")
+public interface UserFinancialProfileApi { … }
+```
+
+Serwer: `UserFinancialProfileRestController implements UserFinancialProfileApi`.
+Klient: `HttpServiceProxyFactory.builderFor(RestClientAdapter.create(restClient)).createClient(UserFinancialProfileApi.class)`,
+z przepisywaniem nagłówka `Authorization` z żądania wejściowego i z `@ConditionalOnProperty("vidulum.cashflow-service.enabled")`, które w testach integracyjnych wyłącza proxy i podstawia bean kontrolera.
+
+**Konsekwencja dla markerów z kroku 12:** kontrakt HTTP **nie nosi markera `ModuleApi`** — jest implementowany przez publiczny kontroler, więc łamałby dwie reguły ArchUnita (kontrakt bez Springa, implementacja niepubliczna). To nie wyjątek od reguły, a różnica gatunkowa: `ModuleApi` oznacza wywołanie w procesie, `@HttpExchange` wywołanie po sieci. Od teraz ta różnica jest widoczna w systemie typów.
+
+## 3. `user_financial_profile`
+
+**Moduł `-api` już istnieje** (6 plików). Strona wejściowa jest czysta: jedyny produkcyjny konsument, `bank_data_ingestion`, idzie przez `.api` w trzech miejscach. Ma własny `DataCleaner`, własne konfiguracje Kafki, własne repozytorium i encję — jest ukształtowany dalej, niż było portfolio przed krokiem 06c.
+
+Blokady, trzy importy:
+
+```java
+import com.multi.vidulum.cashflow.domain.BankAccount;        // wartość
+import com.multi.vidulum.cashflow.domain.BankAccountNumber;  // wartość (+ IbanNumber pod spodem)
+import com.multi.vidulum.cashflow.domain.CashFlowEvent;       // cel deserializacji
+```
+
+`CashFlowEvent` jest potrzebne **tylko po to, żeby zdeserializować kopertę** — listener czyta z niej dokładnie trzy pola (`userId`, `bankAccount`, `cashFlowId`). Wąski rekord w kontrakcie by wystarczył, **ale nie bez jednej zmiany**: `JsonContent.to()` używa `ObjectMapper` bez konfiguracji, a w Jacksonie `FAIL_ON_UNKNOWN_PROPERTIES` jest domyślnie włączone — czyli węższy rekord rzuciłby wyjątkiem na pozostałych polach. Potrzebne `@JsonIgnoreProperties(ignoreUnknown = true)` na tym rekordzie; globalnej zmiany mappera bym nie robił, bo dotyka każdej deserializacji w repo.
+
+Trzecia drobna blokada: test `TestRegisterUserCommandHandler` w cashflow wstrzykuje `UserFinancialProfileService` — implementację.
+
+## 4. `recurring_rules` — już wydzielone, i to najdalej
+
+| | |
+|---|---|
+| artefakt | **osobny** (`vidulum-recurring-rules`), 64 pliki main, 3 test |
+| zależności | `vidulum-shared-kernel` + Spring. **Nic z cashflow** |
+| `recurring-rules/main` → cashflow | **0 importów** |
+| `cashflow/main` → recurring-rules | **0 importów** |
+| jak rozmawiają | po HTTP: `CashFlowHttpClient` → `/cash-flow/cf=`, `/cash-flow/expected-cash-change`, `…/cash-changes`, `…/cash-changes/batch` |
+
+To **najbardziej niezależny moduł domenowy w repo** — bardziej niż `vidulum-risk`, który przynajmniej kompiluje się przeciw trzem kontraktom.
+
+**`-api` nie ma dla kogo powstać.** Nikt w mainie nie pyta tego modułu o nic — on tylko woła na zewnątrz. Jedynym konsumentem jego typów jest jeden test integracyjny w cashflow. Kontrakt bez konsumenta to `InMemoryPortfolioModuleApi` raz jeszcze.
+
+I tu jest różnica wobec `user_financial_profile`, warta nazwania: **ufp jest pytany** (więc jego `-api` jest uzasadnione i istnieje), **recurring-rules pyta** (więc potrzebuje nie własnego `-api`, a kontraktu cashflow).
+
+## 5. `bank_data_ingestion` — najlepiej przygotowany i najtrudniejszy
+
+**Droga zapisu jest już za portem**, z trzema implementacjami (HTTP produkcyjnie, dwie testowe):
+
+```java
+public interface CashFlowServiceClient {          // bank_data_ingestion/app
+    CashFlowInfo getCashFlowInfo(String cashFlowId);
+    boolean exists(String cashFlowId);
+    void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type);
+    String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request);
+    RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories);
+}
+```
+
+**Droga czytania ten port omija:**
+
+```java
+public class GetStagingPreviewQueryHandler … {
+    private final DomainCashFlowRepository domainCashFlowRepository;   // repozytorium cashflow
+    …
+    CashFlowSnapshot snapshot = cashFlow.getSnapshot();
+}
+```
+
+plus `import com.multi.vidulum.cashflow.domain.*` gwiazdką. Jeden plik, ale to on przesądza, że wydzielenie jest projektem, a nie przeniesieniem: podgląd stagingu potrzebuje istniejących nazw kategorii i sald, więc port musi te odczyty dostać — a to decyzja o kształcie kontraktu.
+
+Pozostałe przecieki: `cashflow.domain.Type` w **8+ plikach** (w tym w sygnaturze samego portu i w DTO), `CashFlowDoesNotExistsException`, oraz `bank_data_adapter.domain.TransactionClassification` — sięgnięcie do **rodzeństwa**.
+
+**To jest ten sam anty-wzorzec, który naprawiliśmy w kroku 06.** `CashFlowServiceClient` leży w `bank_data_ingestion` i definiuje, czego ten moduł potrzebuje od cashflow — jeden moduł deklaruje kształt API drugiego. Dokładnie `TradingRestClient` z `portfolio.domain`, usunięty na rzecz `TradingModuleApi`. I istnieje **trzecia kopia**: oba klienty mają własny rekord `CashFlowInfo` i własną metodę go zwracającą.
+
+## 6. `vidulum-cashflow-api` — co by w nim było
+
+Powierzchnia: **22 endpointy wystawione, osiem konsumowanych** (po deduplikacji dwóch klientów). Czyli kontrakt objąłby ~⅓ — zgodnie z regułą, że kontrakt to to, o co naprawdę ktoś pyta, a nie publiczne API kontrolera.
+
+```
+vidulum-cashflow-api/
+├── cashflow/api/CashFlowApi.java       @HttpExchange — ~8 metod (unia dwóch klientów)
+├── cashflow/api/view/                  CashFlowInfo · MonthStatus · ImportResult
+├── cashflow/api/error/                 CashFlowNotFound · CategoryNotFound · CashFlowCommunication
+├── cashflow/api/event/                 CashFlowUnifiedEvent (ze shared-kernela)
+│                                       CashFlowCreated (wąski) + CashFlowCreatedHandler
+└── cashflow/api/                       CashFlowId · CashChangeId · CategoryName · Type
+                                        BankAccountNumber · BankName   ← odzyskane ze shared-kernela
+```
+
+Co z tego wypada: `HttpCashFlowServiceClient`, `CashFlowHttpClient`, `CashFlowServiceClient` jako port w konsumencie, pięć URL-i składanych konkatenacją w recurring-rules, drugi rekord `CashFlowInfo`, dwa zestawy wyjątków. Co zostaje bez zmian: `TestCashFlowServiceClient` na gatewayu — implementuje ten sam interfejs.
+
+### Pułapka strony zdarzeń
+
+`CashFlowEvent` to **22 rekordy**, a konsumenci są trzej i każdy inny:
+
+| konsument | potrzebuje | gdzie jest |
+|---|---|---|
+| `cashflow_forecast_processor` | **wszystkich 22** — to projekcja | ten sam artefakt |
+| `user_financial_profile` | 2 warianty, 3 pola | ten sam artefakt (dziś) |
+| `websocket-gateway` | surowa koperta | **osobny deployment**, poza reaktorem |
+
+**Całej sealed hierarchii nie wolno wkładać do kontraktu** — zamroziłoby to cały wewnętrzny słownik zdarzeń cashflow jako publiczne zobowiązanie, 22 rekordy, z których poza modułem potrzebne są dwa. Do kontraktu idzie koperta, interfejs handlera (wzorzec z kroku 12) i wąskie rekordy tego, co faktycznie przekracza granicę.
+
+### Kontrakt odzyskuje typy ze shared-kernela
+
+```
+shared-kernel/common/        BankAccountId · BankName · CashChangeId · CashFlowId · CategoryName
+                             + 2 wyjątki formatu identyfikatorów
+shared-kernel/common/events/ CashFlowUnifiedEvent · BankDataIngestionUnifiedEvent
+                             UserFinancialProfileUnifiedEvent · UserCreatedEvent
+```
+
+Siedem typów cashflow-owych i cztery zdarzenia integracyjne, **których producenci nie mają kontraktów**. Shared-kernel jest dziś składem dla rzeczy, które nie mają gdzie mieszkać — więc `vidulum-cashflow-api` to **największy pojedynczy kawałek zadania F24** (krok 07, odchudzenie shared-kernela).
+
+**Korekta zapisana świadomie:** w analizach z 15–16 października proponowałem przenieść `Type`, `BankAccount`, `BankAccountNumber` i `IbanNumber` do shared-kernela, „bo `CashFlowId` i `BankName` już tam są". Po tej analizie to jest ruch w złą stronę — te typy należą **do kontraktu**, nie do shared-kernela, inaczej przenosilibyśmy je dwa razy.
+
+## 7. Kolejność
+
+| | co | stan |
+|---|---|---|
+| **1** | `DataCleaner` per poddomena; `cashflow` i `recurring_rules` do reguły `assertSealed` | ✅ **wykonane** (krok 13) |
+| **2** | `recurring_rules`: bootstrap deklaruje jawnie, cashflow → `test` scope | ✅ **wykonane** (krok 13) |
+| 3 | decyzja HTTP vs w procesie | ✅ **podjęta**: HTTP jest celowe |
+| 4 | `vidulum-cashflow-api` w kształcie z sekcji 6 | otwarte — **tu jest praca** |
+| 5 | wydzielenia: `user_financial_profile` → `bank_data_ingestion` | otwarte, tanie po 4 |
+
+## 8. Co zrobił krok 13
+
+**Cztery cleanery zamiast jednego.** `CashFlowDataCleaner` czyścił **dziesięć kolekcji z czterech poddomen**: swoją jedną, dwie projekcji prognozy, pięć stagingu i dwa cache'y AI. Reguła z kroku 03 — „poddomena będąca właścicielem encji jako pierwsza zauważa nową, a cleaner obok encji przeżyje wydzielenie do osobnego artefaktu" — została wtedy zastosowana do wealth i do `user_financial_profile`, ale **nie do największych poddomen cashflow**. Teraz: `CashFlowDataCleaner` (1 kolekcja), `CashFlowForecastDataCleaner` (2), `BankDataIngestionDataCleaner` (5), `BankDataAdapterDataCleaner` (2). W rodzinie cashflow jest ich sześć, po jednym na poddomenę.
+
+Dla `bank_data_adapter` to nie kosmetyka: transformacja AI jest **cache'em odpowiedzi modelu**, więc kolekcja zostawiona po poprzednim przebiegu sprawia, że test albo ręczny przebieg używa cudzej odpowiedzi i wygląda na deterministyczny, choć nie jest. Dlatego przewodnik ręcznego testowania każe robić `down -v`.
+
+**Reguła `assertSealed` objęła dwa brakujące moduły.** `recurring_rules` przeszedł od razu na zielono — nikt nie sięga do jego wnętrza. `cashflow` wszedł z odstępstwami wyrażonymi jako dodatkowe „własne" pakiety, a nie jako lista nazw, bo tym właśnie są: trzy poddomeny w tym samym artefakcie, które nadal czytają agregat wprost. Wszystko **poza** tym zbiorem — portfolio, trading, pnl, bootstrap — jest już zabronione, i ta połowa jest warta zamrożenia dzisiaj.
+
+**`recurring_rules` przestał trafiać do aplikacji przypadkiem.** Dostawał się tranzytywnie, przez compile-scope zależność `vidulum-cashflow` → `vidulum-recurring-rules`, mimo że main cashflow nie używa z niego **ani jednej klasy**. Był więc jedynym modułem implementacyjnym, którego beany docierały do aplikacji bez deklaracji — wbrew regule z kroków 06c, 09 i 10. Teraz deklaruje go bootstrap, a cashflow trzyma go w `test` scope dla jednego testu integracyjnego, który potrzebuje działającego cashflow po HTTP.
+
+**I test, który tę zmianę pilnuje.** `BootstrapWiresEveryModuleTest` sprawdza, że kontrakty czterech modułów mają w kontekście aplikacji dokładnie jedną implementację, a cztery moduły bez kontraktu — swój kontroler. To runtime'owy odpowiednik `ModuleBoundariesArchTest`: tamten pilnuje, żeby nikt nie sięgał tam, gdzie nie wolno, ten — żeby moduły w ogóle **były**. Drugi tryb awarii jest cichszy: brak modułu na classpathzie bootstrapu nie psuje żadnego builda, beany po prostu nie powstają, wszystkie pozostałe testy przechodzą, a funkcja znika.
+
+Sprawdziłem, że ten test faktycznie upada: po tymczasowym usunięciu zależności z pomu `vidulum-app` padł z komunikatem o recurring rules. Zielony test, który nie upada bez przedmiotu sprawdzenia, jest gorszy niż jego brak — ta sama pomyłka zdarzyła mi się w kroku 12 przy teście negatywnym ArchUnita.
+
+## 9. Powiązania
+
+- `2026-10-12-module-contracts-api-impl-split.md` — kroki **04**/**06** (ten sam anty-wzorzec portu w konsumencie), **03** (cleaner per poddomena), **12** (markery i ArchUnit), **13** (ten dokument), oraz **05c**/**07** jako F23/F24
+- `2026-10-15-alerts-module-design.md` — pierwszy krój alertów blokuje się na tym, że zdarzenia cashflow nie noszą `UserId`; kontrakt zdarzenia z sekcji 6 to zdejmuje
+- `2026-02-08-canonical-csv-architecture.md` — dotyczy `bank_data_ingestion`, warto przeczytać przed jego wydzielaniem

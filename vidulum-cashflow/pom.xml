@@ -22,11 +22,14 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Recurring Rules -->
+        <!-- Recurring rules, test scope only: this module's main sources use nothing from it.
+             RecurringRulesHttpIntegrationTest lives here because it needs a running cashflow to
+             talk to over HTTP, and that test is the whole reason for this dependency. -->
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-recurring-rules</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- User Financial Profile API (contract) -->

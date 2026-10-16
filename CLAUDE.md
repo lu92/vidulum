@@ -148,7 +148,8 @@ vidulum/
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
 │   └── bank_data_ingestion/     #   CSV import staging, category mapping
 │   └── bank_data_adapter/       #   AI CSV transformation
-│   └── recurring_rules/         #   Recurring transaction rules
+│   └── (recurring-rules/)       #   SEPARATE ARTIFACT nested here: vidulum-recurring-rules
+│                                #   depends on nothing from cashflow; talks to it over HTTP
 │   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
@@ -392,9 +393,12 @@ to mean. The rule is stated on the `DataCleaner` interface itself.
 
 | Module | Class | Collections |
 |--------|-------|-------------|
-| vidulum-cashflow | `CashFlowDataCleaner` | CashFlowEntity, CashFlowForecastEntity, CashFlowForecastStatementEntity, StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity, AiCsvTransformationDocument, MappingRules, RecurringRuleEntity, UserFinancialProfileEntity |
-| vidulum-cashflow/recurring-rules | `RecurringRuleDataCleaner` | RecurringRuleEntity |
-| vidulum-cashflow (user-financial-profile) | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
+| vidulum-cashflow (cashflow) | `CashFlowDataCleaner` | CashFlowEntity |
+| vidulum-cashflow (cashflow_forecast_processor) | `CashFlowForecastDataCleaner` | CashFlowForecastEntity, CashFlowForecastStatementEntity |
+| vidulum-cashflow (bank_data_ingestion) | `BankDataIngestionDataCleaner` | StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity |
+| vidulum-cashflow (bank_data_adapter) | `BankDataAdapterDataCleaner` | AiCsvTransformationDocument, MappingRules |
+| vidulum-cashflow (user_financial_profile) | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
+| vidulum-recurring-rules | `RecurringRuleDataCleaner` | RecurringRuleEntity |
 | vidulum-portfolio (portfolio) | `PortfolioDataCleaner` | PortfolioEntity |
 | vidulum-portfolio (portfolio_spec) | `PortfolioSpecDataCleaner` | PortfolioSpecEntity |
 | vidulum-trading | `TradingDataCleaner` | OrderEntity, TradeEntity |
@@ -406,7 +410,11 @@ One cleaner per subdomain, not per Maven module: the subdomain that owns an enti
 notices when a new one appears, and the split survives extracting it into its own artifact.
 `vidulum-quotation` and `vidulum-risk` have no cleaner because they persist nothing — quotation's
 caches are in memory and risk composes every answer from other modules. Steps 06c and 09 proved the
-rule: `TradingDataCleaner` and `PnlDataCleaner` moved into their own artifacts unchanged.
+rule: `TradingDataCleaner` and `PnlDataCleaner` moved into their own artifacts unchanged. Step 13
+applied it where step 03 had skipped it: `CashFlowDataCleaner` was emptying ten collections across
+four subdomains and now empties one. For `bank_data_adapter` that is not cosmetic — a
+transformation is a **cache of an AI answer**, so a collection left behind makes a run reuse a
+previous model's output and look deterministic when it is not.
 
 ## Docker Rebuild (Full Restart)
 
