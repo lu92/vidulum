@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
@@ -20,7 +20,7 @@ public class ExpectedCashChangeAppendedEventHandler implements CashFlowEventHand
     @Override
     public void handle(CashFlowEvent.ExpectedCashChangeAppendedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(event.cashFlowId()));
 
         // Use dueDate to determine which month the transaction belongs to
         // (not created date, which is when the event was emitted)

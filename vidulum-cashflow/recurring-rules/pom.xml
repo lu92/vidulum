@@ -23,6 +23,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Cashflow's contract, for the one thing this module needs from it by type: the failure
+             that says there is no such cash flow. Everything else still travels over HTTP. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-cashflow-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

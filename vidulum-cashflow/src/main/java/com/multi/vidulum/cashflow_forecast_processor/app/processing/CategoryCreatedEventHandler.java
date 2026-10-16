@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -24,7 +24,7 @@ public class CategoryCreatedEventHandler implements CashFlowEventHandler<CashFlo
     @Override
     public void handle(CashFlowEvent.CategoryCreatedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(event.cashFlowId()));
 
         fun(statement.getCategoryStructure(), event);
 

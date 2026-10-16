@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.move;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
@@ -40,7 +41,7 @@ public class MoveCategoryCommandHandler implements CommandHandler<MoveCategoryCo
     @Override
     public Void handle(MoveCategoryCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         List<Category> categories = command.categoryType() == Type.INFLOW
                 ? cashFlow.getSnapshot().inflowCategories()

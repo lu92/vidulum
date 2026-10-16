@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.comment.create;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.JsonContent;
@@ -38,7 +39,7 @@ public class CreateCategoryCommandHandler implements CommandHandler<CreateCatego
     @Override
     public Void handle(CreateCategoryCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         // Validate: operation not allowed in SETUP mode (unless it's an import operation)
         // In SETUP mode, categories are created only through bank-data-ingestion import

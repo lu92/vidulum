@@ -144,6 +144,7 @@ vidulum/
 │   └── shared/                  #   DDD base classes, DataCleaner interface
 │
 ├── vidulum-cashflow/            # CashFlow domain module
+│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi.skeletonOf, view/, error/
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
 │   └── bank_data_ingestion/     #   CSV import staging, category mapping
@@ -590,6 +591,15 @@ public ResponseEntity<ApiError> handleMyException(MyNewException ex) {
     return ResponseEntity.status(error.httpStatus()).body(error);
 }
 ```
+
+**One failure, one exception.** "No such cash flow" used to exist as three classes: one in
+cashflow's domain (41 usages), one nested in `bank_data_ingestion`'s port extending
+`RuntimeException`, and one in recurring-rules. Only `cashflow/api/error/CashFlowNotFoundException`
+remains — in the contract, so a consumer catches it without importing anyone's domain. The nested
+one was the dangerous shape: a `RuntimeException` with no `ErrorCode`, which `ErrorHttpHandler` does
+not map, so every call site had to translate it and two that forgot answered **500 instead of 404**.
+If you add a failure that another module can see, put it in that module's `*-api` `error/` package
+and give it an `ErrorCode`.
 
 ### Key Classes
 - `ErrorHttpHandler` - `security/config/ErrorHttpHandler.java` - central exception handler

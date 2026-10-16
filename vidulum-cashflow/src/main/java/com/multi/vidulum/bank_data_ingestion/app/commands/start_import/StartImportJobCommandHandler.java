@@ -7,7 +7,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -48,12 +48,9 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         ZonedDateTime now = ZonedDateTime.now(clock);
 
         // Validate: CashFlow must exist and be in SETUP or OPEN mode
-        CashFlowInfo cashFlowInfo;
-        try {
-            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
-        }
+        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
+        // carries an ErrorCode and answers 404 on its own.
+        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
 
         // Allow import in both SETUP mode (historical backfill) and OPEN mode (ongoing sync/gap filling)
         if (cashFlowInfo.isInClosedMode()) {

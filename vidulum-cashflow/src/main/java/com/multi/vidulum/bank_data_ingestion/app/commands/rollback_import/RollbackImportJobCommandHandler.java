@@ -4,7 +4,7 @@ import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.ImportJobRolledBackEvent;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,12 +52,9 @@ public class RollbackImportJobCommandHandler implements CommandHandler<RollbackI
         }
 
         // Check CashFlow status
-        CashFlowInfo cashFlowInfo;
-        try {
-            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
-        }
+        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
+        // carries an ErrorCode and answers 404 on its own.
+        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
 
         if (!cashFlowInfo.isInSetupMode()) {
             throw new RollbackNotAllowedException(command.jobId(),

@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.archive;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.JsonContent;
@@ -30,7 +31,7 @@ public class ArchiveCategoryCommandHandler implements CommandHandler<ArchiveCate
     @Override
     public Void handle(ArchiveCategoryCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         // Find the category
         List<Category> categories = command.categoryType() == Type.INFLOW

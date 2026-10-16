@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.edit;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
@@ -29,7 +30,7 @@ public class EditCashChangeCommandHandler implements CommandHandler<EditCashChan
     @Override
     public Void handle(EditCashChangeCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
 

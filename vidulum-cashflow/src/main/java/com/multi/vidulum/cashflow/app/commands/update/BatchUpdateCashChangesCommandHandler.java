@@ -1,4 +1,5 @@
 package com.multi.vidulum.cashflow.app.commands.update;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
@@ -46,7 +47,7 @@ public class BatchUpdateCashChangesCommandHandler implements CommandHandler<Batc
     @Override
     public BatchUpdateResult handle(BatchUpdateCashChangesCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
 

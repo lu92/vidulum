@@ -7,7 +7,7 @@ import com.multi.vidulum.bank_data_ingestion.app.categorization.ExistingCategory
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ public class AiCategorizeCommandHandler
 
         // Step 1: Verify CashFlow exists
         if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
-            throw new CashFlowDoesNotExistsException(command.cashFlowId());
+            throw new CashFlowNotFoundException(command.cashFlowId());
         }
 
         // Step 2: Load staged transactions

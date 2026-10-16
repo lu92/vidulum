@@ -1,4 +1,5 @@
 package com.multi.vidulum.cashflow.app.commands.attesthistoricalimport;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
@@ -28,7 +29,7 @@ public class AttestHistoricalImportCommandHandler implements CommandHandler<Atte
     @Override
     public CashFlowSnapshot handle(AttestHistoricalImportCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
 

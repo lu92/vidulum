@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.delete;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
@@ -35,7 +36,7 @@ public class DeleteExpectedCashChangeCommandHandler implements CommandHandler<De
     @Override
     public Void handle(DeleteExpectedCashChangeCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
 

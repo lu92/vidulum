@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow.app.queries;
 
 import com.multi.vidulum.cashflow.domain.CashFlow;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;
@@ -16,7 +16,7 @@ public class GetChangeFlowQueryHandler implements QueryHandler<GetCashFlowQuery,
     @Override
     public CashFlowSnapshot query(GetCashFlowQuery query) {
         CashFlow cashFlow = domainCashFlowRepository.findById(query.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(query.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(query.cashFlowId()));
 
         return cashFlow.getSnapshot();
     }
