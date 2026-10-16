@@ -6,7 +6,7 @@ import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatementRepository;
 import com.multi.vidulum.cashflow_forecast_processor.app.CategoryNode;

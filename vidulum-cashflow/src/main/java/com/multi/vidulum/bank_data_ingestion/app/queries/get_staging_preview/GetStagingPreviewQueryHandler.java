@@ -5,7 +5,7 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoR
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.queries.QueryHandler;

@@ -3,7 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.infrastructure.entity;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMapping;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingId;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternSource;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

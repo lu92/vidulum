@@ -12,7 +12,7 @@ import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;

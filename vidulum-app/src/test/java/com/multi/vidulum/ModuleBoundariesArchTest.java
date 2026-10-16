@@ -148,14 +148,18 @@ class ModuleBoundariesArchTest {
         // the aggregate directly. Everything outside this set - portfolio, trading, pnl, the
         // bootstrap - is already forbidden, which is the half worth freezing today.
         //
-        // bank_data_ingestion reaches in for Type and CashFlowSnapshot, user_financial_profile for
-        // BankAccount and CashFlowEvent, cashflow_forecast_processor for six types it projects
-        // from. Each stops when vidulum-cashflow-api exists; see
+        // user_financial_profile reaches in for BankAccount and CashFlowEvent,
+        // cashflow_forecast_processor for the five domain types it projects from. Each stops when
+        // vidulum-cashflow-api grows the piece it needs; see
         // docs/features-backlog/2026-10-16-cashflow-module-boundaries.md.
+        //
+        // bank_data_ingestion came off this list in step 15: 121 files, and the only thing it now
+        // names from cashflow is cashflow.api - the contract, the skeleton view, the failure and
+        // Type. It is the proof that the exemptions here are a measurement and not a permanent
+        // allowance.
         assertSealed("cashflow",
                 "com.multi.vidulum.cashflow..",
                 "com.multi.vidulum.cashflow_forecast_processor..",
-                "com.multi.vidulum.bank_data_ingestion..",
                 "com.multi.vidulum.user_financial_profile..");
     }
 

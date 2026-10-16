@@ -1,5 +1,6 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.ImportTransactionRequest;

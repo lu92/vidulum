@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

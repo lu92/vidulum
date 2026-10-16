@@ -3,7 +3,7 @@ import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.BankName;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;

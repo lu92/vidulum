@@ -8,7 +8,7 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoReposi
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
 import com.multi.vidulum.common.Money;

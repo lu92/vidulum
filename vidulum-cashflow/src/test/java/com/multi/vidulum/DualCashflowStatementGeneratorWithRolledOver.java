@@ -16,8 +16,8 @@ import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;

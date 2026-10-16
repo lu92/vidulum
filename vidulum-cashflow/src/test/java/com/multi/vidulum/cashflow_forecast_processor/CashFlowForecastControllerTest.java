@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CashFlowForecastControllerTest extends CashFlowIntegrationTest {

@@ -4,7 +4,7 @@ import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import lombok.AllArgsConstructor;
@@ -18,8 +18,8 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 
 /**
  * Read model (projection) representing the cash flow forecast for multiple months.

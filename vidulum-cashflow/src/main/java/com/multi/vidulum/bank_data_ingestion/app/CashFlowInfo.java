@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 
 import java.time.YearMonth;
 import java.util.List;
