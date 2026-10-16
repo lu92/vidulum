@@ -162,6 +162,26 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
                 .as("BankCategory 'Wynagrodzenie' should directly match existing INFLOW category")
                 .isEqualTo("Wynagrodzenie");
 
+        // The preview also says, per category, whether the cash flow already has it. That flag is
+        // the only part of this response computed from the cash flow's own structure, which the
+        // handler reads through CashFlowModuleApi rather than by loading the aggregate.
+        //
+        // Worth asserting because an empty set of existing categories is the likeliest way for
+        // that read to fail, and it fails quietly: every category would be reported as new and
+        // every one would be queued for creation, while the status, the counts and the target
+        // categories above all stayed green. hasSize first, because allSatisfy passes on an
+        // empty list.
+        assertThat(preview.getCategoryBreakdown())
+                .as("one breakdown per matched category")
+                .hasSize(3)
+                .allSatisfy(breakdown -> assertThat(breakdown.getIsNewCategory())
+                        .as("category [%s] exists in the cash flow, so it is not new", breakdown.getTargetCategory())
+                        .isFalse());
+
+        assertThat(preview.getCategoriesToCreate())
+                .as("nothing to create when every transaction lands in a category that already exists")
+                .isEmpty();
+
         log.info("Direct Category Match test passed:");
         log.info("  - TXN-001 (bankCategory='Artykuły spożywcze') -> {}", foodTxn.getTargetCategory());
         log.info("  - TXN-002 (bankCategory='Transport') -> {}", transportTxn.getTargetCategory());

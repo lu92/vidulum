@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-cashflow-api</artifactId>
+    <name>Vidulum CashFlow API</name>
+    <description>
+        CONTRACT: what another module may ask of cashflow. No Spring, no HTTP, no implementation -
+        the transport is chosen by whoever wires it, and the contract is the same either way.
+
+        Starts with one method, on purpose. It was derived from one real call site
+        (GetStagingPreviewQueryHandler, which today loads the aggregate through
+        DomainCashFlowRepository to read two fields), not from cashflow's public surface. The
+        analysis behind it: docs/features-backlog/2026-10-16-cashflow-module-boundaries.md.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

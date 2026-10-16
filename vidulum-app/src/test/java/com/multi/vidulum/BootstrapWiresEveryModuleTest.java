@@ -1,5 +1,6 @@
 package com.multi.vidulum;
 
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.exchange_connection.api.ExchangeConnectionApi;
 import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.quotation.api.QuotationApi;
@@ -42,6 +43,9 @@ class BootstrapWiresEveryModuleTest extends AppIntegrationTest {
         assertThat(context.getBeansOfType(TradingModuleApi.class)).hasSize(1);
         assertThat(context.getBeansOfType(QuotationApi.class)).hasSize(1);
         assertThat(context.getBeansOfType(ExchangeConnectionApi.class)).hasSize(1);
+        assertThat(context.getBeansOfType(CashFlowModuleApi.class))
+                .as("one implementation, so that an HTTP adapter arriving later cannot run alongside the local one")
+                .hasSize(1);
     }
 
     /**
