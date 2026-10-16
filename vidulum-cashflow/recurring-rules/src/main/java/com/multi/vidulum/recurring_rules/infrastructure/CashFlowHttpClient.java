@@ -6,7 +6,7 @@ import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
 import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException;
-import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

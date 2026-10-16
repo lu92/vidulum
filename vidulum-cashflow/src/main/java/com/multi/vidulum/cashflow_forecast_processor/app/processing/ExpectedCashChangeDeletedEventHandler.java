@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
@@ -21,7 +21,7 @@ public class ExpectedCashChangeDeletedEventHandler implements CashFlowEventHandl
     @Override
     public void handle(CashFlowEvent.ExpectedCashChangeDeletedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(event.cashFlowId()));
 
         // Locate the transaction in the forecast
         CashFlowMonthlyForecast.CashChangeLocation location = statement.locate(event.cashChangeId())

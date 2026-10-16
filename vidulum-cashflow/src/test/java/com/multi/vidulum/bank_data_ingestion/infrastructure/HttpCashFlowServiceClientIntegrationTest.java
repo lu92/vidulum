@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
@@ -95,9 +96,10 @@ class HttpCashFlowServiceClientIntegrationTest extends CashFlowIntegrationTest {
         // Given: Non-existent CashFlow ID
         String nonExistentId = "CF99999999";
 
-        // When/Then: Should throw CashFlowNotFoundException
+        // When/Then: the client throws cashflow's own contract failure, which carries an
+        // ErrorCode and therefore answers 404 - no translation at any call site.
         assertThatThrownBy(() -> httpClient.getCashFlowInfo(nonExistentId))
-                .isInstanceOf(HttpCashFlowServiceClient.CashFlowNotFoundException.class)
+                .isInstanceOf(CashFlowNotFoundException.class)
                 .hasMessageContaining(nonExistentId);
 
         log.info("✅ Correctly handled 404 error");

@@ -48,12 +48,9 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         ZonedDateTime now = ZonedDateTime.now(clock);
 
         // Validate: CashFlow must exist and be in SETUP or OPEN mode
-        CashFlowInfo cashFlowInfo;
-        try {
-            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowNotFoundException(command.cashFlowId());
-        }
+        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
+        // carries an ErrorCode and answers 404 on its own.
+        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
 
         // Allow import in both SETUP mode (historical backfill) and OPEN mode (ongoing sync/gap filling)
         if (cashFlowInfo.isInClosedMode()) {

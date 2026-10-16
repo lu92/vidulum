@@ -52,12 +52,9 @@ public class RollbackImportJobCommandHandler implements CommandHandler<RollbackI
         }
 
         // Check CashFlow status
-        CashFlowInfo cashFlowInfo;
-        try {
-            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowNotFoundException(command.cashFlowId());
-        }
+        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
+        // carries an ErrorCode and answers 404 on its own.
+        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
 
         if (!cashFlowInfo.isInSetupMode()) {
             throw new RollbackNotAllowedException(command.jobId(),

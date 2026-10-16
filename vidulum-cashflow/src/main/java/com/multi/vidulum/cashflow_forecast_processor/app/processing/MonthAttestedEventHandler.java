@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CashChangeId;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import lombok.AllArgsConstructor;
@@ -25,7 +25,7 @@ public class MonthAttestedEventHandler implements CashFlowEventHandler<CashFlowE
     @Override
     public void handle(CashFlowEvent.MonthAttestedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(event.cashFlowId()));
         YearMonth actualPeriod = statement.fetchCurrentPeriod();
 
         log.info("Attempt of attestation of month: [{}]", actualPeriod);

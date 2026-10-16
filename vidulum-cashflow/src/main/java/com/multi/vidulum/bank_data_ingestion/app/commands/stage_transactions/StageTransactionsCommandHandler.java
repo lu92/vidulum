@@ -46,12 +46,9 @@ public class StageTransactionsCommandHandler
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
         // Load CashFlow info via service client
-        CashFlowInfo cashFlowInfo;
-        try {
-            cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        } catch (CashFlowServiceClient.CashFlowNotFoundException e) {
-            throw new CashFlowNotFoundException(command.cashFlowId());
-        }
+        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
+        // carries an ErrorCode and answers 404 on its own.
+        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
 
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();

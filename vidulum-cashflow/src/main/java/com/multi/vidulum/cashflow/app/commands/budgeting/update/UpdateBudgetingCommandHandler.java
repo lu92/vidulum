@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.budgeting.update;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
@@ -24,7 +25,7 @@ public class UpdateBudgetingCommandHandler implements CommandHandler<UpdateBudge
     @Override
     public Void handle(UpdateBudgetingCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowEvent.BudgetingUpdatedEvent event = new CashFlowEvent.BudgetingUpdatedEvent(
                 command.cashFlowId(),

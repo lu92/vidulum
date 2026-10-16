@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow.domain.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
@@ -77,7 +77,7 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
                     // Not a retriable error - rethrow immediately
                     throw e;
                 }
-            } catch (CashFlowDoesNotExistsException e) {
+            } catch (CashFlowNotFoundException e) {
                 // CashFlow/Statement not found - also retriable
                 lastException = e;
                 if (attempt < MAX_RETRIES) {
@@ -98,7 +98,7 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
         // Throwing exception here would cause Kafka to retry the same message infinitely,
         // blocking all subsequent messages. Skipping allows the consumer to continue.
         // TODO: Implement Dead Letter Queue (DLQ) - see docs/TODO-kafka-dead-letter-queue.md
-        if (lastException instanceof CashFlowDoesNotExistsException) {
+        if (lastException instanceof CashFlowNotFoundException) {
             log.error("Skipping event - CashFlow [{}] does not exist after {} retries. " +
                     "Event: HistoricalCashChangeImportedEvent for category [{}]. " +
                     "This indicates data inconsistency requiring investigation.",
@@ -117,7 +117,7 @@ public class HistoricalCashChangeImportedEventHandler implements CashFlowEventHa
      */
     private void doHandle(CashFlowEvent.HistoricalCashChangeImportedEvent event) {
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(event.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(event.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(event.cashFlowId()));
 
         // Use paidDate to determine the month for historical data
         YearMonth yearMonth = YearMonth.from(event.paidDate());

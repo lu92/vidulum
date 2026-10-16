@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
-import com.multi.vidulum.cashflow.domain.CashFlowDoesNotExistsException;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashFlowId;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +25,7 @@ public class CashFlowForecastRestController {
             @PathVariable("cashFlowId") String cashFlowId) {
         CashFlowId id = CashFlowId.of(cashFlowId);
         CashFlowForecastStatement statement = statementRepository.findByCashFlowId(id)
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(id));
+                .orElseThrow(() -> new CashFlowNotFoundException(id));
         return mapper.map(statement);
     }
 

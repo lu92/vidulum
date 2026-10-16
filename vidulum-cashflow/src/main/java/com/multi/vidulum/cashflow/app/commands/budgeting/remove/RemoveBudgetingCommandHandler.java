@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.budgeting.remove;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.JsonContent;
 import com.multi.vidulum.common.events.CashFlowUnifiedEvent;
@@ -24,7 +25,7 @@ public class RemoveBudgetingCommandHandler implements CommandHandler<RemoveBudge
     @Override
     public Void handle(RemoveBudgetingCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowEvent.BudgetingRemovedEvent event = new CashFlowEvent.BudgetingRemovedEvent(
                 command.cashFlowId(),

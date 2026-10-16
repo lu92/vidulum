@@ -90,21 +90,10 @@ public interface CashFlowServiceClient {
 
     // ============ Exceptions ============
 
-    /**
-     * Exception thrown when CashFlow is not found.
-     */
-    class CashFlowNotFoundException extends RuntimeException {
-        private final String cashFlowId;
-
-        public CashFlowNotFoundException(String cashFlowId) {
-            super("CashFlow not found: " + cashFlowId);
-            this.cashFlowId = cashFlowId;
-        }
-
-        public String getCashFlowId() {
-            return cashFlowId;
-        }
-    }
+    // "No such cash flow" is not declared here any more: it belongs to cashflow, so it is
+    // CashFlowNotFoundException from cashflow-api, which carries an ErrorCode and therefore
+    // answers 404. The version that used to live here extended RuntimeException with no code, so
+    // every call site had to catch it and translate - and any site that forgot answered 500.
 
     /**
      * Exception thrown when category already exists.

@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.rollbackimport;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.JsonContent;
@@ -27,7 +28,7 @@ public class RollbackImportCommandHandler implements CommandHandler<RollbackImpo
     @Override
     public CashFlowSnapshot handle(RollbackImportCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(command.cashFlowId()));
+                .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
 

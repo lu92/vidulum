@@ -1,4 +1,5 @@
 package com.multi.vidulum.cashflow.app;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.commands.archive.ArchiveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.archive.UnarchiveCategoryCommand;
@@ -129,7 +130,7 @@ public class CashFlowRestController {
         // Get CashFlow before attestation to calculate the balance
         CashFlowId cfId = CashFlowId.of(cashFlowId);
         CashFlow cashFlowBeforeAttestation = domainCashFlowRepository.findById(cfId)
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(cfId));
+                .orElseThrow(() -> new CashFlowNotFoundException(cfId));
         Money calculatedBalance = cashFlowBeforeAttestation.calculateCurrentBalance();
 
         boolean createAdjustment = Boolean.TRUE.equals(request.getCreateAdjustment());
@@ -503,7 +504,7 @@ public class CashFlowRestController {
 
         // Get current active period
         CashFlow cashFlow = domainCashFlowRepository.findById(cfId)
-                .orElseThrow(() -> new CashFlowDoesNotExistsException(cfId));
+                .orElseThrow(() -> new CashFlowNotFoundException(cfId));
         YearMonth firstPeriod = cashFlow.getSnapshot().activePeriod();
 
         if (!target.isAfter(firstPeriod)) {

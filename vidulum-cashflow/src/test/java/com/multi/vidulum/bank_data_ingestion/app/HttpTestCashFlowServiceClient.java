@@ -1,4 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.app;
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.Category;
@@ -38,7 +39,7 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
         );
 
         if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-            throw new CashFlowNotFoundException(cashFlowId);
+            throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
         }
 
         if (!response.getStatusCode().is2xxSuccessful()) {

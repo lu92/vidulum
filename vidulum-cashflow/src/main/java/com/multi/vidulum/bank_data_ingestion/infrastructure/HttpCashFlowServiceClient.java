@@ -1,5 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
+import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.cashflow.domain.Type;
@@ -95,7 +97,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                     .body(CashFlowResponse.class);
 
             if (response == null) {
-                throw new CashFlowNotFoundException(cashFlowId);
+                throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
             }
 
             // Fetch month statuses from CashFlowForecastProcessor
@@ -104,7 +106,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             return mapToInfo(response, monthStatuses);
 
         } catch (HttpClientErrorException.NotFound e) {
-            throw new CashFlowNotFoundException(cashFlowId);
+            throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
         } catch (HttpClientErrorException e) {
             log.error("HTTP error getting CashFlow [{}]: {} - {}", cashFlowId, e.getStatusCode(), e.getMessage());
             throw new RuntimeException("Failed to get CashFlow info: " + e.getMessage(), e);
@@ -253,7 +255,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             return new RollbackResult(transactionsDeleted, categoriesDeleted, infoAfter);
 
         } catch (HttpClientErrorException.NotFound e) {
-            throw new CashFlowNotFoundException(cashFlowId);
+            throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
         } catch (HttpClientErrorException e) {
             log.error("HTTP error rolling back import for CashFlow [{}]: {}", cashFlowId, e.getMessage());
             throw new RuntimeException("Failed to rollback import: " + e.getMessage(), e);
