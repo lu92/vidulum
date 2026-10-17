@@ -3,7 +3,7 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow_forecast_processor.app.*;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

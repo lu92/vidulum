@@ -181,7 +181,7 @@ class CashFlowSkeletonComponentTest {
                                 new Name("transaction " + i),
                                 new Description("imported"),
                                 Money.of(10, "PLN"),
-                                com.multi.vidulum.cashflow.domain.Type.OUTFLOW,
+                                com.multi.vidulum.cashflow.api.Type.OUTFLOW,
                                 new CategoryName("Uncategorized"),
                                 com.multi.vidulum.cashflow.domain.CashChangeStatus.CONFIRMED,
                                 SOME_TIME,

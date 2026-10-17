@@ -50,6 +50,15 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 nodesOf(snapshot.outflowCategories(), null));
     }
 
+    @Override
+    public boolean exists(CashFlowId cashFlowId) {
+        // Loads the aggregate to answer a boolean, because DomainCashFlowRepository has no
+        // existsById. Still one read against Mongo where the callers used to pay two HTTP requests
+        // and a full payload; a narrower repository method is worth adding when something needs it
+        // in a loop.
+        return repository.findById(cashFlowId).isPresent();
+    }
+
     /**
      * Maps the aggregate's nested status onto the contract's own vocabulary. A {@code switch} over
      * an enum rather than {@code valueOf}: adding a status to the aggregate should stop compiling

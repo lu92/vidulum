@@ -144,7 +144,8 @@ vidulum/
 │   └── shared/                  #   DDD base classes, DataCleaner interface
 │
 ├── vidulum-cashflow/            # CashFlow domain module
-│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi.skeletonOf, view/, error/
+│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists), Type,
+│                                #   view/, error/ - what other modules may ask of cashflow
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
 │   └── bank_data_ingestion/     #   CSV import staging, category mapping

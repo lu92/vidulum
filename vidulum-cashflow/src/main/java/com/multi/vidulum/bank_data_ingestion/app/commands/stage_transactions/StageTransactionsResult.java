@@ -2,7 +2,7 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
 import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 
 import java.time.ZonedDateTime;

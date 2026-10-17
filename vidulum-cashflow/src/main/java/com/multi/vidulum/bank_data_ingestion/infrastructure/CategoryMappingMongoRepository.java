@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappingEntity;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;

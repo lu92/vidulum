@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**, **12** (zawiera **01**), **13**, **14**. Pozostaje: 05b, 05c, 05d, 07 |
+| **Status** | wykonane: **02**, **02b**, **04**, **04b**, **05a**, **03**, **06**, **06b**, **06c**, **08**, **09**, **10**, **11a**, **12** (zawiera **01**), **13**, **14**, **15**, **16**. Pozostaje: 05b, 05c, 05d, 07 |
 | **Zakres** | `vidulum-wealth`: portfolio, trading, pnl, quotation, risk_management, portfolio_spec |
 | **Poprzednik** | `VID-103-maven-multi-module-migration.md` — tamten dokument rozciął projekt na moduły Maven; ten rozcina wnętrze `vidulum-wealth` na kontrakt i implementację |
 | **Źródła** | [devmentors/NPay](https://github.com/devmentors/NPay) @ `master` (169 plików, .NET 6) — przeczytane w całości; vidulum @ `80d0cff` |
@@ -1132,6 +1132,8 @@ Posortowane rosnąco po ryzyku. Każdy krok jest samodzielnie użyteczny.
 | 12 | **Markery kontraktów + ArchUnit** — ✅ **wykonane**, patrz 21 | `ModuleApi`, `ModuleSpi`, `ModuleEventHandler`, `IntegrationEvent` w shared-kernel; osiem reguł, które je czytają. Marker bez reguły byłby dekoracją, więc weszły razem |
 | 13 | **Granice poddomen cashflow, część tania** — ✅ **wykonane**, opisane w `2026-10-16-cashflow-module-boundaries.md` | Cztery cleanery zamiast jednego czyszczącego 10 kolekcji; `cashflow` i `recurring_rules` w regule `assertSealed`; `recurring_rules` przestał trafiać do aplikacji tranzytywnie; `BootstrapWiresEveryModuleTest` |
 | 14 | **`vidulum-cashflow-api` — pierwsza metoda** — ✅ **wykonane**, opisane tam samo | Kontrakt z `skeletonOf`, jeden konsument (`GetStagingPreviewQueryHandler` przestaje ładować agregat po dwa pola), i **jeden wyjątek zamiast trzech**. Zostaje osiem metod kontraktu klienta i adapter HTTP |
+| 15 | **`Type` do kontraktu cashflow** — ✅ **wykonane**, opisane w `2026-10-16-cashflow-module-boundaries.md` | Najszerzej współdzielony typ cashflow (95 plików, 4 encje Mongo) przeniesiony do `cashflow-api`; dane nietknięte, bo enum zapisuje się nazwą stałej. **`bank_data_ingestion` zszedł z listy odstępstw `assertSealed`** — widzi już tylko `cashflow.api` |
+| 16 | **`exists` jako druga metoda kontraktu** — ✅ **wykonane**, opisane tam samo | Trzy miejsca przestają kupować boolean za dwa żądania HTTP; `AiCategorize` schodzi z 4 żądań do jednego `skeletonOf` i przestaje wstrzykiwać port; `exists` usunięte z portu i pięciu implementacji |
 | 07 | **Odchudzenie shared-kernel** | P5. Najszersze dotknięcie kodu i największy zysk w czasie builda. Ostatnie, bo wymaga istnienia modułów `-api` |
 
 ### Właściciele siedmiu eventów — policzone, nie zgadnięte

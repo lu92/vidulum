@@ -1,13 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.categorization.AiCategorizationService;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.bank_data_ingestion.app.categorization.ExistingCategoryStructure;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +18,9 @@ import java.util.List;
  * Handler for AI-powered transaction categorization.
  *
  * Flow:
- * 1. Verify CashFlow exists
+ * 1. Ask cashflow for the skeleton - existence and category structure in one question
  * 2. Load staged transactions from session
- * 3. Get existing categories for context
+ * 3. Build the category context from that skeleton
  * 4. Call AI Categorization Service
  * 5. Return suggestions with confidence levels
  */
@@ -31,7 +30,7 @@ import java.util.List;
 public class AiCategorizeCommandHandler
         implements CommandHandler<AiCategorizeCommand, AiCategorizationResult> {
 
-    private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final AiCategorizationService aiCategorizationService;
@@ -41,10 +40,10 @@ public class AiCategorizeCommandHandler
         log.info("Processing AI categorization for session: {}, cashFlow: {}",
                 command.sessionId(), command.cashFlowId());
 
-        // Step 1: Verify CashFlow exists
-        if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
-            throw new CashFlowNotFoundException(command.cashFlowId());
-        }
+        // Step 1: the cash flow's skeleton - its existence and its category structure in one
+        // question. skeletonOf throws CashFlowNotFoundException on its own, so there is nothing to
+        // check here, and step 3 below needs exactly what it returns.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
 
         // Step 2: Load staged transactions
         List<StagedTransaction> transactions = stagedTransactionRepository
@@ -67,8 +66,7 @@ public class AiCategorizeCommandHandler
         }
 
         // Step 3: Get existing categories for context (with type and hierarchy)
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-        ExistingCategoryStructure categoryStructure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
+        ExistingCategoryStructure categoryStructure = ExistingCategoryStructure.from(skeleton);
 
         log.debug("Existing categories: {} inflow, {} outflow",
                 categoryStructure.allInflowNames().size(),

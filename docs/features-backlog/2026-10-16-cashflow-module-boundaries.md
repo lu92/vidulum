@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–3 **wykonane**, pozycja 4 **zaczęta** (kontrakt istnieje z jedną metodą), 5 otwarta |
+| **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–3 **wykonane**, pozycja 4 **w toku** (kontrakt ma dwie metody, `bank_data_ingestion` widzi już tylko `cashflow.api`), 5 otwarta |
 | **Skąd** | cztery pytania z rzędu: „czy można wydzielić `user_financial_profile`? `recurring_rules`? `bank_data_ingestion`? a co z cashflow i jego api?" |
 | **Zakres** | `vidulum-cashflow` i jego cztery poddomeny, `vidulum-recurring-rules`, przyszły `vidulum-cashflow-api` |
 | **Data** | 2026-10-16 |
@@ -161,8 +161,8 @@ Siedem typów cashflow-owych i cztery zdarzenia integracyjne, **których produce
 | **1** | `DataCleaner` per poddomena; `cashflow` i `recurring_rules` do reguły `assertSealed` | ✅ **wykonane** (krok 13) |
 | **2** | `recurring_rules`: bootstrap deklaruje jawnie, cashflow → `test` scope | ✅ **wykonane** (krok 13) |
 | 3 | decyzja HTTP vs w procesie | ✅ **podjęta**: HTTP jest celowe |
-| **4** | `vidulum-cashflow-api` w kształcie z sekcji 6 | 🔸 **zaczęte** (krok 14): moduł istnieje, **jedna metoda**, jeden konsument, jeden wyjątek. Zostaje osiem metod kontraktu klienta i adapter HTTP |
-| 5 | wydzielenia: `user_financial_profile` → `bank_data_ingestion` | otwarte, ale **jedna z pięciu blokad `bank_data_ingestion` zdjęta** — patrz krok 14 |
+| **4** | `vidulum-cashflow-api` w kształcie z sekcji 6 | 🔸 **w toku**: **dwie metody** (kroki 14, 16), `Type` w kontrakcie (15), jeden wyjątek (14). Zostaje reszta kontraktu klienta i adapter HTTP |
+| 5 | wydzielenia: `user_financial_profile` → `bank_data_ingestion` | otwarte, ale **`bank_data_ingestion` nie widzi już domeny cashflow w ogóle** — zszedł z listy odstępstw ArchUnita (15) |
 
 ## 8. Co zrobił krok 13
 
@@ -288,4 +288,126 @@ dopisek. Pozostałe sześć wywołań idzie dalej przez port i jego dwa żądani
 `getCashFlowInfo` i `exists` to osobny krok, a pierwszym kandydatem jest `AiCategorizeCommandHandler`,
 bo używa `CashFlowInfo` **do jednej rzeczy** — zbudowania struktury kategorii, czyli dokładnie tego,
 co nosi szkielet.
+
+## 10. Co zrobił krok 15: `Type` do kontraktu
+
+`cashflow.domain.Type` był **najszerzej współdzieloną rzeczą w cashflow**: 95 plików, z czego 39 w
+samym `bank_data_ingestion`, a cztery z nich to **encje Mongo** — czyli ten enum był częścią
+schematu bazy tej poddomeny tak samo jak domeny cashflow. Słownik, od którego zależy tylu
+wołających, jest kontraktem, w jakimkolwiek pakiecie się urodził.
+
+**Dane nietknięte, i to sprawdzone przed ruszeniem klasy**: Spring Data Mongo i Jackson zapisują
+enum **nazwą stałej**, a przy tym polu nie ma `_class` ani `@JsonTypeInfo`. `INFLOW` zostaje
+`INFLOW` w każdym dokumencie i na każdym topicu. Pełny reaktor po przeniesieniu dał tę samą liczbę
+testów — bo to była zmiana pakietu, nie zachowania.
+
+Przeniesienie dotknęło 120 plików: 95 z jawnym importem i 25, które brały `Type` **gwiazdką** z
+`cashflow.domain.*` i po usunięciu klasy przestały się kompilować. Tych 25 znalazł kompilator w
+trzech rundach, nie grep.
+
+### I dlatego reguła ArchUnita została zacieśniona
+
+`bank_data_ingestion` **zszedł z listy odstępstw** dla cashflow. 121 plików, które w tej serii
+sięgały po repozytorium, snapshot, agregat, `Category`, wyjątek domenowy i enum, nazywa teraz
+wyłącznie `cashflow.api`:
+
+| import | ile |
+|---|---|
+| `cashflow.api.Type` | 39 |
+| `cashflow.api.error.CashFlowNotFoundException` | 7 |
+| `cashflow.api.CashFlowModuleApi`, `…view.CashFlowSkeletonView` | 2 |
+| **`cashflow.domain.*`** | **0** |
+
+To jest moment, w którym listy odstępstw z kroku 12 pokazują, czym miały być: **miarą, która ma się
+skracać**, nie stałym pozwoleniem. W cashflow zostają dwie poddomeny — `user_financial_profile`
+(`BankAccount`, `BankAccountNumber`, `CashFlowEvent`) i `cashflow_forecast_processor`, która jako
+projekcja potrzebuje pięciu typów domenowych.
+
+Nazwy **nie zmieniałem**: `Type` w kontrakcie czytałoby się lepiej jako `CashChangeType` albo
+`Direction`, bo konsument pisze `import …cashflow.api.Type;` i dostaje u siebie klasę „Type". To
+decyzja o publicznym API kontraktu, nie szczegół przenoszenia — i warta osobnego commita, bo
+mechaniczna i bezpieczna dla danych (nazwy stałych zostają).
+
+## 11. Co zrobił krok 16: druga metoda i koniec `exists` w porcie
+
+```java
+public interface CashFlowModuleApi extends ModuleApi {
+    CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId);
+    boolean exists(CashFlowId cashFlowId);
+}
+```
+
+Trzy miejsca pytały o samo istnienie, i to przez port, gdzie `exists` było
+`try { getCashFlowInfo(); return true; } catch { return false; }` — **boolean wyprodukowany z
+wyjątku kosztem dwóch żądań i payloadu z mapą wszystkich transakcji**. W implementacji w procesie to
+jeden odczyt Mongo.
+
+Dlaczego osobna metoda, a nie `skeletonOf` dla wszystkich trzech: dwa z tych miejsc
+(`ConfigureCategoryMapping`, `AcceptAiSuggestions`) **nigdy nie zaglądają do treści przepływu** —
+pierwsze zapisuje mapowania, drugie tworzy kategorie. Kazanie im pobierać szkielet byłoby proszeniem
+o dane na wyrzucenie, a `cashFlowApi.skeletonOf(id);` jako instrukcja z odrzuconym wynikiem to
+wywołanie gettera dla efektu rzucenia wyjątku — źle się czyta i zaprasza do „optymalizacji".
+
+**Trzecie miejsce poszło w drugą stronę.** `AiCategorizeCommandHandler` używał `CashFlowInfo` do
+jednej rzeczy — zbudowania struktury kategorii — więc jedno `skeletonOf` zastąpiło u niego **i straż
+`exists()`, i `getCashFlowInfo()`**: cztery żądania HTTP zamienione na jedno wywołanie. Ten handler
+**przestał wstrzykiwać port w ogóle** i jest pierwszym w tym pakiecie, który rozmawia z cashflow
+tylko przez kontrakt. Doszła fabryka `ExistingCategoryStructure.from(CashFlowSkeletonView)`, która
+bierze płaskie zbiory nazw wprost z widoku, a drzewo przechodzi tylko po to, by zamienić
+`CategoryName` na `String` — bo ten rekord trzyma nazwy jako łańcuchy.
+
+Potem `exists` zniknęło z portu i z **pięciu** implementacji (HTTP, trzy dublery testowe) razem z
+testem `shouldVerifyCashFlowExists`, którego przedmiot przestał istnieć; obsługę 404 pokrywa
+`shouldHandleNotFoundError`.
+
+### Weryfikacja i arytmetyka, która wyłapuje ciche straty
+
+Pełny reaktor: **1275 testów, zero porażek, 6 pominiętych**. Liczba zgadza się do jednego:
+
+```
+1274  ostatni zielony pełny przebieg
+  +2  JsonContentTest
+  −1  shouldVerifyCashFlowExists
+────
+1275
+```
+
+## 12. Usterka znaleziona po drodze: `JsonContent`
+
+Nie jest to część podziału modułów, ale wyszła przy nim i dotyczy produkcji, nie testów.
+
+```java
+public <T> T to(Class<T> clazz) {
+    return OBJECT_MAPPER.findAndRegisterModules().readValue(content, clazz);   // przed
+}
+```
+
+`findAndRegisterModules()` **rekonfigurowało współdzielony statyczny mapper przy każdym odczycie**, a
+`to()` wołają dwa listenery Kafki z tego samego topicu `cash_flow` — prognoza i
+`user_financial_profile` — każdy na własnym wątku konsumenta. Dwa mechanizmy, oba usuwane tą samą
+poprawką:
+
+1. `ObjectMapper` jest bezpieczny wątkowo **po** zakończeniu konfiguracji; rejestracja modułu resetuje
+   cache serializatorów i kreatorów.
+2. `findAndRegisterModules()` szuka przez `ServiceLoader` z **context classloaderem wołającego
+   wątku** — wywołanie z wątku widzącego mniej classpathu rejestruje mniej modułów **trwale i dla
+   wszystkich**.
+
+Ofiara w obu przypadkach ta sama: bez `ParameterNamesModule` klasa z samym `@AllArgsConstructor` nie
+ma dla Jacksona konstruktora. Poprawka: konfiguracja **raz**, w inicjalizatorze statycznym.
+
+**Dokąd sięgają dowody** — i to jest ważniejsze niż sama poprawka, bo opisywałem to najpierw jak
+usterkę potwierdzoną:
+
+| | |
+|---|---|
+| 5 błędów `CashFlowForecastProcessorTest` z dokładnie tym komunikatem w jednym przebiegu | tak |
+| ta sama klasa w izolacji | 28/28 |
+| **ta sama suita powtórzona na starym kodzie** | **702, zero błędów** |
+| `JsonContentTest` uruchomiony na starym kodzie | **przeszedł** — nie odtworzył usterki |
+
+Czyli związek jest **wywnioskowany z mechanizmu, nie wykazany**. Co stoi samo: rekonfigurowanie
+współdzielonego stanu przy każdym odczycie nie ma obrony. `JsonContentTest` został jako straż na
+przyszłość i jako sprawdzenie, że klasa z samym `@AllArgsConstructor` przechodzi round-trip — z
+javadokiem mówiącym wprost, że usterki nie odtworzył.
 

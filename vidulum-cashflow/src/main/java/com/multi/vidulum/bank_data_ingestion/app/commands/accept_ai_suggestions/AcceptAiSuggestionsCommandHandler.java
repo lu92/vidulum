@@ -9,6 +9,7 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.Rev
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class AcceptAiSuggestionsCommandHandler
         implements CommandHandler<AcceptAiSuggestionsCommand, AcceptAiSuggestionsResult> {
 
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final PatternMappingRepository patternMappingRepository;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final ConfigureCategoryMappingCommandHandler mappingHandler;
@@ -47,7 +49,7 @@ public class AcceptAiSuggestionsCommandHandler
                 command.sessionId(), command.cashFlowId());
 
         // Verify CashFlow exists
-        if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
+        if (!cashFlowApi.exists(command.cashFlowId())) {
             throw new CashFlowNotFoundException(command.cashFlowId());
         }
 

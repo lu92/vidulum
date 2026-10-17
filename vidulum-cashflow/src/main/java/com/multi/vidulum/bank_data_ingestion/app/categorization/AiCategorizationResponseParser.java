@@ -3,7 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app.categorization;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.bank_data_ingestion.domain.AiCategorizationResult;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
 import com.multi.vidulum.bank_data_ingestion.domain.StagedTransaction;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

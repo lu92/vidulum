@@ -3,7 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
 import lombok.extern.slf4j.Slf4j;

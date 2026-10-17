@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
 import lombok.extern.slf4j.Slf4j;

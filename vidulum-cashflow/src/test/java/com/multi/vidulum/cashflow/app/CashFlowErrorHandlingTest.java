@@ -1,7 +1,7 @@
 package com.multi.vidulum.cashflow.app;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.error.ApiError;
 import com.multi.vidulum.security.auth.AuthenticationResponse;
@@ -17,8 +17,8 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

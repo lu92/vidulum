@@ -16,8 +16,8 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 

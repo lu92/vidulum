@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.domain;
 
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 
 import java.util.List;
 import java.util.Optional;

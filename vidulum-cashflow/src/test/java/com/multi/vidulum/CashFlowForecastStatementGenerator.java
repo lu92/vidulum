@@ -1,4 +1,5 @@
 package com.multi.vidulum;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
@@ -29,8 +30,8 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static com.multi.vidulum.cashflow.domain.Type.INFLOW;
-import static com.multi.vidulum.cashflow.domain.Type.OUTFLOW;
+import static com.multi.vidulum.cashflow.api.Type.INFLOW;
+import static com.multi.vidulum.cashflow.api.Type.OUTFLOW;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j

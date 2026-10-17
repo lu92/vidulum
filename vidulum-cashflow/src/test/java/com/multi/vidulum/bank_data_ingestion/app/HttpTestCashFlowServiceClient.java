@@ -3,7 +3,7 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.Category;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -48,19 +48,6 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
 
         CashFlowDto.CashFlowSummaryJson body = response.getBody();
         return mapToCashFlowInfo(body);
-    }
-
-    @Override
-    public boolean exists(String cashFlowId) {
-        try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
-                    baseUrl + "/cash-flow/cf=" + cashFlowId,
-                    Map.class
-            );
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @Override

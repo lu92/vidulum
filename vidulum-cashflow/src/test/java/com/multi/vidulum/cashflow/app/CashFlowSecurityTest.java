@@ -160,7 +160,7 @@ class CashFlowSecurityTest extends CashFlowIntegrationTest {
         );
 
         // when - create category (requires authentication)
-        authenticatedActor.createCategory(cashFlowId, "TestCategory", com.multi.vidulum.cashflow.domain.Type.OUTFLOW);
+        authenticatedActor.createCategory(cashFlowId, "TestCategory", com.multi.vidulum.cashflow.api.Type.OUTFLOW);
 
         // then - verify category was created
         CashFlowDto.CashFlowSummaryJson cashFlow = authenticatedActor.getCashFlow(cashFlowId);

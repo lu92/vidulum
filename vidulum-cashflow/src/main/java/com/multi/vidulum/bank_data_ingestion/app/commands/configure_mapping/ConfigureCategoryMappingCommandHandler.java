@@ -1,8 +1,8 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMapping;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -23,13 +23,13 @@ public class ConfigureCategoryMappingCommandHandler
         implements CommandHandler<ConfigureCategoryMappingCommand, ConfigureCategoryMappingResult> {
 
     private final CategoryMappingRepository categoryMappingRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final Clock clock;
 
     @Override
     public ConfigureCategoryMappingResult handle(ConfigureCategoryMappingCommand command) {
         // Verify CashFlow exists
-        if (!cashFlowServiceClient.exists(command.cashFlowId().id())) {
+        if (!cashFlowApi.exists(command.cashFlowId())) {
             throw new CashFlowNotFoundException(command.cashFlowId());
         }
 

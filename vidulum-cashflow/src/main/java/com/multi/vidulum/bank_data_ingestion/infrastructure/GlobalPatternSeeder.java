@@ -2,7 +2,7 @@ package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMapping;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingRepository;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;

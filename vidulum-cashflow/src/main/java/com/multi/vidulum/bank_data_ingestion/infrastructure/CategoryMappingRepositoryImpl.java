@@ -5,7 +5,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingId;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappingEntity;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.domain.Type;
+import com.multi.vidulum.cashflow.api.Type;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
 

@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app.commands.edit;
 
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
