@@ -5,7 +5,8 @@ import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.ImportTransactionRequest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.RollbackResult;
-import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CashChangeId;
+import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
@@ -42,16 +43,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
     public CashFlowInfo getCashFlowInfo(String cashFlowId) {
         CashFlowSnapshot snapshot = queryGateway.send(new GetCashFlowQuery(new CashFlowId(cashFlowId)));
         return mapToCashFlowInfo(snapshot);
-    }
-
-    @Override
-    public boolean exists(String cashFlowId) {
-        try {
-            queryGateway.send(new GetCashFlowQuery(new CashFlowId(cashFlowId)));
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @Override

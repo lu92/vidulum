@@ -129,31 +129,6 @@ class HttpCashFlowServiceClientIntegrationTest extends CashFlowIntegrationTest {
         log.info("✅ Banking model propagated correctly through HTTP client");
     }
 
-    @Test
-    @DisplayName("Should verify CashFlow exists")
-    void shouldVerifyCashFlowExists() {
-        // Given: Create CashFlow
-        String cashFlowId = actor.createCashFlowWithIban(
-                userId,
-                uniqueCashFlowName(),
-                "GB82WEST12345698765432",
-                "GBP"
-        );
-
-        // When: Check if exists
-        boolean exists = httpClient.exists(cashFlowId);
-
-        // Then: Should return true
-        assertThat(exists).isTrue();
-
-        // When: Check non-existent
-        boolean nonExistent = httpClient.exists("CF99999999");
-
-        // Then: Should return false
-        assertThat(nonExistent).isFalse();
-
-        log.info("✅ Correctly verified CashFlow existence");
-    }
 
     @Test
     @DisplayName("Should create category via HTTP client")

@@ -25,13 +25,6 @@ public interface CashFlowServiceClient {
      */
     CashFlowInfo getCashFlowInfo(String cashFlowId);
 
-    /**
-     * Check if CashFlow exists.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @return true if exists
-     */
-    boolean exists(String cashFlowId);
 
     /**
      * Create a new category in CashFlow.

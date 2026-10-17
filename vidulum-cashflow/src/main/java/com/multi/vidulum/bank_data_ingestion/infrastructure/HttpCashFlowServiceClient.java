@@ -154,16 +154,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public boolean exists(String cashFlowId) {
-        try {
-            getCashFlowInfo(cashFlowId);
-            return true;
-        } catch (CashFlowNotFoundException e) {
-            return false;
-        }
-    }
-
-    @Override
     public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
         try {
             CreateCategoryRequest request = new CreateCategoryRequest(

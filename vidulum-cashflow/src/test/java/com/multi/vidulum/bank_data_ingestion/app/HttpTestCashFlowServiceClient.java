@@ -51,19 +51,6 @@ public class HttpTestCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public boolean exists(String cashFlowId) {
-        try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
-                    baseUrl + "/cash-flow/cf=" + cashFlowId,
-                    Map.class
-            );
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    @Override
     public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
         CashFlowDto.CreateCategoryJson request = CashFlowDto.CreateCategoryJson.builder()
                 .category(categoryName)

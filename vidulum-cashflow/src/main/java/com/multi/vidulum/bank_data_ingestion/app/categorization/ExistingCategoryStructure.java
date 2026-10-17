@@ -2,6 +2,9 @@ package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.common.CategoryName;
 
 import java.util.*;
 
@@ -86,6 +89,44 @@ public record ExistingCategoryStructure(
                 allInflow,
                 allOutflow
         );
+    }
+
+    /**
+     * Creates structure from the cash flow's skeleton - the shape cashflow's contract answers with.
+     *
+     * <p>The flat name sets come straight off the view, which already computes them per side; the
+     * tree is walked here because this record keeps names as strings and the view keeps them as
+     * {@code CategoryName}. That conversion is the whole difference between the two shapes.
+     */
+    public static ExistingCategoryStructure from(CashFlowSkeletonView skeleton) {
+        if (skeleton == null) {
+            return empty();
+        }
+        return new ExistingCategoryStructure(
+                convertNodes(skeleton.inflowCategories()),
+                convertNodes(skeleton.outflowCategories()),
+                namesOf(skeleton.inflowCategoryNames()),
+                namesOf(skeleton.outflowCategoryNames())
+        );
+    }
+
+    private static List<CategoryNode> convertNodes(List<CategoryNodeView> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return List.of();
+        }
+        List<CategoryNode> nodes = new ArrayList<>();
+        for (CategoryNodeView category : categories) {
+            nodes.add(new CategoryNode(category.name().name(), convertNodes(category.subCategories())));
+        }
+        return nodes;
+    }
+
+    private static Set<String> namesOf(Set<CategoryName> names) {
+        Set<String> plain = new HashSet<>();
+        for (CategoryName name : names) {
+            plain.add(name.name());
+        }
+        return plain;
     }
 
     /**

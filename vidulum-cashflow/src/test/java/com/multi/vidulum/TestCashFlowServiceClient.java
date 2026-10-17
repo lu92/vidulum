@@ -44,16 +44,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public boolean exists(String cashFlowId) {
-        try {
-            queryGateway.send(new GetCashFlowQuery(new CashFlowId(cashFlowId)));
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    @Override
     public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
         // Use forImport to allow category creation in SETUP mode (during import)
         commandGateway.send(CreateCategoryCommand.forImport(

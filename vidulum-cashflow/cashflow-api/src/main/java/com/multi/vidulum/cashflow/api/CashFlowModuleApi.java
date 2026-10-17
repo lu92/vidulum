@@ -35,4 +35,18 @@ public interface CashFlowModuleApi extends ModuleApi {
      * @throws CashFlowNotFoundException when no such cash flow exists
      */
     CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId);
+
+    /**
+     * Whether there is such a cash flow at all.
+     *
+     * <p>A second method for a question three call sites ask on its own: two of them configure
+     * mappings or accept AI suggestions and never look at the cash flow's contents, so making them
+     * fetch the skeleton to find out it exists would be asking for data in order to throw it away.
+     *
+     * <p>They used to ask the HTTP port, where {@code exists} was
+     * {@code try { getCashFlowInfo(); return true; } catch { return false; }} — a boolean
+     * manufactured from an exception at the cost of two requests and a payload carrying every
+     * transaction.
+     */
+    boolean exists(CashFlowId cashFlowId);
 }
