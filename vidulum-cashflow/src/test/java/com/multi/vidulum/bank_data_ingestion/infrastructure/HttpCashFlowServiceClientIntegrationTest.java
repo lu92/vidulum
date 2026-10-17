@@ -4,7 +4,6 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
-import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +25,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - HTTP error handling (404, 500)
  * - JSON serialization/deserialization
  * - Banking model propagation (IBAN, country code, bank code, etc.)
+ * <p>
+ * Category creation used to be tested here too. It moved with the method: creating a category is
+ * CashFlowModuleApi's now, so the HTTP path through it is covered by
+ * HttpCashFlowModuleApiIntegrationTest, against cashflow's own adapter rather than this port.
  * <p>
  * Uses existing test infrastructure (@SpringBootTest + Testcontainers) instead of WireMock
  * to test the real HTTP stack.
@@ -129,49 +132,6 @@ class HttpCashFlowServiceClientIntegrationTest extends CashFlowIntegrationTest {
         log.info("✅ Banking model propagated correctly through HTTP client");
     }
 
-
-    @Test
-    @DisplayName("Should create category via HTTP client")
-    void shouldCreateCategoryViaHttpClient() {
-        // Given: Create CashFlow
-        String cashFlowId = actor.createCashFlow(
-                userId,
-                uniqueCashFlowName(),
-                "GBP"
-        );
-
-        // When: Create category via HTTP client
-        httpClient.createCategory(cashFlowId, "Salary", null, Type.INFLOW);
-
-        // Then: Verify category was created
-        CashFlowInfo info = httpClient.getCashFlowInfo(cashFlowId);
-        assertThat(info.inflowCategories())
-                .extracting(CashFlowInfo.CategoryInfo::name)
-                .contains("Salary", "Uncategorized");
-
-        log.info("✅ Successfully created category via HTTP client");
-    }
-
-    @Test
-    @DisplayName("Should handle category already exists error")
-    void shouldHandleCategoryAlreadyExistsError() {
-        // Given: Create CashFlow with category
-        String cashFlowId = actor.createCashFlow(
-                userId,
-                uniqueCashFlowName(),
-                "GBP"
-        );
-        httpClient.createCategory(cashFlowId, "Salary", null, Type.INFLOW);
-
-        // When/Then: Try to create same category again
-        assertThatThrownBy(() ->
-                httpClient.createCategory(cashFlowId, "Salary", null, Type.INFLOW)
-        )
-                .isInstanceOf(HttpCashFlowServiceClient.CategoryAlreadyExistsException.class)
-                .hasMessageContaining("Salary");
-
-        log.info("✅ Correctly handled duplicate category error");
-    }
 
     @Test
     @DisplayName("Should get CashFlow info for SETUP mode with history")

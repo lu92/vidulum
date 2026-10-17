@@ -154,36 +154,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type) {
-        try {
-            CreateCategoryRequest request = new CreateCategoryRequest(
-                    parentCategoryName,
-                    categoryName,
-                    type
-            );
-
-            // Use isImport=true to allow category creation in SETUP mode during import
-            restClient.post()
-                    .uri("/cash-flow/cf={cashFlowId}/category?isImport=true", cashFlowId)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
-                    .retrieve()
-                    .toBodilessEntity();
-
-            log.debug("Created category [{}] in CashFlow [{}] via HTTP (import mode)", categoryName, cashFlowId);
-
-        } catch (HttpClientErrorException e) {
-            if (e.getStatusCode() == HttpStatus.CONFLICT ||
-                    e.getResponseBodyAsString().contains("already exists")) {
-                throw new CategoryAlreadyExistsException(categoryName);
-            }
-            log.error("HTTP error creating category [{}] in CashFlow [{}]: {}",
-                    categoryName, cashFlowId, e.getMessage());
-            throw new RuntimeException("Failed to create category: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request) {
         try {
             ImportHistoricalRequest httpRequest = new ImportHistoricalRequest(
@@ -254,12 +224,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
 
     // ============ Internal DTOs for HTTP communication ============
 
-    private record CreateCategoryRequest(
-            String parentCategoryName,
-            String category,
-            Type type
-    ) {
-    }
 
     private record ImportHistoricalRequest(
             String category,

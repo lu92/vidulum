@@ -1,16 +1,20 @@
 package com.multi.vidulum.cashflow.app;
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
 import lombok.AllArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,16 +26,25 @@ import java.util.List;
  * {@link CashFlowModuleApi}. That is also what {@code ModuleBoundariesArchTest} requires of every
  * contract implementation.
  *
- * <p>Reads through the repository rather than the query gateway, because the one thing it answers
- * is a projection of the aggregate's own state and there is no query handler for it. When
- * bank-data-ingestion leaves this artifact, a second implementation will answer the same contract
- * over HTTP and this one stays as the local path; neither of them changes the contract.
+ * <p><b>Reads through the repository, writes through the gateway</b>, and the split is not
+ * stylistic. The reads are projections of the aggregate's own state with no query handler behind
+ * them, so going through the query gateway would add a hop and nothing else. The write is a
+ * decision - which the aggregate makes, by checking the lifecycle phase and the existing names -
+ * so it goes through {@code CreateCategoryCommand} and the handler that already enforces it.
+ *
+ * <p>This is <b>the default implementation and the one every test exercises</b>, selected by
+ * {@code vidulum.cashflow.api.transport=in-process} (the value you get by not setting it).
+ * {@code HttpCashFlowModuleApi} answers the same contract over REST for the day
+ * bank-data-ingestion runs in another process; the two are mutually exclusive, and
+ * {@code BootstrapWiresEveryModuleTest} asserts only one is ever a bean.
  */
 @Component
+@ConditionalOnProperty(name = "vidulum.cashflow.api.transport", havingValue = "in-process", matchIfMissing = true)
 @AllArgsConstructor
 class CashFlowModuleApiImpl implements CashFlowModuleApi {
 
     private final DomainCashFlowRepository repository;
+    private final CommandGateway commandGateway;
 
     @Override
     public CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId) {
@@ -57,6 +70,22 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
         // and a full payload; a narrower repository method is worth adding when something needs it
         // in a loop.
         return repository.findById(cashFlowId).isPresent();
+    }
+
+    @Override
+    public void createCategory(CashFlowId cashFlowId,
+                               CategoryName categoryName,
+                               CategoryName parentCategoryName,
+                               Type type,
+                               boolean isImport) {
+        // Through the gateway rather than the repository: creating a category is a decision the
+        // aggregate makes - it checks the lifecycle phase, refuses a name an active category holds,
+        // and emits CategoryCreatedEvent. Reaching for the repository here would reimplement all
+        // three. Injecting CommandGateway costs nothing and closes no cycle, because since step 08
+        // the gateway is built with no dependencies and handlers register themselves afterwards;
+        // CqrsGatewayConfigurationTest is what keeps that true.
+        commandGateway.send(new CreateCategoryCommand(
+                cashFlowId, parentCategoryName, categoryName, type, isImport));
     }
 
     /**

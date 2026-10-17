@@ -8,7 +8,7 @@ import com.multi.vidulum.cashflow.app.commands.archive.CategoryNotFoundException
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CannotUnarchiveCategoryException;
-import com.multi.vidulum.cashflow.domain.CategoryAlreadyExistsException;
+import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashCategory;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowForecastStatement;
 import com.multi.vidulum.cashflow_forecast_processor.app.CashFlowMonthlyForecast;

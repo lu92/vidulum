@@ -411,3 +411,106 @@ współdzielonego stanu przy każdym odczycie nie ma obrony. `JsonContentTest` z
 przyszłość i jako sprawdzenie, że klasa z samym `@AllArgsConstructor` przechodzi round-trip — z
 javadokiem mówiącym wprost, że usterki nie odtworzył.
 
+
+## 13. Co zrobił krok 17: pierwszy **zapis** w kontrakcie i dwa transporty
+
+Pytanie, od którego się zaczęło, brzmiało: czy `createCategory` może trafić do kontraktu,
+a implementacja ma robić prawdziwy call HTTP sama do siebie, i czy wtedy da się odchudzić pozostałe
+implementacje. Odpowiedź rozdzieliła się na dwie — i druga połowa okazała się odwrotna niż
+propozycja.
+
+### Fakt, który przesądził: produkcja **już** wołała samą siebie po HTTP
+
+`CashFlowServiceClientConfig` miał `matchIfMissing = true` na `vidulum.cashflow-service.enabled`,
+a tej właściwości nikt nigdzie nie ustawiał. Czyli domyślną implementacją portu w działającej
+aplikacji był `HttpCashFlowServiceClient`, pukający na `http://localhost:8080` — **raz na każdą
+zakładaną kategorię**, w pętli, przez cały łańcuch filtrów, w jednym JVM-ie. Nikt tego nie
+zauważył, bo **każdy** test integracyjny ustawiał tę właściwość na `false` i podstawiał dubler.
+
+To jest dokładnie ta sytuacja, przed którą ostrzega reguła o dowodach negatywnych, tylko odwrócona:
+zielona suita nie dowodziła niczego o produkcyjnej ścieżce, bo produkcyjnej ścieżki nie dotykała.
+
+### Dlaczego „tylko HTTP" byłoby krokiem w tył
+
+| | |
+|---|---|
+| dwa konteksty testowe nie mają portu | `BankDataIngestionControllerTest` (32 testy, 13 odwołań do importu) i `AppIntegrationTest` (4 podklasy) to `WebEnvironment.MOCK` |
+| endpointy są `.authenticated()` | self-call niesie token tylko przez `RequestContextHolder`, a ten istnieje **wyłącznie na wątku żądania** — dziś import jest synchroniczny, więc działa; pierwszy scheduler albo listener Kafki dostaje 403 |
+| koszt | N okrążeń po loopbacku na import |
+| kształt | bean API modułu → kontroler tego samego modułu → gateway → agregat, trzy przeskoki do kodu obok |
+
+### Co zostało zrobione
+
+**Kontrakt dostał metodę z flagą w sygnaturze**, zgodnie z decyzją:
+
+```java
+void createCategory(CashFlowId cashFlowId, CategoryName categoryName,
+                    CategoryName parentCategoryName, Type type, boolean isImport);
+```
+
+`isImport` mówi, że kategoria powstaje w ramach importu historii — jedyna okoliczność, w której
+cashflow w fazie `SETUP` przyjmuje nową kategorię. Wcześniej nie było tego **jak wyrazić**: klient
+HTTP wpisywał `?isImport=true` na stałe w URL, więc jedyny wołający, który importem nie był
+(`accept-ai`), dostawał uprawnienia importu po cichu, a żaden call site nie mówił, czym jest.
+
+**Dwie implementacje, wzajemnie wyłączne**, wybierane jedną właściwością:
+
+```
+vidulum.cashflow.api.transport: in-process   # domyślnie — CashFlowModuleApiImpl
+                                http          # HttpCashFlowModuleApi
+```
+
+`CashFlowModuleApiImpl` czyta przez repozytorium, **pisze przez gateway** — bo zakładanie kategorii
+to decyzja agregatu (faza życia, zajęte nazwy, `CategoryCreatedEvent`), a sięganie po repozytorium
+przepisałoby wszystkie trzy reguły. Wstrzyknięcie `CommandGateway` nie domyka cyklu, bo od kroku 08
+gateway powstaje bez zależności, a handlery rejestrują się po fakcie.
+
+`HttpCashFlowModuleApi` **mieszka w `vidulum-cashflow`, nie u konsumenta** — i to jest pointa
+zmiany. Wie, jakie URL-e istnieją, że kategoria przychodzi jako `{"categoryName":{"name":"…"}}`
+i że pole w żądaniu nazywa się `category`, a nie `categoryName`. Ta wiedza należy do właściciela
+endpointów. Poprzedni układ był odwrotny: konsument deklarował port, ręcznie pisał rekordy żądań
+i odpowiedzi cudzego API i wbijał flagę w string URL-a — więc producent nie mógł zmienić własnego
+payloadu, nie psując konsumenta, którego nie widzi.
+
+### Wyjątek: ta sama duplikacja, co przy „nie ma takiego cashflow"
+
+| przed | po |
+|---|---|
+| `cashflow/domain/CategoryAlreadyExistsException` — `BusinessException`, `CATEGORY_ALREADY_EXISTS`, 409 | **`cashflow/api/error/CategoryAlreadyExistsException`** — jeden, w kontrakcie |
+| `CashFlowServiceClient.CategoryAlreadyExistsException` — `RuntimeException` **bez `ErrorCode`**, łapany i tłumaczony w 4 miejscach | usunięty |
+
+Adapter HTTP odtwarza go z **kodu statusu**, nie z treści — stary port robił
+`getResponseBodyAsString().contains("already exists")`.
+
+### Czego odchudzenie dotknęło
+
+| plik | co się stało |
+|---|---|
+| `HttpTestCashFlowServiceClient` | **usunięty cały** — implementował port i nie był instancjonowany przez nikogo (martwy kod) |
+| `TestCashFlowServiceClient` ×2 (cashflow, app) | metoda usunięta; **29 klas testowych przestało ćwiczyć atrapę** i zaczęło kod produkcyjny |
+| `HttpCashFlowServiceClient` | metoda i rekord `CreateCategoryRequest` usunięte |
+| `AcceptAiSuggestionsCommandHandler` | **odłączony od portu w całości** — nie wstrzykuje go już wcale |
+| `CashFlowServiceClient` | 4 metody → 3; javadoc mówi, co zostało i dlaczego dwie z trzech są trudne |
+
+### Granica, w której transporty **nie** są identyczne — i test, który to mówi
+
+Kontrakt deklaruje dla `createCategory` dwie porażki i obie przeżywają drut. Trzecia nie:
+`OperationNotAllowedInSetupModeException` mieszka w domenie cashflow, nie w kontrakcie, więc przez
+HTTP przychodzi jako goły `HttpClientErrorException.BadRequest`.
+`shouldHonourIsImportFlagOverHttp` asertuje ten przeciek **po nazwie**, zamiast schować go za
+`isInstanceOf(RuntimeException.class)` — tak, żeby luka była widoczna i żeby test zaświecił się na
+czerwono w dniu, w którym ten wyjątek przeniesie się do `api/error` i mapowanie trzeba będzie dodać.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `CashFlowSkeletonComponentTest` | 6 → **9** (trzy testy zapisu: flaga przechodzi, `false` zostaje `false`, zapis idzie przez gateway a nie repozytorium) |
+| `HttpCashFlowModuleApiIntegrationTest` (nowy) | **8**, cały kontrakt przez prawdziwe HTTP z prawdziwym JWT |
+| `BankDataIngestionControllerTest` | **32** — bez dublera, pierwszy raz na kodzie produkcyjnym |
+| `HttpCashFlowServiceClientIntegrationTest` | 6 → 4 (dwa testy kategorii poszły za metodą) |
+| `BootstrapWiresEveryModuleTest` | dodana asercja, że przy nieustawionej właściwości beanem jest implementacja **nie-HTTP** |
+
+**Dowód negatywny.** Flaga zahardcodowana na `true` w implementacji in-process — dokładnie to, co
+robił stary klient HTTP — i `createCategoryWithoutTheImportFlagSendsAUserInitiatedCommand` upada
+(`Expecting value to be false but was true`). Test mierzy to, co twierdzi, że mierzy.
