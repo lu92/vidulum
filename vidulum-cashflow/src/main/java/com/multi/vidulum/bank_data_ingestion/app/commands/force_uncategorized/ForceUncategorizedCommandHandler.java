@@ -6,7 +6,9 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ public class ForceUncategorizedCommandHandler
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final Clock clock;
 
     @Override
@@ -105,32 +108,32 @@ public class ForceUncategorizedCommandHandler
             // Create Uncategorized category for both types if needed
             if (hasOutflowPending) {
                 try {
-                    cashFlowServiceClient.createCategory(
-                            command.cashFlowId().id(),
-                            UNCATEGORIZED_CATEGORY,
-                            null, // no parent
-                            Type.OUTFLOW
-                    );
+                    cashFlowApi.createCategory(
+                            command.cashFlowId(),
+                            new CategoryName(UNCATEGORIZED_CATEGORY),
+                            null, // top-level
+                            Type.OUTFLOW,
+                            true);
                     categoryCreated = true;
                     log.info("Created 'Uncategorized' OUTFLOW category for CashFlow [{}]",
                             command.cashFlowId().id());
-                } catch (CashFlowServiceClient.CategoryAlreadyExistsException e) {
+                } catch (CategoryAlreadyExistsException e) {
                     // Race condition - category already exists
                     log.debug("Uncategorized OUTFLOW category already exists");
                 }
             }
             if (hasInflowPending) {
                 try {
-                    cashFlowServiceClient.createCategory(
-                            command.cashFlowId().id(),
-                            UNCATEGORIZED_CATEGORY,
-                            null, // no parent
-                            Type.INFLOW
-                    );
+                    cashFlowApi.createCategory(
+                            command.cashFlowId(),
+                            new CategoryName(UNCATEGORIZED_CATEGORY),
+                            null, // top-level
+                            Type.INFLOW,
+                            true);
                     categoryCreated = true;
                     log.info("Created 'Uncategorized' INFLOW category for CashFlow [{}]",
                             command.cashFlowId().id());
-                } catch (CashFlowServiceClient.CategoryAlreadyExistsException e) {
+                } catch (CategoryAlreadyExistsException e) {
                     // Race condition - category already exists
                     log.debug("Uncategorized INFLOW category already exists");
                 }

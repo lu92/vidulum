@@ -5,14 +5,20 @@ import com.multi.vidulum.cashflow.api.Type;
 import java.time.LocalDate;
 
 /**
- * Client interface for communicating with CashFlow service.
+ * What is left of bank-data-ingestion's own view of cashflow.
  *
- * This abstraction allows bank-data-ingestion module to be decoupled from the CashFlow domain,
- * enabling future migration to a microservice architecture where this interface would be
- * implemented by an HTTP client instead of direct in-process calls.
+ * <p><b>This interface is shrinking on purpose, and what it loses goes to
+ * {@link com.multi.vidulum.cashflow.api.CashFlowModuleApi}.</b> The difference between the two is
+ * not the transport - it is who decides the shape. A port declared here means <i>this module</i>
+ * wrote down what cashflow's API looks like, so cashflow cannot change its own payload without
+ * breaking a consumer it cannot see. The contract is the other way round: cashflow states what may
+ * be asked of it and ships both an in-process and an HTTP implementation.
  *
- * Current implementation: LocalCashFlowServiceClient (in-process, uses repositories and CommandGateway)
- * Future implementation: HttpCashFlowServiceClient (HTTP calls to cashflow-service)
+ * <p>{@code exists} and {@code createCategory} have already moved. The three methods below are
+ * waiting on the same treatment, and two of them are harder than they look:
+ * {@code getCashFlowInfo} merges cashflow's state with the forecast module's month statuses behind
+ * one signature, and {@code importHistoricalTransaction} needs an idempotency key cashflow does
+ * not store yet. See {@code docs/features-backlog/2026-10-16-cashflow-module-boundaries.md}.
  */
 public interface CashFlowServiceClient {
 
@@ -25,17 +31,6 @@ public interface CashFlowServiceClient {
      */
     CashFlowInfo getCashFlowInfo(String cashFlowId);
 
-
-    /**
-     * Create a new category in CashFlow.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param categoryName name of the new category
-     * @param parentCategoryName parent category name (null for top-level)
-     * @param type INFLOW or OUTFLOW
-     * @throws CategoryAlreadyExistsException if category already exists
-     */
-    void createCategory(String cashFlowId, String categoryName, String parentCategoryName, Type type);
 
     /**
      * Import a historical transaction into CashFlow.
@@ -88,21 +83,11 @@ public interface CashFlowServiceClient {
     // answers 404. The version that used to live here extended RuntimeException with no code, so
     // every call site had to catch it and translate - and any site that forgot answered 500.
 
-    /**
-     * Exception thrown when category already exists.
-     */
-    class CategoryAlreadyExistsException extends RuntimeException {
-        private final String categoryName;
-
-        public CategoryAlreadyExistsException(String categoryName) {
-            super("Category already exists: " + categoryName);
-            this.categoryName = categoryName;
-        }
-
-        public String getCategoryName() {
-            return categoryName;
-        }
-    }
+    // "Category already exists" is not declared here any more either, for the same reason as
+    // "no such cash flow": it is cashflow's failure, so it is CategoryAlreadyExistsException from
+    // cashflow-api, carrying ErrorCode.CATEGORY_ALREADY_EXISTS and therefore answering 409. And
+    // creating a category is no longer this port's business at all - CashFlowModuleApi.createCategory
+    // is, which is why the method above is gone.
 
     /**
      * Exception thrown when import operation fails.

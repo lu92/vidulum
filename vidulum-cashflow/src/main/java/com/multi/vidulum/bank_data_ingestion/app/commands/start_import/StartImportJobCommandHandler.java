@@ -7,7 +7,10 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -39,6 +42,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionEventEmitter eventEmitter;
     private final BankDataIngestionConfig config;
     private final Clock clock;
@@ -275,12 +279,12 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         for (CategoryToCreate cat : categoriesToCreate) {
             try {
-                cashFlowServiceClient.createCategory(
-                        importJob.cashFlowId().id(),
-                        cat.name(),
-                        cat.parent(),
-                        cat.type()
-                );
+                cashFlowApi.createCategory(
+                        importJob.cashFlowId(),
+                        new CategoryName(cat.name()),
+                        cat.parent() == null ? null : new CategoryName(cat.parent()),
+                        cat.type(),
+                        true);
 
                 importJob = importJob.recordCreatedCategory(cat.name());
                 processed++;
@@ -305,7 +309,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
                 log.debug("Created category [{}] ({}/{})", cat.name(), processed, categoriesToCreate.size());
 
-            } catch (CashFlowServiceClient.CategoryAlreadyExistsException e) {
+            } catch (CategoryAlreadyExistsException e) {
                 // Category already exists - not an error, just skip
                 log.debug("Category [{}] already exists, skipping", cat.name());
                 processed++;

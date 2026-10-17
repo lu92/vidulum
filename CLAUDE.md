@@ -144,7 +144,8 @@ vidulum/
 │   └── shared/                  #   DDD base classes, DataCleaner interface
 │
 ├── vidulum-cashflow/            # CashFlow domain module
-│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists), Type,
+│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
+│                                #   createCategory), Type,
 │                                #   view/, error/ - what other modules may ask of cashflow
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
@@ -238,6 +239,29 @@ Collecting `List<CommandHandler>` inside the gateway's own bean method instead c
 gateway → handler → module contract → implementation → gateway — which used to be papered over with
 `@Lazy` in eight places. `CqrsGatewayConfigurationTest` pins this, including a negative test that
 asserts the old arrangement fails to start, so **a new `*ModuleApiImpl` needs no `@Lazy`**.
+
+### A module contract may have two transports — in-process is always the default
+
+`CashFlowModuleApi` has both: `CashFlowModuleApiImpl` (gateway and repository) and
+`HttpCashFlowModuleApi` (REST against the same endpoints a browser calls), chosen by
+**`vidulum.cashflow.api.transport`** — `in-process` when unset. `BootstrapWiresEveryModuleTest`
+asserts exactly one bean exists **and that it is not the HTTP one**.
+
+Three rules, each learned from a defect rather than invented:
+
+- **`matchIfMissing = true` on an HTTP implementation is a trap.** `bank_data_ingestion`'s port had
+  it on `vidulum.cashflow-service.enabled`, and nothing set that property — so the running
+  application created categories by calling its own REST endpoints over loopback, once per
+  category, inside one JVM. Every integration test set it to `false` and substituted a double,
+  which is exactly why nobody noticed. **Default to the local path; opt in to HTTP.**
+- **The HTTP adapter ships with the module that owns the endpoints**, not with the consumer. It
+  knows which URLs exist and that a field is called `category` rather than `categoryName`; that
+  knowledge belongs to the producer. The arrangement this replaced had a consumer hand-rolling
+  records for somebody else's API.
+- **A test double that stands in for a contract is a signal, not a tool.** Three implementations of
+  `createCategory` existed: one HTTP, one dead, and one gateway-based double that 29 test classes
+  used. The double was doing what the in-process implementation should have been doing — so making
+  the real one available deleted the double and moved those 29 classes onto production code.
 
 ### Domain Aggregates
 
@@ -601,6 +625,13 @@ one was the dangerous shape: a `RuntimeException` with no `ErrorCode`, which `Er
 not map, so every call site had to translate it and two that forgot answered **500 instead of 404**.
 If you add a failure that another module can see, put it in that module's `*-api` `error/` package
 and give it an `ErrorCode`.
+
+**The same shape appeared twice, so treat the pattern as the warning sign.** "Category already
+exists" was also two classes — a proper `BusinessException` in cashflow's domain and a nested
+`RuntimeException` in the same port, caught and translated at four call sites. Only
+`cashflow/api/error/CategoryAlreadyExistsException` remains. A nested exception class inside a
+client port is almost always this bug: it means a consumer invented a name for the producer's
+failure, so the `ErrorCode` the producer already had never reaches anyone.
 
 ### Key Classes
 - `ErrorHttpHandler` - `security/config/ErrorHttpHandler.java` - central exception handler

@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingResult;
@@ -11,6 +10,7 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,6 @@ import java.util.List;
 public class AcceptAiSuggestionsCommandHandler
         implements CommandHandler<AcceptAiSuggestionsCommand, AcceptAiSuggestionsResult> {
 
-    private final CashFlowServiceClient cashFlowServiceClient;
     private final CashFlowModuleApi cashFlowApi;
     private final PatternMappingRepository patternMappingRepository;
     private final StagedTransactionRepository stagedTransactionRepository;
@@ -69,15 +68,15 @@ public class AcceptAiSuggestionsCommandHandler
         if (command.acceptedCategories() != null && !command.acceptedCategories().isEmpty()) {
             for (AcceptAiSuggestionsCommand.CategoryToCreate cat : command.acceptedCategories()) {
                 try {
-                    cashFlowServiceClient.createCategory(
-                            command.cashFlowId().id(),
-                            cat.name(),
-                            cat.parentName(),
-                            cat.type()
-                    );
+                    cashFlowApi.createCategory(
+                            command.cashFlowId(),
+                            new CategoryName(cat.name()),
+                            cat.parentName() == null ? null : new CategoryName(cat.parentName()),
+                            cat.type(),
+                            true);
                     categoriesCreated++;
                     log.debug("Created category: {} (parent: {})", cat.name(), cat.parentName());
-                } catch (CashFlowServiceClient.CategoryAlreadyExistsException e) {
+                } catch (CategoryAlreadyExistsException e) {
                     log.debug("Category already exists: {}", cat.name());
                     // Not an error - category may have been created by user or previous import
                 } catch (Exception e) {

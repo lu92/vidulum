@@ -2,6 +2,7 @@ package com.multi.vidulum.cashflow.app.commands.comment.create;
 
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.JsonContent;

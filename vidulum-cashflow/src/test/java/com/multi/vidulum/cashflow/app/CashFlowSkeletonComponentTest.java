@@ -1,5 +1,6 @@
 package com.multi.vidulum.cashflow.app;
 
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
@@ -9,7 +10,10 @@ import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
+import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
@@ -128,17 +132,65 @@ class CashFlowSkeletonComponentTest {
 
     @Test
     void refusesWhenThereIsNoSuchCashFlow() {
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null));
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), new CommandGateway());
 
         assertThatThrownBy(() -> api.skeletonOf(CASH_FLOW_ID))
                 .isInstanceOf(CashFlowNotFoundException.class)
                 .hasMessageContaining("CF10000001");
     }
 
+    @Test
+    void createCategoryPassesTheImportFlagStraightThroughToTheAggregate() {
+        CapturingHandler handler = new CapturingHandler();
+        CommandGateway gateway = new CommandGateway();
+        gateway.registerCommandHandler(handler);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+
+        api.createCategory(CASH_FLOW_ID, new CategoryName("Bonus"), new CategoryName("Salary"),
+                Type.INFLOW, true);
+
+        assertThat(handler.received)
+                .as("one command, carrying exactly what the caller said - the flag included")
+                .usingRecursiveComparison()
+                .isEqualTo(new CreateCategoryCommand(
+                        CASH_FLOW_ID, new CategoryName("Salary"), new CategoryName("Bonus"),
+                        Type.INFLOW, true));
+    }
+
+    @Test
+    void createCategoryWithoutTheImportFlagSendsAUserInitiatedCommand() {
+        CapturingHandler handler = new CapturingHandler();
+        CommandGateway gateway = new CommandGateway();
+        gateway.registerCommandHandler(handler);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+
+        api.createCategory(CASH_FLOW_ID, new CategoryName("Salary"), null, Type.INFLOW, false);
+
+        assertThat(handler.received.isImportOperation())
+                .as("false must reach the handler as false - it is what makes a SETUP cash flow refuse")
+                .isFalse();
+        assertThat(handler.received.parentCategoryName())
+                .as("null parent means top-level, the same encoding CategoryNodeView.isRoot() uses")
+                .isNull();
+    }
+
+    @Test
+    void createCategoryGoesThroughTheAggregateRatherThanTheRepository() {
+        CommandGateway gateway = new CommandGateway();
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+
+        assertThatThrownBy(() -> api.createCategory(
+                CASH_FLOW_ID, new CategoryName("Salary"), null, Type.INFLOW, true))
+                .as("no handler registered, so the write had nowhere to go - which is the point: "
+                        + "it is not reaching for the repository and reimplementing the rules")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No command handler registered");
+    }
+
     // ---------------------------------------------------------------- fixture
 
     private static CashFlowSkeletonView skeletonOf(CashFlow cashFlow) {
-        return new CashFlowModuleApiImpl(new OnlyFindById(cashFlow)).skeletonOf(CASH_FLOW_ID);
+        return new CashFlowModuleApiImpl(new OnlyFindById(cashFlow), new CommandGateway()).skeletonOf(CASH_FLOW_ID);
     }
 
     private static CashFlow cashFlow(CashFlow.CashFlowStatus status,
@@ -214,6 +266,22 @@ class CashFlowSkeletonComponentTest {
                 .isModifiable(true)
                 .archived(true)
                 .build();
+    }
+
+    /**
+     * A named class, not a lambda: {@code CommandGateway} finds the handler's command type by
+     * reflecting over {@code handle}'s declared parameter, and a lambda's is erased to
+     * {@code Command}.
+     */
+    private static final class CapturingHandler implements CommandHandler<CreateCategoryCommand, Void> {
+
+        private CreateCategoryCommand received;
+
+        @Override
+        public Void handle(CreateCategoryCommand command) {
+            this.received = command;
+            return null;
+        }
     }
 
     /**

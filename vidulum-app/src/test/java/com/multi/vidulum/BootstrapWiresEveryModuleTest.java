@@ -44,8 +44,15 @@ class BootstrapWiresEveryModuleTest extends AppIntegrationTest {
         assertThat(context.getBeansOfType(QuotationApi.class)).hasSize(1);
         assertThat(context.getBeansOfType(ExchangeConnectionApi.class)).hasSize(1);
         assertThat(context.getBeansOfType(CashFlowModuleApi.class))
-                .as("one implementation, so that an HTTP adapter arriving later cannot run alongside the local one")
+                .as("one implementation, so that the HTTP adapter cannot run alongside the local one")
                 .hasSize(1);
+        assertThat(context.getBeansOfType(CashFlowModuleApi.class).values())
+                .as("and with the transport property unset it is the in-process one - a monolith "
+                        + "must not reach its own aggregate over loopback HTTP")
+                .singleElement()
+                .isNot(new org.assertj.core.api.Condition<>(
+                        api -> api.getClass().getSimpleName().startsWith("Http"),
+                        "an HTTP adapter"));
     }
 
     /**
