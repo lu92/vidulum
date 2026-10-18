@@ -154,52 +154,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     ) {
     }
 
-    @Override
-    public RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories) {
-        try {
-            // Get state before rollback
-            CashFlowInfo infoBefore = getCashFlowInfo(cashFlowId);
-            int transactionsBefore = infoBefore.cashChangesCount();
-            int categoriesBefore = infoBefore.countCategories();
-
-            // Execute rollback
-            RollbackRequest request = new RollbackRequest(deleteCategories);
-
-            restClient.method(org.springframework.http.HttpMethod.DELETE)
-                    .uri("/cash-flow/cf={cashFlowId}/import", cashFlowId)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
-                    .retrieve()
-                    .toBodilessEntity();
-
-            // Get state after rollback
-            CashFlowInfo infoAfter = getCashFlowInfo(cashFlowId);
-
-            int transactionsDeleted = transactionsBefore - infoAfter.cashChangesCount();
-            int categoriesDeleted = deleteCategories ? (categoriesBefore - infoAfter.countCategories()) : 0;
-
-            log.info("Rolled back import for CashFlow [{}] via HTTP. Deleted {} transactions, {} categories",
-                    cashFlowId, transactionsDeleted, categoriesDeleted);
-
-            return new RollbackResult(transactionsDeleted, categoriesDeleted, infoAfter);
-
-        } catch (HttpClientErrorException.NotFound e) {
-            throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP error rolling back import for CashFlow [{}]: {}", cashFlowId, e.getMessage());
-            throw new RuntimeException("Failed to rollback import: " + e.getMessage(), e);
-        }
-    }
-
-    // ============ Internal DTOs for HTTP communication ============
-
-
-
-
-    private record RollbackRequest(
-            boolean deleteCategories
-    ) {
-    }
 
     // Response DTOs matching CashFlowRestController responses
 

@@ -258,6 +258,20 @@ cash changes in their own collection), and no protection against concurrent writ
 appears nowhere in this project and a save replaces the whole document, so two parallel operations
 on one cash flow silently lose one (F35).
 
+### A handler that computes a number must return it, not just log it
+
+`RollbackImportCommandHandler` counted the deleted transactions and categories, put them in the
+event, logged them — and returned the **post-rollback snapshot**, where `cashChanges` is empty, so
+the numbers were unrecoverable by the time anyone could read them. Three consumers each invented an
+answer: the endpoint returned a **hardcoded `0`** (so the frontend was told nothing had been
+deleted), the HTTP client **subtracted across five requests** (racy), and the test double **skipped
+the rollback entirely**, returning the count of transactions still present plus
+`deleteCategories ? 0 : 0`. One of its tests therefore passed for the wrong reason, and another had
+the double's bug baked into its expected value.
+
+**If a handler derives a number the caller needs, the return type is where it goes.** A log line is
+not an API, and a snapshot taken after the fact cannot describe what changed.
+
 ### One mapping path per field, or the field will exist in only one of them
 
 Adding `bankTransactionId` broke idempotency silently at first: `CashChange.from(snapshot)` was

@@ -123,4 +123,21 @@ public interface CashFlowModuleApi extends ModuleApi {
      * @throws ImportDateInFutureException               when the date has not happened yet
      */
     CashChangeId importHistorical(CashFlowId cashFlowId, HistoricalCashChange change);
+
+    /**
+     * Discards everything an import put into a cash flow, and answers with how much that was.
+     *
+     * <p>Allowed only while the cash flow is in
+     * {@link CashFlowSkeletonView.LifecyclePhase#SETUP} - once the owner has attested the import,
+     * the history is theirs and this refuses. {@code Uncategorized} always survives; everything
+     * else goes only if {@code deleteCategories} says so, which a caller decides from whether the
+     * import created any categories in the first place.
+     *
+     * <p><b>The return value is the point of this method existing.</b> See {@link RollbackResult}
+     * for what the three callers were doing to obtain those two numbers before - one of them
+     * fabricating a zero, one subtracting across five requests, one skipping the work entirely.
+     *
+     * @throws CashFlowNotFoundException when no such cash flow exists
+     */
+    RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
 }

@@ -40,16 +40,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
         return mapToCashFlowInfo(snapshot);
     }
 
-    @Override
-    public RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories) {
-        // For test purposes, we get the CashFlow info
-        CashFlowSnapshot snapshot = queryGateway.send(new GetCashFlowQuery(new CashFlowId(cashFlowId)));
-        int transactionsCount = snapshot.cashChanges().size();
-        CashFlowInfo infoAfter = mapToCashFlowInfo(snapshot);
-
-        return new RollbackResult(transactionsCount, deleteCategories ? 0 : 0, infoAfter);
-    }
-
     private CashFlowInfo mapToCashFlowInfo(CashFlowSnapshot snapshot) {
         List<CashFlowInfo.CategoryInfo> inflowCategories = mapCategories(snapshot.inflowCategories(), Type.INFLOW);
         List<CashFlowInfo.CategoryInfo> outflowCategories = mapCategories(snapshot.outflowCategories(), Type.OUTFLOW);

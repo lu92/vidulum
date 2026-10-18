@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
@@ -15,6 +16,7 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
@@ -140,6 +142,31 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
         }
     }
 
+    @Override
+    public RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories) {
+        try {
+            // Reads the response, which is the difference that matters here. The port this replaces
+            // called toBodilessEntity() and then derived the counts by subtracting two extra reads
+            // from two more - five requests for two integers the server had already computed.
+            RollbackResponse response = restClient.method(HttpMethod.DELETE)
+                    .uri("/cash-flow/cf={cashFlowId}/import", cashFlowId.id())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new RollbackRequest(deleteCategories))
+                    .retrieve()
+                    .body(RollbackResponse.class);
+
+            if (response == null) {
+                throw new IllegalStateException(
+                        "Rollback of cash flow [%s] answered with no body".formatted(cashFlowId.id()));
+            }
+            return new RollbackResult(
+                    response.deletedTransactionsCount(), response.deletedCategoriesCount());
+
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new CashFlowNotFoundException(cashFlowId);
+        }
+    }
+
     /**
      * {@code GET /cash-flow/cf={id}}, with a missing cash flow turned into an empty result rather
      * than an exception, because {@link #exists} is one of the two callers and would otherwise be
@@ -232,6 +259,13 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             boolean archived,
             List<CategoryResponse> subCategories
     ) {
+    }
+
+    private record RollbackRequest(boolean deleteCategories) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RollbackResponse(int deletedTransactionsCount, int deletedCategoriesCount) {
     }
 
     /**

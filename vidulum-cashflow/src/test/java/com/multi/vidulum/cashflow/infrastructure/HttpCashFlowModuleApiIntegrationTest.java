@@ -3,6 +3,7 @@ package com.multi.vidulum.cashflow.infrastructure;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
@@ -83,6 +84,10 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
 
         actor = new CashFlowHttpActor(restTemplate, port);
         actor.setJwtToken(accessToken);
+    }
+
+    private Map<CashChangeId, CashChangeSnapshot> cashChangesOf(CashFlowId cashFlowId) {
+        return domainCashFlowRepository.findById(cashFlowId).orElseThrow().getSnapshot().cashChanges();
     }
 
     private String uniqueName() {
@@ -344,6 +349,71 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
                 new CategoryName("Groceries"), "Tesco", "too recent",
                 Money.of(10.0, "GBP"), Type.OUTFLOW, notHistorical, notHistorical, false, "NEST-X")))
                 .isInstanceOf(HttpClientErrorException.BadRequest.class);
+    }
+
+    @Test
+    @DisplayName("rollbackImport over HTTP empties the cash flow and reports what it removed")
+    void shouldRollbackOverHttpAndReportRealCounts() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+        httpApi.createCategory(cashFlowId, new CategoryName("Salary"), null, Type.INFLOW, true);
+
+        ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
+        for (int i = 1; i <= 3; i++) {
+            httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                    new CategoryName("Groceries"), "Tesco " + i, "weekly shop",
+                    Money.of(50.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-ROLLBACK-" + i));
+        }
+        assertThat(cashChangesOf(cashFlowId)).hasSize(3);
+
+        RollbackResult result = httpApi.rollbackImport(cashFlowId, true);
+
+        // The numbers the aggregate computed, read off the response. Before this method existed the
+        // endpoint answered a hardcoded 0 for both, and the only way to learn the truth was to read
+        // the state before and after and subtract.
+        assertThat(result.transactionsDeleted()).isEqualTo(3);
+        assertThat(result.categoriesDeleted())
+                .as("the two custom categories; Uncategorized is never removed")
+                .isEqualTo(2);
+
+        assertThat(cashChangesOf(cashFlowId))
+                .as("the cash flow is actually empty - the assertion nobody was making")
+                .isEmpty();
+        assertThat(httpApi.skeletonOf(cashFlowId).allCategoryNames())
+                .containsExactly(new CategoryName("Uncategorized"));
+        assertThat(httpApi.skeletonOf(cashFlowId).isInSetup())
+                .as("still in SETUP, ready for another attempt")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("rollbackImport keeps the categories when asked to")
+    void shouldRollbackWithoutTouchingCategories() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+        ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
+        httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "weekly shop",
+                Money.of(50.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-KEEP-CATS"));
+
+        RollbackResult result = httpApi.rollbackImport(cashFlowId, false);
+
+        assertThat(result.transactionsDeleted()).isEqualTo(1);
+        assertThat(result.categoriesDeleted())
+                .as("zero because none were asked for - not zero because nobody counted")
+                .isZero();
+        assertThat(cashChangesOf(cashFlowId)).isEmpty();
+        assertThat(httpApi.skeletonOf(cashFlowId).outflowCategoryNames())
+                .contains(new CategoryName("Groceries"));
+    }
+
+    @Test
+    @DisplayName("rollbackImport raises the contract's failure for an unknown cash flow")
+    void shouldRaiseNotFoundWhenRollingBackOverHttp() {
+        assertThatThrownBy(() -> httpApi.rollbackImport(CashFlowId.of("CF99999999"), false))
+                .isInstanceOf(CashFlowNotFoundException.class);
     }
 
     @Test

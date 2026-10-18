@@ -10,6 +10,7 @@ import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashCha
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
 import com.multi.vidulum.cashflow.app.commands.delete.DeleteExpectedCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
+import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthCommand;
 import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
 import com.multi.vidulum.cashflow.app.commands.budgeting.remove.RemoveBudgetingCommand;
@@ -186,21 +187,21 @@ public class CashFlowRestController {
 
         boolean deleteCategories = request != null && request.isDeleteCategories();
 
-        CashFlowSnapshot snapshot = commandGateway.send(
+        RollbackImportResult result = commandGateway.send(
                 new RollbackImportCommand(
                         CashFlowId.of(cashFlowId),
                         deleteCategories
                 )
         );
 
-        // Get counts from before rollback for response (they're stored in event)
-        // For simplicity, we return the current state after rollback
+        // Real counts. This used to answer 0 for both, with a comment saying the actual numbers
+        // were only logged - so anything reading this endpoint was told nothing had been deleted.
         return CashFlowDto.RollbackImportResponseJson.builder()
-                .cashFlowId(snapshot.cashFlowId().id())
-                .deletedTransactionsCount(0) // Actual count is logged, response shows post-rollback state
-                .deletedCategoriesCount(0)
+                .cashFlowId(result.cashFlowId().id())
+                .deletedTransactionsCount(result.transactionsDeleted())
+                .deletedCategoriesCount(result.categoriesDeleted())
                 .categoriesDeleted(deleteCategories)
-                .status(snapshot.status())
+                .status(result.status())
                 .build();
     }
 

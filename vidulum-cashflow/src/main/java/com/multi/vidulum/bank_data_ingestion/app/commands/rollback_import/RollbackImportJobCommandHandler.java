@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.rollback_import;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.ImportJobRolledBackEvent;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
@@ -24,7 +24,7 @@ import java.time.ZonedDateTime;
 public class RollbackImportJobCommandHandler implements CommandHandler<RollbackImportJobCommand, RollbackImportJobResult> {
 
     private final ImportJobRepository importJobRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionEventEmitter eventEmitter;
     private final Clock clock;
 
@@ -51,20 +51,20 @@ public class RollbackImportJobCommandHandler implements CommandHandler<RollbackI
             throw new RollbackNotAllowedException(command.jobId(), "Rollback deadline has passed");
         }
 
-        // Check CashFlow status
-        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
-        // carries an ErrorCode and answers 404 on its own.
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
-
-        if (!cashFlowInfo.isInSetupMode()) {
+        // The skeleton, not getCashFlowInfo: this handler wanted one boolean and was paying two
+        // HTTP requests and a payload carrying every transaction for it. No try/catch either - the
+        // contract throws CashFlowNotFoundException, which carries an ErrorCode and answers 404.
+        if (!cashFlowApi.skeletonOf(command.cashFlowId()).isInSetup()) {
             throw new RollbackNotAllowedException(command.jobId(),
                     "CashFlow is not in SETUP mode. Rollback is not possible after attestation.");
         }
 
         // Execute rollback - delete all transactions and optionally categories
         boolean deleteCategories = !job.result().categoriesCreated().isEmpty();
-        CashFlowServiceClient.RollbackResult rollbackResult =
-                cashFlowServiceClient.rollbackImport(command.cashFlowId().id(), deleteCategories);
+        // One request, and the counts are the server's own. The port this replaces read the state,
+        // deleted, read it again and subtracted - five requests, and wrong if anything changed in
+        // between.
+        RollbackResult rollbackResult = cashFlowApi.rollbackImport(command.cashFlowId(), deleteCategories);
 
         int transactionsDeleted = rollbackResult.transactionsDeleted();
         int categoriesDeleted = rollbackResult.categoriesDeleted();
