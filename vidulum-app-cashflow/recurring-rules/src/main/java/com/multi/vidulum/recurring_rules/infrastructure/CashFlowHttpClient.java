@@ -44,69 +44,20 @@ public class CashFlowHttpClient {
         return cashFlowServiceUrl;
     }
 
-    /**
-     * Validates that the CashFlow exists and returns its categories.
-     */
-    public CashFlowInfo getCashFlowInfo(CashFlowId cashFlowId, String authToken)
-            throws CashFlowNotFoundException, CashFlowCommunicationException {
-        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id();
-
-        try {
-            HttpHeaders headers = createHeaders(authToken);
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
-                    Map.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-                throw new CashFlowNotFoundException(cashFlowId);
-            }
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "get cash flow info", "Empty response body");
-            }
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> inflowCategories = (List<Map<String, Object>>) body.get("inflowCategories");
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> outflowCategories = (List<Map<String, Object>>) body.get("outflowCategories");
-
-            List<CategoryName> inflows = inflowCategories != null
-                    ? extractAllCategories(inflowCategories)
-                    : List.of();
-
-            List<CategoryName> outflows = outflowCategories != null
-                    ? extractAllCategories(outflowCategories)
-                    : List.of();
-
-            return new CashFlowInfo(cashFlowId, inflows, outflows);
-        } catch (HttpClientErrorException.NotFound e) {
-            throw new CashFlowNotFoundException(cashFlowId);
-        } catch (CashFlowNotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "get cash flow info", e);
-        }
-    }
-
-    /**
-     * Validates that a category exists in the CashFlow.
-     */
-    public void validateCategoryExists(CashFlowId cashFlowId, CategoryName categoryName, boolean isInflow, String authToken)
-            throws CashFlowNotFoundException, CategoryNotFoundException, CashFlowCommunicationException {
-        CashFlowInfo info = getCashFlowInfo(cashFlowId, authToken);
-
-        List<CategoryName> categories = isInflow ? info.inflowCategories() : info.outflowCategories();
-        boolean exists = categories.stream()
-                .anyMatch(cat -> cat.name().equals(categoryName.name()));
-
-        if (!exists) {
-            throw new CategoryNotFoundException(cashFlowId, categoryName);
-        }
-    }
+    // getCashFlowInfo and validateCategoryExists used to be here, and they were the two that had
+    // no business being hand-rolled: both are reads CashFlowSkeletonView already answers.
+    //
+    // What they cost. getCashFlowInfo asked for the whole cash flow and read it back out of a
+    // Map<String, Object>, naming four of cashflow's JSON fields as string literals
+    // ("inflowCategories", "categoryName", "name", "subCategories") behind unchecked casts - so the
+    // producer could rename any of them and nothing here would fail to compile, while the
+    // catch-all below would report the resulting ClassCastException as a communication error.
+    // validateCategoryExists then called it to answer one boolean, paying a request carrying every
+    // transaction in the cash flow. It had no production caller at all; only its test kept it alive.
+    //
+    // What is left in this class is the four writes, which the contract has no method for yet - see
+    // task F26. Those still carry an authToken, and that is the remaining tell that the transport
+    // decision leaked upwards.
 
     /**
      * Creates an expected cash change in the CashFlow.
@@ -337,36 +288,6 @@ public class CashFlowHttpClient {
             headers.setBearerAuth(authToken);
         }
         return headers;
-    }
-
-    /**
-     * Recursively extracts all category names from the category tree structure.
-     * Each category has a "categoryName" field and optionally "subCategories" containing nested categories.
-     */
-    @SuppressWarnings("unchecked")
-    private List<CategoryName> extractAllCategories(List<Map<String, Object>> categories) {
-        List<CategoryName> result = new java.util.ArrayList<>();
-        for (Map<String, Object> category : categories) {
-            // Extract current category name
-            Map<String, String> catName = (Map<String, String>) category.get("categoryName");
-            if (catName != null && catName.get("name") != null) {
-                result.add(new CategoryName(catName.get("name")));
-            }
-
-            // Recursively extract nested categories from "subCategories"
-            List<Map<String, Object>> subCategories = (List<Map<String, Object>>) category.get("subCategories");
-            if (subCategories != null && !subCategories.isEmpty()) {
-                result.addAll(extractAllCategories(subCategories));
-            }
-        }
-        return result;
-    }
-
-    public record CashFlowInfo(
-            CashFlowId cashFlowId,
-            List<CategoryName> inflowCategories,
-            List<CategoryName> outflowCategories
-    ) {
     }
 
     /**

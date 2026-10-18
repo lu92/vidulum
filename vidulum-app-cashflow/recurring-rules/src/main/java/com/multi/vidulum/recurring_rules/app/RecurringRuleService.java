@@ -1,5 +1,7 @@
 package com.multi.vidulum.recurring_rules.app;
 
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
 public class RecurringRuleService {
 
     private final DomainRecurringRuleRepository ruleRepository;
+    private final CashFlowModuleApi cashFlowApi;
     private final CashFlowHttpClient cashFlowHttpClient;
     private final Clock clock;
 
@@ -50,13 +53,15 @@ public class RecurringRuleService {
     public RecurringRuleId handle(CreateRuleCommand command, String authToken) {
         CashFlowId cashFlowId = CashFlowId.of(command.cashFlowId());
 
-        // Validate CashFlow exists
-        CashFlowHttpClient.CashFlowInfo cashFlowInfo =
-                cashFlowHttpClient.getCashFlowInfo(cashFlowId, authToken);
+        // The contract, not this module's own HTTP client. Both things wanted here - that the cash
+        // flow exists, and that the category does - are on the skeleton, and skeletonOf throws
+        // CashFlowNotFoundException by itself. The client used to answer this by fetching the whole
+        // cash flow, every transaction included, and reading it back out of a Map<String, Object>.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(cashFlowId);
 
         // Validate category exists
         boolean isInflow = command.baseAmount().isPositive();
-        validateCategory(cashFlowInfo, command.categoryName(), isInflow, cashFlowId);
+        validateCategory(skeleton, command.categoryName(), isInflow, cashFlowId);
 
         // Validate date range
         if (command.endDate() != null && command.startDate().isAfter(command.endDate())) {
@@ -108,11 +113,10 @@ public class RecurringRuleService {
         }
 
         CashFlowId cashFlowId = rule.getCashFlowId();
-        CashFlowHttpClient.CashFlowInfo cashFlowInfo =
-                cashFlowHttpClient.getCashFlowInfo(cashFlowId, authToken);
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(cashFlowId);
 
         boolean isInflow = command.baseAmount().isPositive();
-        validateCategory(cashFlowInfo, command.categoryName(), isInflow, cashFlowId);
+        validateCategory(skeleton, command.categoryName(), isInflow, cashFlowId);
 
         if (command.endDate() != null && command.startDate().isAfter(command.endDate())) {
             throw new InvalidDateRangeException(command.startDate(), command.endDate());
@@ -630,20 +634,23 @@ public class RecurringRuleService {
                 .orElseThrow(() -> new RuleNotFoundException(ruleId));
     }
 
+    /**
+     * The name sets off the skeleton, which flatten subcategories exactly as the hand-rolled walk
+     * did, and {@link CategoryName} is a record - so this is the same exact-string comparison as
+     * before, not a loosening. The skeleton also offers a case-insensitive lookup; using it here
+     * would change what this validation accepts, so it is left as a separate decision.
+     */
     private void validateCategory(
-            CashFlowHttpClient.CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             CategoryName categoryName,
             boolean isInflow,
             CashFlowId cashFlowId
     )  {
-        List<CategoryName> categories = isInflow
-                ? cashFlowInfo.inflowCategories()
-                : cashFlowInfo.outflowCategories();
+        Set<CategoryName> categories = isInflow
+                ? skeleton.inflowCategoryNames()
+                : skeleton.outflowCategoryNames();
 
-        boolean exists = categories.stream()
-                .anyMatch(cat -> cat.name().equals(categoryName.name()));
-
-        if (!exists) {
+        if (!categories.contains(categoryName)) {
             throw new CategoryNotFoundException(cashFlowId, categoryName);
         }
     }

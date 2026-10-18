@@ -1696,3 +1696,131 @@ Usunięte netto: ~700 linii produkcji i dublerów.
 Z F26 zostaje druga połowa: `CashFlowHttpClient` w recurring-rules — własny `CashFlowInfo`, pięć
 metod, cudzy JSON parsowany jako `Map<String, Object>` — plus odzyskanie siedmiu typów cashflow ze
 shared-kernela.
+
+---
+
+## 26. Audyt granic grupy po kroku 29
+
+Po usunięciu portu ingestion sprawdziłem całą grupę `vidulum-app-cashflow` na jedno pytanie:
+**czy zostały sprzężenia międzymodułowe, których nie pokrywa kontrakt `-api`?**
+
+### Czas kompilacji: czysto, i to jest sprawdzone
+
+Żaden z siedmiu modułów nie deklaruje zależności od cudzej implementacji — tylko kontrakty i
+shared-kernel. Bezpośredni test importów w `src/main` i `src/test`: **ani jeden** moduł nie sięga do
+`app`, `domain` ani `infrastructure` innego. `assertSealed` to zamraża, a jedyne odstępstwo —
+`cashflow_forecast_processor` — jest *wewnątrz* tego samego artefaktu.
+
+Czyli wszystko, co zostało, leży **poza kompilatorem**. Pięć kanałów.
+
+### Trzy wymagają roboty — F48, F49, F50
+
+| | |
+|---|---|
+| **F48** | `bank-data-adapter` → `bank-data-ingestion` po loopbacku HTTP, pod zaszytym `:8080`, którego nikt nie ustawia, i bez testu na sam skok |
+| **F49** | `bank_data_adapter.rest` leży poza strażą `assertSealed` — trzy kontrolery importowalne skądkolwiek |
+| **F50** | `cashflow` deklaruje `user-financial-profile-api` i nie importuje z niego niczego |
+
+Czwarty kanał to **F26**, czyli `CashFlowHttpClient` w recurring-rules: moduł ma `cashflow-api` na
+ścieżce klas i bierze z niego **jedną klasę wyjątku**, a sześć operacji woła po REST z własnym
+`CashFlowInfo` i `Map<String, Object>`, przeciągając `authToken` przez każdą sygnaturę.
+
+### Dwa kanały są pokryte i nie wymagają nic
+
+- **Topic `cash_flow` → `user-financial-profile`.** Koperta `CashFlowUnifiedEvent` jest poprawnym
+  `IntegrationEvent` (`metadata` + nieprzejrzysty `JsonContent`, zero typów domenowych), a konsument
+  deklaruje własny kształt z `@JsonIgnoreProperties`. Sprzężeniem są **nazwy pól w JSON-ie** i są
+  pilnowane: `UserFinancialProfileHttpIntegrationTest` czeka na przejęcie IBAN-u po zdarzeniu, więc
+  zmiana nazwy u producenta to zepsuje. Nie ma dedykowanego testu słownika jak przy
+  `TransactionClassification` — tutaj tę rolę grają testy integracyjne, bo oba moduły jadą w jednym
+  kontekście.
+- **Cashflow-owe typy w shared-kernelu** (`CashFlowId`, `CashChangeId`, `CategoryName`,
+  `BankAccountId`, `BankName`). Poza grupą występują **wyłącznie** w trzech kopiach testowego
+  `TestIds`, więc wycieku produkcyjnego nie ma. Pozostaje częścią F24 jako porządek, nie jako defekt.
+
+### Jedna obserwacja bez zadania
+
+`user-financial-profile-api` deklaruje `spring-boot-starter-webmvc` i `-validation` — dokładnie to,
+czego według CLAUDE.md `*-api` deklarować nie powinien. Ma to jednak przyczynę, nie przeoczenie:
+`UserFinancialProfileApi` jest interfejsem `@HttpExchange` z `@Valid`, więc ten kontrakt **jest**
+springowy, a implementacją w procesie jest sam kontroler. Zapisane tu, żeby następny czytelnik reguły
+nie uznał tego za niedopatrzenie.
+
+---
+
+## 27. Co zrobił krok 30: dwa odczyty recurring-rules na kontrakt
+
+Audyt z sekcji 26 wskazał `CashFlowHttpClient` jako najostrzejszy przypadek: moduł **ma**
+`cashflow-api` na ścieżce klas i bierze z niego jedną klasę wyjątku, a sześć operacji woła po REST.
+Ten krok przenosi te dwie, które kontrakt już umie.
+
+### Co dokładnie było nie tak
+
+```java
+ResponseEntity<Map> response = restTemplate.exchange(url, GET, ..., Map.class);
+List<Map<String, Object>> inflowCategories = (List<Map<String, Object>>) body.get("inflowCategories");
+Map<String, String> catName = (Map<String, String>) category.get("categoryName");
+result.add(new CategoryName(catName.get("name")));
+List<Map<String, Object>> subCategories = (List<Map<String, Object>>) category.get("subCategories");
+```
+
+Cztery literały nazywające pola JSON-a cashflow, pod rzutowaniami `@SuppressWarnings`. **Producent
+mógł przemianować którekolwiek i nic by się tu nie przestało kompilować** — a wynikowy
+`ClassCastException` wpadłby w `catch (Exception e)` i zostałby zgłoszony jako *błąd komunikacji*,
+czyli diagnoza wskazałaby sieć, nie kontrakt.
+
+Drugi koszt: `validateCategoryExists` wołało `getCashFlowInfo`, czyli **pełne żądanie po całe cash
+flow, z każdą transakcją, po jeden boolean**. W monolicie — po loopbacku.
+
+### Co jest teraz
+
+```java
+CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(cashFlowId);
+...
+Set<CategoryName> categories = isInflow
+        ? skeleton.inflowCategoryNames()
+        : skeleton.outflowCategoryNames();
+if (!categories.contains(categoryName)) { throw new CategoryNotFoundException(...); }
+```
+
+**Semantyka jest identyczna, i to sprawdzone, nie założone:** `namesOf` spłaszcza podkategorie
+dokładnie jak tamten rekurencyjny spacer, a `CategoryName` jest rekordem, więc `contains` to to samo
+porównanie pełnym łańcuchem co `cat.name().equals(categoryName.name())`. Szkielet ma też wyszukiwanie
+ignorujące wielkość litery — użycie go **zmieniłoby** to, co ta walidacja przyjmuje, więc zostało
+osobną decyzją, zapisaną w javadocu metody.
+
+### Niespodzianka: `validateCategoryExists` nie miało wołającego w produkcji
+
+Trzeci raz ten sam wzorzec w tej serii (po `fromCashFlowInfo` i `extractTransactionIds`): metoda
+utrzymywana w życiu wyłącznie przez swój test. Usunięta razem z nim.
+
+### Pokrycie poszło za logiką, nie za plikiem
+
+Pięć testów klienta sprawdzało rekurencyjne wyciąganie kategorii. Samo spłaszczanie jest pokryte po
+stronie kontraktu (`CashFlowSkeletonComponentTest:128` sprawdza te same zbiory per kierunek, z
+zagnieżdżeniem), więc tamte pięć odpadło bez straty.
+
+**Ale odmowa serwisu nie miała testu nigdzie** — ani jednostkowo, ani w 57 testach integracyjnych
+reguł, które 404 sprawdzają tylko dla samych reguł. Czyli przenosząc tę walidację, nie miałem czym
+udowodnić, że ją zachowałem. Dlatego `RecurringRuleCategoryValidationTest` (5 przypadków):
+nieznana kategoria, **kategoria istniejąca tylko po drugiej stronie** (w obie strony), podkategoria
+przyjęta, nieistniejący cash flow odmówiony przez kontrakt bez tłumaczenia na błąd komunikacji, i
+jedno pytanie do kontraktu na regułę.
+
+Dowód negatywny: podmiana reguły na `allCategoryNames()` — czyli zgubienie kierunku — wywala
+dokładnie jeden test, ten o drugiej stronie.
+
+### Co zostało w kliencie
+
+Cztery operacje bez metody w kontrakcie: trzy zapisy (`createExpectedCashChange`,
+`batchDeleteExpectedCashChanges`, `batchUpdateExpectedCashChanges`) i jeden odczyt
+(`getCashChangeStatuses`, który dalej parsuje `body.get("cashChanges")` z `Map<String, Object>`).
+Każda nadal bierze `authToken` — i to jest pozostały ślad tego, że decyzja o transporcie wyciekła w
+górę, do sygnatur przypadków użycia. To reszta **F26**.
+
+| | przed | po |
+|---|---|---|
+| operacje w `CashFlowHttpClient` | 6 | 4 |
+| żądania HTTP na utworzenie reguły | 1 + N zapisów | **N zapisów** |
+| parsowanie cudzego JSON-a w odczytach | 2 metody | 1 (`getCashChangeStatuses`) |
+| testy `vidulum-recurring-rules` | 22 | **27** |
