@@ -29,6 +29,15 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Bank data adapter: left vidulum-cashflow too. It is the only module that reaches
+             bank-data-ingestion, and it does so by URL, so the reactor order between them is
+             irrelevant - but the bootstrap has to name both. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-adapter</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Bank data ingestion: left vidulum-cashflow and so the bootstrap names it directly.
              It arrives here at compile scope and nowhere else at compile scope, which is the rule
              for every implementation module. -->

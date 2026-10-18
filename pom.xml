@@ -19,6 +19,7 @@
 		<module>vidulum-shared-kernel</module>
 		<module>vidulum-cashflow/cashflow-api</module>
 		<module>vidulum-cashflow/user-financial-profile-api</module>
+		<module>vidulum-cashflow/bank-data-adapter</module>
 		<module>vidulum-cashflow/bank-data-ingestion</module>
 		<module>vidulum-cashflow/recurring-rules</module>
 		<module>vidulum-cashflow</module>

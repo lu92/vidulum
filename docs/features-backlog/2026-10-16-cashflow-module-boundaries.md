@@ -1129,3 +1129,82 @@ i `bank-data-ingestion:` zostały w `vidulum-cashflow/src/main/resources/applica
 działa, bo ten plik jest nadal na classpathie aplikacji, a **wszystkie klucze ingestion mają
 wartości domyślne w `@Value`** — sprawdzone. Ale leżą w złym miejscu i warto je przenieść przy
 okazji; to osobna, drobna porządkowa zmiana.
+
+
+## 20. Co zrobił krok 24: `bank_data_adapter` jako osobny artefakt
+
+Najtańsze wydzielenie z całej serii, i pomiar mówi dlaczego.
+
+### Zależności: zero w obie strony
+
+```
+                             cashflow  forecast  adapter  profile  ingestion
+bank_data_adapter                0         0        –        0         0
+ktokolwiek  ->  adapter          0         0        –        0         0
+```
+
+Po kroku 23, w którym `TransactionClassification` przestał być wspólnym typem, adapter jest
+**całkowicie odizolowany**. Z shared-kernela bierze 27 typów (`common` ×26, `shared` ×1) — to
+zostaje i jest normalne.
+
+Lepszy stan niż ingestion przed wydzieleniem, które miało trzy zależności wychodzące.
+
+### Niuans, którego importy nie pokazały
+
+Adapter ma **trzeci ręcznie pisany klient HTTP** w tym repozytorium:
+
+```java
+// bank_data_adapter/infrastructure/BankDataIngestionClient.java
+String url = baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload";
+```
+
+z komentarzem przyznającym wzorzec wprost:
+
+```java
+/** Matches BankDataIngestionDto.StageTransactionsResponse structure. */
+public record UploadCsvResponse(...)
+```
+
+Czyli ten sam anty-wzorzec co przy `HttpCashFlowServiceClient` i `CashFlowHttpClient`: **konsument
+deklaruje kształt API producenta**. I jedna rzecz warta zapamiętania o kierunku: **adapter woła
+ingestion**, nie na odwrót — mimo że przepływ biznesowy („najpierw transformuj CSV, potem
+zaimportuj") sugeruje coś innego.
+
+**Dla wydzielenia to nie była blokada** — gada po URL-u, więc przeżyło granicę bez zmiany, jak port
+cashflow w kroku 23. Zapisane, nie rozwiązane.
+
+### Testy: 13 jedzie, 2 zostają
+
+Najlepszy stosunek z dotychczasowych (ingestion miał 8 zostających na 5 jadących):
+
+| | |
+|---|---|
+| **jadą** | 13 plików, **111 testów**, wszystkie bez Springa |
+| **zostają** | **2**: `AiBankCsvAdapterErrorHandlingTest` i `UnifiedCsvImportIntegrationTest`, wyłącznie przez wspólną bazę `CashFlowIntegrationTest` |
+
+Oba zostające używają aktorów z listy „jadą", więc `test-jar` był konieczny — tak samo jak przy
+ingestion.
+
+### Stan `vidulum-cashflow` po tym kroku
+
+```
+vidulum-cashflow/
+├── cashflow-api/                 kontrakt
+├── user-financial-profile-api/   kontrakt
+├── bank-data-adapter/            NOWY
+├── bank-data-ingestion/          (krok 23)
+├── recurring-rules/
+└── src/   ←  cashflow, cashflow_forecast_processor, user_financial_profile
+```
+
+**Jeden krok od celu**, o który pytanie wyszło: zostaje `user_financial_profile`, z trzema typami
+z `cashflow.domain` jako jedyną przeszkodą (`BankAccountNumber` ×3, `BankAccount`,
+`CashFlowEvent`), a jego `-api` już istnieje.
+
+### Czego ten krok nie dał
+
+To samo, co poprzedni: **niezależnego wdrożenia** (`vidulum-app` nadal montuje wszystko w jeden
+kontekst) i **konfiguracji we właściwym miejscu** — klucze `vidulum.ai.*`,
+`bank-data-ingestion.base-url` i reszta zostały w `application.yml` rodzica, tak jak klucze
+ingestion. Działa, bo ten plik jest na classpathie aplikacji, ale leży nie tam, gdzie powinien.
+Zbiera się z tego osobna, drobna porządkowa zmiana — już druga.
