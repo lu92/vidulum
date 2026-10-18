@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | analiza + **decyzja podjęta** (HTTP jest celowe). Pozycje 1–3 **wykonane**, pozycja 4 **w toku** (kontrakt ma dwie metody, `bank_data_ingestion` widzi już tylko `cashflow.api`), 5 otwarta |
 | **Skąd** | cztery pytania z rzędu: „czy można wydzielić `user_financial_profile`? `recurring_rules`? `bank_data_ingestion`? a co z cashflow i jego api?" |
-| **Zakres** | `vidulum-cashflow` i jego cztery poddomeny, `vidulum-recurring-rules`, przyszły `vidulum-cashflow-api` |
+| **Zakres** | `cashflow` i jego cztery poddomeny, `vidulum-recurring-rules`, przyszły `vidulum-cashflow-api` |
 | **Data** | 2026-10-16 |
 
 ---
@@ -172,7 +172,7 @@ Dla `bank_data_adapter` to nie kosmetyka: transformacja AI jest **cache'em odpow
 
 **Reguła `assertSealed` objęła dwa brakujące moduły.** `recurring_rules` przeszedł od razu na zielono — nikt nie sięga do jego wnętrza. `cashflow` wszedł z odstępstwami wyrażonymi jako dodatkowe „własne" pakiety, a nie jako lista nazw, bo tym właśnie są: trzy poddomeny w tym samym artefakcie, które nadal czytają agregat wprost. Wszystko **poza** tym zbiorem — portfolio, trading, pnl, bootstrap — jest już zabronione, i ta połowa jest warta zamrożenia dzisiaj.
 
-**`recurring_rules` przestał trafiać do aplikacji przypadkiem.** Dostawał się tranzytywnie, przez compile-scope zależność `vidulum-cashflow` → `vidulum-recurring-rules`, mimo że main cashflow nie używa z niego **ani jednej klasy**. Był więc jedynym modułem implementacyjnym, którego beany docierały do aplikacji bez deklaracji — wbrew regule z kroków 06c, 09 i 10. Teraz deklaruje go bootstrap, a cashflow trzyma go w `test` scope dla jednego testu integracyjnego, który potrzebuje działającego cashflow po HTTP.
+**`recurring_rules` przestał trafiać do aplikacji przypadkiem.** Dostawał się tranzytywnie, przez compile-scope zależność `cashflow` → `vidulum-recurring-rules`, mimo że main cashflow nie używa z niego **ani jednej klasy**. Był więc jedynym modułem implementacyjnym, którego beany docierały do aplikacji bez deklaracji — wbrew regule z kroków 06c, 09 i 10. Teraz deklaruje go bootstrap, a cashflow trzyma go w `test` scope dla jednego testu integracyjnego, który potrzebuje działającego cashflow po HTTP.
 
 **I test, który tę zmianę pilnuje.** `BootstrapWiresEveryModuleTest` sprawdza, że kontrakty czterech modułów mają w kontekście aplikacji dokładnie jedną implementację, a cztery moduły bez kontraktu — swój kontroler. To runtime'owy odpowiednik `ModuleBoundariesArchTest`: tamten pilnuje, żeby nikt nie sięgał tam, gdzie nie wolno, ten — żeby moduły w ogóle **były**. Drugi tryb awarii jest cichszy: brak modułu na classpathzie bootstrapu nie psuje żadnego builda, beany po prostu nie powstają, wszystkie pozostałe testy przechodzą, a funkcja znika.
 
@@ -223,7 +223,7 @@ pojawia się wyłącznie na wyjściu do DTO.
 
 | usunięta klasa | gdzie była | użyć |
 |---|---|---|
-| `cashflow.domain.CashFlowDoesNotExistsException` | `vidulum-cashflow` | **41 plików** |
+| `cashflow.domain.CashFlowDoesNotExistsException` | `cashflow` | **41 plików** |
 | `CashFlowServiceClient.CashFlowNotFoundException` | zagnieżdżona w interfejsie portu, `extends RuntimeException` | klient HTTP, 5 bloków `catch`, dubler |
 | `recurring_rules…CashFlowNotFoundException` | `vidulum-recurring-rules` | klient HTTP |
 
@@ -465,7 +465,7 @@ to decyzja agregatu (faza życia, zajęte nazwy, `CategoryCreatedEvent`), a się
 przepisałoby wszystkie trzy reguły. Wstrzyknięcie `CommandGateway` nie domyka cyklu, bo od kroku 08
 gateway powstaje bez zależności, a handlery rejestrują się po fakcie.
 
-`HttpCashFlowModuleApi` **mieszka w `vidulum-cashflow`, nie u konsumenta** — i to jest pointa
+`HttpCashFlowModuleApi` **mieszka w `cashflow`, nie u konsumenta** — i to jest pointa
 zmiany. Wie, jakie URL-e istnieją, że kategoria przychodzi jako `{"categoryName":{"name":"…"}}`
 i że pole w żądaniu nazywa się `category`, a nie `categoryName`. Ta wiedza należy do właściciela
 endpointów. Poprzedni układ był odwrotny: konsument deklarował port, ręcznie pisał rekordy żądań
@@ -1103,12 +1103,12 @@ a jego `RecurringRulesHttpIntegrationTest` leży w `vidulum-cashflow/src/test`. 
 | jedzie do nowego modułu | 5 plików, **104 testy** |
 
 **Te 104 testy wykonują się w 0,4 sekundy** — bez Springa, bez Testcontainerów. Dotąd zmiana
-w ingestion odpalała ~4-minutową suitę całego `vidulum-cashflow`.
+w ingestion odpalała ~4-minutową suitę całego `cashflow`.
 
 ### Granica jest teraz sprawdzana kompilatorem, nie testem
 
 Dowód negatywny wyszedł mocniejszy, niż planowałem. Dodałem do `cashflow.app` import
-z `bank_data_ingestion.app` — i **kompilacja padła**, bo `vidulum-cashflow` ma ingestion wyłącznie
+z `bank_data_ingestion.app` — i **kompilacja padła**, bo `cashflow` ma ingestion wyłącznie
 przy `test` scope.
 
 Dotąd tej granicy pilnował `ModuleBoundariesArchTest` (zielony od kroku 15). Teraz pilnuje jej
@@ -1185,7 +1185,7 @@ Najlepszy stosunek z dotychczasowych (ingestion miał 8 zostających na 5 jadąc
 Oba zostające używają aktorów z listy „jadą", więc `test-jar` był konieczny — tak samo jak przy
 ingestion.
 
-### Stan `vidulum-cashflow` po tym kroku
+### Stan `cashflow` po tym kroku
 
 ```
 vidulum-cashflow/
@@ -1320,7 +1320,7 @@ vidulum-cashflow/
 
 ### Problem, który zostawiły trzy poprzednie kroki
 
-Po wydzieleniu ingestion, adaptera i profilu `vidulum-cashflow` był **dwiema rzeczami naraz**:
+Po wydzieleniu ingestion, adaptera i profilu `cashflow` był **dwiema rzeczami naraz**:
 implementacją agregatu i miejscem, gdzie mieszkają testy integracyjne wszystkich pozostałych.
 Miał **cztery zależności `test` scope na moduły, które z niego wyszły**:
 
@@ -1334,7 +1334,7 @@ wymagał, żeby wszystkie cztery były wcześniej zbudowane.**
 
 ### Dlaczego te testy nie mogły pojechać ze swoimi modułami
 
-Bo każdy z nich zależy **wyłącznie od kontraktów, nigdy od `vidulum-cashflow`** — i to jest
+Bo każdy z nich zależy **wyłącznie od kontraktów, nigdy od `cashflow`** — i to jest
 dokładnie to, co trzyma reaktor acyklicznym. Test integracyjny potrzebuje jednak implementacji,
 więc musiałby odwrócić tę zależność.
 
@@ -1359,19 +1359,19 @@ Spring szuka `@SpringBootApplication` skanując w górę od pakietu testu. `Cash
 leży w `com.multi.vidulum`, więc wszystkie testy pod tym pakietem ją znajdują.
 
 Czyli aplikacja testowa **musiała pojechać z testami**: gdyby została, przeniesione testy nie
-miałyby kontekstu. A skoro zostające testy Springa nie potrzebują, `vidulum-cashflow` nie ma już
+miałyby kontekstu. A skoro zostające testy Springa nie potrzebują, `cashflow` nie ma już
 aplikacji testowej wcale — i nie powinien mieć.
 
 ### Wynik
 
 | | przed | po |
 |---|---|---|
-| `vidulum-cashflow`: zależności `test` scope | **8** (4 moduły + 4 `test-jar`) | **0** |
-| `vidulum-cashflow`: testy | ~500, ~4 min, Testcontainery | **91 w 5 sekundach**, bez Dockera |
-| `vidulum-cashflow`: Testcontainery, `spring-kafka-test`, `awaitility`, `resttestclient` w pomie | tak | **usunięte** |
+| `cashflow`: zależności `test` scope | **8** (4 moduły + 4 `test-jar`) | **0** |
+| `cashflow`: testy | ~500, ~4 min, Testcontainery | **91 w 5 sekundach**, bez Dockera |
+| `cashflow`: Testcontainery, `spring-kafka-test`, `awaitility`, `resttestclient` w pomie | tak | **usunięte** |
 | `vidulum-cashflow-tests` | — | wszystkie testy integracyjne rodziny |
 
-`vidulum-cashflow` publikuje `test-jar` z `TestIds` i dwoma `InMemory*Repository` — jedynymi
+`cashflow` publikuje `test-jar` z `TestIds` i dwoma `InMemory*Repository` — jedynymi
 helperami potrzebnymi po obu stronach (5 użyć po stronie zostającej, 6 po przeniesionej).
 
 To ten sam model co `vidulum-wealth-tests`, i `CLAUDE.md` opisuje go dla `wealth/` od dawna:
@@ -1386,3 +1386,63 @@ pętla przy pracy nad agregatem, nie przebieg CI.
 **Liczby zestawów infrastruktury testowej.** Są teraz trzy równoległe (`cashflow-tests`,
 `wealth-tests`, `vidulum-app`), każdy z własną bazą i własną aplikacją. To nie jest nowe, ale stało
 się wyraźniejsze.
+
+
+## 23. Co zrobił krok 27: `vidulum-app-cashflow` jako agregator
+
+Po sześciu krokach `cashflow` był artefaktem, który **nazywał rodzinę, a zawierał jej
+najmniejszą część**: agregat plus read model, z sześcioma modułami zagnieżdżonymi w swoim folderze.
+Nazwa kłamała i struktura kłamała.
+
+### Co się zmieniło
+
+| | przed | po |
+|---|---|---|
+| `cashflow` | `jar` z `cashflow` + `cashflow_forecast_processor` **i** folderem sześciu innych modułów | **`jar` wyłącznie z agregatem i jego read modelem** |
+| `vidulum-app-cashflow` | — | **`pom`, sam `<modules>`**, bez źródeł i bez zależności |
+| wpisy w korzeniu reaktora | siedem | **jeden** |
+
+```
+vidulum-app-cashflow/          pom, agregator
+├── cashflow-api/              kontrakt
+├── user-financial-profile-api/ kontrakt
+├── cashflow/                  agregat + read model (artifactId vidulum-cashflow)
+├── user-financial-profile/
+├── bank-data-adapter/
+├── bank-data-ingestion/
+└── recurring-rules/
+```
+
+### Wzorzec nie jest nowy
+
+To dokładnie to, czym są `market/` i `wealth/` od kroku 10: **agregator, nie rodzic**. Każdy modul
+poniżej dziedziczy z poma korzennego (`../../pom.xml`), więc przeniesienie go do innego folderu nie
+zmienia ani jednej zależności ani `artifactId`. Grupa buduje się samodzielnie:
+
+```bash
+./mvnw test -f vidulum-app-cashflow/pom.xml
+```
+
+### Co dzięki temu stało się widoczne w jednym miejscu
+
+Opis agregatora zapisuje dwie reguły, które do tej pory trzeba było wyczytać z siedmiu pomów:
+
+1. **`cashflow` nie jest zależnością nikogo w tej grupie.** Cztery moduły konsumujące
+   kompilują się wobec `cashflow-api` i `user-financial-profile-api`, nigdy wobec implementacji — i
+   to jest dokładnie to, co pozwala `vidulum-cashflow-tests` trzymać testy integracyjne wszystkich
+   bez cyklu.
+2. **Żaden moduł w grupie nie ma zależności `test` scope na inny.** Testy wymagające działającego
+   systemu są poza grupą.
+
+Kolejność w `<modules>` to kolejność zależności: kontrakty, agregat, konsumenci.
+
+### Uwaga o nazwie
+
+`market` i `wealth` mają foldery o krótkich nazwach i `artifactId` `vidulum-market` /
+`vidulum-wealth`. Tutaj folder agregatora i jego `artifactId` to oba `vidulum-app-cashflow` —
+odstępstwo od tej konwencji, zgodnie z decyzją właściciela kodu.
+
+Folder implementacji nazywa się natomiast **`cashflow/`**, przy `artifactId` `vidulum-cashflow` —
+spójnie z rodzeństwem (`cashflow-api`, `bank-data-adapter`, `recurring-rules`). I to jest zarazem
+najkrótszy dowód tezy tej sekcji: **nazwa folderu nie dotyka `artifactId`**, bo agregator nie jest
+rodzicem. Każdy, kto zależy od `vidulum-cashflow`, nie zauważył zmiany.

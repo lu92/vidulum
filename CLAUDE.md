@@ -25,7 +25,7 @@ are running and why.
 **`-pl` takes `:artifactId`, not a path.** Modules live under `market/` and `wealth/`, so
 `-pl vidulum-portfolio` does not resolve — Maven looks for a directory of that name at the root.
 The `:artifactId` form is independent of where a module sits. A whole group builds with
-`-f market/pom.xml` or `-f wealth/pom.xml`.
+`-f vidulum-app-cashflow/pom.xml`, `-f market/pom.xml` or `-f wealth/pom.xml`.
 
 ```bash
 ./mvnw compile -pl :vidulum-cashflow                        # one module, ~1-3s
@@ -61,7 +61,7 @@ changed plus everything downstream**, and nothing else:
 | `vidulum-trading` | `-pl :vidulum-trading,:vidulum-wealth-tests,:vidulum-app` | same reason |
 | `vidulum-pnl` / `vidulum-risk` | that module, then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and cross-module tests use them |
 | `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
-| `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
+| `cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
 | `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | its own 104 tests run in under a second; the seven that need a running cash flow live in the parent |
 | `vidulum-bank-data-adapter` | `-pl :vidulum-bank-data-adapter` then `-pl :vidulum-cashflow,:vidulum-app` | 111 tests, no Spring; the two needing a running cash flow live in the parent |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
@@ -95,24 +95,25 @@ vidulum/
 │   └── security/                #   JWT auth, SecurityContextUserProvider
 │   └── shared/                  #   DDD base classes, DataCleaner interface
 │
-├── vidulum-cashflow/            # CashFlow domain module
-│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
-│                                #   createCategory, importHistorical, rollbackImport,
-│                                #   alreadyImported), Type, view/, error/
-│   └── (user-financial-profile/) #  SEPARATE ARTIFACT: vidulum-user-financial-profile. Its own
-│                                #   OwnedAccountNumber and its own view of the cash_flow payload
-│   └── (bank-data-adapter/)     #   SEPARATE ARTIFACT: vidulum-bank-data-adapter. shared-kernel
-│                                #   only. Calls ingestion's upload endpoint by URL
-│   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. shared-kernel
-│                                #   + two contracts, never vidulum-cashflow - which is what lets
-│                                #   the parent depend on it at test scope without a cycle.
-│                                #   Neither has an -api: nothing asks them anything
-│   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
-│   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation - cashflow's own
-│                                #   read model, in the same artifact on purpose: 36 imports of
-│                                #   CashFlowEvent, and one lifecycle
-│   └── (recurring-rules/)       #   SEPARATE ARTIFACT nested here: vidulum-recurring-rules
-│                                #   depends on nothing from cashflow; talks to it over HTTP
+├── vidulum-app-cashflow/        # AGGREGATOR: money moving in and out. pom-packaged grouping,
+│   │                            #   NOT a parent - children inherit from the root pom, so moving
+│   │                            #   one in or out changes no dependency and no artifactId
+│   ├── cashflow-api/            #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
+│   │                            #   createCategory, importHistorical, rollbackImport,
+│   │                            #   alreadyImported), Type, view/, error/
+│   ├── user-financial-profile-api/ # CONTRACT: UserFinancialProfileApi (@HttpExchange)
+│   ├── cashflow/                #   artifactId vidulum-cashflow. THE AGGREGATE + its read model:
+│   │                            #   the cashflow/ and
+│   │                            #   cashflow_forecast_processor/. Together on purpose - 36 imports
+│   │                            #   of CashFlowEvent, one lifecycle; the last assertSealed
+│   │                            #   exemption. Unit/component tests only: 91 in 5s, no Docker
+│   ├── user-financial-profile/  #   Owned accounts, self-transfer detection
+│   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
+│   ├── bank-data-ingestion/     #   Import staging, category mapping; two contracts, never
+│   │                            #   vidulum-cashflow
+│   └── recurring-rules/         #   Recurring rules; talks to cashflow over HTTP
+│                                #   No consumer here has an -api (nothing asks them anything) or
+│                                #   a test-scope dep on another - see vidulum-cashflow-tests
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
@@ -351,7 +352,7 @@ Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own inte
 |--------|-----------|-------------|
 | vidulum-cashflow-tests | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers; wires cashflow, ingestion, adapter, profile and recurring-rules, so every cross-module Spring test in the cashflow family lives here |
 | vidulum-wealth-tests | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
-| vidulum-cashflow, vidulum-bank-data-adapter, vidulum-bank-data-ingestion, vidulum-user-financial-profile, vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, no Docker, in-memory repositories. `vidulum-cashflow` runs 91 of them in 5 seconds, having had ~500 and four minutes |
+| vidulum-cashflow, vidulum-bank-data-adapter, vidulum-bank-data-ingestion, vidulum-user-financial-profile, vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, no Docker, in-memory repositories. `cashflow` runs 91 of them in 5 seconds, having had ~500 and four minutes |
 | vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
 Key patterns:

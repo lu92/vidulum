@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-app-cashflow</artifactId>
+    <packaging>pom</packaging>
+    <name>Vidulum CashFlow Group</name>
+    <description>
+        Everything about a person's money moving in and out: the cash flow itself, what a bank
+        statement becomes on the way in, and which accounts the owner admits to.
+
+        An aggregator, not a parent - every module below still inherits from the root pom, so moving
+        a module in or out of this folder changes no dependency and no artifactId. Same arrangement
+        as market/ and wealth/. Build the group with
+        `./mvnw test -f vidulum-app-cashflow/pom.xml`; that reactor does not contain
+        vidulum-shared-kernel, so it resolves it from the local repository.
+
+        It used to be a jar holding five subdomains, and this folder is what is left after they
+        became artifacts of their own - steps 23 to 26 in
+        docs/features-backlog/2026-10-16-cashflow-module-boundaries.md. The order below is the
+        dependency order: contracts, then the aggregate, then the three modules that consume it.
+
+        Two rules hold inside this group, and both are checked rather than hoped for:
+        - vidulum-cashflow is depended on by nobody here. bank-data-ingestion,
+          bank-data-adapter, user-financial-profile and recurring-rules compile against
+          cashflow-api and user-financial-profile-api, never against the implementation. That is
+          what lets vidulum-cashflow-tests hold everyone's integration tests without a cycle.
+        - No module here has a test-scope dependency on another. The tests that need a running
+          system live outside the group, in vidulum-cashflow-tests.
+    </description>
+
+    <modules>
+        <!-- Contracts first -->
+        <module>cashflow-api</module>
+        <module>user-financial-profile-api</module>
+
+        <!-- The aggregate and its read model -->
+        <module>cashflow</module>
+
+        <!-- Consumers: each compiles against the contracts above, never the implementation -->
+        <module>user-financial-profile</module>
+        <module>bank-data-adapter</module>
+        <module>bank-data-ingestion</module>
+        <module>recurring-rules</module>
+    </modules>
+
+</project>

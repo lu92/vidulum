@@ -8,11 +8,25 @@
         <groupId>com.multi</groupId>
         <artifactId>vidulum</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>vidulum-cashflow</artifactId>
     <name>Vidulum CashFlow Module</name>
-    <description>CashFlow domain: cashflow, forecast, bank data ingestion/adapter, user financial profile</description>
+    <description>
+        The CashFlow aggregate and its read model: categories, bank accounts, the month lifecycle,
+        and the Kafka-driven forecast projected from its events.
+
+        Those two packages share an artifact on purpose. cashflow_forecast_processor projects from
+        36 imports of CashFlowEvent and shares the aggregate's lifecycle - every new rule in the
+        aggregate needs a handler there - so a separate artifact would mean two commits per business
+        change. It is the one remaining exemption in ModuleBoundariesArchTest's assertSealed for
+        cashflow, and it is deliberate.
+
+        Unit and component tests only: no Spring, no Docker, 91 in five seconds. Everything needing
+        a running context lives in vidulum-cashflow-tests - which is why this module has no
+        test-scope dependency on any other module.
+    </description>
 
     <dependencies>
         <!-- Shared Kernel -->
