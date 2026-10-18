@@ -13,6 +13,8 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.shared.module.ModuleApi;
 
+import java.util.Set;
+
 /**
  * What another module may ask of cashflow.
  *
@@ -140,4 +142,27 @@ public interface CashFlowModuleApi extends ModuleApi {
      * @throws CashFlowNotFoundException when no such cash flow exists
      */
     RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
+
+    /**
+     * The source-system ids of everything this cash flow already holds.
+     *
+     * <p>What a consumer needs to tell a transaction it has not seen from one it imported last
+     * week. Three call sites in bank-data-ingestion ask it, and until cashflow started storing
+     * {@code bankTransactionId} there was nothing to answer with: the HTTP client returned an empty
+     * set with a comment saying the API might report these one day, and the test double filled it
+     * with {@code CashChangeId}s from a different namespace - so the duplicate check in staging
+     * compared against nothing and could never fire.
+     *
+     * <p><b>A separate method rather than a field on the skeleton, deliberately.</b>
+     * {@link #skeletonOf} answers identically for a cash flow with four years of history and one
+     * created a minute ago, which is the property that makes it cheap enough to fetch for a single
+     * boolean. Four hundred ids would end that, and every caller that only wants the lifecycle
+     * phase would pay for them.
+     *
+     * <p>Cash changes a person entered by hand have no source id and are simply absent here, so an
+     * empty result means "nothing was imported", not "nothing exists".
+     *
+     * @throws CashFlowNotFoundException when no such cash flow exists
+     */
+    Set<String> importedSourceIds(CashFlowId cashFlowId);
 }

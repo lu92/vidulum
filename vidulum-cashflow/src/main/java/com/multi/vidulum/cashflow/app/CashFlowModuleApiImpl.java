@@ -16,6 +16,7 @@ import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
@@ -26,6 +27,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Cashflow answering its own contract, in this process.
@@ -121,6 +125,17 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 new RollbackImportCommand(cashFlowId, deleteCategories));
 
         return new RollbackResult(result.transactionsDeleted(), result.categoriesDeleted());
+    }
+
+    @Override
+    public Set<String> importedSourceIds(CashFlowId cashFlowId) {
+        CashFlow cashFlow = repository.findById(cashFlowId)
+                .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId));
+
+        return cashFlow.getSnapshot().cashChanges().values().stream()
+                .map(CashChangeSnapshot::bankTransactionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**

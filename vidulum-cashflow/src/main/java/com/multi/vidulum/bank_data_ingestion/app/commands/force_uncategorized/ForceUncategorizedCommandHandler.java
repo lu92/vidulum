@@ -1,12 +1,11 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -19,6 +18,7 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Handler for forcing all PENDING_MAPPING transactions to use "Uncategorized" category.
@@ -37,7 +37,6 @@ public class ForceUncategorizedCommandHandler
 
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
     private final CashFlowModuleApi cashFlowApi;
     private final Clock clock;
 
@@ -78,7 +77,10 @@ public class ForceUncategorizedCommandHandler
         // Load CashFlow info
         // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
         // carries an ErrorCode and answers 404 on its own.
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        // Skeleton plus the one thing it deliberately does not carry. Two calls instead of
+        // getCashFlowInfo's two HTTP requests, and neither drags every transaction along.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
+        Set<String> importedSourceIds = cashFlowApi.importedSourceIds(command.cashFlowId());
 
         // Count PENDING_MAPPING transactions
         List<StagedTransaction> pendingTransactions = stagedTransactions.stream()
@@ -94,7 +96,7 @@ public class ForceUncategorizedCommandHandler
                     0,
                     false,
                     stagedTransactions,
-                    cashFlowInfo,
+                    skeleton,
                     now
             );
         }
@@ -104,7 +106,7 @@ public class ForceUncategorizedCommandHandler
         boolean hasInflowPending = pendingTransactions.stream().anyMatch(t -> t.originalData().type() == Type.INFLOW);
         boolean hasOutflowPending = pendingTransactions.stream().anyMatch(t -> t.originalData().type() == Type.OUTFLOW);
 
-        if (!cashFlowInfo.getAllCategoryNames().contains(UNCATEGORIZED_CATEGORY)) {
+        if (!skeleton.allCategoryNames().contains(new CategoryName(UNCATEGORIZED_CATEGORY))) {
             // Create Uncategorized category for both types if needed
             if (hasOutflowPending) {
                 try {
@@ -167,7 +169,7 @@ public class ForceUncategorizedCommandHandler
                 );
 
                 // Validate transaction
-                TransactionValidation validation = validateTransaction(st, cashFlowInfo, now);
+                TransactionValidation validation = validateTransaction(st, skeleton, importedSourceIds, now);
 
                 StagedTransaction updated = new StagedTransaction(
                         st.stagedTransactionId(),
@@ -198,49 +200,29 @@ public class ForceUncategorizedCommandHandler
                 updatedCount,
                 categoryCreated,
                 updatedTransactions,
-                cashFlowInfo,
+                skeleton,
                 now
         );
     }
 
     private TransactionValidation validateTransaction(
             StagedTransaction st,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
+            Set<String> importedSourceIds,
             ZonedDateTime now) {
 
-        List<String> errors = new ArrayList<>();
-
-        // Check for duplicate
-        if (cashFlowInfo.existingTransactionIds().contains(st.originalData().bankTransactionId())) {
+        if (importedSourceIds.contains(st.originalData().bankTransactionId())) {
             return TransactionValidation.duplicate(st.originalData().bankTransactionId());
         }
 
-        // paidDate validation
-        YearMonth paidPeriod = YearMonth.from(st.originalData().paidDate());
-        YearMonth activePeriod = cashFlowInfo.activePeriod();
-        YearMonth startPeriod = cashFlowInfo.startPeriod();
-
-        if (cashFlowInfo.isInSetupMode()) {
-            if (!paidPeriod.isBefore(activePeriod)) {
-                errors.add(String.format("In SETUP mode, paidDate %s must be before activePeriod %s",
-                        paidPeriod, activePeriod));
-            }
-        }
-
-        if (paidPeriod.isBefore(startPeriod)) {
-            errors.add(String.format("paidDate %s is before startPeriod %s",
-                    paidPeriod, startPeriod));
-        }
-
-        if (st.originalData().paidDate().isAfter(now)) {
-            errors.add("paidDate cannot be in the future");
-        }
-
-        if (!errors.isEmpty()) {
-            return TransactionValidation.invalid(errors);
-        }
-
-        return TransactionValidation.valid();
+        // Cashflow's own rule, not a third copy of it. Step 18 replaced the copy in
+        // StageTransactionsCommandHandler and I claimed at the time that the rule had existed
+        // twice; it had existed four times - the aggregate and three handlers in this module. This
+        // was one of the two I missed.
+        return skeleton.importWindow()
+                .refusalFor(st.originalData().paidDate(), now)
+                .map(refusal -> TransactionValidation.invalid(List.of(refusal.getMessage())))
+                .orElseGet(TransactionValidation::valid);
     }
 
     private ForceUncategorizedResult buildResult(
@@ -249,7 +231,7 @@ public class ForceUncategorizedCommandHandler
             int updatedCount,
             boolean categoryCreated,
             List<StagedTransaction> transactions,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             ZonedDateTime now) {
 
         int total = transactions.size();

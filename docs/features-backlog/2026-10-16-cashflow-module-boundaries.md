@@ -812,3 +812,98 @@ wystarczy to, co `CashFlowSkeletonView` już nosi**; piąty chce statusów miesi
 Nie dotknąłem `getCashFlowInfo`. Rozbicie go na „szkielet + `importedSourceIds` + statusy miesięcy"
 jest opisane w analizie kandydatów i czeka na decyzję — w szczególności dlatego, że trzecia część
 nie jest kontraktem cashflow.
+
+## 17. Co zrobił krok 21: rozbicie `getCashFlowInfo`, części 1 i 2
+
+Analiza mówiła, że ta metoda rozpada się na trzy i tylko jedna część jest kontraktem cashflow.
+Wykonane części 1 i 2; część 3 (statusy miesięcy) zostaje świadomie.
+
+### Część 1 — operacje drzewa na szkielecie
+
+Cztery metody pomocnicze `CashFlowInfo` nie były danymi, tylko **operacjami na danych, które
+szkielet już nosi**:
+
+| `CashFlowInfo` | `CashFlowSkeletonView` |
+|---|---|
+| `findCategoryNameIgnoreCase(String)` → `Optional<String>` | `findCategoryIgnoringCase(String)` → `Optional<CategoryName>` |
+| `findCategoryNameIgnoreCase(String, Type)` | `findCategoryIgnoringCase(String, Type)` |
+| `findParentCategory(String, Type)` | `parentOf(CategoryName, Type)` |
+| `getAllTypedCategoryKeys()` → `Set<TypedCategoryKey(String, Type)>` | `typedCategoryNames()` → `Set<TypedCategoryName(CategoryName, Type)>` |
+
+**Dlaczego to należy do kontraktu, a nie do konsumenta.** Krok 14 uczynił szkielet typowanym
+z uzasadnieniem: *„a name read out of a bank statement is not the same thing as a category until
+someone says it is"*. `findCategoryIgnoringCase` **jest tym momentem, w którym ktoś to mówi** —
+bierze surowy string z banku, przycina, składa wielkość liter i oddaje nazwę kategorii. To polityka
+dopasowywania, więc należy do właściciela kategorii. Dopóki robili to konsumenci, każdy mógł ją
+mieć inną — i jeśli kiedyś znaczenie „ta sama kategoria" obejmie ogonki czy interpunkcję, wszyscy
+zaczną się zgadzać tego samego dnia.
+
+Typowanie od razu wyciągnęło, że `RevalidateStagingCommandHandler` żonglował `String`-ami:
+`Optional<String>`, `String actualCategoryName`, dwie sygnatury pomocnicze i dwa
+`new CategoryName(...)` na wyjściu. Teraz `CategoryName` jedzie przez cały handler.
+
+### Część 2 — jedna nowa metoda
+
+```java
+Set<String> importedSourceIds(CashFlowId cashFlowId);
+```
+
+**Osobna metoda, nie pole szkieletu** — bo `skeletonOf` ma własność przypiętą testem: cash flow
+z czterema latami historii odpowiada tym samym payloadem co utworzony minutę temu. Zbiór 402
+identyfikatorów ją niszczy, a płaciłby za to każdy, kto chce tylko fazę — na przykład
+`RollbackImportJobCommandHandler`, który od kroku 20 pyta wyłącznie o `isInSetup()`.
+
+### Trzech wołających odłączonych od portu
+
+| handler | co teraz woła |
+|---|---|
+| `StartImportJobCommandHandler` | **tylko `skeletonOf`** — zero nowych metod, dokładnie jak przewidywała analiza |
+| `ForceUncategorizedCommandHandler` | `skeletonOf` + `importedSourceIds` |
+| `RevalidateStagingCommandHandler` | `skeletonOf` + `importedSourceIds` |
+
+Wszystkie trzy **nie wstrzykują już portu wcale**. Został jeden wołający:
+`StageTransactionsCommandHandler`, bo potrzebuje statusów miesięcy.
+
+### Korekta: reguła dat istniała **cztery** razy, nie dwa
+
+W kroku 18 napisałem, że reguła dat „istniała dwa razy" — agregat i staging. To było **zaniżone**.
+Przy konwersji tych dwóch handlerów znalazłem **dwie kolejne kopie**, z własnym brzmieniem dla tego
+samego warunku:
+
+| plik | komunikat |
+|---|---|
+| `StageTransactionsCommandHandler` | naprawiony w kroku 18 |
+| `ForceUncategorizedCommandHandler` | `"In SETUP mode, paidDate %s must be before activePeriod %s"` |
+| `RevalidateStagingCommandHandler` | `"paidDate %s is not before activePeriod %s"` |
+
+Czyli: cztery implementacje jednej reguły, trzy z nich jako tekst, i każda mogła się rozejść
+osobno. Sprawdziłem tamtego dnia tylko handler, który konwertowałem. Teraz w `bank_data_ingestion`
+jest **zero** kopii — wszystkie trzy przeszły na `skeleton.importWindow().refusalFor(...)`.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `CashFlowSkeletonViewTest` (nowy) | **8** — w tym to, że jednostronny lookup nie przechodzi między kierunkami (cash flow może mieć „Transfer" po obu stronach) i że `allCategoryNames()` te dwie strony scala, co jest powodem istnienia `typedCategoryNames()` |
+| `ImportWindowTest` | 10 |
+| `HttpCashFlowModuleApiIntegrationTest` | 16 → **18** — `importedSourceIds` zgłasza dwa zaimportowane i pomija ten bez identyfikatora; nieznany cash flow → `CashFlowNotFoundException` |
+
+### Czego krok 21 nie zrobił
+
+**Część 3: statusy miesięcy.** Zostają w `StageTransactionsCommandHandler` przez port, bo:
+
+1. źródłem jest `GET /cash-flow-forecast/cf={id}/month-statuses` w **innym module**;
+2. to **model odczytu utrzymywany asynchronicznie** ze zdarzeń Kafki, więc nie jest synchronicznie
+   spójny z cashflow — kontrakt cashflow podawałby cudzą projekcję, potencjalnie opóźnioną;
+3. ma **sześć statusów miesiąca** (`IMPORT_PENDING`, `IMPORTED`, `ROLLED_OVER`, `ACTIVE`,
+   `FORECASTED`, `ATTESTED`), podczas gdy agregat cashflow zna trzy.
+
+To jest argument za `cashflow-forecast-api`, nie za metodą tutaj.
+
+**I znalezisko, które nie zależy od żadnej decyzji:** odmowa importu do miesiąca `ATTESTED` —
+reguła „ten miesiąc jest tylko do odczytu" — **nie jest pokryta ani jednym testem**. Dubler
+`TestCashFlowServiceClient.generateMonthStatuses` wymyśla statusy z heurystyki i sam przyznaje się
+w komentarzu, że nie umie `ATTESTED` ani `IMPORTED`: *„For test purposes, assume ROLLED_OVER for
+past months"*. Jedyne wystąpienia `ATTESTED` w `src/test` to ten komentarz i dwa generatory, których
+surefire nie uruchamia. **Czwarty taki przypadek w tej serii** po `exists`, detekcji duplikatów
+i rollbacku.

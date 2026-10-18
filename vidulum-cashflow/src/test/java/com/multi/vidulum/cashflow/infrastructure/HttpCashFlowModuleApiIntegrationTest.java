@@ -417,6 +417,41 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
     }
 
     @Test
+    @DisplayName("importedSourceIds over HTTP reports what was imported, and only that")
+    void shouldReportImportedSourceIdsOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        assertThat(httpApi.importedSourceIds(cashFlowId))
+                .as("nothing imported yet")
+                .isEmpty();
+
+        ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
+        httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "shop",
+                Money.of(10.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-A"));
+        httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Lidl", "shop",
+                Money.of(20.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-B"));
+        // And one with no source id - a transaction nobody imported.
+        httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "cash", "no receipt",
+                Money.of(5.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, null));
+
+        assertThat(httpApi.importedSourceIds(cashFlowId))
+                .as("the two that came from a bank; null is absent rather than present as null")
+                .containsExactlyInAnyOrder("NEST-A", "NEST-B");
+    }
+
+    @Test
+    @DisplayName("importedSourceIds raises the contract's failure for an unknown cash flow")
+    void shouldRaiseNotFoundForImportedSourceIdsOverHttp() {
+        assertThatThrownBy(() -> httpApi.importedSourceIds(CashFlowId.of("CF99999999")))
+                .isInstanceOf(CashFlowNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("createCategory over HTTP raises the contract's failure for an unknown cash flow")
     void shouldRaiseNotFoundWhenCreatingOverHttp() {
         assertThatThrownBy(() -> httpApi.createCategory(

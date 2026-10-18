@@ -25,6 +25,10 @@ import org.springframework.web.client.RestClient;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 /**
@@ -167,6 +171,22 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
         }
     }
 
+    @Override
+    public Set<String> importedSourceIds(CashFlowId cashFlowId) {
+        // Reads them off the same payload skeletonOf uses, since the endpoint reports
+        // bankTransactionId per cash change now. In a split deployment this would deserve its own
+        // narrower endpoint - the full response carries every transaction - but inventing one here
+        // would be guessing at a shape nobody has asked for yet.
+        return fetch(cashFlowId)
+                .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId))
+                .cashChanges()
+                .values()
+                .stream()
+                .map(CashChangeResponse::bankTransactionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     /**
      * {@code GET /cash-flow/cf={id}}, with a missing cash flow turned into an empty result rather
      * than an exception, because {@link #exists} is one of the two callers and would otherwise be
@@ -249,8 +269,20 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             YearMonth activePeriod,
             YearMonth startPeriod,
             List<CategoryResponse> inflowCategories,
-            List<CategoryResponse> outflowCategories
+            List<CategoryResponse> outflowCategories,
+            Map<String, CashChangeResponse> cashChanges
     ) {
+        @Override
+        public Map<String, CashChangeResponse> cashChanges() {
+            return cashChanges == null ? Map.of() : cashChanges;
+        }
+    }
+
+    /**
+     * One field out of a cash change, because one is all {@link #importedSourceIds} needs.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record CashChangeResponse(String bankTransactionId) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
