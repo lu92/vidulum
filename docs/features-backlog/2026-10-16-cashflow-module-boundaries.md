@@ -1314,3 +1314,75 @@ vidulum-cashflow/
 ├── recurring-rules/
 └── src/   ←  cashflow + cashflow_forecast_processor
 ```
+
+
+## 22. Co zrobił krok 26: `vidulum-cashflow-tests`
+
+### Problem, który zostawiły trzy poprzednie kroki
+
+Po wydzieleniu ingestion, adaptera i profilu `vidulum-cashflow` był **dwiema rzeczami naraz**:
+implementacją agregatu i miejscem, gdzie mieszkają testy integracyjne wszystkich pozostałych.
+Miał **cztery zależności `test` scope na moduły, które z niego wyszły**:
+
+```
+vidulum-bank-data-ingestion · vidulum-bank-data-adapter
+vidulum-user-financial-profile · vidulum-recurring-rules
+```
+
+Konsekwencja praktyczna, która podkopywała sens tamtych kroków: **`./mvnw test -pl :vidulum-cashflow`
+wymagał, żeby wszystkie cztery były wcześniej zbudowane.**
+
+### Dlaczego te testy nie mogły pojechać ze swoimi modułami
+
+Bo każdy z nich zależy **wyłącznie od kontraktów, nigdy od `vidulum-cashflow`** — i to jest
+dokładnie to, co trzyma reaktor acyklicznym. Test integracyjny potrzebuje jednak implementacji,
+więc musiałby odwrócić tę zależność.
+
+### Podział, z pomiaru
+
+| | plików |
+|---|---|
+| przekraczają granice (wymagają innych modułów) | 17 |
+| własne, ale potrzebują Springa/Testcontainerów | 13 |
+| wspólna infrastruktura potrzebna po stronie integracyjnej | 7 |
+| **jadą** | **37** |
+| **zostają** — czysto jednostkowe + `TestIds` i dwa `InMemory*Repository` | **12** |
+
+Klasyfikator dał przy tym jeden fałszywy alarm, wart zapamiętania: `CashFlowAggregateTest` wyszedł
+jako „potrzebuje Testcontainerów", bo ma komentarz *„Pure unit test — no Spring context, no
+Testcontainers"*. Szukanie wzorców bez usuwania komentarzy mierzy prozę, nie kod.
+
+### Rzecz, która przesądziła o kształcie
+
+`@SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})` **nie nazywa aplikacji** —
+Spring szuka `@SpringBootApplication` skanując w górę od pakietu testu. `CashFlowTestApplication`
+leży w `com.multi.vidulum`, więc wszystkie testy pod tym pakietem ją znajdują.
+
+Czyli aplikacja testowa **musiała pojechać z testami**: gdyby została, przeniesione testy nie
+miałyby kontekstu. A skoro zostające testy Springa nie potrzebują, `vidulum-cashflow` nie ma już
+aplikacji testowej wcale — i nie powinien mieć.
+
+### Wynik
+
+| | przed | po |
+|---|---|---|
+| `vidulum-cashflow`: zależności `test` scope | **8** (4 moduły + 4 `test-jar`) | **0** |
+| `vidulum-cashflow`: testy | ~500, ~4 min, Testcontainery | **91 w 5 sekundach**, bez Dockera |
+| `vidulum-cashflow`: Testcontainery, `spring-kafka-test`, `awaitility`, `resttestclient` w pomie | tak | **usunięte** |
+| `vidulum-cashflow-tests` | — | wszystkie testy integracyjne rodziny |
+
+`vidulum-cashflow` publikuje `test-jar` z `TestIds` i dwoma `InMemory*Repository` — jedynymi
+helperami potrzebnymi po obu stronach (5 użyć po stronie zostającej, 6 po przeniesionej).
+
+To ten sam model co `vidulum-wealth-tests`, i `CLAUDE.md` opisuje go dla `wealth/` od dawna:
+*„unit and component tests only — no Spring, in-memory repositories"*. Teraz jest prawdziwy także
+dla rodziny cashflow.
+
+### Czego to nie zmienia
+
+**Czasu pełnego reaktora.** Te same testy, ten sam Docker — przeniesione, nie usunięte. Skraca się
+pętla przy pracy nad agregatem, nie przebieg CI.
+
+**Liczby zestawów infrastruktury testowej.** Są teraz trzy równoległe (`cashflow-tests`,
+`wealth-tests`, `vidulum-app`), każdy z własną bazą i własną aplikacją. To nie jest nowe, ale stało
+się wyraźniejsze.
