@@ -1,8 +1,8 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
 import com.multi.vidulum.cashflow.api.Type;
 import lombok.AllArgsConstructor;

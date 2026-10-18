@@ -3,6 +3,19 @@ package com.multi.vidulum.bank_data_adapter.domain;
 /**
  * Classification of transaction type determined by AI enrichment.
  *
+ * <p><b>This module's own copy, and bank-data-ingestion has another one.</b> That is deliberate,
+ * and briefly had a Maven module of its own before the actual shape of the boundary was measured:
+ * these two modules never exchange this type. The adapter <b>writes a CSV column</b> -
+ * {@code headerLine + ",classification,classificationReason,location"} - and ingestion
+ * <b>parses that text</b> with its own {@code fromString}. The contract between them is a column
+ * name and a vocabulary of words, so a shared Java type was a convenience pretending to be a
+ * dependency.
+ *
+ * <p>{@code fromString} returning {@link #UNKNOWN} for anything it does not recognise is the other
+ * half of that design: a producer is allowed to know words a consumer does not.
+ * {@code TransactionClassificationVocabularyTest} is what keeps the two lists from drifting
+ * silently anyway.
+ *
  * This classification helps:
  * 1. Determine if merchant extraction makes sense
  * 2. Enable auto-categorization for non-merchant transactions

@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure.entity;
 
-import com.multi.vidulum.bank_data_adapter.domain.TransactionClassification;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;

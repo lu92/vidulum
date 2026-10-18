@@ -999,3 +999,133 @@ przestrzeni nazw.
 | `ImportWindowTest` | 10 |
 | `HttpCashFlowModuleApiIntegrationTest` | **18** — `find("NEST-A")` oddaje `CashChangeId`, kwotę ze skalą i `paidDate` czytany z `endDate` |
 | `BankDataIngestionControllerTest` | **33** — `shouldDetectATransactionAlreadyImported` asertuje teraz, że `duplicateOf` **wskazuje istniejącą transakcję**, a nie samo siebie |
+
+
+## 19. Co zrobił krok 23: `bank_data_ingestion` jako osobny artefakt
+
+### Dlaczego ten, a nie cashflow
+
+Pytanie wyszło od drugiej strony — od wydzielenia `cashflow` + `cashflow_forecast_processor`.
+Pomiar pokazał, że **tamto ma warunek wstępny, a to nie**:
+
+| | wydzielić cashflow | wydzielić ingestion |
+|---|---|---|
+| zależności wychodzące wyciąganego | **0** | 3, z czego 2 już przez istniejące `-api` |
+| blokada | **cykl w reaktorze**: `CashFlowIntegrationTest` leży w pakiecie `cashflow`, a wiąże dubler portu należącego do ingestion | **jeden enum** |
+| warunek wstępny | likwidacja portu (część 3) | **brak** |
+| potrzebny `-api` dla wyciąganego | już jest | **nie** |
+
+### Macierz, która to przesądziła
+
+```
+                             cashflow  forecast  ingestion  adapter  profile
+cashflow                         –         0          0        0        0
+cashflow_forecast_processor     76         –          0        0        0
+bank_data_ingestion             75         0          –        8        4
+bank_data_adapter                0         0          0        –        0
+user_financial_profile           5         0          0        0        –
+```
+
+**Te 75 importów z cashflow idą wyłącznie przez `cashflow.api`. Ani jeden nie dotyka agregatu** —
+to wynik kroku 15, i to on czyni ten moduł budowalnym osobno. Gdyby ingestion sięgał do
+`cashflow.domain`, wydzielenie byłoby niemożliwe bez wcześniejszej pracy nad kontraktem.
+
+### `-api` nie powstał, i to jest decyzja
+
+Przeszukane całe repozytorium: **ani jeden plik produkcyjny nie importuje `bank_data_ingestion`.**
+Wszystkie odwołania z zewnątrz to testy. Czyli ten sam przypadek, który `CLAUDE.md` opisuje dla
+`vidulum-pnl` i `vidulum-risk`: *kontrakt powstaje, gdy pojawia się konsument*. Ingestion konsumuje
+kontrakty i odpowiada frontendowi po REST — nikt go o nic nie pyta.
+
+### Jedyna blokada: jeden enum — i moja pomyłka przy jej rozwiązaniu
+
+`TransactionClassification` — czysty enum opisujący, czym AI uznało transakcję. Osiem importów
+w ingestion, mieszkał w `bank_data_adapter.domain`.
+
+**Założyłem dla niego moduł `vidulum-bank-data-adapter-api` i to było przeinżynierowanie.**
+Pytanie, którego nie zadałem przed zrobieniem: *jak ta klasyfikacja w ogóle przechodzi z adaptera
+do ingestion?* Odpowiedź przesądza wszystko:
+
+```java
+// bank_data_adapter — DOPISUJE kolumne do CSV
+newHeaderLine = headerLine + ",classification,classificationReason,location";
+```
+
+```java
+// bank_data_ingestion — CZYTA ja jako tekst
+return TransactionClassification.fromString(getOptionalString(record, header));
+```
+
+**Te moduły nigdy nie wymieniają typu Javy. Wymieniają kolumnę CSV.** Faktycznym kontraktem jest
+nazwa kolumny i zbiór dopuszczalnych napisów, więc wspólny enum był **wygodą udającą zależność** —
+a moduł Mavena dla niego był zależnością wymyśloną, żeby wyrazić coś, co CSV już wyraża.
+
+Co więcej, projekt **już to zakładał**:
+
+```java
+catch (IllegalArgumentException e) { return UNKNOWN; }
+```
+
+Nieznane słowo daje `UNKNOWN`, nie wyjątek. To jest definicja kontraktu tekstowego: producent może
+znać słowa, których konsument nie zna.
+
+**Rozwiązanie: każdy moduł ma własny enum.** Adapter w `bank_data_adapter.domain`, ingestion
+w `bank_data_ingestion.domain`, kontraktem zostaje kolumna. Moduł `bank-data-adapter-api` usunięty.
+Efekt jest lepszy niż pierwotny: **ingestion zależy teraz wyłącznie od `vidulum-shared-kernel`,
+`vidulum-cashflow-api` i `vidulum-user-financial-profile-api`** — i od adaptera nie zależy wcale.
+
+Ryzyko rozjazdu nie zniknęło, tylko przestało być zamaskowane wspólnym typem — i dostało test.
+`TransactionClassificationVocabularyTest` sprawdza, że każde słowo, które adapter umie zapisać,
+ingestion umie przeczytać, i w drugą stronę. Dowód negatywny: stała dopisana tylko po stronie
+adaptera wywala dwa z trzech testów. Bez niego taki rozjazd zamieniłby każdą transakcję z nowym
+słowem na `UNKNOWN` **w ciszy**.
+
+### Testy: siedem zostaje, pięć jedzie
+
+Podział nie jest arbitralny. Testy, które potrzebują **implementacji** cashflow albo wspólnej bazy
+`CashFlowIntegrationTest`, muszą zostać u rodzica — inaczej byłby cykl:
+
+```
+vidulum-bank-data-ingestion  →  vidulum-cashflow-api        (compile)
+vidulum-cashflow             →  vidulum-bank-data-ingestion (test + test-jar)
+```
+
+Acykliczne **tylko dlatego, że ingestion zależy od kontraktu, nie od implementacji.**
+
+To ten sam układ, który u nas działa od dawna: `vidulum-recurring-rules` jest osobnym modułem,
+a jego `RecurringRulesHttpIntegrationTest` leży w `vidulum-cashflow/src/test`. Czyli
+`vidulum-cashflow/src/test` **pełni już rolę** tego, czym dla `wealth` jest `vidulum-wealth-tests`
+— tylko bez osobnej nazwy.
+
+| | |
+|---|---|
+| zostaje u rodzica | 8 plików (7 testów + aktor): `BankDataIngestionControllerTest`, `…HttpIntegrationTest`, `DirectCategoryMatch`, `PatternMatching`, `StagingSessionLifecycle`, `HttpCashFlowServiceClient…`, `…ErrorHandlingTest`, `BankDataIngestionHttpActor` |
+| jedzie do nowego modułu | 5 plików, **104 testy** |
+
+**Te 104 testy wykonują się w 0,4 sekundy** — bez Springa, bez Testcontainerów. Dotąd zmiana
+w ingestion odpalała ~4-minutową suitę całego `vidulum-cashflow`.
+
+### Granica jest teraz sprawdzana kompilatorem, nie testem
+
+Dowód negatywny wyszedł mocniejszy, niż planowałem. Dodałem do `cashflow.app` import
+z `bank_data_ingestion.app` — i **kompilacja padła**, bo `vidulum-cashflow` ma ingestion wyłącznie
+przy `test` scope.
+
+Dotąd tej granicy pilnował `ModuleBoundariesArchTest` (zielony od kroku 15). Teraz pilnuje jej
+Maven. Pieczęcie `assertSealed("bank_data_ingestion", …)` i `assertSealed("bank_data_adapter", …)`
+dopisane jako druga linia — na wypadek, gdyby ktoś dodał zależność przy `compile`. Pieczęć
+adaptera jest przy tym **wreszcie prawdziwa**: po rozdzieleniu enumów ingestion nie importuje
+z adaptera nic.
+
+### Czego to nie daje
+
+**Niezależnego wdrożenia.** `vidulum-app` nadal montuje wszystko w jeden kontekst — tak samo jak
+przy `wealth`. To jest monolit z twardymi granicami, nie mikroserwisy.
+
+### Wart odnotowania wart
+
+**Konfiguracja się nie przeniosła.** Klucze `vidulum.ingestion.*`, `vidulum.cashflow-service.*`
+i `bank-data-ingestion:` zostały w `vidulum-cashflow/src/main/resources/application.yml`. Runtime
+działa, bo ten plik jest nadal na classpathie aplikacji, a **wszystkie klucze ingestion mają
+wartości domyślne w `@Value`** — sprawdzone. Ale leżą w złym miejscu i warto je przenieść przy
+okazji; to osobna, drobna porządkowa zmiana.
