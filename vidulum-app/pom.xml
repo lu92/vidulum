@@ -29,6 +29,15 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Bank data ingestion: left vidulum-cashflow and so the bootstrap names it directly.
+             It arrives here at compile scope and nowhere else at compile scope, which is the rule
+             for every implementation module. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-ingestion</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Recurring rules: an implementation module like any other, so the bootstrap names it.
              It used to arrive transitively through vidulum-cashflow, which declared it at compile
              scope while using nothing from it - so the only module whose beans reached the

@@ -143,6 +143,13 @@ class ModuleBoundariesArchTest {
         assertSealed("okx", "com.multi.vidulum.okx..");
         assertSealed("recurring_rules", "com.multi.vidulum.recurring_rules..");
 
+        // bank_data_ingestion is its own artifact now, so it gets its own seal. It needed none of
+        // cashflow's internals to get there: 75 imports, all through vidulum-cashflow-api. The
+        // enum that did block it - TransactionClassification - moved to
+        // vidulum-bank-data-adapter-api, which is why the adapter is sealed here too.
+        assertSealed("bank_data_ingestion", "com.multi.vidulum.bank_data_ingestion..");
+        assertSealed("bank_data_adapter", "com.multi.vidulum.bank_data_adapter..");
+
         // cashflow carries its exemptions as extra "own" packages rather than as a name list,
         // because that is what they are: three subdomains inside the same artifact that still read
         // the aggregate directly. Everything outside this set - portfolio, trading, pnl, the

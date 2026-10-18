@@ -62,6 +62,7 @@ changed plus everything downstream**, and nothing else:
 | `vidulum-pnl` / `vidulum-risk` | that module, then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and cross-module tests use them |
 | `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
 | `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
+| `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | its own 104 tests run in under a second; the seven that need a running cash flow live in the parent |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | `install` it, then everything downstream of its implementations | the contract is the compile-time surface |
 | several modules in one group | `-f market/pom.xml` or `-f wealth/pom.xml` | the aggregator's reactor; needs the other group installed |
@@ -95,8 +96,12 @@ vidulum/
 │
 ├── vidulum-cashflow/            # CashFlow domain module
 │   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
-│                                #   createCategory), Type,
-│                                #   view/, error/ - what other modules may ask of cashflow
+│                                #   createCategory, importHistorical, rollbackImport,
+│                                #   alreadyImported), Type, view/, error/
+│   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. Depends on
+│                                #   shared-kernel + two contracts, never on vidulum-cashflow -
+│                                #   which is what lets the parent depend on it at test scope
+│                                #   without a cycle. No -api of its own: nothing asks it anything
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
 │   └── bank_data_ingestion/     #   CSV import staging, category mapping
@@ -244,6 +249,23 @@ both held `Money` and `ZonedDateTime`; the HTTP client rebuilt the rest with
 That second point corrects my own first analysis, which claimed precision loss on money: a sabotage
 test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
 actually breaks before calling something a defect.**
+
+### Measure how a value crosses a boundary before giving it a module
+
+`TransactionClassification` is declared twice - once in `bank_data_adapter.domain`, once in
+`bank_data_ingestion.domain` - and that is deliberate. It briefly had a Maven module of its own,
+which was wrong, because the two modules **never exchange the type**: the adapter appends a CSV
+column (`",classification,classificationReason,location"`) and ingestion parses the text with
+`fromString`. The contract is a column name and a vocabulary of words, so a shared Java type was a
+convenience pretending to be a dependency.
+
+The giveaway was already in the code: `fromString` answers `UNKNOWN` for anything unrecognised,
+which only makes sense if a producer is allowed to know words a consumer does not — the signature
+of a text contract, not a typed one.
+
+**Duplication across a text boundary needs a test, not a module.**
+`TransactionClassificationVocabularyTest` fails if either side gains a constant the other lacks,
+because the tolerance that makes drift safe also makes it silent.
 
 ### Idempotency on an embedded array cannot use a unique index
 
