@@ -23,6 +23,7 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.Map;
 import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -210,7 +211,7 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
 
         CashChangeId cashChangeId = httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
                 new CategoryName("Groceries"), "Tesco", "weekly shop",
-                exact, Type.OUTFLOW, paidAt, paidAt, false));
+                exact, Type.OUTFLOW, paidAt, paidAt, false, "NEST-2021-11-14-001"));
 
         assertThat(cashChangeId).isNotNull();
         assertThat(cashChangeId.id()).startsWith("CC");
@@ -240,6 +241,89 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
     }
 
     @Test
+    @DisplayName("importing the same bank transaction twice records it once and returns the same id")
+    void shouldBeIdempotentOnTheBanksOwnTransactionId() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        HistoricalCashChange sameRowTwice = new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "weekly shop",
+                Money.of(new BigDecimal("99.99"), "GBP"), Type.OUTFLOW,
+                ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]"),
+                ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]"),
+                false,
+                "NEST-2021-11-14-DUPLICATE");
+
+        CashChangeId first = httpApi.importHistorical(cashFlowId, sameRowTwice);
+        CashChangeId second = httpApi.importHistorical(cashFlowId, sameRowTwice);
+
+        assertThat(second)
+                .as("the id issued the first time, not a second cash change")
+                .isEqualTo(first);
+
+        Map<CashChangeId, CashChangeSnapshot> stored = domainCashFlowRepository.findById(cashFlowId)
+                .orElseThrow()
+                .getSnapshot()
+                .cashChanges();
+
+        assertThat(stored)
+                .as("one transaction in the cash flow, not two - this is what re-uploading the "
+                        + "same statement used to do 402 times over")
+                .hasSize(1);
+        assertThat(stored.get(first).bankTransactionId()).isEqualTo("NEST-2021-11-14-DUPLICATE");
+    }
+
+    @Test
+    @DisplayName("two different bank transactions with identical contents are both recorded")
+    void shouldNotConfuseTwoGenuinelyDifferentTransactions() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        // Same shop, same amount, same day - two real visits. Only the bank's id tells them apart,
+        // which is why deduplicating on contents would have been the wrong design.
+        ZonedDateTime sameDay = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
+        CashChangeId morning = httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "weekly shop",
+                Money.of(new BigDecimal("99.99"), "GBP"), Type.OUTFLOW, sameDay, sameDay, false,
+                "NEST-VISIT-1"));
+        CashChangeId afternoon = httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "weekly shop",
+                Money.of(new BigDecimal("99.99"), "GBP"), Type.OUTFLOW, sameDay, sameDay, false,
+                "NEST-VISIT-2"));
+
+        assertThat(afternoon).isNotEqualTo(morning);
+        assertThat(domainCashFlowRepository.findById(cashFlowId).orElseThrow()
+                .getSnapshot().cashChanges())
+                .hasSize(2);
+    }
+
+    @Test
+    @DisplayName("a transaction with no source id is never treated as a duplicate")
+    void shouldNotMatchOnAbsentSourceId() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
+        HistoricalCashChange noSourceId = new HistoricalCashChange(
+                new CategoryName("Groceries"), "cash", "no receipt",
+                Money.of(20.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, null);
+
+        CashChangeId first = httpApi.importHistorical(cashFlowId, noSourceId);
+        CashChangeId second = httpApi.importHistorical(cashFlowId, noSourceId);
+
+        assertThat(second)
+                .as("null must match nothing - silently collapsing all unsourced transactions "
+                        + "into one would be far worse than recording two")
+                .isNotEqualTo(first);
+        assertThat(domainCashFlowRepository.findById(cashFlowId).orElseThrow()
+                .getSnapshot().cashChanges())
+                .hasSize(2);
+    }
+
+    @Test
     @DisplayName("importHistorical over HTTP refuses a date the import window already rejects")
     void shouldRefuseADateOutsideTheImportWindowOverHttp() {
         CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
@@ -258,7 +342,7 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
         // And the write refuses it too, because a contract does not trust the caller to have asked.
         assertThatThrownBy(() -> httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
                 new CategoryName("Groceries"), "Tesco", "too recent",
-                Money.of(10.0, "GBP"), Type.OUTFLOW, notHistorical, notHistorical, false)))
+                Money.of(10.0, "GBP"), Type.OUTFLOW, notHistorical, notHistorical, false, "NEST-X")))
                 .isInstanceOf(HttpClientErrorException.BadRequest.class);
     }
 

@@ -625,3 +625,99 @@ Obie zmiany mają dowód negatywny:
 - **Brak idempotencji** (punkt 4). `bankTransactionId` wciąż nie przechodzi do cashflow, więc
   powtórzony import duplikuje dane, a detekcja duplikatów w stagingu pozostaje martwa.
   Kontrakt mówi to wprost w javadocu `importHistorical`.
+
+## 15. Co zrobił krok 19: klucz z banku, czyli punkt 4 — wariant A
+
+### Korekta, od której trzeba zacząć
+
+Pisałem: „to samo co `originTradeId` dla trade'ów — klucz plus indeks unikalny". **To było błędne
+co do mechanizmu**, i wyszło przy sprawdzaniu, gdzie fizycznie mieszkają transakcje:
+
+```java
+// trading — jeden dokument na trade, indeks dziala
+@Document("trade")
+@CompoundIndex(def = "{'portfolioId': 1, 'originTradeId': 1}", unique = true)
+
+// cashflow — jeden dokument na CALY cash flow
+@Document("cash-flow-document")
+private List<CashChangeEntity> cashChanges;   // 402 transakcje w jednym dokumencie
+```
+
+MongoDB wymusza unikalność **między dokumentami**. Dla indeksu multikey dokument *może* mieć
+powtórzone wartości w tablicy, a `cashFlowId` jest i tak unikalny na dokument — więc indeks na
+`{cashFlowId, "cashChanges.bankTransactionId"}` byłby spełniony trywialnie i **nie chroniłby przed
+niczym**. Baza nie ma jak pomóc, dopóki transakcje są osadzone.
+
+Dlatego straż jest w agregacie, który i tak trzyma wszystkie swoje transakcje w pamięci:
+
+```java
+// CashFlow
+public Optional<CashChangeId> findImported(String bankTransactionId)
+
+// ImportHistoricalCashChangeCommandHandler
+Optional<CashChangeId> alreadyImported = cashFlow.findImported(command.bankTransactionId());
+if (alreadyImported.isPresent()) {
+    return alreadyImported.get();   // nic nie zapisuje
+}
+```
+
+### Druga naprawa w tej samej cenie: martwy kod zaczął działać
+
+Detekcja duplikatów w stagingu istniała i **nie mogła się nigdy wykonać** — z dwóch różnych
+powodów:
+
+| | przed | po |
+|---|---|---|
+| `HttpCashFlowServiceClient.extractTransactionIds` | `return new HashSet<>()` z komentarzem „the API might return bankTransactionIds… For now, return empty set" | czyta `bankTransactionId` z odpowiedzi endpointu |
+| `TestCashFlowServiceClient` | wypełniał zbiór **`CashChangeId`-ami** (`CC1000000073`) — porównanie z innej przestrzeni nazw | czyta `bankTransactionId` ze snapshotu |
+
+Zbiór niepusty w testach sprawiał, że suita **wyglądała** na pokrywającą tę funkcję.
+`shouldDetectATransactionAlreadyImported` jest pierwszym testem, który ją faktycznie sprawdza.
+
+### Usterka znaleziona po drodze: dwie ścieżki rehydracji
+
+Pierwsza wersja idempotencji **nie działała** i test to pokazał (`CC1000000001` vs `CC1000000002`).
+Przyczyna:
+
+```java
+// CashFlow.from(snapshot) — recznie przepisany builder, osobno od CashChange.from
+.sourceRuleId(cashChangeSnapshot.sourceRuleId())
+.selfTransfer(cashChangeSnapshot.selfTransfer())
+.build())                                           // ← bankTransactionId gubiony
+```
+
+`CashChange.from(snapshot)` istniał i był kompletny, ale `CashFlow.from` miał **drugą kopię tego
+mapowania**, wypisaną z ręki. Dodanie pola do jednej z dwóch ścieżek wystarczyło, żeby wszystko
+ładowane z bazy miało `null`. `CashFlow.from` deleguje teraz do `CashChange.from`.
+
+**Pole istniejące w dwóch ścieżkach mapowania w końcu zacznie istnieć tylko w jednej.**
+
+### Reguła all-args zrobiła swoje
+
+Dodanie pola do `CashChangeSnapshot` i do zdarzenia zatrzymało kompilację w **39 miejscach**:
+23 obiekty oczekiwane w `BankDataIngestionHttpIntegrationTest`, 6 snapshotów w
+`CashFlowAggregateTest`, 10 zdarzeń w `CashFlowForecastProcessorTest`. Dokładnie po to jest zasada
+„konstruktory, nie buildery, dla obiektów oczekiwanych" z `CLAUDE.md` — przy builderze nowe pole
+przeszłoby niezauważone w każdym z tych 39 miejsc.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `HttpCashFlowModuleApiIntegrationTest` | 10 → **13**: ta sama transakcja dwa razy → jeden wpis i ten sam id; dwie różne o identycznej treści → dwa wpisy; `null` nie pasuje do niczego |
+| `BankDataIngestionControllerTest` | 32 → **33**, pierwszy test detekcji duplikatów |
+| `CashFlowSkeletonComponentTest` | 11 (klucz dopisany do istniejących asercji) |
+
+| sabotaż | co upada |
+|---|---|
+| straż w `findImported` wyłączona | `shouldBeIdempotentOnTheBanksOwnTransactionId` — dwa różne `CashChangeId` |
+| dubler z powrotem na `CashChangeId` | `shouldDetectATransactionAlreadyImported` — `Expected size: 1 but was: 0` |
+
+### Czego to nadal nie daje — powiedziane wprost
+
+1. **Gwarancji w bazie.** To straż w kodzie. Wariant B (transakcje jako własna kolekcja) jest jedyną
+   drogą do indeksu unikalnego i jest osobnym, dużo większym zadaniem.
+2. **Odporności na wyścig.** `@Version` **nie występuje w całym projekcie**, a zapis podmienia cały
+   dokument, więc dwie równoległe operacje na tym samym cash flow gubią jedną z nich — niezależnie
+   od tej zmiany. To problem każdej operacji na cash flow, nie tylko importu, i wart osobnej
+   pozycji na tablicy.

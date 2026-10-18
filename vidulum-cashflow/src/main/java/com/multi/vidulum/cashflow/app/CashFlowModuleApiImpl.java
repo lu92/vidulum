@@ -108,7 +108,8 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 change.type(),
                 change.dueDate(),
                 change.paidDate(),
-                change.selfTransfer()));
+                change.selfTransfer(),
+                change.bankTransactionId()));
     }
 
     /**

@@ -204,7 +204,7 @@ class CashFlowSkeletonComponentTest {
 
         api.importHistorical(CASH_FLOW_ID, new HistoricalCashChange(
                 new CategoryName("Groceries"), "Biedronka", "weekly shop",
-                amount, Type.OUTFLOW, paidAt, paidAt, false));
+                amount, Type.OUTFLOW, paidAt, paidAt, false, "BANK-TX-1"));
 
         assertThat(handler.received.money().getAmount())
                 .as("scale included - the port used to send amount.doubleValue(), which turned "
@@ -232,7 +232,7 @@ class CashFlowSkeletonComponentTest {
                 new CategoryName("Salary"), "March salary", "from employer",
                 Money.of(8000, "PLN"), Type.INFLOW,
                 ZonedDateTime.parse("2023-03-28T09:00:00Z[UTC]"),
-                ZonedDateTime.parse("2023-03-28T09:00:00Z[UTC]"), true));
+                ZonedDateTime.parse("2023-03-28T09:00:00Z[UTC]"), true, "BANK-TX-2"));
 
         assertThat(handler.received.name())
                 .as("Name lives in cashflow.domain, where a consumer may not look")
@@ -294,7 +294,8 @@ class CashFlowSkeletonComponentTest {
                                 SOME_TIME,
                                 SOME_TIME,
                                 null,
-                                false)));
+                                false,
+                                "BANK-TX-%05d".formatted(i))));
     }
 
     private static Category category(String name) {

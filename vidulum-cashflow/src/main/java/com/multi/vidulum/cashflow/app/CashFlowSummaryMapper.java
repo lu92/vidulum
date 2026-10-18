@@ -72,6 +72,10 @@ public class CashFlowSummaryMapper {
                 .endDate(snapshot.endDate())
                 .sourceRuleId(snapshot.sourceRuleId())
                 .selfTransfer(snapshot.selfTransfer())
+                // On the wire so that a consumer in another process can ask which source
+                // transactions a cash flow already holds - which is exactly what
+                // HttpCashFlowServiceClient.extractTransactionIds could not answer before.
+                .bankTransactionId(snapshot.bankTransactionId())
                 .build();
     }
 }

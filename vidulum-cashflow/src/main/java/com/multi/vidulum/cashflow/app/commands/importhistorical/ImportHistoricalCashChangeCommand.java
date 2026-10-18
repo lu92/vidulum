@@ -20,6 +20,8 @@ import java.time.ZonedDateTime;
  * @param type         INFLOW or OUTFLOW
  * @param dueDate      when the transaction was due/occurred
  * @param paidDate     when the transaction was actually paid (for historical data, usually same as dueDate)
+ * @param bankTransactionId id from the source system - what makes a repeated import a no-op;
+ *                          {@code null} for a transaction nobody imported
  */
 public record ImportHistoricalCashChangeCommand(
         CashFlowId cashFlowId,
@@ -30,6 +32,7 @@ public record ImportHistoricalCashChangeCommand(
         Type type,
         ZonedDateTime dueDate,
         ZonedDateTime paidDate,
-        boolean selfTransfer
+        boolean selfTransfer,
+        String bankTransactionId
 ) implements Command {
 }

@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -46,6 +47,17 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                     throw refusal;
                 });
 
+        // Already imported? Answer with the id it got the first time and write nothing. This is
+        // what makes re-uploading the same bank statement a no-op instead of 402 duplicate
+        // transactions, and it is checked here rather than by a unique index because cash changes
+        // are an embedded array - see CashFlow.findImported for why an index cannot do it.
+        Optional<CashChangeId> alreadyImported = cashFlow.findImported(command.bankTransactionId());
+        if (alreadyImported.isPresent()) {
+            log.info("Transaction [{}] was already imported into CashFlow [{}] as [{}] - skipping",
+                    command.bankTransactionId(), command.cashFlowId().id(), alreadyImported.get().id());
+            return alreadyImported.get();
+        }
+
         CashChangeId cashChangeId = businessIdGenerator.generateCashChangeId();
 
         CashFlowEvent.HistoricalCashChangeImportedEvent event = new CashFlowEvent.HistoricalCashChangeImportedEvent(
@@ -59,7 +71,8 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                 command.dueDate(),
                 command.paidDate(),
                 now,
-                command.selfTransfer()
+                command.selfTransfer(),
+                command.bankTransactionId()
         );
 
         cashFlow.apply(event);

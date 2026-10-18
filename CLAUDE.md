@@ -301,6 +301,32 @@ That second point corrects my own first analysis, which claimed precision loss o
 test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
 actually breaks before calling something a defect.**
 
+### Idempotency on an embedded array cannot use a unique index
+
+Imported transactions carry `bankTransactionId`, and `CashFlow.findImported` is what makes
+re-uploading a statement a no-op. **The guard is in the aggregate, not in an index, and the reason
+is structural**: cash changes are an embedded `List<CashChangeEntity>` inside one
+`cash-flow-document`, and MongoDB's unique constraint applies *across* documents — a multikey unique
+index permits repeated values inside one document's array, and `cashFlowId` is unique per document
+anyway, so `{cashFlowId, "cashChanges.bankTransactionId"}` would be satisfied trivially. The trade
+pattern (`@CompoundIndex` on `originTradeId`) works only because `TradeEntity` is one document per
+trade. Check the storage shape before reusing it.
+
+Two things this does **not** give, both worth stating when touching import:
+
+- **No storage-level guarantee.** That needs cash changes in their own collection.
+- **No protection against concurrent writes.** `@Version` appears nowhere in this project and a save
+  replaces the whole document, so two parallel operations on one cash flow silently lose one. That
+  is every operation's problem, not import's — see F35.
+
+### One mapping path per field, or the field will exist in only one of them
+
+Adding `bankTransactionId` broke idempotency silently at first: `CashChange.from(snapshot)` was
+complete, but `CashFlow.from(snapshot)` held a **second, hand-written copy** of the same mapping as
+a builder chain, so everything loaded from storage read `null`. The test caught it; review would
+not have. `CashFlow.from` now delegates. When you find two places that rebuild one object, the
+duplicate is the bug waiting to happen.
+
 ### Domain Aggregates
 
 Key aggregates with their events:

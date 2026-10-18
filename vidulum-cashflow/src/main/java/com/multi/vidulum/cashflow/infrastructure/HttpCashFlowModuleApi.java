@@ -118,7 +118,8 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
                             change.type(),
                             change.dueDate(),
                             change.paidDate(),
-                            change.selfTransfer()))
+                            change.selfTransfer(),
+                            change.bankTransactionId()))
                     .retrieve()
                     .body(String.class);
 
@@ -246,7 +247,8 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             Type type,
             ZonedDateTime dueDate,
             ZonedDateTime paidDate,
-            boolean selfTransfer
+            boolean selfTransfer,
+            String bankTransactionId
     ) {
     }
 

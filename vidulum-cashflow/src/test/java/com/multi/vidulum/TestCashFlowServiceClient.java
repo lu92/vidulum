@@ -1,24 +1,22 @@
 package com.multi.vidulum;
-import com.multi.vidulum.cashflow.api.Type;
-import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
+
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.RollbackResult;
-import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
-import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
-import com.multi.vidulum.cashflow.domain.*;
-import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.domain.Category;
+import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
-import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Test implementation of CashFlowServiceClient that uses QueryGateway and CommandGateway.
@@ -56,8 +54,14 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
         List<CashFlowInfo.CategoryInfo> inflowCategories = mapCategories(snapshot.inflowCategories(), Type.INFLOW);
         List<CashFlowInfo.CategoryInfo> outflowCategories = mapCategories(snapshot.outflowCategories(), Type.OUTFLOW);
 
-        Set<String> existingTransactionIds = new HashSet<>();
-        snapshot.cashChanges().forEach((id, cashChange) -> existingTransactionIds.add(id.id()));
+        // The bank's ids, not cashflow's. This used to collect CashChangeId values - CC1000000073
+        // and friends - so the duplicate check in staging was comparing a bank's transaction id
+        // against identifiers from a different namespace entirely. It was never going to match,
+        // and because the set was non-empty the test suite looked like it exercised the feature.
+        Set<String> existingTransactionIds = snapshot.cashChanges().values().stream()
+                .map(CashChangeSnapshot::bankTransactionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         CashFlowInfo.CashFlowStatus status = switch (snapshot.status()) {
             case SETUP -> CashFlowInfo.CashFlowStatus.SETUP;

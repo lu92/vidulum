@@ -342,6 +342,10 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         for (StagedTransaction st : validTransactions) {
             try {
+                // The bank's own id travels with the transaction now, so a second run of this
+                // import answers with the ids it issued the first time instead of posting
+                // everything twice. It was available here all along - used in the log line below
+                // and in recordFailedTransaction - and simply never crossed the boundary.
                 // Nothing is converted on the way out any more: Money keeps its BigDecimal and
                 // paidDate keeps its time and zone, because the contract takes the types staging
                 // already holds. dueDate is paidDate because a bank statement has no payment term
@@ -356,7 +360,8 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                                 st.mappedData().type(),
                                 st.mappedData().paidDate(),
                                 st.mappedData().paidDate(),
-                                st.mappedData().selfTransfer()));
+                                st.mappedData().selfTransfer(),
+                                st.originalData().bankTransactionId()));
 
                 importJob = importJob.recordCreatedCashChange(cashChangeId.id());
                 processed++;

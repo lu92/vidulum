@@ -43,6 +43,12 @@ import java.time.ZonedDateTime;
  * {@code cashflow.domain}, which a consumer may not import, and ingestion holds strings anyway.
  * Wrapping happens on cashflow's side of the boundary.
  *
+ * <p><b>{@code bankTransactionId} is what makes a repeated import a no-op.</b> It is the id the
+ * transaction had in the system it came from, and cashflow stores it so that re-uploading the same
+ * statement answers with the ids it already issued instead of posting everything twice. Pass
+ * {@code null} only for a transaction that genuinely has no source - the guard then does nothing,
+ * which is the honest behaviour rather than a silent match on empty.
+ *
  * <p><b>{@code dueDate} is a known duplicate of {@code paidDate}.</b> A bank statement has no
  * notion of a payment term, and the only caller passes {@code paidDate} for both; the aggregate
  * stores it and nothing decides anything from it - for an imported cash change the forecast buckets
@@ -59,5 +65,6 @@ public record HistoricalCashChange(
         Type type,
         ZonedDateTime dueDate,
         ZonedDateTime paidDate,
-        boolean selfTransfer) {
+        boolean selfTransfer,
+        String bankTransactionId) {
 }

@@ -1,6 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CategoryName;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.JsonFormatter;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent;
@@ -15,6 +16,8 @@ import com.multi.vidulum.cashflow.app.CashFlowRestController;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.BankName;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
@@ -121,6 +124,9 @@ public class BankDataIngestionControllerTest {
 
     @Autowired
     private BankDataIngestionRestController bankDataIngestionRestController;
+
+    @Autowired
+    private CashFlowModuleApi cashFlowApi;
 
     @Autowired
     private CashFlowMongoRepository cashFlowMongoRepository;
@@ -509,6 +515,63 @@ public class BankDataIngestionControllerTest {
 
         // verify monthly breakdown
         assertThat(response.getMonthlyBreakdown()).hasSize(2); // August and September
+    }
+
+    @Test
+    @DisplayName("Should flag a transaction the cash flow already imported as a duplicate")
+    void shouldDetectATransactionAlreadyImported() {
+        // given: a cash flow that already holds a transaction the bank called "txn-001"
+        String cashFlowId = createCashFlowWithHistory();
+        configureMappingsForStaging(cashFlowId);
+        cashFlowApi.importHistorical(CashFlowId.of(cashFlowId), new HistoricalCashChange(
+                new CategoryName("Uncategorized"), "Biedronka Zakupy", "already imported",
+                Money.of(150.50, "PLN"), Type.OUTFLOW,
+                ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC),
+                ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC),
+                false,
+                "txn-001"));
+
+        // when: the same statement is staged again, with one new row alongside it
+        BankDataIngestionDto.StageTransactionsResponse response = bankDataIngestionRestController.stageTransactions(
+                cashFlowId,
+                BankDataIngestionDto.StageTransactionsRequest.builder()
+                        .transactions(List.of(
+                                BankDataIngestionDto.BankTransactionJson.builder()
+                                        .bankTransactionId("txn-001")
+                                        .name("Biedronka Zakupy")
+                                        .description("Zakupy spożywcze")
+                                        .bankCategory("Zakupy kartą")
+                                        .amount(150.50)
+                                        .currency("PLN")
+                                        .type(Type.OUTFLOW)
+                                        .paidDate(ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
+                                        .build(),
+                                BankDataIngestionDto.BankTransactionJson.builder()
+                                        .bankTransactionId("txn-999")
+                                        .name("Netflix")
+                                        .description("Subskrypcja miesięczna")
+                                        .bankCategory("Subskrypcje")
+                                        .amount(49.99)
+                                        .currency("PLN")
+                                        .type(Type.OUTFLOW)
+                                        .paidDate(ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
+                                        .build()))
+                        .build());
+
+        // then: the old row is reported as a duplicate and the new one is not
+        //
+        // This assertion could not have held before. StageTransactionsCommandHandler always had
+        // this check, but the set it compared against came from
+        // HttpCashFlowServiceClient.extractTransactionIds, which returned an empty HashSet with a
+        // comment saying the API might report these one day - and from a test double that filled it
+        // with CashChangeId values from an entirely different namespace. Both were always false.
+        assertThat(response.getDuplicates())
+                .singleElement()
+                .satisfies(duplicate -> {
+                    assertThat(duplicate.getBankTransactionId()).isEqualTo("txn-001");
+                    assertThat(duplicate.getName()).isEqualTo("Biedronka Zakupy");
+                });
+        assertThat(response.getSummary().getDuplicateTransactions()).isEqualTo(1);
     }
 
     @Test

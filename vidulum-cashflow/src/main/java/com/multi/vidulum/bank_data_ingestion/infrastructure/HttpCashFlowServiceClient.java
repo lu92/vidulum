@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * HTTP implementation of CashFlowServiceClient.
@@ -318,9 +319,25 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
         );
     }
 
+    /**
+     * Which source transactions this cash flow already holds.
+     *
+     * <p>This used to {@code return new HashSet<>()} with a comment saying the API might report
+     * these one day. It meant the duplicate check in {@code StageTransactionsCommandHandler} -
+     * {@code existingBankTransactionIds.contains(...)} - was always comparing against nothing, so
+     * {@code TransactionValidation.isDuplicate} had a full code path that could never run. The
+     * endpoint reports the ids now, because cashflow finally stores them.
+     */
     private Set<String> extractTransactionIds(CashFlowResponse response) {
-        // In the future, the API might return bankTransactionIds
-        // For now, return empty set
-        return new HashSet<>();
+        if (response.cashChanges() == null) {
+            return Set.of();
+        }
+        return response.cashChanges().values().stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .map(cashChange -> cashChange.get("bankTransactionId"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .collect(Collectors.toSet());
     }
 }
