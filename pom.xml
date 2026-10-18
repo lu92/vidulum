@@ -26,6 +26,7 @@
 		<module>vidulum-cashflow</module>
 		<module>market</module>
 		<module>wealth</module>
+		<module>vidulum-cashflow-tests</module>
 		<module>vidulum-wealth-tests</module>
 		<module>vidulum-app</module>
 	</modules>

@@ -25,44 +25,16 @@
         <!-- Recurring rules, test scope only: this module's main sources use nothing from it.
              RecurringRulesHttpIntegrationTest lives here because it needs a running cashflow to
              talk to over HTTP, and that test is the whole reason for this dependency. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-recurring-rules</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- user-financial-profile: same arrangement again. Two integration tests here need its
              endpoints together with a running cash flow, so they stay and it comes back at test
              scope. It depends on no cashflow artifact, which is what keeps this acyclic. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-user-financial-profile</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- bank-data-adapter: same arrangement. Two integration tests here need both its
              endpoints and a running cash flow, so they stay, and it comes back at test scope. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-bank-data-adapter</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- bank-data-ingestion left this artifact, and comes back only for tests: seven
              integration tests here need both a running cash flow and the ingestion endpoints, and
              they cannot live in that module - it depends on vidulum-cashflow-api, never on this
              artifact, which is exactly what keeps the reactor acyclic. Same arrangement as
              recurring-rules above. -->
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-bank-data-ingestion</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- CashFlow's own contract: what other modules may ask of it. This module implements it;
              consumers compile against the contract alone. -->
         <dependency>
@@ -77,37 +49,6 @@
             <artifactId>vidulum-user-financial-profile-api</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-recurring-rules</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-bank-data-ingestion</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-bank-data-adapter</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.multi</groupId>
-            <artifactId>vidulum-user-financial-profile</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -189,42 +130,25 @@
         <!-- Lombok -->
 
         <!-- Test -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-resttestclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>kafka</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>4.2.2</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
+
+    <build>
+        <plugins>
+            <!-- A test-jar for TestIds and the in-memory repositories: vidulum-cashflow-tests uses
+                 them, and they belong here next to the unit tests that are their main consumer. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

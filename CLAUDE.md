@@ -129,6 +129,12 @@ vidulum/
 │   ├── vidulum-pnl/             #   Daily valuations, PortfolioValuation, wealth change (31)
 │   └── vidulum-risk/            #   RAG status, stop-loss; stores nothing (no tests yet)
 │
+├── vidulum-cashflow-tests/      # No src/main. Every Spring test of the cashflow family - the
+│                                #   aggregate's, the forecast processor's, and those of the three
+│                                #   modules that left. They cannot live in those modules: each
+│                                #   depends on contracts only, never on vidulum-cashflow, which
+│                                #   is what keeps the reactor acyclic
+│
 ├── vidulum-wealth-tests/        # No src/main. The tests that deliberately cross a module
 │                                #   boundary, kept together to avoid a reactor cycle (60 tests)
 │
@@ -343,9 +349,9 @@ Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own inte
 
 | Module | Base class | Description |
 |--------|-----------|-------------|
-| vidulum-cashflow | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers |
+| vidulum-cashflow-tests | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers; wires cashflow, ingestion, adapter, profile and recurring-rules, so every cross-module Spring test in the cashflow family lives here |
 | vidulum-wealth-tests | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
-| vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, in-memory repositories |
+| vidulum-cashflow, vidulum-bank-data-adapter, vidulum-bank-data-ingestion, vidulum-user-financial-profile, vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, no Docker, in-memory repositories. `vidulum-cashflow` runs 91 of them in 5 seconds, having had ~500 and four minutes |
 | vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
 Key patterns:
