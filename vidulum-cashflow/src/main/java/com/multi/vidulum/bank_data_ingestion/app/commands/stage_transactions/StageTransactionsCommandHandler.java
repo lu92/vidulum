@@ -9,8 +9,11 @@ import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.api.view.ImportWindow;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CashFlowId;
@@ -42,6 +45,7 @@ public class StageTransactionsCommandHandler
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionConfig config;
     private final Clock clock;
     private final UserFinancialProfileApi userFinancialProfileApi;
@@ -73,7 +77,11 @@ public class StageTransactionsCommandHandler
 
         // Process and stage ALL transactions (even those with unmapped categories)
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
-        Set<String> existingBankTransactionIds = cashFlowInfo.existingTransactionIds();
+        // The contract, even though this handler still holds the port. getCashFlowInfo stays for
+        // the month statuses - the one thing cashflow does not own - but the duplicate list this
+        // handler builds is what the user sees, so it needs the cash change ids, not just the
+        // source ids CashFlowInfo carries.
+        ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
         int patternMatchedCount = 0;
         for (StageTransactionsCommand.BankTransaction txn : command.transactions()) {
@@ -83,7 +91,7 @@ public class StageTransactionsCommandHandler
             }
             StagedTransaction staged = processTransaction(
                     txn, command.cashFlowId(), stagingSessionId, cashFlowInfo,
-                    mappingMap, patternMatch, existingBankTransactionIds, ownedAccounts, now);
+                    mappingMap, patternMatch, alreadyImported, ownedAccounts, now);
             stagedTransactions.add(staged);
         }
 
@@ -235,7 +243,7 @@ public class StageTransactionsCommandHandler
             CashFlowInfo cashFlowInfo,
             Map<MappingKey, CategoryMapping> mappingMap,
             PatternMatchResult patternMatch,
-            Set<String> existingBankTransactionIds,
+            ImportedTransactions alreadyImported,
             OwnedAccountRegistry ownedAccounts,
             ZonedDateTime now) {
 
@@ -279,7 +287,7 @@ public class StageTransactionsCommandHandler
                         true
                 );
 
-                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
 
                 return StagedTransaction.create(
                         cashFlowId,
@@ -316,7 +324,7 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
 
             log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category [{}]",
                     txn.name(), txn.bankCategory(), actualCategoryName);
@@ -355,7 +363,7 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
 
             log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
                     txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
@@ -408,7 +416,7 @@ public class StageTransactionsCommandHandler
         }
 
         // Validate transaction
-        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, existingBankTransactionIds, now);
+        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
 
         return StagedTransaction.create(
                 cashFlowId,
@@ -445,14 +453,15 @@ public class StageTransactionsCommandHandler
     private TransactionValidation validateTransaction(
             StageTransactionsCommand.BankTransaction txn,
             CashFlowInfo cashFlowInfo,
-            Set<String> existingBankTransactionIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         List<String> errors = new ArrayList<>();
 
         // Check for duplicate
-        if (existingBankTransactionIds.contains(txn.bankTransactionId())) {
-            return TransactionValidation.duplicate(txn.bankTransactionId());
+        Optional<ImportedTransaction> alreadyHere = alreadyImported.find(txn.bankTransactionId());
+        if (alreadyHere.isPresent()) {
+            return TransactionValidation.duplicate(alreadyHere.get().cashChangeId());
         }
 
         YearMonth paidPeriod = YearMonth.from(txn.paidDate());

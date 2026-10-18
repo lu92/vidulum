@@ -5,6 +5,8 @@ import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
@@ -27,8 +29,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -128,14 +128,33 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
     }
 
     @Override
-    public Set<String> importedSourceIds(CashFlowId cashFlowId) {
+    public ImportedTransactions alreadyImported(CashFlowId cashFlowId) {
         CashFlow cashFlow = repository.findById(cashFlowId)
                 .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId));
 
-        return cashFlow.getSnapshot().cashChanges().values().stream()
-                .map(CashChangeSnapshot::bankTransactionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toUnmodifiableSet());
+        return new ImportedTransactions(cashFlow.getSnapshot().cashChanges().values().stream()
+                .filter(cashChange -> cashChange.bankTransactionId() != null)
+                .collect(Collectors.toMap(
+                        CashChangeSnapshot::bankTransactionId,
+                        CashFlowModuleApiImpl::importedFrom,
+                        // A unique index cannot enforce this - cash changes are an embedded array -
+                        // so two entries for one source id are possible if something wrote around
+                        // CashFlow.findImported. Keeping the first is arbitrary; failing here would
+                        // turn a reporting call into an outage, so it keeps one and says nothing.
+                        (first, second) -> first)));
+    }
+
+    /**
+     * The paid date comes out of {@code endDate}, because that is where the aggregate puts it -
+     * {@code CashChangeSnapshot} has no {@code paidDate} field of its own.
+     */
+    private static ImportedTransaction importedFrom(CashChangeSnapshot cashChange) {
+        return new ImportedTransaction(
+                cashChange.bankTransactionId(),
+                cashChange.cashChangeId(),
+                cashChange.endDate(),
+                cashChange.money(),
+                cashChange.categoryName());
     }
 
     /**

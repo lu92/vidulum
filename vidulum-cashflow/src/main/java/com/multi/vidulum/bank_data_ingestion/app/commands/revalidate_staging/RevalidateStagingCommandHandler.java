@@ -4,6 +4,8 @@ import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -78,7 +80,7 @@ public class RevalidateStagingCommandHandler
         // Skeleton plus the ids it deliberately does not carry - see
         // CashFlowModuleApi.importedSourceIds for why that is a second call and not a field.
         CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
-        Set<String> importedSourceIds = cashFlowApi.importedSourceIds(command.cashFlowId());
+        ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
         // Load current mappings
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
@@ -127,7 +129,7 @@ public class RevalidateStagingCommandHandler
 
                 if (st.isPendingMapping() || shouldReCategorize) {
                     // Pattern matched to existing category
-                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, actualCategoryName, skeleton, importedSourceIds, now);
+                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, actualCategoryName, skeleton, alreadyImported, now);
                     updatedTransactions.add(revalidated);
                     revalidatedCount++;
                     patternMatchedCount++;
@@ -163,7 +165,7 @@ public class RevalidateStagingCommandHandler
                         actualCategoryName, st.originalData().type());
 
                 StagedTransaction revalidated = revalidateTransactionWithDirectMatch(
-                        st, actualCategoryName, parentCategoryName, skeleton, importedSourceIds, now);
+                        st, actualCategoryName, parentCategoryName, skeleton, alreadyImported, now);
                 updatedTransactions.add(revalidated);
                 revalidatedCount++;
                 directMatchedCount++;
@@ -178,7 +180,7 @@ public class RevalidateStagingCommandHandler
 
             if (mapping != null) {
                 // Create mapped data and revalidate
-                StagedTransaction revalidated = revalidateTransaction(st, mapping, skeleton, importedSourceIds, now);
+                StagedTransaction revalidated = revalidateTransaction(st, mapping, skeleton, alreadyImported, now);
                 updatedTransactions.add(revalidated);
                 revalidatedCount++;
             } else {
@@ -282,7 +284,7 @@ public class RevalidateStagingCommandHandler
             CategoryName matchedCategoryName,
             CategoryName parentCategoryName,
             CashFlowSkeletonView skeleton,
-            Set<String> importedSourceIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Create mapped data using bankCategory as the target category
@@ -300,7 +302,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, skeleton, importedSourceIds, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -323,7 +325,7 @@ public class RevalidateStagingCommandHandler
             PatternMatchResult patternMatch,
             CategoryName actualCategoryName,
             CashFlowSkeletonView skeleton,
-            Set<String> importedSourceIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Look up parent category from CashFlow structure (case-insensitive)
@@ -345,7 +347,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, skeleton, importedSourceIds, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -364,7 +366,7 @@ public class RevalidateStagingCommandHandler
             StagedTransaction original,
             CategoryMapping mapping,
             CashFlowSkeletonView skeleton,
-            Set<String> importedSourceIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Create mapped data
@@ -382,7 +384,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, skeleton, importedSourceIds, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -400,11 +402,13 @@ public class RevalidateStagingCommandHandler
     private TransactionValidation validateTransaction(
             StagedTransaction st,
             CashFlowSkeletonView skeleton,
-            Set<String> importedSourceIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
-        if (importedSourceIds.contains(st.originalData().bankTransactionId())) {
-            return TransactionValidation.duplicate(st.originalData().bankTransactionId());
+        Optional<ImportedTransaction> alreadyHere =
+                alreadyImported.find(st.originalData().bankTransactionId());
+        if (alreadyHere.isPresent()) {
+            return TransactionValidation.duplicate(alreadyHere.get().cashChangeId());
         }
 
         // The fourth copy of cashflow's date rules, now gone. Step 18 replaced the one in

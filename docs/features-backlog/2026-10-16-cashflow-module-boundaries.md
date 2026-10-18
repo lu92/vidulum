@@ -907,3 +907,95 @@ w komentarzu, że nie umie `ATTESTED` ani `IMPORTED`: *„For test purposes, ass
 past months"*. Jedyne wystąpienia `ATTESTED` w `src/test` to ten komentarz i dwa generatory, których
 surefire nie uruchamia. **Czwarty taki przypadek w tej serii** po `exists`, detekcji duplikatów
 i rollbacku.
+
+
+## 18. Co zrobił krok 22: `Set<String>` nie potrafił powiedzieć, z czym kolidujesz
+
+### Usterka, która to uruchomiła
+
+`DuplicateInfoJson.duplicateOf` ma javadoc: *„ID of the existing transaction this is a duplicate
+of"*. Wszystkie trzy call sites wypełniały je tak:
+
+```java
+return TransactionValidation.duplicate(st.originalData().bankTransactionId());
+```
+
+Czyli identyfikatorem **badanego wiersza**. Frontend dostawał:
+
+```json
+{ "bankTransactionId": "NEST-001", "name": "Biedronka", "duplicateOf": "NEST-001" }
+```
+
+Pole obiecujące odpowiedź, zawierające pytanie. I **nie dlatego, że ktoś je źle wypełnił** — bo
+`importedSourceIds` zwracało `Set<String>`, więc `CashChangeId` istniejącej transakcji nigdy nie
+przechodził przez granicę. Nie było czym wypełnić.
+
+### Co zastąpiło zbiór identyfikatorów
+
+```java
+ImportedTransactions alreadyImported(CashFlowId cashFlowId);
+```
+
+```java
+public record ImportedTransactions(Map<String, ImportedTransaction> bySourceId) {
+    boolean contains(String sourceId);
+    Optional<ImportedTransaction> find(String sourceId);
+    int count();  boolean isEmpty();  Collection<ImportedTransaction> all();
+}
+
+public record ImportedTransaction(String sourceId, CashChangeId cashChangeId,
+                                  ZonedDateTime paidDate, Money money, CategoryName categoryName) {}
+```
+
+**Dlaczego kolekcja jest nazwanym typem, a nie `Set<ImportedTransaction>`.** Każdy wołający zadaje
+to samo pytanie — „widziałem już ten identyfikator?" — a na zbiorze rekordów `contains` jest
+bezużyteczne: trzeba mieć **cały rekord**, żeby sprawdzić obecność. Każdy konsument budowałby sobie
+indeks. Nazwany typ go nosi, więc call site pozostaje tą jedną linią, którą był:
+
+```java
+if (alreadyImported.contains(sourceId)) { ... }
+```
+
+**Dlaczego `paidDate`, `money` i `categoryName`, choć nie mają konsumenta w kodzie.** „12 z 402
+wierszy to duplikaty" jest dla człowieka nieweryfikowalne. Dwie prawdziwe wizyty w tym samym
+sklepie, tego samego dnia, na tę samą kwotę to realny przypadek — `shouldNotConfuseTwoGenuinelyDifferentTransactions`
+istnieje właśnie dlatego, że odróżnia je **wyłącznie** identyfikator źródłowy. Lista duplikatów jest
+pokazywana użytkownikowi, więc musi dać mu czym ocenić.
+
+### Zmiana, bez której dane stanęłyby na granicy
+
+`TransactionValidation.duplicate(String)` → `duplicate(CashChangeId)`. Bez tego nowy typ dojechałby
+do konsumenta i `duplicateOf` nadal dostawałoby to samo co dotąd.
+
+**Dowód negatywny wyszedł mocniejszy, niż planowałem.** Przywróciłem tautologię:
+
+```java
+TransactionValidation.duplicate(CashChangeId.of(txn.bankTransactionId()));
+```
+
+i test nie zawiódł asercji — **wywalił się na typie**:
+
+```
+InvalidCashChangeIdFormatException: Invalid CashChange ID format: 'txn-001'.
+Expected: CCXXXXXXXXXX (e.g., CC1000000001)
+```
+
+Stary błąd przestał być reprezentowalny. Identyfikator z banku nie przechodzi tam, gdzie stoi
+`CashChangeId`.
+
+### Martwe pole, które przy okazji odpadło
+
+`CashFlowInfo.existingTransactionIds` straciło **ostatniego czytającego w produkcji**. Usunięte
+razem z `HttpCashFlowServiceClient.extractTransactionIds` i wypełnianiem w obu dublerach. Przez
+długi czas i tak nie działało: w produkcji zwracało pusty zbiór, w testach identyfikatory z innej
+przestrzeni nazw.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `ImportedTransactionsTest` (nowy) | **7** — w tym że `contains(null)` nie pasuje do wszystkiego, że pusty wynik znaczy „nic nie zaimportowano", i że indeks jest kopiowany, więc wołający nie zmieni go pod stopami |
+| `CashFlowSkeletonViewTest` | 8 |
+| `ImportWindowTest` | 10 |
+| `HttpCashFlowModuleApiIntegrationTest` | **18** — `find("NEST-A")` oddaje `CashChangeId`, kwotę ze skalą i `paidDate` czytany z `endDate` |
+| `BankDataIngestionControllerTest` | **33** — `shouldDetectATransactionAlreadyImported` asertuje teraz, że `duplicateOf` **wskazuje istniejącą transakcję**, a nie samo siebie |

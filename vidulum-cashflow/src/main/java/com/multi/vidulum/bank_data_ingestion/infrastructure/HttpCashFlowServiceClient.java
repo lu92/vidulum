@@ -17,7 +17,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -199,7 +198,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 response.startPeriod(),
                 mapCategories(response.inflowCategories(), Type.INFLOW),
                 mapCategories(response.outflowCategories(), Type.OUTFLOW),
-                extractTransactionIds(response),
                 response.cashChanges() != null ? response.cashChanges().size() : 0,
                 mapMonthStatuses(monthStatuses)
         );
@@ -273,15 +271,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
         );
     }
 
-    /**
-     * Which source transactions this cash flow already holds.
-     *
-     * <p>This used to {@code return new HashSet<>()} with a comment saying the API might report
-     * these one day. It meant the duplicate check in {@code StageTransactionsCommandHandler} -
-     * {@code existingBankTransactionIds.contains(...)} - was always comparing against nothing, so
-     * {@code TransactionValidation.isDuplicate} had a full code path that could never run. The
-     * endpoint reports the ids now, because cashflow finally stores them.
-     */
     private Set<String> extractTransactionIds(CashFlowResponse response) {
         if (response.cashChanges() == null) {
             return Set.of();

@@ -44,15 +44,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
         List<CashFlowInfo.CategoryInfo> inflowCategories = mapCategories(snapshot.inflowCategories(), Type.INFLOW);
         List<CashFlowInfo.CategoryInfo> outflowCategories = mapCategories(snapshot.outflowCategories(), Type.OUTFLOW);
 
-        // The bank's ids, not cashflow's. This used to collect CashChangeId values - CC1000000073
-        // and friends - so the duplicate check in staging was comparing a bank's transaction id
-        // against identifiers from a different namespace entirely. It was never going to match,
-        // and because the set was non-empty the test suite looked like it exercised the feature.
-        Set<String> existingTransactionIds = snapshot.cashChanges().values().stream()
-                .map(CashChangeSnapshot::bankTransactionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
         CashFlowInfo.CashFlowStatus status = switch (snapshot.status()) {
             case SETUP -> CashFlowInfo.CashFlowStatus.SETUP;
             case OPEN -> CashFlowInfo.CashFlowStatus.OPEN;
@@ -70,7 +61,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
                 snapshot.startPeriod(),
                 inflowCategories,
                 outflowCategories,
-                existingTransactionIds,
                 snapshot.cashChanges().size(),
                 monthStatuses
         );

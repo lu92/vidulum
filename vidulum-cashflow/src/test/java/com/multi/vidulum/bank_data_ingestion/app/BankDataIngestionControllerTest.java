@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.TestCashFlowServiceClient;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -523,7 +524,7 @@ public class BankDataIngestionControllerTest {
         // given: a cash flow that already holds a transaction the bank called "txn-001"
         String cashFlowId = createCashFlowWithHistory();
         configureMappingsForStaging(cashFlowId);
-        cashFlowApi.importHistorical(CashFlowId.of(cashFlowId), new HistoricalCashChange(
+        CashChangeId alreadyThere = cashFlowApi.importHistorical(CashFlowId.of(cashFlowId), new HistoricalCashChange(
                 new CategoryName("Uncategorized"), "Biedronka Zakupy", "already imported",
                 Money.of(150.50, "PLN"), Type.OUTFLOW,
                 ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC),
@@ -570,6 +571,13 @@ public class BankDataIngestionControllerTest {
                 .satisfies(duplicate -> {
                     assertThat(duplicate.getBankTransactionId()).isEqualTo("txn-001");
                     assertThat(duplicate.getName()).isEqualTo("Biedronka Zakupy");
+                    assertThat(duplicate.getDuplicateOf())
+                            .as("the cash change it collides with. This field is documented as "
+                                    + "'ID of the existing transaction this is a duplicate of' and "
+                                    + "used to hold txn-001 - the id of the row being examined - "
+                                    + "because the contract returned a bare Set<String> and this id "
+                                    + "never crossed the boundary")
+                            .isEqualTo(alreadyThere.id());
                 });
         assertThat(response.getSummary().getDuplicateTransactions()).isEqualTo(1);
     }

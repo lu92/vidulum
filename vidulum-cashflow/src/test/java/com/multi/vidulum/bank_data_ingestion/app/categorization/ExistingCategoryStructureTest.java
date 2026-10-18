@@ -55,7 +55,6 @@ class ExistingCategoryStructureTest {
                                 new CashFlowInfo.CategoryInfo("Paliwo", "Transport", Type.OUTFLOW, false, List.of())
                         ))
                 ),
-                Set.of(),
                 0,
                 null
         );
@@ -97,7 +96,6 @@ class ExistingCategoryStructureTest {
                 List.of(
                         new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of())
                 ),
-                Set.of(),
                 0,
                 null
         );
@@ -130,7 +128,6 @@ class ExistingCategoryStructureTest {
                 List.of(
                         new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of())
                 ),
-                Set.of(),
                 0,
                 null
         );
@@ -157,7 +154,6 @@ class ExistingCategoryStructureTest {
                 List.of(
                         new CashFlowInfo.CategoryInfo("Outflow1", null, Type.OUTFLOW, false, List.of())
                 ),
-                Set.of(),
                 0,
                 null
         );
@@ -186,7 +182,6 @@ class ExistingCategoryStructureTest {
                                 new CashFlowInfo.CategoryInfo("Restauracje", "Żywność", Type.OUTFLOW, false, List.of())
                         ))
                 ),
-                Set.of(),
                 0,
                 null
         );
@@ -236,7 +231,7 @@ class ExistingCategoryStructureTest {
                         new CashFlowInfo.CategoryInfo("Inne", null, Type.OUTFLOW, false, List.of()),
                         new CashFlowInfo.CategoryInfo("Podatki", null, Type.OUTFLOW, false, List.of())
                 ),
-                Set.of(), 0, null
+                0, null
         );
 
         // when
@@ -268,7 +263,7 @@ class ExistingCategoryStructureTest {
                                 new CashFlowInfo.CategoryInfo("Ubezpieczenia", "Opłaty", Type.OUTFLOW, false, List.of())
                         ))
                 ),
-                Set.of(), 0, null
+                0, null
         );
 
         Set<CashFlowInfo.TypedCategoryKey> keys = cashFlowInfo.getAllTypedCategoryKeys();
@@ -296,7 +291,7 @@ class ExistingCategoryStructureTest {
                         new CashFlowInfo.CategoryInfo("Uncategorized", null, Type.OUTFLOW, false, List.of()),
                         new CashFlowInfo.CategoryInfo("Inne", null, Type.OUTFLOW, false, List.of())
                 ),
-                Set.of(), 0, null
+                0, null
         );
 
         Set<String> names = cashFlowInfo.getAllCategoryNames();

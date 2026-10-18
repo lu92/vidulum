@@ -6,6 +6,8 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
@@ -26,7 +28,6 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Optional;
@@ -172,19 +173,33 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
     }
 
     @Override
-    public Set<String> importedSourceIds(CashFlowId cashFlowId) {
-        // Reads them off the same payload skeletonOf uses, since the endpoint reports
-        // bankTransactionId per cash change now. In a split deployment this would deserve its own
-        // narrower endpoint - the full response carries every transaction - but inventing one here
-        // would be guessing at a shape nobody has asked for yet.
-        return fetch(cashFlowId)
+    public ImportedTransactions alreadyImported(CashFlowId cashFlowId) {
+        // Reads the same payload skeletonOf uses, which already carries every field this needs. In
+        // a split deployment it would deserve a narrower endpoint - that response holds every
+        // transaction - but inventing one here would be guessing at a shape nobody asked for.
+        return new ImportedTransactions(fetch(cashFlowId)
                 .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId))
                 .cashChanges()
                 .values()
                 .stream()
-                .map(CashChangeResponse::bankTransactionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toUnmodifiableSet());
+                .filter(cashChange -> cashChange.bankTransactionId() != null)
+                .collect(Collectors.toMap(
+                        CashChangeResponse::bankTransactionId,
+                        HttpCashFlowModuleApi::importedFrom,
+                        (first, second) -> first)));
+    }
+
+    /**
+     * {@code endDate} is the paid date: that is the field the aggregate stores it in, so that is
+     * what the endpoint reports. Reading {@code paidDate} here would silently produce nulls.
+     */
+    private static ImportedTransaction importedFrom(CashChangeResponse cashChange) {
+        return new ImportedTransaction(
+                cashChange.bankTransactionId(),
+                CashChangeId.of(cashChange.cashChangeId()),
+                cashChange.endDate(),
+                cashChange.money(),
+                new CategoryName(cashChange.categoryName()));
     }
 
     /**
@@ -279,10 +294,16 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
     }
 
     /**
-     * One field out of a cash change, because one is all {@link #importedSourceIds} needs.
+     * The fields {@link #alreadyImported} reports, and no more - the response carries seven others.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record CashChangeResponse(String bankTransactionId) {
+    private record CashChangeResponse(
+            String cashChangeId,
+            String bankTransactionId,
+            String categoryName,
+            Money money,
+            ZonedDateTime endDate
+    ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

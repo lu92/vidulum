@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow.api.error.ImportDateOutsideSetupPeriodException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.common.CashChangeId;
@@ -417,20 +418,21 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("importedSourceIds over HTTP reports what was imported, and only that")
-    void shouldReportImportedSourceIdsOverHttp() {
+    @DisplayName("alreadyImported over HTTP reports what was imported, with what it became")
+    void shouldReportAlreadyImportedOverHttp() {
         CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
                 userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
         httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
 
-        assertThat(httpApi.importedSourceIds(cashFlowId))
+        assertThat(httpApi.alreadyImported(cashFlowId).isEmpty())
                 .as("nothing imported yet")
-                .isEmpty();
+                .isTrue();
 
         ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30Z[UTC]");
-        httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+        CashChangeId tesco = httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
                 new CategoryName("Groceries"), "Tesco", "shop",
-                Money.of(10.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-A"));
+                Money.of(new BigDecimal("99.99"), "GBP"), Type.OUTFLOW, paidAt, paidAt, false,
+                "NEST-A"));
         httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
                 new CategoryName("Groceries"), "Lidl", "shop",
                 Money.of(20.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, "NEST-B"));
@@ -439,15 +441,37 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
                 new CategoryName("Groceries"), "cash", "no receipt",
                 Money.of(5.0, "GBP"), Type.OUTFLOW, paidAt, paidAt, false, null));
 
-        assertThat(httpApi.importedSourceIds(cashFlowId))
-                .as("the two that came from a bank; null is absent rather than present as null")
-                .containsExactlyInAnyOrder("NEST-A", "NEST-B");
+        ImportedTransactions imported = httpApi.alreadyImported(cashFlowId);
+
+        assertThat(imported.count())
+                .as("the two that came from a bank; the hand-entered one is absent, not present as null")
+                .isEqualTo(2);
+        assertThat(imported.contains("NEST-A")).isTrue();
+        assertThat(imported.contains("NEST-C")).isFalse();
+        assertThat(imported.contains(null)).as("asking about nothing is not a match").isFalse();
+
+        assertThat(imported.find("NEST-A"))
+                .get()
+                .satisfies(entry -> {
+                    assertThat(entry.cashChangeId())
+                            .as("what it became here - the thing a Set<String> could never say, "
+                                    + "which is why DuplicateInfoJson.duplicateOf held the id of "
+                                    + "the row being examined instead")
+                            .isEqualTo(tesco);
+                    assertThat(entry.money().getAmount())
+                            .as("exact, scale included, after a real JSON round trip")
+                            .isEqualTo(new BigDecimal("99.99"));
+                    assertThat(entry.paidDate().toInstant())
+                            .as("read out of endDate, where the aggregate stores the paid date")
+                            .isEqualTo(paidAt.toInstant());
+                    assertThat(entry.categoryName()).isEqualTo(new CategoryName("Groceries"));
+                });
     }
 
     @Test
-    @DisplayName("importedSourceIds raises the contract's failure for an unknown cash flow")
-    void shouldRaiseNotFoundForImportedSourceIdsOverHttp() {
-        assertThatThrownBy(() -> httpApi.importedSourceIds(CashFlowId.of("CF99999999")))
+    @DisplayName("alreadyImported raises the contract's failure for an unknown cash flow")
+    void shouldRaiseNotFoundForAlreadyImportedOverHttp() {
+        assertThatThrownBy(() -> httpApi.alreadyImported(CashFlowId.of("CF99999999")))
                 .isInstanceOf(CashFlowNotFoundException.class);
     }
 

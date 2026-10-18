@@ -21,7 +21,10 @@ public record CashFlowInfo(
         YearMonth startPeriod,
         List<CategoryInfo> inflowCategories,
         List<CategoryInfo> outflowCategories,
-        Set<String> existingTransactionIds,
+        // existingTransactionIds is gone: CashFlowModuleApi.alreadyImported answers that question
+        // properly now, with the cash change ids this record could never carry. The field had no
+        // reader in production - it had none for a long time either, because the HTTP client filled
+        // it with an empty set and the test double with identifiers from another namespace.
         int cashChangesCount,
         Map<YearMonth, MonthStatus> monthStatuses
 ) {

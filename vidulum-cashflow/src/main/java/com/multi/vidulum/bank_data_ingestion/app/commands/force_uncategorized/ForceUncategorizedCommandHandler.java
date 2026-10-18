@@ -6,6 +6,8 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessio
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -18,6 +20,7 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -80,7 +83,7 @@ public class ForceUncategorizedCommandHandler
         // Skeleton plus the one thing it deliberately does not carry. Two calls instead of
         // getCashFlowInfo's two HTTP requests, and neither drags every transaction along.
         CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
-        Set<String> importedSourceIds = cashFlowApi.importedSourceIds(command.cashFlowId());
+        ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
         // Count PENDING_MAPPING transactions
         List<StagedTransaction> pendingTransactions = stagedTransactions.stream()
@@ -169,7 +172,7 @@ public class ForceUncategorizedCommandHandler
                 );
 
                 // Validate transaction
-                TransactionValidation validation = validateTransaction(st, skeleton, importedSourceIds, now);
+                TransactionValidation validation = validateTransaction(st, skeleton, alreadyImported, now);
 
                 StagedTransaction updated = new StagedTransaction(
                         st.stagedTransactionId(),
@@ -208,11 +211,13 @@ public class ForceUncategorizedCommandHandler
     private TransactionValidation validateTransaction(
             StagedTransaction st,
             CashFlowSkeletonView skeleton,
-            Set<String> importedSourceIds,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
-        if (importedSourceIds.contains(st.originalData().bankTransactionId())) {
-            return TransactionValidation.duplicate(st.originalData().bankTransactionId());
+        Optional<ImportedTransaction> alreadyHere =
+                alreadyImported.find(st.originalData().bankTransactionId());
+        if (alreadyHere.isPresent()) {
+            return TransactionValidation.duplicate(alreadyHere.get().cashChangeId());
         }
 
         // Cashflow's own rule, not a third copy of it. Step 18 replaced the copy in
