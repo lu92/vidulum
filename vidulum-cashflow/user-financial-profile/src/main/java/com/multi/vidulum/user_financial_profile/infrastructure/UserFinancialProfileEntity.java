@@ -1,6 +1,6 @@
 package com.multi.vidulum.user_financial_profile.infrastructure;
 
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
+import com.multi.vidulum.user_financial_profile.domain.OwnedAccountNumber;
 import com.multi.vidulum.common.BankName;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Currency;
@@ -84,7 +84,7 @@ public class UserFinancialProfileEntity {
 
         public static OwnedBankAccountDocument from(OwnedBankAccount account) {
             return OwnedBankAccountDocument.builder()
-                    .iban(account.bankAccountNumber().fetchRawIban())
+                    .iban(account.bankAccountNumber().iban())
                     .currency(account.bankAccountNumber().denomination().getId())
                     .bankName(account.bankName() != null ? account.bankName().name() : null)
                     .label(account.label())
@@ -98,7 +98,10 @@ public class UserFinancialProfileEntity {
 
         public OwnedBankAccount toDomain() {
             return new OwnedBankAccount(
-                    BankAccountNumber.fromIban(iban, Currency.of(currency)),
+                    // No re-validation on read: see OwnedAccountNumber. This used to be
+                    // BankAccountNumber.fromIban(...), so a stored IBAN that iban4j would
+                    // reject made the whole profile unreadable.
+                    new OwnedAccountNumber(iban, Currency.of(currency)),
                     bankName != null ? new BankName(bankName) : null,
                     label,
                     AccountStatus.valueOf(status),

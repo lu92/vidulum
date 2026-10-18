@@ -1,7 +1,5 @@
 package com.multi.vidulum.user_financial_profile.app;
 
-import com.multi.vidulum.cashflow.domain.BankAccount;
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.BankName;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Currency;
@@ -10,6 +8,7 @@ import com.multi.vidulum.user_financial_profile.domain.AccountSource;
 import com.multi.vidulum.user_financial_profile.domain.AccountStatus;
 import com.multi.vidulum.user_financial_profile.domain.BankAccountAlreadyOwnedException;
 import com.multi.vidulum.user_financial_profile.domain.DomainUserFinancialProfileRepository;
+import com.multi.vidulum.user_financial_profile.domain.OwnedAccountNumber;
 import com.multi.vidulum.user_financial_profile.domain.OwnedBankAccount;
 import com.multi.vidulum.user_financial_profile.domain.UserFinancialProfile;
 import com.multi.vidulum.user_financial_profile.domain.UserFinancialProfileEvent;
@@ -65,7 +64,7 @@ public class UserFinancialProfileService {
 
         ZonedDateTime now = ZonedDateTime.now(clock);
         OwnedBankAccount account = new OwnedBankAccount(
-                BankAccountNumber.fromIban(iban, Currency.of(currency)),
+                OwnedAccountNumber.fromIban(iban, Currency.of(currency)),
                 new BankName(bankName),
                 label,
                 AccountStatus.ACTIVE,
@@ -105,8 +104,8 @@ public class UserFinancialProfileService {
         ZonedDateTime now = ZonedDateTime.now(clock);
 
         for (BulkAccountRequest req : requests) {
-            BankAccountNumber bankAccountNumber = BankAccountNumber.fromIban(req.iban(), Currency.of(req.currency()));
-            String rawIban = bankAccountNumber.fetchRawIban();
+            OwnedAccountNumber bankAccountNumber = OwnedAccountNumber.fromIban(req.iban(), Currency.of(req.currency()));
+            String rawIban = bankAccountNumber.iban();
             if (!ibansInBatch.add(rawIban)) {
                 throw new BankAccountAlreadyOwnedException(userId, rawIban);
             }
@@ -149,8 +148,17 @@ public class UserFinancialProfileService {
      * - If X.iban already in profile  → set linkedCashFlowId on existing entry
      * - If X.iban not in profile      → create new entry with source=CASHFLOW
      */
-    public void claimOrLinkAccountForCashFlow(UserId userId, BankAccount bankAccount, CashFlowId cashFlowId) {
-        String iban = bankAccount.bankAccountNumber().fetchRawIban();
+    /**
+     * Records that a cash flow was created against an account this user owns, claiming the account
+     * if it is new.
+     *
+     * <p>Takes the three strings it uses rather than cashflow's {@code BankAccount}. The listener
+     * reads them off its own view of the event payload - see
+     * {@code UserFinancialProfileCashFlowListener.CashFlowCreated} - so this module no longer names
+     * a cashflow type to learn that an account exists.
+     */
+    public void claimOrLinkAccountForCashFlow(
+            UserId userId, String iban, String currency, String bankName, CashFlowId cashFlowId) {
         UserFinancialProfile profile = repository.findByUserId(userId)
                 .orElseGet(() -> createEmptyProfile(userId));
 
@@ -164,15 +172,13 @@ public class UserFinancialProfileService {
             return;
         }
 
-        String bankName = bankAccount.bankName() != null
-                ? bankAccount.bankName().name()
-                : "Unknown bank";
+        String resolvedBankName = bankName != null ? bankName : "Unknown bank";
         addAccount(
                 userId,
                 iban,
-                bankAccount.bankAccountNumber().denomination().getId(),
-                bankName,
-                bankName,
+                currency,
+                resolvedBankName,
+                resolvedBankName,
                 AccountSource.CASHFLOW,
                 cashFlowId
         );

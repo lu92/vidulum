@@ -1208,3 +1208,109 @@ kontekst) i **konfiguracji we właściwym miejscu** — klucze `vidulum.ai.*`,
 `bank-data-ingestion.base-url` i reszta zostały w `application.yml` rodzica, tak jak klucze
 ingestion. Działa, bo ten plik jest na classpathie aplikacji, ale leży nie tam, gdzie powinien.
 Zbiera się z tego osobna, drobna porządkowa zmiana — już druga.
+
+
+## 21. Co zrobił krok 25: `user_financial_profile` — i dwa fałszywe podejścia po drodze
+
+Cel osiągnięty: **`vidulum-cashflow/src/main` to już tylko `cashflow` + `cashflow_forecast_processor`.**
+
+### Blokada: 5 importów, 3 typy
+
+| gdzie | co |
+|---|---|
+| `UserFinancialProfileService` | `BankAccount`, `BankAccountNumber` |
+| `UserFinancialProfileCashFlowListener` | `CashFlowEvent` |
+| `UserFinancialProfileEntity`, `OwnedBankAccount` | `BankAccountNumber` |
+
+### Pierwsze podejście, które zawinąłem
+
+Przeniosłem sześć rekordów bankowych (`BankAccount`, `BankAccountNumber`, `IbanNumber`,
+`CountryCode`, `BankCode`, `BranchCode`) do `cashflow-api`. Kompilator pokazał, dlaczego to błąd:
+
+- przegapiłem siódmy typ (`BankIdentifierCode`),
+- a **`IbanNumber` ciągnie `org.iban4j`** i własny wyjątek.
+
+Czyli kontrakt dostałby zależność od biblioteki zewnętrznej, wbrew regule *„`*-api` deklaruje żadnej
+z nich i ma dokładnie jedną zależność"*. **Zwalidowany `BankAccount` to domena cashflow, nie
+słownik** — walidacja jest zachowaniem. Zawinąłem to, zamiast przepychać.
+
+### Co okazało się prawdą po zmierzeniu
+
+Profil **nigdy nie używał tego typu jako obiektu wartości**. Wszystkie siedem miejsc czytających
+natychmiast go spłaszcza:
+
+```java
+account.bankAccountNumber().fetchRawIban()
+account.bankAccountNumber().denomination().getId()
+```
+
+a encja i tak przechowuje `String iban`, `String currency`, `String bankName`. I jedna rzecz, którą
+to ujawniło:
+
+```java
+// UserFinancialProfileEntity, przed zmianą
+BankAccountNumber.fromIban(iban, Currency.of(currency))
+```
+
+**Odczyt z Mongo rewalidował IBAN przez iban4j.** Konto, którego zapisany numer iban4j odrzuciłby
+dzisiaj, czyniło **cały profil nieczytelnym**. Składowanie rewalidujące to, co samo zapisało, to
+tryb awarii bez korzyści.
+
+### Drugie podejście: trzy własne rzeczy
+
+**`OwnedAccountNumber(String iban, Currency denomination)`** — nośnik, bez walidacji przy odczycie.
+
+**`OwnedAccountNumber.fromIban(...)`** — z walidacją, bo profil **ma własne drzwi**:
+`POST /user-financial-profile/accounts` przyjmuje IBAN-y wpisane przez człowieka, a ścieżka
+masowego dodawania miała komentarz `// Pre-validate: parse all IBANs (throws on invalid)`. Dlatego
+profil dostał `iban4j` we własnym pomie — **dwa zamki, nie zduplikowane pojęcie**: każdy moduł
+odpowiada za to, co przez jego drzwi wchodzi.
+
+**`UserFinancialProfileCashFlowListener.CashFlowCreated`** — własny widok payloadu z topiku, pięć
+zagnieżdżonych rekordów z `@JsonIgnoreProperties`, nazywających **trzy wartości** z payloadu, który
+niesie nazwę, opis, oba okresy, saldo początkowe, znaczniki czasu i checksum.
+
+Dotąd listener deserializował `CashFlowEvent.CashFlowCreatedEvent` — klasę z **domeny** producenta.
+Payload na topiku jest tekstem; nazywanie klasy producenta po to, żeby go przeczytać, oznacza, że
+konsumenta nie da się zbudować bez wnętrzności producenta na classpathie.
+
+Jeden rekord na dwa typy zdarzeń, bo profil traktuje je identycznie — cash flow utworzony z historią
+i bez niej oba znaczą „ten użytkownik ma to konto". `switch` mówi to jedną etykietą zamiast dwoma
+blokami wołającymi tę samą metodę.
+
+### Testy: 1 jedzie, 2 zostają
+
+| | |
+|---|---|
+| jedzie | `UserFinancialProfileHttpActor` |
+| zostają | `SelfTransferDetectionIntegrationTest`, `UserFinancialProfileHttpIntegrationTest` — potrzebują wspólnej bazy i działającego cash flow |
+
+Nowy moduł nie ma więc własnych testów — jego dwa testy integracyjne zostały u rodzica, a `test-jar`
+oddaje im aktora. To nie jest luka: jego zachowanie jest w całości pokryte, tylko z miejsca, gdzie
+widać oba moduły.
+
+### Lista odstępstw ArchUnita schudła do jednego
+
+```java
+assertSealed("user_financial_profile", "com.multi.vidulum.user_financial_profile..");
+
+assertSealed("cashflow",
+        "com.multi.vidulum.cashflow..",
+        "com.multi.vidulum.cashflow_forecast_processor..");   // bylo tez user_financial_profile
+```
+
+Zostało **jedno** odstępstwo, i to takie, które ma zostać: prognozy są read modelem cashflow,
+mieszkają w tym samym artefakcie z rozmysłu i projektują z 36 importów `CashFlowEvent`.
+
+### Stan końcowy
+
+```
+vidulum-cashflow/
+├── cashflow-api/                     kontrakt
+├── user-financial-profile-api/       kontrakt
+├── user-financial-profile/           NOWY  (krok 25)
+├── bank-data-adapter/                (krok 24)
+├── bank-data-ingestion/              (krok 23)
+├── recurring-rules/
+└── src/   ←  cashflow + cashflow_forecast_processor
+```

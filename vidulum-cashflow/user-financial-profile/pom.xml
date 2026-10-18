@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-user-financial-profile</artifactId>
+    <name>Vidulum User Financial Profile Module</name>
+    <description>
+        Which bank accounts a user owns, so that a transfer between two of them can be recognised as
+        a self-transfer rather than income.
+
+        It implements vidulum-user-financial-profile-api, which already existed as a separate
+        artifact - this is the implementation catching up with its own contract.
+
+        What made it extractable was removing five imports of cashflow's domain package, and each
+        removal said something. It borrowed BankAccountNumber for a value every reader immediately
+        flattened to two strings, and whose IBAN validation ran again on every read from Mongo - so
+        a stored account could become unreadable. And it deserialised CashFlowEvent off the
+        cash_flow topic by naming the producer's class, which meant a consumer of a text payload
+        could not be built without the producer's internals. Both are now its own: see
+        OwnedAccountNumber and UserFinancialProfileCashFlowListener.CashFlowCreated.
+    </description>
+
+    <dependencies>
+        <!-- Shared Kernel -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Its own contract. No cashflow dependency of any kind: what it learns from cashflow
+             arrives as an event payload it declares itself. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-user-financial-profile-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring Boot: it persists a profile, has endpoints, listens to two topics -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- IBAN validation, because this module accepts IBANs typed by a user at its own
+             endpoint. It is the same library cashflow uses for the same job at a different door -
+             two locks, not a duplicated concept. -->
+        <dependency>
+            <groupId>org.iban4j</groupId>
+            <artifactId>iban4j</artifactId>
+            <version>3.2.7-RELEASE</version>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- A test-jar: the two integration tests left in vidulum-cashflow use
+                 UserFinancialProfileHttpActor. They stay there because they need the shared
+                 CashFlowIntegrationTest base and a running cash flow. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

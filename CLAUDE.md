@@ -99,6 +99,8 @@ vidulum/
 │   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
 │                                #   createCategory, importHistorical, rollbackImport,
 │                                #   alreadyImported), Type, view/, error/
+│   └── (user-financial-profile/) #  SEPARATE ARTIFACT: vidulum-user-financial-profile. Its own
+│                                #   OwnedAccountNumber and its own view of the cash_flow payload
 │   └── (bank-data-adapter/)     #   SEPARATE ARTIFACT: vidulum-bank-data-adapter. shared-kernel
 │                                #   only. Calls ingestion's upload endpoint by URL
 │   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. shared-kernel
@@ -106,12 +108,11 @@ vidulum/
 │                                #   the parent depend on it at test scope without a cycle.
 │                                #   Neither has an -api: nothing asks them anything
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
-│   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
-│   └── bank_data_ingestion/     #   CSV import staging, category mapping
-│   └── bank_data_adapter/       #   AI CSV transformation
+│   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation - cashflow's own
+│                                #   read model, in the same artifact on purpose: 36 imports of
+│                                #   CashFlowEvent, and one lifecycle
 │   └── (recurring-rules/)       #   SEPARATE ARTIFACT nested here: vidulum-recurring-rules
 │                                #   depends on nothing from cashflow; talks to it over HTTP
-│   └── user_financial_profile/  #   Owned bank accounts, self-transfer detection
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
@@ -253,6 +254,21 @@ That second point corrects my own first analysis, which claimed precision loss o
 test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
 actually breaks before calling something a defect.**
 
+### A consumer of an event declares the shape it reads
+
+`UserFinancialProfileCashFlowListener.CashFlowCreated` is that module's own view of the `cash_flow`
+payload: nested records with `@JsonIgnoreProperties`, naming **three** values out of a dozen. It
+used to deserialise `CashFlowEvent.CashFlowCreatedEvent` — a class from cashflow's **domain** —
+so a consumer of a text payload could not be built without the producer's internals on its
+classpath. **A payload on a topic is text; read it with your own shape.**
+
+**Validation belongs at each module's own door.** That module borrowed cashflow's
+`BankAccountNumber`, which validates IBANs via iban4j — so its entity re-validated on every read
+from Mongo, and an account whose stored IBAN iban4j would reject today made the whole profile
+unreadable. Storage re-validating what it stored is a failure mode with no upside. It now has
+`OwnedAccountNumber` (a carrier) plus a validating `fromIban` factory, because its own endpoint
+accepts IBANs typed by a person. Two locks on two doors is not a duplicated concept.
+
 ### Measure how a value crosses a boundary before giving it a module
 
 `TransactionClassification` is declared twice - once in `bank_data_adapter.domain`, once in
@@ -274,47 +290,13 @@ because the tolerance that makes drift safe also makes it silent.
 
 Imported transactions carry `bankTransactionId`, and `CashFlow.findImported` makes re-uploading a
 statement a no-op. **The guard is in the aggregate, not an index**: cash changes are an embedded
-`List<CashChangeEntity>` inside one `cash-flow-document`, and MongoDB's unique constraint applies
-*across* documents — a multikey unique index permits repeated values inside one document's array,
-and `cashFlowId` is unique per document anyway. The trade pattern (`@CompoundIndex` on
-`originTradeId`) works only because `TradeEntity` is one document per trade. **Check the storage
-shape before reusing it.** Two things this does not give: no storage-level guarantee (that needs
-cash changes in their own collection), and no protection against concurrent writes — `@Version`
-appears nowhere in this project and a save replaces the whole document, so two parallel operations
-on one cash flow silently lose one (F35).
-
-### Matching a raw name against a typed one is the producer's policy
-
-`CashFlowSkeletonView` carries `findCategoryIgnoringCase`, `parentOf` and `typedCategoryNames`
-because they are **operations on data the view already holds**, not data of their own. They moved
-off `CashFlowInfo`, where two ingestion handlers were lowercasing and comparing against a
-`Set<String>` on their own.
-
-The view is typed on purpose — *a name read out of a bank statement is not a `CategoryName` until
-something says it is* — and `findCategoryIgnoringCase` **is that something**. Deciding what counts
-as "the same category" (trim and fold case today; accents or synonyms one day) belongs to whoever
-owns the categories, so every consumer starts agreeing on the same day. Prefer the overload that
-takes a `Type`: a cash flow may hold "Transfer" as both income and expense, and matching without a
-direction can hand back the wrong one.
-
-**A set of per-row data does not belong on the skeleton.** `importedSourceIds` is its own method
-because `skeletonOf` answers identically for a cash flow with four years of history and one created
-a minute ago — which is what makes it cheap enough to fetch for a single boolean. Four hundred ids
-would end that for every caller.
-
-### A handler that computes a number must return it, not just log it
-
-`RollbackImportCommandHandler` counted the deleted transactions and categories, put them in the
-event, logged them — and returned the **post-rollback snapshot**, where `cashChanges` is empty, so
-the numbers were unrecoverable by the time anyone could read them. Three consumers each invented an
-answer: the endpoint returned a **hardcoded `0`** (so the frontend was told nothing had been
-deleted), the HTTP client **subtracted across five requests** (racy), and the test double **skipped
-the rollback entirely**, returning the count of transactions still present plus
-`deleteCategories ? 0 : 0`. One of its tests therefore passed for the wrong reason, and another had
-the double's bug baked into its expected value.
-
-**If a handler derives a number the caller needs, the return type is where it goes.** A log line is
-not an API, and a snapshot taken after the fact cannot describe what changed.
+`List<CashChangeEntity>` inside one document, and MongoDB's unique constraint applies *across*
+documents — a multikey unique index permits repeats inside one document's array, and `cashFlowId`
+is unique per document anyway. The trade pattern (`@CompoundIndex` on `originTradeId`) works only
+because `TradeEntity` is one document per trade. **Check the storage shape before reusing it.**
+Two things it does not give: no storage-level guarantee (that needs cash changes in their own
+collection), and no protection against concurrent writes — `@Version` appears nowhere here and a
+save replaces the whole document (F35).
 
 ### One mapping path per field, or the field will exist in only one of them
 

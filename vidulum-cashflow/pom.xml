@@ -32,6 +32,16 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- user-financial-profile: same arrangement again. Two integration tests here need its
+             endpoints together with a running cash flow, so they stay and it comes back at test
+             scope. It depends on no cashflow artifact, which is what keeps this acyclic. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-user-financial-profile</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- bank-data-adapter: same arrangement. Two integration tests here need both its
              endpoints and a running cash flow, so they stay, and it comes back at test scope. -->
         <dependency>
@@ -86,6 +96,13 @@
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-bank-data-adapter</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-user-financial-profile</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>

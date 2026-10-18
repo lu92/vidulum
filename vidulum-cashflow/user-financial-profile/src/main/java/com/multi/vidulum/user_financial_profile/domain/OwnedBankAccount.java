@@ -1,13 +1,12 @@
 package com.multi.vidulum.user_financial_profile.domain;
 
-import com.multi.vidulum.cashflow.domain.BankAccountNumber;
 import com.multi.vidulum.common.BankName;
 import com.multi.vidulum.common.CashFlowId;
 
 import java.time.ZonedDateTime;
 
 public record OwnedBankAccount(
-        BankAccountNumber bankAccountNumber,
+        OwnedAccountNumber bankAccountNumber,
         BankName bankName,
         String label,
         AccountStatus status,
@@ -17,7 +16,7 @@ public record OwnedBankAccount(
         ZonedDateTime closedAt
 ) {
     public String rawIban() {
-        return bankAccountNumber.fetchRawIban();
+        return bankAccountNumber.iban();
     }
 
     public boolean isActive() {
