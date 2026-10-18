@@ -25,7 +25,7 @@ are running and why.
 **`-pl` takes `:artifactId`, not a path.** Modules live under `market/` and `wealth/`, so
 `-pl vidulum-portfolio` does not resolve — Maven looks for a directory of that name at the root.
 The `:artifactId` form is independent of where a module sits. A whole group builds with
-`-f market/pom.xml` or `-f wealth/pom.xml`.
+`-f vidulum-app-cashflow/pom.xml`, `-f market/pom.xml` or `-f wealth/pom.xml`.
 
 ```bash
 ./mvnw compile -pl :vidulum-cashflow                        # one module, ~1-3s
@@ -95,24 +95,24 @@ vidulum/
 │   └── security/                #   JWT auth, SecurityContextUserProvider
 │   └── shared/                  #   DDD base classes, DataCleaner interface
 │
-├── vidulum-cashflow/            # CashFlow domain module
-│   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
-│                                #   createCategory, importHistorical, rollbackImport,
-│                                #   alreadyImported), Type, view/, error/
-│   └── (user-financial-profile/) #  SEPARATE ARTIFACT: vidulum-user-financial-profile. Its own
-│                                #   OwnedAccountNumber and its own view of the cash_flow payload
-│   └── (bank-data-adapter/)     #   SEPARATE ARTIFACT: vidulum-bank-data-adapter. shared-kernel
-│                                #   only. Calls ingestion's upload endpoint by URL
-│   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. shared-kernel
-│                                #   + two contracts, never vidulum-cashflow - which is what lets
-│                                #   the parent depend on it at test scope without a cycle.
-│                                #   Neither has an -api: nothing asks them anything
-│   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
-│   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation - cashflow's own
-│                                #   read model, in the same artifact on purpose: 36 imports of
-│                                #   CashFlowEvent, and one lifecycle
-│   └── (recurring-rules/)       #   SEPARATE ARTIFACT nested here: vidulum-recurring-rules
-│                                #   depends on nothing from cashflow; talks to it over HTTP
+├── vidulum-app-cashflow/        # AGGREGATOR: money moving in and out. pom-packaged grouping,
+│   │                            #   NOT a parent - children inherit from the root pom, so moving
+│   │                            #   one in or out changes no dependency and no artifactId
+│   ├── cashflow-api/            #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
+│   │                            #   createCategory, importHistorical, rollbackImport,
+│   │                            #   alreadyImported), Type, view/, error/
+│   ├── user-financial-profile-api/ # CONTRACT: UserFinancialProfileApi (@HttpExchange)
+│   ├── vidulum-cashflow/        #   THE AGGREGATE + its read model: cashflow/ and
+│   │                            #   cashflow_forecast_processor/. Together on purpose - 36 imports
+│   │                            #   of CashFlowEvent, one lifecycle; the last assertSealed
+│   │                            #   exemption. Unit/component tests only: 91 in 5s, no Docker
+│   ├── user-financial-profile/  #   Owned accounts, self-transfer detection
+│   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
+│   ├── bank-data-ingestion/     #   Import staging, category mapping; two contracts, never
+│   │                            #   vidulum-cashflow
+│   └── recurring-rules/         #   Recurring rules; talks to cashflow over HTTP
+│                                #   No consumer here has an -api (nothing asks them anything) or
+│                                #   a test-scope dep on another - see vidulum-cashflow-tests
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/

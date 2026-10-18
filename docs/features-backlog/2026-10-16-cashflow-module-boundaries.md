@@ -1386,3 +1386,59 @@ pętla przy pracy nad agregatem, nie przebieg CI.
 **Liczby zestawów infrastruktury testowej.** Są teraz trzy równoległe (`cashflow-tests`,
 `wealth-tests`, `vidulum-app`), każdy z własną bazą i własną aplikacją. To nie jest nowe, ale stało
 się wyraźniejsze.
+
+
+## 23. Co zrobił krok 27: `vidulum-app-cashflow` jako agregator
+
+Po sześciu krokach `vidulum-cashflow` był artefaktem, który **nazywał rodzinę, a zawierał jej
+najmniejszą część**: agregat plus read model, z sześcioma modułami zagnieżdżonymi w swoim folderze.
+Nazwa kłamała i struktura kłamała.
+
+### Co się zmieniło
+
+| | przed | po |
+|---|---|---|
+| `vidulum-cashflow` | `jar` z `cashflow` + `cashflow_forecast_processor` **i** folderem sześciu innych modułów | **`jar` wyłącznie z agregatem i jego read modelem** |
+| `vidulum-app-cashflow` | — | **`pom`, sam `<modules>`**, bez źródeł i bez zależności |
+| wpisy w korzeniu reaktora | siedem | **jeden** |
+
+```
+vidulum-app-cashflow/          pom, agregator
+├── cashflow-api/              kontrakt
+├── user-financial-profile-api/ kontrakt
+├── vidulum-cashflow/          agregat + read model
+├── user-financial-profile/
+├── bank-data-adapter/
+├── bank-data-ingestion/
+└── recurring-rules/
+```
+
+### Wzorzec nie jest nowy
+
+To dokładnie to, czym są `market/` i `wealth/` od kroku 10: **agregator, nie rodzic**. Każdy modul
+poniżej dziedziczy z poma korzennego (`../../pom.xml`), więc przeniesienie go do innego folderu nie
+zmienia ani jednej zależności ani `artifactId`. Grupa buduje się samodzielnie:
+
+```bash
+./mvnw test -f vidulum-app-cashflow/pom.xml
+```
+
+### Co dzięki temu stało się widoczne w jednym miejscu
+
+Opis agregatora zapisuje dwie reguły, które do tej pory trzeba było wyczytać z siedmiu pomów:
+
+1. **`vidulum-cashflow` nie jest zależnością nikogo w tej grupie.** Cztery moduły konsumujące
+   kompilują się wobec `cashflow-api` i `user-financial-profile-api`, nigdy wobec implementacji — i
+   to jest dokładnie to, co pozwala `vidulum-cashflow-tests` trzymać testy integracyjne wszystkich
+   bez cyklu.
+2. **Żaden moduł w grupie nie ma zależności `test` scope na inny.** Testy wymagające działającego
+   systemu są poza grupą.
+
+Kolejność w `<modules>` to kolejność zależności: kontrakty, agregat, konsumenci.
+
+### Uwaga o nazwie
+
+`market` i `wealth` mają foldery o krótkich nazwach i `artifactId` `vidulum-market` / `vidulum-wealth`.
+Tutaj folder i `artifactId` to oba `vidulum-app-cashflow`, co jest odstępstwem od tej konwencji —
+zgodnie z tym, o co poprosił właściciel kodu. Nic z tego nie wynika technicznie: agregator nie jest
+rodzicem, więc jego nazwa nie przecieka do żadnego dziecka.
