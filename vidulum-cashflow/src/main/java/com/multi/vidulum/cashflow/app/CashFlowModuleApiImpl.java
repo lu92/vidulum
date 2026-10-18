@@ -5,11 +5,16 @@ import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
+import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.Category;
+import com.multi.vidulum.cashflow.domain.Description;
+import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -56,7 +61,7 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
         return new CashFlowSkeletonView(
                 snapshot.cashFlowId(),
                 snapshot.userId(),
-                phaseOf(snapshot),
+                snapshot.phase(),
                 snapshot.activePeriod(),
                 snapshot.startPeriod(),
                 nodesOf(snapshot.inflowCategories(), null),
@@ -88,17 +93,23 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 cashFlowId, parentCategoryName, categoryName, type, isImport));
     }
 
-    /**
-     * Maps the aggregate's nested status onto the contract's own vocabulary. A {@code switch} over
-     * an enum rather than {@code valueOf}: adding a status to the aggregate should stop compiling
-     * here, not surprise a consumer at runtime.
-     */
-    private static CashFlowSkeletonView.LifecyclePhase phaseOf(CashFlowSnapshot snapshot) {
-        return switch (snapshot.status()) {
-            case SETUP -> CashFlowSkeletonView.LifecyclePhase.SETUP;
-            case OPEN -> CashFlowSkeletonView.LifecyclePhase.OPEN;
-            case CLOSED -> CashFlowSkeletonView.LifecyclePhase.CLOSED;
-        };
+    @Override
+    public CashChangeId importHistorical(CashFlowId cashFlowId, HistoricalCashChange change) {
+        // Through the gateway for the same reason createCategory is: the aggregate decides whether
+        // the date is importable at all, and the handler already enforces that through ImportWindow.
+        // Name and Description are wrapped here, on cashflow's side - the contract carries strings
+        // because those two value objects live in cashflow.domain, where a consumer may not look.
+        return commandGateway.send(new ImportHistoricalCashChangeCommand(
+                cashFlowId,
+                change.categoryName(),
+                new Name(change.name()),
+                new Description(change.description()),
+                change.money(),
+                change.type(),
+                change.dueDate(),
+                change.paidDate(),
+                change.selfTransfer(),
+                change.bankTransactionId()));
     }
 
     /**

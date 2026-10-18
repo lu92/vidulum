@@ -2,7 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**File size limit**: Keep this file under 50KB for optimal loading. Current: ~30KB.
+**File size limit**: keep this file under 50KB — it is loaded into every session. Currently ~46KB,
+so there is little room: **prefer editing an existing section over adding one**, and put
+walkthroughs, request bodies and diagrams in `docs/` with a pointer from here. The "~30KB" this
+line used to claim had been wrong by 2x for a while; check with `wc -c CLAUDE.md` rather than
+trusting it.
 
 ## Before Manual Testing
 
@@ -14,78 +18,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Test Commands
 
-### Incremental builds (use during development)
+**Build and test only the affected module, not the whole project.** The scope decision comes before
+the command — guessing afterwards from a red log costs more than the analysis. Say which modules you
+are running and why.
 
-**IMPORTANT**: When modifying code, build and test ONLY the affected module — not the entire project. This is significantly faster.
-
-**`-pl` takes `:artifactId`, not a path.** Since step 10 the modules live under `market/` and
-`wealth/`, so `-pl vidulum-portfolio` no longer resolves — Maven looks for a directory of that name
-at the root. The `:artifactId` form below is independent of where a module sits, so it survives the
-next move too. A whole group builds with `-f market/pom.xml` or `-f wealth/pom.xml`.
+**`-pl` takes `:artifactId`, not a path.** Modules live under `market/` and `wealth/`, so
+`-pl vidulum-portfolio` does not resolve — Maven looks for a directory of that name at the root.
+The `:artifactId` form is independent of where a module sits. A whole group builds with
+`-f market/pom.xml` or `-f wealth/pom.xml`.
 
 ```bash
-# Compile only the module you changed (~1-3s each)
-./mvnw compile -pl :vidulum-cashflow
-./mvnw compile -pl :vidulum-portfolio
-./mvnw compile -pl :vidulum-trading
-./mvnw compile -pl :vidulum-pnl
-./mvnw compile -pl :vidulum-app
-
-# Test only the class you changed
-./mvnw test -pl :vidulum-cashflow -Dtest=CashFlowAggregateTest           # 0.2s
-./mvnw test -pl :vidulum-portfolio -Dtest=PortfolioTest                  # 0.1s
-./mvnw test -pl :vidulum-app -Dtest=UserPortfolioOnboardingTest          # ~7s
-
-# Test a specific method
+./mvnw compile -pl :vidulum-cashflow                        # one module, ~1-3s
+./mvnw test -pl :vidulum-portfolio -Dtest=PortfolioTest     # one class
 ./mvnw test -pl :vidulum-cashflow -Dtest=CashFlowControllerTest#shouldCreateCashFlow
-
-# Test entire module
-./mvnw test -pl :vidulum-cashflow      # ~4min (49 test classes)
-./mvnw test -pl :vidulum-portfolio     # ~10s  (208 tests)
-./mvnw test -pl :vidulum-trading       # ~1s   (10 tests)
-./mvnw test -pl :vidulum-pnl           # ~2s   (31 tests)
-./mvnw test -pl :vidulum-wealth-tests  # ~1min (60 cross-module tests, no main sources)
-./mvnw test -pl :vidulum-app           # ~1min
-```
-
-### Full project builds (before PR or after cross-module changes)
-
-```bash
-# Full build — all modules
-./mvnw clean test                     # ~7min, 15 modules
-
-# Install shared-kernel after changing it (other modules depend on it)
-./mvnw install -pl :vidulum-shared-kernel -DskipTests
-
-# Package the application
-./mvnw package -DskipTests
-
-# Run the application
+./mvnw install -pl :vidulum-shared-kernel -DskipTests        # then rebuild dependents
+./mvnw clean test                                            # full reactor, ~7min, 21 modules
+./mvnw package -DskipTests                                   # what a Docker rebuild needs
 ./mvnw spring-boot:run -pl :vidulum-app
 ```
 
-### When to rebuild which module
+Whole-module runs, for budgeting: cashflow ~4min · portfolio ~10s (208) · trading ~1s (10) ·
+pnl ~2s (31) · wealth-tests ~1min (60) · app ~1min.
 
-| Changed file location | Command |
-|----------------------|---------|
-| `vidulum-shared-kernel/` | `./mvnw install -pl :vidulum-shared-kernel -DskipTests` then rebuild dependent modules |
-| `vidulum-cashflow/src/main/` | `./mvnw compile -pl :vidulum-cashflow` |
-| `vidulum-cashflow/src/test/` | `./mvnw test -pl :vidulum-cashflow -Dtest=YourTestClass` |
-| `wealth/vidulum-portfolio/src/main/` | `./mvnw compile -pl :vidulum-portfolio` |
-| `wealth/vidulum-trading/src/main/` | `./mvnw compile -pl :vidulum-trading` |
-| `wealth/vidulum-pnl/src/main/` | `./mvnw compile -pl :vidulum-pnl` |
-| `wealth/vidulum-risk/src/main/` | `./mvnw compile -pl :vidulum-risk` |
-| `market/vidulum-quotation/src/main/`, `market/vidulum-exchange/src/main/`, `market/vidulum-okx/src/main/` | `./mvnw compile -pl :vidulum-quotation` (etc.) |
-| `vidulum-*/src/test/` | `./mvnw test -pl :vidulum-<module> -Dtest=YourTestClass` |
-| any `vidulum-*-api/` (contract) | `install` it, then rebuild **every** module that depends on it |
-| `vidulum-app/src/main/` | `./mvnw compile -pl :vidulum-app` |
-| `vidulum-app/src/test/` | `./mvnw test -pl :vidulum-app -Dtest=YourTestClass` |
-
-### Deciding the scope before you build
-
-**A full `./mvnw clean test` is the exception, not the default.** Decide the scope first, from the
-dependency flow, and say which modules you are running and why — then run only those. The decision
-comes before the command; guessing afterwards from a red log costs more than the analysis.
+### Deciding the scope
 
 ```
 shared-kernel ← cashflow
@@ -95,40 +50,35 @@ shared-kernel ← cashflow
                                                                   ← app
 ```
 
-Contracts (`vidulum-portfolio-api`, `vidulum-trading-api`, `vidulum-quotation-api`,
-`vidulum-exchange-api`) carry no Spring and no implementation. **Only `vidulum-app` depends on the
-implementation modules at `compile` scope** — every other module compiles against contracts and
-pulls an implementation in at most at `test` scope.
-
-Arrows point from a module to the ones that depend on it. Run **what changed plus everything
-downstream of it**, and nothing else:
+Contracts carry no Spring and no implementation. **Only `vidulum-app` depends on implementation
+modules at `compile` scope** — everyone else compiles against contracts and pulls an implementation
+in at `test` scope at most. Arrows point from a module to the ones that depend on it; run **what
+changed plus everything downstream**, and nothing else:
 
 | Changed | Run | Why |
 |---------|-----|-----|
 | `vidulum-portfolio` | `-pl :vidulum-portfolio` then `-pl :vidulum-wealth-tests,:vidulum-app` | the cross-module tests and the bootstrap use it |
 | `vidulum-trading` | `-pl :vidulum-trading,:vidulum-wealth-tests,:vidulum-app` | same reason |
-| `vidulum-pnl` / `vidulum-risk` | `-pl :vidulum-pnl` (or `-pl :vidulum-risk`) then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and the cross-module tests use them |
-| `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — it is tests only |
-| `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the app bootstrap |
+| `vidulum-pnl` / `vidulum-risk` | that module, then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and cross-module tests use them |
+| `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
+| `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
-| any `vidulum-*-api` | everything downstream of its implementations | the contract is the compile-time surface |
-| several modules in one group | `-f market/pom.xml` or `-f wealth/pom.xml` | the aggregator's own reactor; needs the other group installed |
+| any `vidulum-*-api` | `install` it, then everything downstream of its implementations | the contract is the compile-time surface |
+| several modules in one group | `-f market/pom.xml` or `-f wealth/pom.xml` | the aggregator's reactor; needs the other group installed |
 | `vidulum-shared-kernel` | **full `./mvnw clean test`** | everything depends on it — no exceptions |
 
-A downstream module resolves its dependency from the local repository, so `install` the changed
-module first: `./mvnw install -pl :vidulum-portfolio -DskipTests`.
+A downstream module resolves from the local repository, so `install` the changed module first.
 
-Two traps worth remembering:
+Two traps:
 
-- **`./mvnw package -DskipTests` compiles every module but runs no tests.** It is cheap, and it is
-  what a Docker rebuild needs — never confuse it with a full test run.
-- **Check `docker ps` before any run that uses Testcontainers.** A `docker-compose` stack left
-  running starves them, and the failures look exactly like regressions: a registration answering
-  500, `TimeoutException: Timed out waiting for a node assignment`, tests taking minutes instead of
-  seconds. Take the stack down (`docker-compose -f docker-compose-final.yml down -v`) rather than
-  debugging the code.
+- **`package -DskipTests` compiles every module but runs no tests.** Never confuse it with a full
+  test run.
+- **Check `docker ps` before any run using Testcontainers.** A `docker-compose` stack left running
+  starves them, and the failures look exactly like regressions: registrations answering 500,
+  `TimeoutException: Timed out waiting for a node assignment`, tests taking minutes. Take the stack
+  down (`docker-compose -f docker-compose-final.yml down -v`) rather than debugging the code.
 
-Note: Java 21 with preview features is required (`--enable-preview` is configured in pom.xml).
+Java 21 with preview features (`--enable-preview`, configured in pom.xml).
 
 ## Architecture Overview
 
@@ -180,44 +130,41 @@ vidulum/
     └── VidulumApplication       #   @SpringBootApplication entry point
 ```
 
-**Dependency flow**: contracts first, then implementations, then the bootstrap — no cycles. The
-reactor order is **computed from the dependencies**, not from the folders: shared-kernel → cashflow
-→ market (quotation-api → quotation → exchange-api → exchange → okx) → wealth (portfolio-api →
-trading-api → portfolio → trading → pnl → risk) → wealth-tests → app. The two aggregators are
-`pom`-packaged grouping only — they are not parents, so no module's dependencies or `artifactId`
-depend on which folder it sits in.
+**Dependency flow**: contracts, then implementations, then the bootstrap — no cycles. Reactor order
+is computed from the dependencies, not the folders: shared-kernel → cashflow → market (quotation-api
+→ quotation → exchange-api → exchange → okx) → wealth (portfolio-api → trading-api → portfolio →
+trading → pnl → risk) → wealth-tests → app. The two aggregators are `pom`-packaged grouping only —
+not parents, so nothing depends on which folder a module sits in.
 
-Two rules make it hold:
+The rules that hold it together:
+
 - **A module never imports another module's internals** — only its `*-api` contract. `portfolio`
   sees `trading.api`, never `trading.app`.
-- **`vidulum-wealth-tests` has no `src/main` at all** — the name says what the module is. It exists
-  for the tests that deliberately cross a boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
+- **`vidulum-wealth-tests` has no `src/main`.** It holds the tests that deliberately cross a
+  boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
   `PreciousMetalsLifecycleComponentTest`, the portfolio and portfolio_spec endpoint tests,
-  `ValuationBasisPersistenceTest`). Without it, portfolio's tests would need trading and trading's
-  would need portfolio — a reactor cycle.
-- **`vidulum-pnl` and `vidulum-risk` have no `-api` module**, because nothing asks them anything:
-  they consume contracts and answer over HTTP. The contract gets written when a consumer exists —
-  see `docs/features-backlog/2026-10-15-alerts-module-design.md` for the first plausible one.
-- **The `market` → `wealth` edge is one-way, and it is checked.** No module under `market/` imports
-  anything from portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices
-  and venues do not know who owns what.
+  `ValuationBasisPersistenceTest`). Without it, portfolio's tests would need trading and vice versa
+  — a reactor cycle.
+- **`vidulum-pnl` and `vidulum-risk` have no `-api`**, because nothing asks them anything. The
+  contract gets written when a consumer exists (see
+  `docs/features-backlog/2026-10-15-alerts-module-design.md`).
+- **The `market` → `wealth` edge is one-way, and checked.** Nothing under `market/` imports
+  portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices and venues do
+  not know who owns what.
 - **Contracts are marked, and the markers are checked.** `ModuleApi` (what another module may ask),
-  `ModuleSpi` (a socket somebody else plugs into), `ModuleEventHandler` (reacting to what another
-  module announces) and `IntegrationEvent` (a payload serialised onto a topic) live in
-  shared-kernel's `shared/module` and `shared/ddd/event`. They carry no methods: their job is that
-  `Ctrl+H` answers "what can be asked of which module, and where is the implementation", and that
-  `ModuleBoundariesArchTest` in `vidulum-app` has something to key its rules on. **A new contract
-  extends the right marker; a new `@KafkaListener` goes through a handler interface.** Three
-  exemption lists in that test record how far today's code is from the rules — they may only shrink.
-- **`lombok` and the two test starters come from the root pom** (step 11a), so a module's own pom
-  lists only dependencies that say something about that module. Keep it that way: declaring
-  `spring-boot-starter-webmvc` means "this module has HTTP endpoints", `-data-mongodb` means "it
-  persists", `spring-kafka` means "it speaks events", and `spring-boot-starter-classic` means "it
-  runs inside Spring" — which is why a `*-api` contract declares none of them and has exactly one
-  dependency. Do not hoist those four; they would turn a readable pom into a `dependency:tree`
-  exercise.
+  `ModuleSpi` (a socket somebody else plugs into), `ModuleEventHandler` (reacting to an
+  announcement) and `IntegrationEvent` (a payload on a topic) live in shared-kernel's
+  `shared/module` and `shared/ddd/event`. They carry no methods; their job is that `Ctrl+H` answers
+  "what can be asked of which module" and that `ModuleBoundariesArchTest` has something to key on.
+  **A new contract extends the right marker; a new `@KafkaListener` goes through a handler
+  interface.** That test's three exemption lists measure the gap — they may only shrink.
+- **`lombok` and the two test starters come from the root pom**, so a module's own pom lists only
+  dependencies that say something about it: `spring-boot-starter-webmvc` = "has HTTP endpoints",
+  `-data-mongodb` = "persists", `spring-kafka` = "speaks events", `spring-boot-starter-classic` =
+  "runs inside Spring". That is why a `*-api` declares none of them and has exactly one dependency.
+  Do not hoist those four.
 
-The design and its reasoning: `docs/features-backlog/2026-10-12-module-contracts-api-impl-split.md`.
+Design and reasoning: `docs/features-backlog/2026-10-12-module-contracts-api-impl-split.md`.
 
 ### CQRS Pattern
 
@@ -243,25 +190,80 @@ asserts the old arrangement fails to start, so **a new `*ModuleApiImpl` needs no
 ### A module contract may have two transports — in-process is always the default
 
 `CashFlowModuleApi` has both: `CashFlowModuleApiImpl` (gateway and repository) and
-`HttpCashFlowModuleApi` (REST against the same endpoints a browser calls), chosen by
+`HttpCashFlowModuleApi` (REST against the endpoints a browser calls), chosen by
 **`vidulum.cashflow.api.transport`** — `in-process` when unset. `BootstrapWiresEveryModuleTest`
 asserts exactly one bean exists **and that it is not the HTTP one**.
 
-Three rules, each learned from a defect rather than invented:
+- **`matchIfMissing = true` on an HTTP implementation is a trap.** The ingestion port had it on
+  `vidulum.cashflow-service.enabled`, which nothing set — so the application created categories by
+  calling its own REST endpoints over loopback, once per category, inside one JVM. Every
+  integration test set it to `false` and substituted a double, which is why nobody noticed.
+  **Default to the local path; opt in to HTTP.**
+- **The HTTP adapter ships with the module that owns the endpoints.** It knows which URLs exist and
+  that a field is called `category`, not `categoryName`. The arrangement it replaced had a consumer
+  hand-rolling records for somebody else's API.
+- **A test double standing in for a contract is a signal.** Three implementations of
+  `createCategory` existed: one HTTP, one dead, one gateway-based double that 29 test classes used.
+  The double did what the in-process implementation should have — so making the real one available
+  deleted the double and moved those 29 classes onto production code.
 
-- **`matchIfMissing = true` on an HTTP implementation is a trap.** `bank_data_ingestion`'s port had
-  it on `vidulum.cashflow-service.enabled`, and nothing set that property — so the running
-  application created categories by calling its own REST endpoints over loopback, once per
-  category, inside one JVM. Every integration test set it to `false` and substituted a double,
-  which is exactly why nobody noticed. **Default to the local path; opt in to HTTP.**
-- **The HTTP adapter ships with the module that owns the endpoints**, not with the consumer. It
-  knows which URLs exist and that a field is called `category` rather than `categoryName`; that
-  knowledge belongs to the producer. The arrangement this replaced had a consumer hand-rolling
-  records for somebody else's API.
-- **A test double that stands in for a contract is a signal, not a tool.** Three implementations of
-  `createCategory` existed: one HTTP, one dead, and one gateway-based double that 29 test classes
-  used. The double was doing what the in-process implementation should have been doing — so making
-  the real one available deleted the double and moved those 29 classes onto production code.
+### A rule two modules need is a value in the contract, not a method on it
+
+`ImportWindow` in `cashflow-api` decides which dates a cash flow accepts an import for;
+`CashFlowSkeletonView.importWindow()` hands it to a consumer and `CashFlowSnapshot.importWindow()`
+builds it from the aggregate. One implementation, two callers.
+
+**Why a value, not `canImport(date)`: a predicate asked per row is a request per row** — a 402-line
+statement would pay 402. The skeleton already carries all three inputs, so the consumer fetches
+once and evaluates locally against the producer's logic instead of a copy.
+
+It replaced two copies of five conditions — typed exceptions in the command handler, the same five
+as `String.format` in `StageTransactionsCommandHandler` — which had already diverged. When merging
+duplicated validation:
+
+- **Preserve the check order.** A date can break two conditions at once and the first wins, which
+  decides the `ErrorCode` an endpoint answers with. `CashFlowErrorHandlingTest` depends on it to the
+  point of explaining in a comment why it cannot test `IMPORT_DATE_IN_FUTURE` in SETUP mode;
+  `ImportWindowTest` pins it.
+- **Not everything merges.** Month statuses belong to `cashflow_forecast_processor`, so staging's
+  `ATTESTED` check stayed there. The contract's rule is the *necessary* condition, not the policy.
+
+### Don't let a port invent a poorer type than both ends already use
+
+The ingestion port declared `double` + `String` and `LocalDate` where the caller and the endpoint
+both held `Money` and `ZonedDateTime`; the HTTP client rebuilt the rest with
+`atStartOfDay(ZoneId.systemDefault())`. Measured, because the halves differ:
+
+- **Time of day and zone: lost outright.** The stored instant depended on the *server's* timezone,
+  so one CSV gave different data in different deployments — and near a month boundary that moves a
+  transaction into another month, which decides validation and the forecast.
+- **Amount: scale, not value.** `BigDecimal.valueOf(double)` uses `Double.toString`, the shortest
+  round-tripping decimal, so realistic amounts returned identical. `1234.50` came back `1234.5` —
+  equal under `compareTo`, not `equals`. Value loss needs >15 significant digits.
+
+That second point corrects my own first analysis, which claimed precision loss on money: a sabotage
+test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
+actually breaks before calling something a defect.**
+
+### Idempotency on an embedded array cannot use a unique index
+
+Imported transactions carry `bankTransactionId`, and `CashFlow.findImported` makes re-uploading a
+statement a no-op. **The guard is in the aggregate, not an index**: cash changes are an embedded
+`List<CashChangeEntity>` inside one `cash-flow-document`, and MongoDB's unique constraint applies
+*across* documents — a multikey unique index permits repeated values inside one document's array,
+and `cashFlowId` is unique per document anyway. The trade pattern (`@CompoundIndex` on
+`originTradeId`) works only because `TradeEntity` is one document per trade. **Check the storage
+shape before reusing it.** Two things this does not give: no storage-level guarantee (that needs
+cash changes in their own collection), and no protection against concurrent writes — `@Version`
+appears nowhere in this project and a save replaces the whole document, so two parallel operations
+on one cash flow silently lose one (F35).
+
+### One mapping path per field, or the field will exist in only one of them
+
+Adding `bankTransactionId` broke idempotency silently at first: `CashChange.from(snapshot)` was
+complete, but `CashFlow.from(snapshot)` held a **second, hand-written copy** of that mapping, so
+everything loaded from storage read `null`. The test caught it; review would not have. When two
+places rebuild one object, the duplicate is the bug waiting to happen.
 
 ### Domain Aggregates
 
@@ -381,66 +383,48 @@ duplicating payload assertions.
 
 ## Development Status
 
-**This application is under active development.** There are no production users yet.
+**Under active development, no production users.** So: no data migrations, breaking changes are
+fine, and when in doubt wipe the data and start fresh. Don't write migration scripts.
 
-Implications:
-- **No data migrations required** - we can freely change database schemas, collection structures, etc.
-- **No backwards compatibility concerns** - breaking changes are acceptable
-- **Clean slate approach** - when in doubt, wipe data and start fresh
-- **Focus on features, not migrations** - don't waste time on migration scripts
+### MongoDB entities, cleaners and indexes
 
-### MongoDB Entity Clearing at Startup
-
-**IMPORTANT**: When creating a new MongoDB entity (class with `@Document`), you MUST add it to the appropriate `DataCleaner` implementation!
-
-Each Maven module has its own `DataCleaner` that clears its MongoDB collections on startup. `VidulumApplication` collects all `DataCleaner` beans via `List<DataCleaner>`.
-
-**Indexes**: `@Indexed` and `@CompoundIndex` create nothing unless index creation is switched on,
-and Spring Boot has defaulted it to `false` since 3.0 — 28 annotations in this codebase were
-decoration until task F1. It is enabled in `vidulum-app/src/main/resources/application.yml` under
-**`spring.data.mongodb.auto-index-creation`** — note the key: Boot 4 moved the connection
-properties to `spring.mongodb`, but not this one, and under the wrong key it fails silently. A test
-that asserts an annotation exists proves nothing; assert the index is in the database
-(`mongoTemplate.indexOps(X.class).getIndexInfo()`), as `TradeUniquenessIndexTest` does.
-
-**Checklist for new entity:**
-1. Create entity class with `@Document("collection_name")` annotation
-2. Add `mongoTemplate.remove(new Query(), NewEntity.class);` to the `DataCleaner` in the entity's module
-3. Add appropriate import statement
+**A new `@Document` entity MUST be added to its subdomain's `DataCleaner`** — `VidulumApplication`
+collects them via `List<DataCleaner>`. Add `mongoTemplate.remove(new Query(), NewEntity.class);`.
 
 **Empty the collection, never drop it.** `dropCollection` takes the indexes with it, and the
 cleaners run moments after startup created them from the annotations — so every index lived for a
-fraction of a second and then vanished, and the first write recreated the collection bare. The
-uniqueness task F1 depends on survived the tests and did not survive the container. `remove` leaves
-the collection and its indexes in place, which is what "start from clean data" was always supposed
-to mean. The rule is stated on the `DataCleaner` interface itself.
+fraction of a second, and the first write recreated the collection bare. The uniqueness task F1
+depends on survived the tests and not the container. The rule is on the `DataCleaner` interface.
 
-**DataCleaner implementations:**
+**Indexes need switching on.** `@Indexed` and `@CompoundIndex` create nothing by default — Boot has
+defaulted it to `false` since 3.0, so 28 annotations here were decoration until F1. Enabled in
+`vidulum-app/src/main/resources/application.yml` under
+**`spring.data.mongodb.auto-index-creation`** — note the key: Boot 4 moved connection properties to
+`spring.mongodb` but not this one, and under the wrong key it fails silently. A test asserting an
+annotation exists proves nothing; assert the index is in the database
+(`mongoTemplate.indexOps(X.class).getIndexInfo()`), as `TradeUniquenessIndexTest` does.
 
-| Module | Class | Collections |
+| Module (subdomain) | Cleaner | Collections |
 |--------|-------|-------------|
-| vidulum-cashflow (cashflow) | `CashFlowDataCleaner` | CashFlowEntity |
-| vidulum-cashflow (cashflow_forecast_processor) | `CashFlowForecastDataCleaner` | CashFlowForecastEntity, CashFlowForecastStatementEntity |
-| vidulum-cashflow (bank_data_ingestion) | `BankDataIngestionDataCleaner` | StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity |
-| vidulum-cashflow (bank_data_adapter) | `BankDataAdapterDataCleaner` | AiCsvTransformationDocument, MappingRules |
-| vidulum-cashflow (user_financial_profile) | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
+| cashflow | `CashFlowDataCleaner` | CashFlowEntity |
+| cashflow_forecast_processor | `CashFlowForecastDataCleaner` | CashFlowForecastEntity, CashFlowForecastStatementEntity |
+| bank_data_ingestion | `BankDataIngestionDataCleaner` | StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity |
+| bank_data_adapter | `BankDataAdapterDataCleaner` | AiCsvTransformationDocument, MappingRules |
+| user_financial_profile | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
 | vidulum-recurring-rules | `RecurringRuleDataCleaner` | RecurringRuleEntity |
-| vidulum-portfolio (portfolio) | `PortfolioDataCleaner` | PortfolioEntity |
-| vidulum-portfolio (portfolio_spec) | `PortfolioSpecDataCleaner` | PortfolioSpecEntity |
+| portfolio | `PortfolioDataCleaner` | PortfolioEntity |
+| portfolio_spec | `PortfolioSpecDataCleaner` | PortfolioSpecEntity |
 | vidulum-trading | `TradingDataCleaner` | OrderEntity, TradeEntity |
 | vidulum-pnl | `PnlDataCleaner` | PnlHistoryEntity |
 | vidulum-exchange | `ExchangeConnectionDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
-One cleaner per subdomain, not per Maven module: the subdomain that owns an entity is the one that
-notices when a new one appears, and the split survives extracting it into its own artifact.
-`vidulum-quotation` and `vidulum-risk` have no cleaner because they persist nothing — quotation's
-caches are in memory and risk composes every answer from other modules. Steps 06c and 09 proved the
-rule: `TradingDataCleaner` and `PnlDataCleaner` moved into their own artifacts unchanged. Step 13
-applied it where step 03 had skipped it: `CashFlowDataCleaner` was emptying ten collections across
-four subdomains and now empties one. For `bank_data_adapter` that is not cosmetic — a
-transformation is a **cache of an AI answer**, so a collection left behind makes a run reuse a
-previous model's output and look deterministic when it is not.
+**One cleaner per subdomain, not per Maven module** — the subdomain owning an entity is the one that
+notices a new one, and the split survives extraction into its own artifact (steps 06c and 09 moved
+`TradingDataCleaner` and `PnlDataCleaner` unchanged). `vidulum-quotation` and `vidulum-risk` have
+none because they persist nothing. For `bank_data_adapter` this is not cosmetic: a transformation is
+a **cache of an AI answer**, so a collection left behind makes a run reuse a previous model's output
+and look deterministic when it is not.
 
 ## Docker Rebuild (Full Restart)
 
@@ -517,84 +501,33 @@ obsidiandynamics/kafdrop:latest # Kafka UI
 vidulum-app:latest             # Application image
 ```
 
-## Documentation Structure & Guidelines
+## Documentation Structure
 
-### Folder Organization
-```
-docs/
-├── business-analysis/     # Business requirements, cost analysis, market research
-├── features-backlog/      # Designs for UNIMPLEMENTED features (TODO)
-├── design/                # UI mockups, visual assets
-├── evidence/              # Test reports, validation evidence (can be cleaned)
-└── manual-testing/        # Manual test scripts (can be cleaned)
-```
+Where new docs go: feature designs **not yet implemented** → `docs/features-backlog/`
+(`VID-XXX-name.md` or `YYYY-MM-DD-name.md`) · market/cost research → `docs/business-analysis/` ·
+test reports and validation evidence → `docs/evidence/` (periodically cleaned) · manual test scripts
+→ `docs/manual-testing/` · UI mockups → `docs/design/` · current reference docs → repo root or
+`docs/` root.
 
-### Documentation Guidelines
-When creating new documentation:
-
-1. **Current/Reference docs** → Place in project root or `docs/` root
-   - README, CHANGELOG, ARCHITECTURE, API guides
-
-2. **Feature designs (not yet implemented)** → `docs/features-backlog/`
-   - Use naming: `VID-XXX-feature-name.md` or `YYYY-MM-DD-feature-name.md`
-   - These are TODO items waiting for implementation
-
-3. **Business analysis** → `docs/business-analysis/`
-   - Market research, cost analysis, requirements gathering
-
-4. **Evidence/Reports** → `docs/evidence/`
-   - Test reports, migration validations, manual test results
-   - This folder can be periodically cleaned
-
-5. **UI Mockups** → `docs/design/`
-   - HTML mockups, wireframes, visual designs
-
-### Current Documentation
 | File | Description |
 |------|-------------|
 | `AUTHENTICATION.md` | JWT dual-token system, security assessment |
-| `README.md` | Project overview |
-| `README-DOCKER.md` | Docker deployment instructions |
-| `CHANGELOG.md` | Version history |
-| `docs/BANK_DATA_INGESTION_GUIDE.md` | Bank import API guide |
-| `docs/bank-data-ingestion-pipeline.md` | Import pipeline architecture |
-| `docs/historical-import-user-guide.md` | User guide for CSV import |
-| `docs/PERFORMANCE_TESTING_GUIDE.md` | Load testing tools, VPS sizing, monitoring |
-| `docs/FEATURES_BACKLOG_DETAILED.md` | Detailed description of all unimplemented features |
-| `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md` | **Manual testing guide for CSV import flow** |
-| `tools/task-board/refresh.py` | Regenerates the derived sections of a task board (progress, ready-to-take) and validates its dependency graph |
+| `README.md` / `README-DOCKER.md` / `CHANGELOG.md` | overview, Docker deployment, version history |
+| `docs/BANK_DATA_INGESTION_GUIDE.md` | bank import API guide |
+| `docs/bank-data-ingestion-pipeline.md` | import pipeline architecture |
+| `docs/historical-import-user-guide.md` | user guide for CSV import |
+| `docs/PERFORMANCE_TESTING_GUIDE.md` | load testing tools, VPS sizing, monitoring |
+| `docs/FEATURES_BACKLOG_DETAILED.md` | detailed description of all unimplemented features |
+| `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md` | **manual CSV import walkthrough** |
+| `tools/task-board/refresh.py` | regenerates a task board's derived sections and validates its dependency graph |
 
 ## Manual Testing - CSV Import Flow
 
-For manual testing of the complete CashFlow CSV import pipeline, refer to:
-**`docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`**
-
-This guide covers the full 11-step flow:
-1. Register User → TOKEN, USER_ID
-2. Create CashFlow with history → CF_ID
-3. AI Transform CSV → TRANSFORMATION_ID
-4. Download Transformed CSV
-5. Create Staging Session → SESSION_ID
-6. Configure Category Mappings (CREATE_NEW, CREATE_SUBCATEGORY, MAP_TO_UNCATEGORIZED)
-7. Revalidate Staging
-8. Start Import → JOB_ID
-9. Attest Historical Import
-10. Verify CashFlow
-11. Verify Forecast
-
-**Quick start for fresh test:**
-```bash
-# Package, build WITHOUT CACHE, and start with CLEAN VOLUMES
-./mvnw clean package -DskipTests
-docker build --no-cache -t vidulum-app:latest .
-docker-compose -f docker-compose-final.yml down -v
-docker-compose -f docker-compose-final.yml up -d
-```
-
-**Key gotchas:**
-- `paidDate` field is required in staging transactions
-- MappingAction enum values: `CREATE_NEW`, `CREATE_SUBCATEGORY`, `MAP_TO_UNCATEGORIZED` (NOT `MAP_TO_EXISTING`)
-- Use `down -v` to clear AI transformation cache between tests
+See **`docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`** for the full walkthrough; the
+consistency rules and the error table are under "CSV Import Business Flow" above. Start from a
+clean slate with the Docker rebuild below — **`down -v` is what clears the cached AI
+transformation**, and without it a run reuses a previous model's answer and looks deterministic
+when it is not.
 
 ## Error Handling Guidelines
 
@@ -638,305 +571,54 @@ failure, so the `ErrorCode` the producer already had never reaches anyone.
 - `ApiError` - `common/error/ApiError.java` - error response format
 - `ErrorCode` - `common/error/ErrorCode.java` - all error codes with HTTP statuses
 
-## CSV Import Business Flow (Complete Pipeline)
+## CSV Import Business Flow
 
-This is the COMPLETE flow for importing bank CSV and creating CashFlow with forecast.
+**Full walkthrough, ready-made request bodies, the flow diagram and the staging-session state
+machine live in `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`.** What stays here is the part
+that is easy to get wrong.
 
-### ⚠️ CRITICAL: Test Data Consistency Rules
+Eleven steps: register → `POST /cash-flow/with-history` → AI transform CSV → import to staging →
+AI categorize → accept-ai (or `force-uncategorized`) → check staging → start import →
+`attest-historical-import` → verify cash flow → verify forecast. Endpoints are in the REST
+reference below; use only those.
 
-When testing manually, data MUST be consistent. Use these values:
+### Test data must be consistent
 
-#### Test CSV File
-```
-File: src/test/resources/lista_operacji_20260111.csv
-Bank: Nest Bank
-Date range: 2023-01-13 to 2025-12-31 (oldest to newest)
-Transactions: 402
-Currency: PLN
-```
+| | |
+|---|---|
+| test CSV | `src/test/resources/lista_operacji_20260111.csv` — Nest Bank, 402 rows, PLN, 2023-01-13 … 2025-12-31 |
+| `startPeriod` | **the month of the OLDEST row**, so `2023-01`. Check `suggestedStartPeriod` in the AI transform response |
+| `initialBalance` | `863.94 PLN` for that file |
+| `confirmedBalance` at attestation | the last row's "Saldo po operacji" — `76047.25 PLN` |
+| IBAN | `PL61109010140000071219812874`. Validation is strict: `PL` + 2 check digits + 22 digits |
 
-#### CashFlow Creation - MUST Match CSV Dates!
-```json
-{
-  "startPeriod": "2023-01",        // ← Month of OLDEST transaction in CSV!
-  "initialBalance": { "amount": 863.94, "currency": "PLN" }
-}
-```
+**Why `startPeriod` matters:** a cash flow creates historical months from `startPeriod` to the
+current one, and a transaction dated before it — or in the future — is rejected.
 
-**Why `startPeriod` matters:**
-- CashFlow creates historical months from `startPeriod` to current month
-- Transactions with `paidDate` BEFORE `startPeriod` will be REJECTED
-- Transactions with `paidDate` in FUTURE will be REJECTED
-- Check AI transform response for `suggestedStartPeriod` field!
+### Staging session states
 
-#### Valid Polish IBAN for Testing
-```
-PL61109010140000071219812874    ← Use this IBAN
-```
-IBAN validation is STRICT - must be valid Polish IBAN format (PL + 2 check digits + 24 digits).
+`HAS_UNMAPPED_CATEGORIES` → (`ai-categorize` → `AI_SUGGESTIONS_READY` → `accept-ai`) or manual
+mappings or `force-uncategorized` → `revalidate` → `READY_FOR_IMPORT` → `IMPORTING` → `COMPLETED`.
+Sessions expire after 24h.
 
-#### Complete Request Bodies
+### Common errors
 
-**1. Register User:**
-```json
-POST /api/v1/auth/register
-{
-  "username": "testuser1",
-  "email": "test@test.com",
-  "password": "SecurePassword123!"
-}
-→ Save: TOKEN, USER_ID
-```
-
-**2. Create CashFlow with History:**
-```json
-POST /cash-flow/with-history
-Authorization: Bearer {TOKEN}
-{
-  "userId": "{USER_ID}",
-  "name": "Konto Nest Bank",
-  "description": "Test import",
-  "bankAccount": {
-    "bankName": "Nest Bank",
-    "bankAccountNumber": {
-      "account": "PL61109010140000071219812874",
-      "denomination": {"id": "PLN"}
-    },
-    "balance": {"amount": 0, "currency": "PLN"}
-  },
-  "startPeriod": "2023-01",
-  "initialBalance": {"amount": 863.94, "currency": "PLN"}
-}
-→ Save: CF_ID (e.g., "CF10000001")
-```
-
-**3. AI Transform CSV:**
-```bash
-POST /api/v1/bank-data-adapter/transform
-Authorization: Bearer {TOKEN}
-Content-Type: multipart/form-data
-
--F "file=@src/test/resources/lista_operacji_20260111.csv"
--F "bankHint=Nest Bank"
-
-→ Save: TRANSFORMATION_ID
-→ Check: suggestedStartPeriod should match your startPeriod!
-```
-
-**4. Import to Staging:**
-```json
-POST /api/v1/bank-data-adapter/{TRANSFORMATION_ID}/import
-Authorization: Bearer {TOKEN}
-{
-  "cashFlowId": "{CF_ID}"
-}
-→ Save: SESSION_ID (stagingSessionId)
-```
-
-**5. AI Categorize:**
-```bash
-POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
-Authorization: Bearer {TOKEN}
-(no body)
-```
-
-**6. Accept AI or Force Uncategorized:**
-```bash
-# Option A: Accept AI suggestions (complex)
-POST .../staging/{SESSION_ID}/accept-ai
-Body: { acceptedCategories: [...], acceptedMappings: [...], ... }
-
-# Option B: Force all to Uncategorized (simple, for quick testing)
-POST .../staging/{SESSION_ID}/force-uncategorized
-(no body)
-```
-
-**7. Start Import:**
-```json
-POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
-{
-  "stagingSessionId": "{SESSION_ID}"
-}
-→ Save: JOB_ID
-```
-
-**8. Attest (activate CashFlow):**
-```json
-POST /cash-flow/cf={CF_ID}/attest-historical-import
-{
-  "confirmedBalance": {"amount": 76047.25, "currency": "PLN"},
-  "createAdjustment": false,
-  "forceAttestation": false
-}
-```
-Note: `confirmedBalance` should match the last transaction's "Saldo po operacji" from CSV.
-
-### Common Errors and Fixes
-
-| Error | Cause | Fix |
+| error | cause | fix |
 |-------|-------|-----|
-| `IMPORT_DATE_BEFORE_START` | Transaction date < startPeriod | Use earlier startPeriod |
-| `IMPORT_DATE_IN_FUTURE` | Transaction date > today | Check CSV dates |
-| `INVALID_BANK_ACCOUNT` | Bad IBAN format | Use valid IBAN: `PL61109010140000071219812874` |
-| `CASHFLOW_NOT_FOUND` | Wrong CF_ID format | CF_ID starts with "CF" (e.g., CF10000001) |
-| `INGESTION_STAGING_NOT_FOUND` | Session expired or wrong ID | Sessions expire after 24h |
-| `CASHFLOW_BALANCE_MISMATCH` | confirmedBalance wrong | Check CSV's last "Saldo po operacji" |
+| `IMPORT_DATE_BEFORE_START` | transaction date < `startPeriod` | use an earlier `startPeriod` |
+| `IMPORT_DATE_IN_FUTURE` | transaction date > today | check the CSV dates |
+| `INVALID_BANK_ACCOUNT` | bad IBAN | use the one above |
+| `CASHFLOW_NOT_FOUND` | wrong id format | `CF_ID` starts with `CF`, e.g. `CF10000001` |
+| `INGESTION_STAGING_NOT_FOUND` | session expired or wrong id | sessions live 24h |
+| `CASHFLOW_BALANCE_MISMATCH` | wrong `confirmedBalance` | take the CSV's last "Saldo po operacji" |
 
-### Flow Diagram (ASCII)
+Two gotchas worth repeating: **`paidDate` is required** in staged transactions, and `MappingAction`
+is `CREATE_NEW` / `CREATE_SUBCATEGORY` / `MAP_TO_UNCATEGORIZED` — there is no `MAP_TO_EXISTING`.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           CSV IMPORT BUSINESS FLOW                              │
-└─────────────────────────────────────────────────────────────────────────────────┘
+### Alternative: skip the AI transform
 
-1. AUTHENTICATION
-   POST /api/v1/auth/register → { access_token, user_id }
-
-2. CREATE CASHFLOW (with historical periods)
-   POST /cash-flow/with-history → CF_ID
-   Body: { userId, name, bankAccount, startPeriod, initialBalance }
-
-3. AI TRANSFORM CSV (bank format → canonical format)
-   POST /api/v1/bank-data-adapter/transform
-   Form: file=@bank.csv, bankHint="Nest Bank"
-   → { transformationId, detectedBank, rowCount, suggestedStartPeriod }
-
-4. IMPORT TO STAGING (creates staging session)
-   POST /api/v1/bank-data-adapter/{transformationId}/import
-   Body: { cashFlowId: "CF_ID" }
-   → { stagingSessionId }
-
-   ┌──────────────────────────────────────────────────────────────────────┐
-   │ STAGING SESSION STATES:                                              │
-   │  - HAS_UNMAPPED_CATEGORIES → needs AI categorization or mappings    │
-   │  - AI_SUGGESTIONS_READY → after AI categorization                   │
-   │  - READY_FOR_IMPORT → all transactions mapped, can start import     │
-   │  - IMPORTING → import in progress                                   │
-   │  - COMPLETED → import finished                                      │
-   └──────────────────────────────────────────────────────────────────────┘
-
-5. AI CATEGORIZATION (get category suggestions)
-   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
-   → { suggestedStructure, patternSuggestions, bankCategorySuggestions }
-
-6. ACCEPT AI SUGGESTIONS (create categories + mappings)
-   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/accept-ai
-   Body: { acceptedCategories, acceptedMappings, acceptedBankCategoryMappings, saveToCache }
-   → { categoriesCreated, mappingsApplied, validationSummary }
-
-   OR FORCE UNCATEGORIZED (skip categorization)
-   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/force-uncategorized
-   → Maps all unmapped to "Uncategorized" category
-
-7. CHECK STAGING STATUS
-   GET /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}
-   → { status, validationSummary: { readyForImport, unmappedTransactions } }
-
-8. START IMPORT (if readyForImport=true)
-   POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
-   Body: { stagingSessionId: "SESSION_ID" }
-   → { jobId, status }
-
-9. ATTEST HISTORICAL IMPORT (activates CashFlow)
-   POST /cash-flow/cf={CF_ID}/attest-historical-import
-   Body: { confirmedBalance: { amount, currency }, createAdjustment: false }
-   → CashFlow changes from SETUP to ACTIVE mode
-
-10. VERIFY CASHFLOW
-    GET /cash-flow/cf={CF_ID}
-    → { status, categories, monthlyStatements }
-
-11. VERIFY FORECAST
-    GET /cash-flow-forecast/cf={CF_ID}
-    → { categorizedOutFlows, categorizedInFlows, balanceEvolution }
-```
-
-### Staging Session Lifecycle
-
-```
-                     ┌─────────────────────┐
-                     │   Upload CSV        │
-                     │   or Import from    │
-                     │   Transformation    │
-                     └──────────┬──────────┘
-                                │
-                                ▼
-               ┌────────────────────────────────┐
-               │    HAS_UNMAPPED_CATEGORIES     │ ◄─── Initial state
-               │   (transactions need mapping)  │
-               └────────────────┬───────────────┘
-                                │
-            ┌───────────────────┼───────────────────┐
-            │                   │                   │
-            ▼                   ▼                   ▼
-    ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐
-    │ AI Categorize│   │ Manual        │   │ Force            │
-    │ (ai-categorize)│ │ Mappings      │   │ Uncategorized    │
-    └──────┬───────┘   └───────┬───────┘   └────────┬─────────┘
-           │                   │                    │
-           ▼                   │                    │
-    ┌──────────────────┐       │                    │
-    │ AI_SUGGESTIONS   │       │                    │
-    │ _READY           │       │                    │
-    └──────┬───────────┘       │                    │
-           │                   │                    │
-           ▼                   │                    │
-    ┌──────────────────┐       │                    │
-    │ Accept AI        │       │                    │
-    │ (accept-ai)      │       │                    │
-    └──────┬───────────┘       │                    │
-           │                   │                    │
-           └───────────────────┴────────────────────┘
-                                │
-                                ▼
-                  ┌─────────────────────────┐
-                  │   Revalidate Staging    │ ◄─── Applies pattern matching
-                  │   (revalidate)          │      Re-categorizes transactions
-                  └───────────┬─────────────┘
-                              │
-                              ▼
-                  ┌─────────────────────────┐
-                  │   READY_FOR_IMPORT      │
-                  │   (readyForImport=true) │
-                  └───────────┬─────────────┘
-                              │
-                              ▼
-                  ┌─────────────────────────┐
-                  │   Start Import Job      │
-                  │   (import)              │
-                  └───────────┬─────────────┘
-                              │
-                              ▼
-                  ┌─────────────────────────┐
-                  │      COMPLETED          │
-                  └─────────────────────────┘
-```
-
-### Key Endpoints Summary (CSV Import Flow)
-
-| Step | Method | Endpoint | Purpose |
-|------|--------|----------|---------|
-| 1 | POST | `/api/v1/auth/register` | Get TOKEN |
-| 2 | POST | `/cash-flow/with-history` | Create CashFlow → CF_ID |
-| 3 | POST | `/api/v1/bank-data-adapter/transform` | AI transform CSV → transformationId |
-| 4 | POST | `/api/v1/bank-data-adapter/{id}/import` | Create staging → sessionId |
-| 5 | POST | `.../staging/{id}/ai-categorize` | Get AI suggestions |
-| 6 | POST | `.../staging/{id}/accept-ai` | Apply suggestions |
-| 7 | GET | `.../staging/{id}` | Check status |
-| 8 | POST | `.../import` | Start import job |
-| 9 | POST | `/cash-flow/cf={id}/attest-historical-import` | Activate CashFlow |
-| 10 | GET | `/cash-flow/cf={id}` | Verify CashFlow |
-| 11 | GET | `/cash-flow-forecast/cf={id}` | Verify forecast |
-
-### Alternative: Manual CSV Upload (without AI transform)
-
-```
-POST /api/v1/bank-data-ingestion/cf={CF_ID}/upload
-Form: file=@canonical.csv
-
-→ Skips AI transformation, CSV must be in canonical format:
-  date,amount,currency,type,bankCategory,name,description,merchant
-```
+`POST /api/v1/bank-data-ingestion/cf={CF_ID}/upload` with a multipart file already in canonical
+format: `date,amount,currency,type,bankCategory,name,description,merchant`.
 
 ## REST API Endpoints Reference
 

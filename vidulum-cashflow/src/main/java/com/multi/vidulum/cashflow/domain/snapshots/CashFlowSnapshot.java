@@ -1,6 +1,8 @@
 package com.multi.vidulum.cashflow.domain.snapshots;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.*;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportWindow;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
@@ -53,5 +55,32 @@ public record CashFlowSnapshot(
     @Override
     public CashFlowId id() {
         return cashFlowId;
+    }
+
+    /**
+     * This cash flow's status in the contract's vocabulary.
+     *
+     * <p>The one place the aggregate's {@code CashFlowStatus} maps onto
+     * {@code LifecyclePhase}. A {@code switch} rather than {@code valueOf}, so adding a status stops
+     * compiling here instead of surprising a consumer at runtime - and in one place rather than
+     * three, which is what it was heading for.
+     */
+    public CashFlowSkeletonView.LifecyclePhase phase() {
+        return switch (status) {
+            case SETUP -> CashFlowSkeletonView.LifecyclePhase.SETUP;
+            case OPEN -> CashFlowSkeletonView.LifecyclePhase.OPEN;
+            case CLOSED -> CashFlowSkeletonView.LifecyclePhase.CLOSED;
+        };
+    }
+
+    /**
+     * Which dates this cash flow will accept an import for.
+     *
+     * <p>The same rule {@code CashFlowSkeletonView.importWindow()} hands to a consumer, built from
+     * the aggregate's own state - so the handler that enforces it and the staging that pre-checks it
+     * are running the identical code rather than two copies of one rule.
+     */
+    public ImportWindow importWindow() {
+        return new ImportWindow(cashFlowId, phase(), activePeriod, startPeriod);
     }
 }

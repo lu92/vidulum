@@ -129,7 +129,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 null, // endDate
                                                 null,  // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -228,7 +229,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                                 null, // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -490,7 +492,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
                                                 null, // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         ),
                                         secondCashChangeId,
                                         new CashChangeSnapshot(
@@ -505,7 +508,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
                                                 null, // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -671,7 +675,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-08-01T00:00:00Z"),
                                                 null, // endDate
                                                 null,  // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
@@ -830,7 +835,8 @@ class CashFlowAggregateTest {
                                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                                 null, // endDate
                                                 null,  // sourceRuleId
-                                                false
+                                                false,
+                                                null   // bankTransactionId
                                         )),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),
                                 YearMonth.from(ZonedDateTime.parse("2021-06-01T06:30:00Z")),

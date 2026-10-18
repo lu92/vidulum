@@ -941,7 +941,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 ));
 
         emit(
@@ -956,7 +957,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-04-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 ));
 
         // Rollback the import (clear transactions but keep categories)
@@ -1051,7 +1053,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 ));
 
         // Rollback with category deletion
@@ -1137,7 +1140,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 ));
 
         // Rollback
@@ -1163,7 +1167,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:35:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -2162,7 +2167,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                 ZonedDateTime.parse("2021-06-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                true
+                true,
+                null   // not imported from a bank in this test
         ));
 
         // Edit: change amount to 5000 USD (same month, same category)
@@ -2231,7 +2237,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                 ZonedDateTime.parse("2021-06-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                true
+                true,
+                null   // not imported from a bank in this test
         ));
 
         // Edit: move to July (dueDate changed to July)
@@ -2308,7 +2315,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                 ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                true
+                true,
+                null   // not imported from a bank in this test
         ));
 
         // Regular historical (200 USD)
@@ -2323,7 +2331,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                 ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                 ZonedDateTime.parse("2021-03-20T10:00:00Z"),
                 ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                false
+                false,
+                null   // not imported from a bank in this test
         ));
 
         await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
@@ -2390,7 +2399,8 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-03-15T10:00:00Z"),
                         ZonedDateTime.parse("2021-06-15T12:00:00Z"),
-                        false
+                        false,
+                        null   // not imported from a bank in this test
                 );
 
         // Emit same event TWICE (simulating Kafka redelivery)

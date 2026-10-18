@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -32,45 +33,31 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                 .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
         CashFlowSnapshot snapshot = cashFlow.getSnapshot();
-        YearMonth targetPeriod = YearMonth.from(command.paidDate());
-        YearMonth activePeriod = snapshot.activePeriod();
-        YearMonth startPeriod = snapshot.startPeriod();
         ZonedDateTime now = ZonedDateTime.now(clock);
 
-        // Validation based on CashFlow status
-        switch (snapshot.status()) {
-            case SETUP -> {
-                // SETUP mode: historical import before activation
-                // paidDate must be in a historical month (before activePeriod)
-                if (!targetPeriod.isBefore(activePeriod)) {
-                    throw new ImportDateOutsideSetupPeriodException(command.paidDate(), targetPeriod, activePeriod);
-                }
-            }
-            case OPEN -> {
-                // OPEN mode: ongoing sync or gap filling
-                // Can import to: ACTIVE, ROLLED_OVER, IMPORTED months
-                // Cannot import to: FORECASTED months
-                if (targetPeriod.isAfter(activePeriod)) {
-                    throw new ImportToForecastedMonthNotAllowedException(command.cashFlowId(), targetPeriod, activePeriod);
-                }
-                // Note: For production, we would check month status from forecast processor
-                // Here we allow import to any month that is not in the future (relative to activePeriod)
-            }
-            case CLOSED -> {
-                // CLOSED mode: no imports allowed
-                throw new ImportNotAllowedInClosedModeException(command.cashFlowId());
-            }
+        // One rule, one implementation. This used to be a switch over the status plus two
+        // if-statements here, and the same five conditions again as String.format messages in
+        // StageTransactionsCommandHandler - which had already drifted apart. ImportWindow lives in
+        // the contract so staging can evaluate it against a skeleton it fetched once, instead of
+        // keeping a copy; the order of the checks inside it is this handler's former order exactly,
+        // because which refusal surfaces first is observable in the error code an endpoint answers.
+        snapshot.importWindow()
+                .refusalFor(command.paidDate(), now)
+                .ifPresent(refusal -> {
+                    throw refusal;
+                });
+
+        // Already imported? Answer with the id it got the first time and write nothing. This is
+        // what makes re-uploading the same bank statement a no-op instead of 402 duplicate
+        // transactions, and it is checked here rather than by a unique index because cash changes
+        // are an embedded array - see CashFlow.findImported for why an index cannot do it.
+        Optional<CashChangeId> alreadyImported = cashFlow.findImported(command.bankTransactionId());
+        if (alreadyImported.isPresent()) {
+            log.info("Transaction [{}] was already imported into CashFlow [{}] as [{}] - skipping",
+                    command.bankTransactionId(), command.cashFlowId().id(), alreadyImported.get().id());
+            return alreadyImported.get();
         }
 
-        // Validation: paidDate must be >= startPeriod
-        if (targetPeriod.isBefore(startPeriod)) {
-            throw new ImportDateBeforeStartPeriodException(command.paidDate(), targetPeriod, startPeriod);
-        }
-
-        // Validation: paidDate must not be in the future
-        if (command.paidDate().isAfter(now)) {
-            throw new ImportDateInFutureException(command.paidDate(), now);
-        }
         CashChangeId cashChangeId = businessIdGenerator.generateCashChangeId();
 
         CashFlowEvent.HistoricalCashChangeImportedEvent event = new CashFlowEvent.HistoricalCashChangeImportedEvent(
@@ -84,14 +71,15 @@ public class ImportHistoricalCashChangeCommandHandler implements CommandHandler<
                 command.dueDate(),
                 command.paidDate(),
                 now,
-                command.selfTransfer()
+                command.selfTransfer(),
+                command.bankTransactionId()
         );
 
         cashFlow.apply(event);
         domainCashFlowRepository.save(cashFlow);
 
         log.info("Historical cash change [{}] imported to CashFlow [{}] for period [{}]",
-                cashChangeId.id(), command.cashFlowId().id(), targetPeriod);
+                cashChangeId.id(), command.cashFlowId().id(), YearMonth.from(command.paidDate()));
 
         // Use emitWithKey to ensure event ordering within the same CashFlow
         // Critical for import: CategoryCreatedEvent must be processed before HistoricalCashChangeImportedEvent

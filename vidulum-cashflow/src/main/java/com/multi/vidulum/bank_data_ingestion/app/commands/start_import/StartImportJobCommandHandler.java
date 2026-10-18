@@ -8,8 +8,10 @@ import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;
@@ -340,23 +342,28 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         for (StagedTransaction st : validTransactions) {
             try {
-                CashFlowServiceClient.ImportTransactionRequest request =
-                        new CashFlowServiceClient.ImportTransactionRequest(
-                                st.mappedData().categoryName().name(),
+                // The bank's own id travels with the transaction now, so a second run of this
+                // import answers with the ids it issued the first time instead of posting
+                // everything twice. It was available here all along - used in the log line below
+                // and in recordFailedTransaction - and simply never crossed the boundary.
+                // Nothing is converted on the way out any more: Money keeps its BigDecimal and
+                // paidDate keeps its time and zone, because the contract takes the types staging
+                // already holds. dueDate is paidDate because a bank statement has no payment term
+                // - a known duplicate, left alone deliberately.
+                CashChangeId cashChangeId = cashFlowApi.importHistorical(
+                        importJob.cashFlowId(),
+                        new HistoricalCashChange(
+                                st.mappedData().categoryName(),
                                 st.mappedData().name(),
                                 st.mappedData().description(),
-                                st.mappedData().money().getAmount().doubleValue(),
-                                st.mappedData().money().getCurrency(),
+                                st.mappedData().money(),
                                 st.mappedData().type(),
-                                st.mappedData().paidDate().toLocalDate(),  // dueDate
-                                st.mappedData().paidDate().toLocalDate(),  // paidDate
-                                st.mappedData().selfTransfer()
-                        );
+                                st.mappedData().paidDate(),
+                                st.mappedData().paidDate(),
+                                st.mappedData().selfTransfer(),
+                                st.originalData().bankTransactionId()));
 
-                String cashChangeId = cashFlowServiceClient.importHistoricalTransaction(
-                        importJob.cashFlowId().id(), request);
-
-                importJob = importJob.recordCreatedCashChange(cashChangeId);
+                importJob = importJob.recordCreatedCashChange(cashChangeId.id());
                 processed++;
 
                 if (processed % updateInterval == 0 || processed == validTransactions.size()) {

@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * HTTP implementation of CashFlowServiceClient.
@@ -154,38 +155,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request) {
-        try {
-            ImportHistoricalRequest httpRequest = new ImportHistoricalRequest(
-                    request.categoryName(),
-                    request.name(),
-                    request.description(),
-                    new MoneyDto(request.amount(), request.currency()),
-                    request.type(),
-                    request.dueDate().atStartOfDay(ZoneId.systemDefault()),
-                    request.paidDate().atStartOfDay(ZoneId.systemDefault()),
-                    request.selfTransfer()
-            );
-
-            String cashChangeId = restClient.post()
-                    .uri("/cash-flow/cf={cashFlowId}/import-historical", cashFlowId)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(httpRequest)
-                    .retrieve()
-                    .body(String.class);
-
-            log.debug("Imported transaction [{}] into CashFlow [{}] via HTTP, got cashChangeId: {}",
-                    request.name(), cashFlowId, cashChangeId);
-
-            return cashChangeId;
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP error importing transaction into CashFlow [{}]: {}", cashFlowId, e.getMessage());
-            throw new ImportFailedException(e.getMessage(), e);
-        }
-    }
-
-    @Override
     public RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories) {
         try {
             // Get state before rollback
@@ -225,23 +194,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     // ============ Internal DTOs for HTTP communication ============
 
 
-    private record ImportHistoricalRequest(
-            String category,
-            String name,
-            String description,
-            MoneyDto money,
-            Type type,
-            ZonedDateTime dueDate,
-            ZonedDateTime paidDate,
-            boolean selfTransfer
-    ) {
-    }
 
-    private record MoneyDto(
-            double amount,
-            String currency
-    ) {
-    }
 
     private record RollbackRequest(
             boolean deleteCategories
@@ -366,9 +319,25 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
         );
     }
 
+    /**
+     * Which source transactions this cash flow already holds.
+     *
+     * <p>This used to {@code return new HashSet<>()} with a comment saying the API might report
+     * these one day. It meant the duplicate check in {@code StageTransactionsCommandHandler} -
+     * {@code existingBankTransactionIds.contains(...)} - was always comparing against nothing, so
+     * {@code TransactionValidation.isDuplicate} had a full code path that could never run. The
+     * endpoint reports the ids now, because cashflow finally stores them.
+     */
     private Set<String> extractTransactionIds(CashFlowResponse response) {
-        // In the future, the API might return bankTransactionIds
-        // For now, return empty set
-        return new HashSet<>();
+        if (response.cashChanges() == null) {
+            return Set.of();
+        }
+        return response.cashChanges().values().stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .map(cashChange -> cashChange.get("bankTransactionId"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .collect(Collectors.toSet());
     }
 }

@@ -521,3 +521,240 @@ bash /tmp/full_test.sh
 ```
 
 **Czas całego przepływu:** ~30-60 sekund (zależnie od wielkości pliku i cache AI)
+
+
+---
+
+# Dodatek: pełny przepływ i gotowe ciała żądań
+
+*Przeniesione z `CLAUDE.md` 2026-10-18, żeby ten plik nie rósł w kontekście każdej sesji.
+`CLAUDE.md` trzyma teraz tylko reguły spójności danych i tabelę błędów; wszystko poniżej jest
+referencją do zajrzenia przy ręcznym testowaniu.*
+
+## Gotowe ciała żądań
+
+**1. Register User:**
+```json
+POST /api/v1/auth/register
+{
+  "username": "testuser1",
+  "email": "test@test.com",
+  "password": "SecurePassword123!"
+}
+→ Save: TOKEN, USER_ID
+```
+
+**2. Create CashFlow with History:**
+```json
+POST /cash-flow/with-history
+Authorization: Bearer {TOKEN}
+{
+  "userId": "{USER_ID}",
+  "name": "Konto Nest Bank",
+  "description": "Test import",
+  "bankAccount": {
+    "bankName": "Nest Bank",
+    "bankAccountNumber": {
+      "account": "PL61109010140000071219812874",
+      "denomination": {"id": "PLN"}
+    },
+    "balance": {"amount": 0, "currency": "PLN"}
+  },
+  "startPeriod": "2023-01",
+  "initialBalance": {"amount": 863.94, "currency": "PLN"}
+}
+→ Save: CF_ID (e.g., "CF10000001")
+```
+
+**3. AI Transform CSV:**
+```bash
+POST /api/v1/bank-data-adapter/transform
+Authorization: Bearer {TOKEN}
+Content-Type: multipart/form-data
+
+-F "file=@src/test/resources/lista_operacji_20260111.csv"
+-F "bankHint=Nest Bank"
+
+→ Save: TRANSFORMATION_ID
+→ Check: suggestedStartPeriod should match your startPeriod!
+```
+
+**4. Import to Staging:**
+```json
+POST /api/v1/bank-data-adapter/{TRANSFORMATION_ID}/import
+Authorization: Bearer {TOKEN}
+{
+  "cashFlowId": "{CF_ID}"
+}
+→ Save: SESSION_ID (stagingSessionId)
+```
+
+**5. AI Categorize:**
+```bash
+POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
+Authorization: Bearer {TOKEN}
+(no body)
+```
+
+**6. Accept AI or Force Uncategorized:**
+```bash
+# Option A: Accept AI suggestions (complex)
+POST .../staging/{SESSION_ID}/accept-ai
+Body: { acceptedCategories: [...], acceptedMappings: [...], ... }
+
+# Option B: Force all to Uncategorized (simple, for quick testing)
+POST .../staging/{SESSION_ID}/force-uncategorized
+(no body)
+```
+
+**7. Start Import:**
+```json
+POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
+{
+  "stagingSessionId": "{SESSION_ID}"
+}
+→ Save: JOB_ID
+```
+
+**8. Attest (activate CashFlow):**
+```json
+POST /cash-flow/cf={CF_ID}/attest-historical-import
+{
+  "confirmedBalance": {"amount": 76047.25, "currency": "PLN"},
+  "createAdjustment": false,
+  "forceAttestation": false
+}
+```
+Note: `confirmedBalance` should match the last transaction's "Saldo po operacji" from CSV.
+
+
+## Diagram przepływu
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           CSV IMPORT BUSINESS FLOW                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+1. AUTHENTICATION
+   POST /api/v1/auth/register → { access_token, user_id }
+
+2. CREATE CASHFLOW (with historical periods)
+   POST /cash-flow/with-history → CF_ID
+   Body: { userId, name, bankAccount, startPeriod, initialBalance }
+
+3. AI TRANSFORM CSV (bank format → canonical format)
+   POST /api/v1/bank-data-adapter/transform
+   Form: file=@bank.csv, bankHint="Nest Bank"
+   → { transformationId, detectedBank, rowCount, suggestedStartPeriod }
+
+4. IMPORT TO STAGING (creates staging session)
+   POST /api/v1/bank-data-adapter/{transformationId}/import
+   Body: { cashFlowId: "CF_ID" }
+   → { stagingSessionId }
+
+   ┌──────────────────────────────────────────────────────────────────────┐
+   │ STAGING SESSION STATES:                                              │
+   │  - HAS_UNMAPPED_CATEGORIES → needs AI categorization or mappings    │
+   │  - AI_SUGGESTIONS_READY → after AI categorization                   │
+   │  - READY_FOR_IMPORT → all transactions mapped, can start import     │
+   │  - IMPORTING → import in progress                                   │
+   │  - COMPLETED → import finished                                      │
+   └──────────────────────────────────────────────────────────────────────┘
+
+5. AI CATEGORIZATION (get category suggestions)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/ai-categorize
+   → { suggestedStructure, patternSuggestions, bankCategorySuggestions }
+
+6. ACCEPT AI SUGGESTIONS (create categories + mappings)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/accept-ai
+   Body: { acceptedCategories, acceptedMappings, acceptedBankCategoryMappings, saveToCache }
+   → { categoriesCreated, mappingsApplied, validationSummary }
+
+   OR FORCE UNCATEGORIZED (skip categorization)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}/force-uncategorized
+   → Maps all unmapped to "Uncategorized" category
+
+7. CHECK STAGING STATUS
+   GET /api/v1/bank-data-ingestion/cf={CF_ID}/staging/{SESSION_ID}
+   → { status, validationSummary: { readyForImport, unmappedTransactions } }
+
+8. START IMPORT (if readyForImport=true)
+   POST /api/v1/bank-data-ingestion/cf={CF_ID}/import
+   Body: { stagingSessionId: "SESSION_ID" }
+   → { jobId, status }
+
+9. ATTEST HISTORICAL IMPORT (activates CashFlow)
+   POST /cash-flow/cf={CF_ID}/attest-historical-import
+   Body: { confirmedBalance: { amount, currency }, createAdjustment: false }
+   → CashFlow changes from SETUP to ACTIVE mode
+
+10. VERIFY CASHFLOW
+    GET /cash-flow/cf={CF_ID}
+    → { status, categories, monthlyStatements }
+
+11. VERIFY FORECAST
+    GET /cash-flow-forecast/cf={CF_ID}
+    → { categorizedOutFlows, categorizedInFlows, balanceEvolution }
+```
+
+## Cykl życia sesji stagingowej
+
+```
+                     ┌─────────────────────┐
+                     │   Upload CSV        │
+                     │   or Import from    │
+                     │   Transformation    │
+                     └──────────┬──────────┘
+                                │
+                                ▼
+               ┌────────────────────────────────┐
+               │    HAS_UNMAPPED_CATEGORIES     │ ◄─── Initial state
+               │   (transactions need mapping)  │
+               └────────────────┬───────────────┘
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            ▼                   ▼                   ▼
+    ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐
+    │ AI Categorize│   │ Manual        │   │ Force            │
+    │ (ai-categorize)│ │ Mappings      │   │ Uncategorized    │
+    └──────┬───────┘   └───────┬───────┘   └────────┬─────────┘
+           │                   │                    │
+           ▼                   │                    │
+    ┌──────────────────┐       │                    │
+    │ AI_SUGGESTIONS   │       │                    │
+    │ _READY           │       │                    │
+    └──────┬───────────┘       │                    │
+           │                   │                    │
+           ▼                   │                    │
+    ┌──────────────────┐       │                    │
+    │ Accept AI        │       │                    │
+    │ (accept-ai)      │       │                    │
+    └──────┬───────────┘       │                    │
+           │                   │                    │
+           └───────────────────┴────────────────────┘
+                                │
+                                ▼
+                  ┌─────────────────────────┐
+                  │   Revalidate Staging    │ ◄─── Applies pattern matching
+                  │   (revalidate)          │      Re-categorizes transactions
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │   READY_FOR_IMPORT      │
+                  │   (readyForImport=true) │
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │   Start Import Job      │
+                  │   (import)              │
+                  └───────────┬─────────────┘
+                              │
+                              ▼
+                  ┌─────────────────────────┐
+                  │      COMPLETED          │
+                  └─────────────────────────┘
+```
+

@@ -281,6 +281,8 @@ public final class CashFlowDto {
         private ZonedDateTime dueDate;
         private ZonedDateTime paidDate;
         private boolean selfTransfer;
+        /** Id from the source system; sending it again returns the cash change already created. */
+        private String bankTransactionId;
     }
 
     /**
@@ -469,6 +471,8 @@ public final class CashFlowDto {
         private ZonedDateTime endDate;
         private String sourceRuleId;
         private boolean selfTransfer;
+        /** Id from the source system, {@code null} for a transaction nobody imported. */
+        private String bankTransactionId;
     }
 
     @Data

@@ -31,6 +31,7 @@ public class CashChangeEntity {
     private Date endDate;
     private String sourceRuleId;
     private boolean selfTransfer;
+    private String bankTransactionId;
 
     public static CashChangeEntity fromSnapshot(CashChangeSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.cashChangeId())
@@ -54,6 +55,7 @@ public class CashChangeEntity {
                 .endDate(endDate)
                 .sourceRuleId(snapshot.sourceRuleId())
                 .selfTransfer(snapshot.selfTransfer())
+                .bankTransactionId(snapshot.bankTransactionId())
                 .build();
     }
 
@@ -75,7 +77,8 @@ public class CashChangeEntity {
                 dueDateTime,
                 endDateTime,
                 sourceRuleId,
-                selfTransfer
+                selfTransfer,
+                bankTransactionId
         );
     }
 }

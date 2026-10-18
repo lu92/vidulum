@@ -108,7 +108,8 @@ public sealed interface CashFlowEvent extends DomainEvent
             ZonedDateTime dueDate,
             ZonedDateTime paidDate,
             ZonedDateTime importedAt,
-            boolean selfTransfer
+            boolean selfTransfer,
+            String bankTransactionId
     ) implements CashFlowEvent {
         @Override
         public ZonedDateTime occurredAt() {

@@ -11,6 +11,8 @@ import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
@@ -187,6 +189,58 @@ class CashFlowSkeletonComponentTest {
                 .hasMessageContaining("No command handler registered");
     }
 
+    @Test
+    void importHistoricalPassesMoneyAndTimeThroughUntouched() {
+        CapturingImportHandler handler = new CapturingImportHandler();
+        CommandGateway gateway = new CommandGateway();
+        gateway.registerCommandHandler(handler);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+
+        // A trailing zero the old round trip dropped, and a time of day it threw away. Note what
+        // this does NOT claim: BigDecimal.valueOf(double) preserves the value for any realistic
+        // amount, so the loss is scale, not pennies - 1234.50 came back as 1234.5.
+        Money amount = Money.of(new java.math.BigDecimal("1234.50"), "PLN");
+        ZonedDateTime paidAt = ZonedDateTime.parse("2023-03-14T13:45:30+01:00[Europe/Warsaw]");
+
+        api.importHistorical(CASH_FLOW_ID, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Biedronka", "weekly shop",
+                amount, Type.OUTFLOW, paidAt, paidAt, false, "BANK-TX-1"));
+
+        assertThat(handler.received.money().getAmount())
+                .as("scale included - the port used to send amount.doubleValue(), which turned "
+                        + "1234.50 into 1234.5")
+                .isEqualTo(new java.math.BigDecimal("1234.50"));
+        assertThat(handler.received.money().getAmount().scale())
+                .as("two decimal places, as the bank reported them")
+                .isEqualTo(2);
+        assertThat(handler.received.paidDate())
+                .as("time of day and zone survive - the port sent LocalDate and the client "
+                        + "rebuilt midnight in the server's zone")
+                .isEqualTo(paidAt);
+        assertThat(handler.received.paidDate().getZone())
+                .isEqualTo(java.time.ZoneId.of("Europe/Warsaw"));
+    }
+
+    @Test
+    void importHistoricalWrapsNameAndDescriptionOnCashflowsSideOfTheBoundary() {
+        CapturingImportHandler handler = new CapturingImportHandler();
+        CommandGateway gateway = new CommandGateway();
+        gateway.registerCommandHandler(handler);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+
+        api.importHistorical(CASH_FLOW_ID, new HistoricalCashChange(
+                new CategoryName("Salary"), "March salary", "from employer",
+                Money.of(8000, "PLN"), Type.INFLOW,
+                ZonedDateTime.parse("2023-03-28T09:00:00Z[UTC]"),
+                ZonedDateTime.parse("2023-03-28T09:00:00Z[UTC]"), true, "BANK-TX-2"));
+
+        assertThat(handler.received.name())
+                .as("Name lives in cashflow.domain, where a consumer may not look")
+                .isEqualTo(new Name("March salary"));
+        assertThat(handler.received.description()).isEqualTo(new Description("from employer"));
+        assertThat(handler.received.selfTransfer()).isTrue();
+    }
+
     // ---------------------------------------------------------------- fixture
 
     private static CashFlowSkeletonView skeletonOf(CashFlow cashFlow) {
@@ -240,7 +294,8 @@ class CashFlowSkeletonComponentTest {
                                 SOME_TIME,
                                 SOME_TIME,
                                 null,
-                                false)));
+                                false,
+                                "BANK-TX-%05d".formatted(i))));
     }
 
     private static Category category(String name) {
@@ -266,6 +321,18 @@ class CashFlowSkeletonComponentTest {
                 .isModifiable(true)
                 .archived(true)
                 .build();
+    }
+
+    private static final class CapturingImportHandler
+            implements CommandHandler<ImportHistoricalCashChangeCommand, CashChangeId> {
+
+        private ImportHistoricalCashChangeCommand received;
+
+        @Override
+        public CashChangeId handle(ImportHistoricalCashChangeCommand command) {
+            this.received = command;
+            return CashChangeId.of("CC1000000001");
+        }
     }
 
     /**

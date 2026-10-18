@@ -138,21 +138,13 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     }
 
     public static CashFlow from(CashFlowSnapshot snapshot) {
+        // CashChange.from, not a second copy of it. This used to re-list every field by hand -
+        // a builder chain duplicating what CashChange.from already does - and adding
+        // bankTransactionId to one of the two was enough to make the idempotency guard read null
+        // for everything loaded from storage. A field that exists in two mapping paths will
+        // eventually exist in only one of them.
         Map<CashChangeId, CashChange> cashChanges = snapshot.cashChanges().values().stream()
-                .map(cashChangeSnapshot -> CashChange.builder()
-                        .cashChangeId(cashChangeSnapshot.cashChangeId())
-                        .name(cashChangeSnapshot.name())
-                        .description(cashChangeSnapshot.description())
-                        .money(cashChangeSnapshot.money())
-                        .type(cashChangeSnapshot.type())
-                        .categoryName(cashChangeSnapshot.categoryName())
-                        .status(cashChangeSnapshot.status())
-                        .created(cashChangeSnapshot.created())
-                        .dueDate(cashChangeSnapshot.dueDate())
-                        .endDate(cashChangeSnapshot.endDate())
-                        .sourceRuleId(cashChangeSnapshot.sourceRuleId())
-                        .selfTransfer(cashChangeSnapshot.selfTransfer())
-                        .build())
+                .map(CashChange::from)
                 .collect(Collectors.toMap(
                         CashChange::getCashChangeId,
                         Function.identity()
@@ -245,7 +237,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.dueDate(),
                 null,
                 event.sourceRuleId(),
-                event.selfTransfer()
+                event.selfTransfer(),
+                null   // expected, not imported - there is no source transaction yet
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
         add(event);
@@ -270,7 +263,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.dueDate(),
                 event.paidDate(),
                 null,
-                event.selfTransfer()
+                event.selfTransfer(),
+                null   // a person entered this one; nothing came from a bank
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -302,7 +296,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 event.dueDate(),
                 event.paidDate(),
                 null,
-                event.selfTransfer()
+                event.selfTransfer(),
+                event.bankTransactionId()
         );
         cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
 
@@ -337,7 +332,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                     event.attestedAt(),
                     event.attestedAt(),
                     null,
-                    false
+                    false,
+                    null   // a balance adjustment the owner confirmed, not a bank transaction
             );
             cashChanges.put(adjustmentCashChange.getCashChangeId(), adjustmentCashChange);
         }
@@ -791,6 +787,38 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     public Optional<CashChange> findPendingCashChange(CashChangeId cashChangeId) {
         return fetchCashChange(cashChangeId)
                 .filter(cc -> cc.getStatus() == CashChangeStatus.PENDING);
+    }
+
+    /**
+     * The cash change already recorded for this source transaction, if there is one.
+     *
+     * <p><b>This is where importing the same bank statement twice stops being a double posting.</b>
+     * {@link com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommandHandler}
+     * asks before it writes and returns the existing id instead of minting a second one.
+     *
+     * <p>The guard lives here rather than in a unique index, and the reason is structural: cash
+     * changes are an embedded array inside one {@code cash-flow-document}, and MongoDB's unique
+     * constraint applies <i>across</i> documents - a multikey unique index allows repeated values
+     * within a single document's array, so an index on {@code cashChanges.bankTransactionId} would
+     * be satisfied trivially and prevent nothing. The aggregate, which holds every cash change
+     * anyway, is the only place that can answer the question today. A storage-level guarantee needs
+     * cash changes to become their own collection - a separate, much larger change.
+     *
+     * <p><b>What this does not cover:</b> two imports running at once. Nothing in this codebase does
+     * - there is no {@code @Version} anywhere and a save replaces the whole document - so the
+     * second writer silently overwrites the first regardless of this method. That is a broader
+     * problem than import and wants its own fix.
+     *
+     * @param bankTransactionId id from the source system; {@code null} matches nothing
+     */
+    public Optional<CashChangeId> findImported(String bankTransactionId) {
+        if (bankTransactionId == null) {
+            return Optional.empty();
+        }
+        return cashChanges.values().stream()
+                .filter(cc -> bankTransactionId.equals(cc.getBankTransactionId()))
+                .map(CashChange::getCashChangeId)
+                .findFirst();
     }
 
     /**

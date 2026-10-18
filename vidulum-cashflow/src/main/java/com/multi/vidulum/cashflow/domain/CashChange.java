@@ -31,6 +31,26 @@ public class CashChange {
     private String sourceRuleId;
     private boolean selfTransfer;
 
+    /**
+     * The id this transaction had in the system it came from, or {@code null} for one a person
+     * entered by hand.
+     *
+     * <p>It is what makes importing the same bank statement twice a no-op instead of a double
+     * posting. Cashflow had no field for it, so the only thing it could do with a repeated
+     * transaction was mint a second {@code CashChangeId} and store it again - and the duplicate
+     * check that was supposed to catch that, over in staging, could never fire because nothing ever
+     * reported these ids back.
+     *
+     * <p><b>Enforced in the aggregate, not by an index, and that is not a shortcut.</b> Cash
+     * changes are an embedded array inside one {@code cash-flow-document}, and MongoDB's unique
+     * constraint applies across documents - a multikey unique index permits repeated values inside
+     * a single document's array, so it would be satisfied trivially here and protect nothing. The
+     * aggregate already holds every cash change in memory, so {@code CashFlow.findImported} is
+     * where the question can actually be answered. A database-level guarantee needs cash changes to
+     * become their own collection, which is a separate and much larger change.
+     */
+    private String bankTransactionId;
+
     public CashChangeSnapshot getSnapshot() {
         return new CashChangeSnapshot(
                 cashChangeId,
@@ -44,7 +64,8 @@ public class CashChange {
                 dueDate,
                 endDate,
                 sourceRuleId,
-                selfTransfer
+                selfTransfer,
+                bankTransactionId
         );
     }
 
@@ -62,6 +83,7 @@ public class CashChange {
                 .endDate(snapshot.endDate())
                 .sourceRuleId(snapshot.sourceRuleId())
                 .selfTransfer(snapshot.selfTransfer())
+                .bankTransactionId(snapshot.bankTransactionId())
                 .build();
     }
 
