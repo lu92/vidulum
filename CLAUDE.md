@@ -33,8 +33,8 @@ The `:artifactId` form is independent of where a module sits. A whole group buil
 ./mvnw spring-boot:run -pl :vidulum-app
 ```
 
-Whole-module runs, for budgeting: cashflow ~4min · portfolio ~10s (208) · trading ~1s (10) ·
-pnl ~2s (31) · wealth-tests ~1min (60) · app ~1min.
+Whole-module runs: cashflow ~5s (96) · portfolio ~10s (208) · trading ~1s (10) · pnl ~2s (31) ·
+cashflow-tests ~4min (416) · wealth-tests ~1min (60) · app ~1min (49)
 
 ### Deciding the scope
 
@@ -69,8 +69,7 @@ A downstream module resolves from the local repository, so `install` the changed
 
 Two traps:
 
-- **`package -DskipTests` compiles every module but runs no tests.** Never confuse it with a full
-  test run.
+- **`package -DskipTests` compiles every module but runs no tests** — not a full test run.
 - **Check `docker ps` before any run using Testcontainers.** A `docker-compose` stack left running
   starves them, and the failures look exactly like regressions: registrations answering 500,
   `TimeoutException: Timed out waiting for a node assignment`, tests taking minutes. Take the stack
@@ -104,14 +103,14 @@ vidulum/
 │   │                            #   the cashflow/ and
 │   │                            #   cashflow_forecast_processor/. Together on purpose - 36 imports
 │   │                            #   of CashFlowEvent, one lifecycle; the last assertSealed
-│   │                            #   exemption. Unit/component tests only: 91 in 5s, no Docker
+│   │                            #   exemption. Unit/component tests only: 96 in 5s, no Docker
 │   ├── user-financial-profile/  #   Owned accounts, self-transfer detection
 │   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
-│   ├── bank-data-ingestion/     #   Import staging, category mapping; two contracts, never
-│   │                            #   vidulum-cashflow
-│   └── recurring-rules/         #   Recurring rules; talks to cashflow over HTTP
-│                                #   No consumer here has an -api (nothing asks them anything) or
-│                                #   a test-scope dep on another - see vidulum-cashflow-tests
+│   ├── bank-data-ingestion/     #   Import staging, category mapping. Three contracts, no
+│   │                            #   client of its own, never vidulum-cashflow
+│   └── recurring-rules/         #   Recurring rules; talks to cashflow over HTTP. No consumer
+│                                #   here has an -api (nothing asks them anything), nor a
+│                                #   test-scope dep on another
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
@@ -223,9 +222,9 @@ asserts exactly one bean exists **and that it is not the HTTP one**.
   — event dropped after nine retries, every write still 2xx. My own test asserted the pass-through
   (`isNull()`), so a green test pinned the defect: **assert what the domain is told**, not that an
   argument survived unchanged.
-- **A test double standing in for a contract is a signal.** Three implementations of
-  `createCategory` existed: one HTTP, one dead, one gateway-based double that 29 test classes used.
-  The double did what the in-process implementation should have — so making the real one available
+- **A test double standing in for a contract is a signal.** `createCategory` had three
+  implementations: one HTTP, one dead, one gateway-based double that 29 test classes used. The
+  double did what the in-process implementation should have, so making the real one available
   deleted the double and moved those 29 classes onto production code.
 
 ### A rule two modules need is a value in the contract, not a method on it

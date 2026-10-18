@@ -1,8 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountRegistry;
 import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
@@ -46,7 +44,6 @@ public class StageTransactionsCommandHandler
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
     private final CashFlowModuleApi cashFlowApi;
     private final CashFlowForecastApi cashFlowForecastApi;
     private final BankDataIngestionConfig config;
@@ -55,16 +52,20 @@ public class StageTransactionsCommandHandler
 
     @Override
     public StageTransactionsResult handle(StageTransactionsCommand command) {
-        // Load CashFlow info via service client
-        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
-        // carries an ErrorCode and answers 404 on its own.
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        // The contract, in one request, in process. This used to be
+        // cashFlowServiceClient.getCashFlowInfo(...) - a port this module declared itself, whose only
+        // production implementation was HTTP, so staging a statement opened a connection to this
+        // application's own /cash-flow/cf={id}. Everything below is something the skeleton already
+        // carried; the last thing it did not, month statuses, became CashFlowForecastApi.
+        // No try/catch: skeletonOf throws CashFlowNotFoundException from cashflow-api, which carries
+        // an ErrorCode and answers 404 on its own.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
 
         ZonedDateTime now = ZonedDateTime.now(clock);
         StagingSessionId stagingSessionId = StagingSessionId.generate();
 
         // Load owned accounts for self-transfer detection (single HTTP call per session)
-        OwnedAccountRegistry ownedAccounts = OwnedAccountRegistry.from(userFinancialProfileApi, UserId.of(cashFlowInfo.userId()));
+        OwnedAccountRegistry ownedAccounts = OwnedAccountRegistry.from(userFinancialProfileApi, skeleton.owner());
 
         // Load all category mappings for this CashFlow
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
@@ -76,14 +77,13 @@ public class StageTransactionsCommandHandler
 
         // Find unmapped categories (considering pattern mappings)
         List<StageTransactionsResult.UnmappedCategory> unmappedCategories = findUnmappedCategories(
-                command.transactions(), mappingMap, patternMappings, cashFlowInfo);
+                command.transactions(), mappingMap, patternMappings, skeleton);
 
         // Process and stage ALL transactions (even those with unmapped categories)
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
-        // The contract, even though this handler still holds the port. getCashFlowInfo stays for
-        // the month statuses - the one thing cashflow does not own - but the duplicate list this
-        // handler builds is what the user sees, so it needs the cash change ids, not just the
-        // source ids CashFlowInfo carries.
+        // Not part of the skeleton, and deliberately so: the duplicate list this handler builds is
+        // what a person reads, so it needs the cash change ids and enough of each transaction to
+        // judge the collision - two visits to one shop on one day for one amount is a real case.
         ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
         // The forecast's contract, asked once for the whole upload rather than once per row. A
@@ -98,7 +98,7 @@ public class StageTransactionsCommandHandler
                 patternMatchedCount++;
             }
             StagedTransaction staged = processTransaction(
-                    txn, command.cashFlowId(), stagingSessionId, cashFlowInfo, monthStatuses,
+                    txn, command.cashFlowId(), stagingSessionId, skeleton, monthStatuses,
                     mappingMap, patternMatch, alreadyImported, ownedAccounts, now);
             stagedTransactions.add(staged);
         }
@@ -145,7 +145,7 @@ public class StageTransactionsCommandHandler
 
         // Build and return result
         return buildResult(stagingSessionId, command.cashFlowId(), stagedTransactions,
-                cashFlowInfo, mappingMap, now);
+                skeleton, mappingMap, now);
     }
 
     private Map<MappingKey, CategoryMapping> buildMappingMap(List<CategoryMapping> mappings) {
@@ -206,7 +206,7 @@ public class StageTransactionsCommandHandler
             List<StageTransactionsCommand.BankTransaction> transactions,
             Map<MappingKey, CategoryMapping> mappingMap,
             List<PatternMapping> patternMappings,
-            CashFlowInfo cashFlowInfo) {
+            CashFlowSkeletonView skeleton) {
 
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
 
@@ -214,7 +214,7 @@ public class StageTransactionsCommandHandler
             MappingKey key = new MappingKey(txn.bankCategory(), txn.type());
 
             // Priority 0: Check if bankCategory directly matches existing CashFlow category (case-insensitive)
-            if (cashFlowInfo.findCategoryNameIgnoreCase(txn.bankCategory(), txn.type()).isPresent()) {
+            if (skeleton.findCategoryIgnoringCase(txn.bankCategory(), txn.type()).isPresent()) {
                 continue; // Direct match - not unmapped
             }
 
@@ -227,7 +227,7 @@ public class StageTransactionsCommandHandler
             PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
             if (patternMatch != null) {
                 // Pattern matched - check if target category exists in CashFlow (case-insensitive)
-                if (cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), txn.type()).isPresent()) {
+                if (skeleton.findCategoryIgnoringCase(patternMatch.categoryName(), txn.type()).isPresent()) {
                     continue; // Pattern matched to existing category - not unmapped
                 }
             }
@@ -248,7 +248,7 @@ public class StageTransactionsCommandHandler
             StageTransactionsCommand.BankTransaction txn,
             CashFlowId cashFlowId,
             StagingSessionId stagingSessionId,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             MonthStatuses monthStatuses,
             Map<MappingKey, CategoryMapping> mappingMap,
             PatternMatchResult patternMatch,
@@ -281,7 +281,7 @@ public class StageTransactionsCommandHandler
             boolean ownsCounterpartyAccount = ownedAccounts.isOwnedAccount(new BankAccountId(counterpartyAccount));
             if (ownsCounterpartyAccount) {
                 log.info("Self-transfer detected: txn=[{}], counterpartyAccount=[{}], userId=[{}]",
-                        txn.name(), counterpartyAccount, cashFlowInfo.userId());
+                        txn.name(), counterpartyAccount, skeleton.owner().getId());
 
                 MappedTransactionData mappedData = new MappedTransactionData(
                         txn.name(),
@@ -296,7 +296,7 @@ public class StageTransactionsCommandHandler
                         true
                 );
 
-                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
+                TransactionValidation validation = validateTransaction(txn, skeleton, monthStatuses, alreadyImported, now);
 
                 return StagedTransaction.create(
                         cashFlowId,
@@ -313,16 +313,16 @@ public class StageTransactionsCommandHandler
         // Priority 0: Direct bankCategory match to existing CashFlow category (case-insensitive)
         // This is most useful for banks like Pekao that provide detailed category names
         // (e.g., "Artykuły spożywcze", "Transport") which can directly match user categories
-        Optional<String> directMatchCategory = cashFlowInfo.findCategoryNameIgnoreCase(txn.bankCategory(), txn.type());
+        Optional<CategoryName> directMatchCategory = skeleton.findCategoryIgnoringCase(txn.bankCategory(), txn.type());
         if (directMatchCategory.isPresent()) {
-            String actualCategoryName = directMatchCategory.get();
+            CategoryName actualCategoryName = directMatchCategory.get();
             // bankCategory matches existing category name directly
-            CategoryName parentCategoryName = cashFlowInfo.findParentCategory(actualCategoryName, txn.type());
+            CategoryName parentCategoryName = skeleton.parentOf(actualCategoryName, txn.type());
 
             MappedTransactionData mappedData = new MappedTransactionData(
                     txn.name(),
                     txn.description(),
-                    new CategoryName(actualCategoryName),
+                    actualCategoryName,
                     parentCategoryName,
                     txn.money(),
                     txn.type(),
@@ -333,10 +333,10 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
+            TransactionValidation validation = validateTransaction(txn, skeleton, monthStatuses, alreadyImported, now);
 
             log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category [{}]",
-                    txn.name(), txn.bankCategory(), actualCategoryName);
+                    txn.name(), txn.bankCategory(), actualCategoryName.name());
 
             return StagedTransaction.create(
                     cashFlowId,
@@ -350,18 +350,18 @@ public class StageTransactionsCommandHandler
         }
 
         // Priority 1: Pattern matching (if pattern matched and category exists in CashFlow)
-        Optional<String> patternMatchCategory = patternMatch != null
-                ? cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), txn.type())
+        Optional<CategoryName> patternMatchCategory = patternMatch != null
+                ? skeleton.findCategoryIgnoringCase(patternMatch.categoryName(), txn.type())
                 : Optional.empty();
         if (patternMatchCategory.isPresent()) {
-            String actualCategoryName = patternMatchCategory.get();
+            CategoryName actualCategoryName = patternMatchCategory.get();
             // Look up parent category from CashFlow structure
-            CategoryName parentCategoryName = cashFlowInfo.findParentCategory(actualCategoryName, txn.type());
+            CategoryName parentCategoryName = skeleton.parentOf(actualCategoryName, txn.type());
 
             MappedTransactionData mappedData = new MappedTransactionData(
                     txn.name(),
                     txn.description(),
-                    new CategoryName(actualCategoryName),
+                    actualCategoryName,
                     parentCategoryName,
                     txn.money(),
                     txn.type(),
@@ -372,10 +372,10 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
+            TransactionValidation validation = validateTransaction(txn, skeleton, monthStatuses, alreadyImported, now);
 
             log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
-                    txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
+                    txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName.name());
 
             return StagedTransaction.create(
                     cashFlowId,
@@ -425,7 +425,7 @@ public class StageTransactionsCommandHandler
         }
 
         // Validate transaction
-        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
+        TransactionValidation validation = validateTransaction(txn, skeleton, monthStatuses, alreadyImported, now);
 
         return StagedTransaction.create(
                 cashFlowId,
@@ -439,29 +439,19 @@ public class StageTransactionsCommandHandler
     }
 
     /**
-     * The contract's import rule, built from what this module already fetched.
+     * Two rules, in this order, neither of them written here.
      *
-     * <p>Staging holds a {@link CashFlowInfo} rather than a skeleton - it needs month statuses and
-     * the existing transaction ids, which the skeleton does not carry - so the window is assembled
-     * from its fields. The {@code switch} is exhaustive on purpose: a new status must stop compiling
-     * here rather than silently fall through to "no phase refusal".
+     * <p>{@link CashFlowSkeletonView#importWindow()} is cashflow's own - the lifecycle phase and
+     * both period boundaries, the necessary condition the write itself would enforce. It used to be
+     * assembled in this class from a DTO's fields, with a hand-written status-to-phase
+     * {@code switch}; the skeleton hands it over whole.
+     *
+     * <p>{@link com.multi.vidulum.cashflow.api.forecast.MonthStatuses} is the forecast's, stricter,
+     * and only consulted once the window has accepted - so one bad date never yields two messages.
      */
-    private static ImportWindow importWindowOf(CashFlowInfo cashFlowInfo) {
-        CashFlowSkeletonView.LifecyclePhase phase = switch (cashFlowInfo.status()) {
-            case SETUP -> CashFlowSkeletonView.LifecyclePhase.SETUP;
-            case OPEN -> CashFlowSkeletonView.LifecyclePhase.OPEN;
-            case CLOSED -> CashFlowSkeletonView.LifecyclePhase.CLOSED;
-        };
-        return new ImportWindow(
-                CashFlowId.of(cashFlowInfo.cashFlowId()),
-                phase,
-                cashFlowInfo.activePeriod(),
-                cashFlowInfo.startPeriod());
-    }
-
     private TransactionValidation validateTransaction(
             StageTransactionsCommand.BankTransaction txn,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             MonthStatuses monthStatuses,
             ImportedTransactions alreadyImported,
             ZonedDateTime now) {
@@ -482,7 +472,7 @@ public class StageTransactionsCommandHandler
         // enforces, and the two had already drifted. ImportWindow comes from the contract, so
         // staging now fails a row for exactly the reason the write would have failed it, with the
         // ErrorCode the endpoint would have answered.
-        importWindowOf(cashFlowInfo)
+        skeleton.importWindow()
                 .refusalFor(txn.paidDate(), now)
                 .ifPresent(refusal -> errors.add(refusal.getMessage()));
 
@@ -494,11 +484,11 @@ public class StageTransactionsCommandHandler
         // What is this module's own business is the wording. MonthStatuses decides whether a month
         // accepts an import - that logic belongs to the module that owns the statuses - but these
         // three sentences are about a row of somebody's bank statement, so they stay here.
-        if (errors.isEmpty() && cashFlowInfo.isInOpenMode() && !monthStatuses.acceptsImportAt(paidPeriod)) {
+        if (errors.isEmpty() && skeleton.isOpen() && !monthStatuses.acceptsImportAt(paidPeriod)) {
             Optional<MonthStatus> monthStatus = monthStatuses.at(paidPeriod);
             if (monthStatus.isEmpty()) {
                 errors.add(String.format("Month %s is outside the CashFlow forecast range (start: %s).",
-                        paidPeriod, cashFlowInfo.startPeriod()));
+                        paidPeriod, skeleton.startPeriod()));
             } else if (monthStatus.get() == MonthStatus.ATTESTED) {
                 errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
                         paidPeriod));
@@ -550,7 +540,7 @@ public class StageTransactionsCommandHandler
             StagingSessionId stagingSessionId,
             CashFlowId cashFlowId,
             List<StagedTransaction> stagedTransactions,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             Map<MappingKey, CategoryMapping> mappingMap,
             ZonedDateTime now) {
 
@@ -565,11 +555,11 @@ public class StageTransactionsCommandHandler
 
         // Build category breakdown
         List<StageTransactionsResult.CategoryBreakdown> categoryBreakdown =
-                buildCategoryBreakdown(stagedTransactions, cashFlowInfo, mappingMap);
+                buildCategoryBreakdown(stagedTransactions, skeleton, mappingMap);
 
         // Build categories to create
         List<StageTransactionsResult.CategoryToCreate> categoriesToCreate =
-                buildCategoriesToCreate(stagedTransactions, cashFlowInfo, mappingMap);
+                buildCategoriesToCreate(stagedTransactions, skeleton, mappingMap);
 
         // Build monthly breakdown
         List<StageTransactionsResult.MonthlyBreakdown> monthlyBreakdown =
@@ -608,7 +598,7 @@ public class StageTransactionsCommandHandler
 
     private List<StageTransactionsResult.CategoryBreakdown> buildCategoryBreakdown(
             List<StagedTransaction> stagedTransactions,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             Map<MappingKey, CategoryMapping> mappingMap) {
 
         Map<String, CategoryBreakdownBuilder> builderMap = new HashMap<>();
@@ -629,7 +619,7 @@ public class StageTransactionsCommandHandler
             builder.addTransaction(st.mappedData().money());
         }
 
-        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
+        Set<CategoryName> existingCategories = skeleton.allCategoryNames();
 
         return builderMap.values().stream()
                 .map(b -> b.build(existingCategories, mappingMap))
@@ -657,10 +647,10 @@ public class StageTransactionsCommandHandler
         }
 
         StageTransactionsResult.CategoryBreakdown build(
-                Set<String> existingCategories,
+                Set<CategoryName> existingCategories,
                 Map<MappingKey, CategoryMapping> mappingMap) {
 
-            boolean isNewCategory = !existingCategories.contains(categoryName);
+            boolean isNewCategory = !existingCategories.contains(new CategoryName(categoryName));
 
             return new StageTransactionsResult.CategoryBreakdown(
                     categoryName,
@@ -675,20 +665,21 @@ public class StageTransactionsCommandHandler
 
     private List<StageTransactionsResult.CategoryToCreate> buildCategoriesToCreate(
             List<StagedTransaction> stagedTransactions,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
             Map<MappingKey, CategoryMapping> mappingMap) {
 
-        Set<String> existingCategories = cashFlowInfo.getAllCategoryNames();
+        Set<CategoryName> existingCategories = skeleton.allCategoryNames();
         Set<String> newCategoriesAdded = new HashSet<>();
         List<StageTransactionsResult.CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : stagedTransactions) {
             if (!st.isValid()) continue;
 
-            String categoryName = st.mappedData().categoryName().name();
+            CategoryName category = st.mappedData().categoryName();
+            String categoryName = category.name();
             String categoryKey = categoryName + ":" + st.mappedData().type();
 
-            if (!existingCategories.contains(categoryName) && !newCategoriesAdded.contains(categoryKey)) {
+            if (!existingCategories.contains(category) && !newCategoriesAdded.contains(categoryKey)) {
                 MappingKey mappingKey = new MappingKey(st.originalData().bankCategory(), st.mappedData().type());
                 CategoryMapping mapping = mappingMap.get(mappingKey);
 

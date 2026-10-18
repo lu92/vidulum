@@ -1,27 +1,36 @@
 package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.UserId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.YearMonth;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for ExistingCategoryStructure.
+ * What this record is for: turning the shape cashflow's contract answers with into the shape the
+ * AI prompt builder reads - a tree of plain names plus a flat set per side.
+ *
+ * <p>These tests used to drive {@code fromCashFlowInfo}, a factory with <b>no production caller</b>:
+ * {@code AiCategorizeCommandHandler} has been using {@code from(skeleton)} for a while, and that one
+ * had no test at all. So the coverage sat on the dead twin. Two cases are gone rather than ported -
+ * they asserted {@code CashFlowInfo.getAllTypedCategoryKeys}, which was never about this record and
+ * is covered by {@code CashFlowSkeletonViewTest} in the contract's own module.
  */
 class ExistingCategoryStructureTest {
 
     @Test
     @DisplayName("Should create empty structure")
     void shouldCreateEmptyStructure() {
-        // when
         ExistingCategoryStructure structure = ExistingCategoryStructure.empty();
 
-        // then
         assertThat(structure.isEmpty()).isTrue();
         assertThat(structure.inflowCategories()).isEmpty();
         assertThat(structure.outflowCategories()).isEmpty();
@@ -31,106 +40,52 @@ class ExistingCategoryStructureTest {
     }
 
     @Test
-    @DisplayName("Should create structure from CashFlowInfo with hierarchy")
-    void shouldCreateStructureFromCashFlowInfoWithHierarchy() {
-        // given
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123",
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
+    @DisplayName("Should create structure from a skeleton, hierarchy included")
+    void shouldCreateStructureFromSkeletonWithHierarchy() {
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
                 List.of(
-                        new CashFlowInfo.CategoryInfo("Wynagrodzenie", null, Type.INFLOW, false, List.of(
-                                new CashFlowInfo.CategoryInfo("Pensja", "Wynagrodzenie", Type.INFLOW, false, List.of()),
-                                new CashFlowInfo.CategoryInfo("Premia", "Wynagrodzenie", Type.INFLOW, false, List.of())
-                        )),
-                        new CashFlowInfo.CategoryInfo("Zwroty", null, Type.INFLOW, false, List.of())
-                ),
+                        node("Wynagrodzenie", "Pensja", "Premia"),
+                        node("Inwestycje", "Dywidendy")),
                 List.of(
-                        new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of(
-                                new CashFlowInfo.CategoryInfo("Zakupy spożywcze", "Żywność", Type.OUTFLOW, false, List.of()),
-                                new CashFlowInfo.CategoryInfo("Restauracje", "Żywność", Type.OUTFLOW, false, List.of())
-                        )),
-                        new CashFlowInfo.CategoryInfo("Transport", null, Type.OUTFLOW, false, List.of(
-                                new CashFlowInfo.CategoryInfo("Paliwo", "Transport", Type.OUTFLOW, false, List.of())
-                        ))
-                ),
-                0
-        );
+                        node("Żywność", "Zakupy spożywcze", "Restauracje"),
+                        node("Transport", "Paliwo"))));
 
-        // when
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
-
-        // then
         assertThat(structure.isEmpty()).isFalse();
 
-        // INFLOW categories
         assertThat(structure.inflowCategories()).hasSize(2);
-        assertThat(structure.allInflowNames()).containsExactlyInAnyOrder(
-                "Wynagrodzenie", "Pensja", "Premia", "Zwroty"
-        );
+        assertThat(structure.allInflowNames())
+                .containsExactlyInAnyOrder("Wynagrodzenie", "Pensja", "Premia", "Inwestycje", "Dywidendy");
 
-        // OUTFLOW categories
         assertThat(structure.outflowCategories()).hasSize(2);
-        assertThat(structure.allOutflowNames()).containsExactlyInAnyOrder(
-                "Żywność", "Zakupy spożywcze", "Restauracje", "Transport", "Paliwo"
-        );
+        assertThat(structure.allOutflowNames())
+                .containsExactlyInAnyOrder("Żywność", "Zakupy spożywcze", "Restauracje", "Transport", "Paliwo");
 
-        // Total count
-        assertThat(structure.totalCategoryCount()).isEqualTo(9);
+        assertThat(structure.totalCategoryCount()).isEqualTo(10);
     }
 
     @Test
     @DisplayName("Should check category existence by type")
     void shouldCheckCategoryExistenceByType() {
-        // given
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123",
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Wynagrodzenie", null, Type.INFLOW, false, List.of())
-                ),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of())
-                ),
-                0
-        );
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
+                List.of(node("Wynagrodzenie")),
+                List.of(node("Żywność"))));
 
-        // then - correct type
         assertThat(structure.categoryExists("Wynagrodzenie", Type.INFLOW)).isTrue();
         assertThat(structure.categoryExists("Żywność", Type.OUTFLOW)).isTrue();
 
-        // then - wrong type (category exists but wrong type)
         assertThat(structure.categoryExists("Wynagrodzenie", Type.OUTFLOW)).isFalse();
         assertThat(structure.categoryExists("Żywność", Type.INFLOW)).isFalse();
 
-        // then - non-existent category
         assertThat(structure.categoryExists("Transport", Type.OUTFLOW)).isFalse();
     }
 
     @Test
     @DisplayName("Should check category existence regardless of type")
     void shouldCheckCategoryExistenceRegardlessOfType() {
-        // given
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123",
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Wynagrodzenie", null, Type.INFLOW, false, List.of())
-                ),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of())
-                ),
-                0
-        );
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
+                List.of(node("Wynagrodzenie")),
+                List.of(node("Żywność"))));
 
-        // then
         assertThat(structure.categoryExists("Wynagrodzenie")).isTrue();
         assertThat(structure.categoryExists("Żywność")).isTrue();
         assertThat(structure.categoryExists("Transport")).isFalse();
@@ -139,180 +94,88 @@ class ExistingCategoryStructureTest {
     @Test
     @DisplayName("Should get all category names as flat set")
     void shouldGetAllCategoryNamesAsFlatSet() {
-        // given
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123",
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Inflow1", null, Type.INFLOW, false, List.of())
-                ),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Outflow1", null, Type.OUTFLOW, false, List.of())
-                ),
-                0
-        );
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
+                List.of(node("Wynagrodzenie", "Pensja")),
+                List.of(node("Żywność", "Zakupy"))));
 
-        // when
-        Set<String> allNames = structure.getAllCategoryNames();
+        assertThat(structure.getAllCategoryNames())
+                .containsExactlyInAnyOrder("Wynagrodzenie", "Pensja", "Żywność", "Zakupy");
+    }
 
-        // then
-        assertThat(allNames).containsExactlyInAnyOrder("Inflow1", "Outflow1");
+    @Test
+    @DisplayName("One name on both sides appears once in the flat set, which is why the typed "
+            + "lookups exist")
+    void theFlatSetCollapsesANameThatExistsOnBothSides() {
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
+                List.of(node("Inne")),
+                List.of(node("Inne"), node("Żywność"))));
+
+        assertThat(structure.getAllCategoryNames()).containsExactlyInAnyOrder("Inne", "Żywność");
+        assertThat(structure.categoryExists("Inne", Type.INFLOW)).isTrue();
+        assertThat(structure.categoryExists("Inne", Type.OUTFLOW)).isTrue();
+        assertThat(structure.categoryExists("Żywność", Type.INFLOW)).isFalse();
     }
 
     @Test
     @DisplayName("Should preserve hierarchy in CategoryNode")
     void shouldPreserveHierarchyInCategoryNode() {
-        // given
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123",
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(skeleton(
                 List.of(),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Żywność", null, Type.OUTFLOW, false, List.of(
-                                new CashFlowInfo.CategoryInfo("Zakupy spożywcze", "Żywność", Type.OUTFLOW, false, List.of()),
-                                new CashFlowInfo.CategoryInfo("Restauracje", "Żywność", Type.OUTFLOW, false, List.of())
-                        ))
-                ),
-                0
-        );
+                List.of(node("Żywność", "Zakupy spożywcze", "Restauracje"))));
 
-        // when
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(cashFlowInfo);
-
-        // then
-        assertThat(structure.outflowCategories()).hasSize(1);
-
-        ExistingCategoryStructure.CategoryNode parentNode = structure.outflowCategories().get(0);
-        assertThat(parentNode.name()).isEqualTo("Żywność");
-        assertThat(parentNode.hasSubCategories()).isTrue();
-        assertThat(parentNode.subCategories()).hasSize(2);
-        assertThat(parentNode.subCategories().get(0).name()).isEqualTo("Zakupy spożywcze");
-        assertThat(parentNode.subCategories().get(1).name()).isEqualTo("Restauracje");
+        assertThat(structure.outflowCategories()).singleElement().satisfies(parent -> {
+            assertThat(parent.name()).isEqualTo("Żywność");
+            assertThat(parent.subCategories()).hasSize(2);
+            assertThat(parent.subCategories())
+                    .extracting(ExistingCategoryStructure.CategoryNode::name)
+                    .containsExactly("Zakupy spożywcze", "Restauracje");
+        });
     }
 
     @Test
-    @DisplayName("Should handle null CashFlowInfo")
-    void shouldHandleNullCashFlowInfo() {
-        // when
-        ExistingCategoryStructure structure = ExistingCategoryStructure.fromCashFlowInfo(null);
+    @DisplayName("Should handle a null skeleton")
+    void shouldHandleNullSkeleton() {
+        ExistingCategoryStructure structure = ExistingCategoryStructure.from(null);
 
-        // then
         assertThat(structure.isEmpty()).isTrue();
-        assertThat(structure).isEqualTo(ExistingCategoryStructure.empty());
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    //  TypedCategoryKey — ensures per-type category existence checks
-    // ─────────────────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("getAllTypedCategoryKeys should return typed keys for both inflow and outflow")
-    void getAllTypedCategoryKeysShouldReturnTypedKeys() {
-        // given — "Inne" exists only as OUTFLOW, "Podatki" exists in BOTH
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123", "U10000001", CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Uncategorized", null, Type.INFLOW, false, List.of()),
-                        new CashFlowInfo.CategoryInfo("Podatki", null, Type.INFLOW, false, List.of())
-                ),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Uncategorized", null, Type.OUTFLOW, false, List.of()),
-                        new CashFlowInfo.CategoryInfo("Inne", null, Type.OUTFLOW, false, List.of()),
-                        new CashFlowInfo.CategoryInfo("Podatki", null, Type.OUTFLOW, false, List.of())
-                ),
-                0
-        );
-
-        // when
-        Set<CashFlowInfo.TypedCategoryKey> keys = cashFlowInfo.getAllTypedCategoryKeys();
-
-        // then — "Inne" only as OUTFLOW
-        assertThat(keys).contains(new CashFlowInfo.TypedCategoryKey("Inne", Type.OUTFLOW));
-        assertThat(keys).doesNotContain(new CashFlowInfo.TypedCategoryKey("Inne", Type.INFLOW));
-
-        // "Podatki" in BOTH
-        assertThat(keys).contains(new CashFlowInfo.TypedCategoryKey("Podatki", Type.INFLOW));
-        assertThat(keys).contains(new CashFlowInfo.TypedCategoryKey("Podatki", Type.OUTFLOW));
-
-        // "Uncategorized" in BOTH
-        assertThat(keys).contains(new CashFlowInfo.TypedCategoryKey("Uncategorized", Type.INFLOW));
-        assertThat(keys).contains(new CashFlowInfo.TypedCategoryKey("Uncategorized", Type.OUTFLOW));
-    }
-
-    @Test
-    @DisplayName("getAllTypedCategoryKeys should include subcategories with correct type")
-    void getAllTypedCategoryKeysShouldIncludeSubcategories() {
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123", "U10000001", CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Opłaty", null, Type.OUTFLOW, false, List.of(
-                                new CashFlowInfo.CategoryInfo("Podatki", "Opłaty", Type.OUTFLOW, false, List.of()),
-                                new CashFlowInfo.CategoryInfo("Ubezpieczenia", "Opłaty", Type.OUTFLOW, false, List.of())
-                        ))
-                ),
-                0
-        );
-
-        Set<CashFlowInfo.TypedCategoryKey> keys = cashFlowInfo.getAllTypedCategoryKeys();
-
-        assertThat(keys).containsExactlyInAnyOrder(
-                new CashFlowInfo.TypedCategoryKey("Opłaty", Type.OUTFLOW),
-                new CashFlowInfo.TypedCategoryKey("Podatki", Type.OUTFLOW),
-                new CashFlowInfo.TypedCategoryKey("Ubezpieczenia", Type.OUTFLOW)
-        );
-        // Not in INFLOW
-        assertThat(keys).doesNotContain(new CashFlowInfo.TypedCategoryKey("Opłaty", Type.INFLOW));
-    }
-
-    @Test
-    @DisplayName("getAllCategoryNames returns flat set without type — same name from both types appears once")
-    void getAllCategoryNamesShouldReturnFlatSetWithoutType() {
-        // This test documents the OLD behavior that caused the bug:
-        // "Inne" in outflow → getAllCategoryNames() returns {"Inne"} → caller cannot tell
-        // it is missing from inflow. That's why getAllTypedCategoryKeys() was introduced.
-        CashFlowInfo cashFlowInfo = new CashFlowInfo(
-                "CF123", "U10000001", CashFlowInfo.CashFlowStatus.OPEN,
-                null, null,
-                List.of(new CashFlowInfo.CategoryInfo("Uncategorized", null, Type.INFLOW, false, List.of())),
-                List.of(
-                        new CashFlowInfo.CategoryInfo("Uncategorized", null, Type.OUTFLOW, false, List.of()),
-                        new CashFlowInfo.CategoryInfo("Inne", null, Type.OUTFLOW, false, List.of())
-                ),
-                0
-        );
-
-        Set<String> names = cashFlowInfo.getAllCategoryNames();
-
-        // "Inne" appears even though it only exists as OUTFLOW — this is the ambiguity
-        assertThat(names).containsExactlyInAnyOrder("Uncategorized", "Inne");
+        assertThat(structure.totalCategoryCount()).isEqualTo(0);
     }
 
     @Test
     @DisplayName("CategoryNode should get all names including nested")
     void categoryNodeShouldGetAllNamesIncludingNested() {
-        // given
         ExistingCategoryStructure.CategoryNode node = new ExistingCategoryStructure.CategoryNode(
-                "Parent",
+                "Żywność",
                 List.of(
-                        new ExistingCategoryStructure.CategoryNode("Child1"),
-                        new ExistingCategoryStructure.CategoryNode("Child2", List.of(
-                                new ExistingCategoryStructure.CategoryNode("GrandChild")
-                        ))
-                )
-        );
+                        new ExistingCategoryStructure.CategoryNode("Zakupy spożywcze"),
+                        new ExistingCategoryStructure.CategoryNode("Restauracje")));
 
-        // when
-        List<String> names = node.getAllNames();
+        assertThat(node.getAllNames())
+                .containsExactlyInAnyOrder("Żywność", "Zakupy spożywcze", "Restauracje");
+    }
 
-        // then
-        assertThat(names).containsExactlyInAnyOrder("Parent", "Child1", "Child2", "GrandChild");
+    private static CashFlowSkeletonView skeleton(
+            List<CategoryNodeView> inflow,
+            List<CategoryNodeView> outflow) {
+        return new CashFlowSkeletonView(
+                CashFlowId.of("CF10000001"),
+                UserId.of("U10000001"),
+                CashFlowSkeletonView.LifecyclePhase.OPEN,
+                YearMonth.of(2026, 3),
+                YearMonth.of(2026, 1),
+                inflow,
+                outflow);
+    }
+
+    /**
+     * A root category with the given children. {@link CategoryNodeView} checks that a child names
+     * its parent, so the parent link is filled in here rather than left to each case.
+     */
+    private static CategoryNodeView node(String name, String... subCategories) {
+        CategoryName parent = new CategoryName(name);
+        List<CategoryNodeView> children = java.util.Arrays.stream(subCategories)
+                .map(sub -> new CategoryNodeView(new CategoryName(sub), parent, false, List.of()))
+                .toList();
+        return new CategoryNodeView(parent, null, false, children);
     }
 }

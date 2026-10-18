@@ -1,7 +1,5 @@
 package com.multi.vidulum.cashflow;
 
-import com.multi.vidulum.TestCashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.cashflow.domain.CashFlowEventEmitter;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
@@ -53,7 +51,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>Web server (RANDOM_PORT) + TestRestTemplate</li>
  *   <li>JWT authentication helpers</li>
  *   <li>Cashflow-specific repositories and helpers</li>
- *   <li>TestCashFlowServiceClient for bank_data_ingestion tests</li>
  * </ul>
  *
  * <p>Fully independent from {@code IntegrationTest} — when these packages
@@ -64,23 +61,14 @@ import static org.assertj.core.api.Assertions.assertThat;
         classes = {FixedClockConfig.class, TestAiConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@Import({CashFlowIntegrationTest.TestCashFlowServiceClientConfig.class})
 @ActiveProfiles("test")
 @AutoConfigureTestRestTemplate
 public abstract class CashFlowIntegrationTest {
 
-    @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                QueryGateway queryGateway,
-                CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
-
-        // UserFinancialProfileApi bean is provided by UserFinancialProfileRestController
-        // which implements the interface — Spring auto-detects it as a bean.
-    }
+    // No TestCashFlowServiceClientConfig any more. It existed to substitute a double for
+    // bank-data-ingestion's own cashflow port, which is gone: the module asks CashFlowModuleApi and
+    // CashFlowForecastApi, both answered in process by the real implementations this context
+    // already wires. UserFinancialProfileApi is a bean because the RestController implements it.
 
     // Shared reusable containers
     protected static final MongoDBContainer mongoDBContainer;
@@ -102,6 +90,8 @@ public abstract class CashFlowIntegrationTest {
         registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        // Keeps the profile's HTTP proxy out of this context - the key still says
+        // "cashflow-service" because that is what it used to switch off as well.
         registry.add("vidulum.cashflow-service.enabled", () -> "false");
     }
 

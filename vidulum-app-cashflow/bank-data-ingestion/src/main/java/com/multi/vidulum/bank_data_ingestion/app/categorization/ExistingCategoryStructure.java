@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.app.categorization;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
@@ -70,28 +69,6 @@ public record ExistingCategoryStructure(
     }
 
     /**
-     * Creates structure from CashFlowInfo.
-     */
-    public static ExistingCategoryStructure fromCashFlowInfo(CashFlowInfo info) {
-        if (info == null) {
-            return empty();
-        }
-
-        List<CategoryNode> inflowNodes = convertCategories(info.inflowCategories());
-        List<CategoryNode> outflowNodes = convertCategories(info.outflowCategories());
-
-        Set<String> allInflow = collectAllNames(inflowNodes);
-        Set<String> allOutflow = collectAllNames(outflowNodes);
-
-        return new ExistingCategoryStructure(
-                inflowNodes,
-                outflowNodes,
-                allInflow,
-                allOutflow
-        );
-    }
-
-    /**
      * Creates structure from the cash flow's skeleton - the shape cashflow's contract answers with.
      *
      * <p>The flat name sets come straight off the view, which already computes them per side; the
@@ -127,33 +104,6 @@ public record ExistingCategoryStructure(
             plain.add(name.name());
         }
         return plain;
-    }
-
-    /**
-     * Converts CashFlowInfo.CategoryInfo list to CategoryNode list.
-     */
-    private static List<CategoryNode> convertCategories(List<CashFlowInfo.CategoryInfo> categories) {
-        if (categories == null || categories.isEmpty()) {
-            return List.of();
-        }
-
-        List<CategoryNode> nodes = new ArrayList<>();
-        for (CashFlowInfo.CategoryInfo cat : categories) {
-            List<CategoryNode> subNodes = convertCategories(cat.subCategories());
-            nodes.add(new CategoryNode(cat.name(), subNodes));
-        }
-        return nodes;
-    }
-
-    /**
-     * Collects all category names from a node list.
-     */
-    private static Set<String> collectAllNames(List<CategoryNode> nodes) {
-        Set<String> names = new HashSet<>();
-        for (CategoryNode node : nodes) {
-            names.addAll(node.getAllNames());
-        }
-        return names;
     }
 
     /**
