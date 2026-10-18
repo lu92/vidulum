@@ -1,6 +1,9 @@
 package com.multi.vidulum.cashflow_forecast_processor.app;
 
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
+import com.multi.vidulum.cashflow.api.forecast.MonthStatus;
+import com.multi.vidulum.cashflow.api.forecast.MonthStatuses;
 import com.multi.vidulum.common.CashFlowId;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +22,7 @@ public class CashFlowForecastRestController {
 
     private final CashFlowForecastStatementRepository statementRepository;
     private final CashFlowForecastMapper mapper;
+    private final CashFlowForecastApi forecastApi;
 
     @GetMapping("/cf={cashFlowId}")
     public CashFlowForecastDto.CashFlowForecastStatementJson getForecastStatement(
@@ -31,43 +35,29 @@ public class CashFlowForecastRestController {
 
     /**
      * Get month statuses for a given CashFlow.
-     * Used by bank-data-ingestion module to determine which months allow import.
+     *
+     * <p>The answer comes from {@link CashFlowForecastApi} rather than from a walk over the
+     * statement done here, because this endpoint is no longer the only caller: a module asking the
+     * same question in-process gets the same traversal and the same mapping, and only the wire
+     * shape is this controller's business.
      *
      * @param cashFlowId the CashFlow identifier
      * @return response with cashFlowId and map of YearMonth to ForecastMonthStatus
      */
     @GetMapping("/cf={cashFlowId}/month-statuses")
     public CashFlowForecastDto.MonthStatusesResponse getMonthStatuses(@PathVariable("cashFlowId") String cashFlowId) {
-        CashFlowId id = CashFlowId.of(cashFlowId);
-        Map<YearMonth, CashFlowForecastDto.ForecastMonthStatus> monthStatuses = statementRepository.findByCashFlowId(id)
-                .map(this::extractMonthStatuses)
-                .orElse(Map.of());
+        MonthStatuses monthStatuses = forecastApi.monthStatusesOf(CashFlowId.of(cashFlowId));
+
+        Map<YearMonth, CashFlowForecastDto.ForecastMonthStatus> body = new HashMap<>();
+        monthStatuses.byMonth().forEach((month, status) -> body.put(month, map(status)));
 
         return CashFlowForecastDto.MonthStatusesResponse.builder()
                 .cashFlowId(cashFlowId)
-                .monthStatuses(monthStatuses)
+                .monthStatuses(body)
                 .build();
     }
 
-    private Map<YearMonth, CashFlowForecastDto.ForecastMonthStatus> extractMonthStatuses(CashFlowForecastStatement statement) {
-        Map<YearMonth, CashFlowMonthlyForecast> forecasts = statement.getForecasts();
-        if (forecasts == null || forecasts.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<YearMonth, CashFlowForecastDto.ForecastMonthStatus> result = new HashMap<>();
-        for (Map.Entry<YearMonth, CashFlowMonthlyForecast> entry : forecasts.entrySet()) {
-            YearMonth month = entry.getKey();
-            CashFlowMonthlyForecast forecast = entry.getValue();
-            if (forecast != null && forecast.getStatus() != null) {
-                CashFlowForecastDto.ForecastMonthStatus status = mapStatus(forecast.getStatus());
-                result.put(month, status);
-            }
-        }
-        return result;
-    }
-
-    private CashFlowForecastDto.ForecastMonthStatus mapStatus(CashFlowMonthlyForecast.Status status) {
+    private static CashFlowForecastDto.ForecastMonthStatus map(MonthStatus status) {
         return switch (status) {
             case IMPORT_PENDING -> CashFlowForecastDto.ForecastMonthStatus.IMPORT_PENDING;
             case IMPORTED -> CashFlowForecastDto.ForecastMonthStatus.IMPORTED;

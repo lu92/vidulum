@@ -74,7 +74,10 @@ public interface CashFlowModuleApi extends ModuleApi {
      *
      * <p><b>{@code parentCategoryName} is nullable, and {@code null} means a top-level category</b>
      * - the same encoding {@link com.multi.vidulum.cashflow.api.view.CategoryNodeView#isRoot()}
-     * uses for the same thing, so the two halves of this contract agree on what a root is.
+     * uses for the same thing, so the two halves of this contract agree on what a root is. The
+     * implementation translates it into whatever the domain spells "no parent" as; a caller must
+     * not have to know that word, and when this translation was missing the forecast projection
+     * died on the event with an NPE while every write still succeeded.
      *
      * <p><b>On {@code isImport}.</b> It says this category is being created as part of importing
      * history, which is the one circumstance under which a cash flow still in

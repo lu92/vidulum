@@ -2,19 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**File size limit**: keep this file under 50KB — it is loaded into every session. Currently ~46KB,
-so there is little room: **prefer editing an existing section over adding one**, and put
-walkthroughs, request bodies and diagrams in `docs/` with a pointer from here. The "~30KB" this
-line used to claim had been wrong by 2x for a while; check with `wc -c CLAUDE.md` rather than
-trusting it.
+**File size limit**: keep this file under 50KB — it is loaded into every session, and it currently
+sits just under, so there is no room: **prefer editing an existing section over adding one**, pay
+for an addition by trimming, and put walkthroughs, request bodies and diagrams in `docs/` with a
+pointer from here. Check with `wc -c CLAUDE.md`; this line has claimed a stale number before.
 
 ## Before Manual Testing
 
-**IMPORTANT**: Before performing manual API testing:
-1. Read the "CSV Import Business Flow" section below for complete endpoint flow
-2. Read the "REST API Endpoints Reference" section for all valid endpoints
-3. **DO NOT invent endpoints** - only use documented ones
-4. If unsure about an endpoint, check the controller source code first
+Read "CSV Import Business Flow" for the endpoint flow and "REST API Endpoints Reference" for what
+exists. **Do not invent an endpoint** — if it is not listed, read the controller.
 
 ## Build & Test Commands
 
@@ -100,7 +96,9 @@ vidulum/
 │   │                            #   one in or out changes no dependency and no artifactId
 │   ├── cashflow-api/            #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
 │   │                            #   createCategory, importHistorical, rollbackImport,
-│   │                            #   alreadyImported), Type, view/, error/
+│   │                            #   alreadyImported), Type, view/, error/ + forecast/:
+│   │                            #   CashFlowForecastApi - a SECOND contract, answered by the
+│   │                            #   read model, not the aggregate
 │   ├── user-financial-profile-api/ # CONTRACT: UserFinancialProfileApi (@HttpExchange)
 │   ├── cashflow/                #   artifactId vidulum-cashflow. THE AGGREGATE + its read model:
 │   │                            #   the cashflow/ and
@@ -218,6 +216,13 @@ asserts exactly one bean exists **and that it is not the HTTP one**.
 - **The HTTP adapter ships with the module that owns the endpoints.** It knows which URLs exist and
   that a field is called `category`, not `categoryName`. The arrangement it replaced had a consumer
   hand-rolling records for somebody else's API.
+- **An implementation translates the contract's encoding into the domain's** — both transports
+  must emit the same event. A null `parentCategoryName` means top-level; the domain spells it
+  `CategoryName.NOT_DEFINED`. The controller converted, `CashFlowModuleApiImpl` forwarded the null,
+  and `CategoryCreatedEventHandler`'s `equals` then killed the **forecast projection** with an NPE
+  — event dropped after nine retries, every write still 2xx. My own test asserted the pass-through
+  (`isNull()`), so a green test pinned the defect: **assert what the domain is told**, not that an
+  argument survived unchanged.
 - **A test double standing in for a contract is a signal.** Three implementations of
   `createCategory` existed: one HTTP, one dead, one gateway-based double that 29 test classes used.
   The double did what the in-process implementation should have — so making the real one available
@@ -241,8 +246,14 @@ duplicated validation:
   decides the `ErrorCode` an endpoint answers with. `CashFlowErrorHandlingTest` depends on it to the
   point of explaining in a comment why it cannot test `IMPORT_DATE_IN_FUTURE` in SETUP mode;
   `ImportWindowTest` pins it.
-- **Not everything merges.** Month statuses belong to `cashflow_forecast_processor`, so staging's
-  `ATTESTED` check stayed there. The contract's rule is the *necessary* condition, not the policy.
+- **Not everything merges.** `ImportWindow` is the *necessary* condition, not the whole policy.
+  Month statuses are stricter and owned by `cashflow_forecast_processor`, so they became
+  `CashFlowForecastApi` + `MonthStatuses` in `cashflow.api.forecast` — **a second contract in the
+  same artifact**, because a method on `CashFlowModuleApi` would have forced its implementation
+  (which holds the domain repository) to open the first `cashflow` → `cashflow_forecast_processor`
+  import. Staging asks the window first and the statuses only if it accepted, so one bad date
+  yields one message. Two status enums on purpose — a contract may not expose a read model's own
+  type — kept in step by an exhaustive `switch` plus a test over `Status.values()`.
 
 ### Don't let a port invent a poorer type than both ends already use
 
@@ -498,36 +509,22 @@ docker-compose -f docker-compose-final.yml down -v
 docker-compose -f docker-compose-final.yml up -d
 ```
 
-**IMPORTANT - Docker Build Rules:**
-- **ALWAYS use `--no-cache`** when building Docker image - ensures latest code is used
-- **ALWAYS use `-v` flag** when stopping containers - removes all volumes for clean slate
-- Always build with tag `vidulum-app:latest`
-- NEVER use `vidulum:latest` - this is an old deprecated name
-- The `docker-compose-final.yml` expects `vidulum-app:latest`
+All four steps matter, and the two flags are the ones people skip:
 
-**Why clean volumes every time?**
-- Application is under development - no production data to preserve
-- Eliminates issues with stale data, cached AI transformations, old schemas
-- Ensures reproducible testing environment
-- Avoids "works on my machine" issues caused by leftover data
-
-This ensures:
-- New Docker image is built with latest code changes (no cache)
-- All data is wiped (MongoDB, Kafka, AI cache)
-- Fresh containers are started with clean state
+- **`--no-cache`**, or the image ships code you already replaced.
+- **`-v`**, which wipes Mongo, Kafka **and the cached AI transformations** — without it a run
+  reuses a previous model's answer and looks deterministic when it is not. There are no production
+  users (see Development Status), so a clean slate is always the right call.
+- **Tag `vidulum-app:latest`.** `vidulum:latest` is a dead name; `docker-compose-final.yml` expects
+  the former.
 
 ## Sound Notification
 
-After completing long-running operations (tests, builds, compilations), play a notification sound to alert the user:
+After anything taking more than ~20 seconds — a test run, a build, a package — ring the bell:
 
 ```bash
 afplay /System/Library/Sounds/Glass.aiff
 ```
-
-Use this after:
-- Running tests (`./mvnw test`)
-- Building the project (`./mvnw clean compile`, `./mvnw package`)
-- Any operation taking more than 20 seconds
 
 ## Infrastructure Versions & Support Dates
 
@@ -571,10 +568,8 @@ test reports and validation evidence → `docs/evidence/` (periodically cleaned)
 ## Manual Testing - CSV Import Flow
 
 See **`docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`** for the full walkthrough; the
-consistency rules and the error table are under "CSV Import Business Flow" above. Start from a
-clean slate with the Docker rebuild below — **`down -v` is what clears the cached AI
-transformation**, and without it a run reuses a previous model's answer and looks deterministic
-when it is not.
+consistency rules and the error table are under "CSV Import Business Flow" above. Start from the
+clean slate the Docker rebuild above gives you — `down -v` is the part that matters.
 
 ## Error Handling Guidelines
 
@@ -626,8 +621,8 @@ that is easy to get wrong.
 
 Eleven steps: register → `POST /cash-flow/with-history` → AI transform CSV → import to staging →
 AI categorize → accept-ai (or `force-uncategorized`) → check staging → start import →
-`attest-historical-import` → verify cash flow → verify forecast. Endpoints are in the REST
-reference below; use only those.
+`attest-historical-import` → verify cash flow → verify forecast. Use only the endpoints in the
+REST reference below.
 
 ### Test data must be consistent
 
@@ -659,8 +654,8 @@ Sessions expire after 24h.
 | `INGESTION_STAGING_NOT_FOUND` | session expired or wrong id | sessions live 24h |
 | `CASHFLOW_BALANCE_MISMATCH` | wrong `confirmedBalance` | take the CSV's last "Saldo po operacji" |
 
-Two gotchas worth repeating: **`paidDate` is required** in staged transactions, and `MappingAction`
-is `CREATE_NEW` / `CREATE_SUBCATEGORY` / `MAP_TO_UNCATEGORIZED` — there is no `MAP_TO_EXISTING`.
+Two gotchas: **`paidDate` is required** in staged transactions, and `MappingAction` is `CREATE_NEW`
+/ `CREATE_SUBCATEGORY` / `MAP_TO_UNCATEGORIZED` — there is no `MAP_TO_EXISTING`.
 
 ### Alternative: skip the AI transform
 
@@ -822,7 +817,7 @@ column before planning against one.
 | `AI_USE_CASES.md` | AI use cases overview | open | Medium |
 | `TODO-kafka-dead-letter-queue.md` | Dead letter queue for failed events | open | Medium |
 | `2026-02-08-canonical-csv-architecture.md` | Unified CSV format | open | Low |
-| `2026-10-12-module-contracts-api-impl-split.md` | Module contracts: `-api` / impl split (NPay pattern) | **in progress** — 8 of 14 steps done; its own migration table is the live list | Medium |
+| `2026-10-12-module-contracts-api-impl-split.md` | Module contracts: `-api` / impl split (NPay pattern) | **in progress** — its own migration table is the live list | Medium |
 | `VID-103-maven-multi-module-migration.md` | Split into Maven modules | **partly done** — the Maven split shipped; the separate Docker images it was aiming at did not | Low |
 | `2026-02-08-month-rollover-ongoing-sync-design.md` | Month rollover sync | ✅ done 2026-02-25 | — |
 | `2026-02-14-recurring-rule-engine-design.md` | Recurring transactions | ✅ done ~98% 2026-03-09 | — |

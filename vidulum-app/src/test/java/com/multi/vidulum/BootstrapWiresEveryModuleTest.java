@@ -1,6 +1,7 @@
 package com.multi.vidulum;
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
 import com.multi.vidulum.exchange_connection.api.ExchangeConnectionApi;
 import com.multi.vidulum.portfolio.api.PortfolioModuleApi;
 import com.multi.vidulum.quotation.api.QuotationApi;
@@ -53,6 +54,11 @@ class BootstrapWiresEveryModuleTest extends AppIntegrationTest {
                 .isNot(new org.assertj.core.api.Condition<>(
                         api -> api.getClass().getSimpleName().startsWith("Http"),
                         "an HTTP adapter"));
+        assertThat(context.getBeansOfType(CashFlowForecastApi.class))
+                .as("the forecast answers for itself. Its one consumer used to ask for month "
+                        + "statuses through a port whose only implementation was HTTP, so staging "
+                        + "a statement made this application call its own endpoint over loopback")
+                .hasSize(1);
     }
 
     /**

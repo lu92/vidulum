@@ -15,7 +15,9 @@ import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.api.view.ImportWindow;
-import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
+import com.multi.vidulum.cashflow.api.forecast.MonthStatus;
+import com.multi.vidulum.cashflow.api.forecast.MonthStatuses;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.BankAccountId;
@@ -46,6 +48,7 @@ public class StageTransactionsCommandHandler
     private final PatternMappingRepository patternMappingRepository;
     private final CashFlowServiceClient cashFlowServiceClient;
     private final CashFlowModuleApi cashFlowApi;
+    private final CashFlowForecastApi cashFlowForecastApi;
     private final BankDataIngestionConfig config;
     private final Clock clock;
     private final UserFinancialProfileApi userFinancialProfileApi;
@@ -83,6 +86,11 @@ public class StageTransactionsCommandHandler
         // source ids CashFlowInfo carries.
         ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
+        // The forecast's contract, asked once for the whole upload rather than once per row. A
+        // statement of 402 rows would otherwise be 402 questions about which months are writable,
+        // and until now each of them travelled over HTTP - to this application's own endpoint.
+        MonthStatuses monthStatuses = cashFlowForecastApi.monthStatusesOf(command.cashFlowId());
+
         int patternMatchedCount = 0;
         for (StageTransactionsCommand.BankTransaction txn : command.transactions()) {
             PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
@@ -90,7 +98,7 @@ public class StageTransactionsCommandHandler
                 patternMatchedCount++;
             }
             StagedTransaction staged = processTransaction(
-                    txn, command.cashFlowId(), stagingSessionId, cashFlowInfo,
+                    txn, command.cashFlowId(), stagingSessionId, cashFlowInfo, monthStatuses,
                     mappingMap, patternMatch, alreadyImported, ownedAccounts, now);
             stagedTransactions.add(staged);
         }
@@ -241,6 +249,7 @@ public class StageTransactionsCommandHandler
             CashFlowId cashFlowId,
             StagingSessionId stagingSessionId,
             CashFlowInfo cashFlowInfo,
+            MonthStatuses monthStatuses,
             Map<MappingKey, CategoryMapping> mappingMap,
             PatternMatchResult patternMatch,
             ImportedTransactions alreadyImported,
@@ -287,7 +296,7 @@ public class StageTransactionsCommandHandler
                         true
                 );
 
-                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
+                TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
 
                 return StagedTransaction.create(
                         cashFlowId,
@@ -324,7 +333,7 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
 
             log.trace("Transaction [{}] direct matched bankCategory [{}] to existing category [{}]",
                     txn.name(), txn.bankCategory(), actualCategoryName);
@@ -363,7 +372,7 @@ public class StageTransactionsCommandHandler
             );
 
             // Validate transaction
-            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
+            TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
 
             log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
                     txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
@@ -416,7 +425,7 @@ public class StageTransactionsCommandHandler
         }
 
         // Validate transaction
-        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, alreadyImported, now);
+        TransactionValidation validation = validateTransaction(txn, cashFlowInfo, monthStatuses, alreadyImported, now);
 
         return StagedTransaction.create(
                 cashFlowId,
@@ -453,6 +462,7 @@ public class StageTransactionsCommandHandler
     private TransactionValidation validateTransaction(
             StageTransactionsCommand.BankTransaction txn,
             CashFlowInfo cashFlowInfo,
+            MonthStatuses monthStatuses,
             ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
@@ -476,21 +486,25 @@ public class StageTransactionsCommandHandler
                 .refusalFor(txn.paidDate(), now)
                 .ifPresent(refusal -> errors.add(refusal.getMessage()));
 
-        // What stays here, because cashflow does not know it: month statuses belong to
-        // cashflow_forecast_processor, and they make staging stricter than the aggregate - an
-        // ATTESTED month is read-only, which the aggregate does not check. Only consulted when the
-        // window already accepted, so a row is not reported twice for one date.
-        if (errors.isEmpty() && cashFlowInfo.isInOpenMode() && !cashFlowInfo.isMonthImportAllowed(paidPeriod)) {
-            CashFlowInfo.MonthStatus monthStatus = cashFlowInfo.getMonthStatus(paidPeriod);
-            if (monthStatus == CashFlowInfo.MonthStatus.ATTESTED) {
-                errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
-                        paidPeriod));
-            } else if (monthStatus == null) {
+        // The second rule, and the stricter one: cashflow does not know it, because month statuses
+        // belong to cashflow_forecast_processor. An ATTESTED month is read-only, which the
+        // aggregate does not check at all. Only consulted once the window above has accepted, so a
+        // row is never reported twice for one thing being wrong with its date.
+        //
+        // What is this module's own business is the wording. MonthStatuses decides whether a month
+        // accepts an import - that logic belongs to the module that owns the statuses - but these
+        // three sentences are about a row of somebody's bank statement, so they stay here.
+        if (errors.isEmpty() && cashFlowInfo.isInOpenMode() && !monthStatuses.acceptsImportAt(paidPeriod)) {
+            Optional<MonthStatus> monthStatus = monthStatuses.at(paidPeriod);
+            if (monthStatus.isEmpty()) {
                 errors.add(String.format("Month %s is outside the CashFlow forecast range (start: %s).",
                         paidPeriod, cashFlowInfo.startPeriod()));
+            } else if (monthStatus.get() == MonthStatus.ATTESTED) {
+                errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
+                        paidPeriod));
             } else {
                 errors.add(String.format("Month %s has status %s which does not allow import.",
-                        paidPeriod, monthStatus));
+                        paidPeriod, monthStatus.get()));
             }
         }
 

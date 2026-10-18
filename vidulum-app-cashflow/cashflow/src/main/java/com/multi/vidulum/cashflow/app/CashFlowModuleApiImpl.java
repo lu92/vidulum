@@ -96,8 +96,21 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
         // three. Injecting CommandGateway costs nothing and closes no cycle, because since step 08
         // the gateway is built with no dependencies and handlers register themselves afterwards;
         // CqrsGatewayConfigurationTest is what keeps that true.
+        //
+        // The null is normalised here, and that is not cosmetic. The domain spells "no parent" as
+        // CategoryName.NOT_DEFINED, and CashFlowForecastRestController's path has always converted
+        // for it; this implementation did not, so a top-level category created through the contract
+        // emitted CategoryCreatedEvent with a null parent. The aggregate accepted it - but
+        // CategoryCreatedEventHandler does parentCategoryName().equals(NOT_DEFINED), so the forecast
+        // projection died with an NPE, retried nine times and dropped the event. Nothing went red,
+        // because no test read the forecast after a category created this way. Step 28 made staging
+        // read it, which is how this surfaced.
         commandGateway.send(new CreateCategoryCommand(
-                cashFlowId, parentCategoryName, categoryName, type, isImport));
+                cashFlowId,
+                parentCategoryName == null ? CategoryName.NOT_DEFINED : parentCategoryName,
+                categoryName,
+                type,
+                isImport));
     }
 
     @Override
