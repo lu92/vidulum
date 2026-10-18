@@ -42,8 +42,9 @@ import static org.awaitility.Awaitility.await;
  * - All requests include JWT Bearer token
  * - Endpoints properly validate authentication
  *
- * This test verifies the HTTP REST API contracts that HttpCashFlowServiceClient
- * would use in a microservice architecture:
+ * This test verifies the HTTP REST API contracts a separately deployed bank-data-ingestion would
+ * use. It no longer has an in-process client to mirror: the module asks CashFlowModuleApi and
+ * CashFlowForecastApi, so what is checked here is the endpoints themselves.
  * 1. GET /cash-flow/cf={id} - get CashFlow info
  * 2. POST /cash-flow/cf={id}/category - create category
  * 3. POST /cash-flow/cf={id}/import-historical - import transaction

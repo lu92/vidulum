@@ -1610,3 +1610,89 @@ Odziedziczone (`fetchMonthStatuses` łapał każdy wyjątek i zwracał pustą ma
 
 Co zostało z F26: ręczny klient w recurring-rules (`CashFlowHttpClient`) i odzyskanie siedmiu typów
 cashflow ze shared-kernela. Statusy miesięcy są z tej listy zdjęte.
+
+---
+
+## 25. Co zrobił krok 29: port ingestion przestaje istnieć
+
+Po kroku 28 na `CashFlowServiceClient` została jedna metoda, pytająca już tylko jeden moduł. Ten krok
+ją usuwa — i okazało się, że to w większości **kasowanie, nie przepisywanie**.
+
+### Wszystkie dziewięć użyć było już w szkielecie
+
+| `CashFlowInfo` | `CashFlowSkeletonView` |
+|---|---|
+| `cashFlowId()`, `activePeriod()`, `startPeriod()` | te same komponenty |
+| `userId()` → `String` | `owner()` → `UserId` |
+| `status()`, `isInOpenMode()` | `phase()`, `isOpen()` |
+| `findCategoryNameIgnoreCase(raw[, type])` ×4 | `findCategoryIgnoringCase(...)` → `Optional<CategoryName>` |
+| `findParentCategory(String, Type)` ×2 | `parentOf(CategoryName, Type)` |
+| `getAllCategoryNames()` ×2 | `allCategoryNames()` → `Set<CategoryName>` |
+
+**Zmiany typów wyszły na plus.** Handler robił `new CategoryName(actualCategoryName)` po tym, jak
+dostał `String` z lookupu, i `st.mappedData().categoryName().name()`, żeby szukać w `Set<String>` —
+w obu miejscach rozpakowywał wartość, którą kontrakt oddaje gotową. Zostało jedno owinięcie, w
+`CategoryBreakdownBuilder`, bo ten trzyma nazwę jako `String` dla DTO.
+
+I zniknął prywatny `importWindowOf(cashFlowInfo)` — czternaście linii, które ręcznie mapowały
+`status → phase`, żeby zbudować `ImportWindow`. Szkielet oddaje go całym.
+
+### Większość `CashFlowInfo` była już martwa
+
+To jest właściwe odkrycie tego kroku. Zanim cokolwiek tknąłem:
+
+| | wołający w produkcji |
+|---|---|
+| `ExistingCategoryStructure.fromCashFlowInfo` | **0** |
+| `getAllTypedCategoryKeys` + `TypedCategoryKey` | **0** |
+| `countCategories`, `isInSetupMode`, `isInClosedMode`, `cashChangesCount` | **0** |
+| import `CashFlowInfo` w `RevalidateStagingCommandHandler` | nieużywany |
+
+`ExistingCategoryStructure.from(CashFlowSkeletonView)` istniała od dawna i to z niej korzysta
+`AiCategorizeCommandHandler`. Czyli były dwie fabryki tej samej rzeczy — a **318 linii testów stało
+pod tą bez wołającego, gdy ta z produkcji nie miała ani jednego**. Pokrycie usiadło na martwym
+bliźniaku. Testy przeniesione na `from(skeleton)`; dwa przypadki nie przeniesione, bo sprawdzały
+`CashFlowInfo.getAllTypedCategoryKeys` — nigdy nie dotyczyły tego rekordu i są pokryte w
+`CashFlowSkeletonViewTest`.
+
+### Co zniknęło
+
+| plik | linii |
+|---|---|
+| `CashFlowInfo` | 210 |
+| `CashFlowServiceClient` | 63 |
+| `HttpCashFlowServiceClient` | 199 |
+| `TestCashFlowServiceClient` ×2 | 190 |
+| `HttpCashFlowServiceClientIntegrationTest` | 4 testy |
+| `fromCashFlowInfo` + `convertCategories` + `collectAllNames` | ~45 |
+
+Plus cztery konteksty testowe, które podstawiały dubler: trzy z nich miały zagnieżdżoną
+`@TestConfiguration` wyłącznie na niego, więc klasa i jej `@Import` odpadły.
+`AppIntegrationTest` zatrzymuje swoją — stoi w niej jeszcze zamiennik
+`SecurityContextUserProvider` — więc dostała nazwę mówiącą, co w niej zostało.
+
+`CashFlowServiceClientConfig` budowała dwa klienty HTTP; został jeden, więc nazywa się teraz
+`UserFinancialProfileClientConfig`. Ten drugi jest inny w naturze: `UserFinancialProfileApi` jest
+zadeklarowany przez `@HttpExchange`, więc proxy **jest** implementacją, a nie jednym z dwóch
+transportów. Przy okazji odpadły dwa `@Value` na timeouty, których nikt nigdy nie czytał.
+
+**Czego nie ruszyłem:** klucze `vidulum.cashflow-service.*` nadal tak się nazywają, choć nie
+opisują już tego, co przełączają. Trzy bazowe klasy testowe ustawiają `.enabled=false`, więc zmiana
+klucza to zmiana w każdej z nich plus produkcyjny `yml` — warto zrobić, warto zrobić osobno.
+Zapisane w javadocu tej klasy.
+
+### Liczby
+
+| | przed | po |
+|---|---|---|
+| metody na porcie ingestion | 1 | **port nie istnieje** |
+| żądania HTTP stagingu do cashflow | 1 | 0 |
+| testy `vidulum-bank-data-ingestion` | 108 | 106 |
+| testy `vidulum-cashflow-tests` | 420 | 416 |
+| testy `vidulum-cashflow` / `vidulum-app` | 96 / 49 | 96 / 49 |
+
+Usunięte netto: ~700 linii produkcji i dublerów.
+
+Z F26 zostaje druga połowa: `CashFlowHttpClient` w recurring-rules — własny `CashFlowInfo`, pięć
+metod, cudzy JSON parsowany jako `Map<String, Object>` — plus odzyskanie siedmiu typów cashflow ze
+shared-kernela.

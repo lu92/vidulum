@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,49 +10,28 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 /**
- * Configuration for HTTP service clients used by bank-data-ingestion.
+ * The one HTTP client this module still needs: the proxy for {@link UserFinancialProfileApi}.
  *
- * Provides HTTP implementations for:
- * - CashFlowServiceClient (cashflow-service REST API)
- * - UserFinancialProfileApi (user-financial-profile REST API via @HttpExchange proxy)
+ * <p>It was {@code CashFlowServiceClientConfig} and built two clients. The other one is gone with
+ * the port it implemented - everything staging asked cashflow for is now on
+ * {@code CashFlowModuleApi} and {@code CashFlowForecastApi}, answered in process. The profile is
+ * different in kind: {@code UserFinancialProfileApi} is declared with {@code @HttpExchange}, so the
+ * proxy <i>is</i> the implementation rather than one of two transports.
  *
- * Configuration properties:
- * - vidulum.cashflow-service.base-url: Base URL (default: http://localhost:8080)
- * - vidulum.cashflow-service.enabled: Set to false to disable HTTP clients (integration tests)
+ * <p><b>The property keys still say {@code vidulum.cashflow-service.*}</b>, which no longer
+ * describes what they switch. Left alone on purpose: three test base classes set
+ * {@code .enabled=false} to substitute their own profile, and renaming a key is a change to each of
+ * them plus the production yml - worth doing, worth doing separately.
+ *
+ * <p>And {@code matchIfMissing = true} below is the shape CLAUDE.md warns about. It is survivable
+ * here only because nothing in process implements this interface except the controller itself; the
+ * day one does, this default is the bug.
  */
 @Configuration
-public class CashFlowServiceClientConfig {
+public class UserFinancialProfileClientConfig {
 
     @Value("${vidulum.cashflow-service.base-url:http://localhost:8080}")
     private String baseUrl;
-
-    @Value("${vidulum.cashflow-service.connect-timeout-ms:5000}")
-    private long connectTimeoutMs;
-
-    @Value("${vidulum.cashflow-service.read-timeout-ms:30000}")
-    private long readTimeoutMs;
-
-    /**
-     * HTTP implementation for microservice architecture.
-     * Communicates with cashflow-service via REST API.
-     *
-     * Disabled when vidulum.cashflow-service.enabled=false (used in integration tests).
-     */
-    @Bean
-    @ConditionalOnProperty(
-            name = "vidulum.cashflow-service.enabled",
-            havingValue = "true",
-            matchIfMissing = true
-    )
-    public CashFlowServiceClient cashFlowServiceClient(RestClient.Builder restClientBuilder) {
-        RestClient.Builder configuredBuilder = restClientBuilder
-                .defaultHeaders(headers -> {
-                    headers.set("Content-Type", "application/json");
-                    headers.set("Accept", "application/json");
-                });
-
-        return new HttpCashFlowServiceClient(configuredBuilder, baseUrl);
-    }
 
     /**
      * HTTP proxy for user-financial-profile REST API.

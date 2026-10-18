@@ -1,6 +1,5 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -57,23 +56,13 @@ import static org.assertj.core.api.Assertions.assertThat;
         classes = {FixedClockConfig.class, TestAiConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@Import({PortfolioAppConfig.class, TradingAppConfig.class, AuthenticatedHttpIntegrationTest.TestCashFlowServiceClientConfig.class})
+@Import({PortfolioAppConfig.class, TradingAppConfig.class})
 @ActiveProfiles("test")
 @AutoConfigureTestRestTemplate
 public abstract class AuthenticatedHttpIntegrationTest {
 
-    @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                QueryGateway queryGateway,
-                CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
-
-        // UserFinancialProfileApi bean is provided by UserFinancialProfileRestController
-        // which implements the interface — Spring auto-detects it as a bean.
-    }
+    // The cashflow-port double is gone with the port; UserFinancialProfileApi is a bean because
+    // UserFinancialProfileRestController implements it.
 
     // Shared reusable containers - started once and reused across all tests
     protected static final MongoDBContainer mongoDBContainer;
@@ -99,7 +88,8 @@ public abstract class AuthenticatedHttpIntegrationTest {
         registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        // Disable HTTP client for CashFlowServiceClient - use direct repository access instead
+        // Keeps the profile's HTTP proxy out of this context - the key still says
+        // "cashflow-service" because that is what it used to switch off as well.
         registry.add("vidulum.cashflow-service.enabled", () -> "false");
         // IMPORTANT: Security stays ENABLED (default) - no app.security.enabled=false
     }

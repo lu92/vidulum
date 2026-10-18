@@ -1,7 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;

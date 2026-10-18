@@ -1,5 +1,4 @@
 package com.multi.vidulum.bank_data_ingestion.app;
-import com.multi.vidulum.TestCashFlowServiceClient;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
@@ -73,23 +72,12 @@ import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionNotFoundExcept
  */
 @Slf4j
 @SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
-@Import({BankDataIngestionControllerTest.TestCashFlowServiceClientConfig.class})
 @org.springframework.test.context.ActiveProfiles("test")
 public class BankDataIngestionControllerTest {
 
-    @org.springframework.boot.test.context.TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @org.springframework.context.annotation.Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
-                @org.springframework.context.annotation.Lazy com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
-
-        // UserFinancialProfileApi bean is provided by the RestController itself
-        // (UserFinancialProfileRestController implements UserFinancialProfileApi)
-        // No RANDOM_PORT in this test — direct bean injection is sufficient.
-    }
+    // The double for bank-data-ingestion's cashflow port used to be declared here; the port is
+    // gone. UserFinancialProfileApi is a bean because UserFinancialProfileRestController implements
+    // it, and there is no RANDOM_PORT here because direct bean injection is enough.
 
     // Shared containers - started manually without @Container to avoid premature shutdown
     protected static final MongoDBContainer mongoDBContainer;
@@ -113,7 +101,8 @@ public class BankDataIngestionControllerTest {
         registry.add("spring.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
         registry.add("mongodb.port", mongoDBContainer::getFirstMappedPort);
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        // Disable the HttpCashFlowServiceClient - tests use direct controller injection
+        // Keeps the profile's HTTP proxy out of this context - the key still says
+        // "cashflow-service" because that is what it used to switch off as well.
         registry.add("vidulum.cashflow-service.enabled", () -> "false");
     }
 
@@ -562,10 +551,11 @@ public class BankDataIngestionControllerTest {
         // then: the old row is reported as a duplicate and the new one is not
         //
         // This assertion could not have held before. StageTransactionsCommandHandler always had
-        // this check, but the set it compared against came from
-        // HttpCashFlowServiceClient.extractTransactionIds, which returned an empty HashSet with a
-        // comment saying the API might report these one day - and from a test double that filled it
-        // with CashChangeId values from an entirely different namespace. Both were always false.
+        // this check, but the set it compared against came from the module's own cashflow port: its
+        // HTTP implementation returned an empty HashSet with a comment saying the API might report
+        // these one day, and its test double filled it with CashChangeId values from an entirely
+        // different namespace. Both were always false. CashFlowModuleApi.alreadyImported answers it
+        // now, and that port no longer exists.
         assertThat(response.getDuplicates())
                 .singleElement()
                 .satisfies(duplicate -> {

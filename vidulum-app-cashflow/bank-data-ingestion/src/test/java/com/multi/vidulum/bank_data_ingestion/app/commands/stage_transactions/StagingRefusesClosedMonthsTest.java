@@ -1,8 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
 import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingRepository;
 import com.multi.vidulum.bank_data_ingestion.domain.StagedTransaction;
@@ -13,9 +11,13 @@ import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
 import com.multi.vidulum.cashflow.api.forecast.MonthStatus;
 import com.multi.vidulum.cashflow.api.forecast.MonthStatuses;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -119,10 +121,10 @@ class StagingRefusesClosedMonthsTest {
             Map<YearMonth, MonthStatus> monthStatuses,
             StageTransactionsCommand.BankTransaction... transactions) {
 
+        when(cashFlowApi.skeletonOf(any())).thenReturn(openCashFlow());
         when(cashFlowApi.alreadyImported(any())).thenReturn(ImportedTransactions.none());
         when(stagedTransactions.saveAll(any())).thenAnswer(call -> call.getArgument(0));
 
-        CashFlowServiceClient cashFlowServiceClient = id -> openCashFlow();
         CashFlowForecastApi forecast = id -> new MonthStatuses(id, monthStatuses);
 
         StageTransactionsCommandHandler handler = new StageTransactionsCommandHandler(
@@ -130,7 +132,6 @@ class StagingRefusesClosedMonthsTest {
                 sessions,
                 categoryMappings,
                 patternMappings,
-                cashFlowServiceClient,
                 cashFlowApi,
                 forecast,
                 new BankDataIngestionConfig(),
@@ -151,16 +152,15 @@ class StagingRefusesClosedMonthsTest {
      * OPEN, running since January, with one category the transactions below match by name - so
      * every row reaches validation instead of stopping at PENDING_MAPPING.
      */
-    private static CashFlowInfo openCashFlow() {
-        return new CashFlowInfo(
-                CASH_FLOW_ID.id(),
-                "U10000001",
-                CashFlowInfo.CashFlowStatus.OPEN,
+    private static CashFlowSkeletonView openCashFlow() {
+        return new CashFlowSkeletonView(
+                CASH_FLOW_ID,
+                UserId.of("U10000001"),
+                CashFlowSkeletonView.LifecyclePhase.OPEN,
                 MARCH,
                 JANUARY,
                 List.of(),
-                List.of(new CashFlowInfo.CategoryInfo("Zakupy", null, Type.OUTFLOW, false, List.of())),
-                0);
+                List.of(new CategoryNodeView(new CategoryName("Zakupy"), null, false, List.of())));
     }
 
     private static StageTransactionsCommand.BankTransaction transaction(String id, String paidDate) {

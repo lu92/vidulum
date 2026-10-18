@@ -21,9 +21,11 @@ import com.multi.vidulum.shared.module.ModuleApi;
  * to expose it. The reads were derived
  * from {@code GetStagingPreviewQueryHandler}, which loads the whole aggregate through
  * {@code DomainCashFlowRepository} in order to read two fields off its snapshot - and from the six
- * places that go through {@code CashFlowServiceClient.getCashFlowInfo}, which between them read the
- * owner, the lifecycle phase, both periods and the categories, and nothing else out of a payload
- * that also carries every transaction.
+ * places that went through {@code CashFlowServiceClient.getCashFlowInfo}, a port bank-data-ingestion
+ * declared for itself, which between them read the owner, the lifecycle phase, both periods and the
+ * categories, and nothing else out of a payload that also carried every transaction. That port is
+ * gone: its readers are on {@link #skeletonOf} and {@code CashFlowForecastApi}, and nothing in this
+ * application asks cashflow a question it declared the shape of itself.
  *
  * <p><b>The transport is not part of this, and that is now demonstrated rather than promised.</b>
  * Two implementations answer this interface and exactly one is a bean at a time:

@@ -1,6 +1,5 @@
 package com.multi.vidulum;
 
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.common.*;
 import com.multi.vidulum.config.FixedClockConfig;
 import com.multi.vidulum.config.TestAiConfig;
@@ -39,21 +38,17 @@ import java.util.UUID;
  */
 @Slf4j
 @SpringBootTest(classes = {FixedClockConfig.class, TestAiConfig.class})
-@Import({AppIntegrationTest.TestCashFlowServiceClientConfig.class})
+@Import({AppIntegrationTest.TestUserProviderConfig.class})
 @ActiveProfiles("test")
 public abstract class AppIntegrationTest {
 
     @TestConfiguration
-    static class TestCashFlowServiceClientConfig {
-        @Bean
-        public CashFlowServiceClient cashFlowServiceClient(
-                com.multi.vidulum.shared.cqrs.QueryGateway queryGateway,
-                com.multi.vidulum.shared.cqrs.CommandGateway commandGateway) {
-            return new TestCashFlowServiceClient(queryGateway, commandGateway);
-        }
+    static class TestUserProviderConfig {
 
-        // UserFinancialProfileApi bean is provided by the RestController itself
-        // (UserFinancialProfileRestController implements UserFinancialProfileApi)
+        // Renamed: it used to be TestCashFlowServiceClientConfig and its first bean substituted a
+        // double for bank-data-ingestion's cashflow port. That port is gone, so what is left here
+        // is the user provider below. UserFinancialProfileApi is a bean because
+        // UserFinancialProfileRestController implements it.
 
         /**
          * Stands in for {@code SecurityContextUserProvider} (task G2).
