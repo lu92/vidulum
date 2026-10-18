@@ -263,6 +263,44 @@ Three rules, each learned from a defect rather than invented:
   used. The double was doing what the in-process implementation should have been doing — so making
   the real one available deleted the double and moved those 29 classes onto production code.
 
+### A rule two modules need is a value in the contract, not a method on it
+
+`ImportWindow` in `cashflow-api` decides which dates a cash flow accepts an import for;
+`CashFlowSkeletonView.importWindow()` hands it to a consumer and `CashFlowSnapshot.importWindow()`
+builds the same thing from the aggregate. One implementation, two callers.
+
+**Why a value, not `canImport(date)` on the contract: a predicate asked per row is a request per
+row** — a 402-line statement would pay 402. The skeleton already carries all three inputs, so the
+consumer fetches once and evaluates locally against the producer's logic instead of a copy.
+
+It replaced two copies of five conditions — typed exceptions in the command handler, the same five
+as `String.format` in `StageTransactionsCommandHandler` — which had already diverged. Two rules
+when merging duplicated validation:
+
+- **Preserve the check order.** A date can break two conditions at once and the first one wins,
+  which decides the `ErrorCode` an endpoint answers with. `CashFlowErrorHandlingTest` depends on it
+  to the point of explaining in a comment why it cannot test `IMPORT_DATE_IN_FUTURE` in SETUP mode;
+  `ImportWindowTest` pins it.
+- **Not everything merges.** Month statuses belong to `cashflow_forecast_processor`, so staging's
+  `ATTESTED` check stayed there. The contract's rule is the *necessary* condition, not the policy.
+
+### Don't let a port invent a poorer type than both ends already use
+
+`bank_data_ingestion`'s port declared `double` + `String` and `LocalDate` where the caller and the
+endpoint both held `Money` and `ZonedDateTime`; the HTTP client then rebuilt the rest with
+`atStartOfDay(ZoneId.systemDefault())`. Measured, because the two halves differ:
+
+- **Time of day and zone: lost outright.** The stored instant depended on the *server's* timezone,
+  so the same CSV gave different data in different deployments — and near a month boundary that
+  moves a transaction into another month, which decides validation and the forecast.
+- **Amount: scale, not value.** `BigDecimal.valueOf(double)` uses `Double.toString`, the shortest
+  round-tripping decimal, so realistic amounts returned identical. `1234.50` came back `1234.5` —
+  equal under `compareTo`, not `equals`. Value loss needs >15 significant digits.
+
+That second point corrects my own first analysis, which claimed precision loss on money: a sabotage
+test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
+actually breaks before calling something a defect.**
+
 ### Domain Aggregates
 
 Key aggregates with their events:

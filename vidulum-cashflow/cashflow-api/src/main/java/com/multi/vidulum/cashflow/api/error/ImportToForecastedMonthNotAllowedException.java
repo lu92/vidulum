@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.domain;
+package com.multi.vidulum.cashflow.api.error;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;

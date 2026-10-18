@@ -3,7 +3,6 @@ import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.ImportTransactionRequest;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient.RollbackResult;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
@@ -41,24 +40,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
     public CashFlowInfo getCashFlowInfo(String cashFlowId) {
         CashFlowSnapshot snapshot = queryGateway.send(new GetCashFlowQuery(new CashFlowId(cashFlowId)));
         return mapToCashFlowInfo(snapshot);
-    }
-
-    @Override
-    public String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request) {
-        CashChangeId cashChangeId = commandGateway.send(
-                new ImportHistoricalCashChangeCommand(
-                        new CashFlowId(cashFlowId),
-                        new CategoryName(request.categoryName()),
-                        new Name(request.name()),
-                        new Description(request.description()),
-                        Money.of(request.amount(), request.currency()),
-                        request.type(),
-                        request.dueDate().atStartOfDay(ZoneId.systemDefault()),
-                        request.paidDate().atStartOfDay(ZoneId.systemDefault()),
-                        request.selfTransfer()
-                ));
-        log.debug("Imported historical transaction {} for CashFlow {}", cashChangeId.id(), cashFlowId);
-        return cashChangeId.id();
     }
 
     @Override

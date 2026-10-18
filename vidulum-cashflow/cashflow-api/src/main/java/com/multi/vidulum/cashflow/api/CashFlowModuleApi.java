@@ -2,7 +2,13 @@ package com.multi.vidulum.cashflow.api;
 
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
+import com.multi.vidulum.cashflow.api.error.ImportDateBeforeStartPeriodException;
+import com.multi.vidulum.cashflow.api.error.ImportDateInFutureException;
+import com.multi.vidulum.cashflow.api.error.ImportDateOutsideSetupPeriodException;
+import com.multi.vidulum.cashflow.api.error.ImportNotAllowedInClosedModeException;
+import com.multi.vidulum.cashflow.api.error.ImportToForecastedMonthNotAllowedException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.shared.module.ModuleApi;
@@ -87,4 +93,34 @@ public interface CashFlowModuleApi extends ModuleApi {
                         CategoryName parentCategoryName,
                         Type type,
                         boolean isImport);
+
+    /**
+     * Records a transaction that already happened, and answers with the id it was given.
+     *
+     * <p>The other half of what an import does, after {@link #createCategory} has made the
+     * categories a statement implies. One call site: the import job's second phase, looping over
+     * the rows that passed staging.
+     *
+     * <p><b>Whether a date will be accepted is answerable before calling this</b>, and cheaply -
+     * {@link CashFlowSkeletonView#importWindow()} carries the rule, so a consumer validates a whole
+     * statement against one fetched skeleton rather than discovering refusals one write at a time.
+     * This method still enforces it, because a contract may not trust a caller to have asked; the
+     * window exists so the caller need not fail to find out.
+     *
+     * <p><b>Not idempotent, and that is a real gap rather than an omission here.</b> Calling it
+     * twice with the same transaction records it twice, because cashflow stores no identifier from
+     * the source system - a bank's transaction id has nowhere to go in {@code CashChangeSnapshot},
+     * so there is nothing to deduplicate on. Until that changes, re-running an import duplicates
+     * it. The fix belongs in cashflow (a stored key plus a unique index, as
+     * {@code originTradeId} does for trades), not in this signature.
+     *
+     * @return the id of the recorded cash change
+     * @throws CashFlowNotFoundException                 when no such cash flow exists
+     * @throws ImportNotAllowedInClosedModeException     when the cash flow is closed
+     * @throws ImportDateOutsideSetupPeriodException     in SETUP, when the date is not historical
+     * @throws ImportToForecastedMonthNotAllowedException in OPEN, when the date is in a future month
+     * @throws ImportDateBeforeStartPeriodException      when the date precedes the cash flow
+     * @throws ImportDateInFutureException               when the date has not happened yet
+     */
+    CashChangeId importHistorical(CashFlowId cashFlowId, HistoricalCashChange change);
 }

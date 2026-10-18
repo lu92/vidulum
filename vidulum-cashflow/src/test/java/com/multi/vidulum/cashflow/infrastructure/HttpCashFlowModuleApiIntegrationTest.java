@@ -2,11 +2,15 @@ package com.multi.vidulum.cashflow.infrastructure;
 
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
+import com.multi.vidulum.cashflow.api.error.ImportDateOutsideSetupPeriodException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.app.CashFlowHttpActor;
+import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
@@ -17,7 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -187,6 +193,73 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
         assertThat(httpApi.skeletonOf(inSetup).outflowCategoryNames())
                 .as("the same call with isImport=true is allowed")
                 .contains(new CategoryName("Groceries"));
+    }
+
+    @Test
+    @DisplayName("importHistorical over HTTP keeps the amount exact and the time of day intact")
+    void shouldImportHistoricalOverHttpWithoutLosingPrecision() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        // A value double cannot hold exactly, and a time of day with a zone that is not the
+        // server's. The port this replaces sent amount.doubleValue() and a LocalDate, then rebuilt
+        // midnight in ZoneId.systemDefault() - so both of these assertions would have failed.
+        Money exact = Money.of(new BigDecimal("1234.57"), "GBP");
+        ZonedDateTime paidAt = ZonedDateTime.parse("2021-11-14T13:45:30+01:00[Europe/Warsaw]");
+
+        CashChangeId cashChangeId = httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "weekly shop",
+                exact, Type.OUTFLOW, paidAt, paidAt, false));
+
+        assertThat(cashChangeId).isNotNull();
+        assertThat(cashChangeId.id()).startsWith("CC");
+
+        CashChangeSnapshot stored = domainCashFlowRepository.findById(cashFlowId)
+                .orElseThrow()
+                .getSnapshot()
+                .cashChanges()
+                .get(cashChangeId);
+
+        assertThat(stored).as("the cash change the server actually persisted").isNotNull();
+        assertThat(stored.money().getAmount())
+                .as("exact to the penny after a real JSON round trip")
+                .usingComparator(BigDecimal::compareTo)
+                .isEqualTo(new BigDecimal("1234.57"));
+        assertThat(stored.money().getCurrency()).isEqualTo("GBP");
+        // The aggregate stores paidDate in endDate - CashChangeSnapshot has no paidDate field of
+        // its own, which is worth knowing before reading any of this code.
+        assertThat(stored.endDate().toInstant())
+                .as("13:45:30+01:00, not midnight in whichever zone the server runs in")
+                .isEqualTo(paidAt.toInstant());
+        assertThat(stored.dueDate().toInstant())
+                .as("and dueDate holds the same instant, because the only caller sends paidDate "
+                        + "for both - a known duplicate, left alone deliberately")
+                .isEqualTo(paidAt.toInstant());
+        assertThat(stored.categoryName()).isEqualTo(new CategoryName("Groceries"));
+    }
+
+    @Test
+    @DisplayName("importHistorical over HTTP refuses a date the import window already rejects")
+    void shouldRefuseADateOutsideTheImportWindowOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlowWithHistory(
+                userId, uniqueName(), YearMonth.of(2021, 10), Money.of(10000.0, "GBP")));
+        httpApi.createCategory(cashFlowId, new CategoryName("Groceries"), null, Type.OUTFLOW, true);
+
+        // The clock is fixed at 2022-01-01, so the cash flow's activePeriod is 2022-01 and a
+        // transaction dated in it is not historical. The window says so without a request:
+        ZonedDateTime notHistorical = ZonedDateTime.parse("2022-01-05T10:00:00Z[UTC]");
+        assertThat(httpApi.skeletonOf(cashFlowId).importWindow()
+                .refusalFor(notHistorical, ZonedDateTime.parse("2022-01-01T00:00:00Z[UTC]")))
+                .as("answered locally, from the skeleton, before anything is attempted")
+                .get()
+                .isInstanceOf(ImportDateOutsideSetupPeriodException.class);
+
+        // And the write refuses it too, because a contract does not trust the caller to have asked.
+        assertThatThrownBy(() -> httpApi.importHistorical(cashFlowId, new HistoricalCashChange(
+                new CategoryName("Groceries"), "Tesco", "too recent",
+                Money.of(10.0, "GBP"), Type.OUTFLOW, notHistorical, notHistorical, false)))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class);
     }
 
     @Test

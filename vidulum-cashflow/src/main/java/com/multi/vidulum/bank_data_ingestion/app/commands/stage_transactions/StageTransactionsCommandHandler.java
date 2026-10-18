@@ -10,6 +10,9 @@ import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoR
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportWindow;
+import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.BankAccountId;
@@ -418,6 +421,27 @@ public class StageTransactionsCommandHandler
         );
     }
 
+    /**
+     * The contract's import rule, built from what this module already fetched.
+     *
+     * <p>Staging holds a {@link CashFlowInfo} rather than a skeleton - it needs month statuses and
+     * the existing transaction ids, which the skeleton does not carry - so the window is assembled
+     * from its fields. The {@code switch} is exhaustive on purpose: a new status must stop compiling
+     * here rather than silently fall through to "no phase refusal".
+     */
+    private static ImportWindow importWindowOf(CashFlowInfo cashFlowInfo) {
+        CashFlowSkeletonView.LifecyclePhase phase = switch (cashFlowInfo.status()) {
+            case SETUP -> CashFlowSkeletonView.LifecyclePhase.SETUP;
+            case OPEN -> CashFlowSkeletonView.LifecyclePhase.OPEN;
+            case CLOSED -> CashFlowSkeletonView.LifecyclePhase.CLOSED;
+        };
+        return new ImportWindow(
+                CashFlowId.of(cashFlowInfo.cashFlowId()),
+                phase,
+                cashFlowInfo.activePeriod(),
+                cashFlowInfo.startPeriod());
+    }
+
     private TransactionValidation validateTransaction(
             StageTransactionsCommand.BankTransaction txn,
             CashFlowInfo cashFlowInfo,
@@ -431,50 +455,34 @@ public class StageTransactionsCommandHandler
             return TransactionValidation.duplicate(txn.bankTransactionId());
         }
 
-        // Get paid period and validate based on CashFlow mode
         YearMonth paidPeriod = YearMonth.from(txn.paidDate());
-        YearMonth activePeriod = cashFlowInfo.activePeriod();
-        YearMonth startPeriod = cashFlowInfo.startPeriod();
 
-        // Validate based on CashFlow status
-        if (cashFlowInfo.isInSetupMode()) {
-            // SETUP mode: historical import only (before activePeriod)
-            if (!paidPeriod.isBefore(activePeriod)) {
-                errors.add(String.format("In SETUP mode, paidDate %s must be before activePeriod %s",
-                        paidPeriod, activePeriod));
+        // Ask cashflow's own rule instead of repeating it. These five conditions - the lifecycle
+        // phase, both period boundaries and the future check - used to be rewritten here as
+        // String.format messages, a second copy of what ImportHistoricalCashChangeCommandHandler
+        // enforces, and the two had already drifted. ImportWindow comes from the contract, so
+        // staging now fails a row for exactly the reason the write would have failed it, with the
+        // ErrorCode the endpoint would have answered.
+        importWindowOf(cashFlowInfo)
+                .refusalFor(txn.paidDate(), now)
+                .ifPresent(refusal -> errors.add(refusal.getMessage()));
+
+        // What stays here, because cashflow does not know it: month statuses belong to
+        // cashflow_forecast_processor, and they make staging stricter than the aggregate - an
+        // ATTESTED month is read-only, which the aggregate does not check. Only consulted when the
+        // window already accepted, so a row is not reported twice for one date.
+        if (errors.isEmpty() && cashFlowInfo.isInOpenMode() && !cashFlowInfo.isMonthImportAllowed(paidPeriod)) {
+            CashFlowInfo.MonthStatus monthStatus = cashFlowInfo.getMonthStatus(paidPeriod);
+            if (monthStatus == CashFlowInfo.MonthStatus.ATTESTED) {
+                errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
+                        paidPeriod));
+            } else if (monthStatus == null) {
+                errors.add(String.format("Month %s is outside the CashFlow forecast range (start: %s).",
+                        paidPeriod, cashFlowInfo.startPeriod()));
+            } else {
+                errors.add(String.format("Month %s has status %s which does not allow import.",
+                        paidPeriod, monthStatus));
             }
-        } else if (cashFlowInfo.isInOpenMode()) {
-            // OPEN mode: ongoing sync - validate based on month status
-            if (!cashFlowInfo.isMonthImportAllowed(paidPeriod)) {
-                CashFlowInfo.MonthStatus monthStatus = cashFlowInfo.getMonthStatus(paidPeriod);
-                if (monthStatus == CashFlowInfo.MonthStatus.FORECASTED) {
-                    errors.add(String.format("Cannot import to FORECASTED month %s. Only past and current months are allowed.",
-                            paidPeriod));
-                } else if (monthStatus == CashFlowInfo.MonthStatus.ATTESTED) {
-                    errors.add(String.format("Cannot import to ATTESTED month %s. This month is read-only.",
-                            paidPeriod));
-                } else if (monthStatus == null) {
-                    errors.add(String.format("Month %s is outside the CashFlow forecast range (start: %s).",
-                            paidPeriod, startPeriod));
-                } else {
-                    errors.add(String.format("Month %s has status %s which does not allow import.",
-                            paidPeriod, monthStatus));
-                }
-            }
-        } else if (cashFlowInfo.isInClosedMode()) {
-            // CLOSED mode: no imports allowed
-            errors.add("CashFlow is CLOSED, no imports are allowed");
-        }
-
-        // Validate startPeriod boundary
-        if (paidPeriod.isBefore(startPeriod)) {
-            errors.add(String.format("paidDate %s is before startPeriod %s",
-                    paidPeriod, startPeriod));
-        }
-
-        // Validate future dates
-        if (txn.paidDate().isAfter(now)) {
-            errors.add("paidDate cannot be in the future");
         }
 
         if (!errors.isEmpty()) {

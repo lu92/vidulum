@@ -70,6 +70,17 @@ public record CashFlowSkeletonView(
     }
 
     /**
+     * Which dates this cash flow will accept an import for.
+     *
+     * <p>Three of this view's own fields are all the rule needs, which is why the rule can travel
+     * with the view instead of being a question asked per row. See {@link ImportWindow} for what it
+     * does and does not decide.
+     */
+    public ImportWindow importWindow() {
+        return new ImportWindow(cashFlowId, phase, activePeriod, startPeriod);
+    }
+
+    /**
      * Every category name in the cash flow, subcategories included.
      *
      * <p>Typed, so that a name read out of a bank statement is not the same thing as a category

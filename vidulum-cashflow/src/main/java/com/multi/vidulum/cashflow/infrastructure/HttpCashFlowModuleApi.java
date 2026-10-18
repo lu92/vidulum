@@ -7,8 +7,11 @@ import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,6 +101,41 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
 
         } catch (HttpClientErrorException e) {
             throw translate(e, cashFlowId, categoryName);
+        }
+    }
+
+    @Override
+    public CashChangeId importHistorical(CashFlowId cashFlowId, HistoricalCashChange change) {
+        try {
+            String id = restClient.post()
+                    .uri("/cash-flow/cf={cashFlowId}/import-historical", cashFlowId.id())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new ImportHistoricalRequest(
+                            change.categoryName().name(),
+                            change.name(),
+                            change.description(),
+                            change.money(),
+                            change.type(),
+                            change.dueDate(),
+                            change.paidDate(),
+                            change.selfTransfer()))
+                    .retrieve()
+                    .body(String.class);
+
+            return CashChangeId.of(id);
+
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new CashFlowNotFoundException(cashFlowId);
+            }
+            // Everything else the server refuses here is one of the five date rules, and each is a
+            // BusinessException with its own ErrorCode - but reconstructing which one from a 400
+            // would mean parsing the body. A caller that needs to tell them apart asks
+            // CashFlowSkeletonView.importWindow() first, where the refusal arrives as the typed
+            // exception itself; that is the point of the rule being a value rather than a response.
+            log.error("HTTP error importing a transaction into cash flow [{}]: {}",
+                    cashFlowId.id(), e.getMessage());
+            throw e;
         }
     }
 
@@ -191,6 +230,23 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             CategoryName categoryName,
             boolean archived,
             List<CategoryResponse> subCategories
+    ) {
+    }
+
+    /**
+     * Mirrors {@code CashFlowDto.ImportHistoricalCashChangeJson} field for field - and notice that
+     * it carries {@link Money} and {@link ZonedDateTime}, not a flattened amount and a bare date.
+     * The endpoint always accepted these; it was the port in front of it that degraded them.
+     */
+    private record ImportHistoricalRequest(
+            String category,
+            String name,
+            String description,
+            Money money,
+            Type type,
+            ZonedDateTime dueDate,
+            ZonedDateTime paidDate,
+            boolean selfTransfer
     ) {
     }
 

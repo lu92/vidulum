@@ -154,38 +154,6 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     }
 
     @Override
-    public String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request) {
-        try {
-            ImportHistoricalRequest httpRequest = new ImportHistoricalRequest(
-                    request.categoryName(),
-                    request.name(),
-                    request.description(),
-                    new MoneyDto(request.amount(), request.currency()),
-                    request.type(),
-                    request.dueDate().atStartOfDay(ZoneId.systemDefault()),
-                    request.paidDate().atStartOfDay(ZoneId.systemDefault()),
-                    request.selfTransfer()
-            );
-
-            String cashChangeId = restClient.post()
-                    .uri("/cash-flow/cf={cashFlowId}/import-historical", cashFlowId)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(httpRequest)
-                    .retrieve()
-                    .body(String.class);
-
-            log.debug("Imported transaction [{}] into CashFlow [{}] via HTTP, got cashChangeId: {}",
-                    request.name(), cashFlowId, cashChangeId);
-
-            return cashChangeId;
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP error importing transaction into CashFlow [{}]: {}", cashFlowId, e.getMessage());
-            throw new ImportFailedException(e.getMessage(), e);
-        }
-    }
-
-    @Override
     public RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories) {
         try {
             // Get state before rollback
@@ -225,23 +193,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
     // ============ Internal DTOs for HTTP communication ============
 
 
-    private record ImportHistoricalRequest(
-            String category,
-            String name,
-            String description,
-            MoneyDto money,
-            Type type,
-            ZonedDateTime dueDate,
-            ZonedDateTime paidDate,
-            boolean selfTransfer
-    ) {
-    }
 
-    private record MoneyDto(
-            double amount,
-            String currency
-    ) {
-    }
 
     private record RollbackRequest(
             boolean deleteCategories

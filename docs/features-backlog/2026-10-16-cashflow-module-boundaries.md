@@ -514,3 +514,114 @@ czerwono w dniu, w którym ten wyjątek przeniesie się do `api/error` i mapowan
 **Dowód negatywny.** Flaga zahardcodowana na `true` w implementacji in-process — dokładnie to, co
 robił stary klient HTTP — i `createCategoryWithoutTheImportFlagSendsAUserInitiatedCommand` upada
 (`Expecting value to be false but was true`). Test mierzy to, co twierdzi, że mierzy.
+
+## 14. Co zrobił krok 18: `importHistorical` — prawdziwe typy i jedna reguła dat
+
+Dwa z czterech punktów analizy metody `importHistoricalTransaction`. Punkt 2 (`dueDate` jako kopia
+`paidDate`) i punkt 4 (klucz z banku) **świadomie pominięte** — pierwszy nic nie psuje, drugi jest
+osobnym kosztem.
+
+### Punkt 1: port był jedynym miejscem, które psuło dane
+
+Oba końce trzymały `Money` i `ZonedDateTime`. Degradował je wyłącznie pośrednik:
+
+```
+MappedTransactionData   Money(BigDecimal) · ZonedDateTime z godziną i strefą
+  ↓ port DTO            double + String   · LocalDate
+  ↓ klient HTTP         MoneyDto(double)  · atStartOfDay(ZoneId.systemDefault())
+  ↓ endpoint DTO        Money             · ZonedDateTime      ← zawsze to przyjmował
+```
+
+**Co faktycznie ginęło — zmierzone, bo pierwszy raz opisałem to za mocno.**
+
+| | |
+|---|---|
+| **godzina i strefa** | ginęły całkowicie: `13:45:30+01:00` → `00:00` w strefie **serwera**, więc zapisany moment zależał od miejsca wdrożenia. Dla transakcji przy granicy miesiąca przenosi ją do innego miesiąca, a miesiąc decyduje o walidacji i prognozie |
+| **kwota** | **nie wartość, tylko skala.** `BigDecimal.valueOf(double)` idzie przez `Double.toString`, czyli najkrótszy zapis, który się odtwarza — każda realna kwota wracała identyczna liczbowo. Ginęło `1234.50` → `1234.5`, `0.10` → `0.1`: równe pod `compareTo`, różne pod `equals`, i z inną liczbą miejsc po przecinku niż raportował bank. Utrata **wartości** dopiero powyżej ~15 cyfr znaczących (`12345678901234567.89` → `12345678901234568`) |
+
+Pierwsza wersja tej analizy mówiła o „utracie precyzji na kwotach pieniężnych". To było przesadzone
+i sprawdzenie empiryczne to pokazało: sabotaż samej kwoty przeszedł na asercji `1234.57`, bo ta
+wartość przetrwała round trip. Asercja została przepisana na `1234.50`, czyli na to, co **naprawdę**
+się psuje.
+
+**Kontrakt bierze teraz typy, które mają oba końce:**
+
+```java
+record HistoricalCashChange(CategoryName categoryName, String name, String description,
+                            Money money, Type type,
+                            ZonedDateTime dueDate, ZonedDateTime paidDate, boolean selfTransfer) {}
+
+CashChangeId importHistorical(CashFlowId cashFlowId, HistoricalCashChange change);
+```
+
+`name` i `description` zostały `String`-ami, bo `Name` i `Description` mieszkają w
+`cashflow.domain`, gdzie konsumentowi nie wolno zaglądać — opakowanie następuje po stronie cashflow.
+
+**Usunięte:** `ImportTransactionRequest`, `ImportHistoricalRequest`, `MoneyDto`,
+`ImportFailedException` i cztery konwersje typów w call site.
+
+### Punkt 3: reguła dat istniała dwa razy, w dwóch reprezentacjach
+
+| | przed |
+|---|---|
+| `ImportHistoricalCashChangeCommandHandler` | `switch` po statusie + dwa `if`, pięć typowanych wyjątków z `ErrorCode` |
+| `StageTransactionsCommandHandler` | te same pięć warunków jako `String.format(...)`, czytane z własnego DTO |
+
+I **już się rozjechały**: staging czytał statusy miesięcy z modułu prognoz i odrzucał `ATTESTED`,
+a agregat porównywał jedną nierówność — z komentarzem przyznającym się do tego wprost.
+
+**Reguła jest teraz wartością, nie pytaniem.** `ImportWindow` w kontrakcie, zbudowane z trzech pól,
+które `CashFlowSkeletonView` **już nosi**:
+
+```java
+CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(cashFlowId);   // jedno żądanie
+skeleton.importWindow().refusalFor(paidDate, now)                     // 402 wiersze lokalnie
+```
+
+Metoda na kontrakcie by tego nie naprawiła — predykat pytany na wiersz to żądanie na wiersz.
+
+**Oba miejsca używają teraz tej samej implementacji:** handler rzuca to, co zwróci
+`refusalFor`, staging zapisuje `getMessage()`. Nad tym została warstwa, której cashflow nie zna —
+statusy miesięcy należą do `cashflow_forecast_processor`, więc sprawdzenie `ATTESTED` zostało
+w stagingu i jest pytane tylko wtedy, gdy okno już zaakceptowało datę.
+
+**Pięć wyjątków przeniesionych do `cashflow/api/error/`** — trzeci raz ta sama reguła z `CLAUDE.md`:
+jeśli porażkę widzi inny moduł, należy do kontraktu.
+
+**Kolejność sprawdzeń to kolejność agregatu, co do znaku.** Data może łamać dwa warunki naraz,
+a który wygra, decyduje o `ErrorCode` endpointu. `CashFlowErrorHandlingTest` opiera się na tym do
+tego stopnia, że ma komentarz wyjaśniający, dlaczego **nie może** przetestować
+`IMPORT_DATE_IN_FUTURE` w trybie SETUP. `ImportWindowTest` przypina tę precedencję dwoma testami.
+
+### Przy okazji: jedno mapowanie statusu zamiast trzech
+
+`CashFlowStatus → LifecyclePhase` zmierzało do trzech kopii (implementacja kontraktu, snapshot,
+staging). Jest jedna, na `CashFlowSnapshot.phase()`; `CashFlowModuleApiImpl.phaseOf` usunięte.
+Adapter HTTP ma własny `switch`, bo mapuje z innego wejścia — z enuma na drucie.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `ImportWindowTest` (nowy, **pierwszy test jednostkowy tej reguły w ogóle**) | **10** |
+| `CashFlowSkeletonComponentTest` | 9 → **11** |
+| `HttpCashFlowModuleApiIntegrationTest` | 8 → **10** — kwota i strefa przez prawdziwą serializację, odczytane z Mongo |
+| port `CashFlowServiceClient` | 3 metody → **2** |
+
+Obie zmiany mają dowód negatywny:
+
+| sabotaż | co upada |
+|---|---|
+| `doubleValue()` + `atStartOfDay(systemDefault())` w implementacji in-process | `importHistoricalPassesMoneyAndTimeThroughUntouched` — `13:45:30` → `00:00` oraz `1234.50` → `1234.5` |
+| sprawdzenie czasu przestawione **przed** fazę w `ImportWindow` | `thePhaseRefusalWinsOverTheFutureOne` |
+
+### Czego krok 18 nie zrobił
+
+- **`dueDate` nadal jest kopią `paidDate`** (punkt 2). Sprawdzone, że nic się na tym nie psuje:
+  miesiąc liczy się z `paidDate` (jawnie, w `HistoricalCashChangeImportedEventHandler`), jedyny
+  konsument decydujący na `dueDate` wymaga statusu `PENDING` i `sourceRuleId`, a import ma
+  `CONFIRMED` i `null`. Warto wiedzieć, że agregat zapisuje `paidDate` jako **`endDate`** —
+  `CashChangeSnapshot` nie ma pola `paidDate`.
+- **Brak idempotencji** (punkt 4). `bankTransactionId` wciąż nie przechodzi do cashflow, więc
+  powtórzony import duplikuje dane, a detekcja duplikatów w stagingu pozostaje martwa.
+  Kontrakt mówi to wprost w javadocu `importHistorical`.

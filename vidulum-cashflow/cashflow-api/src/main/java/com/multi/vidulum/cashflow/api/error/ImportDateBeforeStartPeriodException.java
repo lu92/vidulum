@@ -1,4 +1,4 @@
-package com.multi.vidulum.cashflow.domain;
+package com.multi.vidulum.cashflow.api.error;
 
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
@@ -7,22 +7,22 @@ import java.time.YearMonth;
 import java.time.ZonedDateTime;
 
 /**
- * Exception thrown when attempting to import historical data to a month that is not in IMPORT_PENDING status.
+ * Exception thrown when attempting to import historical data to a month before the startPeriod.
  * Historical imports are only allowed to months between startPeriod and activePeriod-1.
  */
-public class ImportDateOutsideSetupPeriodException extends BusinessException {
+public class ImportDateBeforeStartPeriodException extends BusinessException {
 
     private final ZonedDateTime importDate;
     private final YearMonth targetPeriod;
-    private final YearMonth activePeriod;
+    private final YearMonth startPeriod;
 
-    public ImportDateOutsideSetupPeriodException(ZonedDateTime importDate, YearMonth targetPeriod, YearMonth activePeriod) {
+    public ImportDateBeforeStartPeriodException(ZonedDateTime importDate, YearMonth targetPeriod, YearMonth startPeriod) {
         super(String.format("Cannot import historical transaction with date [%s] (period [%s]). " +
-                        "Historical imports are only allowed to months before the active period [%s].",
-                importDate, targetPeriod, activePeriod));
+                        "Historical imports are only allowed to months starting from [%s].",
+                importDate, targetPeriod, startPeriod));
         this.importDate = importDate;
         this.targetPeriod = targetPeriod;
-        this.activePeriod = activePeriod;
+        this.startPeriod = startPeriod;
     }
 
     public ZonedDateTime getImportDate() {
@@ -33,12 +33,12 @@ public class ImportDateOutsideSetupPeriodException extends BusinessException {
         return targetPeriod;
     }
 
-    public YearMonth getActivePeriod() {
-        return activePeriod;
+    public YearMonth getStartPeriod() {
+        return startPeriod;
     }
 
     @Override
     public ErrorCode getErrorCode() {
-        return ErrorCode.IMPORT_DATE_OUTSIDE_SETUP_PERIOD;
+        return ErrorCode.IMPORT_DATE_BEFORE_START;
     }
 }

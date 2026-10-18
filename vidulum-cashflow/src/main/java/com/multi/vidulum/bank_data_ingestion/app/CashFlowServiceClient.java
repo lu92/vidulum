@@ -14,11 +14,11 @@ import java.time.LocalDate;
  * breaking a consumer it cannot see. The contract is the other way round: cashflow states what may
  * be asked of it and ships both an in-process and an HTTP implementation.
  *
- * <p>{@code exists} and {@code createCategory} have already moved. The three methods below are
- * waiting on the same treatment, and two of them are harder than they look:
- * {@code getCashFlowInfo} merges cashflow's state with the forecast module's month statuses behind
- * one signature, and {@code importHistoricalTransaction} needs an idempotency key cashflow does
- * not store yet. See {@code docs/features-backlog/2026-10-16-cashflow-module-boundaries.md}.
+ * <p>{@code exists}, {@code createCategory} and {@code importHistorical} have already moved. Two
+ * methods are left, and both are harder than they look: {@code getCashFlowInfo} merges cashflow's
+ * state with the forecast module's month statuses behind one signature, doing two requests
+ * underneath, and {@code rollbackImport} deletes by a criterion cashflow does not record. See
+ * {@code docs/features-backlog/2026-10-16-cashflow-module-boundaries.md}.
  */
 public interface CashFlowServiceClient {
 
@@ -33,15 +33,6 @@ public interface CashFlowServiceClient {
 
 
     /**
-     * Import a historical transaction into CashFlow.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param request import request with transaction details
-     * @return ID of the created CashChange
-     */
-    String importHistoricalTransaction(String cashFlowId, ImportTransactionRequest request);
-
-    /**
      * Rollback import - delete all transactions and optionally categories.
      *
      * @param cashFlowId the CashFlow ID
@@ -51,21 +42,6 @@ public interface CashFlowServiceClient {
     RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories);
 
     // ============ Request/Response DTOs ============
-
-    /**
-     * Request for importing a historical transaction.
-     */
-    record ImportTransactionRequest(
-            String categoryName,
-            String name,
-            String description,
-            double amount,
-            String currency,
-            Type type,
-            LocalDate dueDate,
-            LocalDate paidDate,
-            boolean selfTransfer
-    ) {}
 
     /**
      * Result of rollback operation.
@@ -89,24 +65,9 @@ public interface CashFlowServiceClient {
     // creating a category is no longer this port's business at all - CashFlowModuleApi.createCategory
     // is, which is why the method above is gone.
 
-    /**
-     * Exception thrown when import operation fails.
-     */
-    class ImportFailedException extends RuntimeException {
-        private final String reason;
-
-        public ImportFailedException(String reason) {
-            super("Import failed: " + reason);
-            this.reason = reason;
-        }
-
-        public ImportFailedException(String reason, Throwable cause) {
-            super("Import failed: " + reason, cause);
-            this.reason = reason;
-        }
-
-        public String getReason() {
-            return reason;
-        }
-    }
+    // ImportFailedException is gone with the method that raised it. It was the shape that made
+    // the five typed date refusals unusable: a RuntimeException carrying e.getMessage(), so a
+    // caller could not tell "date in the future" from "cash flow is closed" without reading prose.
+    // CashFlowModuleApi.importHistorical declares all five, and CashFlowSkeletonView.importWindow()
+    // hands the caller the same typed refusal before it even attempts the write.
 }
