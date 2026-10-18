@@ -19,8 +19,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * HTTP implementation of CashFlowServiceClient.
@@ -100,10 +98,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
             }
 
-            // Fetch month statuses from CashFlowForecastProcessor
-            Map<String, String> monthStatuses = fetchMonthStatuses(cashFlowId);
-
-            return mapToInfo(response, monthStatuses);
+            return mapToInfo(response);
 
         } catch (HttpClientErrorException.NotFound e) {
             throw new CashFlowNotFoundException(CashFlowId.of(cashFlowId));
@@ -113,46 +108,11 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
         }
     }
 
-    /**
-     * Fetch month statuses from CashFlowForecastProcessor.
-     * Returns empty map if forecast not found (graceful degradation).
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, String> fetchMonthStatuses(String cashFlowId) {
-        try {
-            MonthStatusesResponse response = restClient.get()
-                    .uri("/cash-flow-forecast/cf={cashFlowId}/month-statuses", cashFlowId)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .retrieve()
-                    .body(MonthStatusesResponse.class);
-
-            if (response == null || response.monthStatuses() == null) {
-                return Map.of();
-            }
-
-            // Convert YearMonth keys (serialized as strings like "2025-02") to String map
-            Map<String, String> result = new java.util.HashMap<>();
-            for (Map.Entry<String, String> entry : response.monthStatuses().entrySet()) {
-                result.put(entry.getKey(), entry.getValue());
-            }
-            return result;
-        } catch (Exception e) {
-            log.warn("Could not fetch month statuses for CashFlow [{}]: {}. Returning empty map.",
-                    cashFlowId, e.getMessage());
-            return Map.of();
-        }
-    }
-
-    /**
-     * Response DTO for month statuses endpoint.
-     * Matches CashFlowForecastDto.MonthStatusesResponse.
-     */
-    private record MonthStatusesResponse(
-            String cashFlowId,
-            Map<String, String> monthStatuses
-    ) {
-    }
-
+    // fetchMonthStatuses is gone, and with it the second request this one signature used to
+    // make. It asked /cash-flow-forecast/cf={id}/month-statuses - another module's endpoint - and
+    // swallowed every failure into an empty map, so an unreachable forecast looked exactly like a
+    // cash flow whose months all refuse an import. CashFlowForecastApi answers that question now,
+    // in process, which in a monolith means no request at all.
 
     // Response DTOs matching CashFlowRestController responses
 
@@ -166,8 +126,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
             List<CategoryResponse> outflowCategories,
             Map<String, Object> cashChanges,
             YearMonth activePeriod,
-            YearMonth startPeriod,
-            Map<String, String> monthStatuses
+            YearMonth startPeriod
     ) {
     }
 
@@ -189,7 +148,7 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
 
     // ============ Mapping Methods ============
 
-    private CashFlowInfo mapToInfo(CashFlowResponse response, Map<String, String> monthStatuses) {
+    private CashFlowInfo mapToInfo(CashFlowResponse response) {
         return new CashFlowInfo(
                 response.cashFlowId(),
                 response.userId(),
@@ -198,41 +157,8 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                 response.startPeriod(),
                 mapCategories(response.inflowCategories(), Type.INFLOW),
                 mapCategories(response.outflowCategories(), Type.OUTFLOW),
-                response.cashChanges() != null ? response.cashChanges().size() : 0,
-                mapMonthStatuses(monthStatuses)
+                response.cashChanges() != null ? response.cashChanges().size() : 0
         );
-    }
-
-    private Map<YearMonth, CashFlowInfo.MonthStatus> mapMonthStatuses(Map<String, String> monthStatuses) {
-        if (monthStatuses == null) {
-            return Map.of();
-        }
-        Map<YearMonth, CashFlowInfo.MonthStatus> result = new java.util.HashMap<>();
-        for (Map.Entry<String, String> entry : monthStatuses.entrySet()) {
-            try {
-                YearMonth month = YearMonth.parse(entry.getKey());
-                CashFlowInfo.MonthStatus status = mapMonthStatus(entry.getValue());
-                result.put(month, status);
-            } catch (Exception e) {
-                log.warn("Failed to parse month status: {} = {}", entry.getKey(), entry.getValue());
-            }
-        }
-        return result;
-    }
-
-    private CashFlowInfo.MonthStatus mapMonthStatus(String status) {
-        if (status == null) {
-            return CashFlowInfo.MonthStatus.FORECASTED;
-        }
-        return switch (status.toUpperCase()) {
-            case "IMPORT_PENDING" -> CashFlowInfo.MonthStatus.IMPORT_PENDING;
-            case "IMPORTED" -> CashFlowInfo.MonthStatus.IMPORTED;
-            case "ROLLED_OVER" -> CashFlowInfo.MonthStatus.ROLLED_OVER;
-            case "ATTESTED" -> CashFlowInfo.MonthStatus.ATTESTED;
-            case "ACTIVE" -> CashFlowInfo.MonthStatus.ACTIVE;
-            case "FORECASTED" -> CashFlowInfo.MonthStatus.FORECASTED;
-            default -> CashFlowInfo.MonthStatus.FORECASTED;
-        };
     }
 
     private CashFlowInfo.CashFlowStatus mapStatus(String status) {
@@ -269,18 +195,5 @@ public class HttpCashFlowServiceClient implements CashFlowServiceClient {
                         .toList()
                         : List.of()
         );
-    }
-
-    private Set<String> extractTransactionIds(CashFlowResponse response) {
-        if (response.cashChanges() == null) {
-            return Set.of();
-        }
-        return response.cashChanges().values().stream()
-                .filter(Map.class::isInstance)
-                .map(Map.class::cast)
-                .map(cashChange -> cashChange.get("bankTransactionId"))
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .collect(Collectors.toSet());
     }
 }

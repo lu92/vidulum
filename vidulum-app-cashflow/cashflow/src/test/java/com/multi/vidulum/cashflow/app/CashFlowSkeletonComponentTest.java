@@ -172,8 +172,13 @@ class CashFlowSkeletonComponentTest {
                 .as("false must reach the handler as false - it is what makes a SETUP cash flow refuse")
                 .isFalse();
         assertThat(handler.received.parentCategoryName())
-                .as("null parent means top-level, the same encoding CategoryNodeView.isRoot() uses")
-                .isNull();
+                .as("a caller's null must not reach the domain as null. The contract says null means "
+                        + "top-level; the domain says NOT_DEFINED, and CategoryCreatedEventHandler "
+                        + "calls equals() on it - so forwarding the null unchanged killed the "
+                        + "forecast projection with an NPE while the write itself succeeded. This "
+                        + "assertion used to require exactly that, which is how a defect stayed "
+                        + "pinned by a green test")
+                .isEqualTo(CategoryName.NOT_DEFINED);
     }
 
     @Test

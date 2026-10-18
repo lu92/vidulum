@@ -5,7 +5,6 @@ import com.multi.vidulum.cashflow.api.Type;
 
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,8 +24,12 @@ public record CashFlowInfo(
         // properly now, with the cash change ids this record could never carry. The field had no
         // reader in production - it had none for a long time either, because the HTTP client filled
         // it with an empty set and the test double with identifiers from another namespace.
-        int cashChangesCount,
-        Map<YearMonth, MonthStatus> monthStatuses
+        int cashChangesCount
+        // monthStatuses is gone too, and for a sharper reason than the field above: it was never
+        // cashflow's to answer. Month statuses belong to cashflow_forecast_processor, so one
+        // signature was merging two modules' state and the HTTP client underneath was doing two
+        // requests - the second of them to this application's own endpoint, over loopback.
+        // CashFlowForecastApi answers it now, and MonthStatuses carries the rule with the data.
 ) {
 
     /**
@@ -36,18 +39,6 @@ public record CashFlowInfo(
         SETUP,
         OPEN,
         CLOSED
-    }
-
-    /**
-     * Month status enum - mirrors CashFlowMonthlyForecast.Status.
-     */
-    public enum MonthStatus {
-        IMPORT_PENDING,
-        IMPORTED,
-        ROLLED_OVER,
-        ATTESTED,
-        ACTIVE,
-        FORECASTED
     }
 
     /**
@@ -80,41 +71,6 @@ public record CashFlowInfo(
      */
     public boolean isInClosedMode() {
         return status == CashFlowStatus.CLOSED;
-    }
-
-    /**
-     * Get the status of a specific month.
-     * Returns null if the month is not in the forecast range.
-     */
-    public MonthStatus getMonthStatus(YearMonth month) {
-        if (monthStatuses == null) {
-            return null;
-        }
-        return monthStatuses.get(month);
-    }
-
-    /**
-     * Check if a month allows importing transactions (gap filling or ongoing sync).
-     * <p>
-     * Allowed for:
-     * - IMPORT_PENDING (historical backfill in SETUP mode)
-     * - IMPORTED (gap filling after attestation)
-     * - ROLLED_OVER (gap filling after rollover)
-     * - ACTIVE (ongoing sync)
-     * <p>
-     * NOT allowed for:
-     * - FORECASTED (future months - cannot import)
-     * - ATTESTED (deprecated, treated as read-only)
-     */
-    public boolean isMonthImportAllowed(YearMonth month) {
-        MonthStatus monthStatus = getMonthStatus(month);
-        if (monthStatus == null) {
-            return false;
-        }
-        return switch (monthStatus) {
-            case IMPORT_PENDING, IMPORTED, ROLLED_OVER, ACTIVE -> true;
-            case FORECASTED, ATTESTED -> false;
-        };
     }
 
     /**

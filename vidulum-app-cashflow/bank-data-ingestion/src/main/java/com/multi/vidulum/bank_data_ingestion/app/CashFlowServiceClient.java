@@ -14,13 +14,16 @@ import java.time.LocalDate;
  * breaking a consumer it cannot see. The contract is the other way round: cashflow states what may
  * be asked of it and ships both an in-process and an HTTP implementation.
  *
- * <p><b>One method left.</b> {@code exists}, {@code createCategory}, {@code importHistorical} and
- * {@code rollbackImport} have all moved to the contract. What remains is the hardest one, and not
- * because of its size: {@code getCashFlowInfo} merges cashflow's own state with the <i>forecast</i>
- * module's month statuses behind one signature, doing two requests underneath. Four of its five
- * call sites now need only things {@code CashFlowSkeletonView} already carries; the fifth wants
- * month statuses, which belong to {@code cashflow_forecast_processor} and are therefore an argument
- * for a second contract, not a method on this one. See
+ * <p><b>One method left, and it now asks one module.</b> {@code exists}, {@code createCategory},
+ * {@code importHistorical} and {@code rollbackImport} have all moved to the contract. The month
+ * statuses went to a second contract rather than to that one -
+ * {@link com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi}, answered by
+ * {@code cashflow_forecast_processor}, which is the module that owns them. Until then
+ * {@code getCashFlowInfo} merged two modules' state behind one signature and did two requests
+ * underneath; it now reads one cash flow from cashflow, and nothing else.
+ *
+ * <p>What keeps it here is no longer a missing contract: everything it still answers is already on
+ * {@code CashFlowSkeletonView}, bar the shapes this module's own staging code reads. See
  * {@code docs/features-backlog/2026-10-16-cashflow-module-boundaries.md}.
  */
 public interface CashFlowServiceClient {

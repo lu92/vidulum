@@ -1446,3 +1446,167 @@ Folder implementacji nazywa się natomiast **`cashflow/`**, przy `artifactId` `v
 spójnie z rodzeństwem (`cashflow-api`, `bank-data-adapter`, `recurring-rules`). I to jest zarazem
 najkrótszy dowód tezy tej sekcji: **nazwa folderu nie dotyka `artifactId`**, bo agregator nie jest
 rodzicem. Każdy, kto zależy od `vidulum-cashflow`, nie zauważył zmiany.
+
+---
+
+## 24. Co zrobił krok 28: `CashFlowForecastApi` — drugi kontrakt w tym samym artefakcie
+
+Ostatnia metoda portu, `getCashFlowInfo`, miała **jednego wołającego w produkcji** i strukturalny
+powód, by zostać: scalała stan agregatu ze statusami miesięcy z modułu prognoz. Ten krok rozdziela
+te dwie rzeczy.
+
+### Czego naprawdę brakowało
+
+Z jedenastu rzeczy, które `StageTransactionsCommandHandler` bierze z `CashFlowInfo`, **dziewięć
+było już w `CashFlowSkeletonView`**. Brakowało dwóch, i obie dotyczyły miesięcy:
+
+```java
+cashFlowInfo.isMonthImportAllowed(paidPeriod)
+cashFlowInfo.getMonthStatus(paidPeriod)
+```
+
+Pod jednym podpisem `HttpCashFlowServiceClient` robił **dwa żądania do dwóch modułów**:
+`/cash-flow/cf={id}` oraz `/cash-flow-forecast/cf={id}/month-statuses`. A ponieważ ten port ma
+**jedną implementację produkcyjną i jest ona HTTP**, w jednej maszynie wirtualnej staging statementu
+oznaczał żądanie aplikacji **do własnego endpointu po loopbacku** — ta sama klasa defektu co
+self-call w `createCategory` z kroku 17.
+
+### Dlaczego osobny interfejs, a nie metoda na `CashFlowModuleApi`
+
+Bo implementacja decyduje o tym, nie nazwa. `CashFlowModuleApiImpl` siedzi w `cashflow.app` i trzyma
+`DomainCashFlowRepository`; żeby podać statusy miesięcy, musiałby sięgnąć po
+`CashFlowForecastStatementRepository` — i to byłby **pierwszy import `cashflow` →
+`cashflow_forecast_processor`**. Dziś ta krawędź ma zero wystąpień. Dwa kontrakty w jednym
+artefakcie, dwie implementacje, po jednej na poddomenę:
+
+```java
+public interface CashFlowForecastApi extends ModuleApi {
+    MonthStatuses monthStatusesOf(CashFlowId cashFlowId);
+}
+```
+
+Osobny artefakt `cashflow-forecast-api` będzie uzasadniony wtedy, gdy read model wyjdzie z
+`vidulum-cashflow` na swoje. Dziś obie implementacje jadą w jednym jarze, a kontrakt ma jedną
+zależność — shared-kernel.
+
+### Wartość, nie predykat — ten sam wybór co `ImportWindow`
+
+```java
+public record MonthStatuses(CashFlowId cashFlowId, Map<YearMonth, MonthStatus> byMonth) {
+    public Optional<MonthStatus> at(YearMonth month);
+    public boolean acceptsImportAt(YearMonth month);
+}
+```
+
+Reguła jest pytana **raz na wiersz**, a plik testowy ma 402 wiersze — `acceptsImportAt` jako metoda
+kontraktu byłaby 402 żądaniami na jeden upload. Konsument pobiera raz i liczy lokalnie, wobec logiki
+producenta, nie wobec jej kopii.
+
+**Kolejność dwóch reguł jest celowa i zapisana w kodzie.** `ImportWindow` jest warunkiem
+*koniecznym* — faza cyklu życia i obie granice okresu — i należy do agregatu, czyli jest tą regułą,
+którą wymusiłby zapis. `MonthStatuses` jest *ostrzejszy* i należy do modelu odczytu, więc staging
+pyta o niego dopiero, gdy okno już przyjęło datę. Inaczej jeden wiersz dostawałby dwa komunikaty o
+tej samej zepsutej dacie.
+
+**Co zostało po stronie konsumenta:** same słowa. Trzy zdania o wierszu wyciągu bankowego to sprawa
+stagingu; decyzja, czy miesiąc przyjmuje import, należy do modułu, który statusy posiada. To
+odwrotnie niż w kroku 18, gdzie razem z regułą przeniosłem też typowane odmowy — tam odmowy były
+wyjątkami z `ErrorCode`, które endpoint musi oddać; tutaj to `String` na liście walidacji.
+
+### Dwa słowniki zamiast jednego, i co je trzyma razem
+
+Kontrakt nie może wystawiać `CashFlowMonthlyForecast.Status` — konsument nie skompilowałby się bez
+implementacji producenta na ścieżce klas. Więc `MonthStatus` jest kopią sześciu stałych, a w ryzach
+trzyma je **wyczerpujący `switch`** w implementacji: nowy status w modelu odczytu **nie kompiluje
+się**, dopóki kontrakt go nie nazwie. Plus test, który przechodzi po `Status.values()` i sprawdza
+odpowiednik dla każdego — w tym samym duchu co `TransactionClassificationVocabularyTest`.
+
+To jest ta sama diagnoza co w kroku 24 przy `TransactionClassification`, z przeciwnym wynikiem: tam
+granicą był **tekst** (kolumna CSV), więc duplikacja plus test wystarczyły; tutaj granicą jest
+**wywołanie metody w jednej JVM**, więc mapowanie jest sprawdzane przez kompilator.
+
+### Co zniknęło
+
+| | |
+|---|---|
+| `CashFlowInfo.MonthStatus` | szósta kopia tych stałych |
+| `CashFlowInfo.getMonthStatus`, `isMonthImportAllowed`, pole `monthStatuses` | — |
+| `HttpCashFlowServiceClient.fetchMonthStatuses` + drugie żądanie | 286 → 199 linii |
+| `extractTransactionIds` | martwe od kroku 22, usunięte przy okazji |
+| `TestCashFlowServiceClient.generateMonthStatuses` ×2 | heurystyka, patrz niżej |
+| `CashFlowForecastRestController.extractMonthStatuses` | przejście przez kontrakt, jedno przejście po statemencie |
+
+### F38: reguła nie była nieprzetestowana, była nieosiągalna
+
+`TestCashFlowServiceClient.generateMonthStatuses` **wymyślał statusy z heurystyki** („past months in
+OPEN mode are ROLLED_OVER") i w komentarzu przyznawał, że nie umie wyprodukować `ATTESTED` ani
+`IMPORTED`. Dopóki ten dubler odpowiadał na pytanie o miesiące, odmowa importu do miesiąca
+zaatestowanego **nie mogła zapalić się w żadnym teście**.
+
+Kontrakt z jedną metodą czyni z tego wejścia jednolinijkową lambdę — i to jest cały powód, dla
+którego `StagingRefusesClosedMonthsTest` może dziś istnieć:
+
+```java
+CashFlowForecastApi forecast = id -> new MonthStatuses(id, Map.of(FEBRUARY, MonthStatus.ATTESTED));
+```
+
+Cztery przypadki, każdy z datą **wewnątrz** okna importu — inaczej wiersz byłby nieważny z powodu
+niemającego nic wspólnego ze statusem miesiąca, a test przechodziłby nie ćwicząc reguły, od której
+wziął nazwę. Dowód negatywny: po przestawieniu `ATTESTED` na `true` w `acceptsImportAt` pada
+dokładnie asercja o lutym, nie cała klasa.
+
+### Czego nie dało się zrobić bez naprawy czegoś innego
+
+Test integracyjny importu w trybie OPEN **zaczął padać** — i to był najcenniejszy wynik tego kroku.
+
+Najpierw diagnoza pozorna: statement prognozy nieodczytany, bo model odczytu jest asynchroniczny,
+czyli wyścig. Dodane `await()` **przeterminowało się po 10 sekundach** — statement nie był
+spóźniony, on nigdy nie powstawał. W logu:
+
+```
+ERROR DefaultErrorHandler : Backoff ... currentAttempts=10, maxAttempts=9 exhausted for cash_flow-0@4
+Caused by: java.lang.NullPointerException: Cannot invoke "CategoryName.equals(Object)" because
+          the return value of "CashFlowEvent$CategoryCreatedEvent.parentCategoryName()" is null
+          at CategoryCreatedEventHandler.fun(CategoryCreatedEventHandler.java:64)
+```
+
+`CashFlowModuleApiImpl` przepuszczał `null` wprost do `CreateCategoryCommand`, a domena zapisuje
+„brak rodzica" jako `CategoryName.NOT_DEFINED`. **Kontroler REST konwertował od zawsze**
+(`ofNullable(...).orElse(CategoryName.NOT_DEFINED)`), implementacja kontraktu nie — więc kategoria
+najwyższego poziomu utworzona przez kontrakt zabijała projekcję prognozy dla całego cash flow, a
+**każdy zapis dalej odpowiadał 2xx**. Dziewięć ponowień, zdarzenie do kosza, nic czerwonego.
+
+To **regres z kroku 17**: dopóki ingestion tworzył kategorie przez HTTP, konwersja się zdarzała;
+przeniesienie go na kontrakt ją zgubiło. Dlaczego nie wyszło wtedy: żaden test nie czytał prognozy
+po kategorii utworzonej tą drogą. Krok 28 kazał stagingowi ją czytać — i wtedy wyszło.
+
+**A najgorsza część nie jest w kodzie produkcyjnym.** Asercja, którą sam napisałem w kroku 17,
+brzmiała:
+
+```java
+assertThat(handler.received.parentCategoryName())
+        .as("null parent means top-level, the same encoding CategoryNodeView.isRoot() uses")
+        .isNull();                         // <- wymagała defektu
+```
+
+Test przechodził, bo **wymagał** tego, co było zepsute. Sprawdzałem, czy implementacja przekazuje
+argument bez zmian, zamiast czy mówi domenie to, co domena rozumie — i zielony test trzymał defekt
+w miejscu. Zamienione na `isEqualTo(CategoryName.NOT_DEFINED)` z wyjaśnieniem w komunikacie.
+
+Co z tego zostało otwarte: **brak statementu jest nieodróżnialny od miesiąca zamkniętego** —
+„jeszcze nie zbudowany", „zdarzenie porzucone" i „naprawdę zamknięty" dają ten sam komunikat.
+Odziedziczone (`fetchMonthStatuses` łapał każdy wyjątek i zwracał pustą mapę), zapisane jako F46.
+
+### Liczby
+
+| | przed | po |
+|---|---|---|
+| metody na porcie ingestion | 1 (dwa moduły) | 1 (jeden moduł) |
+| żądania HTTP w `getCashFlowInfo` | 2 | 1 |
+| testy `vidulum-cashflow-api` | 25 | 37 |
+| testy `vidulum-cashflow` | 91 | 96 |
+| testy `vidulum-bank-data-ingestion` | 104 | 108 |
+| testy `vidulum-cashflow-tests` | 420, z cicho porzucanymi zdarzeniami | 420, bez ani jednego |
+
+Co zostało z F26: ręczny klient w recurring-rules (`CashFlowHttpClient`) i odzyskanie siedmiu typów
+cashflow ze shared-kernela. Statusy miesięcy są z tej listy zdjęte.

@@ -4,7 +4,6 @@ import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
-import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
@@ -14,7 +13,6 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,9 +48,6 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
             case CLOSED -> CashFlowInfo.CashFlowStatus.CLOSED;
         };
 
-        // Build month statuses (simplified - for tests we generate based on periods)
-        Map<YearMonth, CashFlowInfo.MonthStatus> monthStatuses = generateMonthStatuses(snapshot);
-
         return new CashFlowInfo(
                 snapshot.cashFlowId().id(),
                 snapshot.userId().getId(),
@@ -61,60 +56,17 @@ public class TestCashFlowServiceClient implements CashFlowServiceClient {
                 snapshot.startPeriod(),
                 inflowCategories,
                 outflowCategories,
-                snapshot.cashChanges().size(),
-                monthStatuses
+                snapshot.cashChanges().size()
         );
     }
 
-    /**
-     * Generate month statuses based on CashFlow snapshot.
-     * This is a simplified version - in production, month statuses come from forecast processor.
-     */
-    private Map<YearMonth, CashFlowInfo.MonthStatus> generateMonthStatuses(CashFlowSnapshot snapshot) {
-        Map<YearMonth, CashFlowInfo.MonthStatus> statuses = new HashMap<>();
-
-        YearMonth startPeriod = snapshot.startPeriod();
-        YearMonth activePeriod = snapshot.activePeriod();
-
-        if (startPeriod == null) {
-            startPeriod = activePeriod;
-        }
-
-        // Generate statuses for months from startPeriod to activePeriod + 12 months
-        YearMonth endPeriod = activePeriod.plusMonths(12);
-        YearMonth current = startPeriod;
-
-        while (!current.isAfter(endPeriod)) {
-            CashFlowInfo.MonthStatus monthStatus;
-
-            if (snapshot.status() == CashFlow.CashFlowStatus.SETUP) {
-                // In SETUP mode
-                if (current.isBefore(activePeriod)) {
-                    monthStatus = CashFlowInfo.MonthStatus.IMPORT_PENDING;
-                } else if (current.equals(activePeriod)) {
-                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
-                } else {
-                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
-                }
-            } else {
-                // In OPEN mode
-                if (current.isBefore(activePeriod)) {
-                    // Could be IMPORTED, ROLLED_OVER, or ATTESTED depending on history
-                    // For test purposes, assume ROLLED_OVER for past months
-                    monthStatus = CashFlowInfo.MonthStatus.ROLLED_OVER;
-                } else if (current.equals(activePeriod)) {
-                    monthStatus = CashFlowInfo.MonthStatus.ACTIVE;
-                } else {
-                    monthStatus = CashFlowInfo.MonthStatus.FORECASTED;
-                }
-            }
-
-            statuses.put(current, monthStatus);
-            current = current.plusMonths(1);
-        }
-
-        return statuses;
-    }
+    // generateMonthStatuses is gone, and it is worth saying why rather than just deleting it. It
+    // invented statuses from a heuristic - "past months in OPEN mode are ROLLED_OVER" - and its
+    // own comment admitted it could not produce IMPORTED or ATTESTED. Staging refuses an import
+    // into an ATTESTED month, so for as long as this double answered the question, that rule could
+    // not fire in any test: the refusal was unreachable, not untested (task F38). Month statuses
+    // now come from CashFlowForecastApi, whose in-process implementation reads the statement this
+    // test context really builds from the events it really emits.
 
     private List<CashFlowInfo.CategoryInfo> mapCategories(List<Category> categories, Type type) {
         List<CashFlowInfo.CategoryInfo> result = new ArrayList<>();

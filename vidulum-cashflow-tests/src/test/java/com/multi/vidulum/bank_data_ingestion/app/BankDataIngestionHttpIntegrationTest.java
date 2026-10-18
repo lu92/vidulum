@@ -13,6 +13,7 @@ import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.domain.CategoryOrigin;
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Integration test verifying REST API communication between bank-data-ingestion
@@ -57,6 +59,13 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
     private static final AtomicInteger NAME_COUNTER = new AtomicInteger(0);
+
+    /**
+     * The contract staging consults for month statuses, used here to wait for the read model it
+     * comes from - see the comment at the OPEN-mode upload below.
+     */
+    @Autowired
+    private CashFlowForecastApi forecastApi;
 
     private String uniqueCashFlowName() {
         return "Ingestion-" + NAME_COUNTER.incrementAndGet();
@@ -1033,6 +1042,22 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
                 TXN-OPEN-002,January Rent,Monthly rent 2022,Mieszkanie,1600.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,PL98765432109876543210987654
                 TXN-OPEN-003,January Groceries,Weekly shopping,Zakupy kartą,350.00,PLN,OUTFLOW,2022-01-01,2022-01-01,PL12345678901234567890123456,
                 """;
+
+        // Staging in OPEN mode applies a second, stricter rule than the aggregate's: a month the
+        // forecast has closed refuses a row. That rule reads a model built asynchronously from the
+        // events above, so the upload has to wait for the projection rather than assume it.
+        //
+        // Worth knowing why this line exists: when it was first added it timed out, because the
+        // statement was not late - it was never built. A category created through
+        // CashFlowModuleApi passed a null parent straight into CategoryCreatedEvent, the forecast
+        // handler compares that parent to CategoryName.NOT_DEFINED, and the NPE killed the
+        // projection for the whole cash flow while every write here still answered 2xx. Nine
+        // retries, event dropped, nothing red. See task F46 for the half of that which is still
+        // open: an absent statement refuses every month, which is the same answer as a month that
+        // is genuinely closed.
+        await().until(() -> forecastApi.monthStatusesOf(CashFlowId.of(cashFlowId))
+                .at(YearMonth.of(2022, 1))
+                .isPresent());
 
         BankDataIngestionDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
                 cashFlowId,
