@@ -61,7 +61,7 @@ changed plus everything downstream**, and nothing else:
 | `vidulum-trading` | `-pl :vidulum-trading,:vidulum-wealth-tests,:vidulum-app` | same reason |
 | `vidulum-pnl` / `vidulum-risk` | that module, then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and cross-module tests use them |
 | `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
-| `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
+| `cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
 | `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | its own 104 tests run in under a second; the seven that need a running cash flow live in the parent |
 | `vidulum-bank-data-adapter` | `-pl :vidulum-bank-data-adapter` then `-pl :vidulum-cashflow,:vidulum-app` | 111 tests, no Spring; the two needing a running cash flow live in the parent |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
@@ -102,7 +102,8 @@ vidulum/
 │   │                            #   createCategory, importHistorical, rollbackImport,
 │   │                            #   alreadyImported), Type, view/, error/
 │   ├── user-financial-profile-api/ # CONTRACT: UserFinancialProfileApi (@HttpExchange)
-│   ├── vidulum-cashflow/        #   THE AGGREGATE + its read model: cashflow/ and
+│   ├── cashflow/                #   artifactId vidulum-cashflow. THE AGGREGATE + its read model:
+│   │                            #   the cashflow/ and
 │   │                            #   cashflow_forecast_processor/. Together on purpose - 36 imports
 │   │                            #   of CashFlowEvent, one lifecycle; the last assertSealed
 │   │                            #   exemption. Unit/component tests only: 91 in 5s, no Docker
@@ -351,7 +352,7 @@ Tests use **Testcontainers** for MongoDB and Kafka. Each module has its own inte
 |--------|-----------|-------------|
 | vidulum-cashflow-tests | `CashFlowIntegrationTest` | Own `CashFlowTestApplication`, testcontainers, JWT helpers; wires cashflow, ingestion, adapter, profile and recurring-rules, so every cross-module Spring test in the cashflow family lives here |
 | vidulum-wealth-tests | `WealthIntegrationTest` | Own `WealthTestApplication`, testcontainers, user stubs; wires portfolio, trading, pnl and risk, so every cross-module Spring test lives here |
-| vidulum-cashflow, vidulum-bank-data-adapter, vidulum-bank-data-ingestion, vidulum-user-financial-profile, vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, no Docker, in-memory repositories. `vidulum-cashflow` runs 91 of them in 5 seconds, having had ~500 and four minutes |
+| vidulum-cashflow, vidulum-bank-data-adapter, vidulum-bank-data-ingestion, vidulum-user-financial-profile, vidulum-portfolio, vidulum-trading, vidulum-pnl, vidulum-risk | *(none)* | Unit and component tests only — no Spring, no Docker, in-memory repositories. `cashflow` runs 91 of them in 5 seconds, having had ~500 and four minutes |
 | vidulum-app | `AppIntegrationTest` | Full app context with real user domain |
 
 Key patterns:

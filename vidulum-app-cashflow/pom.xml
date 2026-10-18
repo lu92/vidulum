@@ -44,7 +44,7 @@
         <module>user-financial-profile-api</module>
 
         <!-- The aggregate and its read model -->
-        <module>vidulum-cashflow</module>
+        <module>cashflow</module>
 
         <!-- Consumers: each compiles against the contracts above, never the implementation -->
         <module>user-financial-profile</module>
