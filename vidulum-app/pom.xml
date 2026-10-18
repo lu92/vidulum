@@ -29,6 +29,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- User financial profile: its implementation left vidulum-cashflow, so the bootstrap
+             names it. Its -api was already a module; this is the pair completing. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-user-financial-profile</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Bank data adapter: left vidulum-cashflow too. It is the only module that reaches
              bank-data-ingestion, and it does so by URL, so the reactor order between them is
              irrelevant - but the bootstrap has to name both. -->

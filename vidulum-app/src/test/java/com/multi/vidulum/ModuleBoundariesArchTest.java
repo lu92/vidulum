@@ -150,24 +150,23 @@ class ModuleBoundariesArchTest {
         assertSealed("bank_data_ingestion", "com.multi.vidulum.bank_data_ingestion..");
         assertSealed("bank_data_adapter", "com.multi.vidulum.bank_data_adapter..");
 
+        assertSealed("user_financial_profile", "com.multi.vidulum.user_financial_profile..");
+
         // cashflow carries its exemptions as extra "own" packages rather than as a name list,
         // because that is what they are: three subdomains inside the same artifact that still read
         // the aggregate directly. Everything outside this set - portfolio, trading, pnl, the
         // bootstrap - is already forbidden, which is the half worth freezing today.
         //
-        // user_financial_profile reaches in for BankAccount and CashFlowEvent,
-        // cashflow_forecast_processor for the five domain types it projects from. Each stops when
-        // vidulum-cashflow-api grows the piece it needs; see
-        // docs/features-backlog/2026-10-16-cashflow-module-boundaries.md.
-        //
-        // bank_data_ingestion came off this list in step 15: 121 files, and the only thing it now
-        // names from cashflow is cashflow.api - the contract, the skeleton view, the failure and
-        // Type. It is the proof that the exemptions here are a measurement and not a permanent
-        // allowance.
+        // One exemption left, and it is the one that is meant to stay for now:
+        // cashflow_forecast_processor is cashflow's own read model, lives in the same artifact by
+        // design, and projects from 36 imports of CashFlowEvent. The others left the list by
+        // leaving the artifact - bank_data_ingestion in step 15 (down to cashflow.api only), and
+        // user_financial_profile in step 25, which had been borrowing BankAccountNumber and
+        // deserialising CashFlowEvent and now declares both itself. The exemptions here are a
+        // measurement, not a permanent allowance.
         assertSealed("cashflow",
                 "com.multi.vidulum.cashflow..",
-                "com.multi.vidulum.cashflow_forecast_processor..",
-                "com.multi.vidulum.user_financial_profile..");
+                "com.multi.vidulum.cashflow_forecast_processor..");
     }
 
     /**

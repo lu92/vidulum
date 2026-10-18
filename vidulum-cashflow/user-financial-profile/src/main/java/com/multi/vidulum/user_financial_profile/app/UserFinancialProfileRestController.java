@@ -83,7 +83,7 @@ public class UserFinancialProfileRestController implements UserFinancialProfileA
 
     private OwnedAccountJson mapAccount(OwnedBankAccount account) {
         return new OwnedAccountJson(
-                account.bankAccountNumber().fetchRawIban(),
+                account.bankAccountNumber().iban(),
                 account.bankAccountNumber().denomination().getId(),
                 account.bankName() != null ? account.bankName().name() : null,
                 account.label(),
