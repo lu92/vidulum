@@ -32,6 +32,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- bank-data-adapter: same arrangement. Two integration tests here need both its
+             endpoints and a running cash flow, so they stay, and it comes back at test scope. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-adapter</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- bank-data-ingestion left this artifact, and comes back only for tests: seven
              integration tests here need both a running cash flow and the ingestion endpoints, and
              they cannot live in that module - it depends on vidulum-cashflow-api, never on this
@@ -70,6 +79,13 @@
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-bank-data-ingestion</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-adapter</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>

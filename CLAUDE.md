@@ -63,6 +63,7 @@ changed plus everything downstream**, and nothing else:
 | `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
 | `vidulum-cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
 | `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | its own 104 tests run in under a second; the seven that need a running cash flow live in the parent |
+| `vidulum-bank-data-adapter` | `-pl :vidulum-bank-data-adapter` then `-pl :vidulum-cashflow,:vidulum-app` | 111 tests, no Spring; the two needing a running cash flow live in the parent |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | `install` it, then everything downstream of its implementations | the contract is the compile-time surface |
 | several modules in one group | `-f market/pom.xml` or `-f wealth/pom.xml` | the aggregator's reactor; needs the other group installed |
@@ -98,10 +99,12 @@ vidulum/
 │   └── (cashflow-api/)          #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
 │                                #   createCategory, importHistorical, rollbackImport,
 │                                #   alreadyImported), Type, view/, error/
-│   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. Depends on
-│                                #   shared-kernel + two contracts, never on vidulum-cashflow -
-│                                #   which is what lets the parent depend on it at test scope
-│                                #   without a cycle. No -api of its own: nothing asks it anything
+│   └── (bank-data-adapter/)     #   SEPARATE ARTIFACT: vidulum-bank-data-adapter. shared-kernel
+│                                #   only. Calls ingestion's upload endpoint by URL
+│   └── (bank-data-ingestion/)   #   SEPARATE ARTIFACT: vidulum-bank-data-ingestion. shared-kernel
+│                                #   + two contracts, never vidulum-cashflow - which is what lets
+│                                #   the parent depend on it at test scope without a cycle.
+│                                #   Neither has an -api: nothing asks them anything
 │   └── cashflow/                #   CashFlow aggregate, categories, bank accounts
 │   └── cashflow_forecast_processor/  # Kafka event-driven forecast generation
 │   └── bank_data_ingestion/     #   CSV import staging, category mapping

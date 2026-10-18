@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-bank-data-adapter</artifactId>
+    <name>Vidulum Bank Data Adapter Module</name>
+    <description>
+        A bank's own CSV turned into the canonical one: format detection, AI-driven column mapping,
+        AI enrichment (merchant, classification, location).
+
+        The cheapest module in this group to extract, and the measurement says why: after
+        TransactionClassification stopped being shared, it imports nothing from cashflow, the
+        forecast processor, user-financial-profile or bank-data-ingestion, and none of them import
+        it. Its only dependency here is shared-kernel.
+
+        No *-api: nothing asks it anything by type. It hands its result on as a CSV column and
+        calls bank-data-ingestion's upload endpoint by URL - see BankDataIngestionClient, which is
+        this module's own view of somebody else's API and the third such hand-rolled client in the
+        codebase. That coupling is by URL, so it survives this boundary unchanged; it is recorded,
+        not resolved.
+    </description>
+
+    <dependencies>
+        <!-- Shared Kernel. The only module dependency: 27 types, all vocabulary. -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring Boot: it persists transformations and mapping rules, has endpoints, validates -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+
+        <!-- CSV parsing. The version is stated because the root pom does not manage this one. -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.10.0</version>
+        </dependency>
+
+        <!-- The AI that reads a bank's column names and classifies a transaction -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- A test-jar: the two integration tests left in vidulum-cashflow use
+                 AiBankCsvAdapterHttpActor and UnifiedCsvImportHttpActor from here. They stay there
+                 because they need the shared CashFlowIntegrationTest base, which this module
+                 cannot see - and must not, or the reactor would have a cycle. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
