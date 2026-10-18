@@ -19,14 +19,14 @@ import java.util.Stack;
 @Slf4j
 @Component
 @AllArgsConstructor
-public class RollbackImportCommandHandler implements CommandHandler<RollbackImportCommand, CashFlowSnapshot> {
+public class RollbackImportCommandHandler implements CommandHandler<RollbackImportCommand, RollbackImportResult> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CashFlowEventEmitter cashFlowEventEmitter;
     private final Clock clock;
 
     @Override
-    public CashFlowSnapshot handle(RollbackImportCommand command) {
+    public RollbackImportResult handle(RollbackImportCommand command) {
         CashFlow cashFlow = domainCashFlowRepository.findById(command.cashFlowId())
                 .orElseThrow(() -> new CashFlowNotFoundException(command.cashFlowId()));
 
@@ -70,7 +70,14 @@ public class RollbackImportCommandHandler implements CommandHandler<RollbackImpo
                         .build()
         );
 
-        return cashFlow.getSnapshot();
+        // The two counts travel out, instead of being computed and then discarded with the
+        // post-rollback snapshot. See RollbackResult in cashflow-api for what the three consumers
+        // were doing to obtain them before.
+        return new RollbackImportResult(
+                command.cashFlowId(),
+                transactionsCount,
+                categoriesCount,
+                cashFlow.getSnapshot().status());
     }
 
     /**

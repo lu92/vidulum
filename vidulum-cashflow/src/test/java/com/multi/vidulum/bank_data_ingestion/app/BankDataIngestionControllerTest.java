@@ -1309,7 +1309,11 @@ public class BankDataIngestionControllerTest {
                         jobId,
                         cashFlowId,
                         1,  // transactionsDeleted
-                        0,  // categoriesDeleted
+                        // 1, not 0. This expectation used to encode a bug in the test double:
+                        // its rollbackImport never performed the rollback and returned
+                        // `deleteCategories ? 0 : 0`, so no category was ever reported as deleted.
+                        // The import created one custom category and the rollback removes it.
+                        1,  // categoriesDeleted
                         0L, // rollbackDurationMs - ignored
                         ZonedDateTime.of(2022, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
                 ));

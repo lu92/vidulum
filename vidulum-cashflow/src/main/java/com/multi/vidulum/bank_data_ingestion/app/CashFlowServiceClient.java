@@ -14,10 +14,13 @@ import java.time.LocalDate;
  * breaking a consumer it cannot see. The contract is the other way round: cashflow states what may
  * be asked of it and ships both an in-process and an HTTP implementation.
  *
- * <p>{@code exists}, {@code createCategory} and {@code importHistorical} have already moved. Two
- * methods are left, and both are harder than they look: {@code getCashFlowInfo} merges cashflow's
- * state with the forecast module's month statuses behind one signature, doing two requests
- * underneath, and {@code rollbackImport} deletes by a criterion cashflow does not record. See
+ * <p><b>One method left.</b> {@code exists}, {@code createCategory}, {@code importHistorical} and
+ * {@code rollbackImport} have all moved to the contract. What remains is the hardest one, and not
+ * because of its size: {@code getCashFlowInfo} merges cashflow's own state with the <i>forecast</i>
+ * module's month statuses behind one signature, doing two requests underneath. Four of its five
+ * call sites now need only things {@code CashFlowSkeletonView} already carries; the fifth wants
+ * month statuses, which belong to {@code cashflow_forecast_processor} and are therefore an argument
+ * for a second contract, not a method on this one. See
  * {@code docs/features-backlog/2026-10-16-cashflow-module-boundaries.md}.
  */
 public interface CashFlowServiceClient {
@@ -32,25 +35,9 @@ public interface CashFlowServiceClient {
     CashFlowInfo getCashFlowInfo(String cashFlowId);
 
 
-    /**
-     * Rollback import - delete all transactions and optionally categories.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param deleteCategories whether to delete categories created during import
-     * @return result with counts of deleted items
-     */
-    RollbackResult rollbackImport(String cashFlowId, boolean deleteCategories);
 
     // ============ Request/Response DTOs ============
 
-    /**
-     * Result of rollback operation.
-     */
-    record RollbackResult(
-            int transactionsDeleted,
-            int categoriesDeleted,
-            CashFlowInfo cashFlowInfoAfter
-    ) {}
 
     // ============ Exceptions ============
 

@@ -6,8 +6,11 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.cashflow.app.commands.comment.create.CreateCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
+import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
@@ -110,6 +113,14 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 change.paidDate(),
                 change.selfTransfer(),
                 change.bankTransactionId()));
+    }
+
+    @Override
+    public RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories) {
+        RollbackImportResult result = commandGateway.send(
+                new RollbackImportCommand(cashFlowId, deleteCategories));
+
+        return new RollbackResult(result.transactionsDeleted(), result.categoriesDeleted());
     }
 
     /**

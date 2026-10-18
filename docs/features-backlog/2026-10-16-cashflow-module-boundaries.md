@@ -721,3 +721,94 @@ przeszłoby niezauważone w każdym z tych 39 miejsc.
    dokument, więc dwie równoległe operacje na tym samym cash flow gubią jedną z nich — niezależnie
    od tej zmiany. To problem każdej operacji na cash flow, nie tylko importu, i wart osobnej
    pozycji na tablicy.
+
+## 16. Co zrobił krok 20: `rollbackImport` — liczby, które agregat policzył i wyrzucił
+
+### Trzech konsumentów, trzy różne wymyślone odpowiedzi
+
+`RollbackImportCommandHandler` liczył dokładnie to, o co wszystkim chodziło:
+
+```java
+int transactionsCount = snapshot.cashChanges().size();
+int categoriesCount = command.deleteCategories() ? countCustomCategories(...) : 0;
+... new ImportRolledBackEvent(cashFlowId, transactionsCount, categoriesCount, ...)
+return cashFlow.getSnapshot();   // ← snapshot PO rollbacku: cashChanges puste, liczb nie ma
+```
+
+Po czym każdy konsument radził sobie sam:
+
+| | co robił |
+|---|---|
+| endpoint `DELETE /cash-flow/cf={id}/import` | zwracał **zahardcodowane `0`** dla obu liczb, z komentarzem „Actual count is logged, response shows post-rollback state" — czyli **frontend był informowany, że nic nie usunięto** |
+| `HttpCashFlowServiceClient` | liczył **odejmowaniem przez pięć żądań**: `getCashFlowInfo` (2 żądania) → `DELETE` z `toBodilessEntity()` → `getCashFlowInfo` (2 żądania) → różnica. Dodatkowo wyścig: cokolwiek zmieni się pomiędzy, psuje licznik |
+| `TestCashFlowServiceClient` | **nie wykonywał rollbacku wcale** — nie wysyłał `RollbackImportCommand`, zwracał liczbę transakcji, które *nadal tam są*, oraz `deleteCategories ? 0 : 0` (ternary z zerem w obu gałęziach) |
+
+### Dlatego test przechodził z niewłaściwego powodu
+
+```java
+assertThat(rollbackResponse.getRollbackSummary().getTransactionsDeleted())
+        .isEqualTo(transactionsImported);
+```
+
+Dubler zwracał liczbę transakcji nieusuniętych, co przypadkiem równa się liczbie zaimportowanych.
+**Żaden test nie sprawdzał, czy po rollbacku cash flow jest pusty.**
+
+A `shouldEmitRollbackEvent` miał zaszyte `categoriesDeleted = 0` — czyli **oczekiwanie kodujące
+usterkę dublera**. Po podłączeniu prawdziwego rollbacku test upadł, pokazując `1`, co jest prawdą:
+import założył jedną kategorię i rollback ją usunął. Oczekiwanie poprawione na `1`.
+
+### Co zostało zrobione
+
+Handler zwraca `RollbackImportResult` (liczniki + status) zamiast snapshotu, a kontrakt dostał:
+
+```java
+RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
+record RollbackResult(int transactionsDeleted, int categoriesDeleted) {}
+```
+
+Jedna zmiana typu zwracanego naprawia **cztery rzeczy**:
+
+| | |
+|---|---|
+| endpoint przestaje kłamać | prawdziwe liczby zamiast `0` |
+| 5 żądań → 1 | adapter HTTP **czyta odpowiedź**, zamiast ją wyrzucać |
+| wyścig znika | liczby pochodzą z tej samej transakcji, która usuwała |
+| dubler znika | implementacja in-process jest tym, co dubler udawał — więc test przestaje przechodzić przypadkiem |
+
+Przy okazji usunięte martwe pole: `RollbackResult.cashFlowInfoAfter` było deklarowane i **nigdy
+nieczytane**.
+
+### I jeszcze jeden wołający odłączony od portu
+
+`RollbackImportJobCommandHandler` używał `getCashFlowInfo` **wyłącznie po `isInSetupMode()`** —
+czyli dwa żądania HTTP i payload z każdą transakcją za jeden boolean. Teraz
+`cashFlowApi.skeletonOf(...).isInSetup()`, a handler nie wstrzykuje portu wcale.
+
+### Port: jedna metoda
+
+```
+exists · createCategory · importHistorical · rollbackImport  →  kontrakt
+getCashFlowInfo                                               →  zostaje
+```
+
+I zostaje z powodu, który nie jest kwestią rozmiaru: **scala stan cashflow ze statusami miesięcy
+z modułu prognoz** za jedną sygnaturą, robiąc pod spodem dwa żądania. Z pięciu wołających **czterem
+wystarczy to, co `CashFlowSkeletonView` już nosi**; piąty chce statusów miesięcy, które należą do
+`cashflow_forecast_processor` — czyli to argument za **drugim kontraktem**, nie za metodą w tym.
+
+### Weryfikacja
+
+| co | wynik |
+|---|---|
+| `HttpCashFlowModuleApiIntegrationTest` | 13 → **16**: rollback opróżnia cash flow i podaje `3`/`2`; `deleteCategories=false` zostawia kategorie i podaje `0` **bo o nie nie proszono, a nie bo nikt nie policzył**; nieznany cash flow → `CashFlowNotFoundException` |
+| `BankDataIngestionControllerTest` | **33**, z jednym oczekiwaniem poprawionym z `0` na `1` |
+
+| sabotaż | co upada |
+|---|---|
+| przywrócone zahardcodowane `0` w kontrolerze | `shouldRollbackOverHttpAndReportRealCounts` i `shouldRollbackWithoutTouchingCategories` — `expected: 3 but was: 0` |
+
+### Czego krok 20 nie zrobił
+
+Nie dotknąłem `getCashFlowInfo`. Rozbicie go na „szkielet + `importedSourceIds` + statusy miesięcy"
+jest opisane w analizie kandydatów i czeka na decyzję — w szczególności dlatego, że trzecia część
+nie jest kontraktem cashflow.
