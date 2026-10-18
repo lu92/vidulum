@@ -6,6 +6,8 @@ import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
@@ -25,6 +27,9 @@ import org.springframework.web.client.RestClient;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 /**
@@ -167,6 +172,36 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
         }
     }
 
+    @Override
+    public ImportedTransactions alreadyImported(CashFlowId cashFlowId) {
+        // Reads the same payload skeletonOf uses, which already carries every field this needs. In
+        // a split deployment it would deserve a narrower endpoint - that response holds every
+        // transaction - but inventing one here would be guessing at a shape nobody asked for.
+        return new ImportedTransactions(fetch(cashFlowId)
+                .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId))
+                .cashChanges()
+                .values()
+                .stream()
+                .filter(cashChange -> cashChange.bankTransactionId() != null)
+                .collect(Collectors.toMap(
+                        CashChangeResponse::bankTransactionId,
+                        HttpCashFlowModuleApi::importedFrom,
+                        (first, second) -> first)));
+    }
+
+    /**
+     * {@code endDate} is the paid date: that is the field the aggregate stores it in, so that is
+     * what the endpoint reports. Reading {@code paidDate} here would silently produce nulls.
+     */
+    private static ImportedTransaction importedFrom(CashChangeResponse cashChange) {
+        return new ImportedTransaction(
+                cashChange.bankTransactionId(),
+                CashChangeId.of(cashChange.cashChangeId()),
+                cashChange.endDate(),
+                cashChange.money(),
+                new CategoryName(cashChange.categoryName()));
+    }
+
     /**
      * {@code GET /cash-flow/cf={id}}, with a missing cash flow turned into an empty result rather
      * than an exception, because {@link #exists} is one of the two callers and would otherwise be
@@ -249,7 +284,25 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             YearMonth activePeriod,
             YearMonth startPeriod,
             List<CategoryResponse> inflowCategories,
-            List<CategoryResponse> outflowCategories
+            List<CategoryResponse> outflowCategories,
+            Map<String, CashChangeResponse> cashChanges
+    ) {
+        @Override
+        public Map<String, CashChangeResponse> cashChanges() {
+            return cashChanges == null ? Map.of() : cashChanges;
+        }
+    }
+
+    /**
+     * The fields {@link #alreadyImported} reports, and no more - the response carries seven others.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record CashChangeResponse(
+            String cashChangeId,
+            String bankTransactionId,
+            String categoryName,
+            Money money,
+            ZonedDateTime endDate
     ) {
     }
 

@@ -1,14 +1,14 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.start_import;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.TypedCategoryName;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
 import com.multi.vidulum.common.CashChangeId;
@@ -43,7 +43,6 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
     private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionEventEmitter eventEmitter;
     private final BankDataIngestionConfig config;
@@ -53,13 +52,14 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     public StartImportJobResult handle(StartImportJobCommand command) {
         ZonedDateTime now = ZonedDateTime.now(clock);
 
-        // Validate: CashFlow must exist and be in SETUP or OPEN mode
-        // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
-        // carries an ErrorCode and answers 404 on its own.
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        // The skeleton, not getCashFlowInfo: this handler wants the lifecycle phase and the
+        // category tree, both of which it carries - and no month statuses, which is the only thing
+        // getCashFlowInfo adds and the reason that method costs two requests.
+        // No try/catch: the contract throws CashFlowNotFoundException, which answers 404 on its own.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
 
         // Allow import in both SETUP mode (historical backfill) and OPEN mode (ongoing sync/gap filling)
-        if (cashFlowInfo.isInClosedMode()) {
+        if (skeleton.isClosed()) {
             throw new StagingSessionNotReadyException(
                     command.stagingSessionId(),
                     "CashFlow is CLOSED. No imports are allowed."
@@ -110,7 +110,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
 
         // Determine categories to create (based on staged transactions, not mapping actions)
         List<CategoryToCreate> categoriesToCreate = determineCategoriesToCreate(
-                validTransactions, cashFlowInfo);
+                validTransactions, skeleton);
 
         // Create the import job
         ImportJob importJob = ImportJob.create(
@@ -223,7 +223,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
     /**
      * Determine which categories need to be created based on mappings and existing categories.
      * <p>
-     * Uses {@link CashFlowInfo.TypedCategoryKey} to check existence per (name, type) pair.
+     * Uses {@link TypedCategoryName} to check existence per (name, direction) pair.
      * A category "Inne" existing as OUTFLOW does NOT satisfy an INFLOW transaction that
      * needs "Inne" — both must be created independently.
      * <p>
@@ -232,30 +232,31 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
      */
     private List<CategoryToCreate> determineCategoriesToCreate(
             List<StagedTransaction> validTransactions,
-            CashFlowInfo cashFlowInfo) {
+            CashFlowSkeletonView skeleton) {
 
-        Set<CashFlowInfo.TypedCategoryKey> existingCategories = cashFlowInfo.getAllTypedCategoryKeys();
-        Set<CashFlowInfo.TypedCategoryKey> categoriesToCreateSet = new HashSet<>();
+        // TypedCategoryName from the contract, carrying CategoryName rather than String: the old
+        // TypedCategoryKey compared a name read out of a bank statement against a category by
+        // string equality.
+        Set<TypedCategoryName> existingCategories = skeleton.typedCategoryNames();
+        Set<TypedCategoryName> categoriesToCreateSet = new HashSet<>();
         List<CategoryToCreate> result = new ArrayList<>();
 
         for (StagedTransaction st : validTransactions) {
-            String childName = st.mappedData().categoryName().name();
-            String parentName = st.mappedData().parentCategoryName() != null
-                    ? st.mappedData().parentCategoryName().name()
-                    : null;
+            CategoryName childName = st.mappedData().categoryName();
+            CategoryName parentName = st.mappedData().parentCategoryName();
             Type type = st.mappedData().type();
 
             // Ensure parent exists first (for self-transfer "Przelewy własne" the parent
             // is "Zarządzanie kontem"; for other categories parent may be null/root)
             if (parentName != null) {
-                CashFlowInfo.TypedCategoryKey parentKey = new CashFlowInfo.TypedCategoryKey(parentName, type);
+                TypedCategoryName parentKey = new TypedCategoryName(parentName, type);
                 if (!existingCategories.contains(parentKey) && !categoriesToCreateSet.contains(parentKey)) {
                     result.add(new CategoryToCreate(parentName, null, type));
                     categoriesToCreateSet.add(parentKey);
                 }
             }
 
-            CashFlowInfo.TypedCategoryKey childKey = new CashFlowInfo.TypedCategoryKey(childName, type);
+            TypedCategoryName childKey = new TypedCategoryName(childName, type);
             if (!existingCategories.contains(childKey) && !categoriesToCreateSet.contains(childKey)) {
                 result.add(new CategoryToCreate(childName, parentName, type));
                 categoriesToCreateSet.add(childKey);
@@ -265,7 +266,7 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         return result;
     }
 
-    private record CategoryToCreate(String name, String parent, Type type) {
+    private record CategoryToCreate(CategoryName name, CategoryName parent, Type type) {
     }
 
     /**
@@ -282,13 +283,9 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
         for (CategoryToCreate cat : categoriesToCreate) {
             try {
                 cashFlowApi.createCategory(
-                        importJob.cashFlowId(),
-                        new CategoryName(cat.name()),
-                        cat.parent() == null ? null : new CategoryName(cat.parent()),
-                        cat.type(),
-                        true);
+                        importJob.cashFlowId(), cat.name(), cat.parent(), cat.type(), true);
 
-                importJob = importJob.recordCreatedCategory(cat.name());
+                importJob = importJob.recordCreatedCategory(cat.name().name());
                 processed++;
 
                 if (processed % updateInterval == 0 || processed == categoriesToCreate.size()) {
@@ -309,11 +306,11 @@ public class StartImportJobCommandHandler implements CommandHandler<StartImportJ
                     ));
                 }
 
-                log.debug("Created category [{}] ({}/{})", cat.name(), processed, categoriesToCreate.size());
+                log.debug("Created category [{}] ({}/{})", cat.name().name(), processed, categoriesToCreate.size());
 
             } catch (CategoryAlreadyExistsException e) {
                 // Category already exists - not an error, just skip
-                log.debug("Category [{}] already exists, skipping", cat.name());
+                log.debug("Category [{}] already exists, skipping", cat.name().name());
                 processed++;
             } catch (Exception e) {
                 log.warn("Failed to create category [{}]: {}", cat.name(), e.getMessage());

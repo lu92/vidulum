@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 
 /**
  * Handler for rolling back an import job.
- * This uses the CashFlowServiceClient to delete transactions and categories,
+ * This uses CashFlowModuleApi to delete transactions and categories,
  * and updates the ImportJob status.
  */
 @Slf4j

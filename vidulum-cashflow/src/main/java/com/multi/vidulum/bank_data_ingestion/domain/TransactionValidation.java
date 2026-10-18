@@ -1,5 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.domain;
 
+import com.multi.vidulum.common.CashChangeId;
+
 import java.util.List;
 
 /**
@@ -8,7 +10,11 @@ import java.util.List;
  * @param status      validation status (VALID, INVALID, DUPLICATE)
  * @param errors      list of validation error messages
  * @param isDuplicate true if this transaction is a duplicate
- * @param duplicateOf ID of the existing transaction this is a duplicate of (nullable)
+ * @param duplicateOf the cash change this row collides with, as cashflow recorded it (nullable).
+ *                    It used to be filled with the <i>incoming</i> row's bankTransactionId at all
+ *                    three call sites - a field documented as the answer, holding the question -
+ *                    because {@code CashFlowModuleApi} returned a bare set of ids and the existing
+ *                    cash change's id never crossed the boundary.
  */
 public record TransactionValidation(
         ValidationStatus status,
@@ -29,12 +35,13 @@ public record TransactionValidation(
         return new TransactionValidation(ValidationStatus.INVALID, List.of(error), false, null);
     }
 
-    public static TransactionValidation duplicate(String duplicateOf) {
+    public static TransactionValidation duplicate(CashChangeId duplicateOf) {
         return new TransactionValidation(
                 ValidationStatus.DUPLICATE,
-                List.of("Transaction with this bankTransactionId already exists"),
+                List.of("Transaction with this bankTransactionId already exists as [%s]"
+                        .formatted(duplicateOf.id())),
                 true,
-                duplicateOf
+                duplicateOf.id()
         );
     }
 

@@ -258,6 +258,25 @@ cash changes in their own collection), and no protection against concurrent writ
 appears nowhere in this project and a save replaces the whole document, so two parallel operations
 on one cash flow silently lose one (F35).
 
+### Matching a raw name against a typed one is the producer's policy
+
+`CashFlowSkeletonView` carries `findCategoryIgnoringCase`, `parentOf` and `typedCategoryNames`
+because they are **operations on data the view already holds**, not data of their own. They moved
+off `CashFlowInfo`, where two ingestion handlers were lowercasing and comparing against a
+`Set<String>` on their own.
+
+The view is typed on purpose — *a name read out of a bank statement is not a `CategoryName` until
+something says it is* — and `findCategoryIgnoringCase` **is that something**. Deciding what counts
+as "the same category" (trim and fold case today; accents or synonyms one day) belongs to whoever
+owns the categories, so every consumer starts agreeing on the same day. Prefer the overload that
+takes a `Type`: a cash flow may hold "Transfer" as both income and expense, and matching without a
+direction can hand back the wrong one.
+
+**A set of per-row data does not belong on the skeleton.** `importedSourceIds` is its own method
+because `skeletonOf` answers identically for a cash flow with four years of history and one created
+a minute ago — which is what makes it cheap enough to fetch for a single boolean. Four hundred ids
+would end that for every caller.
+
 ### A handler that computes a number must return it, not just log it
 
 `RollbackImportCommandHandler` counted the deleted transactions and categories, put them in the

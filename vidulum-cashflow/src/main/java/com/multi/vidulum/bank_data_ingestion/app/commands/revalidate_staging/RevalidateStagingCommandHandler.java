@@ -2,7 +2,10 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.CashFlowInfo;
-import com.multi.vidulum.bank_data_ingestion.app.CashFlowServiceClient;
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -35,7 +38,7 @@ public class RevalidateStagingCommandHandler
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
     private final PatternMappingRepository patternMappingRepository;
-    private final CashFlowServiceClient cashFlowServiceClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionConfig config;
     private final Clock clock;
 
@@ -74,7 +77,10 @@ public class RevalidateStagingCommandHandler
         // Load CashFlow info for validation
         // No try/catch: the client throws CashFlowNotFoundException from cashflow-api, which
         // carries an ErrorCode and answers 404 on its own.
-        CashFlowInfo cashFlowInfo = cashFlowServiceClient.getCashFlowInfo(command.cashFlowId().id());
+        // Skeleton plus the ids it deliberately does not carry - see
+        // CashFlowModuleApi.importedSourceIds for why that is a second call and not a field.
+        CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(command.cashFlowId());
+        ImportedTransactions alreadyImported = cashFlowApi.alreadyImported(command.cashFlowId());
 
         // Load current mappings
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
@@ -109,21 +115,21 @@ public class RevalidateStagingCommandHandler
             PatternMatchResult patternMatch = findMatchingPattern(
                     st.originalData().name(), st.originalData().type(), patternMappings);
 
-            Optional<String> patternMatchCategory = patternMatch != null
-                    ? cashFlowInfo.findCategoryNameIgnoreCase(patternMatch.categoryName(), st.originalData().type())
+            Optional<CategoryName> patternMatchCategory = patternMatch != null
+                    ? skeleton.findCategoryIgnoringCase(patternMatch.categoryName(), st.originalData().type())
                     : Optional.empty();
 
             if (patternMatchCategory.isPresent()) {
-                String actualCategoryName = patternMatchCategory.get();
+                CategoryName actualCategoryName = patternMatchCategory.get();
 
                 // Check if we should re-categorize an already-mapped transaction
                 boolean wasAlreadyMapped = !st.isPendingMapping();
                 boolean shouldReCategorize = wasAlreadyMapped &&
-                        !actualCategoryName.equalsIgnoreCase(st.mappedData().categoryName().name());
+                        !actualCategoryName.name().equalsIgnoreCase(st.mappedData().categoryName().name());
 
                 if (st.isPendingMapping() || shouldReCategorize) {
                     // Pattern matched to existing category
-                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, actualCategoryName, cashFlowInfo, now);
+                    StagedTransaction revalidated = revalidateTransactionWithPattern(st, patternMatch, actualCategoryName, skeleton, alreadyImported, now);
                     updatedTransactions.add(revalidated);
                     revalidatedCount++;
                     patternMatchedCount++;
@@ -152,14 +158,14 @@ public class RevalidateStagingCommandHandler
 
             // Priority 2: Direct bankCategory match to existing CashFlow category (case-insensitive)
             // This is most useful for banks like Pekao that provide detailed category names
-            Optional<String> directMatch = cashFlowInfo.findCategoryNameIgnoreCase(bankCategory, st.originalData().type());
+            Optional<CategoryName> directMatch = skeleton.findCategoryIgnoringCase(bankCategory, st.originalData().type());
             if (directMatch.isPresent()) {
-                String actualCategoryName = directMatch.get();
-                CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
+                CategoryName actualCategoryName = directMatch.get();
+                CategoryName parentCategoryName = skeleton.parentOf(
                         actualCategoryName, st.originalData().type());
 
                 StagedTransaction revalidated = revalidateTransactionWithDirectMatch(
-                        st, actualCategoryName, parentCategoryName, cashFlowInfo, now);
+                        st, actualCategoryName, parentCategoryName, skeleton, alreadyImported, now);
                 updatedTransactions.add(revalidated);
                 revalidatedCount++;
                 directMatchedCount++;
@@ -174,7 +180,7 @@ public class RevalidateStagingCommandHandler
 
             if (mapping != null) {
                 // Create mapped data and revalidate
-                StagedTransaction revalidated = revalidateTransaction(st, mapping, cashFlowInfo, now);
+                StagedTransaction revalidated = revalidateTransaction(st, mapping, skeleton, alreadyImported, now);
                 updatedTransactions.add(revalidated);
                 revalidatedCount++;
             } else {
@@ -275,16 +281,17 @@ public class RevalidateStagingCommandHandler
      */
     private StagedTransaction revalidateTransactionWithDirectMatch(
             StagedTransaction original,
-            String matchedCategoryName,
+            CategoryName matchedCategoryName,
             CategoryName parentCategoryName,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Create mapped data using bankCategory as the target category
         MappedTransactionData mappedData = new MappedTransactionData(
                 original.originalData().name(),
                 original.originalData().description(),
-                new CategoryName(matchedCategoryName),
+                matchedCategoryName,
                 parentCategoryName,
                 original.originalData().money(),
                 original.originalData().type(),
@@ -295,7 +302,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, cashFlowInfo, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -316,19 +323,20 @@ public class RevalidateStagingCommandHandler
     private StagedTransaction revalidateTransactionWithPattern(
             StagedTransaction original,
             PatternMatchResult patternMatch,
-            String actualCategoryName,
-            CashFlowInfo cashFlowInfo,
+            CategoryName actualCategoryName,
+            CashFlowSkeletonView skeleton,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Look up parent category from CashFlow structure (case-insensitive)
-        CategoryName parentCategoryName = cashFlowInfo.findParentCategory(
+        CategoryName parentCategoryName = skeleton.parentOf(
                 actualCategoryName, patternMatch.type());
 
         // Create mapped data with actual category name (correct case)
         MappedTransactionData mappedData = new MappedTransactionData(
                 original.originalData().name(),
                 original.originalData().description(),
-                new CategoryName(actualCategoryName),
+                actualCategoryName,
                 parentCategoryName,
                 original.originalData().money(),
                 original.originalData().type(),
@@ -339,7 +347,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, cashFlowInfo, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -357,7 +365,8 @@ public class RevalidateStagingCommandHandler
     private StagedTransaction revalidateTransaction(
             StagedTransaction original,
             CategoryMapping mapping,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
         // Create mapped data
@@ -375,7 +384,7 @@ public class RevalidateStagingCommandHandler
         );
 
         // Validate
-        TransactionValidation validation = validateTransaction(original, cashFlowInfo, now);
+        TransactionValidation validation = validateTransaction(original, skeleton, alreadyImported, now);
 
         // Create new staged transaction with updated data
         return new StagedTransaction(
@@ -392,44 +401,24 @@ public class RevalidateStagingCommandHandler
 
     private TransactionValidation validateTransaction(
             StagedTransaction st,
-            CashFlowInfo cashFlowInfo,
+            CashFlowSkeletonView skeleton,
+            ImportedTransactions alreadyImported,
             ZonedDateTime now) {
 
-        List<String> errors = new ArrayList<>();
-
-        // Check for duplicate (based on existing transaction IDs)
-        if (cashFlowInfo.existingTransactionIds().contains(st.originalData().bankTransactionId())) {
-            return TransactionValidation.duplicate(st.originalData().bankTransactionId());
+        Optional<ImportedTransaction> alreadyHere =
+                alreadyImported.find(st.originalData().bankTransactionId());
+        if (alreadyHere.isPresent()) {
+            return TransactionValidation.duplicate(alreadyHere.get().cashChangeId());
         }
 
-        // CashFlow must be in SETUP mode for historical import
-        if (!cashFlowInfo.isInSetupMode()) {
-            errors.add("CashFlow is not in SETUP mode");
-        }
-
-        // paidDate validation for historical import
-        YearMonth paidPeriod = YearMonth.from(st.originalData().paidDate());
-        YearMonth activePeriod = cashFlowInfo.activePeriod();
-        YearMonth startPeriod = cashFlowInfo.startPeriod();
-
-        if (!paidPeriod.isBefore(activePeriod)) {
-            errors.add(String.format("paidDate %s is not before activePeriod %s",
-                    paidPeriod, activePeriod));
-        }
-
-        if (paidPeriod.isBefore(startPeriod)) {
-            errors.add(String.format("paidDate %s is before startPeriod %s",
-                    paidPeriod, startPeriod));
-        }
-
-        if (st.originalData().paidDate().isAfter(now)) {
-            errors.add("paidDate cannot be in the future");
-        }
-
-        if (!errors.isEmpty()) {
-            return TransactionValidation.invalid(errors);
-        }
-
-        return TransactionValidation.valid();
+        // The fourth copy of cashflow's date rules, now gone. Step 18 replaced the one in
+        // StageTransactionsCommandHandler; this handler and ForceUncategorizedCommandHandler had
+        // their own, with their own wording - "paidDate %s is not before activePeriod %s" here
+        // against "In SETUP mode, paidDate %s must be before activePeriod %s" there, for the same
+        // condition.
+        return skeleton.importWindow()
+                .refusalFor(st.originalData().paidDate(), now)
+                .map(refusal -> TransactionValidation.invalid(List.of(refusal.getMessage())))
+                .orElseGet(TransactionValidation::valid);
     }
 }
