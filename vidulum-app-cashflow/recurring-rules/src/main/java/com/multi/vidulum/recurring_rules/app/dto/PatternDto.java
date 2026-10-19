@@ -1,6 +1,7 @@
 package com.multi.vidulum.recurring_rules.app.dto;
 
 import com.multi.vidulum.recurring_rules.domain.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,14 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PatternDto {
 
+    /**
+     * Which kind of recurrence this is, and the one field {@link #toPattern()} cannot do without:
+     * it switches on this value, so a null used to leave the controller with a
+     * {@code NullPointerException} - a 500 for a request a reader can see is incomplete. The rest
+     * of the fields below are per-type and default when absent, and their ranges are the domain's
+     * to check, not this record's.
+     */
+    @NotNull(message = "Pattern type is required")
     private RecurrenceType type;
 
     // Daily

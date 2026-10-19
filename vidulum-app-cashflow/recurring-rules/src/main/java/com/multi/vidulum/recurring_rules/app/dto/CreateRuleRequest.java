@@ -1,6 +1,7 @@
 package com.multi.vidulum.recurring_rules.app.dto;
 
 import com.multi.vidulum.common.Money;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -36,6 +37,12 @@ public class CreateRuleRequest {
     @NotBlank(message = "Category is required")
     private String category;
 
+    /**
+     * {@code @Valid} as well as {@code @NotNull}: without it the pattern object is checked for
+     * being present and nothing inside it is checked at all, because bean validation does not
+     * descend into a nested object unless told to.
+     */
+    @Valid
     @NotNull(message = "Pattern is required")
     private PatternDto pattern;
 

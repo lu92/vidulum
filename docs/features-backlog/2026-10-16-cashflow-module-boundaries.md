@@ -1893,3 +1893,45 @@ polu `commandGateway`: komenda dostaje własny handler wtedy, gdy ktoś ma powó
 
 Rejestracja potwierdzona w logu, nie założona:
 `Command handler [...CreateRuleCommandHandler] registered!` i to samo dla update.
+
+### Dopisek: wejście do tej komendy dostało walidację, której brakowało
+
+`CreateRuleRequest` miał adnotacje jakarta na polach własnych, a kontroler `@Valid` — ale pole
+`pattern` nosiło tylko `@NotNull`, a **bean validation nie wchodzi w zagnieżdżony obiekt, dopóki się
+jej nie każe**. `PatternDto.toPattern()` robi `switch (type)`, więc brak typu kończył się
+`NullPointerException` przy budowaniu komendy: **500 za żądanie, o którym widać, że jest
+niekompletne**.
+
+```java
+@Valid                                   // <- bez tego nic w PatternDto nie jest sprawdzane
+@NotNull(message = "Pattern is required")
+private PatternDto pattern;
+```
+
+Plus `@NotNull` na `PatternDto.type`. Odpowiedzią jest teraz 400 z `VALIDATION_ERROR` i
+`fieldErrors` nazywającym `pattern.type`.
+
+**Czego świadomie nie dopisałem:** zakresów per typ (`dayOfMonth` 1–31) ani relacji
+`startDate`/`endDate`. Pierwsze sprawdza domena — `MonthlyPattern` rzuca przy konstrukcji — drugie
+handler, przez `InvalidDateRangeException`. Trzecia kopia tej samej reguły to dokładnie to, co ta
+seria usuwa, więc jest na to osobny test: `itDoesNotTakeOverTheChecksThatBelongElsewhere` przechodzi
+wtedy, gdy walidator **nie** zgłasza odwróconego zakresu dat.
+
+Podział poziomów zgodny z tabelą z CLAUDE.md: adnotacje są własnością rekordu, więc
+`CreateRuleRequestValidationTest` (6 przypadków) używa prawdziwego walidatora jakarta — bez Springa i
+bez Dockera — a dwa testy w `RecurringRulesHttpIntegrationTest` pokrywają to, co widać tylko po
+HTTP: status, `ErrorCode` i przeżycie nazw pól przez serializację.
+
+Dowód negatywny zrobiony na obu poziomach, i ten po HTTP wyszedł mocniejszy: bez `@Valid` test
+jednostkowy przestaje widzieć naruszenie `pattern.type`, a test integracyjny pokazuje, co to
+znaczyło w praktyce — `expected: 400 BAD_REQUEST but was: 500 INTERNAL_SERVER_ERROR`.
+
+`UpdateRuleRequest` miał tę samą lukę i został domknięty tak samo (F54) — `@Valid` na polu plus
+własny `UpdateRuleRequestValidationTest`, osobny od create, bo **adnotacje należą do klasy**: zdjęta
+z jednej nie zostałaby zauważona przez test drugiej. Dowód negatywny powtórzył się co do znaku:
+`expected: 400 BAD_REQUEST but was: 500 INTERNAL_SERVER_ERROR`.
+
+Jeden przypadek w tamtym teście pilnuje **różnicy** między dwoma żądaniami: update nie nazywa ani
+użytkownika, ani cash flow, bo `UpdateRuleCommandHandler` czyta cash flow z zapisanej reguły — więc
+edycją nie da się przenieść reguły między cash flowami, i lista wymaganych pól jest tam wypisana
+wprost, żeby ta właściwość miała gdzie upaść.

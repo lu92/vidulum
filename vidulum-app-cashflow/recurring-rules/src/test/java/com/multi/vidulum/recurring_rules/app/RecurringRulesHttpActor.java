@@ -463,6 +463,29 @@ public class RecurringRulesHttpActor {
         log.info("Updated recurring rule via HTTP: id={}", ruleId);
     }
 
+    /**
+     * Updates a rule expecting a bean-validation refusal. The rule id need not exist: {@code @Valid}
+     * rejects the body before the handler looks anything up.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> updateRuleExpectingValidationError(
+            String ruleId, UpdateRuleRequest request) {
+        try {
+            return rawRestTemplate.exchange(
+                    baseUrl + "/" + ruleId,
+                    HttpMethod.PUT,
+                    new HttpEntity<>(request, jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
     // ============ Pause/Resume Operations ============
 
     /**
@@ -554,6 +577,31 @@ public class RecurringRulesHttpActor {
             );
         } catch (HttpClientErrorException e) {
             Map<String, String> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        }
+    }
+
+    /**
+     * Creates a rule expecting a bean-validation refusal.
+     *
+     * <p>Separate from {@link #createRuleExpectingError} because {@code ApiError.fieldErrors} is a
+     * list, which a {@code Map<String, String>} cannot hold - and the field names are the whole
+     * point of asserting a validation error rather than just its code.
+     */
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> createRuleExpectingValidationError(CreateRuleRequest request) {
+        try {
+            return rawRestTemplate.exchange(
+                    baseUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, jsonHeaders()),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (HttpClientErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
+            return ResponseEntity.status(e.getStatusCode()).body(errorBody);
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            Map<String, Object> errorBody = e.getResponseBodyAs(Map.class);
             return ResponseEntity.status(e.getStatusCode()).body(errorBody);
         }
     }
