@@ -279,7 +279,8 @@ class CashFlowSkeletonComponentTest {
                 SOME_TIME,
                 SOME_TIME,
                 null,
-                new Checksum("irrelevant-to-the-skeleton"));
+                new Checksum("irrelevant-to-the-skeleton"),
+                null);
     }
 
     private static Map<CashChangeId, com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot> cashChanges(int howMany) {

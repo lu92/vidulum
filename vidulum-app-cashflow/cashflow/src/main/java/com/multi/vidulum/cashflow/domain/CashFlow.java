@@ -104,6 +104,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
     private ZonedDateTime importCutoffDateTime;
 
     private Checksum lastMessageChecksum;
+    /** The stored document's version, carried between load and save - see CashFlowSnapshot. */
+    private Long version;
     private List<CashFlowEvent> uncommittedEvents = new LinkedList<>();
 
 
@@ -133,7 +135,8 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 created,
                 lastModification,
                 importCutoffDateTime,
-                lastMessageChecksum
+                lastMessageChecksum,
+                version
         );
     }
 
@@ -167,6 +170,7 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
                 .lastModification(snapshot.lastModification())
                 .importCutoffDateTime(snapshot.importCutoffDateTime())
                 .lastMessageChecksum(snapshot.lastMessageChecksum())
+                .version(snapshot.version())
                 .build();
     }
 
@@ -713,6 +717,36 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
      * Note: Only PENDING (expected) cash changes are deleted.
      * CONFIRMED transactions are skipped silently.
      */
+    /**
+     * Appends every cash change the batch carries, and records <b>one</b> event.
+     *
+     * <p>No validation here, deliberately: by the time this runs,
+     * {@code BatchAppendExpectedCashChangesCommandHandler} has already checked every item, which is
+     * what makes the operation atomic. Nothing is appended unless all of them pass, so this method
+     * never has to undo half a batch.
+     */
+    public void apply(CashFlowEvent.ExpectedCashChangesBatchAppendedEvent event) {
+        for (CashFlowEvent.ExpectedCashChangesBatchAppendedEvent.AppendedExpectedCashChange appended : event.appended()) {
+            CashChange cashChange = new CashChange(
+                    appended.cashChangeId(),
+                    appended.name(),
+                    appended.description(),
+                    appended.money(),
+                    appended.type(),
+                    appended.categoryName(),
+                    CashChangeStatus.PENDING,
+                    event.created(),
+                    appended.dueDate(),
+                    null,
+                    event.sourceRuleId(),
+                    appended.selfTransfer(),
+                    null   // expected, not imported - there is no source transaction yet
+            );
+            cashChanges.put(cashChange.getSnapshot().cashChangeId(), cashChange);
+        }
+        add(event);
+    }
+
     public void apply(CashFlowEvent.ExpectedCashChangesBatchDeletedEvent event) {
         for (CashChangeId cashChangeId : event.deletedIds()) {
             fetchCashChange(cashChangeId).ifPresent(cashChange -> {

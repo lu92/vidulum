@@ -20,8 +20,8 @@ are running and why.
 
 **`-pl` takes `:artifactId`, not a path.** Modules live under `market/` and `wealth/`, so
 `-pl vidulum-portfolio` does not resolve — Maven looks for a directory of that name at the root.
-The `:artifactId` form is independent of where a module sits. A whole group builds with
-`-f vidulum-app-cashflow/pom.xml`, `-f market/pom.xml` or `-f wealth/pom.xml`.
+A whole group builds with `-f vidulum-app-cashflow/pom.xml`, `-f market/pom.xml` or
+`-f wealth/pom.xml`.
 
 ```bash
 ./mvnw compile -pl :vidulum-cashflow                        # one module, ~1-3s
@@ -70,7 +70,10 @@ A downstream module resolves from the local repository, so `install` the changed
 Two traps:
 
 - **`package -DskipTests` compiles every module but runs no tests** — not a full test run.
-- **Check `docker ps` before any run using Testcontainers.** A `docker-compose` stack left running
+- **After reshaping a record or a signature, `clean` is mandatory.** Incremental compilation
+  reported `BUILD SUCCESS` on eight constructor calls left one argument short; only
+  `clean test-compile` found them.
+- **Check `docker ps` before any Testcontainers run.** A `docker-compose` stack left running
   starves them, and the failures look exactly like regressions: registrations answering 500,
   `TimeoutException: Timed out waiting for a node assignment`, tests taking minutes. Take the stack
   down (`docker-compose -f docker-compose-final.yml down -v`) rather than debugging the code.
@@ -94,8 +97,8 @@ vidulum/
 │   │                            #   NOT a parent - children inherit from the root pom, so moving
 │   │                            #   one in or out changes no dependency and no artifactId
 │   ├── cashflow-api/            #   CONTRACT: CashFlowModuleApi (skeletonOf, exists,
-│   │                            #   createCategory, importHistorical, rollbackImport,
-│   │                            #   alreadyImported), Type, view/, error/ + forecast/:
+│   │                            #   createCategory, importHistorical, appendExpected,
+│   │                            #   rollbackImport, alreadyImported), view/, error/ + forecast/:
 │   │                            #   CashFlowForecastApi - a SECOND contract, answered by the
 │   │                            #   read model, not the aggregate
 │   ├── user-financial-profile-api/ # CONTRACT: UserFinancialProfileApi (@HttpExchange)
@@ -165,9 +168,9 @@ The rules that hold it together:
   portfolio, trading, pnl or risk; `wealth/` reaches in through `*-api` only. Prices and venues do
   not know who owns what.
 - **Contracts are marked, and the markers are checked.** `ModuleApi` (what another module may ask),
-  `ModuleSpi` (a socket somebody else plugs into), `ModuleEventHandler` (reacting to an
-  announcement) and `IntegrationEvent` (a payload on a topic) live in shared-kernel's
-  `shared/module` and `shared/ddd/event`. They carry no methods; their job is that `Ctrl+H` answers
+  `ModuleSpi` (a socket somebody plugs into), `ModuleEventHandler` (reacting to an announcement) and
+  `IntegrationEvent` (a payload on a topic) live in shared-kernel's `shared/module` and
+  `shared/ddd/event`. They carry no methods; their job is that `Ctrl+H` answers
   "what can be asked of which module" and that `ModuleBoundariesArchTest` has something to key on.
   **A new contract extends the right marker; a new `@KafkaListener` goes through a handler
   interface.** That test's three exemption lists measure the gap — they may only shrink.
@@ -193,11 +196,10 @@ queryGateway.send(new GetCashFlowQuery(cashFlowId));
 ```
 
 **Both gateway beans come from `CqrsGatewayConfiguration` in shared-kernel — `@Import` it, never
-redeclare them.** A gateway is deliberately built with **no dependencies**, and a
-`SmartInitializingSingleton` registers the handlers once the context has created its singletons.
-Collecting `List<CommandHandler>` inside the gateway's own bean method instead closes a cycle —
-gateway → handler → module contract → implementation → gateway — which used to be papered over with
-`@Lazy` in eight places. `CqrsGatewayConfigurationTest` pins this, including a negative test that
+redeclare them.** A gateway is built with **no dependencies**, and a `SmartInitializingSingleton`
+registers handlers once the singletons exist. Collecting `List<CommandHandler>` inside the gateway's
+own bean method closes a cycle — gateway → handler → contract → implementation → gateway — which
+used to be papered over with `@Lazy` in eight places. `CqrsGatewayConfigurationTest` pins this, including a negative test that
 asserts the old arrangement fails to start, so **a new `*ModuleApiImpl` needs no `@Lazy`**.
 
 ### A module contract may have two transports — in-process is always the default
@@ -216,16 +218,16 @@ asserts exactly one bean exists **and that it is not the HTTP one**.
   that a field is called `category`, not `categoryName`. The arrangement it replaced had a consumer
   hand-rolling records for somebody else's API.
 - **An implementation translates the contract's encoding into the domain's** — both transports
-  must emit the same event. A null `parentCategoryName` means top-level; the domain spells it
+  must emit the same event. A null `parentCategoryName` means top-level, which the domain spells
   `CategoryName.NOT_DEFINED`. The controller converted, `CashFlowModuleApiImpl` forwarded the null,
-  and `CategoryCreatedEventHandler`'s `equals` then killed the **forecast projection** with an NPE
-  — event dropped after nine retries, every write still 2xx. My own test asserted the pass-through
+  and `CategoryCreatedEventHandler`'s `equals` killed the **forecast projection** with an NPE —
+  event dropped after nine retries, every write still 2xx. My own test asserted the pass-through
   (`isNull()`), so a green test pinned the defect: **assert what the domain is told**, not that an
-  argument survived unchanged.
+  argument survived.
 - **A test double standing in for a contract is a signal.** `createCategory` had three
-  implementations: one HTTP, one dead, one gateway-based double that 29 test classes used. The
-  double did what the in-process implementation should have, so making the real one available
-  deleted the double and moved those 29 classes onto production code.
+  implementations: one HTTP, one dead, one gateway-based double 29 test classes used. The double did
+  what the in-process one should have, so making the real one available deleted it and moved those
+  29 classes onto production code.
 
 ### A rule two modules need is a value in the contract, not a method on it
 
@@ -233,9 +235,9 @@ asserts exactly one bean exists **and that it is not the HTTP one**.
 `CashFlowSkeletonView.importWindow()` hands it to a consumer and `CashFlowSnapshot.importWindow()`
 builds it from the aggregate. One implementation, two callers.
 
-**Why a value, not `canImport(date)`: a predicate asked per row is a request per row** — a 402-line
-statement would pay 402. The skeleton already carries all three inputs, so the consumer fetches
-once and evaluates locally against the producer's logic instead of a copy.
+**Why a value, not `canImport(date)`: a predicate asked per row is a request per row** — a 402-row
+statement would pay 402. The skeleton carries all three inputs, so the consumer fetches once and
+evaluates locally against the producer's logic, not a copy.
 
 It replaced two copies of five conditions — typed exceptions in the command handler, the same five
 as `String.format` in `StageTransactionsCommandHandler` — which had already diverged. When merging
@@ -311,9 +313,9 @@ statement a no-op. **The guard is in the aggregate, not an index**: cash changes
 documents — a multikey unique index permits repeats inside one document's array, and `cashFlowId`
 is unique per document anyway. The trade pattern (`@CompoundIndex` on `originTradeId`) works only
 because `TradeEntity` is one document per trade. **Check the storage shape before reusing it.**
-Two things it does not give: no storage-level guarantee (that needs cash changes in their own
-collection), and no protection against concurrent writes — `@Version` appears nowhere here and a
-save replaces the whole document (F35).
+No storage-level guarantee though — that needs cash changes in their own collection. Concurrent
+writes *are* covered now: `CashFlowEntity` carries a `@Version`, so a save is a conditional update
+and the loser gets a 409 instead of overwriting in silence (F35); other aggregates have none (F57).
 
 ### One mapping path per field, or the field will exist in only one of them
 
@@ -441,7 +443,7 @@ duplicating payload assertions.
 ## Development Status
 
 **Under active development, no production users.** So: no data migrations, breaking changes are
-fine, and when in doubt wipe the data and start fresh. Don't write migration scripts.
+fine, and when in doubt wipe the data. Don't write migration scripts.
 
 ### MongoDB entities, cleaners and indexes
 
@@ -476,12 +478,11 @@ annotation exists proves nothing; assert the index is in the database
 | vidulum-exchange | `ExchangeConnectionDataCleaner` | ExchangeConnectionEntity |
 | vidulum-app | `CoreDataCleaner` | Token, UserEntity, TaskEntity |
 
-**One cleaner per subdomain, not per Maven module** — the subdomain owning an entity is the one that
-notices a new one, and the split survives extraction into its own artifact (steps 06c and 09 moved
-`TradingDataCleaner` and `PnlDataCleaner` unchanged). `vidulum-quotation` and `vidulum-risk` have
-none because they persist nothing. For `bank_data_adapter` this is not cosmetic: a transformation is
-a **cache of an AI answer**, so a collection left behind makes a run reuse a previous model's output
-and look deterministic when it is not.
+**One cleaner per subdomain, not per Maven module** — the subdomain owning an entity notices a new
+one, and the split survives extraction into its own artifact. `vidulum-quotation` and `vidulum-risk`
+have none because they persist nothing. For `bank_data_adapter` this is not cosmetic: a
+transformation is a **cache of an AI answer**, so a collection left behind makes a run reuse a
+previous model's output and look deterministic when it is not.
 
 ## Docker Rebuild (Full Restart)
 
@@ -546,11 +547,10 @@ vidulum-app:latest             # Application image
 
 ## Documentation Structure
 
-Where new docs go: feature designs **not yet implemented** → `docs/features-backlog/`
-(`VID-XXX-name.md` or `YYYY-MM-DD-name.md`) · market/cost research → `docs/business-analysis/` ·
-test reports and validation evidence → `docs/evidence/` (periodically cleaned) · manual test scripts
-→ `docs/manual-testing/` · UI mockups → `docs/design/` · current reference docs → repo root or
-`docs/` root.
+Where new docs go: feature designs → `docs/features-backlog/` (`VID-XXX-name.md` or
+`YYYY-MM-DD-name.md`) · market/cost research → `docs/business-analysis/` · test reports and
+evidence → `docs/evidence/` (periodically cleaned) · manual test scripts → `docs/manual-testing/` ·
+UI mockups → `docs/design/` · reference docs → repo root or `docs/` root.
 
 | File | Description |
 |------|-------------|
@@ -614,14 +614,12 @@ failure, so the `ErrorCode` the producer already had never reaches anyone.
 
 ## CSV Import Business Flow
 
-**Full walkthrough, ready-made request bodies, the flow diagram and the staging-session state
-machine live in `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`.** What stays here is the part
-that is easy to get wrong.
+**Walkthrough, request bodies, the flow diagram and the staging state machine:
+`docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`.** Here stays what is easy to get wrong.
 
 Eleven steps: register → `POST /cash-flow/with-history` → AI transform CSV → import to staging →
 AI categorize → accept-ai (or `force-uncategorized`) → check staging → start import →
-`attest-historical-import` → verify cash flow → verify forecast. Use only the endpoints in the
-REST reference below.
+`attest-historical-import` → verify cash flow → verify forecast. Use only the endpoints below.
 
 ### Test data must be consistent
 
@@ -633,8 +631,8 @@ REST reference below.
 | `confirmedBalance` at attestation | the last row's "Saldo po operacji" — `76047.25 PLN` |
 | IBAN | `PL61109010140000071219812874`. Validation is strict: `PL` + 2 check digits + 22 digits |
 
-**Why `startPeriod` matters:** a cash flow creates historical months from `startPeriod` to the
-current one, and a transaction dated before it — or in the future — is rejected.
+**Why `startPeriod` matters:** a cash flow creates historical months from `startPeriod` to now, and
+a transaction dated before it — or in the future — is rejected.
 
 ### Staging session states
 
@@ -683,6 +681,7 @@ format: `date,amount,currency,type,bankCategory,name,description,merchant`.
 | GET | `/cash-flow?userId={userId}` | List user's CashFlows (query param, NOT path!) |
 | POST | `/cash-flow/cf={cashFlowId}/category` | Add category to CashFlow |
 | POST | `/cash-flow/cf={cashFlowId}/attest-historical-import` | Attest historical import (activates CashFlow) |
+| POST | `/cash-flow/cf={cashFlowId}/expected-cash-changes/batch` | Append many expected cash changes atomically → returns their ids |
 | POST | `/cash-flow/cf={cashFlowId}/rollover` | Rollover to next period |
 | DELETE | `/cash-flow/cf={cashFlowId}/import` | Rollback historical import |
 

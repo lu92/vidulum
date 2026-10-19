@@ -8,6 +8,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * Turns a message on the {@code cash_flow} topic back into a domain event.
+ *
+ * <p><b>This switch is on a String, so the compiler cannot tell you when it is incomplete.</b>
+ * {@code CashFlowEvent} is sealed, which is why the switches in {@code CashFlowAggregateProjector}
+ * and {@code CashFlowForecastProcessor} refuse to compile when an event is added - but here the name
+ * arrives as metadata, and a missing case means {@code default} throws at runtime: the event is
+ * retried nine times and dropped while the write that produced it answered 2xx. A new event type
+ * needs a line here, and the test that notices is the one asserting the projection changed.
+ */
 @Slf4j
 @Component
 @AllArgsConstructor
@@ -87,6 +97,9 @@ public class CashFlowEventListener {
             }
             case "ExpectedCashChangeDeletedEvent" -> {
                 return event.getContent().to(CashFlowEvent.ExpectedCashChangeDeletedEvent.class);
+            }
+            case "ExpectedCashChangesBatchAppendedEvent" -> {
+                return event.getContent().to(CashFlowEvent.ExpectedCashChangesBatchAppendedEvent.class);
             }
             case "ExpectedCashChangesBatchDeletedEvent" -> {
                 return event.getContent().to(CashFlowEvent.ExpectedCashChangesBatchDeletedEvent.class);

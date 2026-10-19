@@ -14,6 +14,8 @@ import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistorical
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
+import com.multi.vidulum.cashflow.api.ExpectedCashChange;
+import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
@@ -130,6 +132,26 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 change.paidDate(),
                 change.selfTransfer(),
                 change.bankTransactionId()));
+    }
+
+    @Override
+    public List<CashChangeId> appendExpected(CashFlowId cashFlowId, String sourceRuleId, List<ExpectedCashChange> changes) {
+        // Through the gateway, like every other write here: the aggregate decides whether each item
+        // may be appended at all, and the handler reserves the ids for the whole batch in one go.
+        // Name and Description are wrapped on this side - the contract carries strings because those
+        // two value objects live in cashflow.domain, where a consumer may not look.
+        return commandGateway.send(new BatchAppendExpectedCashChangesCommand(
+                cashFlowId,
+                sourceRuleId,
+                changes.stream()
+                        .map(change -> new BatchAppendExpectedCashChangesCommand.ExpectedCashChangeToAppend(
+                                change.categoryName(),
+                                new Name(change.name()),
+                                new Description(change.description()),
+                                change.money(),
+                                change.type(),
+                                change.dueDate()))
+                        .toList()));
     }
 
     @Override

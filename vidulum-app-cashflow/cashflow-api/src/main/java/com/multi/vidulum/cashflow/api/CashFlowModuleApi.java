@@ -14,6 +14,8 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.shared.module.ModuleApi;
 
+import java.util.List;
+
 /**
  * What another module may ask of cashflow.
  *
@@ -145,6 +147,30 @@ public interface CashFlowModuleApi extends ModuleApi {
      *
      * @throws CashFlowNotFoundException when no such cash flow exists
      */
+    /**
+     * Records transactions a consumer expects to happen, all of them or none, and answers with the
+     * ids they were given - in the order they were handed over.
+     *
+     * <p><b>Batch only, on purpose.</b> The single-append endpoint exists for a person adding one
+     * planned transaction in the UI; this contract serves a machine deriving many at once, and for
+     * such a caller one-at-a-time was never the right shape. A daily recurring rule covers 365 days
+     * of the forecast window, and the loop it replaces paid, per occurrence, a request, an aggregate
+     * load, a whole-document save, a round trip to the id sequence and a message on the topic.
+     *
+     * <p><b>Atomic.</b> Every item is checked before any is appended, so a batch either lands whole
+     * or changes nothing. This matters more than the cost: a loop that failed on occurrence 200 left
+     * 199 cash changes in the cash flow while the caller recorded none of their ids, so nothing could
+     * ever find them again.
+     *
+     * <p>{@code sourceRuleId} ties the batch to whatever derived it, which is how it can later be
+     * withdrawn as a batch too.
+     *
+     * @param changes the transactions to record; empty appends nothing and answers empty
+     * @return the ids minted, positionally matching {@code changes}
+     * @throws CashFlowNotFoundException when no such cash flow exists
+     */
+    List<CashChangeId> appendExpected(CashFlowId cashFlowId, String sourceRuleId, List<ExpectedCashChange> changes);
+
     RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
 
     /**

@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.common.CashChangeId;
@@ -109,6 +110,55 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
         } catch (HttpClientErrorException e) {
             throw translate(e, cashFlowId, categoryName);
         }
+    }
+
+    @Override
+    public List<CashChangeId> appendExpected(CashFlowId cashFlowId, String sourceRuleId, List<ExpectedCashChange> changes) {
+        if (changes == null || changes.isEmpty()) {
+            return List.of();
+        }
+        try {
+            BatchAppendResponse response = restClient.post()
+                    .uri("/cash-flow/cf={cashFlowId}/expected-cash-changes/batch", cashFlowId.id())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new BatchAppendRequest(
+                            sourceRuleId,
+                            changes.stream()
+                                    .map(change -> new ExpectedCashChangeRequest(
+                                            change.categoryName().name(),
+                                            change.name(),
+                                            change.description(),
+                                            change.money(),
+                                            change.type(),
+                                            change.dueDate()))
+                                    .toList()))
+                    .retrieve()
+                    .body(BatchAppendResponse.class);
+
+            if (response == null || response.cashChangeIds() == null) {
+                throw new IllegalStateException(
+                        "Batch append answered without ids for cash flow " + cashFlowId.id());
+            }
+
+            return response.cashChangeIds().stream().map(CashChangeId::of).toList();
+
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new CashFlowNotFoundException(cashFlowId);
+            }
+            throw e;
+        }
+    }
+
+    private record BatchAppendRequest(String sourceRuleId, List<ExpectedCashChangeRequest> changes) {
+    }
+
+    private record ExpectedCashChangeRequest(String category, String name, String description,
+                                             Money money, Type type, ZonedDateTime dueDate) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record BatchAppendResponse(List<String> cashChangeIds) {
     }
 
     @Override

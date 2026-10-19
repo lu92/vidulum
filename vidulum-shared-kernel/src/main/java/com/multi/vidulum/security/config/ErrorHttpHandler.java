@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,6 +34,22 @@ public class ErrorHttpHandler {
     }
 
     // ============ Spring Framework Exceptions ============
+
+    /**
+     * Two writers read the same aggregate and both tried to store it.
+     *
+     * <p>A 409 rather than a 500, because the caller can do something about it: read the current
+     * state and apply the change again. Before the aggregates carried a {@code @Version} this
+     * situation produced no exception at all - the second write simply replaced the first, both
+     * answered 2xx, and both emitted their events, leaving the aggregate and its projection
+     * permanently disagreeing (task F35).
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiError> handleConcurrentModification(OptimisticLockingFailureException ex) {
+        log.debug("Concurrent modification: {}", ex.getMessage());
+        ApiError error = ApiError.of(ErrorCode.CONCURRENT_MODIFICATION);
+        return ResponseEntity.status(error.httpStatus()).body(error);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {

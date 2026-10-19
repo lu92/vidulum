@@ -141,7 +141,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        ));
+                        ,
+                        null));
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 createdEvent,
@@ -241,7 +242,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        ));
+                        ,
+                        null));
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
                 createdEvent,
@@ -520,7 +522,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-07-10T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        )
+                        ,
+                        null)
                 );
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(
@@ -687,7 +690,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        )
+                        ,
+                        null)
                 );
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
@@ -847,7 +851,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-06-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        )
+                        ,
+                        null)
                 );
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId))
@@ -966,7 +971,8 @@ class CashFlowAggregateTest {
                                 ZonedDateTime.parse("2021-07-01T06:30:00Z"),
                                 null,  // importCutoffDateTime
                                 expectedChecksum
-                        )
+                        ,
+                        null)
                 );
 
         assertThat(domainCashFlowRepository.findDomainEvents(cashFlowId)).containsExactly(

@@ -1,5 +1,5 @@
 package com.multi.vidulum.cashflow_forecast_processor.app.processing;
-import com.multi.vidulum.common.CashFlowId;
+
 import com.multi.vidulum.cashflow.domain.CashFlowEvent;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastEntity;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
@@ -24,6 +24,7 @@ public class CashFlowForecastProcessor {
     private final MonthAttestedEventHandler monthAttestedEventHandler;
     private final MonthRolledOverEventHandler monthRolledOverEventHandler;
     private final ExpectedCashChangeAppendedEventHandler expectedCashChangeAppendedEventHandler;
+    private final ExpectedCashChangesBatchAppendedEventHandler expectedCashChangesBatchAppendedEventHandler;
     private final PaidCashChangeAppendedEventHandler paidCashChangeAppendedEventHandler;
     private final CashChangeConfirmedEventHandler cashChangeConfirmedEventHandler;
     private final CashChangeEditedEventHandler cashChangeEditedEventHandler;
@@ -54,6 +55,7 @@ public class CashFlowForecastProcessor {
             case CashFlowEvent.MonthAttestedEvent event -> monthAttestedEventHandler.handle(event);
             case CashFlowEvent.MonthRolledOverEvent event -> monthRolledOverEventHandler.handle(event);
             case CashFlowEvent.ExpectedCashChangeAppendedEvent event -> expectedCashChangeAppendedEventHandler.handle(event);
+            case CashFlowEvent.ExpectedCashChangesBatchAppendedEvent event -> expectedCashChangesBatchAppendedEventHandler.handle(event);
             case CashFlowEvent.PaidCashChangeAppendedEvent event -> paidCashChangeAppendedEventHandler.handle(event);
             case CashFlowEvent.CashChangeConfirmedEvent event -> cashChangeConfirmedEventHandler.handle(event);
             case CashFlowEvent.CashChangeRejectedEvent event -> cashChangeRejectedEventHandler.handle(event);

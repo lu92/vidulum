@@ -724,4 +724,44 @@ public final class CashFlowDto {
         /** Number of cash changes skipped (e.g., CONFIRMED status) */
         private int skippedCount;
     }
+
+    /**
+     * Request for appending many expected cash changes in one atomic operation.
+     *
+     * <p>No ids: the server reserves them for the whole batch and answers with them, positionally
+     * matching {@code changes}.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchAppendExpectedCashChangesRequestJson {
+        /** What derived this batch, so it can later be withdrawn as one */
+        private String sourceRuleId;
+        private List<ExpectedCashChangeJson> changes;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ExpectedCashChangeJson {
+        private String category;
+        private String name;
+        private String description;
+        private Money money;
+        private Type type;
+        private ZonedDateTime dueDate;
+    }
+
+    /**
+     * Response for batch append: the ids minted, in the order the changes were sent.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatchAppendExpectedCashChangesResponseJson {
+        private List<String> cashChangeIds;
+    }
 }

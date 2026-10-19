@@ -34,24 +34,11 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
             throw new OperationNotAllowedInSetupModeException("appendExpectedCashChange", command.cashFlowId());
         }
 
-        // Validate: cannot add cash change to archived category
-        // When multiple categories with the same name exist (one archived, one active),
-        // we need to check if there's an active one available
-        List<Category> categories = command.type() == Type.INFLOW
-                ? cashFlow.getSnapshot().inflowCategories()
-                : cashFlow.getSnapshot().outflowCategories();
-        Category activeCategory = findActiveCategory(categories, command.categoryName());
-        if (activeCategory == null) {
-            // No active category found - check if there's an archived one
-            Category archivedCategory = findArchivedCategory(categories, command.categoryName());
-            if (archivedCategory != null) {
-                throw new CategoryIsArchivedException(command.categoryName());
-            }
-            // No category at all - will be handled by domain layer
-        }
-
-        // Validate: dueDate must be within allowed range (activePeriod to activePeriod + 11 months)
-        validateDueDateRange(command.dueDate(), cashFlow.getSnapshot().activePeriod());
+        // The same two checks the batch handler makes, in the same order - see
+        // ExpectedCashChangeRules. They were private methods here until the batch command needed
+        // them too, and two copies of "may this be appended" is the pair that drifts.
+        ExpectedCashChangeRules.requireAppendable(
+                cashFlow.getSnapshot(), command.categoryName(), command.type(), command.dueDate());
 
         CashFlowEvent.ExpectedCashChangeAppendedEvent event = new CashFlowEvent.ExpectedCashChangeAppendedEvent(
                 command.cashFlowId(),
@@ -79,56 +66,5 @@ public class AppendExpectedCashChangeCommandHandler implements CommandHandler<Ap
 
         log.info("Expected cash change [{}] has been appended!", cashFlow.getSnapshot());
         return command.cashChangeId();
-    }
-
-    /**
-     * Finds an active (non-archived) category by name.
-     */
-    private Category findActiveCategory(List<Category> categories, CategoryName categoryName) {
-        for (Category category : categories) {
-            if (category.getCategoryName().equals(categoryName) && category.isActive()) {
-                return category;
-            }
-            // Check subcategories
-            Category found = findActiveCategory(category.getSubCategories(), categoryName);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Finds an archived category by name.
-     */
-    private Category findArchivedCategory(List<Category> categories, CategoryName categoryName) {
-        for (Category category : categories) {
-            if (category.getCategoryName().equals(categoryName) && category.isArchived()) {
-                return category;
-            }
-            // Check subcategories
-            Category found = findArchivedCategory(category.getSubCategories(), categoryName);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Validates that dueDate is within allowed range.
-     * Allowed range: activePeriod (current month) to activePeriod + 11 months (forecasted period).
-     *
-     * @param dueDate      the due date to validate
-     * @param activePeriod the current active period
-     * @throws DueDateOutsideAllowedRangeException if dueDate is outside allowed range
-     */
-    private void validateDueDateRange(ZonedDateTime dueDate, YearMonth activePeriod) {
-        YearMonth dueDateMonth = YearMonth.from(dueDate);
-        YearMonth maxAllowedMonth = activePeriod.plusMonths(11);
-
-        if (dueDateMonth.isBefore(activePeriod) || dueDateMonth.isAfter(maxAllowedMonth)) {
-            throw new DueDateOutsideAllowedRangeException(dueDate, activePeriod);
-        }
     }
 }

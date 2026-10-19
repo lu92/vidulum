@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.YearMonth;
@@ -46,6 +47,18 @@ public class CashFlowEntity {
     private Date importCutoffDateTime;
     private String lastMessageChecksum;
 
+    /**
+     * Turns every save into a conditional update: Spring Data puts this value in the query and
+     * raises {@code OptimisticLockingFailureException} when the document has moved on.
+     *
+     * <p>Without it, {@code save} replaced the whole document unconditionally - so two writers who
+     * had both read the same cash flow each stored their own version of it, the second silently
+     * discarding the first's work while both answered 2xx and both emitted their events. That left
+     * the aggregate and the forecast projection permanently disagreeing, with nothing to notice.
+     */
+    @Version
+    private Long version;
+
     public static CashFlowEntity fromSnapshot(CashFlowSnapshot snapshot) {
         String id = Optional.ofNullable(snapshot.cashFlowId())
                 .map(CashFlowId::id).orElse(null);
@@ -77,6 +90,7 @@ public class CashFlowEntity {
                 .lastModification(lastModification)
                 .importCutoffDateTime(importCutoffDateTime)
                 .lastMessageChecksum(lastMessageChecksum)
+                .version(snapshot.version())
                 .build();
     }
 
@@ -109,7 +123,8 @@ public class CashFlowEntity {
                 createdDateTime,
                 lastModificationDateTime,
                 importCutoffDateTimeValue,
-                checksumValue
+                checksumValue,
+                version
         );
     }
 }

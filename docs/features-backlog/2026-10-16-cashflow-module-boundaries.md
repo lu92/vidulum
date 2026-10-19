@@ -1935,3 +1935,190 @@ Jeden przypadek w tamtym teście pilnuje **różnicy** między dwoma żądaniami
 użytkownika, ani cash flow, bo `UpdateRuleCommandHandler` czyta cash flow z zapisanej reguły — więc
 edycją nie da się przenieść reguły między cash flowami, i lista wymaganych pól jest tam wypisana
 wprost, żeby ta właściwość miała gdzie upaść.
+
+---
+
+## 29. Co zrobił krok 32: dopisywanie hurtem w kontrakcie cashflow
+
+Dwie decyzje podjęte z góry: **operacja atomowa** i **zbiorcza rezerwacja identyfikatorów**.
+Kolejność wykonania: shared-kernel, potem cashflow; podmiana w recurring-rules osobno.
+
+### Część 1: `generateCashChangeIds(int)`
+
+Każdy identyfikator kosztował własne `findAndModify`, więc reguła dzienna płaciła **365 round-tripów
+do Mongo, zanim powstał choć jeden cash change** (import CSV — 402). Teraz jedno `$inc` o `count` i
+zakres `[v − count + 1, v]`.
+
+**Dwie rzeczy, które trzeba było zrobić uważnie:**
+
+```java
+if (result == null || result.getValue() - count < initialValue) {
+```
+
+Warunek nie brzmi `value <= initialValue`, jak w wersji pojedynczej, i to nie kosmetyka: świeża
+sekwencja po `upsert` + `inc(count)` odpowiada `count`, a sekwencja zostawiona pod progiem
+dziesięciocyfrowym wydałaby zakres **schodzący pod próg** — identyfikatory łamiące własny format.
+Dla `count == 1` oba warunki są równoważne, co jest dokładnie tym, co pozwala pojedynczej ścieżce
+przejść tędy bez zmiany zachowania.
+
+I druga: **`generateCashChangeId()` deleguje do wersji zbiorczej.** Jedna kopia arytmetyki, nie dwie
+— ta sama lekcja co `CashChange.from` kontra ręczna kopia mapowania w `CashFlow.from`.
+
+Pokrycie rozdzielone według tego, co dany poziom umie sprawdzić: `BusinessIdGeneratorTest` (7, atrapa
+`MongoTemplate`) mierzy **liczbę round-tripów** i arytmetykę — w tym zimny start i to, że sekwencja
+zostaje na końcu zakresu, a nie na jego początku. `BusinessIdGeneratorMongoTest` (3, prawdziwy Mongo
+w `vidulum-app`) odpowiada na jedno pytanie, którego atrapa nie umie: **czy druga rezerwacja nie
+zachodzi na pierwszą**. Żadnej asercji na wartość bezwzględną — kolekcja `sequences` celowo nie jest
+czyszczona przez żaden `DataCleaner`, bo identyfikatory nie mają być używane ponownie.
+
+Dowód negatywny: przywrócenie starego warunku wywala oba przypadki zimnego startu i tylko je.
+
+### Część 2: komenda, zdarzenie, projekcja i kontrakt
+
+Pełny pionowy przekrój, wzorowany na `BatchDelete`, który te pytania rozstrzygnął już wcześniej:
+**jedno zdarzenie zbiorcze**, jeden load, jeden zapis.
+
+```java
+findById(...)                                       // jeden load
+command.changes().forEach(ExpectedCashChangeRules::requireAppendable)   // WSZYSTKO zanim cokolwiek
+List<CashChangeId> ids = businessIdGenerator.generateCashChangeIds(n);  // jedna rezerwacja
+cashFlow.apply(batchEvent); save(cashFlow); emit(batchEvent);           // jeden zapis
+```
+
+**Atomowość odwraca decyzję `BatchDelete` i dlatego trzeba ją uzasadnić:** tam „nie ma" i „nie
+PENDING" to normalne wyniki sprzątania po regule, której część transakcji użytkownik potwierdził. Tu
+analogii nie ma — zła data to błąd wołającego, a ciche pominięcie oznacza brakującą pozycję w
+prognozie, o której nic nie mówi. Walidacja **przed** rezerwacją identyfikatorów, żeby odrzucona
+partia nie zostawiała dziur w sekwencji.
+
+**Dwie duplikacje, których nie dopuściłem:**
+
+| | |
+|---|---|
+| `ExpectedCashChangeRules` | trzy walidacje były prywatnymi metodami pojedynczego handlera; dwie kopie „czy wolno dopisać" rozjechałyby się w najgorszy możliwy sposób — partia przyjmująca to, czego pojedynczy append odmawia. Kolejność sprawdzeń zachowana co do joty |
+| `ExpectedCashChangeProjector` | ~60 linii arytmetyki statystyk w projekcji; oba handlery wołają jedno przejście na element, a różnią się tylko tym, ile elementów podają i że statement czytają i zapisują **raz** |
+
+Pojedynczy handler zmalał ze 115 linii do 71, a 96 testów `vidulum-cashflow` przeszło bez zmiany —
+czyli przepięcie zachowało zachowanie.
+
+### Rzecz, którą złapał test, a nie kompilator
+
+`CashFlowEvent` jest `sealed`, więc **kompilator sam wskazał** dwa `switch`-e wymagające nowego
+przypadku: `CashFlowAggregateProjector` i `CashFlowForecastProcessor`. Ale jest trzeci — w
+`CashFlowEventListener` — i on przełącza **po stringu** z metadanych, z `default -> throw`.
+Kompilator nic nie powie, a objaw jest ten z CLAUDE.md: zdarzenie ponowione dziewięć razy i
+porzucone, gdy zapis, który je wyprodukował, odpowiedział 2xx.
+
+Wyszło to jako `ConditionTimeoutException` w teście projekcji — czyli dokładnie ten test był
+jedynym, co mogło to wykryć. Dopisany `case` plus javadoc nad klasą mówiący, że ten `switch` jest
+poza zasięgiem kompilatora i że nowe zdarzenie wymaga tu linii.
+
+### Pokrycie
+
+| poziom | co |
+|---|---|
+| `BusinessIdGeneratorTest` (7) | liczba round-tripów, arytmetyka zakresu, zimny start |
+| `BusinessIdGeneratorMongoTest` (3) | brak zachodzenia zakresów na prawdziwej sekwencji |
+| `BatchAppendExpectedCashChangesComponentTest` (7) | **jeden load, jeden zapis, jedno zdarzenie, jedna rezerwacja**; kolejność identyfikatorów; **jedna zła data nie zostawia niczego**; SETUP, zarchiwizowana kategoria i nieznany cash flow odmawiają bez zapisu; pusta partia nie dotyka niczego |
+| `CashFlowForecastProcessorTest` (+1) | jedno zdarzenie → pozycje w właściwych miesiącach i podniesione sumy oczekiwane |
+| `CashFlowControllerTest` (+3) | endpoint oddaje identyfikatory; atomowość po HTTP; pusta partia |
+| `HttpCashFlowModuleApiIntegrationTest` (+3) | **drugi transport kontraktu** — bo adapter HTTP, którego nikt nie ćwiczy, to dokładnie ten rodzaj kodu, który cicho gnije |
+
+Dowód negatywny dla atomowości: przeniesienie rezerwacji identyfikatorów przed walidację wywala
+dokładnie `oneBadDueDateLeavesNothingBehind`.
+
+### Czego świadomie nie zrobiłem
+
+- **`importHistorical` zostaje pojedyncze.** Ta sama metoda zbiorcza identyfikatorów mu pomoże, ale
+  import ma własną idempotencję po `bankTransactionId`, więc partia wymaga tam decyzji, co zrobić z
+  wierszem już zaimportowanym — pominąć czy odrzucić całość. Osobna sprawa.
+- **`emit`, nie `emitWithKey`**, spójnie z rodzeństwem wsadowym. Niespójność jest wcześniejsza.
+- **Brak idempotencji partii.** Oczekiwane cash changes nie mają klucza w rodzaju
+  `bankTransactionId`, więc ponowne wysłanie dopisze drugi raz. Tak jest i dziś, tylko 365 razy
+  drobniej.
+- **„Atomowe" nie znaczy „odizolowane".** Jeden zapis jednego dokumentu gwarantuje brak częściowej
+  partii, ale `@Version` nie ma nigdzie (F35), więc równoległy zapis do tego samego cash flow nadal
+  może nadpisać.
+
+---
+
+## 30. Co zrobił krok 33: blokowanie optymistyczne na cash flow (F35)
+
+Zapis wyglądał tak i nie miał żadnego warunku:
+
+```java
+CashFlowEntity rawCashFlowEntity = CashFlowEntity.fromSnapshot(aggregate.getSnapshot());
+cashFlowMongoRepository.save(rawCashFlowEntity);     // podmiana CAŁEGO dokumentu
+```
+
+Dwóch pisarzy, którzy przeczytali ten sam cash flow, zapisywało każdy swoją wersję — drugi **cicho
+wyrzucał pracę pierwszego**, oba oddawały 2xx i oba emitowały swoje zdarzenia. Skutek nie kończył się
+na utraconych danych: projekcja prognozy dostawała **obie** partie, więc agregat i model odczytu
+rozjeżdżały się na stałe, i nic tego nie zauważało.
+
+### Wersja musi podróżować, i to przesądza o projekcie
+
+`save` **odbudowuje encję ze snapshotu**, więc wersja zostawiona w infrastrukturze dotarłaby do
+MongoDB jako `null` — a `null` znaczy „nowy dokument", czyli zapis przestałby być warunkowy i wrócił
+do nadpisywania. Trasa ma cztery punkty:
+
+```
+CashFlowEntity.toSnapshot()  →  CashFlowSnapshot.version()  →  CashFlow.version
+                             ←                              ←  CashFlowEntity.fromSnapshot()
+```
+
+To wkłada infrastrukturę do rekordu domenowego — i tak, to jest koszt. Uzasadnienie: ten rekord
+**jest kształtem, jaki agregat przyjmuje, żeby zostać zapisanym**, a tuż obok siedzi już
+`lastMessageChecksum`, czyli metadana synchronizacji z Kafką. Wersja należy do tej samej kategorii.
+
+Osiem miejsc konstruujących snapshot (dwa produkcyjne, sześć w testach) dostało `null` — świeży
+agregat nie ma jeszcze wersji, a pierwszy zapis musi być wstawieniem, inaczej nic nie dałoby się
+utworzyć. Jest na to osobny przypadek testowy.
+
+### Przegrany dowiaduje się jako 409, nie 500
+
+`ErrorCode.CONCURRENT_MODIFICATION` plus `@ExceptionHandler(OptimisticLockingFailureException.class)`.
+Różnica jest w tym, co wołający może zrobić: 409 mówi „przeczytaj jeszcze raz i powtórz", 500 mówi
+„zepsuliśmy się" i nie zaprasza nikogo do niczego. Komunikat jest domyślny z `ErrorCode`, bez
+przeciekania nazwy encji — jest na to asercja.
+
+### Dowód negatywny, najwyraźniejszy w całej tej serii
+
+Po zdjęciu `@Version` padają wszystkie trzy testy współbieżności, a kluczowy z komunikatem:
+
+```
+java.lang.AssertionError: Expecting code to raise a throwable.
+```
+
+Czyli drugi zapis **przeszedł cicho** — dokładnie zgubiona aktualizacja, nazwana przez test.
+
+### Pokrycie
+
+| | |
+|---|---|
+| `CashFlowConcurrentWriteTest` (3) | przegrany dostaje wyjątek, **praca zwycięzcy zostaje**; po ponownym odczycie przegrany kończy sukcesem (tak wygląda retry); świeży cash flow nie potrzebuje wersji, a po zapisie ją ma |
+| `ErrorHttpHandlerConcurrencyTest` (2) | 409 i `ErrorCode`, oraz że komunikat nie wynosi szczegółu składowania |
+
+Wyścig jest **inscenizowany, nie wątkowy**, celowo: dwa odczyty, potem dwa zapisy to dokładnie ta
+przeplotka, która gubi dane, a inscenizacja czyni test deterministycznym. Prawdziwy wyścig nie
+dodałby niczego, co dałoby się zasertować.
+
+### Zakres: tylko cash flow, i to trzeba powiedzieć
+
+`PortfolioEntity`, `OrderEntity`, `TradeEntity` i pozostałe **nadal nie mają wersji**. Cash flow
+wybrałem, bo to tam ryzyko jest realne: `MonthlyRolloverScheduler` i
+`RecurringRuleAutoResumeScheduler` piszą do niego w tle, bez pytania użytkownika o moment. Reszta
+agregatów to F57.
+
+**Druga rzecz, która zostaje otwarta: nikt jeszcze nie ponawia.** Przegrany zapis był dotąd cichym
+zwycięstwem, teraz jest widocznym błędem — co jest poprawą, ale w zadaniu cyklicznym oznacza, że ta
+tura pracy przepada z logiem zamiast przejść po ponownym odczycie. Który handler ma ponawiać, a który
+oddać 409, to decyzja na operację, nie globalna: dopisanie jest bezpieczne do ponowienia, bo nie
+zależy od starego stanu; potwierdzenie transakcji już nie.
+
+### Pułapka narzędziowa, na którą się nadziałem
+
+`./mvnw test-compile -pl :vidulum-cashflow` zgłosiło **BUILD SUCCESS na kodzie, który się nie
+kompiluje** — osiem konstrukcji snapshotu z o jeden argument za mało. Dopiero `clean test-compile`
+pokazało prawdę. Kompilacja przyrostowa uznała, że nic się nie zmieniło. **Po zmianie sygnatury albo
+kształtu rekordu `clean` jest obowiązkowy**, inaczej zielony przebieg niczego nie znaczy.
