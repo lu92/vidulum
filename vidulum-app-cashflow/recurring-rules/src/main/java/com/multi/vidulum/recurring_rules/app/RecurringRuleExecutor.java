@@ -19,21 +19,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Keeps a rule's expected cash changes in step with the rule.
+ * Runs a rule: turns it into the expected cash changes it implies, and takes them back out again.
+ *
+ * <p>A rule on its own changes nothing - it is a pattern plus an amount. What a person sees in their
+ * forecast is what this class wrote there, which is why {@code generate} and {@code clear} belong
+ * together: every change to a rule is a clear followed by a generate.
  *
  * <p>Lifted out of {@code RecurringRuleService} unchanged, because the two command handlers that
- * left that class need it and so do five of the methods that stayed - generate has six callers and
- * clear has seven. Two sides of one job, sharing the same three collaborators, so one component
- * rather than two.
+ * left that class need it and so do five of the methods that stayed - {@code generate} had six
+ * callers and {@code clear} seven. Two sides of one job on the same three collaborators, so one
+ * component rather than two.
  *
- * <p>Package-private methods on purpose: this is the module's own machinery, not something another
- * module may ask for. The {@code authToken} is here for the same reason it is everywhere else in
- * this module - {@link CashFlowHttpClient} still writes over HTTP, which is task F26.
+ * <p>Public only so the command handlers in {@code app.commands..} can reach it;
+ * {@code ModuleBoundariesArchTest} is what keeps {@code recurring_rules.app..} closed to other
+ * modules. The {@code authToken} is here for the same reason it is everywhere else in this module -
+ * {@link CashFlowHttpClient} still writes over HTTP, which is task F26.
  */
 @Slf4j
 @Component
 @AllArgsConstructor
-public class ExpectedCashChangeSynchronizer {
+public class RecurringRuleExecutor {
 
     private static final int FORECAST_MONTHS = 12; // Current + 11 months
 

@@ -41,7 +41,7 @@ public class RecurringRuleService {
 
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowHttpClient cashFlowHttpClient;
-    private final ExpectedCashChangeSynchronizer cashChanges;
+    private final RecurringRuleExecutor executor;
     private final Clock clock;
 
     private static final int FORECAST_MONTHS = 12; // Current + 11 months
@@ -52,7 +52,7 @@ public class RecurringRuleService {
     // app/commands/create and app/commands/update - a folder per command with its own
     // CommandHandler, the shape cashflow has used from the start. They were the two that asked
     // cashflow's contract, so CashFlowModuleApi left with them; what they shared with the methods
-    // below is now ExpectedCashChangeSynchronizer.
+    // below is now RecurringRuleExecutor.
 
     public void handle(PauseRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
@@ -63,7 +63,7 @@ public class RecurringRuleService {
         }
 
         // Clear pending cash changes before pausing - paused rule should not have future forecasts
-        cashChanges.clear(rule, authToken);
+        executor.clear(rule, authToken);
 
         PauseInfo pauseInfo = command.resumeDate() != null
                 ? PauseInfo.untilDate(clock.instant(), command.resumeDate(), command.reason())
@@ -89,9 +89,9 @@ public class RecurringRuleService {
         ruleRepository.save(rule);
 
         // Defensive: clear any remaining pending cash changes (edge case - should be empty after proper pause)
-        cashChanges.clear(rule, authToken);
+        executor.clear(rule, authToken);
         // Generate new expected cash changes from today
-        cashChanges.generate(rule, authToken);
+        executor.generate(rule, authToken);
 
         log.info("Resumed recurring rule {} (regenerated cash changes)", ruleId.id());
     }
@@ -141,7 +141,7 @@ public class RecurringRuleService {
         }
 
         // Clear generated cash changes
-        cashChanges.clear(rule, authToken);
+        executor.clear(rule, authToken);
 
         rule.delete(command.reason(), clock);
         ruleRepository.save(rule);
@@ -159,8 +159,8 @@ public class RecurringRuleService {
         }
 
         // Clear old and generate new
-        cashChanges.clear(rule, authToken);
-        cashChanges.generate(rule, authToken);
+        executor.clear(rule, authToken);
+        executor.generate(rule, authToken);
     }
 
     public AmountChangeId handle(AddAmountChangeCommand command, String authToken) {
@@ -187,8 +187,8 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            cashChanges.clear(rule, authToken);
-            cashChanges.generate(rule, authToken);
+            executor.clear(rule, authToken);
+            executor.generate(rule, authToken);
         }
 
         log.info("Added {} amount change {} to rule {}", command.type(), changeId.id(), ruleId.id());
@@ -209,8 +209,8 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            cashChanges.clear(rule, authToken);
-            cashChanges.generate(rule, authToken);
+            executor.clear(rule, authToken);
+            executor.generate(rule, authToken);
         }
 
         log.info("Removed amount change {} from rule {}", changeId.id(), ruleId.id());

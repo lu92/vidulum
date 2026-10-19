@@ -2,7 +2,7 @@ package com.multi.vidulum.recurring_rules.app.commands.update;
 
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.recurring_rules.app.CashFlowCategoryValidator;
-import com.multi.vidulum.recurring_rules.app.ExpectedCashChangeSynchronizer;
+import com.multi.vidulum.recurring_rules.app.RecurringRuleExecutor;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
@@ -33,7 +33,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
 
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowCategoryValidator categoryValidator;
-    private final ExpectedCashChangeSynchronizer cashChanges;
+    private final RecurringRuleExecutor executor;
     private final Clock clock;
 
     @Override
@@ -58,7 +58,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
             throw new IllegalArgumentException("maxOccurrences must be positive");
         }
 
-        cashChanges.clear(rule, command.authToken());
+        executor.clear(rule, command.authToken());
 
         rule.update(
                 command.name(),
@@ -77,7 +77,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
         ruleRepository.save(rule);
 
         if (rule.isActive()) {
-            cashChanges.generate(rule, command.authToken());
+            executor.generate(rule, command.authToken());
         }
 
         log.info("Updated recurring rule {}", ruleId.id());

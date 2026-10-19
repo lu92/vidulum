@@ -1847,7 +1847,7 @@ odwołań do `CashFlowModuleApi`, bo kontrakt wyszedł razem z tymi dwiema.
 
 | | dlaczego osobno |
 |---|---|
-| `ExpectedCashChangeSynchronizer` | `generate` miało **sześciu** wołających, `clear` **siedmiu** — dwa z nich wyszły, pięć zostało. Dwie strony jednej roboty na tych samych trzech zależnościach, więc jeden komponent, nie dwa. Przeniesione bez zmiany ciała |
+| `RecurringRuleExecutor` | `generate` miało **sześciu** wołających, `clear` **siedmiu** — dwa z nich wyszły, pięć zostało. Dwie strony jednej roboty na tych samych trzech zależnościach, więc jeden komponent, nie dwa. Przeniesione bez zmiany ciała |
 | `CashFlowCategoryValidator` | pytany przez oba handlery i **jedyne miejsce w module, które rozmawia z `CashFlowModuleApi`** — jedno żądanie na komendę, odpowiadające na dwie rzeczy: że cash flow istnieje (kontrakt sam rzuca) i że kategoria istnieje, po właściwej stronie |
 
 Oba są **publiczne**, bo handlery siedzą w innym pakiecie, a `package-private` w Javie nie jest

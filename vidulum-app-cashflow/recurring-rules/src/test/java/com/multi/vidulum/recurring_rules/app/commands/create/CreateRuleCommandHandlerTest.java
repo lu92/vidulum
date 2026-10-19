@@ -4,7 +4,7 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.CashFlowCategoryValidator;
-import com.multi.vidulum.recurring_rules.app.ExpectedCashChangeSynchronizer;
+import com.multi.vidulum.recurring_rules.app.RecurringRuleExecutor;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
 import com.multi.vidulum.recurring_rules.domain.OncePattern;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
@@ -45,12 +45,12 @@ class CreateRuleCommandHandlerTest {
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final CashFlowCategoryValidator categoryValidator = mock(CashFlowCategoryValidator.class);
-    private final ExpectedCashChangeSynchronizer cashChanges = mock(ExpectedCashChangeSynchronizer.class);
+    private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
 
     private final CreateRuleCommandHandler handler = new CreateRuleCommandHandler(
             rules,
             categoryValidator,
-            cashChanges,
+            executor,
             Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC));
 
     @Test
@@ -62,7 +62,7 @@ class CreateRuleCommandHandlerTest {
                 .isInstanceOf(CategoryNotFoundException.class);
 
         verify(rules, never()).save(any());
-        verifyNoInteractions(cashChanges);
+        verifyNoInteractions(executor);
     }
 
     @Test
@@ -93,7 +93,7 @@ class CreateRuleCommandHandlerTest {
         assertThat(ruleId).isNotNull();
         verify(categoryValidator).validate(CASH_FLOW_ID, new CategoryName("Salary"), true);
         verify(rules).save(any(RecurringRule.class));
-        verify(cashChanges).generate(any(RecurringRule.class), eq("token"));
+        verify(executor).generate(any(RecurringRule.class), eq("token"));
     }
 
     @Test

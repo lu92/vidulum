@@ -3,7 +3,7 @@ package com.multi.vidulum.recurring_rules.app.commands.create;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.app.CashFlowCategoryValidator;
-import com.multi.vidulum.recurring_rules.app.ExpectedCashChangeSynchronizer;
+import com.multi.vidulum.recurring_rules.app.RecurringRuleExecutor;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
@@ -31,7 +31,7 @@ public class CreateRuleCommandHandler implements CommandHandler<CreateRuleComman
 
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowCategoryValidator categoryValidator;
-    private final ExpectedCashChangeSynchronizer cashChanges;
+    private final RecurringRuleExecutor executor;
     private final Clock clock;
 
     @Override
@@ -74,7 +74,7 @@ public class CreateRuleCommandHandler implements CommandHandler<CreateRuleComman
 
         ruleRepository.save(rule);
 
-        cashChanges.generate(rule, command.authToken());
+        executor.generate(rule, command.authToken());
 
         log.info("Created recurring rule {} for CashFlow {}", ruleId.id(), cashFlowId.id());
         return ruleId;
