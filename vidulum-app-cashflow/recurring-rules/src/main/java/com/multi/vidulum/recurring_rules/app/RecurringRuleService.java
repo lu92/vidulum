@@ -91,7 +91,7 @@ public class RecurringRuleService {
         // Defensive: clear any remaining pending cash changes (edge case - should be empty after proper pause)
         executor.clear(rule, authToken);
         // Generate new expected cash changes from today
-        executor.generate(rule, authToken);
+        executor.generate(rule);
 
         log.info("Resumed recurring rule {} (regenerated cash changes)", ruleId.id());
     }
@@ -160,7 +160,7 @@ public class RecurringRuleService {
 
         // Clear old and generate new
         executor.clear(rule, authToken);
-        executor.generate(rule, authToken);
+        executor.generate(rule);
     }
 
     public AmountChangeId handle(AddAmountChangeCommand command, String authToken) {
@@ -188,7 +188,7 @@ public class RecurringRuleService {
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
             executor.clear(rule, authToken);
-            executor.generate(rule, authToken);
+            executor.generate(rule);
         }
 
         log.info("Added {} amount change {} to rule {}", command.type(), changeId.id(), ruleId.id());
@@ -210,7 +210,7 @@ public class RecurringRuleService {
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
             executor.clear(rule, authToken);
-            executor.generate(rule, authToken);
+            executor.generate(rule);
         }
 
         log.info("Removed amount change {} from rule {}", changeId.id(), ruleId.id());

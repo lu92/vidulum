@@ -74,7 +74,7 @@ public class CreateRuleCommandHandler implements CommandHandler<CreateRuleComman
 
         ruleRepository.save(rule);
 
-        executor.generate(rule, command.authToken());
+        executor.generate(rule);
 
         log.info("Created recurring rule {} for CashFlow {}", ruleId.id(), cashFlowId.id());
         return ruleId;
