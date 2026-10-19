@@ -69,66 +69,13 @@ public class CashFlowHttpClient {
     // getCashChangeStatuses: three operations the contract has no method for yet, which is the
     // remainder of task F26. They still carry an authToken, and generate() no longer does.
 
-    /**
-     * Batch deletes expected cash changes from the CashFlow.
-     * Only PENDING cash changes will be deleted; CONFIRMED ones are skipped.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param sourceRuleId the recurring rule ID (for reference/logging)
-     * @param cashChangeIds list of cash change IDs to delete
-     * @param authToken the auth token
-     * @return BatchDeleteResult with counts of deleted and skipped
-     */
-    public BatchDeleteResult batchDeleteExpectedCashChanges(
-            CashFlowId cashFlowId,
-            RecurringRuleId sourceRuleId,
-            List<CashChangeId> cashChangeIds,
-            String authToken
-    ) throws CashFlowCommunicationException {
-        if (cashChangeIds.isEmpty()) {
-            return new BatchDeleteResult(0, 0);
-        }
-
-        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-changes";
-
-        try {
-            HttpHeaders headers = createHeaders(authToken);
-
-            Map<String, Object> request = new HashMap<>();
-            request.put("sourceRuleId", sourceRuleId.id());
-            request.put("cashChangeIds", cashChangeIds.stream().map(CashChangeId::id).toList());
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(request, headers),
-                    Map.class
-            );
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", "Empty response body");
-            }
-
-            int deletedCount = ((Number) body.get("deletedCount")).intValue();
-            int skippedCount = ((Number) body.get("skippedCount")).intValue();
-
-            log.info("Batch deleted {} cash changes for rule {} (skipped {})",
-                    deletedCount, sourceRuleId.id(), skippedCount);
-
-            return new BatchDeleteResult(deletedCount, skippedCount);
-        } catch (CashFlowCommunicationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", e);
-        }
-    }
-
-    /**
-     * Result of a batch delete operation.
-     */
-    public record BatchDeleteResult(int deletedCount, int skippedCount) {
-    }
+    // batchDeleteExpectedCashChanges is gone too, ported to CashFlowModuleApi.deleteExpected the
+    // same way createExpectedCashChange was - and it was the easier half, because the command, the
+    // batch event and the projection handler already existed in cashflow. Only the contract method
+    // and its two transports were missing.
+    //
+    // RecurringRuleExecutor now holds no HTTP client at all: writing a rule's predictions and taking
+    // them back are both one call through the contract.
 
     /**
      * Batch updates expected cash changes in the CashFlow.

@@ -171,6 +171,24 @@ public interface CashFlowModuleApi extends ModuleApi {
      */
     List<CashChangeId> appendExpected(CashFlowId cashFlowId, String sourceRuleId, List<ExpectedCashChange> changes);
 
+    /**
+     * Withdraws expected cash changes a consumer had recorded, by id, in one atomic operation.
+     *
+     * <p>The counterpart of {@link #appendExpected}, and the pair is the point: whatever derived a
+     * batch can take it back, which is how a recurring rule gets edited or deleted without leaving
+     * its old predictions in someone's forecast.
+     *
+     * <p><b>Skips rather than refuses, unlike appendExpected.</b> A cash change that is no longer
+     * pending has been confirmed by the owner, so it is a fact about their money and not a
+     * prediction any more; removing it would be destroying data the consumer does not own. It is
+     * counted in {@link DeletedExpectedCashChanges#skipped()} and left where it is. An id that does
+     * not exist is skipped for the same reason - there is nothing to destroy and nothing to report.
+     *
+     * @param cashChangeIds the ids to withdraw; empty withdraws nothing and answers two zeros
+     * @throws CashFlowNotFoundException when no such cash flow exists
+     */
+    DeletedExpectedCashChanges deleteExpected(CashFlowId cashFlowId, String sourceRuleId, List<CashChangeId> cashChangeIds);
+
     RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
 
     /**

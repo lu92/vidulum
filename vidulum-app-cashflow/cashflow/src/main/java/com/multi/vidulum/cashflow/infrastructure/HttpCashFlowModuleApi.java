@@ -9,6 +9,7 @@ import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
+import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
@@ -159,6 +160,45 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record BatchAppendResponse(List<String> cashChangeIds) {
+    }
+
+    @Override
+    public DeletedExpectedCashChanges deleteExpected(CashFlowId cashFlowId, String sourceRuleId, List<CashChangeId> cashChangeIds) {
+        if (cashChangeIds == null || cashChangeIds.isEmpty()) {
+            return new DeletedExpectedCashChanges(0, 0);
+        }
+        try {
+            // DELETE with a body: the ids are what is being removed, and a query string would cap
+            // the batch at whatever the server's URL limit happens to be.
+            BatchDeleteResponse response = restClient.method(HttpMethod.DELETE)
+                    .uri("/cash-flow/cf={cashFlowId}/cash-changes", cashFlowId.id())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new BatchDeleteRequest(
+                            sourceRuleId,
+                            cashChangeIds.stream().map(CashChangeId::id).toList()))
+                    .retrieve()
+                    .body(BatchDeleteResponse.class);
+
+            if (response == null) {
+                throw new IllegalStateException(
+                        "Batch delete answered with no body for cash flow " + cashFlowId.id());
+            }
+
+            return new DeletedExpectedCashChanges(response.deletedCount(), response.skippedCount());
+
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new CashFlowNotFoundException(cashFlowId);
+            }
+            throw e;
+        }
+    }
+
+    private record BatchDeleteRequest(String sourceRuleId, List<String> cashChangeIds) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record BatchDeleteResponse(int deletedCount, int skippedCount) {
     }
 
     @Override

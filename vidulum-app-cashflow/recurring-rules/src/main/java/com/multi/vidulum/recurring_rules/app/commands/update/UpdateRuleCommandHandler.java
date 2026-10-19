@@ -58,7 +58,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
             throw new IllegalArgumentException("maxOccurrences must be positive");
         }
 
-        executor.clear(rule, command.authToken());
+        executor.clear(rule);
 
         rule.update(
                 command.name(),
