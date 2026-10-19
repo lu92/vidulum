@@ -863,6 +863,41 @@ public class CashFlow implements Aggregate<CashFlowId, CashFlowSnapshot> {
      * @param fromDate optional - only include cash changes with dueDate >= fromDate
      * @return list of PENDING cash changes from the specified rule
      */
+    /**
+     * How many cash changes this cash flow attributes to one source rule, by state.
+     *
+     * <p>Here rather than in a caller because two of them need it - the module contract and the
+     * endpoint its HTTP transport calls - and a cash flow is what knows which of its cash changes
+     * came from where and what became of them. Two copies of this grouping would be two things to
+     * keep in step.
+     *
+     * <p>{@code other} covers rejected and archived. It exists so that a state nobody asked about
+     * cannot disappear from a total.
+     */
+    public StatusCounts countBySourceRule(String sourceRuleId) {
+        if (sourceRuleId == null) {
+            return new StatusCounts(0, 0, 0);
+        }
+
+        int pending = 0;
+        int confirmed = 0;
+        int other = 0;
+        for (CashChange cashChange : cashChanges.values()) {
+            if (!sourceRuleId.equals(cashChange.getSourceRuleId())) {
+                continue;
+            }
+            switch (cashChange.getStatus()) {
+                case PENDING -> pending++;
+                case CONFIRMED -> confirmed++;
+                case REJECTED, ARCHIVED -> other++;
+            }
+        }
+        return new StatusCounts(pending, confirmed, other);
+    }
+
+    public record StatusCounts(int pending, int confirmed, int other) {
+    }
+
     public List<CashChange> findPendingCashChangesBySourceRuleId(String sourceRuleId, ZonedDateTime fromDate) {
         return cashChanges.values().stream()
                 .filter(cc -> cc.getStatus() == CashChangeStatus.PENDING)

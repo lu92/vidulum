@@ -10,6 +10,7 @@ import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
+import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
@@ -160,6 +161,40 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record BatchAppendResponse(List<String> cashChangeIds) {
+    }
+
+    @Override
+    public ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId) {
+        try {
+            // A dedicated endpoint, not the whole cash flow. The consumer this replaced fetched
+            // /cash-flow/cf={id} - every cash change in the document - and counted two statuses out
+            // of it, as strings, client-side.
+            ByStatusResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/cash-flow/cf={cashFlowId}/expected-cash-changes/status")
+                            .queryParam("sourceRuleId", sourceRuleId)
+                            .build(cashFlowId.id()))
+                    .retrieve()
+                    .body(ByStatusResponse.class);
+
+            if (response == null) {
+                throw new IllegalStateException(
+                        "Status counts answered with no body for cash flow " + cashFlowId.id());
+            }
+
+            return new ExpectedCashChangesByStatus(
+                    response.pending(), response.confirmed(), response.other());
+
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new CashFlowNotFoundException(cashFlowId);
+            }
+            throw e;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ByStatusResponse(int pending, int confirmed, int other) {
     }
 
     @Override

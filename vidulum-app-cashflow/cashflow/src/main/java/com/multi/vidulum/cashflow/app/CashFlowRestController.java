@@ -583,6 +583,27 @@ public class CashFlowRestController {
      * at once - a recurring rule covering the forecast window derives up to 365. Either all of them
      * are appended or none is, and the ids come back in the order they were sent.
      */
+    /**
+     * What state the cash changes attributed to one source rule are in - the dry run of the batch
+     * delete below, so a consumer can tell someone what deleting would cost before doing it.
+     */
+    @GetMapping("/cf={cashFlowId}/expected-cash-changes/status")
+    public CashFlowDto.ExpectedCashChangesByStatusJson expectedCashChangesByStatus(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestParam("sourceRuleId") String sourceRuleId) {
+
+        CashFlow cashFlow = domainCashFlowRepository.findById(CashFlowId.of(cashFlowId))
+                .orElseThrow(() -> new CashFlowNotFoundException(CashFlowId.of(cashFlowId)));
+
+        CashFlow.StatusCounts counts = cashFlow.countBySourceRule(sourceRuleId);
+
+        return CashFlowDto.ExpectedCashChangesByStatusJson.builder()
+                .pending(counts.pending())
+                .confirmed(counts.confirmed())
+                .other(counts.other())
+                .build();
+    }
+
     @PostMapping("/cf={cashFlowId}/expected-cash-changes/batch")
     public CashFlowDto.BatchAppendExpectedCashChangesResponseJson batchAppendExpectedCashChanges(
             @PathVariable("cashFlowId") String cashFlowId,

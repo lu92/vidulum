@@ -1,22 +1,22 @@
 package com.multi.vidulum.recurring_rules.app;
 
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.app.commands.*;
-import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
+import com.multi.vidulum.recurring_rules.app.queries.GetRuleQuery;
+import com.multi.vidulum.recurring_rules.app.queries.GetRulesByCashFlowQuery;
+import com.multi.vidulum.recurring_rules.app.queries.GetRulesByUserQuery;
+import com.multi.vidulum.recurring_rules.app.queries.PreviewDeleteImpactQuery;
 import com.multi.vidulum.recurring_rules.domain.*;
-import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException;
-import com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException;
-import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidDateRangeException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
-import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,12 +25,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +37,7 @@ import java.util.stream.Collectors;
 public class RecurringRuleService {
 
     private final DomainRecurringRuleRepository ruleRepository;
-    private final CashFlowHttpClient cashFlowHttpClient;
+    private final CashFlowModuleApi cashFlowApi;
     private final RecurringRuleExecutor executor;
     private final Clock clock;
 
@@ -281,16 +278,15 @@ public class RecurringRuleService {
         int confirmedCount = 0;
 
         if (!generatedIds.isEmpty()) {
-            Map<CashChangeId, CashFlowHttpClient.CashChangeStatusInfo> statuses =
-                    cashFlowHttpClient.getCashChangeStatuses(rule.getCashFlowId(), ruleId, query.authToken());
+            // The contract answers with counts. What this replaced fetched the whole cash flow -
+            // every cash change in the document - and counted two statuses out of a
+            // Map<String, Object>, comparing "PENDING" and "CONFIRMED" as string literals, so a
+            // rejected or archived one was silently neither.
+            ExpectedCashChangesByStatus byStatus =
+                    cashFlowApi.expectedCashChangesOf(rule.getCashFlowId(), ruleId.id());
 
-            for (CashFlowHttpClient.CashChangeStatusInfo statusInfo : statuses.values()) {
-                if (statusInfo.isPending()) {
-                    pendingCount++;
-                } else if (statusInfo.isConfirmed()) {
-                    confirmedCount++;
-                }
-            }
+            pendingCount = byStatus.pending();
+            confirmedCount = byStatus.confirmed();
         }
 
         DeleteImpactPreviewResponse.GeneratedTransactions generatedTransactions =

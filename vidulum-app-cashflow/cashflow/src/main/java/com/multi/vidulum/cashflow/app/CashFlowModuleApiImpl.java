@@ -15,10 +15,12 @@ import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportComm
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
+import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
+import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
@@ -34,6 +36,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -155,6 +158,19 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                                 change.type(),
                                 change.dueDate()))
                         .toList()));
+    }
+
+    @Override
+    public ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId) {
+        CashFlow cashFlow = repository.findById(cashFlowId)
+                .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId));
+
+        // Through the repository rather than the gateway: this reads, and the aggregate decides
+        // nothing - the same reason skeletonOf and alreadyImported go this way. The counting itself
+        // is the aggregate's, because the endpoint needs the same answer.
+        CashFlow.StatusCounts counts = cashFlow.countBySourceRule(sourceRuleId);
+
+        return new ExpectedCashChangesByStatus(counts.pending(), counts.confirmed(), counts.other());
     }
 
     @Override

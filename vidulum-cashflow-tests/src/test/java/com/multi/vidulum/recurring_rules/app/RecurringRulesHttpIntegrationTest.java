@@ -17,7 +17,6 @@ import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
 import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
 import com.multi.vidulum.recurring_rules.domain.*;
-import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import com.multi.vidulum.recurring_rules.infrastructure.RecurringRuleMongoRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
@@ -48,41 +46,11 @@ import static org.awaitility.Awaitility.await;
  * and verifies expected cash changes are generated in the CashFlow forecast.
  */
 @Slf4j
-@Import(RecurringRulesHttpIntegrationTest.TestCashFlowHttpClientConfig.class)
 public class RecurringRulesHttpIntegrationTest extends CashFlowIntegrationTest {
 
-    /**
-     * Test configuration that provides a CashFlowHttpClient configured with the local test server port.
-     * Uses Environment to dynamically get the local.server.port at runtime.
-     */
-    @TestConfiguration
-    static class TestCashFlowHttpClientConfig {
-
-        @Bean
-        @Primary
-        public CashFlowHttpClient testCashFlowHttpClient(RestTemplate restTemplate, Environment environment) {
-            return new TestCashFlowHttpClient(restTemplate, environment);
-        }
-    }
-
-    /**
-     * Extended CashFlowHttpClient that uses the test server port from Environment.
-     * The port is resolved at method call time, not at bean creation time.
-     */
-    static class TestCashFlowHttpClient extends CashFlowHttpClient {
-        private final Environment environment;
-
-        public TestCashFlowHttpClient(RestTemplate restTemplate, Environment environment) {
-            super(restTemplate);
-            this.environment = environment;
-        }
-
-        @Override
-        protected String getCashFlowServiceUrl() {
-            String port = environment.getProperty("local.server.port", "9090");
-            return "http://localhost:" + port;
-        }
-    }
+    // The TestCashFlowHttpClient that used to live here is gone with the client it extended. It
+    // existed to point that client at this test's random server port, because the module wrote to
+    // cashflow over HTTP; it now asks CashFlowModuleApi, which this context wires in process.
 
     @Autowired
     private RecurringRuleMongoRepository recurringRuleMongoRepository;
@@ -1618,9 +1586,11 @@ public class RecurringRulesHttpIntegrationTest extends CashFlowIntegrationTest {
         // Generated transactions
         assertThat(preview.impact().generatedTransactions()).isNotNull();
         assertThat(preview.impact().generatedTransactions().total()).isEqualTo(generatedCount);
-        assertThat(preview.impact().generatedTransactions().pending()).isGreaterThanOrEqualTo(0);
-        assertThat(preview.impact().generatedTransactions().confirmed()).isGreaterThanOrEqualTo(0);
-        // deletable = pending
+        assertThat(preview.impact().generatedTransactions().pending())
+                .as("nothing has been confirmed here, so every one of them is still a prediction. "
+                        + "This used to assert >= 0, which a count can never fail")
+                .isEqualTo(generatedCount);
+        assertThat(preview.impact().generatedTransactions().confirmed()).isZero();
         assertThat(preview.impact().generatedTransactions().deletable())
                 .isEqualTo(preview.impact().generatedTransactions().pending());
 
@@ -1641,6 +1611,47 @@ public class RecurringRulesHttpIntegrationTest extends CashFlowIntegrationTest {
         log.info("  Affected months: {}", preview.impact().forecastImpact().affectedMonths());
         log.info("  Warnings: {}", preview.warnings().size());
         log.info("  Recommendations: {}", preview.recommendations().size());
+    }
+
+    /**
+     * The numbers the preview exists for: once the owner confirms one of a rule's transactions, it
+     * is a fact about their money and deleting the rule will not take it back.
+     *
+     * <p>Worth a test of its own because the counts come from cashflow, and until they came through
+     * the contract the only assertions on them were {@code >= 0} - true of any count, including one
+     * that was never computed.
+     */
+    @Test
+    void shouldCountAConfirmedTransactionAsNotDeletable() {
+        YearMonth startPeriod = YearMonth.of(2021, 7);
+        Money initialBalance = Money.of(10000, CURRENCY);
+
+        cashFlowId = cashFlowActor.createCashFlowWithHistory(userId, "Confirmed Impact Test", startPeriod, initialBalance);
+        await().atMost(60, SECONDS).until(() ->
+                statementRepository.findByCashFlowId(CashFlowId.of(cashFlowId)).isPresent());
+        cashFlowActor.createCategory(cashFlowId, "Salary", Type.INFLOW);
+        cashFlowActor.attestHistoricalImport(cashFlowId, initialBalance, false, false);
+
+        String ruleId = recurringRulesActor.createMonthlyRule(
+                cashFlowId, "Monthly Salary", "Regular monthly salary payment",
+                Money.of(5000, CURRENCY), "Salary",
+                LocalDate.of(2022, 1, 1), LocalDate.of(2022, 12, 31), 1, 1, false);
+
+        RecurringRuleResponse rule = recurringRulesActor.getRule(ruleId);
+        int generatedCount = rule.getGeneratedCashChangeIds().size();
+        assertThat(generatedCount).isGreaterThan(1);
+
+        // The owner confirms one of them
+        cashFlowActor.confirmCashChange(cashFlowId, rule.getGeneratedCashChangeIds().getFirst());
+
+        DeleteImpactPreviewResponse preview = recurringRulesActor.getDeleteImpactPreview(ruleId);
+
+        assertThat(preview.impact().generatedTransactions().total()).isEqualTo(generatedCount);
+        assertThat(preview.impact().generatedTransactions().confirmed()).isEqualTo(1);
+        assertThat(preview.impact().generatedTransactions().pending()).isEqualTo(generatedCount - 1);
+        assertThat(preview.impact().generatedTransactions().deletable())
+                .as("the confirmed one is the owner's now, and deleting the rule leaves it alone")
+                .isEqualTo(generatedCount - 1);
     }
 
     @Test
