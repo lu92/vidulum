@@ -2122,3 +2122,84 @@ zależy od starego stanu; potwierdzenie transakcji już nie.
 kompiluje** — osiem konstrukcji snapshotu z o jeden argument za mało. Dopiero `clean test-compile`
 pokazało prawdę. Kompilacja przyrostowa uznała, że nic się nie zmieniło. **Po zmianie sygnatury albo
 kształtu rekordu `clean` jest obowiązkowy**, inaczej zielony przebieg niczego nie znaczy.
+
+---
+
+## 31. Co zrobił krok 34: executor przestaje pisać po HTTP
+
+Kontrakt z kroku 32 dostał w końcu swojego konsumenta.
+
+```java
+// przed: raz na wystąpienie, 365 razy dla reguły dziennej
+for (LocalDate occurrence : occurrences) {
+    CashChangeId id = cashFlowHttpClient.createExpectedCashChange(..., authToken);
+    generatedIds.add(id);
+}
+
+// po: raz
+List<CashChangeId> generatedIds = cashFlowApi.appendExpected(
+        rule.getCashFlowId(), rule.getRuleId().id(), changes);
+```
+
+`generate` **stracił parametr `authToken`**, bo nie ma już czego uwierzytelniać. `clear` go zachował
+— i ta asymetria w dwóch sygnaturach tej samej klasy jest teraz najuczciwszą miarą tego, co zostało
+z F26.
+
+### Właściwa naprawa nie dotyczy szybkości
+
+Pętla nie była atomowa. Awaria na 200. wystąpieniu zostawiała **199 cash changes w cash flow**, a
+`recordGeneratedCashChanges` nigdy się nie wykonywało — więc reguła nie znała ich identyfikatorów, a
+`clear` działa dokładnie z tej listy. Sieroty w prognozie, których nic nie mogło usunąć, bo jedyne
+miejsce, które wiedziałoby które to są, nie zostało zapisane.
+
+Zmienił się też **rodzaj błędu, jaki widzi wołający**. Klient łapał wszystko:
+
+```java
+} catch (Exception e) {
+    throw new CashFlowCommunicationException(cashFlowId, "create expected cash change", e);
+}
+```
+
+więc 400 za datę poza oknem prognozy docierało jako „błąd komunikacji" — diagnoza wskazująca sieć.
+Teraz przechodzą typowane wyjątki kontraktu z własnymi `ErrorCode`.
+
+### Co pokazała analiza testów, i dlaczego zdecydowała o zakresie
+
+**`RecurringRuleExecutor` nie miał żadnego własnego testu.** Mapowanie wystąpienia na cash change,
+znak kwoty, zapis identyfikatorów na regule, auto-domknięcie przy limicie — wszystko to pokrywały
+wyłącznie testy end-to-end, wymagające serwera, Mongo i Kafki, żeby powiedzieć cokolwiek o pętli po
+datach.
+
+I to jest ta sama własność, która czyni zmianę wartą zachodu: **praca idzie teraz przez kontrakt,
+który da się zaślepić**. `RecurringRuleExecutorTest` (6 przypadków), z asercją nagłówkową, która jest
+liczbą wywołań:
+
+```java
+verify(cashFlowApi, times(1)).appendExpected(any(), anyString(), any());
+assertThat(appendedChanges()).hasSize(12);
+verifyNoInteractions(httpClient);          // generate nie dotyka już HTTP wcale
+```
+
+Dowód negatywny: przywrócenie pętli per wystąpienie wywala **pięć z sześciu** testów, a nagłówkowy z
+komunikatem `Wanted 1 time`.
+
+Pozostałe pięć przypadków to rzeczy, które do tej pory nie miały gdzie upaść: szczegóły reguły na
+każdym wystąpieniu i własna data wymagalności, dodatnia kwota przy `Type.OUTFLOW` (znak siedzi w
+typie), identyfikatory zapisane na regule w kolejności, reguła bez wystąpień w oknie nie wydająca ani
+jednego wywołania, i auto-domknięcie po osiągnięciu limitu.
+
+### Czwarty raz ten sam wzorzec
+
+`createExpectedCashChange` straciło jedynego wołającego i **nie miało żadnego testu** — po
+`fromCashFlowInfo` (krok 29), `extractTransactionIds` (krok 28) i `validateCategoryExists`
+(krok 30) to czwarta metoda w tej serii, która odchodzi przez utratę wołającego, nie przez
+przepisanie. Zaczyna to być regularność warta nazwania: **metoda bez wołającego w produkcji prawie
+nigdy nie jest tu metodą bez testu — jest metodą, którą test trzyma w życiu.**
+
+| | przed | po |
+|---|---|---|
+| żądania na utworzenie reguły dziennej | 365 | **0** (in-process) |
+| stan po awarii w połowie | sieroty, reguła bez identyfikatorów | brak zmian |
+| testy `vidulum-recurring-rules` | 41 | **47** |
+| testy integracyjne reguł | 60 | 60, bez zmiany |
+| operacje w `CashFlowHttpClient` | 4 | **3** |

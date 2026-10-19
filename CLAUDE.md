@@ -111,9 +111,9 @@ vidulum/
 │   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
 │   ├── bank-data-ingestion/     #   Import staging, category mapping. Three contracts, no
 │   │                            #   client of its own, never vidulum-cashflow
-│   └── recurring-rules/         #   Recurring rules. Reads cashflow through the contract, still
-│                                #   writes over HTTP (F26). No consumer here has an -api
-│                                #   (nothing asks them anything), nor a test-scope dep on another
+│   └── recurring-rules/         #   Recurring rules. Reads and appends through the contract; only
+│                                #   batch delete/update still go over HTTP (F26). No consumer here
+│                                #   has an -api, nor a test-scope dep on another
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
