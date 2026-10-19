@@ -24,7 +24,8 @@ import static org.mockito.Mockito.when;
  *
  * <p>This had no test anywhere - not as a unit, and not in the 57 integration tests of recurring
  * rules, which assert 404 only for rules themselves. The one test that touched the logic behind it
- * drove {@code CashFlowHttpClient.validateCategoryExists}, a method with no production caller that
+ * drove {@code validateCategoryExists} on the module's own HTTP client - a method with no
+ * production caller, on a client that no longer exists - which
  * read the whole cash flow out of a {@code Map<String, Object>}; it went with that method. So when
  * the check moved onto the contract there was nothing to prove it had been preserved, which is why
  * these cases exist.

@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app;
+
 import com.multi.vidulum.cashflow.api.Type;
-import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
@@ -763,5 +763,19 @@ public final class CashFlowDto {
     @AllArgsConstructor
     public static class BatchAppendExpectedCashChangesResponseJson {
         private List<String> cashChangeIds;
+    }
+
+    /**
+     * How many cash changes a given source rule has in each state.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CashChangeCountsByStatusJson {
+        private int pending;
+        private int confirmed;
+        /** Anything that is neither - rejected or archived - so no status can vanish silently */
+        private int other;
     }
 }

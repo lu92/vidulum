@@ -6,6 +6,7 @@ import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
@@ -185,6 +186,34 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
                 expected("Rent March", "2022-03-15T00:00:00Z")));
 
         assertThat(ids).hasSize(3).doesNotHaveDuplicates();
+    }
+
+    @Test
+    @DisplayName("countCashChangesByStatus over HTTP counts by state, for one rule only")
+    void shouldCountExpectedByStatusOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
+        httpApi.appendExpected(cashFlowId, "RR00000020", List.of(
+                expected("Rent January", "2022-01-15T00:00:00Z"),
+                expected("Rent February", "2022-02-15T00:00:00Z")));
+        httpApi.appendExpected(cashFlowId, "RR00000021",
+                List.of(expected("Something else", "2022-01-20T00:00:00Z")));
+
+        CashChangeCountsByStatus byStatus = httpApi.countCashChangesByStatus(cashFlowId, "RR00000020");
+
+        assertThat(byStatus.pending()).isEqualTo(2);
+        assertThat(byStatus.confirmed()).isZero();
+        assertThat(byStatus.other()).isZero();
+        assertThat(byStatus.total())
+                .as("the other rule's cash change belongs to the other rule")
+                .isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("countCashChangesByStatus over HTTP answers zeros for a rule that produced nothing")
+    void shouldCountNothingForAnUnknownRuleOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
+
+        assertThat(httpApi.countCashChangesByStatus(cashFlowId, "RR09999999").total()).isZero();
     }
 
     @Test

@@ -15,6 +15,7 @@ import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistoricalCashChangeCommand;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
@@ -134,7 +135,7 @@ class CashFlowSkeletonComponentTest {
 
     @Test
     void refusesWhenThereIsNoSuchCashFlow() {
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), new CommandGateway());
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), new CommandGateway(), new QueryGateway());
 
         assertThatThrownBy(() -> api.skeletonOf(CASH_FLOW_ID))
                 .isInstanceOf(CashFlowNotFoundException.class)
@@ -146,7 +147,7 @@ class CashFlowSkeletonComponentTest {
         CapturingHandler handler = new CapturingHandler();
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(handler);
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway, new QueryGateway());
 
         api.createCategory(CASH_FLOW_ID, new CategoryName("Bonus"), new CategoryName("Salary"),
                 Type.INFLOW, true);
@@ -164,7 +165,7 @@ class CashFlowSkeletonComponentTest {
         CapturingHandler handler = new CapturingHandler();
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(handler);
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway, new QueryGateway());
 
         api.createCategory(CASH_FLOW_ID, new CategoryName("Salary"), null, Type.INFLOW, false);
 
@@ -184,7 +185,7 @@ class CashFlowSkeletonComponentTest {
     @Test
     void createCategoryGoesThroughTheAggregateRatherThanTheRepository() {
         CommandGateway gateway = new CommandGateway();
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway, new QueryGateway());
 
         assertThatThrownBy(() -> api.createCategory(
                 CASH_FLOW_ID, new CategoryName("Salary"), null, Type.INFLOW, true))
@@ -199,7 +200,7 @@ class CashFlowSkeletonComponentTest {
         CapturingImportHandler handler = new CapturingImportHandler();
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(handler);
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway, new QueryGateway());
 
         // A trailing zero the old round trip dropped, and a time of day it threw away. Note what
         // this does NOT claim: BigDecimal.valueOf(double) preserves the value for any realistic
@@ -231,7 +232,7 @@ class CashFlowSkeletonComponentTest {
         CapturingImportHandler handler = new CapturingImportHandler();
         CommandGateway gateway = new CommandGateway();
         gateway.registerCommandHandler(handler);
-        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway);
+        CashFlowModuleApiImpl api = new CashFlowModuleApiImpl(new OnlyFindById(null), gateway, new QueryGateway());
 
         api.importHistorical(CASH_FLOW_ID, new HistoricalCashChange(
                 new CategoryName("Salary"), "March salary", "from employer",
@@ -249,7 +250,7 @@ class CashFlowSkeletonComponentTest {
     // ---------------------------------------------------------------- fixture
 
     private static CashFlowSkeletonView skeletonOf(CashFlow cashFlow) {
-        return new CashFlowModuleApiImpl(new OnlyFindById(cashFlow), new CommandGateway()).skeletonOf(CASH_FLOW_ID);
+        return new CashFlowModuleApiImpl(new OnlyFindById(cashFlow), new CommandGateway(), new QueryGateway()).skeletonOf(CASH_FLOW_ID);
     }
 
     private static CashFlow cashFlow(CashFlow.CashFlowStatus status,

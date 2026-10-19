@@ -15,10 +15,12 @@ import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportComm
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
+import com.multi.vidulum.cashflow.domain.CashChangeStatus;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
@@ -28,12 +30,15 @@ import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.app.queries.GetCountOfCashChangesByStatusQuery;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -62,6 +67,7 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
 
     private final DomainCashFlowRepository repository;
     private final CommandGateway commandGateway;
+    private final QueryGateway queryGateway;
 
     @Override
     public CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId) {
@@ -155,6 +161,15 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                                 change.type(),
                                 change.dueDate()))
                         .toList()));
+    }
+
+    @Override
+    public CashChangeCountsByStatus countCashChangesByStatus(CashFlowId cashFlowId, String sourceRuleId) {
+        // Through the query gateway, not the repository this class holds for its other reads: the
+        // counting belongs to GetCountOfCashChangesByStatusQueryHandler, because the endpoint that
+        // the HTTP transport calls needs the same answer and two copies of it would be two things to
+        // keep in step.
+        return queryGateway.send(new GetCountOfCashChangesByStatusQuery(cashFlowId, sourceRuleId));
     }
 
     @Override

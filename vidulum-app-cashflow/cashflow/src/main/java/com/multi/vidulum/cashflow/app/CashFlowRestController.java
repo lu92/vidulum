@@ -1,4 +1,5 @@
 package com.multi.vidulum.cashflow.app;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.commands.archive.ArchiveCategoryCommand;
@@ -28,6 +29,7 @@ import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateResult;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
+import com.multi.vidulum.cashflow.app.queries.GetCountOfCashChangesByStatusQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
@@ -583,6 +585,25 @@ public class CashFlowRestController {
      * at once - a recurring rule covering the forecast window derives up to 365. Either all of them
      * are appended or none is, and the ids come back in the order they were sent.
      */
+    /**
+     * What state the cash changes attributed to one source rule are in - the dry run of the batch
+     * delete below, so a consumer can tell someone what deleting would cost before doing it.
+     */
+    @GetMapping("/cf={cashFlowId}/cash-changes/status")
+    public CashFlowDto.CashChangeCountsByStatusJson countCashChangesByStatus(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestParam("sourceRuleId") String sourceRuleId) {
+
+        CashChangeCountsByStatus byStatus = queryGateway.send(
+                new GetCountOfCashChangesByStatusQuery(CashFlowId.of(cashFlowId), sourceRuleId));
+
+        return CashFlowDto.CashChangeCountsByStatusJson.builder()
+                .pending(byStatus.pending())
+                .confirmed(byStatus.confirmed())
+                .other(byStatus.other())
+                .build();
+    }
+
     @PostMapping("/cf={cashFlowId}/expected-cash-changes/batch")
     public CashFlowDto.BatchAppendExpectedCashChangesResponseJson batchAppendExpectedCashChanges(
             @PathVariable("cashFlowId") String cashFlowId,
