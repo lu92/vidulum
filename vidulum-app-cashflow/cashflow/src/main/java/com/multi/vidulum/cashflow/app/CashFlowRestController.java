@@ -1,4 +1,5 @@
 package com.multi.vidulum.cashflow.app;
+import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.common.CashChangeId;import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.app.commands.archive.ArchiveCategoryCommand;
@@ -28,6 +29,7 @@ import com.multi.vidulum.cashflow.app.commands.reject.RejectCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.update.BatchUpdateResult;
 import com.multi.vidulum.cashflow.app.queries.GetCashFlowQuery;
+import com.multi.vidulum.cashflow.app.queries.GetExpectedCashChangesByStatusQuery;
 import com.multi.vidulum.cashflow.app.queries.GetDetailsOfCashFlowViaUserQuery;
 import com.multi.vidulum.cashflow.domain.*;
 import com.multi.vidulum.common.CategoryName;
@@ -592,15 +594,13 @@ public class CashFlowRestController {
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestParam("sourceRuleId") String sourceRuleId) {
 
-        CashFlow cashFlow = domainCashFlowRepository.findById(CashFlowId.of(cashFlowId))
-                .orElseThrow(() -> new CashFlowNotFoundException(CashFlowId.of(cashFlowId)));
-
-        CashFlow.StatusCounts counts = cashFlow.countBySourceRule(sourceRuleId);
+        ExpectedCashChangesByStatus byStatus = queryGateway.send(
+                new GetExpectedCashChangesByStatusQuery(CashFlowId.of(cashFlowId), sourceRuleId));
 
         return CashFlowDto.ExpectedCashChangesByStatusJson.builder()
-                .pending(counts.pending())
-                .confirmed(counts.confirmed())
-                .other(counts.other())
+                .pending(byStatus.pending())
+                .confirmed(byStatus.confirmed())
+                .other(byStatus.other())
                 .build();
     }
 

@@ -30,7 +30,9 @@ import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.cashflow.app.queries.GetExpectedCashChangesByStatusQuery;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -65,6 +67,7 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
 
     private final DomainCashFlowRepository repository;
     private final CommandGateway commandGateway;
+    private final QueryGateway queryGateway;
 
     @Override
     public CashFlowSkeletonView skeletonOf(CashFlowId cashFlowId) {
@@ -162,15 +165,11 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
 
     @Override
     public ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId) {
-        CashFlow cashFlow = repository.findById(cashFlowId)
-                .orElseThrow(() -> new CashFlowNotFoundException(cashFlowId));
-
-        // Through the repository rather than the gateway: this reads, and the aggregate decides
-        // nothing - the same reason skeletonOf and alreadyImported go this way. The counting itself
-        // is the aggregate's, because the endpoint needs the same answer.
-        CashFlow.StatusCounts counts = cashFlow.countBySourceRule(sourceRuleId);
-
-        return new ExpectedCashChangesByStatus(counts.pending(), counts.confirmed(), counts.other());
+        // Through the query gateway, not the repository this class holds for its other reads: the
+        // counting belongs to GetExpectedCashChangesByStatusQueryHandler, because the endpoint that
+        // the HTTP transport calls needs the same answer and two copies of it would be two things to
+        // keep in step.
+        return queryGateway.send(new GetExpectedCashChangesByStatusQuery(cashFlowId, sourceRuleId));
     }
 
     @Override
