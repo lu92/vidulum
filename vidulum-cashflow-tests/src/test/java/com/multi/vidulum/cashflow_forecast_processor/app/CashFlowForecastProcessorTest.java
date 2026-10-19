@@ -1546,6 +1546,104 @@ class CashFlowForecastProcessorTest extends CashFlowIntegrationTest {
     }
 
     /**
+     * One batch event puts every cash change it carries into the month it is due, with one read and
+     * one write of the statement - which is the whole reason the event is a batch.
+     *
+     * <p>Three months in one event here. The three-{@code ExpectedCashChangeAppendedEvent} version
+     * of this setup is in {@link #shouldBatchDeleteExpectedCashChanges} above, and the two must end
+     * up with the same forecast: the batch handler and the single one share
+     * {@code ExpectedCashChangeProjector}, so this test is also what pins that they do.
+     */
+    @Test
+    public void shouldBatchAppendExpectedCashChanges() {
+        CashFlowId cashFlowId = TestIds.nextCashFlowId();
+        CashChangeId marchCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId aprilCashChangeId = TestIds.nextCashChangeId();
+        CashChangeId mayCashChangeId = TestIds.nextCashChangeId();
+        String sourceRuleId = "RR00000002";
+
+        ZonedDateTime createdDate = ZonedDateTime.parse("2026-02-15T10:00:00Z");
+
+        emit(new CashFlowEvent.CashFlowCreatedEvent(
+                cashFlowId,
+                new UserId("U10000001"),
+                new Name("Batch Append Test"),
+                new Description("Testing batch append for recurring rules"),
+                BankAccount.fromIban(
+                        "Test Bank",
+                        "GB29NWBK60161331926819",
+                        Currency.of("PLN"),
+                        Money.of(10000, "PLN"),
+                        null),
+                createdDate
+        ));
+
+        emit(new CashFlowEvent.CategoryCreatedEvent(
+                cashFlowId,
+                CategoryName.NOT_DEFINED,
+                new CategoryName("Salary"),
+                INFLOW,
+                createdDate
+        ));
+
+        // What a recurring rule produces: three occurrences, one event
+        Checksum lastEventChecksum = emit(new CashFlowEvent.ExpectedCashChangesBatchAppendedEvent(
+                cashFlowId,
+                sourceRuleId,
+                java.util.List.of(
+                        appended(marchCashChangeId, "March Salary", "2026-03-05T00:00:00Z"),
+                        appended(aprilCashChangeId, "April Salary", "2026-04-05T00:00:00Z"),
+                        appended(mayCashChangeId, "May Salary", "2026-05-05T00:00:00Z")),
+                createdDate
+        ));
+
+        await().until(() -> lastEventIsProcessed(cashFlowId, lastEventChecksum));
+
+        assertThat(statementRepository.findByCashFlowId(cashFlowId))
+                .isPresent()
+                .get()
+                .satisfies(statement -> {
+                    java.util.Map<YearMonth, CashChangeId> expectedPerMonth = java.util.Map.of(
+                            YearMonth.parse("2026-03"), marchCashChangeId,
+                            YearMonth.parse("2026-04"), aprilCashChangeId,
+                            YearMonth.parse("2026-05"), mayCashChangeId);
+
+                    expectedPerMonth.forEach((month, cashChangeId) -> {
+                        CashFlowMonthlyForecast forecast = statement.getForecasts().get(month);
+                        assertThat(forecast)
+                                .as("Month %s must exist in the forecast", month)
+                                .isNotNull();
+
+                        assertThat(forecast.findCategoryInflowsByCategoryName(new CategoryName("Salary")))
+                                .isPresent()
+                                .get()
+                                .satisfies(category -> assertThat(category.getGroupedTransactions().get(PaymentStatus.EXPECTED))
+                                        .as("Month %s holds exactly the one cash change due in it", month)
+                                        .extracting(TransactionDetails::getCashChangeId)
+                                        .containsExactly(cashChangeId));
+
+                        assertThat(forecast.getCashFlowStats().getInflowStats().expected())
+                                .as("and the month's expected inflow was raised by its amount")
+                                .isEqualTo(Money.of(8000, "PLN"));
+                    });
+                });
+    }
+
+    private static CashFlowEvent.ExpectedCashChangesBatchAppendedEvent.AppendedExpectedCashChange appended(
+            CashChangeId cashChangeId, String name, String dueDate) {
+        return new CashFlowEvent.ExpectedCashChangesBatchAppendedEvent.AppendedExpectedCashChange(
+                cashChangeId,
+                new Name(name),
+                new Description("Monthly salary"),
+                Money.of(8000, "PLN"),
+                INFLOW,
+                new CategoryName("Salary"),
+                ZonedDateTime.parse(dueDate),
+                false
+        );
+    }
+
+    /**
      * Test that CashChangesBatchUpdatedEvent updates multiple transactions in forecast.
      * Simulates Recurring Rule update.
      */

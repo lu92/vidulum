@@ -28,6 +28,7 @@ public sealed interface CashFlowEvent extends DomainEvent
         CashFlowEvent.CashChangeEditedEvent,
         CashFlowEvent.CashChangeRejectedEvent,
         CashFlowEvent.ExpectedCashChangeDeletedEvent,
+        CashFlowEvent.ExpectedCashChangesBatchAppendedEvent,
         CashFlowEvent.ExpectedCashChangesBatchDeletedEvent,
         CashFlowEvent.CashChangesBatchUpdatedEvent,
         CashFlowEvent.CategoryCreatedEvent,
@@ -403,6 +404,46 @@ public sealed interface CashFlowEvent extends DomainEvent
      * @param deletedIds    list of deleted cash change IDs
      * @param deletedAt     when the deletion occurred
      */
+    /**
+     * Many expected cash changes appended in one go, as one event.
+     *
+     * <p>One event rather than N, following {@link ExpectedCashChangesBatchDeletedEvent}: a batch is
+     * one decision, the aggregate saves once, and the projection reads its statement once. For a
+     * daily recurring rule that is one message on the topic instead of 365 - and 364 fewer chances
+     * for two of them to be processed out of order.
+     *
+     * <p>{@code sourceRuleId} is shared, not per item, because a batch comes from one rule. That is
+     * also what lets the batch be undone: {@code ExpectedCashChangesBatchDeletedEvent} carries the
+     * same field.
+     */
+    record ExpectedCashChangesBatchAppendedEvent(
+            CashFlowId cashFlowId,
+            String sourceRuleId,
+            List<AppendedExpectedCashChange> appended,
+            ZonedDateTime created
+    ) implements CashFlowEvent {
+        @Override
+        public ZonedDateTime occurredAt() {
+            return created;
+        }
+
+        /**
+         * One appended cash change. The fields are exactly those of
+         * {@link ExpectedCashChangeAppendedEvent} that differ per item - everything else is on the
+         * batch - which is what lets one projection path serve both events.
+         */
+        public record AppendedExpectedCashChange(
+                CashChangeId cashChangeId,
+                Name name,
+                Description description,
+                Money money,
+                Type type,
+                CategoryName categoryName,
+                ZonedDateTime dueDate,
+                boolean selfTransfer
+        ) {}
+    }
+
     record ExpectedCashChangesBatchDeletedEvent(
             CashFlowId cashFlowId,
             String sourceRuleId,

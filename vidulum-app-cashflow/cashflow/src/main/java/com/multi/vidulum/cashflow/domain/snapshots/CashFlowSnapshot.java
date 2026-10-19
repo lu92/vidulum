@@ -50,7 +50,18 @@ public record CashFlowSnapshot(
         ZonedDateTime created,
         ZonedDateTime lastModification,
         ZonedDateTime importCutoffDateTime,
-        Checksum lastMessageChecksum) implements EntitySnapshot<CashFlowId> {
+        Checksum lastMessageChecksum,
+        /**
+         * The stored document's version, or {@code null} for a cash flow that has never been saved.
+         *
+         * <p>Infrastructure in a domain record, and so is {@code lastMessageChecksum} right above it
+         * - this record is the shape the aggregate takes in order to be stored, which is exactly
+         * what a version belongs to. It has to travel: {@code save} rebuilds the entity from the
+         * snapshot, so a version left behind here would reach MongoDB as {@code null}, and a null
+         * version means "new document" - the write would stop being a conditional update and go back
+         * to overwriting whatever is there (task F35).
+         */
+        Long version) implements EntitySnapshot<CashFlowId> {
 
     @Override
     public CashFlowId id() {

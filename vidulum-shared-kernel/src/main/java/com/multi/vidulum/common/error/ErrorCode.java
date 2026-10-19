@@ -39,6 +39,7 @@ public enum ErrorCode {
     CASHFLOW_BALANCE_MISMATCH(HttpStatus.CONFLICT, "Balance mismatch during attestation"),
     CASHFLOW_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "CashFlow with this name already exists"),
     CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT, "Category already exists"),
+    CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Someone else changed this at the same time; read it again and retry"),
     BUDGETING_ALREADY_EXISTS(HttpStatus.CONFLICT, "Budgeting already exists"),
     CATEGORY_UNARCHIVE_CONFLICT(HttpStatus.CONFLICT, "Cannot unarchive - active category exists"),
 

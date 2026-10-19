@@ -5,6 +5,7 @@ import com.multi.vidulum.cashflow.app.commands.archive.ArchiveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.archive.UnarchiveCategoryCommand;
 import com.multi.vidulum.cashflow.app.commands.attesthistoricalimport.AttestHistoricalImportCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendExpectedCashChangeCommand;
+import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.append.AppendPaidCashChangeCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
@@ -575,6 +576,42 @@ public class CashFlowRestController {
      * @param request    the batch delete request with list of cash change IDs
      * @return batch delete result with counts
      */
+    /**
+     * Appends many expected cash changes in one atomic operation, and answers with their ids.
+     *
+     * <p>The counterpart of {@code POST /cash-flow/expected-cash-change} for a caller deriving many
+     * at once - a recurring rule covering the forecast window derives up to 365. Either all of them
+     * are appended or none is, and the ids come back in the order they were sent.
+     */
+    @PostMapping("/cf={cashFlowId}/expected-cash-changes/batch")
+    public CashFlowDto.BatchAppendExpectedCashChangesResponseJson batchAppendExpectedCashChanges(
+            @PathVariable("cashFlowId") String cashFlowId,
+            @RequestBody CashFlowDto.BatchAppendExpectedCashChangesRequestJson request) {
+
+        List<BatchAppendExpectedCashChangesCommand.ExpectedCashChangeToAppend> changes =
+                request.getChanges() == null ? List.of() : request.getChanges().stream()
+                        .map(change -> new BatchAppendExpectedCashChangesCommand.ExpectedCashChangeToAppend(
+                                new CategoryName(change.getCategory()),
+                                new Name(change.getName()),
+                                new Description(change.getDescription()),
+                                change.getMoney(),
+                                change.getType(),
+                                change.getDueDate()))
+                        .toList();
+
+        List<CashChangeId> ids = commandGateway.send(
+                new BatchAppendExpectedCashChangesCommand(
+                        CashFlowId.of(cashFlowId),
+                        request.getSourceRuleId(),
+                        changes
+                )
+        );
+
+        return CashFlowDto.BatchAppendExpectedCashChangesResponseJson.builder()
+                .cashChangeIds(ids.stream().map(CashChangeId::id).toList())
+                .build();
+    }
+
     @DeleteMapping("/cf={cashFlowId}/cash-changes")
     public CashFlowDto.BatchDeleteResponseJson batchDeleteExpectedCashChanges(
             @PathVariable("cashFlowId") String cashFlowId,
