@@ -15,7 +15,7 @@ import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportComm
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
 import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
@@ -30,7 +30,7 @@ import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.cashflow.app.queries.GetExpectedCashChangesByStatusQuery;
+import com.multi.vidulum.cashflow.app.queries.GetCountOfCashChangesByStatusQuery;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.AllArgsConstructor;
@@ -164,12 +164,12 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
     }
 
     @Override
-    public ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId) {
+    public CashChangeCountsByStatus countCashChangesByStatus(CashFlowId cashFlowId, String sourceRuleId) {
         // Through the query gateway, not the repository this class holds for its other reads: the
-        // counting belongs to GetExpectedCashChangesByStatusQueryHandler, because the endpoint that
+        // counting belongs to GetCountOfCashChangesByStatusQueryHandler, because the endpoint that
         // the HTTP transport calls needs the same answer and two copies of it would be two things to
         // keep in step.
-        return queryGateway.send(new GetExpectedCashChangesByStatusQuery(cashFlowId, sourceRuleId));
+        return queryGateway.send(new GetCountOfCashChangesByStatusQuery(cashFlowId, sourceRuleId));
     }
 
     @Override

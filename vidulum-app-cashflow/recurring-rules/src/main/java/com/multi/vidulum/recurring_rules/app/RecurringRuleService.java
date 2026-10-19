@@ -1,7 +1,7 @@
 package com.multi.vidulum.recurring_rules.app;
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Money;
@@ -282,8 +282,8 @@ public class RecurringRuleService {
             // every cash change in the document - and counted two statuses out of a
             // Map<String, Object>, comparing "PENDING" and "CONFIRMED" as string literals, so a
             // rejected or archived one was silently neither.
-            ExpectedCashChangesByStatus byStatus =
-                    cashFlowApi.expectedCashChangesOf(rule.getCashFlowId(), ruleId.id());
+            CashChangeCountsByStatus byStatus =
+                    cashFlowApi.countCashChangesByStatus(rule.getCashFlowId(), ruleId.id());
 
             pendingCount = byStatus.pending();
             confirmedCount = byStatus.confirmed();

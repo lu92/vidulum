@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app.queries;
 
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
@@ -23,20 +23,20 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @AllArgsConstructor
-public class GetExpectedCashChangesByStatusQueryHandler
-        implements QueryHandler<GetExpectedCashChangesByStatusQuery, ExpectedCashChangesByStatus> {
+public class GetCountOfCashChangesByStatusQueryHandler
+        implements QueryHandler<GetCountOfCashChangesByStatusQuery, CashChangeCountsByStatus> {
 
     private final DomainCashFlowRepository domainCashFlowRepository;
 
     @Override
-    public ExpectedCashChangesByStatus query(GetExpectedCashChangesByStatusQuery query) {
+    public CashChangeCountsByStatus query(GetCountOfCashChangesByStatusQuery query) {
         CashFlow cashFlow = domainCashFlowRepository.findById(query.cashFlowId())
                 .orElseThrow(() -> new CashFlowNotFoundException(query.cashFlowId()));
 
         String sourceRuleId = query.sourceRuleId();
         if (sourceRuleId == null) {
             // A cash change entered by hand carries no rule, so no rule owns it
-            return new ExpectedCashChangesByStatus(0, 0, 0);
+            return new CashChangeCountsByStatus(0, 0, 0);
         }
 
         int pending = 0;
@@ -53,6 +53,6 @@ public class GetExpectedCashChangesByStatusQueryHandler
             }
         }
 
-        return new ExpectedCashChangesByStatus(pending, confirmed, other);
+        return new CashChangeCountsByStatus(pending, confirmed, other);
     }
 }

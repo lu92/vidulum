@@ -1,6 +1,6 @@
 package com.multi.vidulum.cashflow.app.queries;
 
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.domain.BankAccount;
@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>A query handler rather than a method on {@code CashFlow}: nothing is being decided here, and
  * the aggregate's job is the rules about changing a cash flow, not reporting on one. Two callers
- * need the same answer - {@code CashFlowModuleApi.expectedCashChangesOf} and the endpoint its HTTP
+ * need the same answer - {@code CashFlowModuleApi.countCashChangesByStatus} and the endpoint its HTTP
  * transport calls - and both send this query, so the counting exists once.
  *
  * <p>The consumer this replaced compared {@code "PENDING"} and {@code "CONFIRMED"} as string
@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * rejected or archived cash change counted as neither and simply disappeared from the total. That
  * is what {@code other} is for, and the third case below is the one that would have caught it.
  */
-class GetExpectedCashChangesByStatusQueryHandlerTest {
+class GetCountOfCashChangesByStatusQueryHandlerTest {
 
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
     private static final String RULE = "RR00000001";
@@ -52,23 +52,23 @@ class GetExpectedCashChangesByStatusQueryHandlerTest {
 
     @Test
     void countsOnlyWhatTheNamedRuleProduced() {
-        ExpectedCashChangesByStatus counted = count(RULE,
+        CashChangeCountsByStatus counted = count(RULE,
                 cashChange("CC1000000001", CashChangeStatus.PENDING, RULE),
                 cashChange("CC1000000002", CashChangeStatus.PENDING, RULE),
                 cashChange("CC1000000003", CashChangeStatus.PENDING, ANOTHER_RULE),
                 cashChange("CC1000000004", CashChangeStatus.PENDING, null));
 
-        assertThat(counted).isEqualTo(new ExpectedCashChangesByStatus(2, 0, 0));
+        assertThat(counted).isEqualTo(new CashChangeCountsByStatus(2, 0, 0));
     }
 
     @Test
     void separatesWhatIsStillAPredictionFromWhatBecameAFact() {
-        ExpectedCashChangesByStatus counted = count(RULE,
+        CashChangeCountsByStatus counted = count(RULE,
                 cashChange("CC1000000001", CashChangeStatus.PENDING, RULE),
                 cashChange("CC1000000002", CashChangeStatus.PENDING, RULE),
                 cashChange("CC1000000003", CashChangeStatus.CONFIRMED, RULE));
 
-        assertThat(counted).isEqualTo(new ExpectedCashChangesByStatus(2, 1, 0));
+        assertThat(counted).isEqualTo(new CashChangeCountsByStatus(2, 1, 0));
     }
 
     /**
@@ -77,13 +77,13 @@ class GetExpectedCashChangesByStatusQueryHandlerTest {
      */
     @Test
     void aRejectedOrArchivedCashChangeIsCountedRatherThanDropped() {
-        ExpectedCashChangesByStatus counted = count(RULE,
+        CashChangeCountsByStatus counted = count(RULE,
                 cashChange("CC1000000001", CashChangeStatus.PENDING, RULE),
                 cashChange("CC1000000002", CashChangeStatus.CONFIRMED, RULE),
                 cashChange("CC1000000003", CashChangeStatus.REJECTED, RULE),
                 cashChange("CC1000000004", CashChangeStatus.ARCHIVED, RULE));
 
-        assertThat(counted).isEqualTo(new ExpectedCashChangesByStatus(1, 1, 2));
+        assertThat(counted).isEqualTo(new CashChangeCountsByStatus(1, 1, 2));
         assertThat(counted.total())
                 .as("and the total adds up, which is the whole point of the third number")
                 .isEqualTo(4);
@@ -91,10 +91,10 @@ class GetExpectedCashChangesByStatusQueryHandlerTest {
 
     @Test
     void anUnknownRuleOwnsNothing() {
-        ExpectedCashChangesByStatus counted = count("RR09999999",
+        CashChangeCountsByStatus counted = count("RR09999999",
                 cashChange("CC1000000001", CashChangeStatus.PENDING, RULE));
 
-        assertThat(counted).isEqualTo(new ExpectedCashChangesByStatus(0, 0, 0));
+        assertThat(counted).isEqualTo(new CashChangeCountsByStatus(0, 0, 0));
     }
 
     /**
@@ -103,28 +103,28 @@ class GetExpectedCashChangesByStatusQueryHandlerTest {
      */
     @Test
     void noRuleAtAllCountsNothingRatherThanEverything() {
-        ExpectedCashChangesByStatus counted = count(null,
+        CashChangeCountsByStatus counted = count(null,
                 cashChange("CC1000000001", CashChangeStatus.PENDING, null),
                 cashChange("CC1000000002", CashChangeStatus.CONFIRMED, null));
 
-        assertThat(counted).isEqualTo(new ExpectedCashChangesByStatus(0, 0, 0));
+        assertThat(counted).isEqualTo(new CashChangeCountsByStatus(0, 0, 0));
     }
 
     @Test
     void anUnknownCashFlowIsRefusedWithTheContractsOwnException() {
-        GetExpectedCashChangesByStatusQueryHandler handler =
-                new GetExpectedCashChangesByStatusQueryHandler(new OnlyFindById(null));
+        GetCountOfCashChangesByStatusQueryHandler handler =
+                new GetCountOfCashChangesByStatusQueryHandler(new OnlyFindById(null));
 
-        assertThatThrownBy(() -> handler.query(new GetExpectedCashChangesByStatusQuery(CASH_FLOW_ID, RULE)))
+        assertThatThrownBy(() -> handler.query(new GetCountOfCashChangesByStatusQuery(CASH_FLOW_ID, RULE)))
                 .isInstanceOf(CashFlowNotFoundException.class);
     }
 
-    private static ExpectedCashChangesByStatus count(String sourceRuleId, CashChangeSnapshot... cashChanges) {
-        GetExpectedCashChangesByStatusQueryHandler handler =
-                new GetExpectedCashChangesByStatusQueryHandler(
+    private static CashChangeCountsByStatus count(String sourceRuleId, CashChangeSnapshot... cashChanges) {
+        GetCountOfCashChangesByStatusQueryHandler handler =
+                new GetCountOfCashChangesByStatusQueryHandler(
                         new OnlyFindById(CashFlow.from(snapshotHolding(cashChanges))));
 
-        return handler.query(new GetExpectedCashChangesByStatusQuery(CASH_FLOW_ID, sourceRuleId));
+        return handler.query(new GetCountOfCashChangesByStatusQuery(CASH_FLOW_ID, sourceRuleId));
     }
 
     private static CashFlowSnapshot snapshotHolding(CashChangeSnapshot... cashChanges) {

@@ -198,12 +198,17 @@ public interface CashFlowModuleApi extends ModuleApi {
      * everything the cash flow attributes to that rule, including anything the rule itself has
      * forgotten. Those two sets can differ, and when they do the difference is the interesting part.
      *
+     * <p><b>Cash changes, not expected cash changes</b> - unlike {@link #appendExpected} and
+     * {@link #deleteExpected} either side of it. Those two deal only in predictions; this counts all
+     * four states a cash change can be in, and a confirmed one has stopped being expected. Naming it
+     * after the expected ones would make the number it answers with a contradiction.
+     *
      * @return counts only. Which cash change is in which state is cashflow's business; a consumer
      *         asking this question wants a number, and handing back a map invites it to re-derive
      *         the counts from a shape it would have to keep in step.
      * @throws CashFlowNotFoundException when no such cash flow exists
      */
-    ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId);
+    CashChangeCountsByStatus countCashChangesByStatus(CashFlowId cashFlowId, String sourceRuleId);
 
     RollbackResult rollbackImport(CashFlowId cashFlowId, boolean deleteCategories);
 

@@ -772,7 +772,7 @@ public final class CashFlowDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ExpectedCashChangesByStatusJson {
+    public static class CashChangeCountsByStatusJson {
         private int pending;
         private int confirmed;
         /** Anything that is neither - rejected or archived - so no status can vanish silently */

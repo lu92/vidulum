@@ -6,7 +6,7 @@ import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
@@ -189,7 +189,7 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("expectedCashChangesOf over HTTP counts by state, for one rule only")
+    @DisplayName("countCashChangesByStatus over HTTP counts by state, for one rule only")
     void shouldCountExpectedByStatusOverHttp() {
         CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
         httpApi.appendExpected(cashFlowId, "RR00000020", List.of(
@@ -198,7 +198,7 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
         httpApi.appendExpected(cashFlowId, "RR00000021",
                 List.of(expected("Something else", "2022-01-20T00:00:00Z")));
 
-        ExpectedCashChangesByStatus byStatus = httpApi.expectedCashChangesOf(cashFlowId, "RR00000020");
+        CashChangeCountsByStatus byStatus = httpApi.countCashChangesByStatus(cashFlowId, "RR00000020");
 
         assertThat(byStatus.pending()).isEqualTo(2);
         assertThat(byStatus.confirmed()).isZero();
@@ -209,11 +209,11 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("expectedCashChangesOf over HTTP answers zeros for a rule that produced nothing")
+    @DisplayName("countCashChangesByStatus over HTTP answers zeros for a rule that produced nothing")
     void shouldCountNothingForAnUnknownRuleOverHttp() {
         CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
 
-        assertThat(httpApi.expectedCashChangesOf(cashFlowId, "RR09999999").total()).isZero();
+        assertThat(httpApi.countCashChangesByStatus(cashFlowId, "RR09999999").total()).isZero();
     }
 
     @Test

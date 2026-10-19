@@ -10,7 +10,7 @@ import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
-import com.multi.vidulum.cashflow.api.ExpectedCashChangesByStatus;
+import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
@@ -164,14 +164,14 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
     }
 
     @Override
-    public ExpectedCashChangesByStatus expectedCashChangesOf(CashFlowId cashFlowId, String sourceRuleId) {
+    public CashChangeCountsByStatus countCashChangesByStatus(CashFlowId cashFlowId, String sourceRuleId) {
         try {
             // A dedicated endpoint, not the whole cash flow. The consumer this replaced fetched
             // /cash-flow/cf={id} - every cash change in the document - and counted two statuses out
             // of it, as strings, client-side.
             ByStatusResponse response = restClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/cash-flow/cf={cashFlowId}/expected-cash-changes/status")
+                            .path("/cash-flow/cf={cashFlowId}/cash-changes/status")
                             .queryParam("sourceRuleId", sourceRuleId)
                             .build(cashFlowId.id()))
                     .retrieve()
@@ -182,7 +182,7 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
                         "Status counts answered with no body for cash flow " + cashFlowId.id());
             }
 
-            return new ExpectedCashChangesByStatus(
+            return new CashChangeCountsByStatus(
                     response.pending(), response.confirmed(), response.other());
 
         } catch (HttpClientErrorException e) {
