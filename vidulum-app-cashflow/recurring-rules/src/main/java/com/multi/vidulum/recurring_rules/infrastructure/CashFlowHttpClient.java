@@ -69,166 +69,21 @@ public class CashFlowHttpClient {
     // getCashChangeStatuses: three operations the contract has no method for yet, which is the
     // remainder of task F26. They still carry an authToken, and generate() no longer does.
 
-    /**
-     * Batch deletes expected cash changes from the CashFlow.
-     * Only PENDING cash changes will be deleted; CONFIRMED ones are skipped.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param sourceRuleId the recurring rule ID (for reference/logging)
-     * @param cashChangeIds list of cash change IDs to delete
-     * @param authToken the auth token
-     * @return BatchDeleteResult with counts of deleted and skipped
-     */
-    public BatchDeleteResult batchDeleteExpectedCashChanges(
-            CashFlowId cashFlowId,
-            RecurringRuleId sourceRuleId,
-            List<CashChangeId> cashChangeIds,
-            String authToken
-    ) throws CashFlowCommunicationException {
-        if (cashChangeIds.isEmpty()) {
-            return new BatchDeleteResult(0, 0);
-        }
+    // batchDeleteExpectedCashChanges is gone too, ported to CashFlowModuleApi.deleteExpected the
+    // same way createExpectedCashChange was - and it was the easier half, because the command, the
+    // batch event and the projection handler already existed in cashflow. Only the contract method
+    // and its two transports were missing.
+    //
+    // RecurringRuleExecutor now holds no HTTP client at all: writing a rule's predictions and taking
+    // them back are both one call through the contract.
 
-        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-changes";
-
-        try {
-            HttpHeaders headers = createHeaders(authToken);
-
-            Map<String, Object> request = new HashMap<>();
-            request.put("sourceRuleId", sourceRuleId.id());
-            request.put("cashChangeIds", cashChangeIds.stream().map(CashChangeId::id).toList());
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(request, headers),
-                    Map.class
-            );
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", "Empty response body");
-            }
-
-            int deletedCount = ((Number) body.get("deletedCount")).intValue();
-            int skippedCount = ((Number) body.get("skippedCount")).intValue();
-
-            log.info("Batch deleted {} cash changes for rule {} (skipped {})",
-                    deletedCount, sourceRuleId.id(), skippedCount);
-
-            return new BatchDeleteResult(deletedCount, skippedCount);
-        } catch (CashFlowCommunicationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "batch delete cash changes", e);
-        }
-    }
-
-    /**
-     * Result of a batch delete operation.
-     */
-    public record BatchDeleteResult(int deletedCount, int skippedCount) {
-    }
-
-    /**
-     * Batch updates expected cash changes in the CashFlow.
-     * Only PENDING cash changes will be updated; CONFIRMED ones are skipped.
-     *
-     * @param cashFlowId the CashFlow ID
-     * @param sourceRuleId the recurring rule ID (for reference/logging)
-     * @param cashChangeIds list of cash change IDs to update
-     * @param updates the updates to apply (amount, name, categoryName - all optional)
-     * @param authToken the auth token
-     * @return BatchUpdateResult with counts of updated and skipped
-     */
-    public BatchUpdateResult batchUpdateExpectedCashChanges(
-            CashFlowId cashFlowId,
-            RecurringRuleId sourceRuleId,
-            List<CashChangeId> cashChangeIds,
-            CashChangeUpdates updates,
-            String authToken
-    ) throws CashFlowCommunicationException {
-        if (cashChangeIds.isEmpty()) {
-            return new BatchUpdateResult(0, 0);
-        }
-
-        String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id() + "/cash-changes/batch";
-
-        try {
-            HttpHeaders headers = createHeaders(authToken);
-
-            Map<String, Object> updatesMap = new HashMap<>();
-            if (updates.amount() != null) {
-                updatesMap.put("amount", Map.of(
-                        "amount", updates.amount().getAmount(),
-                        "currency", updates.amount().getCurrency()
-                ));
-            }
-            if (updates.name() != null) {
-                updatesMap.put("name", updates.name());
-            }
-            if (updates.categoryName() != null) {
-                updatesMap.put("categoryName", updates.categoryName().name());
-            }
-
-            Map<String, Object> request = new HashMap<>();
-            request.put("sourceRuleId", sourceRuleId.id());
-            request.put("cashChangeIds", cashChangeIds.stream().map(CashChangeId::id).toList());
-            request.put("updates", updatesMap);
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.PATCH,
-                    new HttpEntity<>(request, headers),
-                    Map.class
-            );
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "batch update cash changes", "Empty response body");
-            }
-
-            int updatedCount = ((Number) body.get("updatedCount")).intValue();
-            int skippedCount = ((Number) body.get("skippedCount")).intValue();
-
-            log.info("Batch updated {} cash changes for rule {} (skipped {})",
-                    updatedCount, sourceRuleId.id(), skippedCount);
-
-            return new BatchUpdateResult(updatedCount, skippedCount);
-        } catch (CashFlowCommunicationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "batch update cash changes", e);
-        }
-    }
-
-    /**
-     * Updates to apply in a batch update operation.
-     * All fields are optional - only non-null fields will be updated.
-     */
-    public record CashChangeUpdates(
-            Money amount,
-            String name,
-            CategoryName categoryName
-    ) {
-        public static CashChangeUpdates ofAmount(Money amount) {
-            return new CashChangeUpdates(amount, null, null);
-        }
-
-        public static CashChangeUpdates ofName(String name) {
-            return new CashChangeUpdates(null, name, null);
-        }
-
-        public static CashChangeUpdates ofCategory(CategoryName categoryName) {
-            return new CashChangeUpdates(null, null, categoryName);
-        }
-    }
-
-    /**
-     * Result of a batch update operation.
-     */
-    public record BatchUpdateResult(int updatedCount, int skippedCount) {
-    }
+    // batchUpdateExpectedCashChanges went the same way, but for a different reason: it had no
+    // caller at all, and had not had one for some time. What kept it alive was its own five
+    // tests. Its two public records, CashChangeUpdates and BatchUpdateResult, existed only to
+    // serve it and went with it.
+    //
+    // Fifth method in this series to leave by losing its callers rather than by being rewritten
+    // - and the first that was already dead before anyone touched the path it sat on.
 
     private HttpHeaders createHeaders(String authToken) {
         HttpHeaders headers = new HttpHeaders();

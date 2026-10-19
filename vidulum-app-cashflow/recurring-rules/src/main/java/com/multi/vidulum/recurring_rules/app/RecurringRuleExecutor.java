@@ -1,13 +1,13 @@
 package com.multi.vidulum.recurring_rules.app;
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
-import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,8 +32,12 @@ import java.util.List;
  *
  * <p>Public only so the command handlers in {@code app.commands..} can reach it;
  * {@code ModuleBoundariesArchTest} is what keeps {@code recurring_rules.app..} closed to other
- * modules. The {@code authToken} is here for the same reason it is everywhere else in this module -
- * {@link CashFlowHttpClient} still writes over HTTP, which is task F26.
+ * modules.
+ *
+ * <p><b>No HTTP client here any more, and no {@code authToken} in either signature.</b> Both halves
+ * of the job - writing a rule's predictions and taking them back - go through
+ * {@link CashFlowModuleApi}, one call each. What is left of the module's own client serves
+ * {@code RecurringRuleService}, and that is the remainder of task F26.
  */
 @Slf4j
 @Component
@@ -44,7 +48,6 @@ public class RecurringRuleExecutor {
 
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowModuleApi cashFlowApi;
-    private final CashFlowHttpClient cashFlowHttpClient;
     private final Clock clock;
 
     /**
@@ -91,7 +94,7 @@ public class RecurringRuleExecutor {
 
         // Check if rule should auto-complete after reaching maxOccurrences
         if (rule.shouldAutoComplete()) {
-            rule.complete("Reached maximum occurrences (" + rule.getMaxOccurrences().orElse(0) + ")", clock);
+            rule.complete(STR."Reached maximum occurrences (\{rule.getMaxOccurrences().orElse(0)})", clock);
             ruleRepository.save(rule);
             log.info("Rule {} auto-completed after reaching {} occurrences",
                     rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
@@ -109,22 +112,25 @@ public class RecurringRuleExecutor {
                 : Money.of(effectiveAmount.getAmount().negate(), effectiveAmount.getCurrency());
     }
 
-    public void clear(RecurringRule rule, String authToken) {
+    /**
+     * Takes back everything this rule had predicted, in one call.
+     *
+     * <p>Unlike {@link #generate}, which refuses a whole batch rather than drop an item, cashflow
+     * <b>skips</b> here - a cash change the owner has already confirmed is a fact about their money,
+     * not a prediction, so it stays. The rule stops tracking it either way: it is the owner's now.
+     */
+    public void clear(RecurringRule rule) {
         List<CashChangeId> toDelete = rule.getGeneratedCashChangeIds();
 
         if (toDelete.isEmpty()) {
             return;
         }
 
-        CashFlowHttpClient.BatchDeleteResult result = cashFlowHttpClient.batchDeleteExpectedCashChanges(
-                rule.getCashFlowId(),
-                rule.getRuleId(),
-                toDelete,
-                authToken
-        );
+        DeletedExpectedCashChanges result = cashFlowApi.deleteExpected(
+                rule.getCashFlowId(), rule.getRuleId().id(), toDelete);
 
-        log.info("Batch deleted {} cash changes for rule {} (skipped {} confirmed)",
-                result.deletedCount(), rule.getRuleId().id(), result.skippedCount());
+        log.info("Withdrew {} expected cash changes for rule {} ({} were already confirmed and stay)",
+                result.deleted(), rule.getRuleId().id(), result.skipped());
 
         rule.clearGeneratedCashChanges(toDelete, clock);
         ruleRepository.save(rule);

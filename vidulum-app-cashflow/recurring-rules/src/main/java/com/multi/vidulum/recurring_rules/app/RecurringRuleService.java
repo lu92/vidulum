@@ -63,7 +63,7 @@ public class RecurringRuleService {
         }
 
         // Clear pending cash changes before pausing - paused rule should not have future forecasts
-        executor.clear(rule, authToken);
+        executor.clear(rule);
 
         PauseInfo pauseInfo = command.resumeDate() != null
                 ? PauseInfo.untilDate(clock.instant(), command.resumeDate(), command.reason())
@@ -89,7 +89,7 @@ public class RecurringRuleService {
         ruleRepository.save(rule);
 
         // Defensive: clear any remaining pending cash changes (edge case - should be empty after proper pause)
-        executor.clear(rule, authToken);
+        executor.clear(rule);
         // Generate new expected cash changes from today
         executor.generate(rule);
 
@@ -141,7 +141,7 @@ public class RecurringRuleService {
         }
 
         // Clear generated cash changes
-        executor.clear(rule, authToken);
+        executor.clear(rule);
 
         rule.delete(command.reason(), clock);
         ruleRepository.save(rule);
@@ -159,7 +159,7 @@ public class RecurringRuleService {
         }
 
         // Clear old and generate new
-        executor.clear(rule, authToken);
+        executor.clear(rule);
         executor.generate(rule);
     }
 
@@ -187,7 +187,7 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            executor.clear(rule, authToken);
+            executor.clear(rule);
             executor.generate(rule);
         }
 
@@ -209,7 +209,7 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            executor.clear(rule, authToken);
+            executor.clear(rule);
             executor.generate(rule);
         }
 

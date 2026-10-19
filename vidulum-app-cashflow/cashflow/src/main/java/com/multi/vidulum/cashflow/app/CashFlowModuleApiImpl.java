@@ -14,8 +14,11 @@ import com.multi.vidulum.cashflow.app.commands.importhistorical.ImportHistorical
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportCommand;
 import com.multi.vidulum.cashflow.app.commands.rollbackimport.RollbackImportResult;
 import com.multi.vidulum.cashflow.domain.Category;
+import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.app.commands.append.BatchAppendExpectedCashChangesCommand;
+import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteExpectedCashChangesCommand;
+import com.multi.vidulum.cashflow.app.commands.delete.BatchDeleteResult;
 import com.multi.vidulum.cashflow.domain.Description;
 import com.multi.vidulum.cashflow.domain.Name;
 import com.multi.vidulum.cashflow.domain.CashFlow;
@@ -152,6 +155,17 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                                 change.type(),
                                 change.dueDate()))
                         .toList()));
+    }
+
+    @Override
+    public DeletedExpectedCashChanges deleteExpected(CashFlowId cashFlowId, String sourceRuleId, List<CashChangeId> cashChangeIds) {
+        // The command already existed, with its own batch event and a projection handler for it -
+        // only the contract was missing, which is why this method is three lines while appendExpected
+        // needed a command, an event and an apply of its own.
+        BatchDeleteResult result = commandGateway.send(new BatchDeleteExpectedCashChangesCommand(
+                cashFlowId, sourceRuleId, cashChangeIds));
+
+        return new DeletedExpectedCashChanges(result.deletedCount(), result.skippedCount());
     }
 
     @Override

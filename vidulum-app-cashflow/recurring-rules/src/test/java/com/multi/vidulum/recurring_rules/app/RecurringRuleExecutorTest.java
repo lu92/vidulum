@@ -1,6 +1,7 @@
 package com.multi.vidulum.recurring_rules.app;
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;
@@ -13,7 +14,6 @@ import com.multi.vidulum.recurring_rules.domain.MonthlyPattern;
 import com.multi.vidulum.recurring_rules.domain.RecurrencePattern;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
-import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -50,10 +50,8 @@ class RecurringRuleExecutorTest {
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final CashFlowModuleApi cashFlowApi = mock(CashFlowModuleApi.class);
-    private final CashFlowHttpClient httpClient = mock(CashFlowHttpClient.class);
-
     private final RecurringRuleExecutor executor =
-            new RecurringRuleExecutor(rules, cashFlowApi, httpClient, FIXED_CLOCK);
+            new RecurringRuleExecutor(rules, cashFlowApi, FIXED_CLOCK);
 
     /**
      * The claim the change was made for. Twelve occurrences, one call - and counting the calls is
@@ -68,7 +66,6 @@ class RecurringRuleExecutorTest {
 
         verify(cashFlowApi, times(1)).appendExpected(any(), anyString(), any());
         assertThat(appendedChanges()).hasSize(12);
-        verifyNoInteractions(httpClient);
     }
 
     @Test
@@ -157,6 +154,54 @@ class RecurringRuleExecutorTest {
                 .as("the limit was reached, so the rule has nothing left to do")
                 .isEqualTo(com.multi.vidulum.recurring_rules.domain.RuleStatus.COMPLETED);
         verify(rules, times(2)).save(rule);
+    }
+
+    @Test
+    void withdrawingARulesPredictionsIsOneCallCarryingEveryIdItRecorded() {
+        idsReserved(12);
+        RecurringRule rule = monthlyRule(Money.of(-1500, "PLN"), null);
+        executor.generate(rule);
+        when(cashFlowApi.deleteExpected(any(), anyString(), any()))
+                .thenReturn(new DeletedExpectedCashChanges(12, 0));
+
+        executor.clear(rule);
+
+        ArgumentCaptor<List<CashChangeId>> withdrawn = ArgumentCaptor.forClass(List.class);
+        verify(cashFlowApi, times(1)).deleteExpected(any(), anyString(), withdrawn.capture());
+        assertThat(withdrawn.getValue()).containsExactlyElementsOf(reservedIds(12));
+        assertThat(rule.getGeneratedCashChangeIds())
+                .as("and the rule stops tracking them, so a second clear asks for nothing")
+                .isEmpty();
+    }
+
+    /**
+     * Cashflow skips a cash change the owner has already confirmed - it is a fact about their money
+     * now, not a prediction. The rule stops tracking it regardless: it is no longer the rule's to
+     * withdraw, and keeping it on the list would make every later clear ask again for something that
+     * will never go.
+     */
+    @Test
+    void aConfirmedCashChangeStaysInTheCashFlowAndStopsBeingTheRulesConcern() {
+        idsReserved(3);
+        RecurringRule rule = monthlyRule(Money.of(-1500, "PLN"), null);
+        executor.generate(rule);
+        when(cashFlowApi.deleteExpected(any(), anyString(), any()))
+                .thenReturn(new DeletedExpectedCashChanges(2, 1));
+
+        executor.clear(rule);
+
+        assertThat(rule.getGeneratedCashChangeIds()).isEmpty();
+        verify(rules, times(2)).save(rule);
+    }
+
+    @Test
+    void aRuleThatPredictedNothingWithdrawsNothing() {
+        RecurringRule rule = monthlyRule(Money.of(-1500, "PLN"), null);
+
+        executor.clear(rule);
+
+        verifyNoInteractions(cashFlowApi);
+        verify(rules, never()).save(any());
     }
 
     private void idsReserved(int count) {

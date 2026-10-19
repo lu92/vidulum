@@ -4,6 +4,7 @@ import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.RollbackResult;
+import com.multi.vidulum.cashflow.api.DeletedExpectedCashChanges;
 import com.multi.vidulum.cashflow.api.ExpectedCashChange;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
@@ -184,6 +185,49 @@ class HttpCashFlowModuleApiIntegrationTest extends CashFlowIntegrationTest {
                 expected("Rent March", "2022-03-15T00:00:00Z")));
 
         assertThat(ids).hasSize(3).doesNotHaveDuplicates();
+    }
+
+    @Test
+    @DisplayName("deleteExpected over HTTP withdraws what appendExpected wrote")
+    void shouldWithdrawABatchOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
+        List<CashChangeId> ids = httpApi.appendExpected(cashFlowId, "RR00000010", List.of(
+                expected("Rent January", "2022-01-15T00:00:00Z"),
+                expected("Rent February", "2022-02-15T00:00:00Z")));
+
+        DeletedExpectedCashChanges result = httpApi.deleteExpected(cashFlowId, "RR00000010", ids);
+
+        assertThat(result.deleted()).isEqualTo(2);
+        assertThat(result.skipped())
+                .as("they were still expected, so nothing had to be left behind")
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("deleteExpected over HTTP skips an id the cash flow does not hold")
+    void shouldSkipUnknownIdsOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
+        List<CashChangeId> ids = httpApi.appendExpected(cashFlowId, "RR00000011",
+                List.of(expected("Rent January", "2022-01-15T00:00:00Z")));
+
+        DeletedExpectedCashChanges result = httpApi.deleteExpected(cashFlowId, "RR00000011",
+                List.of(ids.getFirst(), CashChangeId.of("CC9999999999")));
+
+        assertThat(result.deleted()).isEqualTo(1);
+        assertThat(result.skipped())
+                .as("an id that is not there is skipped, not an error - there is nothing to destroy")
+                .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("deleteExpected over HTTP sends nothing for an empty batch")
+    void shouldWithdrawNothingForAnEmptyBatchOverHttp() {
+        CashFlowId cashFlowId = CashFlowId.of(actor.createCashFlow(userId, uniqueName(), "GBP"));
+
+        DeletedExpectedCashChanges result = httpApi.deleteExpected(cashFlowId, "RR00000012", List.of());
+
+        assertThat(result.deleted()).isZero();
+        assertThat(result.skipped()).isZero();
     }
 
     @Test
