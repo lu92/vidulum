@@ -41,116 +41,18 @@ public class RecurringRuleService {
 
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowHttpClient cashFlowHttpClient;
+    private final RecurringRuleExecutor executor;
     private final Clock clock;
 
     private static final int FORECAST_MONTHS = 12; // Current + 11 months
 
     // Command Handlers
 
-    public RecurringRuleId handle(CreateRuleCommand command, String authToken) {
-        CashFlowId cashFlowId = CashFlowId.of(command.cashFlowId());
-
-        // Validate CashFlow exists
-        CashFlowHttpClient.CashFlowInfo cashFlowInfo =
-                cashFlowHttpClient.getCashFlowInfo(cashFlowId, authToken);
-
-        // Validate category exists
-        boolean isInflow = command.baseAmount().isPositive();
-        validateCategory(cashFlowInfo, command.categoryName(), isInflow, cashFlowId);
-
-        // Validate date range
-        if (command.endDate() != null && command.startDate().isAfter(command.endDate())) {
-            throw new InvalidDateRangeException(command.startDate(), command.endDate());
-        }
-
-        // Validate maxOccurrences
-        if (command.maxOccurrences() != null && command.maxOccurrences() <= 0) {
-            throw new IllegalArgumentException("maxOccurrences must be positive");
-        }
-
-        // Generate ID and create rule
-        long sequence = ruleRepository.generateNextSequence();
-        RecurringRuleId ruleId = RecurringRuleId.generate(sequence);
-
-        RecurringRule rule = RecurringRule.create(
-                ruleId,
-                UserId.of(command.userId()),
-                cashFlowId,
-                command.name(),
-                command.description(),
-                command.baseAmount(),
-                command.categoryName(),
-                command.pattern(),
-                command.startDate(),
-                command.endDate(),
-                command.maxOccurrences(),
-                command.activeMonths(),
-                command.excludedDates(),
-                clock
-        );
-
-        ruleRepository.save(rule);
-
-        // Generate expected cash changes
-        generateExpectedCashChanges(rule, authToken);
-
-        log.info("Created recurring rule {} for CashFlow {}", ruleId.id(), cashFlowId.id());
-        return ruleId;
-    }
-
-
-    public void handle(UpdateRuleCommand command, String authToken) {
-        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
-        RecurringRule rule = findRuleOrThrow(ruleId);
-
-        if (rule.isDeleted()) {
-            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "update");
-        }
-
-        CashFlowId cashFlowId = rule.getCashFlowId();
-        CashFlowHttpClient.CashFlowInfo cashFlowInfo =
-                cashFlowHttpClient.getCashFlowInfo(cashFlowId, authToken);
-
-        boolean isInflow = command.baseAmount().isPositive();
-        validateCategory(cashFlowInfo, command.categoryName(), isInflow, cashFlowId);
-
-        if (command.endDate() != null && command.startDate().isAfter(command.endDate())) {
-            throw new InvalidDateRangeException(command.startDate(), command.endDate());
-        }
-
-        // Validate maxOccurrences
-        if (command.maxOccurrences() != null && command.maxOccurrences() <= 0) {
-            throw new IllegalArgumentException("maxOccurrences must be positive");
-        }
-
-        // Clear old expected cash changes
-        clearGeneratedCashChanges(rule, authToken);
-
-        // Update rule
-        rule.update(
-                command.name(),
-                command.description(),
-                command.baseAmount(),
-                command.categoryName(),
-                command.pattern(),
-                command.startDate(),
-                command.endDate(),
-                command.maxOccurrences(),
-                command.activeMonths(),
-                command.excludedDates(),
-                clock
-        );
-
-        ruleRepository.save(rule);
-
-        // Generate new expected cash changes
-        if (rule.isActive()) {
-            generateExpectedCashChanges(rule, authToken);
-        }
-
-        log.info("Updated recurring rule {}", ruleId.id());
-    }
-
+    // handle(CreateRuleCommand) and handle(UpdateRuleCommand) left this class for
+    // app/commands/create and app/commands/update - a folder per command with its own
+    // CommandHandler, the shape cashflow has used from the start. They were the two that asked
+    // cashflow's contract, so CashFlowModuleApi left with them; what they shared with the methods
+    // below is now RecurringRuleExecutor.
 
     public void handle(PauseRuleCommand command, String authToken) {
         RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
@@ -161,7 +63,7 @@ public class RecurringRuleService {
         }
 
         // Clear pending cash changes before pausing - paused rule should not have future forecasts
-        clearGeneratedCashChanges(rule, authToken);
+        executor.clear(rule, authToken);
 
         PauseInfo pauseInfo = command.resumeDate() != null
                 ? PauseInfo.untilDate(clock.instant(), command.resumeDate(), command.reason())
@@ -187,9 +89,9 @@ public class RecurringRuleService {
         ruleRepository.save(rule);
 
         // Defensive: clear any remaining pending cash changes (edge case - should be empty after proper pause)
-        clearGeneratedCashChanges(rule, authToken);
+        executor.clear(rule, authToken);
         // Generate new expected cash changes from today
-        generateExpectedCashChanges(rule, authToken);
+        executor.generate(rule, authToken);
 
         log.info("Resumed recurring rule {} (regenerated cash changes)", ruleId.id());
     }
@@ -239,7 +141,7 @@ public class RecurringRuleService {
         }
 
         // Clear generated cash changes
-        clearGeneratedCashChanges(rule, authToken);
+        executor.clear(rule, authToken);
 
         rule.delete(command.reason(), clock);
         ruleRepository.save(rule);
@@ -257,8 +159,8 @@ public class RecurringRuleService {
         }
 
         // Clear old and generate new
-        clearGeneratedCashChanges(rule, authToken);
-        generateExpectedCashChanges(rule, authToken);
+        executor.clear(rule, authToken);
+        executor.generate(rule, authToken);
     }
 
     public AmountChangeId handle(AddAmountChangeCommand command, String authToken) {
@@ -285,8 +187,8 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            clearGeneratedCashChanges(rule, authToken);
-            generateExpectedCashChanges(rule, authToken);
+            executor.clear(rule, authToken);
+            executor.generate(rule, authToken);
         }
 
         log.info("Added {} amount change {} to rule {}", command.type(), changeId.id(), ruleId.id());
@@ -307,8 +209,8 @@ public class RecurringRuleService {
 
         // Regenerate expected cash changes if rule is active
         if (rule.isActive()) {
-            clearGeneratedCashChanges(rule, authToken);
-            generateExpectedCashChanges(rule, authToken);
+            executor.clear(rule, authToken);
+            executor.generate(rule, authToken);
         }
 
         log.info("Removed amount change {} from rule {}", changeId.id(), ruleId.id());
@@ -628,102 +530,5 @@ public class RecurringRuleService {
     private RecurringRule findRuleOrThrow(RecurringRuleId ruleId)  {
         return ruleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuleNotFoundException(ruleId));
-    }
-
-    private void validateCategory(
-            CashFlowHttpClient.CashFlowInfo cashFlowInfo,
-            CategoryName categoryName,
-            boolean isInflow,
-            CashFlowId cashFlowId
-    )  {
-        List<CategoryName> categories = isInflow
-                ? cashFlowInfo.inflowCategories()
-                : cashFlowInfo.outflowCategories();
-
-        boolean exists = categories.stream()
-                .anyMatch(cat -> cat.name().equals(categoryName.name()));
-
-        if (!exists) {
-            throw new CategoryNotFoundException(cashFlowId, categoryName);
-        }
-    }
-
-    private void generateExpectedCashChanges(RecurringRule rule, String authToken)
-             {
-        LocalDate fromDate = LocalDate.now(clock);
-        YearMonth currentMonth = YearMonth.from(fromDate);
-        LocalDate toDate = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
-
-        List<LocalDate> occurrences = rule.generateOccurrences(fromDate, toDate);
-        List<CashChangeId> generatedIds = new ArrayList<>();
-
-        String type = rule.getBaseAmount().isPositive() ? "INFLOW" : "OUTFLOW";
-
-        for (LocalDate occurrence : occurrences) {
-            try {
-                Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
-                Money absAmount = effectiveAmount.isPositive()
-                        ? effectiveAmount
-                        : Money.of(effectiveAmount.getAmount().negate(), effectiveAmount.getCurrency());
-
-                ZonedDateTime dueDate = occurrence.atStartOfDay(ZoneOffset.UTC);
-
-                CashChangeId cashChangeId = cashFlowHttpClient.createExpectedCashChange(
-                        rule.getCashFlowId(),
-                        rule.getRuleId(),
-                        rule.getCategoryName(),
-                        rule.getName(),
-                        rule.getDescription(),
-                        absAmount,
-                        type,
-                        dueDate,
-                        authToken
-                );
-
-                generatedIds.add(cashChangeId);
-                log.debug("Created expected cash change {} for rule {} on {}",
-                        cashChangeId.id(), rule.getRuleId().id(), occurrence);
-            } catch (CashFlowCommunicationException e) {
-                log.error("Failed to create expected cash change for rule {} on {}: {}",
-                        rule.getRuleId().id(), occurrence, e.getMessage());
-                throw e;
-            }
-        }
-
-        if (!generatedIds.isEmpty()) {
-            rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, clock);
-            ruleRepository.save(rule);
-            log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
-
-            // Check if rule should auto-complete after reaching maxOccurrences
-            if (rule.shouldAutoComplete()) {
-                rule.complete("Reached maximum occurrences (" + rule.getMaxOccurrences().orElse(0) + ")", clock);
-                ruleRepository.save(rule);
-                log.info("Rule {} auto-completed after reaching {} occurrences",
-                        rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
-            }
-        }
-    }
-
-    private void clearGeneratedCashChanges(RecurringRule rule, String authToken)
-             {
-        List<CashChangeId> toDelete = rule.getGeneratedCashChangeIds();
-
-        if (toDelete.isEmpty()) {
-            return;
-        }
-
-        CashFlowHttpClient.BatchDeleteResult result = cashFlowHttpClient.batchDeleteExpectedCashChanges(
-                rule.getCashFlowId(),
-                rule.getRuleId(),
-                toDelete,
-                authToken
-        );
-
-        log.info("Batch deleted {} cash changes for rule {} (skipped {} confirmed)",
-                result.deletedCount(), rule.getRuleId().id(), result.skippedCount());
-
-        rule.clearGeneratedCashChanges(toDelete, clock);
-        ruleRepository.save(rule);
     }
 }

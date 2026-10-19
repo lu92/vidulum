@@ -108,9 +108,9 @@ vidulum/
 │   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
 │   ├── bank-data-ingestion/     #   Import staging, category mapping. Three contracts, no
 │   │                            #   client of its own, never vidulum-cashflow
-│   └── recurring-rules/         #   Recurring rules; talks to cashflow over HTTP. No consumer
-│                                #   here has an -api (nothing asks them anything), nor a
-│                                #   test-scope dep on another
+│   └── recurring-rules/         #   Recurring rules. Reads cashflow through the contract, still
+│                                #   writes over HTTP (F26). No consumer here has an -api
+│                                #   (nothing asks them anything), nor a test-scope dep on another
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
 │   ├── vidulum-quotation-api/   #   CONTRACT: QuotationApi, BrokerQuotationProvider, fx/
@@ -250,9 +250,9 @@ duplicated validation:
   `CashFlowForecastApi` + `MonthStatuses` in `cashflow.api.forecast` — **a second contract in the
   same artifact**, because a method on `CashFlowModuleApi` would have forced its implementation
   (which holds the domain repository) to open the first `cashflow` → `cashflow_forecast_processor`
-  import. Staging asks the window first and the statuses only if it accepted, so one bad date
-  yields one message. Two status enums on purpose — a contract may not expose a read model's own
-  type — kept in step by an exhaustive `switch` plus a test over `Status.values()`.
+  import. Staging asks the window first, the statuses only if it accepted — one bad date, one
+  message. Two status enums on purpose, since a contract may not expose a read model's own type,
+  kept in step by an exhaustive `switch` plus a test over `Status.values()`.
 
 ### Don't let a port invent a poorer type than both ends already use
 
@@ -281,8 +281,8 @@ classpath. **A payload on a topic is text; read it with your own shape.**
 
 **Validation belongs at each module's own door.** That module borrowed cashflow's
 `BankAccountNumber`, which validates IBANs via iban4j — so its entity re-validated on every read
-from Mongo, and an account whose stored IBAN iban4j would reject today made the whole profile
-unreadable. Storage re-validating what it stored is a failure mode with no upside. It now has
+from Mongo, and one stored IBAN iban4j would reject today made the whole profile unreadable.
+Storage re-validating what it stored is a failure mode with no upside. It now has
 `OwnedAccountNumber` (a carrier) plus a validating `fromIban` factory, because its own endpoint
 accepts IBANs typed by a person. Two locks on two doors is not a duplicated concept.
 
@@ -572,7 +572,7 @@ clean slate the Docker rebuild above gives you — `down -v` is the part that ma
 
 ## Error Handling Guidelines
 
-**IMPORTANT**: Every custom/business exception MUST be handled by `ErrorHttpHandler` with proper `ApiError` response.
+**IMPORTANT**: every business exception MUST be handled by `ErrorHttpHandler` with an `ApiError`.
 
 ### How to Add New Exception Handling
 

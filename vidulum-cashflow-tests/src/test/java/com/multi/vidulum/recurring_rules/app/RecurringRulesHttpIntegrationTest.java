@@ -11,6 +11,7 @@ import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.app.dto.AmountChangeResponse;
 import com.multi.vidulum.recurring_rules.app.dto.CreateRuleRequest;
 import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
+import com.multi.vidulum.recurring_rules.app.dto.UpdateRuleRequest;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.PatternDto;
 import com.multi.vidulum.recurring_rules.app.dto.RecurringRuleResponse;
@@ -2610,5 +2611,108 @@ public class RecurringRulesHttpIntegrationTest extends CashFlowIntegrationTest {
         assertThat(response.getBody().get("message").toString()).contains("limit");
 
         log.info("Upcoming invalid limit validation test completed");
+    }
+
+    // ============ Bean validation on the create request ============
+
+    /**
+     * These need no cash flow, and that is the point: {@code @Valid} on the controller's parameter
+     * rejects the body before any handler runs, so the setup the pattern tests above need - a cash
+     * flow, a category, an attestation - is not part of the question here.
+     */
+    @Test
+    void shouldReturn400WhenPatternTypeIsMissing() {
+        // GIVEN: a pattern object with no type - the one field toPattern() cannot do without
+        CreateRuleRequest request = validRequestBuilder()
+                .pattern(PatternDto.builder().dayOfMonth(15).intervalMonths(1).build())
+                .build();
+
+        ResponseEntity<Map<String, Object>> response =
+                recurringRulesActor.createRuleExpectingValidationError(request);
+
+        // THEN: a validation error naming the nested field, not a 500 from switch(null)
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "VALIDATION_ERROR");
+        assertThat(fieldsIn(response)).contains("pattern.type");
+
+        log.info("Validation error for missing pattern type: {}", response.getBody());
+    }
+
+    @Test
+    void shouldReturn400WhenRequiredFieldsAreMissing() {
+        CreateRuleRequest request = CreateRuleRequest.builder()
+                .pattern(PatternDto.builder().type(RecurrenceType.MONTHLY).dayOfMonth(1).build())
+                .build();
+
+        ResponseEntity<Map<String, Object>> response =
+                recurringRulesActor.createRuleExpectingValidationError(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "VALIDATION_ERROR");
+        assertThat(fieldsIn(response))
+                .as("every missing field is reported, not just the first one")
+                .contains("userId", "cashFlowId", "name", "baseAmount", "category", "startDate");
+    }
+
+    /**
+     * The same refusal on the update endpoint, which kept the defect after create was fixed. The
+     * rule id need not exist: the body is rejected before the handler looks anything up, which is
+     * also why this needs no cash flow.
+     */
+    @Test
+    void shouldReturn400WhenPatternTypeIsMissingOnUpdate() {
+        UpdateRuleRequest request = UpdateRuleRequest.builder()
+                .name("Rent")
+                .description("monthly rent")
+                .baseAmount(Money.of(-1600, CURRENCY))
+                .category("Test")
+                .pattern(PatternDto.builder().dayOfMonth(15).intervalMonths(1).build())
+                .startDate(LocalDate.of(2022, 1, 15))
+                .build();
+
+        ResponseEntity<Map<String, Object>> response =
+                recurringRulesActor.updateRuleExpectingValidationError("RR00000001", request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "VALIDATION_ERROR");
+        assertThat(fieldsIn(response)).contains("pattern.type");
+
+        log.info("Validation error for missing pattern type on update: {}", response.getBody());
+    }
+
+    // A blank name and a non-positive maxOccurrences are refused too, and those cases live in
+    // CreateRuleRequestValidationTest - the annotations are a property of the record, assertable
+    // with a real jakarta validator and no server. What is asserted here is the half only HTTP
+    // shows: the status, the ErrorCode, and that the field names survive serialisation.
+
+    /**
+     * Everything a create request needs, so a case can spoil exactly one thing. The cash flow id is
+     * well-formed but does not exist - validation never gets far enough to care.
+     */
+    private CreateRuleRequest.CreateRuleRequestBuilder validRequestBuilder() {
+        return CreateRuleRequest.builder()
+                .userId(userId)
+                .cashFlowId("CF10000001")
+                .name("Rent")
+                .description("monthly rent")
+                .baseAmount(Money.of(-1500, CURRENCY))
+                .category("Test")
+                .pattern(PatternDto.builder()
+                        .type(RecurrenceType.MONTHLY)
+                        .dayOfMonth(15)
+                        .intervalMonths(1)
+                        .build())
+                .startDate(LocalDate.of(2022, 1, 15));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> fieldsIn(ResponseEntity<Map<String, Object>> response) {
+        Object fieldErrors = response.getBody().get("fieldErrors");
+        if (fieldErrors == null) {
+            return List.of();
+        }
+        return ((List<Map<String, String>>) fieldErrors).stream()
+                .map(e -> e.get("field"))
+                .toList();
     }
 }

@@ -1696,3 +1696,242 @@ Usunięte netto: ~700 linii produkcji i dublerów.
 Z F26 zostaje druga połowa: `CashFlowHttpClient` w recurring-rules — własny `CashFlowInfo`, pięć
 metod, cudzy JSON parsowany jako `Map<String, Object>` — plus odzyskanie siedmiu typów cashflow ze
 shared-kernela.
+
+---
+
+## 26. Audyt granic grupy po kroku 29
+
+Po usunięciu portu ingestion sprawdziłem całą grupę `vidulum-app-cashflow` na jedno pytanie:
+**czy zostały sprzężenia międzymodułowe, których nie pokrywa kontrakt `-api`?**
+
+### Czas kompilacji: czysto, i to jest sprawdzone
+
+Żaden z siedmiu modułów nie deklaruje zależności od cudzej implementacji — tylko kontrakty i
+shared-kernel. Bezpośredni test importów w `src/main` i `src/test`: **ani jeden** moduł nie sięga do
+`app`, `domain` ani `infrastructure` innego. `assertSealed` to zamraża, a jedyne odstępstwo —
+`cashflow_forecast_processor` — jest *wewnątrz* tego samego artefaktu.
+
+Czyli wszystko, co zostało, leży **poza kompilatorem**. Pięć kanałów.
+
+### Trzy wymagają roboty — F48, F49, F50
+
+| | |
+|---|---|
+| **F48** | `bank-data-adapter` → `bank-data-ingestion` po loopbacku HTTP, pod zaszytym `:8080`, którego nikt nie ustawia, i bez testu na sam skok |
+| **F49** | `bank_data_adapter.rest` leży poza strażą `assertSealed` — trzy kontrolery importowalne skądkolwiek |
+| **F50** | `cashflow` deklaruje `user-financial-profile-api` i nie importuje z niego niczego |
+
+Czwarty kanał to **F26**, czyli `CashFlowHttpClient` w recurring-rules: moduł ma `cashflow-api` na
+ścieżce klas i bierze z niego **jedną klasę wyjątku**, a sześć operacji woła po REST z własnym
+`CashFlowInfo` i `Map<String, Object>`, przeciągając `authToken` przez każdą sygnaturę.
+
+### Dwa kanały są pokryte i nie wymagają nic
+
+- **Topic `cash_flow` → `user-financial-profile`.** Koperta `CashFlowUnifiedEvent` jest poprawnym
+  `IntegrationEvent` (`metadata` + nieprzejrzysty `JsonContent`, zero typów domenowych), a konsument
+  deklaruje własny kształt z `@JsonIgnoreProperties`. Sprzężeniem są **nazwy pól w JSON-ie** i są
+  pilnowane: `UserFinancialProfileHttpIntegrationTest` czeka na przejęcie IBAN-u po zdarzeniu, więc
+  zmiana nazwy u producenta to zepsuje. Nie ma dedykowanego testu słownika jak przy
+  `TransactionClassification` — tutaj tę rolę grają testy integracyjne, bo oba moduły jadą w jednym
+  kontekście.
+- **Cashflow-owe typy w shared-kernelu** (`CashFlowId`, `CashChangeId`, `CategoryName`,
+  `BankAccountId`, `BankName`). Poza grupą występują **wyłącznie** w trzech kopiach testowego
+  `TestIds`, więc wycieku produkcyjnego nie ma. Pozostaje częścią F24 jako porządek, nie jako defekt.
+
+### Jedna obserwacja bez zadania
+
+`user-financial-profile-api` deklaruje `spring-boot-starter-webmvc` i `-validation` — dokładnie to,
+czego według CLAUDE.md `*-api` deklarować nie powinien. Ma to jednak przyczynę, nie przeoczenie:
+`UserFinancialProfileApi` jest interfejsem `@HttpExchange` z `@Valid`, więc ten kontrakt **jest**
+springowy, a implementacją w procesie jest sam kontroler. Zapisane tu, żeby następny czytelnik reguły
+nie uznał tego za niedopatrzenie.
+
+---
+
+## 27. Co zrobił krok 30: dwa odczyty recurring-rules na kontrakt
+
+Audyt z sekcji 26 wskazał `CashFlowHttpClient` jako najostrzejszy przypadek: moduł **ma**
+`cashflow-api` na ścieżce klas i bierze z niego jedną klasę wyjątku, a sześć operacji woła po REST.
+Ten krok przenosi te dwie, które kontrakt już umie.
+
+### Co dokładnie było nie tak
+
+```java
+ResponseEntity<Map> response = restTemplate.exchange(url, GET, ..., Map.class);
+List<Map<String, Object>> inflowCategories = (List<Map<String, Object>>) body.get("inflowCategories");
+Map<String, String> catName = (Map<String, String>) category.get("categoryName");
+result.add(new CategoryName(catName.get("name")));
+List<Map<String, Object>> subCategories = (List<Map<String, Object>>) category.get("subCategories");
+```
+
+Cztery literały nazywające pola JSON-a cashflow, pod rzutowaniami `@SuppressWarnings`. **Producent
+mógł przemianować którekolwiek i nic by się tu nie przestało kompilować** — a wynikowy
+`ClassCastException` wpadłby w `catch (Exception e)` i zostałby zgłoszony jako *błąd komunikacji*,
+czyli diagnoza wskazałaby sieć, nie kontrakt.
+
+Drugi koszt: `validateCategoryExists` wołało `getCashFlowInfo`, czyli **pełne żądanie po całe cash
+flow, z każdą transakcją, po jeden boolean**. W monolicie — po loopbacku.
+
+### Co jest teraz
+
+```java
+CashFlowSkeletonView skeleton = cashFlowApi.skeletonOf(cashFlowId);
+...
+Set<CategoryName> categories = isInflow
+        ? skeleton.inflowCategoryNames()
+        : skeleton.outflowCategoryNames();
+if (!categories.contains(categoryName)) { throw new CategoryNotFoundException(...); }
+```
+
+**Semantyka jest identyczna, i to sprawdzone, nie założone:** `namesOf` spłaszcza podkategorie
+dokładnie jak tamten rekurencyjny spacer, a `CategoryName` jest rekordem, więc `contains` to to samo
+porównanie pełnym łańcuchem co `cat.name().equals(categoryName.name())`. Szkielet ma też wyszukiwanie
+ignorujące wielkość litery — użycie go **zmieniłoby** to, co ta walidacja przyjmuje, więc zostało
+osobną decyzją, zapisaną w javadocu metody.
+
+### Niespodzianka: `validateCategoryExists` nie miało wołającego w produkcji
+
+Trzeci raz ten sam wzorzec w tej serii (po `fromCashFlowInfo` i `extractTransactionIds`): metoda
+utrzymywana w życiu wyłącznie przez swój test. Usunięta razem z nim.
+
+### Pokrycie poszło za logiką, nie za plikiem
+
+Pięć testów klienta sprawdzało rekurencyjne wyciąganie kategorii. Samo spłaszczanie jest pokryte po
+stronie kontraktu (`CashFlowSkeletonComponentTest:128` sprawdza te same zbiory per kierunek, z
+zagnieżdżeniem), więc tamte pięć odpadło bez straty.
+
+**Ale odmowa serwisu nie miała testu nigdzie** — ani jednostkowo, ani w 57 testach integracyjnych
+reguł, które 404 sprawdzają tylko dla samych reguł. Czyli przenosząc tę walidację, nie miałem czym
+udowodnić, że ją zachowałem. Dlatego `RecurringRuleCategoryValidationTest` (5 przypadków):
+nieznana kategoria, **kategoria istniejąca tylko po drugiej stronie** (w obie strony), podkategoria
+przyjęta, nieistniejący cash flow odmówiony przez kontrakt bez tłumaczenia na błąd komunikacji, i
+jedno pytanie do kontraktu na regułę.
+
+Dowód negatywny: podmiana reguły na `allCategoryNames()` — czyli zgubienie kierunku — wywala
+dokładnie jeden test, ten o drugiej stronie.
+
+### Co zostało w kliencie
+
+Cztery operacje bez metody w kontrakcie: trzy zapisy (`createExpectedCashChange`,
+`batchDeleteExpectedCashChanges`, `batchUpdateExpectedCashChanges`) i jeden odczyt
+(`getCashChangeStatuses`, który dalej parsuje `body.get("cashChanges")` z `Map<String, Object>`).
+Każda nadal bierze `authToken` — i to jest pozostały ślad tego, że decyzja o transporcie wyciekła w
+górę, do sygnatur przypadków użycia. To reszta **F26**.
+
+| | przed | po |
+|---|---|---|
+| operacje w `CashFlowHttpClient` | 6 | 4 |
+| żądania HTTP na utworzenie reguły | 1 + N zapisów | **N zapisów** |
+| parsowanie cudzego JSON-a w odczytach | 2 metody | 1 (`getCashChangeStatuses`) |
+| testy `vidulum-recurring-rules` | 22 | **27** |
+
+---
+
+## 28. Co zrobił krok 31: dwie komendy dostają własne handlery
+
+Te dwie, które pytają kontrakt cashflow — `CreateRuleCommand` i `UpdateRuleCommand` — wyszły z
+`RecurringRuleService` w kształcie, którego cashflow używa od początku: **folder na komendę, komenda i
+jej handler obok siebie, trasowanie przez `CommandGateway`**.
+
+```
+app/commands/create/   CreateRuleCommand.java  CreateRuleCommandHandler.java
+app/commands/update/   UpdateRuleCommand.java  UpdateRuleCommandHandler.java
+```
+
+`RecurringRuleService` miał **dwanaście metod `handle` w 736 liniach**, więc czytelnik szukający,
+co robi utworzenie reguły, znajdował to pośród jedenastu innych, a wszystko, czego którakolwiek z
+nich potrzebowała, było polem tej samej klasy. Zostało **535 linii** i dziesięć metod — i **zero**
+odwołań do `CashFlowModuleApi`, bo kontrakt wyszedł razem z tymi dwiema.
+
+### Dwóch kolaboratorów, bo logika była wspólna
+
+| | dlaczego osobno |
+|---|---|
+| `RecurringRuleExecutor` | `generate` miało **sześciu** wołających, `clear` **siedmiu** — dwa z nich wyszły, pięć zostało. Dwie strony jednej roboty na tych samych trzech zależnościach, więc jeden komponent, nie dwa. Przeniesione bez zmiany ciała |
+| `CashFlowCategoryValidator` | pytany przez oba handlery i **jedyne miejsce w module, które rozmawia z `CashFlowModuleApi`** — jedno żądanie na komendę, odpowiadające na dwie rzeczy: że cash flow istnieje (kontrakt sam rzuca) i że kategoria istnieje, po właściwej stronie |
+
+Oba są **publiczne**, bo handlery siedzą w innym pakiecie, a `package-private` w Javie nie jest
+hierarchiczne. To nie jest rozszczelnienie: `assertSealed` trzyma `recurring_rules.app..` zamknięte
+dla innych modułów, i tak samo publiczne są w cashflow `DomainCashFlowRepository` czy
+`CashFlowEventEmitter`.
+
+### Decyzja, którą trzeba nazwać: `authToken` wszedł do komendy
+
+`CommandHandler<T, R>.handle(T command)` bierze komendę i **nic więcej**, a token był dotąd drugim
+parametrem metody serwisu. Żeby zaimplementować ten interfejs, musiał trafić do rekordu komendy.
+
+**To nie jest poprawa — to przeniesienie.** Token okaziciela nie ma czego szukać w komendzie, i
+zapisałem to wprost w javadocu obu komend: pole istnieje, dopóki zapisy jadą po HTTP, i znika razem
+z nimi (F26). Alternatywa — wyciąganie tokenu z kontekstu bezpieczeństwa — jest lepsza, ale to
+zmiana sposobu pozyskania tokenu, a nie przeniesienie metody, więc nie wsadzałem jej tutaj.
+
+### Pokrycie poszło za logiką, i złapało coś, czego nie było
+
+Test, który napisałem w kroku 30, celował w serwis; logika się przeprowadziła, więc test też — i
+rozpadł się na dwa, bo to są dwa pytania:
+
+- **`CashFlowCategoryValidatorTest`** (4) — *czy* kategoria istnieje. Prawdziwy walidator nad
+  zaślepionym kontraktem, celowo: spłaszczanie podkategorii i rozdział kierunków odpowiada szkielet,
+  więc zamockowany walidator nie testowałby niczego.
+- **`CreateRuleCommandHandlerTest`** (4) — co robi handler. Przy odmowie **nic nie zostaje
+  zapisane i nic nie jest generowane**, a jeden przypadek przypina **kolejność**: komenda z
+  jednocześnie złą kategorią i odwróconym zakresem dat zawodzi na kategorii. Ta kolejność była
+  wcześniej tylko kolejnością linii w metodzie i nie miała żadnego testu.
+
+### Stan przejściowy, nazwany w kodzie
+
+Sześć komend nadal leży płasko w `app/commands/` i nadal idzie przez serwis; kontroler wysyła przez
+gateway **dwie**. Mieszanka jest uczciwym stanem migracji, nie projektem — i tak jest napisane przy
+polu `commandGateway`: komenda dostaje własny handler wtedy, gdy ktoś ma powód jej dotknąć.
+
+| | przed | po |
+|---|---|---|
+| `RecurringRuleService` | 736 linii, 12 × `handle` | **535**, 10 × `handle` |
+| odwołania do `CashFlowModuleApi` w serwisie | 2 | **0** |
+| testy `vidulum-recurring-rules` | 27 | **30** |
+| testy integracyjne reguł | 57 | 57, przez gateway |
+
+Rejestracja potwierdzona w logu, nie założona:
+`Command handler [...CreateRuleCommandHandler] registered!` i to samo dla update.
+
+### Dopisek: wejście do tej komendy dostało walidację, której brakowało
+
+`CreateRuleRequest` miał adnotacje jakarta na polach własnych, a kontroler `@Valid` — ale pole
+`pattern` nosiło tylko `@NotNull`, a **bean validation nie wchodzi w zagnieżdżony obiekt, dopóki się
+jej nie każe**. `PatternDto.toPattern()` robi `switch (type)`, więc brak typu kończył się
+`NullPointerException` przy budowaniu komendy: **500 za żądanie, o którym widać, że jest
+niekompletne**.
+
+```java
+@Valid                                   // <- bez tego nic w PatternDto nie jest sprawdzane
+@NotNull(message = "Pattern is required")
+private PatternDto pattern;
+```
+
+Plus `@NotNull` na `PatternDto.type`. Odpowiedzią jest teraz 400 z `VALIDATION_ERROR` i
+`fieldErrors` nazywającym `pattern.type`.
+
+**Czego świadomie nie dopisałem:** zakresów per typ (`dayOfMonth` 1–31) ani relacji
+`startDate`/`endDate`. Pierwsze sprawdza domena — `MonthlyPattern` rzuca przy konstrukcji — drugie
+handler, przez `InvalidDateRangeException`. Trzecia kopia tej samej reguły to dokładnie to, co ta
+seria usuwa, więc jest na to osobny test: `itDoesNotTakeOverTheChecksThatBelongElsewhere` przechodzi
+wtedy, gdy walidator **nie** zgłasza odwróconego zakresu dat.
+
+Podział poziomów zgodny z tabelą z CLAUDE.md: adnotacje są własnością rekordu, więc
+`CreateRuleRequestValidationTest` (6 przypadków) używa prawdziwego walidatora jakarta — bez Springa i
+bez Dockera — a dwa testy w `RecurringRulesHttpIntegrationTest` pokrywają to, co widać tylko po
+HTTP: status, `ErrorCode` i przeżycie nazw pól przez serializację.
+
+Dowód negatywny zrobiony na obu poziomach, i ten po HTTP wyszedł mocniejszy: bez `@Valid` test
+jednostkowy przestaje widzieć naruszenie `pattern.type`, a test integracyjny pokazuje, co to
+znaczyło w praktyce — `expected: 400 BAD_REQUEST but was: 500 INTERNAL_SERVER_ERROR`.
+
+`UpdateRuleRequest` miał tę samą lukę i został domknięty tak samo (F54) — `@Valid` na polu plus
+własny `UpdateRuleRequestValidationTest`, osobny od create, bo **adnotacje należą do klasy**: zdjęta
+z jednej nie zostałaby zauważona przez test drugiej. Dowód negatywny powtórzył się co do znaku:
+`expected: 400 BAD_REQUEST but was: 500 INTERNAL_SERVER_ERROR`.
+
+Jeden przypadek w tamtym teście pilnuje **różnicy** między dwoma żądaniami: update nie nazywa ani
+użytkownika, ani cash flow, bo `UpdateRuleCommandHandler` czyta cash flow z zapisanej reguły — więc
+edycją nie da się przenieść reguły między cash flowami, i lista wymaganych pól jest tam wypisana
+wprost, żeby ta właściwość miała gdzie upaść.
