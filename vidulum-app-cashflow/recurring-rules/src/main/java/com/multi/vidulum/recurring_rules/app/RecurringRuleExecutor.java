@@ -1,10 +1,12 @@
 package com.multi.vidulum.recurring_rules.app;
 
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.cashflow.api.ExpectedCashChange;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
-import com.multi.vidulum.recurring_rules.domain.exceptions.CashFlowCommunicationException;
 import com.multi.vidulum.recurring_rules.infrastructure.CashFlowHttpClient;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +16,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -43,63 +43,70 @@ public class RecurringRuleExecutor {
     private static final int FORECAST_MONTHS = 12; // Current + 11 months
 
     private final DomainRecurringRuleRepository ruleRepository;
+    private final CashFlowModuleApi cashFlowApi;
     private final CashFlowHttpClient cashFlowHttpClient;
     private final Clock clock;
 
-    public void generate(RecurringRule rule, String authToken) {
+    /**
+     * Writes every occurrence the rule implies inside the forecast window - in one call.
+     *
+     * <p>No {@code authToken}, and that is the visible half of the change: this used to be a loop
+     * calling the module's own HTTP client once per occurrence, so a daily rule made 365 requests,
+     * each with its own aggregate load, whole-document save, id reservation and topic message. It
+     * now asks {@link CashFlowModuleApi#appendExpected}, which does all of it once.
+     *
+     * <p>The invisible half matters more. The loop was not atomic: failing on occurrence 200 left
+     * 199 cash changes in the cash flow while {@code recordGeneratedCashChanges} below was never
+     * reached, so the rule knew none of their ids - and {@link #clear} works from exactly that list,
+     * which means nothing could ever remove them. The batch either lands whole or changes nothing.
+     */
+    public void generate(RecurringRule rule) {
         LocalDate fromDate = LocalDate.now(clock);
         YearMonth currentMonth = YearMonth.from(fromDate);
         LocalDate toDate = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
 
         List<LocalDate> occurrences = rule.generateOccurrences(fromDate, toDate);
-        List<CashChangeId> generatedIds = new ArrayList<>();
+        if (occurrences.isEmpty()) {
+            return;
+        }
 
-        String type = rule.getBaseAmount().isPositive() ? "INFLOW" : "OUTFLOW";
+        Type type = rule.getBaseAmount().isPositive() ? Type.INFLOW : Type.OUTFLOW;
 
-        for (LocalDate occurrence : occurrences) {
-            try {
-                Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
-                Money absAmount = effectiveAmount.isPositive()
-                        ? effectiveAmount
-                        : Money.of(effectiveAmount.getAmount().negate(), effectiveAmount.getCurrency());
-
-                ZonedDateTime dueDate = occurrence.atStartOfDay(ZoneOffset.UTC);
-
-                CashChangeId cashChangeId = cashFlowHttpClient.createExpectedCashChange(
-                        rule.getCashFlowId(),
-                        rule.getRuleId(),
+        List<ExpectedCashChange> changes = occurrences.stream()
+                .map(occurrence -> new ExpectedCashChange(
                         rule.getCategoryName(),
                         rule.getName(),
                         rule.getDescription(),
-                        absAmount,
+                        amountDueAt(rule, occurrence),
                         type,
-                        dueDate,
-                        authToken
-                );
+                        occurrence.atStartOfDay(ZoneOffset.UTC)))
+                .toList();
 
-                generatedIds.add(cashChangeId);
-                log.debug("Created expected cash change {} for rule {} on {}",
-                        cashChangeId.id(), rule.getRuleId().id(), occurrence);
-            } catch (CashFlowCommunicationException e) {
-                log.error("Failed to create expected cash change for rule {} on {}: {}",
-                        rule.getRuleId().id(), occurrence, e.getMessage());
-                throw e;
-            }
-        }
+        List<CashChangeId> generatedIds = cashFlowApi.appendExpected(
+                rule.getCashFlowId(), rule.getRuleId().id(), changes);
 
-        if (!generatedIds.isEmpty()) {
-            rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, clock);
+        rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, clock);
+        ruleRepository.save(rule);
+        log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
+
+        // Check if rule should auto-complete after reaching maxOccurrences
+        if (rule.shouldAutoComplete()) {
+            rule.complete("Reached maximum occurrences (" + rule.getMaxOccurrences().orElse(0) + ")", clock);
             ruleRepository.save(rule);
-            log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
-
-            // Check if rule should auto-complete after reaching maxOccurrences
-            if (rule.shouldAutoComplete()) {
-                rule.complete("Reached maximum occurrences (" + rule.getMaxOccurrences().orElse(0) + ")", clock);
-                ruleRepository.save(rule);
-                log.info("Rule {} auto-completed after reaching {} occurrences",
-                        rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
-            }
+            log.info("Rule {} auto-completed after reaching {} occurrences",
+                    rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
         }
+    }
+
+    /**
+     * What a rule asks for at one occurrence, as a positive amount: the sign lives in the
+     * {@link Type}, so an outflow of 1500 is 1500 OUTFLOW rather than -1500.
+     */
+    private static Money amountDueAt(RecurringRule rule, LocalDate occurrence) {
+        Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
+        return effectiveAmount.isPositive()
+                ? effectiveAmount
+                : Money.of(effectiveAmount.getAmount().negate(), effectiveAmount.getCurrency());
     }
 
     public void clear(RecurringRule rule, String authToken) {

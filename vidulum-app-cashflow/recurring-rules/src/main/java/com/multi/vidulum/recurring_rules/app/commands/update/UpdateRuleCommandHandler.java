@@ -77,7 +77,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
         ruleRepository.save(rule);
 
         if (rule.isActive()) {
-            executor.generate(rule, command.authToken());
+            executor.generate(rule);
         }
 
         log.info("Updated recurring rule {}", ruleId.id());

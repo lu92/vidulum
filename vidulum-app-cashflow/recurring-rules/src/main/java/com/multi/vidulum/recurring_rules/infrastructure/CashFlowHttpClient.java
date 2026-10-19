@@ -59,66 +59,15 @@ public class CashFlowHttpClient {
     // task F26. Those still carry an authToken, and that is the remaining tell that the transport
     // decision leaked upwards.
 
-    /**
-     * Creates an expected cash change in the CashFlow.
-     */
-    public CashChangeId createExpectedCashChange(
-            CashFlowId cashFlowId,
-            RecurringRuleId sourceRuleId,
-            CategoryName categoryName,
-            String name,
-            String description,
-            Money money,
-            String type,
-            ZonedDateTime dueDate,
-            String authToken
-    ) throws CashFlowCommunicationException {
-        String url = getCashFlowServiceUrl() + "/cash-flow/expected-cash-change";
-
-        try {
-            HttpHeaders headers = createHeaders(authToken);
-
-            // Use HashMap instead of Map.of() to allow null values
-            Map<String, Object> request = new HashMap<>();
-            request.put("cashFlowId", cashFlowId.id());
-            request.put("sourceRuleId", sourceRuleId.id());
-            request.put("category", categoryName.name());
-            request.put("name", name);
-            if (description != null) {
-                request.put("description", description);
-            }
-            request.put("money", Map.of(
-                    "amount", money.getAmount(),
-                    "currency", money.getCurrency()
-            ));
-            request.put("type", type);
-            request.put("dueDate", dueDate.toString());
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(request, headers),
-                    Map.class
-            );
-
-            Map<String, Object> body = response.getBody();
-            if (body == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "create expected cash change", "Empty response body");
-            }
-
-            // Response structure: { "cashChangeId": "..." }
-            String cashChangeIdStr = (String) body.get("cashChangeId");
-            if (cashChangeIdStr == null) {
-                throw new CashFlowCommunicationException(cashFlowId, "create expected cash change", "Missing cashChangeId in response");
-            }
-
-            return new CashChangeId(cashChangeIdStr);
-        } catch (CashFlowCommunicationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CashFlowCommunicationException(cashFlowId, "create expected cash change", e);
-        }
-    }
+    // createExpectedCashChange is gone, and it is the fourth method in this series to leave by
+    // losing its only caller rather than by being rewritten. RecurringRuleExecutor called it once
+    // per occurrence - 365 times for a daily rule - and now asks CashFlowModuleApi.appendExpected
+    // for the whole set at once. It had no test of its own either; what covered it was the
+    // end-to-end rule tests, which still cover the replacement.
+    //
+    // What is left here is batchDeleteExpectedCashChanges, batchUpdateExpectedCashChanges and
+    // getCashChangeStatuses: three operations the contract has no method for yet, which is the
+    // remainder of task F26. They still carry an authToken, and generate() no longer does.
 
     /**
      * Batch deletes expected cash changes from the CashFlow.

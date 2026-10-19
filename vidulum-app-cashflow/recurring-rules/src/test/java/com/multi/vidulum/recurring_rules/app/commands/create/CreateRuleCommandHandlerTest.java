@@ -93,7 +93,7 @@ class CreateRuleCommandHandlerTest {
         assertThat(ruleId).isNotNull();
         verify(categoryValidator).validate(CASH_FLOW_ID, new CategoryName("Salary"), true);
         verify(rules).save(any(RecurringRule.class));
-        verify(executor).generate(any(RecurringRule.class), eq("token"));
+        verify(executor).generate(any(RecurringRule.class));
     }
 
     @Test
