@@ -1824,3 +1824,72 @@ górę, do sygnatur przypadków użycia. To reszta **F26**.
 | żądania HTTP na utworzenie reguły | 1 + N zapisów | **N zapisów** |
 | parsowanie cudzego JSON-a w odczytach | 2 metody | 1 (`getCashChangeStatuses`) |
 | testy `vidulum-recurring-rules` | 22 | **27** |
+
+---
+
+## 28. Co zrobił krok 31: dwie komendy dostają własne handlery
+
+Te dwie, które pytają kontrakt cashflow — `CreateRuleCommand` i `UpdateRuleCommand` — wyszły z
+`RecurringRuleService` w kształcie, którego cashflow używa od początku: **folder na komendę, komenda i
+jej handler obok siebie, trasowanie przez `CommandGateway`**.
+
+```
+app/commands/create/   CreateRuleCommand.java  CreateRuleCommandHandler.java
+app/commands/update/   UpdateRuleCommand.java  UpdateRuleCommandHandler.java
+```
+
+`RecurringRuleService` miał **dwanaście metod `handle` w 736 liniach**, więc czytelnik szukający,
+co robi utworzenie reguły, znajdował to pośród jedenastu innych, a wszystko, czego którakolwiek z
+nich potrzebowała, było polem tej samej klasy. Zostało **535 linii** i dziesięć metod — i **zero**
+odwołań do `CashFlowModuleApi`, bo kontrakt wyszedł razem z tymi dwiema.
+
+### Dwóch kolaboratorów, bo logika była wspólna
+
+| | dlaczego osobno |
+|---|---|
+| `ExpectedCashChangeSynchronizer` | `generate` miało **sześciu** wołających, `clear` **siedmiu** — dwa z nich wyszły, pięć zostało. Dwie strony jednej roboty na tych samych trzech zależnościach, więc jeden komponent, nie dwa. Przeniesione bez zmiany ciała |
+| `CashFlowCategoryValidator` | pytany przez oba handlery i **jedyne miejsce w module, które rozmawia z `CashFlowModuleApi`** — jedno żądanie na komendę, odpowiadające na dwie rzeczy: że cash flow istnieje (kontrakt sam rzuca) i że kategoria istnieje, po właściwej stronie |
+
+Oba są **publiczne**, bo handlery siedzą w innym pakiecie, a `package-private` w Javie nie jest
+hierarchiczne. To nie jest rozszczelnienie: `assertSealed` trzyma `recurring_rules.app..` zamknięte
+dla innych modułów, i tak samo publiczne są w cashflow `DomainCashFlowRepository` czy
+`CashFlowEventEmitter`.
+
+### Decyzja, którą trzeba nazwać: `authToken` wszedł do komendy
+
+`CommandHandler<T, R>.handle(T command)` bierze komendę i **nic więcej**, a token był dotąd drugim
+parametrem metody serwisu. Żeby zaimplementować ten interfejs, musiał trafić do rekordu komendy.
+
+**To nie jest poprawa — to przeniesienie.** Token okaziciela nie ma czego szukać w komendzie, i
+zapisałem to wprost w javadocu obu komend: pole istnieje, dopóki zapisy jadą po HTTP, i znika razem
+z nimi (F26). Alternatywa — wyciąganie tokenu z kontekstu bezpieczeństwa — jest lepsza, ale to
+zmiana sposobu pozyskania tokenu, a nie przeniesienie metody, więc nie wsadzałem jej tutaj.
+
+### Pokrycie poszło za logiką, i złapało coś, czego nie było
+
+Test, który napisałem w kroku 30, celował w serwis; logika się przeprowadziła, więc test też — i
+rozpadł się na dwa, bo to są dwa pytania:
+
+- **`CashFlowCategoryValidatorTest`** (4) — *czy* kategoria istnieje. Prawdziwy walidator nad
+  zaślepionym kontraktem, celowo: spłaszczanie podkategorii i rozdział kierunków odpowiada szkielet,
+  więc zamockowany walidator nie testowałby niczego.
+- **`CreateRuleCommandHandlerTest`** (4) — co robi handler. Przy odmowie **nic nie zostaje
+  zapisane i nic nie jest generowane**, a jeden przypadek przypina **kolejność**: komenda z
+  jednocześnie złą kategorią i odwróconym zakresem dat zawodzi na kategorii. Ta kolejność była
+  wcześniej tylko kolejnością linii w metodzie i nie miała żadnego testu.
+
+### Stan przejściowy, nazwany w kodzie
+
+Sześć komend nadal leży płasko w `app/commands/` i nadal idzie przez serwis; kontroler wysyła przez
+gateway **dwie**. Mieszanka jest uczciwym stanem migracji, nie projektem — i tak jest napisane przy
+polu `commandGateway`: komenda dostaje własny handler wtedy, gdy ktoś ma powód jej dotknąć.
+
+| | przed | po |
+|---|---|---|
+| `RecurringRuleService` | 736 linii, 12 × `handle` | **535**, 10 × `handle` |
+| odwołania do `CashFlowModuleApi` w serwisie | 2 | **0** |
+| testy `vidulum-recurring-rules` | 27 | **30** |
+| testy integracyjne reguł | 57 | 57, przez gateway |
+
+Rejestracja potwierdzona w logu, nie założona:
+`Command handler [...CreateRuleCommandHandler] registered!` i to samo dla update.

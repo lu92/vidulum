@@ -2,6 +2,9 @@ package com.multi.vidulum.recurring_rules.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.recurring_rules.app.commands.*;
+import com.multi.vidulum.recurring_rules.app.commands.create.CreateRuleCommand;
+import com.multi.vidulum.recurring_rules.app.commands.update.UpdateRuleCommand;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.recurring_rules.app.dto.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
@@ -26,6 +29,10 @@ import java.util.Map;
 public class RecurringRulesController {
 
     private final RecurringRuleService ruleService;
+    // Two commands go through the gateway, the rest still call the service directly. The mixture is
+    // the honest state of the migration, not a design: a command gets a handler of its own when
+    // someone has a reason to touch it.
+    private final CommandGateway commandGateway;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @PostMapping
@@ -47,10 +54,11 @@ public class RecurringRulesController {
                 request.getEndDate(),
                 request.getMaxOccurrences(),
                 request.getActiveMonths(),
-                request.getExcludedDates()
+                request.getExcludedDates(),
+                authToken
         );
 
-        RecurringRuleId ruleId = ruleService.handle(command, authToken);
+        RecurringRuleId ruleId = commandGateway.send(command);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("ruleId", ruleId.id()));
@@ -151,10 +159,11 @@ public class RecurringRulesController {
                 request.getEndDate(),
                 request.getMaxOccurrences(),
                 request.getActiveMonths(),
-                request.getExcludedDates()
+                request.getExcludedDates(),
+                authToken
         );
 
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
         return ResponseEntity.ok().build();
     }
 
