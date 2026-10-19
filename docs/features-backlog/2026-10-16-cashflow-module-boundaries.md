@@ -2203,3 +2203,81 @@ nigdy nie jest tu metodą bez testu — jest metodą, którą test trzyma w życ
 | testy `vidulum-recurring-rules` | 41 | **47** |
 | testy integracyjne reguł | 60 | 60, bez zmiany |
 | operacje w `CashFlowHttpClient` | 4 | **3** |
+
+---
+
+## 32. Co zrobił krok 35: `deleteExpected`, i executor przestaje znać HTTP
+
+Port `batchDeleteExpectedCashChanges` wyszedł **łatwiej niż dopisywanie**, bo po stronie cashflow
+komenda, zdarzenie wsadowe i handler projekcji istniały od dawna. Brakowało wyłącznie metody
+kontraktu i dwóch transportów — dlatego implementacja in-process ma trzy linie, a `appendExpected`
+wymagało własnej komendy, zdarzenia i `apply`.
+
+### Jedna celowa niesymetria, którą trzeba było uzasadnić
+
+| | |
+|---|---|
+| `appendExpected` | **odrzuca całą partię** — zła data to błąd wołającego, a ciche pominięcie to brakująca pozycja w prognozie |
+| `deleteExpected` | **pomija i liczy** — cash change, który właściciel potwierdził, jest faktem o jego pieniądzach, nie prognozą |
+
+Usunięcie potwierdzonej transakcji byłoby **niszczeniem danych, których konsument nie posiada**. To
+samo dotyczy identyfikatora, którego nie ma: nie ma czego niszczyć i nie ma o czym meldować. Oba
+przypadki wracają w `skipped`, i oba mają test.
+
+### `DELETE` z ciałem
+
+```java
+restClient.method(HttpMethod.DELETE)
+        .uri("/cash-flow/cf={cashFlowId}/cash-changes", cashFlowId.id())
+        .body(new BatchDeleteRequest(sourceRuleId, ids));
+```
+
+Identyfikatory są tym, co się usuwa, więc query string ograniczyłby partię do przypadkowego limitu
+długości URL-a. Przeszło po prawdziwym endpointcie — to była tu najbardziej ryzykowna część.
+
+### Efekt na executorze
+
+```java
+private final DomainRecurringRuleRepository ruleRepository;
+private final CashFlowModuleApi cashFlowApi;
+private final Clock clock;
+```
+
+Pole `cashFlowHttpClient` **zniknęło z klasy**, a `clear` — jak wcześniej `generate` — stracił
+`authToken`. Obie połowy roboty, pisanie przewidywań reguły i ich wycofywanie, idą jednym wywołaniem
+przez kontrakt.
+
+### `clear` też nie miał testu
+
+Dokładnie jak `generate` przed krokiem 34. Trzy przypadki: jedno wywołanie ze wszystkimi zapisanymi
+identyfikatorami, reguła przestaje je śledzić, potwierdzony zostaje w cash flow a reguła go oddaje
+(bo nie jest już jej do wycofania, a trzymanie go na liście kazałoby każdemu kolejnemu `clear` pytać
+o coś, co nigdy nie zniknie), pusta lista nie wydaje wywołania. Plus trzy na transport HTTP
+kontraktu.
+
+Dowód negatywny: pętla per identyfikator wywala
+`withdrawingARulesPredictionsIsOneCallCarryingEveryIdItRecorded` komunikatem `Wanted 1 time`.
+
+### Piąty raz ten sam wzorzec, i pierwszy raz poza ścieżką zmiany
+
+`batchUpdateExpectedCashChanges` **nie miał wołającego i nie miał go od dawna** — trzymała go w życiu
+piątka własnych testów, razem z `CashChangeUpdates` i `BatchUpdateResult`, które istniały tylko dla
+niego. Zgłosiłem to jako znalezisko, nie usuwałem bez pytania, bo w odróżnieniu od
+`extractTransactionIds` (28), `fromCashFlowInfo` (29), `validateCategoryExists` (30) i
+`createExpectedCashChange` (34) **nie leżał na ścieżce, którą zmieniałem** — a usunięcie pięciu testów
+to decyzja właściciela kodu, nie sprzątanie po drodze.
+
+`CashFlowHttpClientTest` odpadł w całości, bo nie zostało w nim nic: cztery testy usuwania poszły z
+metodą w kroku 35, pięć aktualizacji z martwą metodą, a `getCashChangeStatuses` nigdy testu nie
+miało.
+
+| | przed | po |
+|---|---|---|
+| operacje w `CashFlowHttpClient` | 4 | **1** |
+| długość klienta | 328 linii | **183** |
+| `authToken` w executorze | w obu metodach | **nigdzie** |
+| testy `vidulum-recurring-rules` | 47 | **41** (+6 executora, −9 klienta, −3 usunięte wcześniej) |
+| testy integracyjne reguł | 60 | 60, bez zmiany |
+
+Z F26 zostaje **jedna operacja** — `getCashChangeStatuses` — i odzyskanie siedmiu typów cashflow ze
+shared-kernela, które jest teraz większą częścią tego zadania niż sam klient.
