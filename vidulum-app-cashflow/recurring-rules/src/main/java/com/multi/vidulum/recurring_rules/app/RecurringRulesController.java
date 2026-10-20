@@ -3,6 +3,9 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.commands.create.CreateRuleCommand;
+import com.multi.vidulum.recurring_rules.app.commands.delete.DeleteRuleCommand;
+import com.multi.vidulum.recurring_rules.app.commands.pause.PauseRuleCommand;
+import com.multi.vidulum.recurring_rules.app.commands.resume.ResumeRuleCommand;
 import com.multi.vidulum.recurring_rules.app.commands.update.UpdateRuleCommand;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.recurring_rules.app.dto.*;
@@ -37,11 +40,8 @@ public class RecurringRulesController {
 
     @PostMapping
     public ResponseEntity<Map<String, String>> createRule(
-            @Valid @RequestBody CreateRuleRequest request,
-            @RequestHeader("Authorization") String authHeader
+            @Valid @RequestBody CreateRuleRequest request
     ) {
-        String authToken = extractToken(authHeader);
-
         CreateRuleCommand command = new CreateRuleCommand(
                 request.getUserId(),
                 request.getCashFlowId(),
@@ -54,8 +54,7 @@ public class RecurringRulesController {
                 request.getEndDate(),
                 request.getMaxOccurrences(),
                 request.getActiveMonths(),
-                request.getExcludedDates(),
-                authToken
+                request.getExcludedDates()
         );
 
         RecurringRuleId ruleId = commandGateway.send(command);
@@ -143,11 +142,8 @@ public class RecurringRulesController {
     @PutMapping("/{ruleId}")
     public ResponseEntity<Void> updateRule(
             @PathVariable String ruleId,
-            @Valid @RequestBody UpdateRuleRequest request,
-            @RequestHeader("Authorization") String authHeader
+            @Valid @RequestBody UpdateRuleRequest request
     ) {
-        String authToken = extractToken(authHeader);
-
         UpdateRuleCommand command = new UpdateRuleCommand(
                 ruleId,
                 request.getName(),
@@ -159,8 +155,7 @@ public class RecurringRulesController {
                 request.getEndDate(),
                 request.getMaxOccurrences(),
                 request.getActiveMonths(),
-                request.getExcludedDates(),
-                authToken
+                request.getExcludedDates()
         );
 
         commandGateway.send(command);
@@ -170,44 +165,36 @@ public class RecurringRulesController {
     @PostMapping("/{ruleId}/pause")
     public ResponseEntity<Void> pauseRule(
             @PathVariable String ruleId,
-            @RequestBody PauseRuleRequest request,
-            @RequestHeader("Authorization") String authHeader
+            @RequestBody PauseRuleRequest request
     ) {
-        String authToken = extractToken(authHeader);
-
         PauseRuleCommand command = new PauseRuleCommand(
                 ruleId,
                 request.getResumeDate(),
                 request.getReason()
         );
 
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{ruleId}/resume")
     public ResponseEntity<Void> resumeRule(
-            @PathVariable String ruleId,
-            @RequestHeader("Authorization") String authHeader
+            @PathVariable String ruleId
     ) {
-        String authToken = extractToken(authHeader);
-
         ResumeRuleCommand command = new ResumeRuleCommand(ruleId);
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{ruleId}")
     public ResponseEntity<Void> deleteRule(
             @PathVariable String ruleId,
-            @RequestBody(required = false) DeleteRuleRequest request,
-            @RequestHeader("Authorization") String authHeader
+            @RequestBody(required = false) DeleteRuleRequest request
     ) {
-        String authToken = extractToken(authHeader);
         String reason = request != null ? request.getReason() : "User requested deletion";
 
         DeleteRuleCommand command = new DeleteRuleCommand(ruleId, reason);
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
         return ResponseEntity.noContent().build();
     }
 

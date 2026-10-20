@@ -1,0 +1,111 @@
+package com.multi.vidulum.recurring_rules.app;
+
+import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
+import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.Money;
+import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
+import com.multi.vidulum.recurring_rules.domain.MonthlyPattern;
+import com.multi.vidulum.recurring_rules.domain.PauseInfo;
+import com.multi.vidulum.recurring_rules.domain.RecurringRule;
+import com.multi.vidulum.recurring_rules.domain.RecurringRuleId;
+import com.multi.vidulum.recurring_rules.domain.RuleStatus;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+/**
+ * The scheduler's path through a resume, which had no test and a defect: it set the rule ACTIVE and
+ * generated nothing, because the writes needed a bearer token it did not have. The predictions were
+ * missing until somebody edited the rule by hand.
+ *
+ * <p>It differs from {@code ResumeRuleCommandHandler} on purpose in one respect: a rule the
+ * scheduler can no longer resume is skipped with a warning rather than refused, because nobody is
+ * waiting for an answer.
+ */
+class RecurringRuleAutoResumeTest {
+
+    private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
+    private static final RecurringRuleId RULE_ID = RecurringRuleId.generate(1);
+    private static final LocalDate RESUME_DATE = LocalDate.of(2022, 1, 1);
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+
+    private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
+    private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
+
+    private final RecurringRuleService service = new RecurringRuleService(
+            rules, mock(CashFlowModuleApi.class), executor, FIXED_CLOCK);
+
+    @Test
+    void anAutoResumedRulePredictsAgain() {
+        RecurringRule rule = storedPausedRule();
+
+        service.handleAutoResume(RULE_ID, RESUME_DATE);
+
+        InOrder order = inOrder(rules, executor);
+        order.verify(rules).save(rule);
+        order.verify(executor).generate(rule);
+        assertThat(rule.getStatus()).isEqualTo(RuleStatus.ACTIVE);
+    }
+
+    @Test
+    void aRuleResumedByHandInTheMeantimeIsSkipped() {
+        storedPausedRule().resume(FIXED_CLOCK);
+
+        assertThatCode(() -> service.handleAutoResume(RULE_ID, RESUME_DATE))
+                .as("the scheduler reads a list and acts on it later; losing a race is not an error")
+                .doesNotThrowAnyException();
+
+        verify(rules, never()).save(any());
+        verifyNoInteractions(executor);
+    }
+
+    @Test
+    void aRuleDeletedInTheMeantimeIsSkipped() {
+        when(rules.findById(RULE_ID)).thenReturn(Optional.empty());
+
+        assertThatCode(() -> service.handleAutoResume(RULE_ID, RESUME_DATE))
+                .doesNotThrowAnyException();
+
+        verify(rules, never()).save(any());
+        verifyNoInteractions(executor);
+    }
+
+    private RecurringRule storedPausedRule() {
+        RecurringRule rule = RecurringRule.create(
+                RULE_ID,
+                UserId.of("U10000001"),
+                CASH_FLOW_ID,
+                "Rent",
+                "monthly rent",
+                Money.of(-1500, "PLN"),
+                new CategoryName("Housing"),
+                new MonthlyPattern(15, 1, false),
+                LocalDate.of(2022, 1, 1),
+                null,
+                null,
+                null,
+                null,
+                FIXED_CLOCK);
+        rule.pause(PauseInfo.untilDate(FIXED_CLOCK.instant(), RESUME_DATE, "holiday"), FIXED_CLOCK);
+        when(rules.findById(RULE_ID)).thenReturn(Optional.of(rule));
+        return rule;
+    }
+}

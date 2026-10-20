@@ -2281,3 +2281,143 @@ miało.
 
 Z F26 zostaje **jedna operacja** — `getCashChangeStatuses` — i odzyskanie siedmiu typów cashflow ze
 shared-kernela, które jest teraz większą częścią tego zadania niż sam klient.
+
+---
+
+## 33. Co zrobił krok 36: ostatnia operacja klienta, i koniec klienta
+
+```java
+// przed: caly cash flow, zeby policzyc dwa stany
+String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id();
+Map<String, Map<String, Object>> cashChanges = (Map<String, Map<String, Object>>) body.get("cashChanges");
+...
+if ("PENDING".equals(status)) { ... } else if ("CONFIRMED".equals(status)) { ... }
+```
+
+Ściągało **każdą transakcję w dokumencie**, żeby policzyć dwie liczby po stronie klienta, porównując
+stany jako literały.
+
+### Przeczytanie wołającego zmieniło kształt kontraktu
+
+Jedyny konsument liczył `pending` i `confirmed` do **podglądu usunięcia reguły** i **nigdy nie
+używał** ani identyfikatorów, ani `sourceRuleId` z odpowiedzi. Więc kontrakt oddaje liczniki, nie
+mapę — bo mapa zaprasza konsumenta do policzenia tego u siebie, czyli do trzymania w zgodzie
+kształtu, którego nie posiada.
+
+### Zapytanie z handlerem, nie metoda na agregacie
+
+Pierwsza wersja miała `CashFlow.countBySourceRule`, druga — metodę na snapshocie. Obie były gorsze
+od trzeciej: **nic tu nie jest decydowane**, a zadaniem agregatu są reguły zmieniania cash flow, nie
+raportowanie o nim. `GetCountOfCashChangesByStatusQueryHandler` czyta snapshot i liczy; oba
+wołające — kontrakt i endpoint, który woła jego transport HTTP — wysyłają to samo zapytanie, więc
+arytmetyka istnieje raz.
+
+### Nazwa, która była sprzeczna
+
+Pierwotnie `expectedCashChangesOf` / `ExpectedCashChangesByStatus`. Ale **potwierdzona transakcja
+przestała być oczekiwana** — a ta metoda liczy wszystkie cztery stany. Liczenie czterech pod nazwą
+jednego z nich to sprzeczność, która wprowadziłaby w błąd następnego czytelnika, więc:
+`countCashChangesByStatus` / `CashChangeCountsByStatus`, endpoint
+`GET /cf={id}/cash-changes/status`, i uzasadnienie zapisane w javadocu, żeby nikt nie przenazwał z
+powrotem.
+
+`appendExpected` i `deleteExpected` zostały — tam „expected" jest poprawne, bo dotyczą wyłącznie
+przewidywań. Rename ograniczył się do jednej ścieżki.
+
+### Trzecie pole, którego nikt nie zamawiał
+
+Cash flow zna **cztery** stany. Konsument liczył dwa, więc odrzucony albo zarchiwizowany *znikał* i
+suma podglądu się nie zgadzała — bez żadnego sygnału. `other` istnieje po to, żeby stan, o który nikt
+nie pytał, nie mógł zostać zgubiony; nikt go nie musi czytać.
+
+### Znalezisko: ścieżka, którą zmieniałem, nie miała siatki
+
+```java
+assertThat(...pending()).isGreaterThanOrEqualTo(0);     // licznik tego nie złamie
+assertThat(...confirmed()).isGreaterThanOrEqualTo(0);
+```
+
+Te asercje przeszłyby z liczbami zahardkodowanymi na zero. Wzmocnione do dokładnych wartości, plus
+przypadek, w którym właściciel potwierdza jedną transakcję: `confirmed = 1`, `pending = N−1`,
+`deletable = N−1`.
+
+### Co zniknęło
+
+| | |
+|---|---|
+| `CashFlowHttpClient` | **cała klasa** — nie została w niej ani jedna operacja |
+| `CashFlowCommunicationException` | opisywał tryb awarii, jakiego ten moduł już nie ma |
+| `TestCashFlowHttpClient` | port-aware dubler, istniejący tylko po to, by wskazać klienta na losowy port testowy |
+
+W `recurring_rules/infrastructure/` zostały encja, repozytorium i cleaner. **Zero HTTP.**
+
+### Czym się kończy F26
+
+Zadanie powstało, bo dwa moduły rozmawiały z cashflow przez porty, które **same sobie
+zadeklarowały** — a to znaczy, że cashflow nie mógł zmienić własnego payloadu, nie psując
+konsumenta, którego nie widzi. Dziś takich portów nie ma. Po drodze **pięć metod odeszło przez
+utratę wołającego, nie przez przepisanie**, i każda miała własny test, który ją w tym życiu trzymał.
+
+Jedna rzecz z pierwotnego opisu zostaje — **siedem typów cashflow w shared-kernelu** — i jest
+tematem F24, nie tego zadania. Trzymanie F26 otwartym dla cudzego przedmiotu mówiłoby, że klienci
+wciąż istnieją.
+
+## 34. Co zrobił krok 37: pause, resume i delete dostają własne handlery — i wychodzi defekt
+
+Trzy ostatnie operacje cyklu życia reguły, które jeszcze siedziały w `RecurringRuleService`,
+przeszły do `app/commands/{pause,resume,delete}` — folder na komendę, `CommandHandler` obok niej,
+czyli kształt, który create i update dostały w krokach 31 i 34. Kontroler woła `commandGateway.send`
+we wszystkich pięciu przypadkach; serwis: 530 → **478 linii**.
+
+### Czego ten krok *nie* miał dotknąć, a dotknął
+
+```java
+// RecurringRuleService.handleAutoResume, przed:
+rule.resume(clock);
+ruleRepository.save(rule);
+
+// Note: Cash changes are NOT generated here because we don't have an auth token
+// The scheduler will need to handle this separately or use a system token
+```
+
+**Reguła auto-wznowiona przez scheduler stawała się ACTIVE i nie przewidywała niczego.** Komentarz
+mówi prawdę o powodzie — zapisy szły przez HTTP i scheduler nie miał tokenu — tylko że ten powód
+**przestał istnieć w F58/F59**, kiedy executor zaczął wołać kontrakt. Nikt tego nie zauważył, bo
+`handleAutoResume` **nie miał żadnego testu**: ścieżka, którą uruchamia `@Scheduled`, nie jest
+ścieżką, którą ktokolwiek klika.
+
+Skutek dla właściciela: reguła wraca do życia w dniu `resumeDate`, a jej transakcje pojawiają się w
+prognozie dopiero, gdy ktoś ją ręcznie edytuje. Naprawione dwiema linijkami (`clear` + `generate`) i
+przypięte trzema przypadkami — w tym dwoma na to, że przegrany wyścig ze schedulerem jest pominięciem
+z ostrzeżeniem, nie błędem.
+
+To **szósty raz w tej serii**, kiedy coś znalazło się przez czytanie kodu obok zmiany, a nie przez
+samą zmianę. Poprzednie pięć to metody bez wołającego; ta jest odwrotnością — **wołający jest,
+powodu już nie ma**.
+
+### Czego handlery pilnują, a agregat nie
+
+Każdy z trzech sprawdza stan **przed** wejściem w agregat, bo agregat odpowiada
+`IllegalStateException` — wyjątkiem bez `ErrorCode`, którego `ErrorHttpHandler` nie mapuje, czyli
+**500 za zwyczajną pomyłkę**. Guard w handlerze zamienia to na `InvalidRuleStateException` i 409.
+Asercja `isNotInstanceOf(IllegalStateException.class)` w każdym z trzech testów pilnuje, że to nie
+jest przypadek.
+
+Kolejność zapisów jest zachowana z metod, które zastąpiły, i jest zachowaniem, nie stylem:
+
+| | kolejność | dlaczego |
+|---|---|---|
+| pause | `clear` → `save` | wstrzymana reguła, która zostawiła swoje przewidywania, **dalej kształtuje prognozę**, twierdząc, że nic nie robi |
+| resume | `save` → `clear` → `generate` | `clear` wygląda zbędnie i nie jest: pause pisze dwa razy, a awaria między zapisami zostawia przewidywania, które tylko to `clear` usuwa — jedno wywołanie za idempotencję |
+| delete | `clear` → `save` | odchodzą **wyłącznie przewidywania**; potwierdzona transakcja jest faktem o pieniądzach właściciela i cashflow jej nie oddaje |
+
+Dowód negatywny, nie opinia: odwrócenie kolejności w `PauseRuleCommandHandler` wywala
+`thePredictionsAreWithdrawnBeforeTheRuleStopsPredicting` komunikatem *Verification in order failure*.
+
+### `authToken` znika z komend, a nagłówek z pięciu endpointów
+
+`CreateRuleCommand` i `UpdateRuleCommand` nosiły pole `authToken`, którego ich handlery **już nie
+czytały** — javadoc obiecywał, że zniknie, kiedy zapisy przestaną chodzić po HTTP (F26). Przestały,
+więc zniknęło. Razem z nim pięć `@RequestHeader("Authorization")` w kontrolerze: parametr, którego
+nikt nie używa, a który zamieniał brakujący nagłówek w **400 zamiast 401** — odpowiedzi należącej do
+filtra bezpieczeństwa, nie do kontrolera.

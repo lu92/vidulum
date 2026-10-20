@@ -75,7 +75,7 @@ class CreateRuleCommandHandlerTest {
                 Money.of(100.0, "PLN"), new CategoryName("Bonus"),
                 new OncePattern(FAR_FUTURE),
                 FAR_FUTURE, FAR_FUTURE.minusDays(1),
-                null, null, null, "token");
+                null, null, null);
 
         assertThatThrownBy(() -> handler.handle(backwards))
                 .as("both the category and the date range are wrong; the category decides, which is "
@@ -118,7 +118,6 @@ class CreateRuleCommandHandlerTest {
                 null,
                 null,
                 null,
-                null,
-                "token");
+                null);
     }
 }

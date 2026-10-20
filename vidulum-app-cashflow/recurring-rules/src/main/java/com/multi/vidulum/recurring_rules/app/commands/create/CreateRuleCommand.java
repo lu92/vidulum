@@ -10,11 +10,10 @@ import java.time.Month;
 import java.util.List;
 
 /**
- * <p><b>{@code authToken} is a field because {@link com.multi.vidulum.shared.cqrs.commands.CommandHandler}
- * takes the command and nothing else.</b> It is not an improvement - a bearer token has no business
- * in a command - but it is where the transport already was: it used to be a second parameter of the
- * service method. It is here because the writes still go out over HTTP, and it disappears when they
- * stop (task F26).
+ * <p>No {@code authToken}, and it is worth saying why it ever had one: a bearer token has no
+ * business in a command, but it was where the transport had got to - the handler passed it to an
+ * HTTP client that wrote to cashflow once per occurrence. The javadoc here said the field would
+ * disappear when those writes stopped. They stopped (F58, F59, F60), so it did.
  */
 public record CreateRuleCommand(
         String userId,
@@ -28,7 +27,6 @@ public record CreateRuleCommand(
         LocalDate endDate,
         Integer maxOccurrences,
         List<Month> activeMonths,
-        List<LocalDate> excludedDates,
-        String authToken
+        List<LocalDate> excludedDates
 ) implements Command {
 }
