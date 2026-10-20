@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Instant;
 
 /**
  * Stops a rule predicting, and takes back the predictions it had already made.
@@ -42,11 +43,14 @@ public class PauseRuleCommandHandler implements CommandHandler<PauseRuleCommand,
 
         executor.clear(rule);
 
+        // one reading of the clock for the whole operation: the pause info and the rule's own
+        // lastModifiedAt are the same moment, which two calls to clock.instant() did not guarantee
+        Instant now = clock.instant();
         PauseInfo pauseInfo = command.resumeDate() != null
-                ? PauseInfo.untilDate(clock.instant(), command.resumeDate(), command.reason())
-                : PauseInfo.indefinite(clock.instant(), command.reason());
+                ? PauseInfo.untilDate(now, command.resumeDate(), command.reason())
+                : PauseInfo.indefinite(now, command.reason());
 
-        rule.pause(pauseInfo, clock);
+        rule.pause(pauseInfo, now);
         ruleRepository.save(rule);
 
         log.info("Paused recurring rule {} until {} (withdrew its predictions)", ruleId.id(),

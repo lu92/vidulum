@@ -2421,3 +2421,86 @@ czytały** — javadoc obiecywał, że zniknie, kiedy zapisy przestaną chodzić
 więc zniknęło. Razem z nim pięć `@RequestHeader("Authorization")` w kontrolerze: parametr, którego
 nikt nie używa, a który zamieniał brakujący nagłówek w **400 zamiast 401** — odpowiedzi należącej do
 filtra bezpieczeństwa, nie do kontrolera.
+
+## 35. Co zrobił krok 38: zegar wychodzi z agregatu, a serwis traci sześć metod
+
+Dwie zmiany na prośbę właściciela kodu, w jednym kroku, bo druga odsłoniła rozmiar pierwszej.
+
+### `Clock` w agregacie znaczy, że agregat decyduje, która jest godzina
+
+Jedenaście metod `RecurringRule` brało `Clock` — `create`, `update`, `pause`, `resume`, `complete`,
+`delete`, `addAmountChange`, `removeAmountChange`, `recordExecution`,
+`recordGeneratedCashChanges`, `clearGeneratedCashChanges` — i **każda używała go wyłącznie po to, by
+zapytać „kiedy teraz"**. Koszt był widoczny w `create`:
+
+```java
+rule.createdAt = clock.instant();        // trzy odczyty ruchomego zegara
+rule.lastModifiedAt = clock.instant();   // dla jednego momentu biznesowego
+rule.emit(new RuleCreated(..., clock.instant()));
+```
+
+`createdAt`, `lastModifiedAt` i stempel na zdarzeniu mogły się różnić. W
+`RecurringRuleExecutor.generate` było gorzej: `LocalDate.now(clock)` wyznaczało **okno wystąpień**, a
+potem `recordGeneratedCashChanges` i `complete` czytały zegar ponownie — trzy odczyty, które mogą
+przeskoczyć północ, czyli reguła z oknem z jednej doby i stemplem z drugiej. Teraz wołający czyta
+raz, a cała operacja nosi jedną wartość; w `PauseRuleCommandHandler` ta sama zmiana zrównała moment
+w `PauseInfo` z `lastModifiedAt` reguły.
+
+**`Instant`, a nie `ZonedDateTime`** — ten moduł trzyma `Instant` od końca do końca: oba pola,
+`RecurringRuleSnapshot`, encja Mongo i `RecurringRuleResponse`. Typ ze strefą trzeba by konwertować
+na wejściu i na wyjściu bez korzyści dla żadnego czytelnika. Daty, które **należą do czyjegoś
+kalendarza** (`startDate`, `excludedDates`, wystąpienia), są `LocalDate` i takie zostają.
+Uzasadnienie jest w javadocu klasy, żeby nikt nie wrócił do zegara.
+
+Tak zresztą działa agregat siostrzany: **`CashFlow` nie bierze zegara wcale** — handler stempluje
+zdarzenie, agregat je aplikuje.
+
+### Sześć wydzieleń, i pakiet `app.commands` zostaje pusty
+
+| wydzielone | dokąd | linie handlera |
+|---|---|---|
+| `GenerateExpectedCashChangesCommand` | `commands/generate/` | 51 |
+| `AddAmountChangeCommand` | `commands/addamountchange/` | 65 |
+| `RemoveAmountChangeCommand` | `commands/removeamountchange/` | 57 |
+| `GetRuleQuery` | `queries/` (handler obok) | 31 |
+| `GetRulesByCashFlowQuery` | `queries/` | 33 |
+| `GetRulesByUserQuery` | `queries/` | 33 |
+
+Komendy dostają folder, zapytania zostają płasko z handlerem obok — **to nie niekonsekwencja, to
+konwencja cashflow**: `commands/{append,attest,confirm,…}` kontra
+`queries/GetCountOfCashChangesByStatusQuery` + handler w tym samym katalogu. Kontroler dostał
+`QueryGateway` i wysyła przez niego pięć odczytów, bo dwa endpointy wołają `GetRuleQuery`, a dwa
+`GetRulesByUserQuery`.
+
+Serwis: **478 → 385 linii**. Zostało to, co nie ma jeszcze własnej komendy ani zapytania:
+auto-wznowienie schedulera, `PreviewDeleteImpactQuery` i para dashboard/upcoming (którą kontroler
+woła **czterema luźnymi parametrami**, i która woła samą siebie).
+
+### Co w tych handlerach nie było mechaniczne
+
+Trzy reguły, które w serwisie były jednym `if`-em bez testu:
+
+- **`generate` odmawia wstrzymanej regule.** Wygenerowanie dla PAUSED przywróciłoby dokładnie to, co
+  pauza wycofała, a reguła zostałaby PAUSED — znowu kształtując prognozę.
+- **Zmiana kwoty wchodzi w każdym stanie poza DELETED, ale prognozę przebudowuje tylko ACTIVE.**
+  Wstrzymana nie ma czego przebudowywać, a przebudowa zostawiłaby cash changes, które tylko resume
+  mogłoby wycofać. Nowa kwota wchodzi przy wznowieniu, które i tak generuje od dzisiaj.
+- **`GetRuleQuery` odpowiada 404, dwa pozostałe pustą listą.** Identyfikator reguły skądś przyszedł,
+  więc jego brak jest informacją; cash flow bez reguł to zwyczajny cash flow.
+
+Dowody negatywne: usunięcie `if (rule.isActive())` z `AddAmountChangeCommandHandler` wywala test
+komunikatem *No interactions wanted here*; zamiana `orElseThrow` na `orElse(null)` w
+`GetRuleQueryHandler` — *Expecting code to raise a throwable*.
+
+### Znaleziska przy czytaniu
+
+**`findGeneratedCashChangeIdForDate` zwraca `null` bezwarunkowo**, z komentarzem *„simplified
+implementation - we don't have a direct mapping"*. Czyli
+`UpcomingTransactionsResponse.UpcomingTransaction.cashChangeId` jest **zawsze null** w każdej
+odpowiedzi, a dashboard kopiuje to dalej. Nikt w `src/main` go nie ustawia i żaden test go nie
+sprawdza: pole istnieje dla czytelnika, który nigdy go nie dostanie. Reguła *trzyma*
+`generatedCashChangeIds`, tylko nie per-data.
+
+**Ostatni martwy token w module** to `PreviewDeleteImpactQuery.authToken` — handler czyta wyłącznie
+`query.ruleId()`, a liczby bierze z `cashFlowApi`. Trzy `@RequestHeader("Authorization")` odeszły z
+tym krokiem, ten jeden został i odejdzie razem z handlerem tego zapytania.

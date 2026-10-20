@@ -1,4 +1,4 @@
-package com.multi.vidulum.recurring_rules.app.commands;
+package com.multi.vidulum.recurring_rules.app.commands.removeamountchange;
 
 import com.multi.vidulum.shared.cqrs.commands.Command;
 

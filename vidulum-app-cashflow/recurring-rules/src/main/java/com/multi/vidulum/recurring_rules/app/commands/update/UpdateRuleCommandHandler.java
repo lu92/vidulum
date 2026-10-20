@@ -71,7 +71,7 @@ public class UpdateRuleCommandHandler implements CommandHandler<UpdateRuleComman
                 command.maxOccurrences(),
                 command.activeMonths(),
                 command.excludedDates(),
-                clock
+                clock.instant()
         );
 
         ruleRepository.save(rule);

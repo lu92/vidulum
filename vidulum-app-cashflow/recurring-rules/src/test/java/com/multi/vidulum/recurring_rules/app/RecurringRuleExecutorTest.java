@@ -45,8 +45,8 @@ import static org.mockito.Mockito.when;
 class RecurringRuleExecutorTest {
 
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2022-01-01T00:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final CashFlowModuleApi cashFlowApi = mock(CashFlowModuleApi.class);
@@ -134,7 +134,7 @@ class RecurringRuleExecutorTest {
                 new MonthlyPattern(15, 1, false),
                 LocalDate.of(2030, 6, 1),
                 null, null, null, null,
-                FIXED_CLOCK);
+                NOW);
 
         executor.generate(rule);
 
@@ -237,6 +237,6 @@ class RecurringRuleExecutorTest {
                 maxOccurrences,
                 null,
                 null,
-                FIXED_CLOCK);
+                NOW);
     }
 }

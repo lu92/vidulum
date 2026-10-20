@@ -42,7 +42,7 @@ public class DeleteRuleCommandHandler implements CommandHandler<DeleteRuleComman
 
         executor.clear(rule);
 
-        rule.delete(command.reason(), clock);
+        rule.delete(command.reason(), clock.instant());
         ruleRepository.save(rule);
 
         log.info("Deleted recurring rule {}", ruleId.id());

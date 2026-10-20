@@ -6,16 +6,11 @@ import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
-import com.multi.vidulum.recurring_rules.app.commands.*;
 import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
 import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
-import com.multi.vidulum.recurring_rules.app.queries.GetRuleQuery;
-import com.multi.vidulum.recurring_rules.app.queries.GetRulesByCashFlowQuery;
-import com.multi.vidulum.recurring_rules.app.queries.GetRulesByUserQuery;
 import com.multi.vidulum.recurring_rules.app.queries.PreviewDeleteImpactQuery;
 import com.multi.vidulum.recurring_rules.domain.*;
-import com.multi.vidulum.recurring_rules.domain.exceptions.InvalidRuleStateException;
 import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,13 +38,15 @@ public class RecurringRuleService {
 
     private static final int FORECAST_MONTHS = 12; // Current + 11 months
 
-    // Command Handlers
-
-    // Five handle(...) methods left this class, each for a folder of its own under app/commands -
-    // create, update, pause, resume, delete - with a CommandHandler beside its command, the shape
-    // cashflow has used from the start. They were the ones that spoke to cashflow, so
-    // CashFlowModuleApi left with them; what they shared is now RecurringRuleExecutor, and none of
-    // the five commands carries an authToken any more because the executor stopped speaking HTTP.
+    // Eight handle(...) methods left this class for app/commands/{create,update,pause,resume,delete,
+    // generate,addamountchange,removeamountchange} and three for app/queries, each with a handler
+    // beside its command or query - the shape cashflow has used from the start. The last three
+    // writes also dropped the authToken parameter they never read; what they shared is
+    // RecurringRuleExecutor.
+    //
+    // What is left is what has no command or query of its own yet: the scheduler's auto-resume, the
+    // delete-impact preview, and the dashboard pair (which the controller still calls with four
+    // loose parameters, and which calls each other).
 
     /**
      * Auto-resumes a paused rule. Called by the scheduler when resumeDate is reached.
@@ -79,7 +76,7 @@ public class RecurringRuleService {
             return;
         }
 
-        rule.resume(clock);
+        rule.resume(clock.instant());
         ruleRepository.save(rule);
 
         executor.clear(rule);
@@ -93,96 +90,6 @@ public class RecurringRuleService {
      */
     public List<RecurringRule> findRulesForAutoResume(LocalDate date) {
         return ruleRepository.findPausedRulesWithResumeDateOnOrBefore(date);
-    }
-
-    public void handle(GenerateExpectedCashChangesCommand command, String authToken) {
-        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
-        RecurringRule rule = findRuleOrThrow(ruleId);
-
-        if (!rule.isActive()) {
-            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "generate expected cash changes");
-        }
-
-        // Clear old and generate new
-        executor.clear(rule);
-        executor.generate(rule);
-    }
-
-    public AmountChangeId handle(AddAmountChangeCommand command, String authToken) {
-        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
-        RecurringRule rule = findRuleOrThrow(ruleId);
-
-        if (rule.isDeleted()) {
-            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "add amount change");
-        }
-
-        // Generate ID
-        long sequence = ruleRepository.generateNextAmountChangeSequence();
-        AmountChangeId changeId = AmountChangeId.generate(sequence);
-
-        AmountChange amountChange = new AmountChange(
-                changeId,
-                command.amount(),
-                command.type(),
-                command.reason()
-        );
-
-        rule.addAmountChange(amountChange, clock);
-        ruleRepository.save(rule);
-
-        // Regenerate expected cash changes if rule is active
-        if (rule.isActive()) {
-            executor.clear(rule);
-            executor.generate(rule);
-        }
-
-        log.info("Added {} amount change {} to rule {}", command.type(), changeId.id(), ruleId.id());
-        return changeId;
-    }
-
-    public void handle(RemoveAmountChangeCommand command, String authToken) {
-        RecurringRuleId ruleId = RecurringRuleId.of(command.ruleId());
-        RecurringRule rule = findRuleOrThrow(ruleId);
-
-        if (rule.isDeleted()) {
-            throw new InvalidRuleStateException(ruleId, rule.getStatus(), "remove amount change");
-        }
-
-        AmountChangeId changeId = AmountChangeId.of(command.amountChangeId());
-        rule.removeAmountChange(changeId, clock);
-        ruleRepository.save(rule);
-
-        // Regenerate expected cash changes if rule is active
-        if (rule.isActive()) {
-            executor.clear(rule);
-            executor.generate(rule);
-        }
-
-        log.info("Removed amount change {} from rule {}", changeId.id(), ruleId.id());
-    }
-
-    // Query Handlers
-
-
-    public RecurringRuleSnapshot handle(GetRuleQuery query)  {
-        RecurringRuleId ruleId = RecurringRuleId.of(query.ruleId());
-        return findRuleOrThrow(ruleId).getSnapshot();
-    }
-
-
-    public List<RecurringRuleSnapshot> handle(GetRulesByCashFlowQuery query) {
-        CashFlowId cashFlowId = CashFlowId.of(query.cashFlowId());
-        return ruleRepository.findByCashFlowId(cashFlowId).stream()
-                .map(RecurringRule::getSnapshot)
-                .toList();
-    }
-
-
-    public List<RecurringRuleSnapshot> handle(GetRulesByUserQuery query) {
-        UserId userId = UserId.of(query.userId());
-        return ruleRepository.findByUserId(userId).stream()
-                .map(RecurringRule::getSnapshot)
-                .toList();
     }
 
     public DeleteImpactPreviewResponse handle(PreviewDeleteImpactQuery query) {

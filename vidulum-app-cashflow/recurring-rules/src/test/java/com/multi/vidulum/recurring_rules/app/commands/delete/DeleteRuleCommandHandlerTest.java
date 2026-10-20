@@ -40,8 +40,8 @@ class DeleteRuleCommandHandlerTest {
 
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
     private static final RecurringRuleId RULE_ID = RecurringRuleId.generate(1);
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2022-01-01T00:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
@@ -75,7 +75,7 @@ class DeleteRuleCommandHandlerTest {
     @Test
     void aPausedRuleCanStillBeDeleted() {
         RecurringRule rule = storedRule();
-        rule.pause(PauseInfo.indefinite(FIXED_CLOCK.instant(), "holiday"), FIXED_CLOCK);
+        rule.pause(PauseInfo.indefinite(NOW, "holiday"), NOW);
 
         handler.handle(new DeleteRuleCommand(RULE_ID.id(), "no longer needed"));
 
@@ -88,7 +88,7 @@ class DeleteRuleCommandHandlerTest {
     @Test
     void deletingADeletedRuleRefusesWithoutTouchingItsCashChanges() {
         RecurringRule rule = storedRule();
-        rule.delete("gone", FIXED_CLOCK);
+        rule.delete("gone", NOW);
 
         assertThatThrownBy(() -> handler.handle(new DeleteRuleCommand(RULE_ID.id(), "again")))
                 .isInstanceOf(InvalidRuleStateException.class)
@@ -113,7 +113,7 @@ class DeleteRuleCommandHandlerTest {
                 null,
                 null,
                 null,
-                FIXED_CLOCK);
+                NOW);
         when(rules.findById(RULE_ID)).thenReturn(Optional.of(rule));
         return rule;
     }

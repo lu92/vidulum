@@ -40,8 +40,8 @@ class ResumeRuleCommandHandlerTest {
 
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
     private static final RecurringRuleId RULE_ID = RecurringRuleId.generate(1);
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2022-01-01T00:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
@@ -62,7 +62,7 @@ class ResumeRuleCommandHandlerTest {
 
     @Test
     void resumingAnActiveRuleRefusesWithoutRegeneratingAnything() {
-        storedPausedRule().resume(FIXED_CLOCK);
+        storedPausedRule().resume(NOW);
 
         assertThatThrownBy(() -> handler.handle(new ResumeRuleCommand(RULE_ID.id())))
                 .isInstanceOf(InvalidRuleStateException.class)
@@ -116,8 +116,8 @@ class ResumeRuleCommandHandlerTest {
                 null,
                 null,
                 null,
-                FIXED_CLOCK);
-        rule.pause(PauseInfo.indefinite(FIXED_CLOCK.instant(), "holiday"), FIXED_CLOCK);
+                NOW);
+        rule.pause(PauseInfo.indefinite(NOW, "holiday"), NOW);
         when(rules.findById(RULE_ID)).thenReturn(Optional.of(rule));
         return rule;
     }

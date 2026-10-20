@@ -40,8 +40,8 @@ class PauseRuleCommandHandlerTest {
 
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
     private static final RecurringRuleId RULE_ID = RecurringRuleId.generate(1);
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2022-01-01T00:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
@@ -97,7 +97,7 @@ class PauseRuleCommandHandlerTest {
     @Test
     void pausingAPausedRuleRefusesWithoutTouchingItsCashChanges() {
         RecurringRule rule = storedActiveRule();
-        rule.pause(PauseInfo.indefinite(FIXED_CLOCK.instant(), "already"), FIXED_CLOCK);
+        rule.pause(PauseInfo.indefinite(NOW, "already"), NOW);
 
         assertThatThrownBy(() -> handler.handle(new PauseRuleCommand(RULE_ID.id(), null, "again")))
                 .isInstanceOf(InvalidRuleStateException.class)
@@ -122,7 +122,7 @@ class PauseRuleCommandHandlerTest {
                 null,
                 null,
                 null,
-                FIXED_CLOCK);
+                NOW);
         when(rules.findById(RULE_ID)).thenReturn(Optional.of(rule));
         return rule;
     }

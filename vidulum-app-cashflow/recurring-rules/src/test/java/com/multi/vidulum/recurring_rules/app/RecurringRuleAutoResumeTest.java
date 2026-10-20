@@ -44,8 +44,8 @@ class RecurringRuleAutoResumeTest {
     private static final CashFlowId CASH_FLOW_ID = CashFlowId.of("CF10000001");
     private static final RecurringRuleId RULE_ID = RecurringRuleId.generate(1);
     private static final LocalDate RESUME_DATE = LocalDate.of(2022, 1, 1);
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(Instant.parse("2022-01-01T00:00:00Z"), ZoneOffset.UTC);
+    private static final Instant NOW = Instant.parse("2022-01-01T00:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
@@ -67,7 +67,7 @@ class RecurringRuleAutoResumeTest {
 
     @Test
     void aRuleResumedByHandInTheMeantimeIsSkipped() {
-        storedPausedRule().resume(FIXED_CLOCK);
+        storedPausedRule().resume(NOW);
 
         assertThatCode(() -> service.handleAutoResume(RULE_ID, RESUME_DATE))
                 .as("the scheduler reads a list and acts on it later; losing a race is not an error")
@@ -103,8 +103,8 @@ class RecurringRuleAutoResumeTest {
                 null,
                 null,
                 null,
-                FIXED_CLOCK);
-        rule.pause(PauseInfo.untilDate(FIXED_CLOCK.instant(), RESUME_DATE, "holiday"), FIXED_CLOCK);
+                NOW);
+        rule.pause(PauseInfo.untilDate(NOW, RESUME_DATE, "holiday"), NOW);
         when(rules.findById(RULE_ID)).thenReturn(Optional.of(rule));
         return rule;
     }

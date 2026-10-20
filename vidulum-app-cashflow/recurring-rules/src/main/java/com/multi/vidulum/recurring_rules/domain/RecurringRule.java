@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
@@ -28,6 +27,23 @@ import java.util.function.Consumer;
  * Supports different recurrence patterns: DAILY, WEEKLY, MONTHLY, YEARLY.
  * <p>
  * Lifecycle: ACTIVE → PAUSED → ACTIVE → COMPLETED/DELETED
+ *
+ * <p><b>Every state change takes the moment it happens ({@code Instant now}), not a {@link
+ * java.time.Clock}.</b> A clock is a source of time, and handing one to an aggregate means the
+ * aggregate decides <em>when</em> it is - which is not its business and was not free: {@code create}
+ * read the clock <b>three times</b> for one business moment, so {@code createdAt},
+ * {@code lastModifiedAt} and the timestamp on {@code RuleCreated} could all differ, and the
+ * executor's {@code generate} read it a fourth and fifth time in the same use case. The caller now
+ * reads the clock once and the whole operation carries one value.
+ *
+ * <p>{@code Instant}, not {@code ZonedDateTime}, because that is what this module holds end to end -
+ * the two fields, {@code RecurringRuleSnapshot}, the Mongo entity and {@code RecurringRuleResponse}.
+ * A zoned type here would be converted on the way in and on the way out for no reader's benefit. The
+ * dates that <em>do</em> belong to somebody's calendar ({@code startDate}, {@code excludedDates},
+ * occurrences) are {@code LocalDate} and stay that way.
+ *
+ * <p>It is also how its sibling works: {@code CashFlow} takes no clock at all - the command handler
+ * stamps the event and the aggregate applies it.
  */
 @Builder
 @NoArgsConstructor
@@ -72,7 +88,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
             Integer maxOccurrences,
             List<Month> activeMonths,
             List<LocalDate> excludedDates,
-            Clock clock
+            Instant now
     ) {
         RecurringRule rule = new RecurringRule();
         rule.ruleId = ruleId;
@@ -93,8 +109,8 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         rule.amountChanges = new ArrayList<>();
         rule.executions = new ArrayList<>();
         rule.generatedCashChangeIds = new ArrayList<>();
-        rule.createdAt = clock.instant();
-        rule.lastModifiedAt = clock.instant();
+        rule.createdAt = now;
+        rule.lastModifiedAt = now;
 
         rule.emit(new RecurringRuleEvent.RuleCreated(
                 ruleId,
@@ -107,7 +123,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
                 pattern,
                 startDate,
                 endDate,
-                clock.instant()
+                now
         ));
 
         return rule;
@@ -185,7 +201,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
             Integer maxOccurrences,
             List<Month> activeMonths,
             List<LocalDate> excludedDates,
-            Clock clock
+            Instant now
     ) {
         this.name = name;
         this.description = description;
@@ -197,7 +213,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         this.maxOccurrences = maxOccurrences;
         this.activeMonths = activeMonths != null ? new ArrayList<>(activeMonths) : new ArrayList<>();
         this.excludedDates = excludedDates != null ? new ArrayList<>(excludedDates) : new ArrayList<>();
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
         emit(new RecurringRuleEvent.RuleUpdated(
                 ruleId,
@@ -208,87 +224,87 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
                 pattern,
                 startDate,
                 endDate,
-                clock.instant()
+                now
         ));
     }
 
-    public void pause(PauseInfo pauseInfo, Clock clock) {
+    public void pause(PauseInfo pauseInfo, Instant now) {
         if (status != RuleStatus.ACTIVE) {
             throw new IllegalStateException("Can only pause an active rule");
         }
         this.status = RuleStatus.PAUSED;
         this.pauseInfo = pauseInfo;
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.RulePaused(ruleId, pauseInfo, clock.instant()));
+        emit(new RecurringRuleEvent.RulePaused(ruleId, pauseInfo, now));
     }
 
-    public void resume(Clock clock) {
+    public void resume(Instant now) {
         if (status != RuleStatus.PAUSED) {
             throw new IllegalStateException("Can only resume a paused rule");
         }
         this.status = RuleStatus.ACTIVE;
         this.pauseInfo = null;
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.RuleResumed(ruleId, clock.instant()));
+        emit(new RecurringRuleEvent.RuleResumed(ruleId, now));
     }
 
-    public void complete(String reason, Clock clock) {
+    public void complete(String reason, Instant now) {
         if (status == RuleStatus.COMPLETED || status == RuleStatus.DELETED) {
             throw new IllegalStateException("Rule is already completed or deleted");
         }
         this.status = RuleStatus.COMPLETED;
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.RuleCompleted(ruleId, reason, clock.instant()));
+        emit(new RecurringRuleEvent.RuleCompleted(ruleId, reason, now));
     }
 
-    public void delete(String reason, Clock clock) {
+    public void delete(String reason, Instant now) {
         if (status == RuleStatus.DELETED) {
             throw new IllegalStateException("Rule is already deleted");
         }
         this.status = RuleStatus.DELETED;
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.RuleDeleted(ruleId, reason, clock.instant()));
+        emit(new RecurringRuleEvent.RuleDeleted(ruleId, reason, now));
     }
 
-    public void addAmountChange(AmountChange amountChange, Clock clock) {
+    public void addAmountChange(AmountChange amountChange, Instant now) {
         this.amountChanges.add(amountChange);
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.AmountChangeAdded(ruleId, amountChange, clock.instant()));
+        emit(new RecurringRuleEvent.AmountChangeAdded(ruleId, amountChange, now));
     }
 
-    public void removeAmountChange(AmountChangeId amountChangeId, Clock clock) throws AmountChangeNotFoundException {
+    public void removeAmountChange(AmountChangeId amountChangeId, Instant now) throws AmountChangeNotFoundException {
         boolean removed = amountChanges.removeIf(ac -> ac.id().equals(amountChangeId));
         if (!removed) {
             throw new AmountChangeNotFoundException(ruleId, amountChangeId);
         }
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.AmountChangeRemoved(ruleId, amountChangeId, clock.instant()));
+        emit(new RecurringRuleEvent.AmountChangeRemoved(ruleId, amountChangeId, now));
     }
 
-    public void recordExecution(RuleExecution execution, Clock clock) {
+    public void recordExecution(RuleExecution execution, Instant now) {
         this.executions.add(execution);
         if (execution.isSuccessful() && execution.getGeneratedCashChangeId().isPresent()) {
             this.generatedCashChangeIds.add(execution.getGeneratedCashChangeId().get());
         }
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
-        emit(new RecurringRuleEvent.RuleExecuted(ruleId, execution, clock.instant()));
+        emit(new RecurringRuleEvent.RuleExecuted(ruleId, execution, now));
     }
 
     public void recordGeneratedCashChanges(
             List<CashChangeId> cashChangeIds,
             LocalDate fromDate,
             LocalDate toDate,
-            Clock clock
+            Instant now
     ) {
         this.generatedCashChangeIds.addAll(cashChangeIds);
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
         emit(new RecurringRuleEvent.ExpectedCashChangesGenerated(
                 ruleId,
@@ -296,19 +312,19 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
                 cashChangeIds,
                 fromDate,
                 toDate,
-                clock.instant()
+                now
         ));
     }
 
-    public void clearGeneratedCashChanges(List<CashChangeId> clearedIds, Clock clock) {
+    public void clearGeneratedCashChanges(List<CashChangeId> clearedIds, Instant now) {
         this.generatedCashChangeIds.removeAll(clearedIds);
-        this.lastModifiedAt = clock.instant();
+        this.lastModifiedAt = now;
 
         emit(new RecurringRuleEvent.ExpectedCashChangesCleared(
                 ruleId,
                 cashFlowId,
                 clearedIds,
-                clock.instant()
+                now
         ));
     }
 

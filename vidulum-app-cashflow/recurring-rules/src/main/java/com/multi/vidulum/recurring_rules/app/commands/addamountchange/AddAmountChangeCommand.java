@@ -1,4 +1,4 @@
-package com.multi.vidulum.recurring_rules.app.commands;
+package com.multi.vidulum.recurring_rules.app.commands.addamountchange;
 
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeType;

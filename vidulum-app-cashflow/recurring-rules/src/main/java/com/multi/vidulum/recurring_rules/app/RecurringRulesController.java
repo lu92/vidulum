@@ -1,13 +1,16 @@
 package com.multi.vidulum.recurring_rules.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
-import com.multi.vidulum.recurring_rules.app.commands.*;
+import com.multi.vidulum.recurring_rules.app.commands.addamountchange.AddAmountChangeCommand;
+import com.multi.vidulum.recurring_rules.app.commands.generate.GenerateExpectedCashChangesCommand;
+import com.multi.vidulum.recurring_rules.app.commands.removeamountchange.RemoveAmountChangeCommand;
 import com.multi.vidulum.recurring_rules.app.commands.create.CreateRuleCommand;
 import com.multi.vidulum.recurring_rules.app.commands.delete.DeleteRuleCommand;
 import com.multi.vidulum.recurring_rules.app.commands.pause.PauseRuleCommand;
 import com.multi.vidulum.recurring_rules.app.commands.resume.ResumeRuleCommand;
 import com.multi.vidulum.recurring_rules.app.commands.update.UpdateRuleCommand;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
+import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.recurring_rules.app.dto.*;
 import com.multi.vidulum.recurring_rules.app.queries.*;
 import com.multi.vidulum.recurring_rules.domain.AmountChangeId;
@@ -36,6 +39,7 @@ public class RecurringRulesController {
     // the honest state of the migration, not a design: a command gets a handler of its own when
     // someone has a reason to touch it.
     private final CommandGateway commandGateway;
+    private final QueryGateway queryGateway;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
     @PostMapping
@@ -65,15 +69,13 @@ public class RecurringRulesController {
 
     @GetMapping("/{ruleId}")
     public ResponseEntity<RecurringRuleResponse> getRule(@PathVariable String ruleId) {
-        GetRuleQuery query = new GetRuleQuery(ruleId);
-        RecurringRuleSnapshot snapshot = ruleService.handle(query);
+        RecurringRuleSnapshot snapshot = queryGateway.send(new GetRuleQuery(ruleId));
         return ResponseEntity.ok(RecurringRuleResponse.fromSnapshot(snapshot));
     }
 
     @GetMapping("/cash-flow/{cashFlowId}")
     public ResponseEntity<List<RecurringRuleResponse>> getRulesByCashFlow(@PathVariable String cashFlowId) {
-        GetRulesByCashFlowQuery query = new GetRulesByCashFlowQuery(cashFlowId);
-        List<RecurringRuleSnapshot> snapshots = ruleService.handle(query);
+        List<RecurringRuleSnapshot> snapshots = queryGateway.send(new GetRulesByCashFlowQuery(cashFlowId));
         List<RecurringRuleResponse> responses = snapshots.stream()
                 .map(RecurringRuleResponse::fromSnapshot)
                 .toList();
@@ -82,8 +84,7 @@ public class RecurringRulesController {
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<RecurringRuleResponse>> getRulesByUser(@PathVariable String userId) {
-        GetRulesByUserQuery query = new GetRulesByUserQuery(userId);
-        List<RecurringRuleSnapshot> snapshots = ruleService.handle(query);
+        List<RecurringRuleSnapshot> snapshots = queryGateway.send(new GetRulesByUserQuery(userId));
         List<RecurringRuleResponse> responses = snapshots.stream()
                 .map(RecurringRuleResponse::fromSnapshot)
                 .toList();
@@ -93,8 +94,7 @@ public class RecurringRulesController {
     @GetMapping("/me")
     public ResponseEntity<List<RecurringRuleResponse>> getMyRules() {
         String userId = getCurrentUserId();
-        GetRulesByUserQuery query = new GetRulesByUserQuery(userId);
-        List<RecurringRuleSnapshot> snapshots = ruleService.handle(query);
+        List<RecurringRuleSnapshot> snapshots = queryGateway.send(new GetRulesByUserQuery(userId));
         List<RecurringRuleResponse> responses = snapshots.stream()
                 .map(RecurringRuleResponse::fromSnapshot)
                 .toList();
@@ -213,13 +213,10 @@ public class RecurringRulesController {
 
     @PostMapping("/{ruleId}/regenerate")
     public ResponseEntity<Void> regenerateExpectedCashChanges(
-            @PathVariable String ruleId,
-            @RequestHeader("Authorization") String authHeader
+            @PathVariable String ruleId
     ) {
-        String authToken = extractToken(authHeader);
-
         GenerateExpectedCashChangesCommand command = new GenerateExpectedCashChangesCommand(ruleId);
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
         return ResponseEntity.ok().build();
     }
 
@@ -228,11 +225,8 @@ public class RecurringRulesController {
     @PostMapping("/{ruleId}/amount-changes")
     public ResponseEntity<Map<String, String>> addAmountChange(
             @PathVariable String ruleId,
-            @Valid @RequestBody AddAmountChangeRequest request,
-            @RequestHeader("Authorization") String authHeader
+            @Valid @RequestBody AddAmountChangeRequest request
     ) {
-        String authToken = extractToken(authHeader);
-
         AddAmountChangeCommand command = new AddAmountChangeCommand(
                 ruleId,
                 request.getAmount(),
@@ -240,7 +234,7 @@ public class RecurringRulesController {
                 request.getReason()
         );
 
-        AmountChangeId changeId = ruleService.handle(command, authToken);
+        AmountChangeId changeId = commandGateway.send(command);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("amountChangeId", changeId.id()));
@@ -250,8 +244,7 @@ public class RecurringRulesController {
     public ResponseEntity<List<AmountChangeResponse>> getAmountChanges(
             @PathVariable String ruleId
     ) {
-        GetRuleQuery query = new GetRuleQuery(ruleId);
-        RecurringRuleSnapshot snapshot = ruleService.handle(query);
+        RecurringRuleSnapshot snapshot = queryGateway.send(new GetRuleQuery(ruleId));
 
         List<AmountChangeResponse> changes = snapshot.amountChanges() != null
                 ? snapshot.amountChanges().stream().map(AmountChangeResponse::from).toList()
@@ -263,13 +256,10 @@ public class RecurringRulesController {
     @DeleteMapping("/{ruleId}/amount-changes/{amountChangeId}")
     public ResponseEntity<Void> removeAmountChange(
             @PathVariable String ruleId,
-            @PathVariable String amountChangeId,
-            @RequestHeader("Authorization") String authHeader
+            @PathVariable String amountChangeId
     ) {
-        String authToken = extractToken(authHeader);
-
         RemoveAmountChangeCommand command = new RemoveAmountChangeCommand(ruleId, amountChangeId);
-        ruleService.handle(command, authToken);
+        commandGateway.send(command);
 
         return ResponseEntity.noContent().build();
     }

@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -64,7 +65,10 @@ public class RecurringRuleExecutor {
      * which means nothing could ever remove them. The batch either lands whole or changes nothing.
      */
     public void generate(RecurringRule rule) {
-        LocalDate fromDate = LocalDate.now(clock);
+        // read once: the window the occurrences are generated for, the stamp on the rule and the
+        // stamp on an auto-completion are one moment, where three readings could straddle midnight
+        Instant now = clock.instant();
+        LocalDate fromDate = LocalDate.ofInstant(now, clock.getZone());
         YearMonth currentMonth = YearMonth.from(fromDate);
         LocalDate toDate = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
 
@@ -88,13 +92,13 @@ public class RecurringRuleExecutor {
         List<CashChangeId> generatedIds = cashFlowApi.appendExpected(
                 rule.getCashFlowId(), rule.getRuleId().id(), changes);
 
-        rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, clock);
+        rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, now);
         ruleRepository.save(rule);
         log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
 
         // Check if rule should auto-complete after reaching maxOccurrences
         if (rule.shouldAutoComplete()) {
-            rule.complete(STR."Reached maximum occurrences (\{rule.getMaxOccurrences().orElse(0)})", clock);
+            rule.complete(STR."Reached maximum occurrences (\{rule.getMaxOccurrences().orElse(0)})", now);
             ruleRepository.save(rule);
             log.info("Rule {} auto-completed after reaching {} occurrences",
                     rule.getRuleId().id(), rule.getMaxOccurrences().orElse(0));
@@ -132,7 +136,7 @@ public class RecurringRuleExecutor {
         log.info("Withdrew {} expected cash changes for rule {} ({} were already confirmed and stay)",
                 result.deleted(), rule.getRuleId().id(), result.skipped());
 
-        rule.clearGeneratedCashChanges(toDelete, clock);
+        rule.clearGeneratedCashChanges(toDelete, clock.instant());
         ruleRepository.save(rule);
     }
 }

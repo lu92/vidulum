@@ -39,7 +39,7 @@ public class ResumeRuleCommandHandler implements CommandHandler<ResumeRuleComman
             throw new InvalidRuleStateException(ruleId, rule.getStatus(), "resume");
         }
 
-        rule.resume(clock);
+        rule.resume(clock.instant());
         ruleRepository.save(rule);
 
         executor.clear(rule);
