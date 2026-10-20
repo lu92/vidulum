@@ -111,8 +111,8 @@ vidulum/
 │   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
 │   ├── bank-data-ingestion/     #   Import staging, category mapping. Three contracts, no
 │   │                            #   client of its own, never vidulum-cashflow
-│   └── recurring-rules/         #   Recurring rules, through the contract. One read is left on its
-│                                #   own HTTP client (F26). No consumer here has an -api, nor a
+│   └── recurring-rules/         #   Recurring rules, entirely through the contract - no HTTP client
+│                                #   of its own left. No consumer here has an -api, nor a
 │                                #   test-scope dep on another
 │
 ├── market/                      # AGGREGATOR: prices and venues. Knows nothing about owners
@@ -154,13 +154,12 @@ not parents, so nothing depends on which folder a module sits in.
 
 The rules that hold it together:
 
-- **A module never imports another module's internals** — only its `*-api` contract. `portfolio`
+- **A module never imports another module's internals** — only its `*-api` contract: `portfolio`
   sees `trading.api`, never `trading.app`.
 - **`vidulum-wealth-tests` has no `src/main`.** It holds the tests that deliberately cross a
-  boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`,
-  `PreciousMetalsLifecycleComponentTest`, the portfolio and portfolio_spec endpoint tests,
-  `ValuationBasisPersistenceTest`). Without it, portfolio's tests would need trading and vice versa
-  — a reactor cycle.
+  boundary (`LockingAssetsTests`, `TradingPortfolioIntegrationTest`, the portfolio and
+  portfolio_spec endpoint tests, and two more). Without it, portfolio's tests would need trading and
+  vice versa — a reactor cycle.
 - **`vidulum-pnl` and `vidulum-risk` have no `-api`**, because nothing asks them anything. The
   contract gets written when a consumer exists (see
   `docs/features-backlog/2026-10-15-alerts-module-design.md`).
@@ -591,9 +590,9 @@ public ResponseEntity<ApiError> handleMyException(MyNewException ex) {
 }
 ```
 
-**One failure, one exception.** "No such cash flow" used to exist as three classes: one in
-cashflow's domain (41 usages), one nested in `bank_data_ingestion`'s port extending
-`RuntimeException`, and one in recurring-rules. Only `cashflow/api/error/CashFlowNotFoundException`
+**One failure, one exception.** "No such cash flow" was three classes: one in cashflow's domain
+(41 usages), one nested in `bank_data_ingestion`'s port extending `RuntimeException`, and one in
+recurring-rules. Only `cashflow/api/error/CashFlowNotFoundException`
 remains — in the contract, so a consumer catches it without importing anyone's domain. The nested
 one was the dangerous shape: a `RuntimeException` with no `ErrorCode`, which `ErrorHttpHandler` does
 not map, so every call site had to translate it and two that forgot answered **500 instead of 404**.
@@ -601,11 +600,11 @@ If you add a failure that another module can see, put it in that module's `*-api
 and give it an `ErrorCode`.
 
 **The same shape appeared twice, so treat the pattern as the warning sign.** "Category already
-exists" was also two classes — a proper `BusinessException` in cashflow's domain and a nested
-`RuntimeException` in the same port, caught and translated at four call sites. Only
-`cashflow/api/error/CategoryAlreadyExistsException` remains. A nested exception class inside a
-client port is almost always this bug: it means a consumer invented a name for the producer's
-failure, so the `ErrorCode` the producer already had never reaches anyone.
+exists" was also two classes — a `BusinessException` in cashflow's domain and a nested
+`RuntimeException` in the same port, translated at four call sites. Only
+`cashflow/api/error/CategoryAlreadyExistsException` remains. A nested exception inside a client port
+is almost always this bug: a consumer invented a name for the producer's failure, so the `ErrorCode`
+the producer already had never reaches anyone.
 
 ### Key Classes
 - `ErrorHttpHandler` - `security/config/ErrorHttpHandler.java` - central exception handler
@@ -682,6 +681,7 @@ format: `date,amount,currency,type,bankCategory,name,description,merchant`.
 | POST | `/cash-flow/cf={cashFlowId}/category` | Add category to CashFlow |
 | POST | `/cash-flow/cf={cashFlowId}/attest-historical-import` | Attest historical import (activates CashFlow) |
 | POST | `/cash-flow/cf={cashFlowId}/expected-cash-changes/batch` | Append many expected cash changes atomically → returns their ids |
+| GET | `/cash-flow/cf={cashFlowId}/cash-changes/status?sourceRuleId=` | Count a rule's cash changes by state |
 | POST | `/cash-flow/cf={cashFlowId}/rollover` | Rollover to next period |
 | DELETE | `/cash-flow/cf={cashFlowId}/import` | Rollback historical import |
 

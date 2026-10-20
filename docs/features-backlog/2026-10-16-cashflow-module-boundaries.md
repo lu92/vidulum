@@ -2281,3 +2281,226 @@ miało.
 
 Z F26 zostaje **jedna operacja** — `getCashChangeStatuses` — i odzyskanie siedmiu typów cashflow ze
 shared-kernela, które jest teraz większą częścią tego zadania niż sam klient.
+
+---
+
+## 33. Co zrobił krok 36: ostatnia operacja klienta, i koniec klienta
+
+```java
+// przed: caly cash flow, zeby policzyc dwa stany
+String url = getCashFlowServiceUrl() + "/cash-flow/cf=" + cashFlowId.id();
+Map<String, Map<String, Object>> cashChanges = (Map<String, Map<String, Object>>) body.get("cashChanges");
+...
+if ("PENDING".equals(status)) { ... } else if ("CONFIRMED".equals(status)) { ... }
+```
+
+Ściągało **każdą transakcję w dokumencie**, żeby policzyć dwie liczby po stronie klienta, porównując
+stany jako literały.
+
+### Przeczytanie wołającego zmieniło kształt kontraktu
+
+Jedyny konsument liczył `pending` i `confirmed` do **podglądu usunięcia reguły** i **nigdy nie
+używał** ani identyfikatorów, ani `sourceRuleId` z odpowiedzi. Więc kontrakt oddaje liczniki, nie
+mapę — bo mapa zaprasza konsumenta do policzenia tego u siebie, czyli do trzymania w zgodzie
+kształtu, którego nie posiada.
+
+### Zapytanie z handlerem, nie metoda na agregacie
+
+Pierwsza wersja miała `CashFlow.countBySourceRule`, druga — metodę na snapshocie. Obie były gorsze
+od trzeciej: **nic tu nie jest decydowane**, a zadaniem agregatu są reguły zmieniania cash flow, nie
+raportowanie o nim. `GetCountOfCashChangesByStatusQueryHandler` czyta snapshot i liczy; oba
+wołające — kontrakt i endpoint, który woła jego transport HTTP — wysyłają to samo zapytanie, więc
+arytmetyka istnieje raz.
+
+### Nazwa, która była sprzeczna
+
+Pierwotnie `expectedCashChangesOf` / `ExpectedCashChangesByStatus`. Ale **potwierdzona transakcja
+przestała być oczekiwana** — a ta metoda liczy wszystkie cztery stany. Liczenie czterech pod nazwą
+jednego z nich to sprzeczność, która wprowadziłaby w błąd następnego czytelnika, więc:
+`countCashChangesByStatus` / `CashChangeCountsByStatus`, endpoint
+`GET /cf={id}/cash-changes/status`, i uzasadnienie zapisane w javadocu, żeby nikt nie przenazwał z
+powrotem.
+
+`appendExpected` i `deleteExpected` zostały — tam „expected" jest poprawne, bo dotyczą wyłącznie
+przewidywań. Rename ograniczył się do jednej ścieżki.
+
+### Trzecie pole, którego nikt nie zamawiał
+
+Cash flow zna **cztery** stany. Konsument liczył dwa, więc odrzucony albo zarchiwizowany *znikał* i
+suma podglądu się nie zgadzała — bez żadnego sygnału. `other` istnieje po to, żeby stan, o który nikt
+nie pytał, nie mógł zostać zgubiony; nikt go nie musi czytać.
+
+### Znalezisko: ścieżka, którą zmieniałem, nie miała siatki
+
+```java
+assertThat(...pending()).isGreaterThanOrEqualTo(0);     // licznik tego nie złamie
+assertThat(...confirmed()).isGreaterThanOrEqualTo(0);
+```
+
+Te asercje przeszłyby z liczbami zahardkodowanymi na zero. Wzmocnione do dokładnych wartości, plus
+przypadek, w którym właściciel potwierdza jedną transakcję: `confirmed = 1`, `pending = N−1`,
+`deletable = N−1`.
+
+### Co zniknęło
+
+| | |
+|---|---|
+| `CashFlowHttpClient` | **cała klasa** — nie została w niej ani jedna operacja |
+| `CashFlowCommunicationException` | opisywał tryb awarii, jakiego ten moduł już nie ma |
+| `TestCashFlowHttpClient` | port-aware dubler, istniejący tylko po to, by wskazać klienta na losowy port testowy |
+
+W `recurring_rules/infrastructure/` zostały encja, repozytorium i cleaner. **Zero HTTP.**
+
+### Czym się kończy F26
+
+Zadanie powstało, bo dwa moduły rozmawiały z cashflow przez porty, które **same sobie
+zadeklarowały** — a to znaczy, że cashflow nie mógł zmienić własnego payloadu, nie psując
+konsumenta, którego nie widzi. Dziś takich portów nie ma. Po drodze **pięć metod odeszło przez
+utratę wołającego, nie przez przepisanie**, i każda miała własny test, który ją w tym życiu trzymał.
+
+Jedna rzecz z pierwotnego opisu zostaje — **siedem typów cashflow w shared-kernelu** — i jest
+tematem F24, nie tego zadania. Trzymanie F26 otwartym dla cudzego przedmiotu mówiłoby, że klienci
+wciąż istnieją.
+
+## 34. Co zrobił krok 37: pause, resume i delete dostają własne handlery — i wychodzi defekt
+
+Trzy ostatnie operacje cyklu życia reguły, które jeszcze siedziały w `RecurringRuleService`,
+przeszły do `app/commands/{pause,resume,delete}` — folder na komendę, `CommandHandler` obok niej,
+czyli kształt, który create i update dostały w krokach 31 i 34. Kontroler woła `commandGateway.send`
+we wszystkich pięciu przypadkach; serwis: 530 → **478 linii**.
+
+### Czego ten krok *nie* miał dotknąć, a dotknął
+
+```java
+// RecurringRuleService.handleAutoResume, przed:
+rule.resume(clock);
+ruleRepository.save(rule);
+
+// Note: Cash changes are NOT generated here because we don't have an auth token
+// The scheduler will need to handle this separately or use a system token
+```
+
+**Reguła auto-wznowiona przez scheduler stawała się ACTIVE i nie przewidywała niczego.** Komentarz
+mówi prawdę o powodzie — zapisy szły przez HTTP i scheduler nie miał tokenu — tylko że ten powód
+**przestał istnieć w F58/F59**, kiedy executor zaczął wołać kontrakt. Nikt tego nie zauważył, bo
+`handleAutoResume` **nie miał żadnego testu**: ścieżka, którą uruchamia `@Scheduled`, nie jest
+ścieżką, którą ktokolwiek klika.
+
+Skutek dla właściciela: reguła wraca do życia w dniu `resumeDate`, a jej transakcje pojawiają się w
+prognozie dopiero, gdy ktoś ją ręcznie edytuje. Naprawione dwiema linijkami (`clear` + `generate`) i
+przypięte trzema przypadkami — w tym dwoma na to, że przegrany wyścig ze schedulerem jest pominięciem
+z ostrzeżeniem, nie błędem.
+
+To **szósty raz w tej serii**, kiedy coś znalazło się przez czytanie kodu obok zmiany, a nie przez
+samą zmianę. Poprzednie pięć to metody bez wołającego; ta jest odwrotnością — **wołający jest,
+powodu już nie ma**.
+
+### Czego handlery pilnują, a agregat nie
+
+Każdy z trzech sprawdza stan **przed** wejściem w agregat, bo agregat odpowiada
+`IllegalStateException` — wyjątkiem bez `ErrorCode`, którego `ErrorHttpHandler` nie mapuje, czyli
+**500 za zwyczajną pomyłkę**. Guard w handlerze zamienia to na `InvalidRuleStateException` i 409.
+Asercja `isNotInstanceOf(IllegalStateException.class)` w każdym z trzech testów pilnuje, że to nie
+jest przypadek.
+
+Kolejność zapisów jest zachowana z metod, które zastąpiły, i jest zachowaniem, nie stylem:
+
+| | kolejność | dlaczego |
+|---|---|---|
+| pause | `clear` → `save` | wstrzymana reguła, która zostawiła swoje przewidywania, **dalej kształtuje prognozę**, twierdząc, że nic nie robi |
+| resume | `save` → `clear` → `generate` | `clear` wygląda zbędnie i nie jest: pause pisze dwa razy, a awaria między zapisami zostawia przewidywania, które tylko to `clear` usuwa — jedno wywołanie za idempotencję |
+| delete | `clear` → `save` | odchodzą **wyłącznie przewidywania**; potwierdzona transakcja jest faktem o pieniądzach właściciela i cashflow jej nie oddaje |
+
+Dowód negatywny, nie opinia: odwrócenie kolejności w `PauseRuleCommandHandler` wywala
+`thePredictionsAreWithdrawnBeforeTheRuleStopsPredicting` komunikatem *Verification in order failure*.
+
+### `authToken` znika z komend, a nagłówek z pięciu endpointów
+
+`CreateRuleCommand` i `UpdateRuleCommand` nosiły pole `authToken`, którego ich handlery **już nie
+czytały** — javadoc obiecywał, że zniknie, kiedy zapisy przestaną chodzić po HTTP (F26). Przestały,
+więc zniknęło. Razem z nim pięć `@RequestHeader("Authorization")` w kontrolerze: parametr, którego
+nikt nie używa, a który zamieniał brakujący nagłówek w **400 zamiast 401** — odpowiedzi należącej do
+filtra bezpieczeństwa, nie do kontrolera.
+
+## 35. Co zrobił krok 38: zegar wychodzi z agregatu, a serwis traci sześć metod
+
+Dwie zmiany na prośbę właściciela kodu, w jednym kroku, bo druga odsłoniła rozmiar pierwszej.
+
+### `Clock` w agregacie znaczy, że agregat decyduje, która jest godzina
+
+Jedenaście metod `RecurringRule` brało `Clock` — `create`, `update`, `pause`, `resume`, `complete`,
+`delete`, `addAmountChange`, `removeAmountChange`, `recordExecution`,
+`recordGeneratedCashChanges`, `clearGeneratedCashChanges` — i **każda używała go wyłącznie po to, by
+zapytać „kiedy teraz"**. Koszt był widoczny w `create`:
+
+```java
+rule.createdAt = clock.instant();        // trzy odczyty ruchomego zegara
+rule.lastModifiedAt = clock.instant();   // dla jednego momentu biznesowego
+rule.emit(new RuleCreated(..., clock.instant()));
+```
+
+`createdAt`, `lastModifiedAt` i stempel na zdarzeniu mogły się różnić. W
+`RecurringRuleExecutor.generate` było gorzej: `LocalDate.now(clock)` wyznaczało **okno wystąpień**, a
+potem `recordGeneratedCashChanges` i `complete` czytały zegar ponownie — trzy odczyty, które mogą
+przeskoczyć północ, czyli reguła z oknem z jednej doby i stemplem z drugiej. Teraz wołający czyta
+raz, a cała operacja nosi jedną wartość; w `PauseRuleCommandHandler` ta sama zmiana zrównała moment
+w `PauseInfo` z `lastModifiedAt` reguły.
+
+**`Instant`, a nie `ZonedDateTime`** — ten moduł trzyma `Instant` od końca do końca: oba pola,
+`RecurringRuleSnapshot`, encja Mongo i `RecurringRuleResponse`. Typ ze strefą trzeba by konwertować
+na wejściu i na wyjściu bez korzyści dla żadnego czytelnika. Daty, które **należą do czyjegoś
+kalendarza** (`startDate`, `excludedDates`, wystąpienia), są `LocalDate` i takie zostają.
+Uzasadnienie jest w javadocu klasy, żeby nikt nie wrócił do zegara.
+
+Tak zresztą działa agregat siostrzany: **`CashFlow` nie bierze zegara wcale** — handler stempluje
+zdarzenie, agregat je aplikuje.
+
+### Sześć wydzieleń, i pakiet `app.commands` zostaje pusty
+
+| wydzielone | dokąd | linie handlera |
+|---|---|---|
+| `GenerateExpectedCashChangesCommand` | `commands/generate/` | 51 |
+| `AddAmountChangeCommand` | `commands/addamountchange/` | 65 |
+| `RemoveAmountChangeCommand` | `commands/removeamountchange/` | 57 |
+| `GetRuleQuery` | `queries/` (handler obok) | 31 |
+| `GetRulesByCashFlowQuery` | `queries/` | 33 |
+| `GetRulesByUserQuery` | `queries/` | 33 |
+
+Komendy dostają folder, zapytania zostają płasko z handlerem obok — **to nie niekonsekwencja, to
+konwencja cashflow**: `commands/{append,attest,confirm,…}` kontra
+`queries/GetCountOfCashChangesByStatusQuery` + handler w tym samym katalogu. Kontroler dostał
+`QueryGateway` i wysyła przez niego pięć odczytów, bo dwa endpointy wołają `GetRuleQuery`, a dwa
+`GetRulesByUserQuery`.
+
+Serwis: **478 → 385 linii**. Zostało to, co nie ma jeszcze własnej komendy ani zapytania:
+auto-wznowienie schedulera, `PreviewDeleteImpactQuery` i para dashboard/upcoming (którą kontroler
+woła **czterema luźnymi parametrami**, i która woła samą siebie).
+
+### Co w tych handlerach nie było mechaniczne
+
+Trzy reguły, które w serwisie były jednym `if`-em bez testu:
+
+- **`generate` odmawia wstrzymanej regule.** Wygenerowanie dla PAUSED przywróciłoby dokładnie to, co
+  pauza wycofała, a reguła zostałaby PAUSED — znowu kształtując prognozę.
+- **Zmiana kwoty wchodzi w każdym stanie poza DELETED, ale prognozę przebudowuje tylko ACTIVE.**
+  Wstrzymana nie ma czego przebudowywać, a przebudowa zostawiłaby cash changes, które tylko resume
+  mogłoby wycofać. Nowa kwota wchodzi przy wznowieniu, które i tak generuje od dzisiaj.
+- **`GetRuleQuery` odpowiada 404, dwa pozostałe pustą listą.** Identyfikator reguły skądś przyszedł,
+  więc jego brak jest informacją; cash flow bez reguł to zwyczajny cash flow.
+
+Dowody negatywne: usunięcie `if (rule.isActive())` z `AddAmountChangeCommandHandler` wywala test
+komunikatem *No interactions wanted here*; zamiana `orElseThrow` na `orElse(null)` w
+`GetRuleQueryHandler` — *Expecting code to raise a throwable*.
+
+### Znaleziska przy czytaniu
+
+**`findGeneratedCashChangeIdForDate` zwraca `null` bezwarunkowo**, z komentarzem *„simplified
+implementation - we don't have a direct mapping"*. Czyli
+`UpcomingTransactionsResponse.UpcomingTransaction.cashChangeId` jest **zawsze null** w każdej
+odpowiedzi, a dashboard kopiuje to dalej. Nikt w `src/main` go nie ustawia i żaden test go nie
+sprawdza: pole istnieje dla czytelnika, który nigdy go nie dostanie. Reguła *trzyma*
+`generatedCashChangeIds`, tylko nie per-data.
+
+**Ostatni martwy token w module** to `PreviewDeleteImpactQuery.authToken` — handler czyta wyłącznie
+`query.ruleId()`, a liczby bierze z `cashFlowApi`. Trzy `@RequestHeader("Authorization")` odeszły z
+tym krokiem, ten jeden został i odejdzie razem z handlerem tego zapytania.

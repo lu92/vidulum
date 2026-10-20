@@ -69,7 +69,7 @@ public class CreateRuleCommandHandler implements CommandHandler<CreateRuleComman
                 command.maxOccurrences(),
                 command.activeMonths(),
                 command.excludedDates(),
-                clock
+                clock.instant()
         );
 
         ruleRepository.save(rule);
