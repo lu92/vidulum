@@ -22,7 +22,9 @@ import java.time.Clock;
  * since the beginning: one folder per command, the command and its handler side by side, reached
  * through {@code CommandGateway}. It was a method on {@code RecurringRuleService}, which had twelve
  * of them in 736 lines - so a reader looking for what creating a rule does had to find it among the
- * other eleven, and everything any of them needed was a field of the same class.
+ * other eleven, and everything any of them needed was a field of the same class. That class is gone:
+ * the last of its methods left in F64, and the scheduler's auto-resume - the only caller that was
+ * never an endpoint - in F65.
  */
 @Slf4j
 @Component
