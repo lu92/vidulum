@@ -2565,3 +2565,70 @@ Objawy dokładnie te z CLAUDE.md (padająca rejestracja, testy liczone w minutac
 przebieg: **435/0** i te same 10 s. Wniosek nie jest o kodzie, a o dyscyplinie: **nic równolegle z
 suite na Testcontainers** — i o tym, że takiego czasu w logu nie wolno czytać jako regresji ani jako
 „to pewnie środowisko", dopóki się nie zmierzy.
+
+## 37. Co zrobił krok 40: dashboard i upcoming, czyli para, która trzymała się jednej klasy
+
+`GetDashboardQuery` i `GetUpcomingTransactionsQuery` mają własne handlery w `app/queries/`.
+`RecurringRuleService`: **248 → 77 linii**, a `RecurringRulesController` **przestał trzymać ten
+serwis w ogóle** — wszystko idzie przez gatewaye. Serwisowi została wyłącznie para schedulera, więc
+jego jedynym klientem jest `@Scheduled`.
+
+### Dlaczego te dwie zostały na koniec
+
+```java
+// getDashboard, 86 linii, w środku:
+UpcomingTransactionsResponse upcomingResponse = getUpcomingTransactions(userId, cashFlowId, upcomingDays, 5);
+```
+
+**Jedna wołała drugą** — i to, nie wielkość, trzymało je razem. Handler nie może sięgnąć po gateway,
+żeby zapytać innego handlera, więc wspólna połowa musiała dostać miejsce:
+`UpcomingTransactionsCalculator`, odpowiednik `RecurringRuleExecutor` po stronie odczytów. Oba
+handlery go czytają; dashboard dokłada mapowanie na swój DTO i **stały limit 5**, bo jest
+podsumowaniem, a pełna lista ma własny endpoint.
+
+### Zakresy parametrów przeszły z kontrolera do rekordów zapytań
+
+Były dwoma `if`-ami w endpointach, co znaczy, że limity obowiązywały **dla żądań po HTTP i dla nikogo
+więcej**. A `projectionMonths = 0` dochodziło do `YearMonth.plusMonths(-1)` i dawało okres prognozy
+**kończący się przed początkiem** — jedyną zaporą było to, że endpoint pamiętał o sprawdzeniu.
+Teraz to niezmiennik rekordu: ten sam `InvalidDashboardParameterException`, ten sam
+`ErrorCode.RECURRING_RULE_INVALID_PARAMETER`, więc HTTP bez zmiany.
+
+**Kolejność sprawdzeń zachowana i przypięta testem**, bo żądanie łamiące oba limity odpowiada o
+`upcomingDays` — i to jest to, co dziś raportuje endpoint.
+
+### Dwa okna, które świadomie nie są jednym
+
+| | start | dlaczego |
+|---|---|---|
+| `ForecastWindow` | **dzisiaj** | reguła nie przewiduje w tył, a wystąpienie z przeszłości jest już w cash flow |
+| okno dashboardu | **1. dzień miesiąca** | karmi liczbę „ile kosztuje ten miesiąc"; zapytane 20 stycznia podałoby bzdurę, licząc tylko pozostałe 11 dni |
+
+Ta sama arytmetyka, dwa różne pytania — czyli **nie jedna wartość**, w przeciwieństwie do kroku 39.
+Zapisane w javadocu handlera, bo po wydzieleniu `ForecastWindow` scalenie ich wygląda na oczywiste
+porządki.
+
+### Dwie dziwności zachowane celowo
+
+Obie są obserwowalne przez endpoint, więc ich zmiana to nie decyzja portu — każda ma javadoc i test:
+
+- **Totals liczą się po `limit`**, czyli opisują stronę, nie okno: dashboard pokazujący 5 z 30
+  należnych transakcji raportuje wpływy tych pięciu.
+- **Waluta brana z ostatniego wiersza** (PLN, gdy wierszy nie ma). Przy jednej walucie na cash flow —
+  co aplikacja zakłada wszędzie — poprawne; przy wielu totals dostałyby etykietę ostatniego wiersza
+  zamiast przeliczenia.
+
+### Metoda, której całym ciałem było `return null`
+
+`findGeneratedCashChangeIdForDate` zwracała `null` pod komentarzem „simplified implementation",
+więc `UpcomingTransaction.cashChangeId` był zawsze pusty (znalezisko z kroku 38). Metoda zniknęła,
+w jej miejscu jest **jawny `null`** z wyjaśnieniem, dlaczego nie ma czego szukać: reguła zapisuje
+identyfikatory, które wygenerowała, ale nie to, które wystąpienie należy do którego. Plus test, który
+mówi to wprost, zamiast pola, o którym nikt nie wie, że zawsze jest puste.
+
+### Czas przebiegu, którego nie wyjaśniłem
+
+`:vidulum-cashflow-tests` zajęło **21:56 min** zamiast zwykłych ~4, przy czym same testy reguł
+zmierzyły 20,85 s jak zawsze i nic nie puszczałem równolegle (inaczej niż w kroku 39, gdzie przyczyna
+była moja). Wszystko przeszło — 435/0 i 52/0 — ale ten czas zostaje **nierozwiązany**, nie uznany za
+normę.
