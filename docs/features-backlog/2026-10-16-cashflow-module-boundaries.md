@@ -2504,3 +2504,64 @@ sprawdza: pole istnieje dla czytelnika, który nigdy go nie dostanie. Reguła *t
 **Ostatni martwy token w module** to `PreviewDeleteImpactQuery.authToken` — handler czyta wyłącznie
 `query.ruleId()`, a liczby bierze z `cashFlowApi`. Trzy `@RequestHeader("Authorization")` odeszły z
 tym krokiem, ten jeden został i odejdzie razem z handlerem tego zapytania.
+
+## 36. Co zrobił krok 39: podgląd usunięcia przestaje liczyć własne okno
+
+`PreviewDeleteImpactQueryHandler` stanął obok swojego zapytania w `app/queries/`. Serwis
+**385 → 248 linii**, i razem z tą metodą odszedł z niego **`CashFlowModuleApi`** —
+`RecurringRuleService` **nie rozmawia już z cashflow w ogóle**.
+
+### Duplikacja, której port nie miał prawa przenieść
+
+```java
+// RecurringRuleExecutor                        // RecurringRuleService (podgląd)
+private static final int FORECAST_MONTHS = 12;  private static final int FORECAST_MONTHS = 12;
+YearMonth.from(fromDate)                        YearMonth.from(today)
+    .plusMonths(FORECAST_MONTHS - 1)                .plusMonths(FORECAST_MONTHS - 1)
+    .atEndOfMonth();                                .atEndOfMonth();
+```
+
+Dwie kopie liczby i dwie kopie arytmetyki — a **podgląd istnieje po to, żeby powiedzieć, co
+executor wygenerował**. Rozjechanie się tych dwóch nie wywaliłoby niczego: podgląd zacząłby
+raportować wystąpienia, których nikt nie wygenerował, albo gubić te, które są. Stąd
+`ForecastWindow.startingAt(today)` w `domain`, czytane przez oba — ten sam wzorzec co `ImportWindow`
+w cashflow: **reguła, której potrzebują dwa miejsca, jest wartością, nie kopią**.
+
+`from` to **dzisiaj**, nie pierwszy dzień miesiąca, i tak było wcześniej w obu kopiach: reguła nie
+przewiduje w tył, a wystąpienie z przeszłości jest już w cash flow. Cztery testy, w tym luty
+przestępny i ostatni dzień miesiąca (dzień miesiąca nie skraca okna, bo liczy się je w miesiącach).
+
+### Siatka, której ta ścieżka nie miała
+
+Jedyne pokrycie podglądu to były asercje `pending() >= 0` i `confirmed() >= 0` z testu
+integracyjnego — **tautologie przechodzące z liczbami zahardkodowanymi na zero** (to samo
+znalezisko, co w F60, tylko wtedy wzmocniłem je w teście integracyjnym, a sama metoda wciąż nie
+miała własnego). Teraz siedem przypadków z konkretami:
+
+| przypadek | co pilnuje |
+|---|---|
+| aktywna reguła | 12 wystąpień, 18 000 PLN, zakres 15 I → 15 XII, dwanaście `affectedMonths` |
+| wstrzymana | nie ma czego stracić, a `dateRange` jest **`null`**, nie zakresem niczego |
+| potwierdzone | liczą się jako zostające i **nie są** `deletable` — `deletable == pending` |
+| nic nie wygenerowano | **nie pyta cashflow wcale** (stub rzuca `AssertionError`, gdyby zapytała) |
+| próg wartości | 12 × 1500 > 10 000 daje `HIGH_VALUE`; jedno wystąpienie po 100 nie daje nic |
+
+Zachowanie bajt w bajt: kolejność kroków, próg 10 000 (`compareTo > 0`, czyli ostro),
+`affectedMonths` posortowane i bez powtórzeń, teksty ostrzeżeń i rekomendacji bez zmiany.
+
+### Ostatni martwy token w module
+
+`PreviewDeleteImpactQuery.authToken` — handler czytał wyłącznie `query.ruleId()`, a liczby brał z
+`cashFlowApi`. Odeszło pole, ostatni `@RequestHeader("Authorization")` w kontrolerze i **cała metoda
+`extractToken`**. W `recurring-rules` nie ma już ani jednego miejsca, które dotyka nagłówka
+autoryzacji.
+
+### Czego nie zrobiły testy, a co trzeba było zmierzyć
+
+Pierwszy przebieg `:vidulum-cashflow-tests` padł na dwóch testach **niezwiązanych** z tą zmianą, z
+czasami **1016 s** i **2006 s** na jeden test — przy czym ta sama suite chodzi 4 minuty w całości.
+Objawy dokładnie te z CLAUDE.md (padająca rejestracja, testy liczone w minutach), a przyczyną była
+**kompilacja, którą puściłem równolegle**. Te dwa testy w izolacji: **8/8 w 10 s**; czysty pełny
+przebieg: **435/0** i te same 10 s. Wniosek nie jest o kodzie, a o dyscyplinie: **nic równolegle z
+suite na Testcontainers** — i o tym, że takiego czasu w logu nie wolno czytać jako regresji ani jako
+„to pewnie środowisko", dopóki się nie zmierzy.

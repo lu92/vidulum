@@ -200,14 +200,9 @@ public class RecurringRulesController {
 
     @GetMapping("/{ruleId}/impact-preview")
     public ResponseEntity<DeleteImpactPreviewResponse> getDeleteImpactPreview(
-            @PathVariable String ruleId,
-            @RequestHeader("Authorization") String authHeader
+            @PathVariable String ruleId
     ) {
-        String authToken = extractToken(authHeader);
-
-        PreviewDeleteImpactQuery query = new PreviewDeleteImpactQuery(ruleId, authToken);
-        DeleteImpactPreviewResponse response = ruleService.handle(query);
-
+        DeleteImpactPreviewResponse response = queryGateway.send(new PreviewDeleteImpactQuery(ruleId));
         return ResponseEntity.ok(response);
     }
 
@@ -266,12 +261,5 @@ public class RecurringRulesController {
 
     private String getCurrentUserId() {
         return authenticatedUserProvider.getCurrentUserId().getId();
-    }
-
-    private String extractToken(String authHeader) {
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-        return authHeader;
     }
 }

@@ -1,17 +1,11 @@
 package com.multi.vidulum.recurring_rules.app;
 
-import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
-import com.multi.vidulum.cashflow.api.CashChangeCountsByStatus;
-import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.app.dto.DashboardResponse;
-import com.multi.vidulum.recurring_rules.app.dto.DeleteImpactPreviewResponse;
 import com.multi.vidulum.recurring_rules.app.dto.UpcomingTransactionsResponse;
-import com.multi.vidulum.recurring_rules.app.queries.PreviewDeleteImpactQuery;
 import com.multi.vidulum.recurring_rules.domain.*;
-import com.multi.vidulum.recurring_rules.domain.exceptions.RuleNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,11 +14,8 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,21 +23,22 @@ import java.util.stream.Collectors;
 public class RecurringRuleService {
 
     private final DomainRecurringRuleRepository ruleRepository;
-    private final CashFlowModuleApi cashFlowApi;
     private final RecurringRuleExecutor executor;
     private final Clock clock;
 
-    private static final int FORECAST_MONTHS = 12; // Current + 11 months
-
-    // Eight handle(...) methods left this class for app/commands/{create,update,pause,resume,delete,
-    // generate,addamountchange,removeamountchange} and three for app/queries, each with a handler
-    // beside its command or query - the shape cashflow has used from the start. The last three
-    // writes also dropped the authToken parameter they never read; what they shared is
+    // Twelve handle(...) methods left this class: eight to app/commands/{create,update,pause,resume,
+    // delete,generate,addamountchange,removeamountchange} and four to app/queries, each with a
+    // handler beside its command or query - the shape cashflow has used from the start. They also
+    // dropped the authToken parameter and field they never read; what the writes shared is
     // RecurringRuleExecutor.
     //
-    // What is left is what has no command or query of its own yet: the scheduler's auto-resume, the
-    // delete-impact preview, and the dashboard pair (which the controller still calls with four
-    // loose parameters, and which calls each other).
+    // CashFlowModuleApi left with the delete-impact preview, so this class no longer talks to
+    // cashflow at all.
+    //
+    // What is left has no command or query of its own yet: the scheduler's auto-resume, and the
+    // dashboard pair, which the controller calls with four loose parameters and which calls each
+    // other - so extracting them means deciding where that shared half lives, the way the writes
+    // got RecurringRuleExecutor.
 
     /**
      * Auto-resumes a paused rule. Called by the scheduler when resumeDate is reached.
@@ -90,125 +82,6 @@ public class RecurringRuleService {
      */
     public List<RecurringRule> findRulesForAutoResume(LocalDate date) {
         return ruleRepository.findPausedRulesWithResumeDateOnOrBefore(date);
-    }
-
-    public DeleteImpactPreviewResponse handle(PreviewDeleteImpactQuery query) {
-        RecurringRuleId ruleId = RecurringRuleId.of(query.ruleId());
-        RecurringRule rule = findRuleOrThrow(ruleId);
-
-        // 1. Calculate future occurrences (what would be removed from forecast)
-        LocalDate today = LocalDate.now(clock);
-        YearMonth currentMonth = YearMonth.from(today);
-        LocalDate forecastEnd = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
-
-        List<LocalDate> futureOccurrences = rule.isActive()
-                ? rule.generateOccurrences(today, forecastEnd)
-                : List.of();
-
-        // Calculate total amount for future occurrences
-        BigDecimal totalFutureAmount = BigDecimal.ZERO;
-        String currency = rule.getBaseAmount().getCurrency();
-        for (LocalDate occurrence : futureOccurrences) {
-            Money effectiveAmount = rule.calculateEffectiveAmount(occurrence);
-            totalFutureAmount = totalFutureAmount.add(effectiveAmount.getAmount().abs());
-        }
-
-        DeleteImpactPreviewResponse.DateRange dateRange = futureOccurrences.isEmpty()
-                ? null
-                : DeleteImpactPreviewResponse.DateRange.builder()
-                        .from(futureOccurrences.get(0))
-                        .to(futureOccurrences.get(futureOccurrences.size() - 1))
-                        .build();
-
-        DeleteImpactPreviewResponse.FutureOccurrences futureOccurrencesInfo =
-                DeleteImpactPreviewResponse.FutureOccurrences.builder()
-                        .count(futureOccurrences.size())
-                        .totalAmount(Money.of(totalFutureAmount, currency))
-                        .dateRange(dateRange)
-                        .build();
-
-        // 2. Get generated transaction statuses from CashFlow
-        List<CashChangeId> generatedIds = rule.getGeneratedCashChangeIds();
-        int pendingCount = 0;
-        int confirmedCount = 0;
-
-        if (!generatedIds.isEmpty()) {
-            // The contract answers with counts. What this replaced fetched the whole cash flow -
-            // every cash change in the document - and counted two statuses out of a
-            // Map<String, Object>, comparing "PENDING" and "CONFIRMED" as string literals, so a
-            // rejected or archived one was silently neither.
-            CashChangeCountsByStatus byStatus =
-                    cashFlowApi.countCashChangesByStatus(rule.getCashFlowId(), ruleId.id());
-
-            pendingCount = byStatus.pending();
-            confirmedCount = byStatus.confirmed();
-        }
-
-        DeleteImpactPreviewResponse.GeneratedTransactions generatedTransactions =
-                DeleteImpactPreviewResponse.GeneratedTransactions.builder()
-                        .total(generatedIds.size())
-                        .pending(pendingCount)
-                        .confirmed(confirmedCount)
-                        .deletable(pendingCount)
-                        .build();
-
-        // 3. Calculate forecast impact (affected months)
-        Set<String> affectedMonths = futureOccurrences.stream()
-                .map(date -> YearMonth.from(date).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                .collect(Collectors.toSet());
-
-        DeleteImpactPreviewResponse.ForecastImpact forecastImpact =
-                DeleteImpactPreviewResponse.ForecastImpact.builder()
-                        .affectedMonths(affectedMonths.stream().sorted().toList())
-                        .balanceReduction(Money.of(totalFutureAmount, currency))
-                        .build();
-
-        DeleteImpactPreviewResponse.ImpactDetails impactDetails =
-                DeleteImpactPreviewResponse.ImpactDetails.builder()
-                        .futureOccurrences(futureOccurrencesInfo)
-                        .generatedTransactions(generatedTransactions)
-                        .forecastImpact(forecastImpact)
-                        .build();
-
-        // 4. Generate warnings
-        List<DeleteImpactPreviewResponse.Warning> warnings = new ArrayList<>();
-
-        if (confirmedCount > 0) {
-            warnings.add(DeleteImpactPreviewResponse.Warning.builder()
-                    .type("CONFIRMED_TRANSACTIONS")
-                    .message(String.format("%d potwierdzone transakcje pozostaną bez zmian", confirmedCount))
-                    .severity("INFO")
-                    .build());
-        }
-
-        // Warning for high value rules
-        BigDecimal highValueThreshold = new BigDecimal("10000");
-        if (totalFutureAmount.compareTo(highValueThreshold) > 0) {
-            warnings.add(DeleteImpactPreviewResponse.Warning.builder()
-                    .type("HIGH_VALUE")
-                    .message(String.format("Ta reguła generuje transakcje o łącznej wartości %.2f %s", totalFutureAmount, currency))
-                    .severity("WARNING")
-                    .build());
-        }
-
-        // 5. Generate recommendations
-        List<String> recommendations = new ArrayList<>();
-
-        if (rule.isActive() && futureOccurrences.size() > 3) {
-            recommendations.add("Rozważ wstrzymanie reguły zamiast usuwania, jeśli planujesz ją reaktywować w przyszłości");
-        }
-
-        if (confirmedCount > 0) {
-            recommendations.add("Potwierdzone transakcje pozostaną w CashFlow jako historyczne dane");
-        }
-
-        return DeleteImpactPreviewResponse.builder()
-                .ruleId(ruleId.id())
-                .ruleName(rule.getName())
-                .impact(impactDetails)
-                .warnings(warnings)
-                .recommendations(recommendations)
-                .build();
     }
 
     // Dashboard and Upcoming Transactions
@@ -376,10 +249,4 @@ public class RecurringRuleService {
         return null;
     }
 
-    // Private helper methods
-
-    private RecurringRule findRuleOrThrow(RecurringRuleId ruleId)  {
-        return ruleRepository.findById(ruleId)
-                .orElseThrow(() -> new RuleNotFoundException(ruleId));
-    }
 }

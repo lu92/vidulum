@@ -8,7 +8,6 @@ import com.multi.vidulum.shared.cqrs.queries.Query;
  * generated transactions, and warnings/recommendations.
  */
 public record PreviewDeleteImpactQuery(
-        String ruleId,
-        String authToken
+        String ruleId
 ) implements Query {
 }
