@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -108,12 +109,48 @@ class ExchangeConnectionPersistenceTest {
         saved.confirm(PortfolioId.of("portfolio-1"), DAY_2);
         saved.recordSnapshot(DAY_3);
 
-        repository.save(saved);
+        // compared against what save() returned, not against the in-memory object: storage assigns
+        // the version (task F57), so the repository's answer is what is actually stored
+        ExchangeConnection stored = repository.save(saved);
 
         Optional<ExchangeConnection> found = repository.findById(ExchangeConnectionId.of("conn-1"));
 
         assertThat(found).isPresent();
-        assertThat(found.get()).usingRecursiveComparison().isEqualTo(saved);
+        assertThat(found.get()).usingRecursiveComparison().isEqualTo(stored);
+        assertThat(stored.getVersion())
+                .as("a first insert is version 0, which is what makes the next save conditional")
+                .isZero();
+    }
+
+    /**
+     * What F57 is for. Two writers read the same connection; both change it; the second save must
+     * fail rather than quietly replace the first writer's work.
+     *
+     * <p>Before the version, a revocation and a snapshot write arriving together both answered 2xx
+     * and whichever wrote last decided the status - with nothing in the logs to say a change had
+     * been discarded.
+     */
+    @Test
+    void shouldRefuseASecondWriteFromAStaleReadRatherThanOverwriteIt() {
+        ExchangeConnection active = connection("conn-1", ALICE, ExchangeEnvironment.DEMO, ACCOUNT_UID);
+        active.confirm(PortfolioId.of("portfolio-1"), DAY_2);
+        repository.save(active);
+
+        // both readers hold the same ACTIVE connection, and both operations below are legal from it
+        ExchangeConnection firstReader = repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow();
+        ExchangeConnection secondReader = repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow();
+
+        firstReader.revoke("user asked", DAY_3);
+        repository.save(firstReader);
+
+        secondReader.recordSnapshot(DAY_3);
+
+        assertThatThrownBy(() -> repository.save(secondReader))
+                .isInstanceOf(OptimisticLockingFailureException.class);
+
+        assertThat(repository.findById(ExchangeConnectionId.of("conn-1")).orElseThrow().getStatus())
+                .as("the revocation survived; without the version the snapshot write would have undone it")
+                .isEqualTo(ConnectionStatus.REVOKED);
     }
 
     @Test

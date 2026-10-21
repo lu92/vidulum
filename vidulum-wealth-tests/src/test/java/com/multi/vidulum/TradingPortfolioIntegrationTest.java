@@ -157,6 +157,12 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 // once each, which the quantities above already state (task F10).
                 .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
+                // Storage's own counter (task F57), and its value is simply how many times this
+                // flow saved the portfolio - so pinning a number here would make an unrelated extra
+                // save fail a trading assertion, and would state nothing about trading. Taken from
+                // the actual for the same reason appliedTrades is; what the version *does* is
+                // covered by PortfolioConcurrentWriteTest and the repository's own test.
+                .version(portfolio.getVersion())
                 .build();
 
         // The trade id is the backend's; everything the sale settled at is pinned (F6).
@@ -621,6 +627,12 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 // once each, which the quantities above already state (task F10).
                 .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
+                // Storage's own counter (task F57), and its value is simply how many times this
+                // flow saved the portfolio - so pinning a number here would make an unrelated extra
+                // save fail a trading assertion, and would state nothing about trading. Taken from
+                // the actual for the same reason appliedTrades is; what the version *does* is
+                // covered by PortfolioConcurrentWriteTest and the repository's own test.
+                .version(portfolio.getVersion())
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);
@@ -1099,6 +1111,12 @@ class TradingPortfolioIntegrationTest extends WealthIntegrationTest {
                 // once each, which the quantities above already state (task F10).
                 .appliedTrades(portfolio.getAppliedTrades())
                 .allowedDepositCurrency(Currency.of("USD"))
+                // Storage's own counter (task F57), and its value is simply how many times this
+                // flow saved the portfolio - so pinning a number here would make an unrelated extra
+                // save fail a trading assertion, and would state nothing about trading. Taken from
+                // the actual for the same reason appliedTrades is; what the version *does* is
+                // covered by PortfolioConcurrentWriteTest and the repository's own test.
+                .version(portfolio.getVersion())
                 .build();
 
         assertThat(portfolio).isEqualTo(expectedPortfolio);

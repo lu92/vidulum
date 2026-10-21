@@ -35,7 +35,13 @@ public record RecurringRuleSnapshot(
         List<RuleExecution> executions,
         List<CashChangeId> generatedCashChangeIds,
         Instant createdAt,
-        Instant lastModifiedAt
+        Instant lastModifiedAt,
+
+        /**
+         * The document version this rule was read at, so the save that follows is conditional
+         * (task F57). Null means it has not been stored yet.
+         */
+        Long version
 ) implements EntitySnapshot<RecurringRuleId> {
     @Override
     public RecurringRuleId id() {

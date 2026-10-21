@@ -134,9 +134,30 @@ public class ExchangeConnection {
     private final ZonedDateTime createdAt;
 
     /**
+     * What storage said this connection's version was when it was read (task F57). The domain does
+     * not use it - it travels so the repository can make the next save conditional. A connection is
+     * read-modify-write all through its life: revoke, reconnect, and the portfolio id written onto
+     * it when a specification is confirmed.
+     */
+    private Long version;
+
+    /**
      * A connection that has been described but not yet confirmed. No portfolio is attached and
      * nothing has been read from the exchange.
      */
+    /**
+     * Storage telling this object which version it now is (task F57).
+     *
+     * <p>Without it, a flow that saves the same instance twice - and there are such flows - sends a
+     * version of null on the second save, which Spring Data reads as "new document": the update
+     * becomes an insert and Mongo answers {@code DuplicateKeyException} on the id. Keeping the
+     * instance in step with storage is safer than asking every caller to use what {@code save}
+     * returned, because a caller can forget.
+     */
+    public void applyStoredVersion(Long version) {
+        this.version = version;
+    }
+
     public static ExchangeConnection pending(
             ExchangeConnectionId id,
             UserId userId,

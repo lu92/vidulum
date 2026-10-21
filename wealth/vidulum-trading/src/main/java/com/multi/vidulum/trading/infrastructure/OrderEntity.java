@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZoneOffset;
@@ -34,6 +35,20 @@ public class OrderEntity {
     private OrderStateEntity state;
     private OrderParametersEntity parameters;
     private Date occurredDateTime;
+
+    /**
+     * Turns every save into a conditional update (task F57). An order is read-modify-write by
+     * nature - PENDING becomes FILLED or CANCELLED - and {@code FillOrderCommandHandler} and
+     * {@code CancelOrderCommandHandler} both load it, change its state and store it back. Without
+     * the version a fill and a cancellation arriving together would both answer 2xx and the later
+     * write would decide, silently.
+     *
+     * <p>Its sibling {@code TradeEntity} deliberately has none: nothing reads a trade and saves it
+     * again, so there is no update to lose. What protects a trade is the unique index on
+     * {@code originTradeId} (task F1).
+     */
+    @Version
+    private Long version;
 
 
     public static OrderEntity fromSnapshot(OrderSnapshot snapshot) {
@@ -76,6 +91,7 @@ public class OrderEntity {
                 .state(stateEntity)
                 .parameters(parametersEntity)
                 .occurredDateTime(date)
+                .version(snapshot.getVersion())
                 .build();
     }
 
@@ -117,6 +133,7 @@ public class OrderEntity {
                 .state(orderState)
                 .parameters(orderParameters)
                 .occurredDateTime(zonedDateTime)
+                .version(version)
                 .build();
     }
 

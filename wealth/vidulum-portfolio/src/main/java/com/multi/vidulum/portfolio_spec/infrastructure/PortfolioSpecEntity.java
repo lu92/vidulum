@@ -25,6 +25,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZoneOffset;
@@ -64,6 +65,13 @@ public class PortfolioSpecEntity {
     private Date createdAt;
     private Date lastRecomputedAt;
 
+    /**
+     * Turns every save into a conditional update (task F57). Recording answers, recomputing against
+     * a fresh exchange snapshot and confirming all load this document, change it and store it whole.
+     */
+    @Version
+    private Long version;
+
     public static PortfolioSpecEntity from(PortfolioSpec spec) {
         return PortfolioSpecEntity.builder()
                 .id(spec.getId().getId())
@@ -80,6 +88,7 @@ public class PortfolioSpecEntity {
                 .knownPortfolioId(spec.getKnownPortfolioId() != null ? spec.getKnownPortfolioId().getId() : null)
                 .createdAt(toDate(spec.getCreatedAt()))
                 .lastRecomputedAt(toDate(spec.getLastRecomputedAt()))
+                .version(spec.getVersion())
                 .build();
     }
 
@@ -99,6 +108,7 @@ public class PortfolioSpecEntity {
                 .knownPortfolioId(knownPortfolioId != null ? PortfolioId.of(knownPortfolioId) : null)
                 .createdAt(toZonedDateTime(createdAt))
                 .lastRecomputedAt(toZonedDateTime(lastRecomputedAt))
+                .version(version)
                 .build();
     }
 

@@ -71,7 +71,9 @@ public class PortfolioFactory {
                 // trade has been counted into it (F10).
                 List.of(),
                 Set.of(),
-                allowedDepositCurrency));
+                allowedDepositCurrency,
+                // a portfolio being opened has no stored version yet (F57)
+                null));
     }
 
     private static PortfolioSnapshot.AssetSnapshot toSnapshot(Asset asset) {

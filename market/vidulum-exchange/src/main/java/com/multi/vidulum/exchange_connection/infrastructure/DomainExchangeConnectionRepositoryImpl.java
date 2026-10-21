@@ -21,7 +21,11 @@ public class DomainExchangeConnectionRepositoryImpl implements DomainExchangeCon
 
     @Override
     public ExchangeConnection save(ExchangeConnection connection) {
-        return mongoRepository.save(ExchangeConnectionEntity.from(connection)).toDomain();
+        ExchangeConnection stored = mongoRepository.save(ExchangeConnectionEntity.from(connection)).toDomain();
+
+        // keep the caller's instance in step with storage (task F57)
+        connection.applyStoredVersion(stored.getVersion());
+        return stored;
     }
 
     @Override

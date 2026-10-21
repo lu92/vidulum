@@ -72,6 +72,14 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
     private Instant createdAt;
     private Instant lastModifiedAt;
 
+    /**
+     * What storage said this rule's version was when it was read (task F57). The aggregate does not
+     * use it - it carries it so the repository can make the next save conditional. This rule needed
+     * it because it has two writers that do not know about each other: the owner editing it in a
+     * browser, and {@code RecurringRuleAutoResumeScheduler} at 03:00.
+     */
+    private Long version;
+
     private Consumer<RecurringRuleEvent> eventConsumer;
 
     public static RecurringRule create(
@@ -151,6 +159,7 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
         rule.generatedCashChangeIds = new ArrayList<>(snapshot.generatedCashChangeIds());
         rule.createdAt = snapshot.createdAt();
         rule.lastModifiedAt = snapshot.lastModifiedAt();
+        rule.version = snapshot.version();
         return rule;
     }
 
@@ -176,7 +185,8 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
                 List.copyOf(executions),
                 List.copyOf(generatedCashChangeIds),
                 createdAt,
-                lastModifiedAt
+                lastModifiedAt,
+                version
         );
     }
 
@@ -566,6 +576,25 @@ public class RecurringRule implements Aggregate<RecurringRuleId, RecurringRuleSn
 
     public List<LocalDate> getExcludedDates() {
         return excludedDates != null ? List.copyOf(excludedDates) : List.of();
+    }
+
+    /**
+     * Storage telling this rule which version it now is (task F57).
+     *
+     * <p><b>Why the aggregate has this at all.</b> Several flows save the same instance twice -
+     * creating a rule stores it and then {@code RecurringRuleExecutor} stores the ids it generated,
+     * pausing clears its predictions and then stores the pause. Before the version that was
+     * harmless, because every save replaced the whole document. With a version, the second save of
+     * an instance that still believes it is unstored looks like an <b>insert</b> to Spring Data, and
+     * Mongo answers {@code DuplicateKeyException} on the id - which is exactly what 40 integration
+     * tests reported the first time this annotation went on.
+     *
+     * <p>Writing it back here rather than returning a fresh aggregate is deliberate: {@code save} is
+     * {@code void} in this module and has eleven callers, so a returned value is something ten of
+     * them could forget. This cannot be forgotten.
+     */
+    public void applyStoredVersion(Long version) {
+        this.version = version;
     }
 
     public RuleStatus getStatus() {

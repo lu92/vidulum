@@ -30,7 +30,11 @@ public class RecurringRuleRepositoryAdapter implements DomainRecurringRuleReposi
     @Override
     public void save(RecurringRule rule) {
         RecurringRuleEntity entity = RecurringRuleEntity.fromSnapshot(rule.getSnapshot());
-        mongoRepository.save(entity);
+        RecurringRuleEntity saved = mongoRepository.save(entity);
+
+        // the aggregate now holds the version storage gave it, so a second save of this same
+        // instance is a conditional update and not an insert (task F57)
+        rule.applyStoredVersion(saved.getVersion());
     }
 
     @Override

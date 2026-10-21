@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZoneOffset;
@@ -64,6 +65,15 @@ public class ExchangeConnectionEntity {
     private Date statusChangedAt;
     private Date createdAt;
 
+    /**
+     * Turns every save into a conditional update (task F57). Revoking and reconnecting both load the
+     * connection, change its status and store it whole, and confirming a portfolio specification
+     * writes the portfolio id onto it - so two of those arriving together would have had the later
+     * save decide, silently.
+     */
+    @Version
+    private Long version;
+
     public static ExchangeConnectionEntity from(ExchangeConnection connection) {
         return ExchangeConnectionEntity.builder()
                 .id(connection.getId().getId())
@@ -82,6 +92,7 @@ public class ExchangeConnectionEntity {
                 .portfolioSyncedAt(toDate(connection.getPortfolioSyncedAt()))
                 .statusChangedAt(toDate(connection.getStatusChangedAt()))
                 .createdAt(toDate(connection.getCreatedAt()))
+                .version(connection.getVersion())
                 .build();
     }
 
@@ -103,6 +114,7 @@ public class ExchangeConnectionEntity {
                 .portfolioSyncedAt(toZonedDateTime(portfolioSyncedAt))
                 .statusChangedAt(toZonedDateTime(statusChangedAt))
                 .createdAt(toZonedDateTime(createdAt))
+                .version(version)
                 .build();
     }
 

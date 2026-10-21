@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -53,6 +54,15 @@ public class RecurringRuleEntity {
     private Date createdAt;
     private Date lastModifiedAt;
 
+    /**
+     * Turns every save into a conditional update (task F57). This rule has <b>two writers that do
+     * not know about each other</b>: its owner editing it in a browser, and
+     * {@code RecurringRuleAutoResumeScheduler} at 03:00 - and both paths load the rule, change it
+     * and store it whole. The executor adds a third, rewriting the ids it generated.
+     */
+    @Version
+    private Long version;
+
     public static RecurringRuleEntity fromSnapshot(RecurringRuleSnapshot snapshot) {
         return RecurringRuleEntity.builder()
                 .ruleId(snapshot.ruleId().id())
@@ -81,6 +91,7 @@ public class RecurringRuleEntity {
                         .collect(Collectors.toList()))
                 .createdAt(Date.from(snapshot.createdAt()))
                 .lastModifiedAt(Date.from(snapshot.lastModifiedAt()))
+                .version(snapshot.version())
                 .build();
     }
 
@@ -105,7 +116,8 @@ public class RecurringRuleEntity {
                 executions.stream().map(RuleExecutionEmbedded::toRuleExecution).collect(Collectors.toList()),
                 generatedCashChangeIds.stream().map(CashChangeId::new).collect(Collectors.toList()),
                 createdAt.toInstant(),
-                lastModifiedAt.toInstant()
+                lastModifiedAt.toInstant(),
+                version
         );
     }
 

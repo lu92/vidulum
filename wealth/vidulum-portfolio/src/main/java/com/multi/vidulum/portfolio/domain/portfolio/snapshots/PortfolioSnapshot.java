@@ -25,6 +25,16 @@ public class PortfolioSnapshot implements EntitySnapshot<PortfolioId> {
     Set<TradeId> appliedTrades;
     Currency allowedDepositCurrency;
 
+    /**
+     * The document version this portfolio was read at, so the save that follows can be conditional
+     * (task F57). Null means "not read from storage yet", which is what a brand new portfolio is.
+     *
+     * <p>It has to travel through the snapshot because {@code save} rebuilds the entity from one -
+     * a version left behind here would reach Mongo as null, and Spring Data reads null as "new
+     * document", turning every update into an insert.
+     */
+    Long version;
+
     @Override
     public PortfolioId id() {
         return portfolioId;

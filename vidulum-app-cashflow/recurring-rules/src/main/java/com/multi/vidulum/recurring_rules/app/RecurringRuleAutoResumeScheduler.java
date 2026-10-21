@@ -4,6 +4,7 @@ import com.multi.vidulum.recurring_rules.app.commands.autoresume.AutoResumeRuleC
 import com.multi.vidulum.recurring_rules.app.queries.GetRulesDueForAutoResumeQuery;
 import com.multi.vidulum.recurring_rules.domain.PauseInfo;
 import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
+import com.multi.vidulum.shared.concurrency.RetryOnConflict;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,13 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class RecurringRuleAutoResumeScheduler {
+
+    /**
+     * Three is enough for a job nobody is waiting on: a conflict means a person wrote at the same
+     * moment, which does not repeat all night. Giving up after three leaves the rule for tomorrow's
+     * run rather than looping against a writer that is not going away.
+     */
+    private static final int ATTEMPTS_ON_CONFLICT = 3;
 
     private final CommandGateway commandGateway;
     private final QueryGateway queryGateway;
@@ -78,7 +86,11 @@ public class RecurringRuleAutoResumeScheduler {
         for (RecurringRuleSnapshot rule : rulesToResume) {
             LocalDate resumeDate = resumeDateOf(rule, today);
             try {
-                commandGateway.send(new AutoResumeRuleCommand(rule.ruleId().id(), resumeDate));
+                // retried on a conflict rather than dropped: the handler re-reads the rule, so the
+                // second attempt works from the winner's state - and if the winner already resumed
+                // it, the handler skips (task F57)
+                RetryOnConflict.run(ATTEMPTS_ON_CONFLICT, "auto-resume of " + rule.ruleId().id(),
+                        () -> commandGateway.send(new AutoResumeRuleCommand(rule.ruleId().id(), resumeDate)));
 
                 log.info("Auto-resumed rule [{}] '{}' scheduled for [{}]",
                         rule.ruleId().id(), rule.name(), resumeDate);

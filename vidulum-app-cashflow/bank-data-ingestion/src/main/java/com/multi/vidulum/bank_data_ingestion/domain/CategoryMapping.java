@@ -31,7 +31,13 @@ public record CategoryMapping(
         MappingAction action,
         Integer confidence,
         ZonedDateTime createdAt,
-        ZonedDateTime updatedAt
+        ZonedDateTime updatedAt,
+
+        /**
+         * The document version this mapping was read at, so the save that follows is conditional
+         * (task F57). Null means it has not been stored yet.
+         */
+        Long version
 ) {
 
     public static CategoryMapping create(
@@ -54,7 +60,9 @@ public record CategoryMapping(
                 action,
                 confidence,
                 now,
-                now
+                now,
+                // a mapping being created has no stored version yet (F57)
+                null
         );
     }
 
@@ -69,7 +77,8 @@ public record CategoryMapping(
                 this.action,
                 this.confidence,
                 this.createdAt,
-                updatedAt
+                updatedAt,
+                this.version
         );
     }
 
@@ -89,7 +98,8 @@ public record CategoryMapping(
                 action,
                 this.confidence,  // preserve original confidence
                 this.createdAt,
-                now
+                now,
+                this.version
         );
     }
 }

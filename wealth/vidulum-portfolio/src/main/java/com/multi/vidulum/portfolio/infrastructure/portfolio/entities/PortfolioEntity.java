@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.multi.vidulum.common.Provenance;
@@ -42,6 +43,19 @@ public class PortfolioEntity {
     /** Ids of trades already counted into this portfolio (task F10). */
     private List<String> appliedTrades;
     private String allowedDepositCurrency;
+
+    /**
+     * Turns every save into a conditional update: Spring Data puts this value in the query and
+     * raises {@code OptimisticLockingFailureException} when the document has moved on (task F57,
+     * after F35 did the same for cash flow).
+     *
+     * <p>This portfolio needed it most. Locking units against an order is read-modify-write, and
+     * {@code TradeConfirmedToPortfolio} writes here from an event - in parallel with whatever the
+     * owner is doing in their browser. Without the version the later save replaced the whole
+     * document, so one of the two changes vanished with nothing to notice.
+     */
+    @Version
+    private Long version;
 
 
     public static PortfolioEntity fromSnapshot(PortfolioSnapshot snapshot) {
@@ -86,6 +100,7 @@ public class PortfolioEntity {
                         .map(RealisedResultEntity::from).toList())
                 .appliedTrades(snapshot.getAppliedTrades().stream().map(TradeId::getId).toList())
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency().getId())
+                .version(snapshot.getVersion())
                 .build();
     }
 
@@ -127,7 +142,8 @@ public class PortfolioEntity {
                         ? Set.of()
                         : appliedTrades.stream().map(TradeId::of)
                                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)),
-                Currency.of(allowedDepositCurrency)
+                Currency.of(allowedDepositCurrency),
+                version
         );
     }
 

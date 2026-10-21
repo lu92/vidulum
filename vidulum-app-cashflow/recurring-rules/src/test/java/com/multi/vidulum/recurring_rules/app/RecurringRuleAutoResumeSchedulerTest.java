@@ -14,6 +14,7 @@ import com.multi.vidulum.recurring_rules.domain.RecurringRuleSnapshot;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -85,6 +87,39 @@ class RecurringRuleAutoResumeSchedulerTest {
         assertThatCode(scheduler::autoResumePausedRules).doesNotThrowAnyException();
 
         verify(commandGateway).send(new AutoResumeRuleCommand(RecurringRuleId.generate(3).id(), TODAY));
+    }
+
+    /**
+     * The second half of F57. With a version on the rule, a person editing it at 03:00 makes the
+     * job's write fail - and dropping the rule there would mean it stays paused for another day.
+     * The command is sent again, and because its handler re-reads the rule, the retry works from
+     * the winner's state.
+     */
+    @Test
+    void aConflictIsRetriedRatherThanCostingTheRuleItsNight() {
+        due(pausedUntil(1, TODAY));
+        AutoResumeRuleCommand expected = new AutoResumeRuleCommand(RecurringRuleId.generate(1).id(), TODAY);
+        when(commandGateway.send(expected))
+                .thenThrow(new OptimisticLockingFailureException("owner wrote first"))
+                .thenReturn(null);
+
+        scheduler.autoResumePausedRules();
+
+        verify(commandGateway, times(2)).send(expected);
+    }
+
+    /**
+     * And a conflict that will not clear is still only this rule's problem.
+     */
+    @Test
+    void aConflictThatNeverClearsLeavesTheRestOfTheListAlone() {
+        due(pausedUntil(1, TODAY), pausedUntil(2, TODAY));
+        when(commandGateway.send(new AutoResumeRuleCommand(RecurringRuleId.generate(1).id(), TODAY)))
+                .thenThrow(new OptimisticLockingFailureException("owner keeps writing"));
+
+        assertThatCode(scheduler::autoResumePausedRules).doesNotThrowAnyException();
+
+        verify(commandGateway).send(new AutoResumeRuleCommand(RecurringRuleId.generate(2).id(), TODAY));
     }
 
     @Test

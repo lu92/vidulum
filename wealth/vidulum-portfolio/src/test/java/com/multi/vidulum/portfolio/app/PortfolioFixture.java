@@ -142,6 +142,7 @@ public final class PortfolioFixture {
                 status, List.copyOf(contributions), List.copyOf(realisedResults),
                 // No trade has been counted into a fixture-built portfolio (task F10).
                 java.util.Set.of(),
-                allowedDepositCurrency));
+                allowedDepositCurrency,
+                null));
     }
 }
