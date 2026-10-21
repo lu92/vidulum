@@ -5,6 +5,9 @@ import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
+import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToMatch;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -36,7 +39,7 @@ public class RevalidateStagingCommandHandler
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final PatternMappingRepository patternMappingRepository;
+    private final TransactionCategorizationApi categorizationApi;
     private final CashFlowModuleApi cashFlowApi;
     private final BankDataIngestionConfig config;
     private final Clock clock;
@@ -85,9 +88,13 @@ public class RevalidateStagingCommandHandler
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        // Load pattern mappings for this CashFlow (for pattern-based categorization)
-        List<PatternMapping> patternMappings = patternMappingRepository.findAllByCashFlowId(command.cashFlowId().id());
-        log.debug("Loaded {} pattern mappings for CashFlow [{}]", patternMappings.size(), command.cashFlowId().id());
+        // What this cash flow taught AI categorization, asked once - and asked for matches, not
+        // for its storage. The rule that answers is the rule the patterns were learned under, which
+        // the copy that stood here was not (see LearnedPatternMatcher).
+        PatternMatches learnedPatterns = categorizationApi.matchLearned(
+                command.cashFlowId(), toMatch(stagedTransactions));
+        log.debug("Learned patterns recognised {} of {} staged transactions for CashFlow [{}]",
+                learnedPatterns.size(), stagedTransactions.size(), command.cashFlowId().id());
 
         // Revalidate pending transactions
         List<StagedTransaction> updatedTransactions = new ArrayList<>();
@@ -111,8 +118,7 @@ public class RevalidateStagingCommandHandler
             // PRIORITY 1 (HIGHEST): Try pattern matching FIRST for ALL transactions
             // This allows re-categorization of transactions that were initially mapped
             // to generic categories (e.g., "Inne wydatki") to more specific ones (e.g., "Urzad skarbowy")
-            PatternMatchResult patternMatch = findMatchingPattern(
-                    st.originalData().name(), st.originalData().type(), patternMappings);
+            PatternMatchResult patternMatch = matchFor(learnedPatterns, st);
 
             Optional<CategoryName> patternMatchCategory = patternMatch != null
                     ? skeleton.findCategoryIgnoringCase(patternMatch.categoryName(), st.originalData().type())
@@ -138,10 +144,10 @@ public class RevalidateStagingCommandHandler
                                 st.originalData().name(),
                                 st.mappedData().categoryName().name(),
                                 actualCategoryName,
-                                patternMatch.pattern().normalizedPattern());
+                                patternMatch.pattern());
                     } else {
                         log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
-                                st.originalData().name(), patternMatch.pattern().normalizedPattern(), actualCategoryName);
+                                st.originalData().name(), patternMatch.pattern(), actualCategoryName);
                     }
                     continue;
                 }
@@ -249,7 +255,7 @@ public class RevalidateStagingCommandHandler
     private record PatternMatchResult(
             String categoryName,
             Type type,
-            PatternMapping pattern
+            String pattern
     ) {}
 
     /**
@@ -259,19 +265,25 @@ public class RevalidateStagingCommandHandler
      * Matching is case-insensitive using toUpperCase().
      * Pattern must be an exact substring of the transaction name.
      */
-    private PatternMatchResult findMatchingPattern(String transactionName, Type type, List<PatternMapping> patterns) {
-        if (patterns.isEmpty() || transactionName == null) {
-            return null;
-        }
-
-        String normalizedName = transactionName.toUpperCase();
-
-        return patterns.stream()
-                .filter(p -> p.categoryType() == type)
-                .filter(p -> normalizedName.contains(p.normalizedPattern()))
-                .max(Comparator.comparingDouble(PatternMapping::confidenceScore))
-                .map(p -> new PatternMatchResult(p.suggestedCategory(), p.categoryType(), p))
+    /**
+     * What the pattern owner recognised for this row, keyed by the row's own id.
+     */
+    private static PatternMatchResult matchFor(PatternMatches learnedPatterns, StagedTransaction staged) {
+        return learnedPatterns.forTransaction(staged.stagedTransactionId().id())
+                .map(match -> new PatternMatchResult(match.category(), match.type(), match.pattern()))
                 .orElse(null);
+    }
+
+    /**
+     * The staged rows as the pattern owner wants to be asked.
+     */
+    private static List<TransactionToMatch> toMatch(List<StagedTransaction> stagedTransactions) {
+        return stagedTransactions.stream()
+                .map(staged -> new TransactionToMatch(
+                        staged.stagedTransactionId().id(),
+                        staged.originalData().name(),
+                        staged.originalData().type()))
+                .toList();
     }
 
     /**

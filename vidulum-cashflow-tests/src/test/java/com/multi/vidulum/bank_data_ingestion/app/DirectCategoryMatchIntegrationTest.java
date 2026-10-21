@@ -1,11 +1,11 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.PatternMapping;
-import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingRepository;
+import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMapping;
+import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMappingRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.PatternMappingMongoRepository;
+import com.multi.vidulum.bank_data_ai_categorization.infrastructure.PatternMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.api.Type;

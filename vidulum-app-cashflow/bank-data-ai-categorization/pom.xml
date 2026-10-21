@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-bank-data-ai-categorization</artifactId>
+    <name>Vidulum Bank Data AI Categorization Module</name>
+    <description>
+        Decides what a bank transaction is: its own memory of patterns first, a language model for
+        what is left. Lifted out of bank-data-ingestion, where it was 4,100 lines across three
+        layers and the only reason that whole module needed spring-ai.
+
+        What this pom says about the module is the point of having one: it persists (its memory of
+        patterns) and it runs inside Spring and it talks to a model - and it has NO
+        spring-boot-starter-webmvc and NO spring-kafka, because it owns no endpoint and announces
+        nothing. The staging endpoints stayed with the module that owns the staging session.
+
+        The analysis behind it: docs/features-backlog/2026-10-22-ai-categorization-module-split.md.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-ai-categorization-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-cashflow-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

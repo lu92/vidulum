@@ -42,6 +42,7 @@
         <!-- Contracts first -->
         <module>cashflow-api</module>
         <module>user-financial-profile-api</module>
+        <module>bank-data-ai-categorization-api</module>
 
         <!-- The aggregate and its read model -->
         <module>cashflow</module>
@@ -49,6 +50,7 @@
         <!-- Consumers: each compiles against the contracts above, never the implementation -->
         <module>user-financial-profile</module>
         <module>bank-data-adapter</module>
+        <module>bank-data-ai-categorization</module>
         <module>bank-data-ingestion</module>
         <module>recurring-rules</module>
     </modules>

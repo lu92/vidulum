@@ -74,6 +74,12 @@
         </dependency>
         <dependency>
             <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-ai-categorization</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
             <artifactId>vidulum-bank-data-adapter</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
