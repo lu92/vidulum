@@ -2632,3 +2632,56 @@ mówi to wprost, zamiast pola, o którym nikt nie wie, że zawsze jest puste.
 zmierzyły 20,85 s jak zawsze i nic nie puszczałem równolegle (inaczej niż w kroku 39, gdzie przyczyna
 była moja). Wszystko przeszło — 435/0 i 52/0 — ale ten czas zostaje **nierozwiązany**, nie uznany za
 normę.
+
+## 38. Co zrobił krok 41: auto-wznowienie, i koniec `RecurringRuleService`
+
+Ostatni wołający serwisu nie był endpointem, tylko `@Scheduled`. Dostał komendę i zapytanie:
+`AutoResumeRuleCommand` w `app/commands/autoresume/` oraz `GetRulesDueForAutoResumeQuery` w
+`app/queries/`. **Klasa `RecurringRuleService` została usunięta** — po czternastu metodach, które z
+niej wyszły, nie zostało nic do przenoszenia.
+
+### Dlaczego osobna komenda, a nie flaga na `ResumeRuleCommand`
+
+Zapisy są **te same trzy**: `resume`, `save`, `clear` + `generate`. Różnica jest jedna i nie dotyczy
+danych: **nikt nie czeka na odpowiedź**.
+
+| | gdy reguły nie da się wznowić |
+|---|---|
+| `ResumeRuleCommandHandler` | **odmawia** — człowiek nacisnął przycisk i musi usłyszeć, dlaczego nie |
+| `AutoResumeRuleCommandHandler` | **pomija z ostrzeżeniem** — nocna robota, która przegrała wyścig, leci dalej po liście |
+
+`boolean` na wspólnej komendzie schowałby tę różnicę pod parametrem, a to nie parametr, to inny
+kontrakt wobec wołającego.
+
+### Komenda na regułę, nie jedna na partię
+
+Też nie styl: **liczniki sukcesów i porażek są sensem tego joba**, a komenda na partię musiałaby je i
+tak zwrócić. Przypięte testem: wyjątek na drugiej z trzech reguł nie kończy przebiegu, a trzecia
+dostaje swoją komendę.
+
+Scheduler dostaje **snapshoty, nie agregaty** — żeby nie mógł pisać przez to, co mu wydano, bo to
+robota handlera. Datę wznowienia cytuje z reguły, nie z zegara: reguła wstrzymana do 28 grudnia,
+wznowiona 1 stycznia, obudziła się **z powodu tej daty**, i log musi to powiedzieć.
+
+### Javadoc, który przestał być prawdą
+
+Klasa schedulera do dziś twierdziła:
+
+> *auto-resumed rules are set to ACTIVE status but cash changes are NOT automatically generated
+> because this scheduler does not have access to user auth tokens (VID-147)*
+
+Opis prawdziwego defektu — **naprawionego w F61**. Przy okazji `RecurringRuleExecutor` pisał, że
+resztka własnego klienta „serves `RecurringRuleService`, and that is the remainder of task F26":
+klienta nie ma od F60, serwisu nie ma od teraz. Trzy miejsca poprawione, bo komentarz, który
+przeżył swój kod, jest gorszy od jego braku: czyta się go jak stan rzeczy.
+
+Scheduler nie miał też **żadnego testu** — ma sześć, i dwa z nich dotyczą rzeczy, których żaden test
+wcześniej nie dotykał: że jedna zła reguła nie kończy nocy i że `triggerManualAutoResume` robi
+dokładnie to samo co przebieg z crona.
+
+### Liczby
+
+116 testów w module (było 108), 435 w `cashflow-tests` i 52 w bootstrapie bez zmiany. Przebieg
+`cashflow-tests` zajął **3:57 min**, czyli tyle, ile zwykle: **anomalia 21:56 z kroku 40 nie
+powtórzyła się** i nie miała związku ze zmianami — co zamyka ją jako jednorazową, nadal bez
+wyjaśnienia przyczyny.

@@ -27,10 +27,9 @@ import java.util.List;
  * forecast is what this class wrote there, which is why {@code generate} and {@code clear} belong
  * together: every change to a rule is a clear followed by a generate.
  *
- * <p>Lifted out of {@code RecurringRuleService} unchanged, because the two command handlers that
- * left that class need it and so do five of the methods that stayed - {@code generate} had six
- * callers and {@code clear} seven. Two sides of one job on the same three collaborators, so one
- * component rather than two.
+ * <p>Lifted out of {@code RecurringRuleService} - a class that no longer exists - because
+ * {@code generate} had six callers there and {@code clear} seven, and every handler that left needed
+ * them. Two sides of one job on the same three collaborators, so one component rather than two.
  *
  * <p>Public only so the command handlers in {@code app.commands..} can reach it;
  * {@code ModuleBoundariesArchTest} is what keeps {@code recurring_rules.app..} closed to other
@@ -38,8 +37,8 @@ import java.util.List;
  *
  * <p><b>No HTTP client here any more, and no {@code authToken} in either signature.</b> Both halves
  * of the job - writing a rule's predictions and taking them back - go through
- * {@link CashFlowModuleApi}, one call each. What is left of the module's own client serves
- * {@code RecurringRuleService}, and that is the remainder of task F26.
+ * {@link CashFlowModuleApi}, one call each. The module's own hand-written client is gone entirely
+ * (F60), which is what closed task F26.
  */
 @Slf4j
 @Component
